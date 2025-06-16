@@ -22,14 +22,14 @@ VibeTunnel is a native macOS app built with SwiftUI that enables remote control 
 ## Installation
 
 ### From Release
-1. Download the latest DMG from the [Releases](https://github.com/yourusername/vibetunnel/releases) page
+1. Download the latest DMG from the [Releases](https://github.com/amantus-ai/vibetunnel/releases) page
 2. Open the DMG and drag VibeTunnel to your Applications folder
 3. Launch VibeTunnel from Applications or Spotlight
 
 ### From Source
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/vibetunnel.git
+git clone https://github.com/amantus-ai/vibetunnel.git
 cd vibetunnel
 
 # Build using Xcode
