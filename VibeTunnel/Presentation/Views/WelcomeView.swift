@@ -350,6 +350,11 @@ private struct ProtectDashboardPageView: View {
             ) ?? .localhost
             if currentMode == .localhost {
                 UserDefaults.standard.set(DashboardAccessMode.network.rawValue, forKey: "dashboardAccessMode")
+                
+                // Restart server to apply new bind address for network access
+                Task {
+                    await ServerManager.shared.restart()
+                }
             }
         } else {
             errorMessage = "Failed to save password to keychain"
