@@ -417,7 +417,7 @@ private struct SavedPasswordView: View {
             Text("Password saved")
                 .font(.caption)
             Spacer()
-            Button("Change Password") {
+            Button("Remove Password") {
                 showPasswordFields = true
                 passwordSaved = false
                 password = ""

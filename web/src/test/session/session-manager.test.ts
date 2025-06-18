@@ -27,7 +27,7 @@ vi.mock('os', () => ({
 }));
 
 describe('Session Manager', () => {
-  let mockSpawn: any;
+  let mockSpawn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -187,7 +187,7 @@ describe('Session Manager', () => {
       });
 
       expect(result).toEqual(mockSessions);
-      expect(Object.keys(result as any)).toHaveLength(2);
+      expect(Object.keys(result as Record<string, unknown>)).toHaveLength(2);
     });
 
     it('should terminate a running session', async () => {
@@ -352,13 +352,22 @@ describe('Session Manager', () => {
       });
 
       expect(result).toEqual(mockSnapshot);
-      expect((result as any).lines).toHaveLength(4);
-      expect((result as any).cursor).toEqual({ x: 18, y: 0 });
+      expect((result as { lines: unknown[]; cursor: { x: number; y: number } }).lines).toHaveLength(
+        4
+      );
+      expect((result as { lines: unknown[]; cursor: { x: number; y: number } }).cursor).toEqual({
+        x: 18,
+        y: 0,
+      });
     });
 
     it('should stream terminal output', async () => {
       const sessionId = 'stream-session';
-      const mockStreamProcess = new EventEmitter() as any;
+      const mockStreamProcess = new EventEmitter() as EventEmitter & {
+        stdout: EventEmitter;
+        stderr: EventEmitter;
+        kill: ReturnType<typeof vi.fn>;
+      };
       mockStreamProcess.stdout = new EventEmitter();
       mockStreamProcess.stderr = new EventEmitter();
       mockStreamProcess.kill = vi.fn();
@@ -413,8 +422,10 @@ describe('Session Manager', () => {
         });
       });
 
-      expect((result as any).code).toBe(1);
-      expect((result as any).error).toContain('Failed to create session');
+      expect((result as { code: number; error: string }).code).toBe(1);
+      expect((result as { code: number; error: string }).error).toContain(
+        'Failed to create session'
+      );
     });
 
     it('should handle timeout for long-running commands', async () => {
@@ -467,8 +478,8 @@ describe('Session Manager', () => {
         });
       });
 
-      expect((result as any).code).toBe(1);
-      expect((result as any).error).toContain('Session not found');
+      expect((result as { code: number; error: string }).code).toBe(1);
+      expect((result as { code: number; error: string }).error).toContain('Session not found');
     });
   });
 });

@@ -6,6 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 import { app, server, wss } from '../../server';
+import type { AddressInfo } from 'net';
 
 // Set up test environment
 process.env.NODE_ENV = 'test';
@@ -36,13 +37,13 @@ describe('WebSocket Integration Tests', () => {
       if (!server.listening) {
         server.listen(0, () => {
           const address = server.address();
-          port = (address as any).port;
+          port = (address as AddressInfo).port;
           wsUrl = `ws://localhost:${port}`;
           resolve();
         });
       } else {
         const address = server.address();
-        port = (address as any).port;
+        port = (address as AddressInfo).port;
         wsUrl = `ws://localhost:${port}`;
         resolve();
       }
@@ -60,7 +61,7 @@ describe('WebSocket Integration Tests', () => {
     }
 
     // Close all WebSocket connections
-    wss.clients.forEach((client: any) => {
+    wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.close();
       }
@@ -155,7 +156,7 @@ describe('WebSocket Integration Tests', () => {
 
       // Connect WebSocket and subscribe
       const ws = new WebSocket(wsUrl);
-      const messages: any[] = [];
+      const messages: unknown[] = [];
 
       ws.on('message', (data) => {
         messages.push(JSON.parse(data.toString()));

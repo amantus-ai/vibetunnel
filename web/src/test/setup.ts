@@ -30,7 +30,7 @@ global.WebSocket = vi.fn(() => ({
   addEventListener: vi.fn(),
   removeEventListener: vi.fn(),
   readyState: 1,
-})) as any;
+})) as unknown as typeof WebSocket;
 
 // Add custom matchers if needed
 expect.extend({

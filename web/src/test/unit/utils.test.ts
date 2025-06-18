@@ -43,7 +43,15 @@ class CastConverter {
     this.env = env;
   }
 
-  getCast(): any {
+  getCast(): {
+    version: number;
+    width: number;
+    height: number;
+    timestamp: number;
+    title?: string;
+    env: Record<string, string>;
+    events: Array<[number, 'o', string]>;
+  } {
     return {
       version: 2,
       width: this.width,

@@ -69,6 +69,13 @@ struct AdvancedSettingsView: View {
                 } header: {
                     Text("Integration")
                         .font(.headline)
+                } footer: {
+                    Text(
+                        "Prefix any terminal commannd with 'vt' to enable remote control."
+                    )
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
                 }
 
                 // Advanced section
