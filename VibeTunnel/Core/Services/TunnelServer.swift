@@ -141,6 +141,7 @@ public final class TunnelServer {
         .appendingPathComponent("control").path
 
     private var bindAddress: String
+    private var authMiddleware: LazyBasicAuthMiddleware<BasicRequestContext>?
 
     public init(port: Int = 4_020, bindAddress: String = "127.0.0.1") {
         self.port = port
@@ -159,7 +160,9 @@ public final class TunnelServer {
             router.add(middleware: LogRequestsMiddleware(.info))
 
             // Add lazy basic auth middleware - defers password loading until needed
-            router.add(middleware: LazyBasicAuthMiddleware())
+            let authMiddleware = LazyBasicAuthMiddleware<BasicRequestContext>()
+            self.authMiddleware = authMiddleware
+            router.add(middleware: authMiddleware)
 
             // Health check endpoint
             router.get("/api/health") { _, _ async -> Response in
@@ -450,6 +453,12 @@ public final class TunnelServer {
         self.app = nil
 
         isRunning = false
+    }
+
+    /// Clears the cached password in the authentication middleware
+    public func clearAuthCache() async {
+        await authMiddleware?.clearCache()
+        logger.info("Cleared authentication cache")
     }
 
     /// Verifies the server is listening by attempting an HTTP health check
@@ -766,11 +775,11 @@ public final class TunnelServer {
                 // Call TerminalLauncher directly instead of using socket
                 do {
                     try await MainActor.run {
-                        try TerminalLauncher.shared.launchOptimizedTerminalSession(
+                        // Use launchTerminalSession which properly formats the command with tty-fwd
+                        try TerminalLauncher.shared.launchTerminalSession(
                             workingDirectory: workingDir,
                             command: command,
-                            sessionId: sessionId,
-                            ttyFwdPath: nil // Use bundled tty-fwd
+                            sessionId: sessionId
                         )
                     }
 

@@ -112,6 +112,11 @@ final class HummingbirdServer: ServerProtocol {
         }
     }
 
+    /// Clears the authentication cache
+    func clearAuthCache() async {
+        await tunnelServer?.clearAuthCache()
+    }
+
     func restart() async throws {
         logger.info("Restarting Hummingbird server")
         logContinuation?.yield(ServerLogEntry(level: .info, message: "Restarting server", source: .hummingbird))

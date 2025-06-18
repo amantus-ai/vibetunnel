@@ -104,7 +104,7 @@ struct LazyBasicAuthMiddleware<Context: RequestContext>: RouterMiddleware where 
     }
 
     /// Clears the cached password (useful when password is changed)
-    func clearCache() async {
+    public func clearCache() async {
         await passwordCache.clear()
     }
 }

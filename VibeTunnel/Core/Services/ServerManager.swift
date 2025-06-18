@@ -491,4 +491,13 @@ class ServerManager {
 
         await restart()
     }
+
+    /// Clear the authentication cache (e.g., when password is changed or cleared)
+    func clearAuthCache() async {
+        // Only clear cache for Hummingbird server which uses the auth middleware
+        if serverMode == .hummingbird, let hummingbirdServer = currentServer as? HummingbirdServer {
+            await hummingbirdServer.clearAuthCache()
+            logger.info("Cleared authentication cache")
+        }
+    }
 }
