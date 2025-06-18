@@ -82,10 +82,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let processInfo = ProcessInfo.processInfo
         let isRunningInTests = processInfo.environment["XCTestConfigurationFilePath"] != nil ||
-                               processInfo.environment["XCTestBundlePath"] != nil ||
-                               processInfo.environment["XCTestSessionIdentifier"] != nil ||
-                               processInfo.arguments.contains("-XCTest") ||
-                               NSClassFromString("XCTestCase") != nil
+            processInfo.environment["XCTestBundlePath"] != nil ||
+            processInfo.environment["XCTestSessionIdentifier"] != nil ||
+            processInfo.arguments.contains("-XCTest") ||
+            NSClassFromString("XCTestCase") != nil
         let isRunningInPreview = processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
         let isRunningInDebug = processInfo.environment["DYLD_INSERT_LIBRARIES"]?
             .contains("libMainThreadChecker.dylib") ?? false
@@ -167,16 +167,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Extra safety check - should never be called during tests
         let processInfo = ProcessInfo.processInfo
         let isRunningInTests = processInfo.environment["XCTestConfigurationFilePath"] != nil ||
-                               processInfo.environment["XCTestBundlePath"] != nil ||
-                               processInfo.environment["XCTestSessionIdentifier"] != nil ||
-                               processInfo.arguments.contains("-XCTest") ||
-                               NSClassFromString("XCTestCase") != nil
-        
+            processInfo.environment["XCTestBundlePath"] != nil ||
+            processInfo.environment["XCTestSessionIdentifier"] != nil ||
+            processInfo.arguments.contains("-XCTest") ||
+            NSClassFromString("XCTestCase") != nil
+
         if isRunningInTests {
             logger.info("Skipping single instance check - running in tests")
             return
         }
-        
+
         let runningApps = NSRunningApplication
             .runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
 
@@ -248,10 +248,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Remove distributed notification observer
         let processInfo = ProcessInfo.processInfo
         let isRunningInTests = processInfo.environment["XCTestConfigurationFilePath"] != nil ||
-                               processInfo.environment["XCTestBundlePath"] != nil ||
-                               processInfo.environment["XCTestSessionIdentifier"] != nil ||
-                               processInfo.arguments.contains("-XCTest") ||
-                               NSClassFromString("XCTestCase") != nil
+            processInfo.environment["XCTestBundlePath"] != nil ||
+            processInfo.environment["XCTestSessionIdentifier"] != nil ||
+            processInfo.arguments.contains("-XCTest") ||
+            NSClassFromString("XCTestCase") != nil
         let isRunningInPreview = processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
         let isRunningInDebug = processInfo.environment["DYLD_INSERT_LIBRARIES"]?
             .contains("libMainThreadChecker.dylib") ?? false

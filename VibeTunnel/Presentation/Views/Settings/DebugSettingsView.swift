@@ -354,12 +354,19 @@ private struct ServerSection: View {
                         Text("\(serverPort)")
                     }
 
+                    LabeledContent("Bind Address") {
+                        Text(serverManager.bindAddress)
+                            .font(.system(.body, design: .monospaced))
+                    }
+
                     LabeledContent("Base URL") {
-                        if let serverURL = URL(string: "http://127.0.0.1:\(serverPort)") {
-                            Link("http://127.0.0.1:\(serverPort)", destination: serverURL)
+                        let baseAddress = serverManager.bindAddress == "0.0.0.0" ? "127.0.0.1" : serverManager
+                            .bindAddress
+                        if let serverURL = URL(string: "http://\(baseAddress):\(serverPort)") {
+                            Link("http://\(baseAddress):\(serverPort)", destination: serverURL)
                                 .font(.system(.body, design: .monospaced))
                         } else {
-                            Text("http://127.0.0.1:\(serverPort)")
+                            Text("http://\(baseAddress):\(serverPort)")
                                 .font(.system(.body, design: .monospaced))
                         }
                     }
