@@ -253,41 +253,41 @@ private struct ServerSection: View {
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
-                // Server Mode Configuration
-                HStack {
-                    Text("Server Mode")
-                    Spacer()
-                    Picker("", selection: Binding(
-                        get: { ServerMode(rawValue: serverModeString) ?? .hummingbird },
-                        set: { newMode in
-                            serverModeString = newMode.rawValue
-                            Task {
-                                await serverManager.switchMode(to: newMode)
-                            }
-                        }
-                    )) {
-                        ForEach(ServerMode.allCases, id: \.self) { mode in
-                            VStack(alignment: .leading) {
-                                Text(mode.displayName)
-                                Text(mode.description)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .tag(mode)
+                // Server Information
+                VStack(alignment: .leading, spacing: 8) {
+                    LabeledContent("Status") {
+                        HStack {
+                            Image(systemName: isServerHealthy ? "checkmark.circle.fill" :
+                                isServerRunning ? "exclamationmark.circle.fill" : "xmark.circle.fill"
+                            )
+                            .foregroundStyle(isServerHealthy ? .green :
+                                isServerRunning ? .orange : .secondary
+                            )
+                            Text(isServerHealthy ? "Healthy" :
+                                isServerRunning ? "Unhealthy" : "Stopped"
+                            )
                         }
                     }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-                    .disabled(serverManager.isSwitching)
-                }
 
-                if serverManager.isSwitching {
-                    HStack {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                        Text("Switching server mode...")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    LabeledContent("Port") {
+                        Text("\(serverPort)")
+                    }
+
+                    LabeledContent("Bind Address") {
+                        Text(serverManager.bindAddress)
+                            .font(.system(.body, design: .monospaced))
+                    }
+
+                    LabeledContent("Base URL") {
+                        let baseAddress = serverManager.bindAddress == "0.0.0.0" ? "127.0.0.1" : serverManager
+                            .bindAddress
+                        if let serverURL = URL(string: "http://\(baseAddress):\(serverPort)") {
+                            Link("http://\(baseAddress):\(serverPort)", destination: serverURL)
+                                .font(.system(.body, design: .monospaced))
+                        } else {
+                            Text("http://\(baseAddress):\(serverPort)")
+                                .font(.system(.body, design: .monospaced))
+                        }
                     }
                 }
 
@@ -334,41 +334,41 @@ private struct ServerSection: View {
 
                 Divider()
 
-                // Server Information
-                VStack(alignment: .leading, spacing: 8) {
-                    LabeledContent("Status") {
-                        HStack {
-                            Image(systemName: isServerHealthy ? "checkmark.circle.fill" :
-                                isServerRunning ? "exclamationmark.circle.fill" : "xmark.circle.fill"
-                            )
-                            .foregroundStyle(isServerHealthy ? .green :
-                                isServerRunning ? .orange : .secondary
-                            )
-                            Text(isServerHealthy ? "Healthy" :
-                                isServerRunning ? "Unhealthy" : "Stopped"
-                            )
+                // Server Mode Configuration
+                HStack {
+                    Text("Server Mode")
+                    Spacer()
+                    Picker("", selection: Binding(
+                        get: { ServerMode(rawValue: serverModeString) ?? .hummingbird },
+                        set: { newMode in
+                            serverModeString = newMode.rawValue
+                            Task {
+                                await serverManager.switchMode(to: newMode)
+                            }
+                        }
+                    )) {
+                        ForEach(ServerMode.allCases, id: \.self) { mode in
+                            VStack(alignment: .leading) {
+                                Text(mode.displayName)
+                                Text(mode.description)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .tag(mode)
                         }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .disabled(serverManager.isSwitching)
+                }
 
-                    LabeledContent("Port") {
-                        Text("\(serverPort)")
-                    }
-
-                    LabeledContent("Bind Address") {
-                        Text(serverManager.bindAddress)
-                            .font(.system(.body, design: .monospaced))
-                    }
-
-                    LabeledContent("Base URL") {
-                        let baseAddress = serverManager.bindAddress == "0.0.0.0" ? "127.0.0.1" : serverManager
-                            .bindAddress
-                        if let serverURL = URL(string: "http://\(baseAddress):\(serverPort)") {
-                            Link("http://\(baseAddress):\(serverPort)", destination: serverURL)
-                                .font(.system(.body, design: .monospaced))
-                        } else {
-                            Text("http://\(baseAddress):\(serverPort)")
-                                .font(.system(.body, design: .monospaced))
-                        }
+                if serverManager.isSwitching {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Switching server mode...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
