@@ -22,6 +22,18 @@ public final class SparkleUpdaterManager: NSObject, SPUUpdaterDelegate {
 
     override public init() {
         super.init()
+        
+        // Skip initialization during tests
+        let isRunningInTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
+                               ProcessInfo.processInfo.environment["XCTestBundlePath"] != nil ||
+                               ProcessInfo.processInfo.environment["XCTestSessionIdentifier"] != nil ||
+                               ProcessInfo.processInfo.arguments.contains("-XCTest") ||
+                               NSClassFromString("XCTestCase") != nil
+        
+        if isRunningInTests {
+            logger.info("Running in test mode, skipping Sparkle initialization")
+            return
+        }
 
         // Check if installed from App Store
         if ProcessInfo.processInfo.installedFromAppStore {

@@ -58,12 +58,14 @@ final class MockTTYProcess: Process {
         if let output = simulatedOutput,
            let outputPipe = standardOutput as? Pipe {
             outputPipe.fileHandleForWriting.write(output.data(using: .utf8)!)
+            outputPipe.fileHandleForWriting.closeFile()
         }
         
         // Simulate error if provided
         if let error = simulatedError,
            let errorPipe = standardError as? Pipe {
             errorPipe.fileHandleForWriting.write(error.data(using: .utf8)!)
+            errorPipe.fileHandleForWriting.closeFile()
         }
         
         // Simulate termination

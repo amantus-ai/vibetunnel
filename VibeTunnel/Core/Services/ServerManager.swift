@@ -12,7 +12,7 @@ import SwiftUI
 @MainActor
 @Observable
 class ServerManager {
-    static let shared = ServerManager()
+    @MainActor static let shared = ServerManager()
 
     private var serverModeString: String {
         get { UserDefaults.standard.string(forKey: "serverMode") ?? ServerMode.rust.rawValue }
@@ -66,8 +66,18 @@ class ServerManager {
 
     private init() {
         setupLogStream()
-        setupObservers()
-        startCrashMonitoring()
+        
+        // Skip observer setup and monitoring during tests
+        let isRunningInTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
+                               ProcessInfo.processInfo.environment["XCTestBundlePath"] != nil ||
+                               ProcessInfo.processInfo.environment["XCTestSessionIdentifier"] != nil ||
+                               ProcessInfo.processInfo.arguments.contains("-XCTest") ||
+                               NSClassFromString("XCTestCase") != nil
+        
+        if !isRunningInTests {
+            setupObservers()
+            startCrashMonitoring()
+        }
     }
 
     deinit {
