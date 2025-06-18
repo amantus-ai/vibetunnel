@@ -118,17 +118,17 @@ class SessionMonitor {
 
             // Parse JSON response as an array
             let sessionsArray = try JSONDecoder().decode([SessionInfo].self, from: data)
-            
+
             // Convert array to dictionary using session id as key
             var sessionsDict: [String: SessionInfo] = [:]
             for session in sessionsArray {
                 sessionsDict[session.id] = session
             }
-            
+
             self.sessions = sessionsDict
 
             // Count only running sessions
-            self.sessionCount = sessionsArray.filter { $0.isRunning }.count
+            self.sessionCount = sessionsArray.count(where: { $0.isRunning })
             self.lastError = nil
         } catch {
             // Don't set error for connection issues when server is likely not running

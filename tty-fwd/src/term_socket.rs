@@ -229,15 +229,15 @@ fn spawn_via_pty(command: &[String], working_dir: Option<&str>) -> Result<String
             // Set up stdin/stdout/stderr to use the slave PTY
             // In nix 0.30, dup2 requires file descriptors, not raw integers
             use std::os::fd::{FromRawFd, OwnedFd};
-            
+
             // Create OwnedFd for slave_fd
             let slave_owned_fd = unsafe { OwnedFd::from_raw_fd(slave_fd) };
-            
+
             // Create OwnedFd instances for stdin/stdout/stderr
             let mut stdin_fd = unsafe { OwnedFd::from_raw_fd(0) };
             let mut stdout_fd = unsafe { OwnedFd::from_raw_fd(1) };
             let mut stderr_fd = unsafe { OwnedFd::from_raw_fd(2) };
-            
+
             if let Err(_e) = dup2(&slave_owned_fd, &mut stdin_fd) {
                 std::process::exit(1);
             }
@@ -247,7 +247,7 @@ fn spawn_via_pty(command: &[String], working_dir: Option<&str>) -> Result<String
             if let Err(_e) = dup2(&slave_owned_fd, &mut stderr_fd) {
                 std::process::exit(1);
             }
-            
+
             // Forget the OwnedFd instances to prevent them from being closed
             std::mem::forget(stdin_fd);
             std::mem::forget(stdout_fd);

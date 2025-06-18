@@ -186,7 +186,12 @@ impl HttpRequest {
         let mut headers = String::new();
         for (name, value) in &parts.headers {
             use std::fmt::Write;
-            let _ = write!(headers, "{}: {}\r\n", name.as_str(), value.to_str().unwrap_or(""));
+            let _ = write!(
+                headers,
+                "{}: {}\r\n",
+                name.as_str(),
+                value.to_str().unwrap_or("")
+            );
         }
         let header_bytes = format!("{status_line}{headers}\r\n").into_bytes();
         let mut result = header_bytes;
@@ -310,7 +315,7 @@ mod tests {
             let request = "GET /test HTTP/1.1\r\nHost: localhost\r\nUser-Agent: test\r\n\r\n";
             stream.write_all(request.as_bytes()).unwrap();
             stream.flush().unwrap();
-            
+
             // Keep connection open briefly
             thread::sleep(Duration::from_millis(100));
         });
@@ -353,7 +358,10 @@ mod tests {
 
         assert_eq!(request.method(), Method::POST);
         assert_eq!(request.uri().path(), "/api/test");
-        assert_eq!(request.headers().get("content-type").unwrap(), "application/json");
+        assert_eq!(
+            request.headers().get("content-type").unwrap(),
+            "application/json"
+        );
         assert_eq!(request.body(), br#"{"test": "data"}"#);
 
         client_thread.join().unwrap();
@@ -388,16 +396,19 @@ mod tests {
             }
 
             // Check for expected headers
-            let has_content_type = headers.iter().any(|h| h.to_lowercase().contains("content-type:"));
+            let has_content_type = headers
+                .iter()
+                .any(|h| h.to_lowercase().contains("content-type:"));
             assert!(has_content_type);
 
             // Read body based on Content-Length
-            let content_length = headers.iter()
+            let content_length = headers
+                .iter()
                 .find(|h| h.to_lowercase().starts_with("content-length:"))
                 .and_then(|h| h.split(':').nth(1))
                 .and_then(|v| v.trim().parse::<usize>().ok())
                 .unwrap_or(0);
-            
+
             let mut body = vec![0u8; content_length];
             reader.read_exact(&mut body).unwrap();
             assert_eq!(String::from_utf8(body).unwrap(), "Hello, World!");
@@ -433,7 +444,7 @@ mod tests {
             // Read response headers
             let mut reader = BufReader::new(stream);
             let mut line = String::new();
-            
+
             // Status line
             reader.read_line(&mut line).unwrap();
             assert!(line.starts_with("HTTP/1.1 200"));
@@ -447,7 +458,9 @@ mod tests {
                 if line == "\r\n" {
                     break;
                 }
-                if line.to_lowercase().contains("content-type:") && line.contains("text/event-stream") {
+                if line.to_lowercase().contains("content-type:")
+                    && line.contains("text/event-stream")
+                {
                     found_event_stream = true;
                 }
                 if line.to_lowercase().contains("cache-control:") && line.contains("no-cache") {
@@ -464,7 +477,7 @@ mod tests {
             let line_trimmed = line.trim_start_matches("\r\n");
             assert_eq!(line_trimmed, "data: event1\n");
             line.clear();
-            
+
             reader.read_line(&mut line).unwrap();
             assert_eq!(line, "\n");
             line.clear();
@@ -481,11 +494,11 @@ mod tests {
 
         // Initialize SSE
         let mut sse = SseResponseHelper::new(&mut request).unwrap();
-        
+
         // Send events
         sse.write_event("event1").unwrap();
         sse.write_event("event2").unwrap();
-        
+
         // Drop the request to close the connection
         drop(request);
 
@@ -506,7 +519,10 @@ mod tests {
         let mut incoming = server.incoming();
         let result = incoming.next().unwrap();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Connection closed"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Connection closed"));
 
         client_thread.join().unwrap();
     }
@@ -518,11 +534,11 @@ mod tests {
 
         let client_thread = thread::spawn(move || {
             let mut stream = TcpStream::connect(addr).unwrap();
-            
+
             // Send a request larger than MAX_REQUEST_SIZE
             let large_header = "X-Large: ".to_string() + &"A".repeat(MAX_REQUEST_SIZE);
             let request = format!("GET / HTTP/1.1\r\n{}\r\n\r\n", large_header);
-            
+
             // Write in chunks to avoid blocking
             for chunk in request.as_bytes().chunks(8192) {
                 let _ = stream.write(chunk);
@@ -532,7 +548,10 @@ mod tests {
         let mut incoming = server.incoming();
         let result = incoming.next().unwrap();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Request too large"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Request too large"));
 
         client_thread.join().unwrap();
     }
@@ -544,7 +563,9 @@ mod tests {
 
         let client_thread = thread::spawn(move || {
             let mut stream = TcpStream::connect(addr).unwrap();
-            stream.write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n").unwrap();
+            stream
+                .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .unwrap();
             thread::sleep(Duration::from_millis(100));
         });
 
@@ -560,7 +581,7 @@ mod tests {
 
         let bytes = request.response_to_bytes(response);
         let response_str = String::from_utf8_lossy(&bytes);
-        
+
         assert!(response_str.starts_with("HTTP/1.1 404"));
         assert!(response_str.to_lowercase().contains("x-custom: test"));
         assert!(response_str.contains("Not Found"));
@@ -576,7 +597,9 @@ mod tests {
         // Test HTTP/1.0
         let client_thread = thread::spawn(move || {
             let mut stream = TcpStream::connect(addr).unwrap();
-            stream.write_all(b"GET / HTTP/1.0\r\nHost: localhost\r\n\r\n").unwrap();
+            stream
+                .write_all(b"GET / HTTP/1.0\r\nHost: localhost\r\n\r\n")
+                .unwrap();
             thread::sleep(Duration::from_millis(100));
         });
 
@@ -602,7 +625,7 @@ mod tests {
 
         let mut incoming = server.incoming();
         let request = incoming.next().unwrap().unwrap();
-        
+
         assert_eq!(request.headers().get("validheader").unwrap(), "value");
         assert!(request.headers().get("invalidheader").is_none());
 

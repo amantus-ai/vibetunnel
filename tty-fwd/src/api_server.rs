@@ -1675,7 +1675,6 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-
     #[test]
     fn test_base64_auth_parsing() {
         // Test valid credentials
@@ -1709,11 +1708,17 @@ mod tests {
     fn test_get_mime_type() {
         assert_eq!(get_mime_type(Path::new("test.html")), "text/html");
         assert_eq!(get_mime_type(Path::new("test.css")), "text/css");
-        assert_eq!(get_mime_type(Path::new("test.js")), "application/javascript");
+        assert_eq!(
+            get_mime_type(Path::new("test.js")),
+            "application/javascript"
+        );
         assert_eq!(get_mime_type(Path::new("test.json")), "application/json");
         assert_eq!(get_mime_type(Path::new("test.png")), "image/png");
         assert_eq!(get_mime_type(Path::new("test.jpg")), "image/jpeg");
-        assert_eq!(get_mime_type(Path::new("test.unknown")), "application/octet-stream");
+        assert_eq!(
+            get_mime_type(Path::new("test.unknown")),
+            "application/octet-stream"
+        );
     }
 
     #[test]
@@ -1755,7 +1760,10 @@ mod tests {
             "application/json"
         );
         assert_eq!(
-            response.headers().get("Access-Control-Allow-Origin").unwrap(),
+            response
+                .headers()
+                .get("Access-Control-Allow-Origin")
+                .unwrap(),
             "*"
         );
         assert_eq!(response.body(), r#"{"message":"test","value":42}"#);
@@ -1869,11 +1877,20 @@ mod tests {
     #[test]
     fn test_resolve_path() {
         let home_dir = "/home/user";
-        
+
         assert_eq!(resolve_path("~", home_dir), PathBuf::from("/home/user"));
-        assert_eq!(resolve_path("~/Documents", home_dir), PathBuf::from("/home/user/Documents"));
-        assert_eq!(resolve_path("/absolute/path", home_dir), PathBuf::from("/absolute/path"));
-        assert_eq!(resolve_path("relative/path", home_dir), PathBuf::from("relative/path"));
+        assert_eq!(
+            resolve_path("~/Documents", home_dir),
+            PathBuf::from("/home/user/Documents")
+        );
+        assert_eq!(
+            resolve_path("/absolute/path", home_dir),
+            PathBuf::from("/absolute/path")
+        );
+        assert_eq!(
+            resolve_path("relative/path", home_dir),
+            PathBuf::from("relative/path")
+        );
     }
 
     #[test]
@@ -1890,10 +1907,10 @@ mod tests {
 [0.5,"o","Hello"]
 [1.0,"o","\u001b[2J"]
 [1.5,"o","World"]"#;
-        
+
         let optimized = optimize_snapshot_content(content);
         let lines: Vec<&str> = optimized.lines().collect();
-        
+
         // Should have header and events after clear
         assert!(lines.len() >= 2);
         assert!(lines[0].contains("version"));
@@ -1926,19 +1943,13 @@ mod tests {
         // Test serving a file
         let response = serve_static_file(static_root, "/test.html").unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(
-            response.headers().get("Content-Type").unwrap(),
-            "text/html"
-        );
+        assert_eq!(response.headers().get("Content-Type").unwrap(), "text/html");
         assert_eq!(response.body(), b"<h1>Test</h1>");
 
         // Test serving a CSS file
         let response = serve_static_file(static_root, "/test.css").unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(
-            response.headers().get("Content-Type").unwrap(),
-            "text/css"
-        );
+        assert_eq!(response.headers().get("Content-Type").unwrap(), "text/css");
 
         // Test serving index.html from directory
         let response = serve_static_file(static_root, "/subdir/").unwrap();
@@ -2102,7 +2113,7 @@ mod tests {
 
         let response = handle_list_sessions(control_path);
         assert_eq!(response.status(), StatusCode::OK);
-        
+
         let body = response.body();
         assert!(body.contains(r#""id":"test-session""#));
         assert!(body.contains(r#""command":"bash""#));

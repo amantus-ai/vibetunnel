@@ -99,11 +99,11 @@ struct StreamResponse: Codable {
 /// Actor to manage session streaming tasks safely
 private actor SessionTaskManager {
     private var tasks: [String: Task<Void, Never>] = [:]
-    
+
     func add(sessionId: String, task: Task<Void, Never>) {
         tasks[sessionId] = task
     }
-    
+
     func cancelAll() {
         for task in tasks.values {
             task.cancel()
@@ -763,10 +763,10 @@ public final class TunnelServer {
                             workingDirectory: workingDir,
                             command: command,
                             sessionId: sessionId,
-                            ttyFwdPath: nil  // Use bundled tty-fwd
+                            ttyFwdPath: nil // Use bundled tty-fwd
                         )
                     }
-                    
+
                     logger.info("Terminal spawned successfully with session ID: \(sessionId)")
 
                     let response = SessionCreatedResponse(
@@ -873,28 +873,28 @@ public final class TunnelServer {
 
             if session.pid > 0 {
                 let pid = pid_t(session.pid)
-                
+
                 // First try SIGTERM for graceful shutdown
                 kill(pid, SIGTERM)
-                
+
                 // Wait up to 5 seconds for process to die
                 var processExited = false
-                for _ in 0..<50 {  // 50 * 100ms = 5 seconds
+                for _ in 0..<50 { // 50 * 100ms = 5 seconds
                     try await Task.sleep(for: .milliseconds(100))
-                    
+
                     // Check if process still exists (kill with signal 0)
                     if kill(pid, 0) != 0 {
                         processExited = true
                         break
                     }
                 }
-                
+
                 // If process didn't exit, force kill with SIGKILL
                 if !processExited {
                     kill(pid, SIGKILL)
-                    
+
                     // Wait a bit more for SIGKILL to take effect
-                    for _ in 0..<10 {  // 10 * 100ms = 1 second
+                    for _ in 0..<10 { // 10 * 100ms = 1 second
                         try await Task.sleep(for: .milliseconds(100))
                         if kill(pid, 0) != 0 {
                             processExited = true
@@ -902,11 +902,11 @@ public final class TunnelServer {
                         }
                     }
                 }
-                
-                let message = processExited 
+
+                let message = processExited
                     ? "Session killed successfully"
                     : "Session kill signal sent but process may still be running"
-                
+
                 let response = SimpleResponse(success: processExited, message: message)
                 return jsonResponse(response)
             }
@@ -1296,46 +1296,47 @@ public final class TunnelServer {
             return errorResponse(message: "Failed to read session snapshot")
         }
     }
-    
+
     /// Optimizes snapshot content by finding the last clear screen command and returning
     /// only the content after it, similar to the Rust implementation.
     private func optimizeSnapshotContent(_ content: String) -> String {
         guard !content.isEmpty else { return content }
-        
+
         var lastClearPos: String.Index?
         let lines = content.components(separatedBy: .newlines)
         var optimizedLines: [String] = []
-        
+
         // Process lines to find asciinema events
         for line in lines {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
             guard !trimmedLine.isEmpty else { continue }
-            
+
             // Try to parse as JSON array (asciinema event format)
             if let data = trimmedLine.data(using: .utf8),
                let parsed = try? JSONSerialization.jsonObject(with: data) as? [Any],
                parsed.count >= 3,
-               let outputString = parsed[2] as? String {
-                
+               let outputString = parsed[2] as? String
+            {
                 // Check for clear screen sequences
-                if outputString.contains("\u{001b}[H\u{001b}[2J") ||  // ESC[H ESC[2J
-                   outputString.contains("\u{001b}[2J") ||             // ESC[2J
-                   outputString.contains("\u{001b}[3J") ||             // ESC[3J
-                   outputString.contains("\u{001b}c") {                // ESC c
+                if outputString.contains("\u{001b}[H\u{001b}[2J") || // ESC[H ESC[2J
+                    outputString.contains("\u{001b}[2J") || // ESC[2J
+                    outputString.contains("\u{001b}[3J") || // ESC[3J
+                    outputString.contains("\u{001b}c")
+                { // ESC c
                     // Found clear screen, mark this position
                     lastClearPos = line.endIndex
-                    optimizedLines.removeAll()  // Clear accumulated lines
+                    optimizedLines.removeAll() // Clear accumulated lines
                 }
             }
-            
+
             optimizedLines.append(line)
         }
-        
+
         // If we found a clear screen, return only content after it
         if lastClearPos != nil {
             return optimizedLines.joined(separator: "\n")
         }
-        
+
         // No clear screen found, return original content
         return content
     }
@@ -1677,10 +1678,10 @@ public final class TunnelServer {
     }
 
     // MARK: - Multi-stream Sessions
-    
+
     private func multiStreamSessions(request: Request) async -> Response {
         logger.info("Starting multiplex streaming with dynamic session discovery")
-        
+
         // Create SSE response headers
         var headers = HTTPFields()
         headers[.contentType] = "text/event-stream"
@@ -1692,35 +1693,35 @@ public final class TunnelServer {
         if let accessControlAllowOrigin = HTTPField.Name("Access-Control-Allow-Origin") {
             headers[accessControlAllowOrigin] = "*"
         }
-        
+
         // Create async sequence for streaming multiple sessions
         let stream = AsyncStream<ByteBuffer> { continuation in
             let task = Task {
                 await self.streamMultipleSessions(continuation: continuation)
             }
-            
+
             continuation.onTermination = { _ in
                 task.cancel()
             }
         }
-        
+
         return Response(
             status: .ok,
             headers: headers,
             body: ResponseBody(asyncSequence: stream)
         )
     }
-    
+
     private func streamMultipleSessions(continuation: AsyncStream<ByteBuffer>.Continuation) async {
         // Send initial connection message
         var initialMessage = ByteBuffer()
         initialMessage.writeString(": connected\n\n")
         continuation.yield(initialMessage)
-        
+
         // Track active sessions
         var activeSessions = Set<String>()
         let sessionTasks = SessionTaskManager()
-        
+
         // Monitor for new sessions
         let monitorTask = Task {
             while !Task.isCancelled {
@@ -1731,16 +1732,16 @@ public final class TunnelServer {
                         ttyFwdControlDir,
                         "--list-sessions"
                     ])
-                    
+
                     if let sessionData = sessionsOutput.data(using: .utf8),
-                       let sessions = try? JSONDecoder().decode([String: TtyFwdSession].self, from: sessionData) {
-                        
+                       let sessions = try? JSONDecoder().decode([String: TtyFwdSession].self, from: sessionData)
+                    {
                         // Start streaming for new sessions
                         for (sessionId, _) in sessions {
                             if !activeSessions.contains(sessionId) {
                                 activeSessions.insert(sessionId)
                                 logger.info("Starting stream for new session: \(sessionId)")
-                                
+
                                 // Create task for this session
                                 let task = Task {
                                     await self.streamSessionForMultiplex(
@@ -1751,11 +1752,11 @@ public final class TunnelServer {
                                 await sessionTasks.add(sessionId: sessionId, task: task)
                             }
                         }
-                        
+
                         // Clean up completed sessions
                         activeSessions = activeSessions.filter { sessions.keys.contains($0) }
                     }
-                    
+
                     // Check every second
                     try await Task.sleep(for: .seconds(1))
                 } catch {
@@ -1766,13 +1767,13 @@ public final class TunnelServer {
                 }
             }
         }
-        
+
         // Keep streaming until cancelled
         await withTaskCancellationHandler {
             while !Task.isCancelled {
                 do {
                     try await Task.sleep(for: .seconds(15))
-                    
+
                     // Send heartbeat
                     var heartbeat = ByteBuffer()
                     heartbeat.writeString(": heartbeat\n\n")
@@ -1783,61 +1784,63 @@ public final class TunnelServer {
             }
         } onCancel: {
             monitorTask.cancel()
-            
+
             // Cancel all session tasks in a new task
             Task {
                 await sessionTasks.cancelAll()
             }
         }
-        
+
         continuation.finish()
     }
-    
+
     private func streamSessionForMultiplex(
         sessionId: String,
         continuation: AsyncStream<ByteBuffer>.Continuation
-    ) async {
+    )
+        async
+    {
         let streamOutPath = URL(fileURLWithPath: ttyFwdControlDir)
             .appendingPathComponent(sessionId)
             .appendingPathComponent("stream-out").path
-        
+
         guard FileManager.default.fileExists(atPath: streamOutPath) else {
             return
         }
-        
+
         // Read and forward events from this session
         do {
             let fileHandle = try FileHandle(forReadingFrom: URL(fileURLWithPath: streamOutPath))
             defer { fileHandle.closeFile() }
-            
+
             var buffer = ""
-            
+
             while !Task.isCancelled {
                 let data = fileHandle.availableData
                 guard !data.isEmpty else {
                     try await Task.sleep(for: .milliseconds(100))
                     continue
                 }
-                
+
                 if let content = String(data: data, encoding: .utf8) {
                     buffer += content
                     let lines = buffer.components(separatedBy: .newlines)
-                    
+
                     // Process complete lines
                     for i in 0..<(lines.count - 1) {
                         let line = lines[i]
                         let trimmedLine = line.trimmingCharacters(in: .whitespaces)
-                        
+
                         if !trimmedLine.isEmpty {
                             // Create prefixed event: sessionId:event
                             let prefixedEvent = "\(sessionId):\(trimmedLine)"
-                            
+
                             var eventBuffer = ByteBuffer()
                             eventBuffer.writeString("data: \(prefixedEvent)\n\n")
                             continuation.yield(eventBuffer)
                         }
                     }
-                    
+
                     // Keep incomplete line in buffer
                     buffer = lines.last ?? ""
                 }

@@ -267,7 +267,7 @@ struct SessionRowView: View {
         // Extract the working directory name as the session name
         let workingDir = session.value.workingDir
         let name = (workingDir as NSString).lastPathComponent
-        
+
         // Truncate long session names
         if name.count > 35 {
             let prefix = String(name.prefix(20))

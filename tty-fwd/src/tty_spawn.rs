@@ -593,17 +593,17 @@ fn spawn(mut opts: SpawnOptions) -> Result<i32, Error> {
         // Redirect stdin, stdout, stderr to the pty slave
         use std::os::fd::{FromRawFd, OwnedFd};
         let slave_fd = pty.slave.as_raw_fd();
-        
+
         // Create OwnedFd for slave and standard file descriptors
         let slave_owned_fd = unsafe { OwnedFd::from_raw_fd(slave_fd) };
         let mut stdin_fd = unsafe { OwnedFd::from_raw_fd(0) };
         let mut stdout_fd = unsafe { OwnedFd::from_raw_fd(1) };
         let mut stderr_fd = unsafe { OwnedFd::from_raw_fd(2) };
-        
+
         dup2(&slave_owned_fd, &mut stdin_fd).expect("Failed to dup2 stdin");
         dup2(&slave_owned_fd, &mut stdout_fd).expect("Failed to dup2 stdout");
         dup2(&slave_owned_fd, &mut stderr_fd).expect("Failed to dup2 stderr");
-        
+
         // Forget the OwnedFd instances to prevent them from being closed
         std::mem::forget(stdin_fd);
         std::mem::forget(stdout_fd);

@@ -360,27 +360,27 @@ class ServerManager {
             ))
         }
     }
-    
+
     // MARK: - Crash Recovery
-    
+
     /// Start monitoring for server crashes
     private func startCrashMonitoring() {
         monitoringTask = Task { [weak self] in
             while !Task.isCancelled {
                 // Wait for 10 seconds between checks
                 try? await Task.sleep(for: .seconds(10))
-                
-                guard let self = self else { return }
-                
+
+                guard let self else { return }
+
                 // Only monitor if we're in Rust mode and server should be running
                 guard serverMode == .rust,
                       isRunning,
                       !isSwitching,
                       !isRestarting else { continue }
-                
+
                 // Check if server is responding
                 let isHealthy = await checkServerHealth()
-                
+
                 if !isHealthy && currentServer != nil {
                     logger.warning("Server health check failed, may have crashed")
                     await handleServerCrash()
@@ -388,39 +388,40 @@ class ServerManager {
             }
         }
     }
-    
+
     /// Check if the server is healthy
     private func checkServerHealth() async -> Bool {
         guard let url = URL(string: "http://localhost:\(port)/api/health") else {
             return false
         }
-        
+
         do {
             let request = URLRequest(url: url, timeoutInterval: 5.0)
             let (_, response) = try await URLSession.shared.data(for: request)
-            
+
             if let httpResponse = response as? HTTPURLResponse {
                 return httpResponse.statusCode == 200
             }
         } catch {
             // Server not responding
         }
-        
+
         return false
     }
-    
+
     /// Handle server crash with exponential backoff
     private func handleServerCrash() async {
         // Update crash tracking
         let now = Date()
         if let lastCrash = lastCrashTime,
-           now.timeIntervalSince(lastCrash) > 300 { // Reset count if more than 5 minutes since last crash
+           now.timeIntervalSince(lastCrash) > 300
+        { // Reset count if more than 5 minutes since last crash
             self.crashCount = 0
         }
-        
+
         self.crashCount += 1
         lastCrashTime = now
-        
+
         // Log the crash
         logger.error("Server crashed (crash #\(self.crashCount))")
         logContinuation?.yield(ServerLogEntry(
@@ -428,26 +429,26 @@ class ServerManager {
             message: "Server crashed unexpectedly (crash #\(self.crashCount))",
             source: serverMode
         ))
-        
+
         // Clear the current server reference
         currentServer = nil
         isRunning = false
-        
+
         // Calculate backoff delay based on crash count
         let baseDelay: Double = 2.0 // 2 seconds base delay
         let maxDelay: Double = 60.0 // Max 1 minute delay
         let delay = min(baseDelay * pow(2.0, Double(self.crashCount - 1)), maxDelay)
-        
+
         logger.info("Waiting \(delay) seconds before restart attempt...")
         logContinuation?.yield(ServerLogEntry(
             level: .info,
             message: "Waiting \(Int(delay)) seconds before restart attempt...",
             source: serverMode
         ))
-        
+
         // Wait with exponential backoff
         try? await Task.sleep(for: .seconds(delay))
-        
+
         // Attempt to restart
         if !Task.isCancelled && serverMode == .rust {
             logger.info("Attempting to restart server after crash...")
@@ -456,9 +457,9 @@ class ServerManager {
                 message: "Attempting automatic restart after crash...",
                 source: serverMode
             ))
-            
+
             await start()
-            
+
             // If server started successfully, reset crash count after some time
             if isRunning {
                 Task {
@@ -471,13 +472,13 @@ class ServerManager {
             }
         }
     }
-    
+
     /// Manually trigger a server restart (for UI button)
     func manualRestart() async {
         // Reset crash count for manual restarts
         self.crashCount = 0
         self.lastCrashTime = nil
-        
+
         await restart()
     }
 }

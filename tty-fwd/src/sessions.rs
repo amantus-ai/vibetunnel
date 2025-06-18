@@ -887,11 +887,8 @@ mod tests {
         }
 
         // Test writing without a reader (should timeout or fail)
-        let result = write_to_pipe_with_timeout(
-            &pipe_path,
-            b"test data",
-            Duration::from_millis(100),
-        );
+        let result =
+            write_to_pipe_with_timeout(&pipe_path, b"test data", Duration::from_millis(100));
         assert!(result.is_err());
 
         // Clean up

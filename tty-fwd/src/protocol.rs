@@ -837,10 +837,22 @@ mod tests {
         assert_eq!(AsciinemaEventType::Marker.as_str(), "m");
         assert_eq!(AsciinemaEventType::Resize.as_str(), "r");
 
-        assert!(matches!(AsciinemaEventType::from_str("o"), Ok(AsciinemaEventType::Output)));
-        assert!(matches!(AsciinemaEventType::from_str("i"), Ok(AsciinemaEventType::Input)));
-        assert!(matches!(AsciinemaEventType::from_str("m"), Ok(AsciinemaEventType::Marker)));
-        assert!(matches!(AsciinemaEventType::from_str("r"), Ok(AsciinemaEventType::Resize)));
+        assert!(matches!(
+            AsciinemaEventType::from_str("o"),
+            Ok(AsciinemaEventType::Output)
+        ));
+        assert!(matches!(
+            AsciinemaEventType::from_str("i"),
+            Ok(AsciinemaEventType::Input)
+        ));
+        assert!(matches!(
+            AsciinemaEventType::from_str("m"),
+            Ok(AsciinemaEventType::Marker)
+        ));
+        assert!(matches!(
+            AsciinemaEventType::from_str("r"),
+            Ok(AsciinemaEventType::Resize)
+        ));
         assert!(AsciinemaEventType::from_str("x").is_err());
     }
 
@@ -857,7 +869,10 @@ mod tests {
 
         let deserialized: AsciinemaEvent = serde_json::from_str(&json).unwrap();
         assert_eq!(event.time, deserialized.time);
-        assert!(matches!(deserialized.event_type, AsciinemaEventType::Output));
+        assert!(matches!(
+            deserialized.event_type,
+            AsciinemaEventType::Output
+        ));
         assert_eq!(event.data, deserialized.data);
     }
 
@@ -1125,8 +1140,14 @@ mod tests {
         assert_eq!(writer.find_escape_sequence_end(b"\x1b[?25h"), Some(6));
 
         // Test OSC sequence detection
-        assert_eq!(writer.find_escape_sequence_end(b"\x1b]0;Title\x07"), Some(10));
-        assert_eq!(writer.find_escape_sequence_end(b"\x1b]0;Title\x1b\\"), Some(11));
+        assert_eq!(
+            writer.find_escape_sequence_end(b"\x1b]0;Title\x07"),
+            Some(10)
+        );
+        assert_eq!(
+            writer.find_escape_sequence_end(b"\x1b]0;Title\x1b\\"),
+            Some(11)
+        );
 
         // Test incomplete sequences
         assert_eq!(writer.find_escape_sequence_end(b"\x1b"), None);
