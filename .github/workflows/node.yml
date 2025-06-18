@@ -34,7 +34,7 @@ jobs:
       continue-on-error: true
       run: |
         npm run format:check 2>&1 | tee prettier-output.txt
-        echo "result=$?" >> $GITHUB_OUTPUT
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
       
     - name: Run ESLint
       id: eslint
@@ -42,7 +42,7 @@ jobs:
       continue-on-error: true
       run: |
         npm run lint 2>&1 | tee eslint-output.txt
-        echo "result=$?" >> $GITHUB_OUTPUT
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         
     - name: Read Prettier Output
       if: always()

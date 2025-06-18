@@ -33,7 +33,7 @@ jobs:
       continue-on-error: true
       run: |
         cargo fmt -- --check 2>&1 | tee fmt-output.txt
-        echo "result=$?" >> $GITHUB_OUTPUT
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
       
     - name: Run Clippy
       id: clippy
@@ -41,7 +41,7 @@ jobs:
       continue-on-error: true
       run: |
         cargo clippy -- -D warnings 2>&1 | tee clippy-output.txt
-        echo "result=$?" >> $GITHUB_OUTPUT
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         
     - name: Read Formatting Output
       if: always()

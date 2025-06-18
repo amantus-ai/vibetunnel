@@ -35,14 +35,14 @@ jobs:
       continue-on-error: true
       run: |
         swiftformat . --lint 2>&1 | tee swiftformat-output.txt
-        echo "result=$?" >> $GITHUB_OUTPUT
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
       
     - name: Run SwiftLint
       id: swiftlint
       continue-on-error: true
       run: |
         swiftlint 2>&1 | tee swiftlint-output.txt
-        echo "result=$?" >> $GITHUB_OUTPUT
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         
     - name: Read SwiftFormat Output
       if: always()
