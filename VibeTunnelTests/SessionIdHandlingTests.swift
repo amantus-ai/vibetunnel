@@ -8,7 +8,7 @@ struct SessionIdHandlingTests {
     // MARK: - Session ID Format Validation
     
     @Test("Session IDs must be valid UUIDs", arguments: [
-        "a37ea008c-41f6-412f-bbba-f28f091267ce", // Valid UUID
+        "a37ea008-41f6-412f-bbba-f28f091267ce", // Valid UUID
         "00000000-0000-0000-0000-000000000000", // Valid nil UUID
         "550e8400-e29b-41d4-a716-446655440000"  // Valid UUID v4
     ])

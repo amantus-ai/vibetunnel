@@ -737,6 +737,13 @@ public final class TunnelServer {
                 let workingDir: String?
                 let term: String?
                 let spawnTerminal: Bool?
+                
+                enum CodingKeys: String, CodingKey {
+                    case command
+                    case workingDir
+                    case term
+                    case spawnTerminal = "spawn_terminal"
+                }
             }
 
             let sessionRequest = try JSONDecoder().decode(CreateSessionRequest.self, from: requestData)

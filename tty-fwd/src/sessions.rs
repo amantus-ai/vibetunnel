@@ -432,14 +432,13 @@ pub fn spawn_command(
         // Try to spawn via socket (which will spawn a terminal)
         match crate::term::spawn_terminal_command(&command_strs, working_dir.as_deref(), None) {
             Ok(terminal_session_id) => {
-                eprintln!("Terminal spawned with session ID: {}", terminal_session_id);
+                eprintln!("Terminal spawned with session ID: {terminal_session_id}");
                 // Return 0 since the terminal was spawned successfully
                 return Ok(0);
             }
             Err(e) => {
                 eprintln!(
-                    "Failed to spawn terminal: {}. Falling back to regular execution.",
-                    e
+                    "Failed to spawn terminal: {e}. Falling back to regular execution."
                 );
                 // Continue with regular execution if terminal spawn fails
             }
