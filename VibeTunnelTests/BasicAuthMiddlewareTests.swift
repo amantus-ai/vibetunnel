@@ -62,7 +62,7 @@ struct BasicAuthMiddlewareTests {
         headers[.authorization] = "Basic \(credentials.base64Encoded)"
         
         let request = createRequest(headers: headers)
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         let response = try await middleware.handle(request, context: context, next: createNextHandler())
         
@@ -87,7 +87,7 @@ struct BasicAuthMiddlewareTests {
         headers[.authorization] = "Basic \(credentials.base64Encoded)"
         
         let request = createRequest(headers: headers)
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         let response = try await middleware.handle(request, context: context, next: createNextHandler())
         
@@ -99,7 +99,7 @@ struct BasicAuthMiddlewareTests {
     @Test("Invalid authentication attempts")
     func testInvalidAuth() async throws {
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "correct-password")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         // Wrong password
         var headers = HTTPFields()
@@ -118,7 +118,7 @@ struct BasicAuthMiddlewareTests {
     @Test("Missing authorization header")
     func testMissingAuthHeader() async throws {
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "password")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         let request = createRequest() // No auth header
         let response = try await middleware.handle(request, context: context, next: createNextHandler())
@@ -136,7 +136,7 @@ struct BasicAuthMiddlewareTests {
     ])
     func testInvalidAuthHeaderFormat(authHeader: String) async throws {
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "password")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         var headers = HTTPFields()
         headers[.authorization] = authHeader
@@ -153,7 +153,7 @@ struct BasicAuthMiddlewareTests {
     @Test("Invalid base64 encoding")
     func testInvalidBase64() async throws {
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "password")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         var headers = HTTPFields()
         headers[.authorization] = "Basic !!!invalid-base64!!!"
@@ -170,7 +170,7 @@ struct BasicAuthMiddlewareTests {
     @Test("Missing colon in credentials")
     func testMissingColon() async throws {
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "password")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         var headers = HTTPFields()
         headers[.authorization] = "Basic \("userpassword".base64Encoded)" // No colon separator
@@ -189,7 +189,7 @@ struct BasicAuthMiddlewareTests {
     @Test("Health check endpoint bypasses auth")
     func testHealthCheckBypass() async throws {
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "password")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         // Request to health endpoint without auth
         let request = createRequest(path: "/api/health")
@@ -207,7 +207,7 @@ struct BasicAuthMiddlewareTests {
     ])
     func testOtherEndpointsRequireAuth(path: String) async throws {
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "password")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         // Request without auth
         let request = createRequest(path: path)
@@ -225,7 +225,7 @@ struct BasicAuthMiddlewareTests {
             password: "password",
             realm: customRealm
         )
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         let request = createRequest() // No auth
         let response = try await middleware.handle(request, context: context, next: createNextHandler())
@@ -239,7 +239,7 @@ struct BasicAuthMiddlewareTests {
     @Test("Rate limiting", .tags(.security))
     func testRateLimiting() async throws {
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "correct-password")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         // Multiple failed attempts
         var headers = HTTPFields()
@@ -269,7 +269,7 @@ struct BasicAuthMiddlewareTests {
     ])
     func testUsernameIgnored(credentials: String) async throws {
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "password")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         var headers = HTTPFields()
         headers[.authorization] = "Basic \(credentials.base64Encoded)"
@@ -288,7 +288,7 @@ struct BasicAuthMiddlewareTests {
     @Test("Unauthorized response includes message")
     func testUnauthorizedResponseBody() async throws {
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "password")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         let request = createRequest() // No auth
         let response = try await middleware.handle(request, context: context, next: createNextHandler())
@@ -310,7 +310,7 @@ struct BasicAuthMiddlewareTests {
     func testEmptyPassword() async throws {
         // Middleware with empty password (should probably be prevented in real usage)
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: "")
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         var headers = HTTPFields()
         headers[.authorization] = "Basic \("user:".base64Encoded)" // Empty password in request
@@ -328,7 +328,7 @@ struct BasicAuthMiddlewareTests {
     func testVeryLongCredentials() async throws {
         let longPassword = String(repeating: "a", count: 1000)
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: longPassword)
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         var headers = HTTPFields()
         headers[.authorization] = "Basic \("user:\(longPassword)".base64Encoded)"
@@ -348,7 +348,7 @@ struct BasicAuthMiddlewareTests {
     func testFullAuthFlow() async throws {
         let password = "secure-dashboard-password"
         let middleware = BasicAuthMiddleware<MockRequestContext>(password: password)
-        let context = MockRequestContext()
+        let context = MockRequestContext(allocator: ByteBufferAllocator(), logger: Logger(label: "test"))
         
         // 1. No auth - should fail
         let noAuthResponse = try await middleware.handle(
