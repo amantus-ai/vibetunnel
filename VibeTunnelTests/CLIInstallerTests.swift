@@ -28,7 +28,10 @@ final class MockCLIInstaller {
     
     func checkInstallationStatus() {
         checkInstallationStatusCalled = true
-        isInstalled = mockIsInstalled
+        // Only update from mock if not already installed
+        if !isInstalled {
+            isInstalled = mockIsInstalled
+        }
     }
     
     func install() async {

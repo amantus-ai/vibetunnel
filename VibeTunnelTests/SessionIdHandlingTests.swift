@@ -162,5 +162,5 @@ func testSessionIdMismatchBugFixed() async throws {
     // - All subsequent operations use the correct UUID
     
     // This test serves as documentation of the bug and its fix
-    #expect(true)
+    // No assertion needed - test passes if it compiles
 }
