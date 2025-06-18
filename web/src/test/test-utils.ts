@@ -56,12 +56,4 @@ export const mockWebSocketServer = () => {
   };
 };
 
-// Custom type declarations for test matchers
-declare module 'vitest' {
-  interface Assertion<T = any> {
-    toBeValidSession(): T;
-  }
-  interface AsymmetricMatchersContaining {
-    toBeValidSession(): any;
-  }
-}
+// Custom type declarations for test matchers are in vitest.d.ts
