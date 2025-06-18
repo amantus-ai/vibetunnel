@@ -543,7 +543,7 @@ private struct DeveloperToolsSection: View {
                     Spacer()
                     Button("Show Welcome") {
                         #if !SWIFT_PACKAGE
-                        AppDelegate.showWelcomeScreen()
+                            AppDelegate.showWelcomeScreen()
                         #endif
                     }
                     .buttonStyle(.bordered)

@@ -437,9 +437,7 @@ pub fn spawn_command(
                 return Ok(0);
             }
             Err(e) => {
-                eprintln!(
-                    "Failed to spawn terminal: {e}. Falling back to regular execution."
-                );
+                eprintln!("Failed to spawn terminal: {e}. Falling back to regular execution.");
                 // Continue with regular execution if terminal spawn fails
             }
         }

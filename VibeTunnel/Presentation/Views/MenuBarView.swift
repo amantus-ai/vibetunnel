@@ -48,7 +48,7 @@ struct MenuBarView: View {
                     // Show Tutorial
                     Button(action: {
                         #if !SWIFT_PACKAGE
-                        AppDelegate.showWelcomeScreen()
+                            AppDelegate.showWelcomeScreen()
                         #endif
                     }, label: {
                         HStack {

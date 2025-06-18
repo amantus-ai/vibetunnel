@@ -51,7 +51,7 @@ struct BasicAuthMiddleware<Context: RequestContext>: RouterMiddleware {
         guard let colonIndex = credentials.firstIndex(of: ":") else {
             return unauthorizedResponse()
         }
-        
+
         // Extract password (everything after the first colon)
         let passwordStartIndex = credentials.index(after: colonIndex)
         let providedPassword = String(credentials[passwordStartIndex...])

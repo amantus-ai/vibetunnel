@@ -128,7 +128,7 @@ class SessionMonitor {
             self.sessions = sessionsDict
 
             // Count only running sessions
-            self.sessionCount = sessionsArray.count(where: { $0.isRunning })
+            self.sessionCount = sessionsArray.count { $0.isRunning }
             self.lastError = nil
         } catch {
             // Don't set error for connection issues when server is likely not running

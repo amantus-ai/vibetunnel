@@ -746,7 +746,7 @@ public final class TunnelServer {
                 let workingDir: String?
                 let term: String?
                 let spawnTerminal: Bool?
-                
+
                 enum CodingKeys: String, CodingKey {
                     case command
                     case workingDir
