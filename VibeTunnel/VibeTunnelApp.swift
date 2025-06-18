@@ -115,6 +115,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showWelcomeScreen()
         }
 
+        // Skip all service initialization during tests
+        if isRunningInTests {
+            logger.info("Running in test mode - skipping service initialization")
+            return
+        }
+
         // Verify preferred terminal is still available
         TerminalLauncher.shared.verifyPreferredTerminal()
 
@@ -234,6 +240,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        let processInfo = ProcessInfo.processInfo
+        let isRunningInTests = processInfo.environment["XCTestConfigurationFilePath"] != nil ||
+            processInfo.environment["XCTestBundlePath"] != nil ||
+            processInfo.environment["XCTestSessionIdentifier"] != nil ||
+            processInfo.arguments.contains("-XCTest") ||
+            NSClassFromString("XCTestCase") != nil
+        let isRunningInPreview = processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+        let isRunningInDebug = processInfo.environment["DYLD_INSERT_LIBRARIES"]?
+            .contains("libMainThreadChecker.dylib") ?? false
+
+        // Skip cleanup during tests
+        if isRunningInTests {
+            logger.info("Running in test mode - skipping termination cleanup")
+            return
+        }
+
         // Stop session monitoring
         sessionMonitor.stopMonitoring()
 
@@ -246,16 +268,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Remove distributed notification observer
-        let processInfo = ProcessInfo.processInfo
-        let isRunningInTests = processInfo.environment["XCTestConfigurationFilePath"] != nil ||
-            processInfo.environment["XCTestBundlePath"] != nil ||
-            processInfo.environment["XCTestSessionIdentifier"] != nil ||
-            processInfo.arguments.contains("-XCTest") ||
-            NSClassFromString("XCTestCase") != nil
-        let isRunningInPreview = processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-        let isRunningInDebug = processInfo.environment["DYLD_INSERT_LIBRARIES"]?
-            .contains("libMainThreadChecker.dylib") ?? false
-
         if !isRunningInPreview, !isRunningInTests, !isRunningInDebug {
             DistributedNotificationCenter.default().removeObserver(
                 self,
