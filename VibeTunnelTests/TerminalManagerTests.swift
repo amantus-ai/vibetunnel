@@ -4,7 +4,7 @@ import Foundation
 
 // MARK: - Mock Process for Testing
 
-final class MockProcess: Process {
+final class MockProcess: Process, @unchecked Sendable {
     var mockIsRunning = false
     var mockProcessIdentifier: Int32 = 12345
     var mockShouldFailToRun = false

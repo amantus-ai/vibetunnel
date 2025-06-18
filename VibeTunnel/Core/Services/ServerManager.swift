@@ -66,14 +66,14 @@ class ServerManager {
 
     private init() {
         setupLogStream()
-        
+
         // Skip observer setup and monitoring during tests
         let isRunningInTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
-                               ProcessInfo.processInfo.environment["XCTestBundlePath"] != nil ||
-                               ProcessInfo.processInfo.environment["XCTestSessionIdentifier"] != nil ||
-                               ProcessInfo.processInfo.arguments.contains("-XCTest") ||
-                               NSClassFromString("XCTestCase") != nil
-        
+            ProcessInfo.processInfo.environment["XCTestBundlePath"] != nil ||
+            ProcessInfo.processInfo.environment["XCTestSessionIdentifier"] != nil ||
+            ProcessInfo.processInfo.arguments.contains("-XCTest") ||
+            NSClassFromString("XCTestCase") != nil
+
         if !isRunningInTests {
             setupObservers()
             startCrashMonitoring()

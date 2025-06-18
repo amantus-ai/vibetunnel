@@ -263,7 +263,7 @@ struct DashboardKeychainTests {
             // Multiple writes
             for i in 0..<5 {
                 group.addTask { @MainActor in
-                    keychain.setPassword("password-\(i)")
+                    _ = keychain.setPassword("password-\(i)")
                     return true
                 }
             }

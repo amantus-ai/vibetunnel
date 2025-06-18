@@ -4,7 +4,7 @@ import Foundation
 
 // MARK: - Mock Process for Testing
 
-final class MockTTYProcess: Process {
+final class MockTTYProcess: Process, @unchecked Sendable {
     // Override properties we need to control
     private var _executableURL: URL?
     override var executableURL: URL? {
@@ -115,7 +115,7 @@ final class MockTTYForwardManager {
     }
     
     func executeTTYForward(with arguments: [String], completion: @escaping (Result<Process, Error>) -> Void) {
-        guard let executableURL = mockExecutableURL else {
+        guard mockExecutableURL != nil else {
             completion(.failure(TTYForwardError.executableNotFound))
             return
         }

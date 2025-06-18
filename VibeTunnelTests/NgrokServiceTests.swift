@@ -45,7 +45,7 @@ final class MockNgrokService {
 
 // MARK: - Mock Process for Ngrok
 
-final class MockNgrokProcess: Process {
+final class MockNgrokProcess: Process, @unchecked Sendable {
     var mockIsRunning = false
     var mockOutput: String?
     var mockError: String?
@@ -363,7 +363,9 @@ struct NgrokServiceTests {
         
         // This would require actual ngrok installation
         // For now, just verify the service is ready
-        #expect(service != nil)
+        // Service is non-optional, so this check is redundant
+        // Just verify it's the shared instance
+        #expect(service === NgrokService.shared)
         
         // Clean state
         try await service.stop()
