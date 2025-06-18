@@ -4,6 +4,7 @@ import HTTPTypes
 import Hummingbird
 import HummingbirdCore
 import NIOCore
+import Logging
 @testable import VibeTunnel
 
 // MARK: - Test Request Context Source
