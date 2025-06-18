@@ -504,7 +504,7 @@ private struct DeveloperToolsSection: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                Text("View real-time server logs from both Hummingbird and Rust servers")
+                Text("View real-time server logs from both Hummingbird and Rust servers.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -518,7 +518,7 @@ private struct DeveloperToolsSection: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                Text("View all application logs in Console.app")
+                Text("View all application logs in Console.app.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -532,7 +532,7 @@ private struct DeveloperToolsSection: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                Text("Open the application support directory")
+                Text("Open the application support directory.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -548,7 +548,7 @@ private struct DeveloperToolsSection: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                Text("Display the welcome screen again")
+                Text("Display the welcome screen again.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -563,7 +563,7 @@ private struct DeveloperToolsSection: View {
                     .buttonStyle(.borderedProminent)
                     .tint(.red)
                 }
-                Text("Remove all stored preferences and reset to defaults")
+                Text("Remove all stored preferences and reset to defaults.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

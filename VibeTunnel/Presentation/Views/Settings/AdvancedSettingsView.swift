@@ -163,7 +163,7 @@ private struct TerminalPreferenceSection: View {
                     .pickerStyle(.menu)
                     .labelsHidden()
                 }
-                Text("Select which terminal application to use when creating new sessions")
+                Text("Select which application to use when creating new sessions")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
