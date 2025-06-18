@@ -210,12 +210,22 @@ private struct PermissionsSection: View {
             Text("Permissions")
                 .font(.headline)
         } footer: {
-            Text(
-                "Terminals can be controlled without permissions, however new sessions won't load."
-            )
-            .font(.caption)
-            .frame(maxWidth: .infinity)
-            .multilineTextAlignment(.center)
+            if appleScriptManager.hasPermission && hasAccessibilityPermission {
+                Text(
+                    "All permissions granted. New sessions will spawn new terminal windows."
+                )
+                .font(.caption)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+                .foregroundColor(.green)
+            } else {
+                Text(
+                    "Terminals can be controlled without permissions, however new sessions won't load."
+                )
+                .font(.caption)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+            }
         }
         .task {
             _ = await appleScriptManager.checkPermission()

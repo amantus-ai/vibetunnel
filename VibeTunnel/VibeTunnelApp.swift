@@ -103,9 +103,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize Sparkle updater manager
         sparkleUpdaterManager = SparkleUpdaterManager.shared
 
-        // Configure activation policy based on settings (default to menu bar only)
-        let showInDock = UserDefaults.standard.bool(forKey: "showInDock")
-        NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
+        // Initialize dock icon visibility through DockIconManager
+        DockIconManager.shared.updateDockVisibility()
 
         // Show welcome screen when version changes
         let storedWelcomeVersion = UserDefaults.standard.integer(forKey: AppConstants.UserDefaultsKeys.welcomeVersion)

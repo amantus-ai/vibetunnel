@@ -76,9 +76,6 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
             try? await Task.sleep(for: .milliseconds(100))
             window.level = .normal
         }
-
-        // Set up observer to restore dock visibility when window closes
-        setupWindowCloseObserver()
     }
 
     @objc
@@ -86,53 +83,6 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
         show()
     }
 
-    private func setupWindowCloseObserver() {
-        // Remove any existing observer
-        if let observer = windowObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-
-        // Observe window close notifications
-        windowObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.willCloseNotification,
-            object: window,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.restoreDockVisibility()
-            }
-        }
-    }
-
-    private func restoreDockVisibility() {
-        // Check the current dock visibility preference
-        // User might have changed it while window was open
-        let showInDock = UserDefaults.standard.bool(forKey: "showInDock")
-
-        // Apply the current preference
-        if !showInDock {
-            NSApp.setActivationPolicy(.accessory)
-        } else {
-            NSApp.setActivationPolicy(.regular)
-        }
-
-        // Clean up observer
-        if let observer = windowObserver {
-            NotificationCenter.default.removeObserver(observer)
-            windowObserver = nil
-        }
-    }
-
-    deinit {
-        // Cleanup is handled when window closes
-        // No need to access windowObserver here due to Sendable constraints
-    }
-
-    // MARK: - NSWindowDelegate
-
-    func windowWillClose(_ notification: Notification) {
-        restoreDockVisibility()
-    }
 }
 
 // MARK: - Notification Extension

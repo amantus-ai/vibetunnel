@@ -27,21 +27,27 @@ jobs:
         swift --version
     
     - name: Install linting tools
+      continue-on-error: true
+      shell: bash
       run: |
         # Check if tools are already installed, install if not
-        if ! command -v swiftlint >/dev/null 2>&1; then
+        if ! which swiftlint >/dev/null 2>&1; then
           echo "Installing swiftlint..."
-          brew install swiftlint
+          brew install swiftlint || echo "Failed to install swiftlint"
         else
-          echo "swiftlint is already installed"
+          echo "swiftlint is already installed at: $(which swiftlint)"
         fi
         
-        if ! command -v swiftformat >/dev/null 2>&1; then
+        if ! which swiftformat >/dev/null 2>&1; then
           echo "Installing swiftformat..."
-          brew install swiftformat
+          brew install swiftformat || echo "Failed to install swiftformat"
         else
-          echo "swiftformat is already installed"
+          echo "swiftformat is already installed at: $(which swiftformat)"
         fi
+        
+        # Show final status
+        echo "SwiftLint: $(which swiftlint || echo 'not found')"
+        echo "SwiftFormat: $(which swiftformat || echo 'not found')"
         
     - name: Run SwiftFormat (check mode)
       id: swiftformat
@@ -114,14 +120,19 @@ jobs:
         swift --version
         
     - name: Install build tools
+      continue-on-error: true
+      shell: bash
       run: |
         # Check if xcbeautify is already installed, install if not
-        if ! command -v xcbeautify >/dev/null 2>&1; then
+        if ! which xcbeautify >/dev/null 2>&1; then
           echo "Installing xcbeautify..."
-          brew install xcbeautify
+          brew install xcbeautify || echo "Failed to install xcbeautify"
         else
-          echo "xcbeautify is already installed"
+          echo "xcbeautify is already installed at: $(which xcbeautify)"
         fi
+        
+        # Show final status
+        echo "xcbeautify: $(which xcbeautify || echo 'not found')"
         
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable

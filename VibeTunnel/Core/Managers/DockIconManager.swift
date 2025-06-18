@@ -18,7 +18,8 @@ final class DockIconManager {
     }
     
     deinit {
-        windowObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        // Observers are cleaned up when windows close
+        // No need to access windowObservers here due to Sendable constraints
     }
     
     // MARK: - Public Methods
@@ -35,9 +36,11 @@ final class DockIconManager {
             object: window,
             queue: .main
         ) { [weak self, weak window] _ in
-            guard let self, let window else { return }
-            self.activeWindows.remove(window)
-            self.updateDockVisibility()
+            Task { @MainActor in
+                guard let self, let window else { return }
+                self.activeWindows.remove(window)
+                self.updateDockVisibility()
+            }
         }
         
         windowObservers.append(observer)
