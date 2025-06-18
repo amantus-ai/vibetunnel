@@ -33,7 +33,7 @@ jobs:
 
   build-and-test:
     name: Build and Test macOS App
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: lint
     
     steps:

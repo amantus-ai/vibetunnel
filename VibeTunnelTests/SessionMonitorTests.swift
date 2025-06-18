@@ -137,7 +137,7 @@ struct SessionMonitorTests {
     
     @Test("Detecting stale sessions")
     func testStaleSessionDetection() async throws {
-        let monitor = SessionMonitor.shared
+        _ = SessionMonitor.shared
         
         // This test documents expected behavior for detecting stale sessions
         // In real implementation, stale sessions would be those that haven't
@@ -209,7 +209,7 @@ struct SessionMonitorTests {
         monitor.mockSessionCount = 1
         
         // Refresh
-        await await monitor.fetchSessions()
+        await monitor.fetchSessions()
         
         #expect(monitor.fetchSessionsCalled)
         #expect(monitor.sessionCount == 1)
