@@ -6,7 +6,7 @@ on:
 jobs:
   lint:
     name: Lint Rust Code
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     
     steps:
     - name: Checkout code
@@ -18,7 +18,7 @@ jobs:
         components: rustfmt, clippy
         
     - name: Cache Rust dependencies
-      uses: Swatinem/rust-cache@v2
+      uses: useblacksmith/rust-cache@v3
       with:
         workspaces: tty-fwd
         
@@ -36,7 +36,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: blacksmith-4vcpu-ubuntu-2404
             target: x86_64-unknown-linux-gnu
             name: Linux x86_64
             binary-name: tty-fwd
@@ -60,7 +60,7 @@ jobs:
         targets: ${{ matrix.target }}
         
     - name: Cache Rust dependencies
-      uses: Swatinem/rust-cache@v2
+      uses: useblacksmith/rust-cache@v3
       with:
         workspaces: tty-fwd
         key: ${{ matrix.target }}
@@ -83,7 +83,7 @@ jobs:
 
   coverage:
     name: Code Coverage
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: lint
     
     steps:
@@ -97,7 +97,7 @@ jobs:
       run: cargo install cargo-tarpaulin
       
     - name: Cache Rust dependencies
-      uses: Swatinem/rust-cache@v2
+      uses: useblacksmith/rust-cache@v3
       with:
         workspaces: tty-fwd
         
