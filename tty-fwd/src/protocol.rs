@@ -465,7 +465,10 @@ impl serde::Serialize for StreamEvent {
         match self {
             Self::Header(header) => header.serialize(serializer),
             Self::Terminal(event) => event.serialize(serializer),
-            Self::Exit { exit_code, session_id } => {
+            Self::Exit {
+                exit_code,
+                session_id,
+            } => {
                 use serde::ser::SerializeTuple;
                 let mut tuple = serializer.serialize_tuple(3)?;
                 tuple.serialize_element("exit")?;
@@ -512,10 +515,13 @@ impl<'de> serde::Deserialize<'de> for StreamEvent {
                     if first == "exit" {
                         let exit_code = arr[1].as_i64().unwrap_or(0) as i32;
                         let session_id = arr[2].as_str().unwrap_or("unknown").to_string();
-                        return Ok(Self::Exit { exit_code, session_id });
+                        return Ok(Self::Exit {
+                            exit_code,
+                            session_id,
+                        });
                     }
                 }
-                
+
                 let event: AsciinemaEvent = serde_json::from_value(value).map_err(|e| {
                     de::Error::custom(format!("Failed to parse terminal event: {e}"))
                 })?;

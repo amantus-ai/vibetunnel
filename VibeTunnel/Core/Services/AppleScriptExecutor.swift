@@ -39,7 +39,7 @@ final class AppleScriptExecutor {
         // If we're already on the main thread, execute directly
         if Thread.isMainThread {
             // Add a small delay to avoid crashes from SwiftUI actions
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01))
 
             var error: NSDictionary?
             guard let scriptObject = NSAppleScript(source: script) else {

@@ -413,9 +413,9 @@ pub fn spawn_command(
 
     // Check if we're running without a TTY (e.g., spawned by web server)
     // If so, automatically spawn a terminal window
-    let should_spawn_terminal = !atty::is(atty::Stream::Stdin) && 
-                               !atty::is(atty::Stream::Stdout) &&
-                               std::env::var("VIBETUNNEL_NO_TERMINAL").is_err();
+    let should_spawn_terminal = !atty::is(atty::Stream::Stdin)
+        && !atty::is(atty::Stream::Stdout)
+        && std::env::var("VIBETUNNEL_NO_TERMINAL").is_err();
 
     if should_spawn_terminal {
         // Convert OsString command to String vec for terminal spawning
@@ -423,12 +423,12 @@ pub fn spawn_command(
             .iter()
             .map(|s| s.to_string_lossy().to_string())
             .collect();
-        
+
         // Get current working directory
         let working_dir = std::env::current_dir()
             .map(|p| p.to_string_lossy().to_string())
             .ok();
-        
+
         // Try to spawn via socket (which will spawn a terminal)
         match crate::term::spawn_terminal_command(&command_strs, working_dir.as_deref(), None) {
             Ok(terminal_session_id) => {
@@ -437,7 +437,10 @@ pub fn spawn_command(
                 return Ok(0);
             }
             Err(e) => {
-                eprintln!("Failed to spawn terminal: {}. Falling back to regular execution.", e);
+                eprintln!(
+                    "Failed to spawn terminal: {}. Falling back to regular execution.",
+                    e
+                );
                 // Continue with regular execution if terminal spawn fails
             }
         }

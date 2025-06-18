@@ -67,13 +67,16 @@ final class MockTTYProcess: Process, @unchecked Sendable {
             outputPipe.fileHandleForWriting.closeFile()
         }
         
-        // Simulate error if provided
+        // Set error termination status before starting async task
+        if simulatedError != nil {
+            self.simulatedTerminationStatus = 1
+        }
+        
+        // Simulate error output if provided
         if let error = simulatedError,
            let errorPipe = standardError as? Pipe {
             errorPipe.fileHandleForWriting.write(error.data(using: .utf8)!)
             errorPipe.fileHandleForWriting.closeFile()
-            // Set error termination status when there's an error
-            self.simulatedTerminationStatus = 1
         }
         
         // Simulate termination
@@ -148,7 +151,7 @@ struct TTYForwardManagerTests {
     @Test("Creating TTY sessions", .tags(.critical, .networking))
     func testSessionCreation() async throws {
         // Skip this test in CI environment where tty-fwd is not available
-        let manager = TTYForwardManager.shared
+        _ = TTYForwardManager.shared
         
         // In test environment, the executable won't be in Bundle.main
         // So we'll test the process creation logic with a mock executable
@@ -289,11 +292,19 @@ struct TTYForwardManagerTests {
         let mockProcess = MockTTYProcess()
         mockProcess.simulatedError = "Error: Failed to create session"
         
+        // Set up termination handler to verify it's called
+        let expectation = Expectation()
+        mockProcess.terminationHandler = { @Sendable process in
+            Task { @MainActor in
+                expectation.fulfill()
+            }
+        }
+        
         // Run the mock process which will simulate an error
         try mockProcess.run()
         
-        // Wait for process to terminate
-        try await Task.sleep(for: .milliseconds(50))
+        // Wait for termination handler to be called
+        await expectation.fulfillment(timeout: .seconds(1))
         
         // When there's an error, the mock sets termination status to 1
         #expect(mockProcess.terminationStatus == 1)
