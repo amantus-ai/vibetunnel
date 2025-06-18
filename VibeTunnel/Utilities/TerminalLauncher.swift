@@ -514,8 +514,16 @@ final class TerminalLauncher {
         let escapedDir = expandedWorkingDir.replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
         
-        // Construct the full command with tty-fwd
-        let fullCommand = "cd \"\(escapedDir)\" && TTY_SESSION_ID=\"\(sessionId)\" \(ttyFwd) -- \(command) && exit"
+        // When called from Swift server, we need to construct the full command with tty-fwd
+        // When called from Rust via socket, command is already pre-formatted
+        let fullCommand: String
+        if command.contains("TTY_SESSION_ID=") {
+            // Command is pre-formatted from Rust, just add cd
+            fullCommand = "cd \"\(escapedDir)\" && \(command)"
+        } else {
+            // Command is just the user command, need to add tty-fwd
+            fullCommand = "cd \"\(escapedDir)\" && TTY_SESSION_ID=\"\(sessionId)\" \(ttyFwd) -- \(command) && exit"
+        }
 
         // Get the preferred terminal or fallback
         let terminal = getValidTerminal()

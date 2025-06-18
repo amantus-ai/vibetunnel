@@ -775,11 +775,11 @@ public final class TunnelServer {
                 // Call TerminalLauncher directly instead of using socket
                 do {
                     try await MainActor.run {
-                        // Use launchTerminalSession which properly formats the command with tty-fwd
-                        try TerminalLauncher.shared.launchTerminalSession(
+                        try TerminalLauncher.shared.launchOptimizedTerminalSession(
                             workingDirectory: workingDir,
                             command: command,
-                            sessionId: sessionId
+                            sessionId: sessionId,
+                            ttyFwdPath: nil // Use bundled tty-fwd
                         )
                     }
 
