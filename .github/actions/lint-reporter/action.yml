@@ -25,7 +25,7 @@ runs:
         script: |
           const title = '${{ inputs.title }}';
           const result = '${{ inputs.lint-result }}';
-          const output = `${{ inputs.lint-output }}`;
+          const output = String.raw`${{ inputs.lint-output }}`;
           
           const icon = result === 'success' ? '✅' : '❌';
           const status = result === 'success' ? 'Passed' : 'Failed';

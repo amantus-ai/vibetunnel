@@ -28,7 +28,9 @@ jobs:
     
     - name: Install linting tools
       run: |
-        brew install swiftlint swiftformat
+        # Check if tools are already installed, install if not
+        command -v swiftlint >/dev/null 2>&1 || brew install swiftlint
+        command -v swiftformat >/dev/null 2>&1 || brew install swiftformat
         
     - name: Run SwiftFormat (check mode)
       id: swiftformat
@@ -102,7 +104,8 @@ jobs:
         
     - name: Install build tools
       run: |
-        brew install xcbeautify
+        # Check if xcbeautify is already installed, install if not
+        command -v xcbeautify >/dev/null 2>&1 || brew install xcbeautify
         
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
