@@ -30,7 +30,8 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Hummingbird", package: "hummingbird"),
                 .product(name: "HummingbirdCore", package: "hummingbird"),
-                .product(name: "HummingbirdTesting", package: "hummingbird")
+                .product(name: "HummingbirdTesting", package: "hummingbird"),
+                .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "VibeTunnel",
             exclude: [

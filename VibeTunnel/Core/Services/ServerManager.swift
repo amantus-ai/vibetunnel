@@ -92,7 +92,7 @@ class ServerManager {
     }
 
     @objc
-    private func userDefaultsDidChange() {
+    private nonisolated func userDefaultsDidChange() {
         Task { @MainActor in
             await handleServerModeChange()
         }

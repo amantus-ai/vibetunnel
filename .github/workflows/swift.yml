@@ -50,6 +50,22 @@ jobs:
       run: |
         brew install xcbeautify
         
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: x86_64-apple-darwin,aarch64-apple-darwin
+        
+    - name: Cache Rust dependencies
+      uses: useblacksmith/rust-cache@v3
+      with:
+        workspaces: tty-fwd
+        
+    - name: Build tty-fwd universal binary
+      working-directory: tty-fwd
+      run: |
+        chmod +x build-universal.sh
+        ./build-universal.sh
+        
     - name: Build Debug
       timeout-minutes: 30
       run: |
