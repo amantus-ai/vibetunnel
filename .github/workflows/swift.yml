@@ -29,8 +29,19 @@ jobs:
     - name: Install linting tools
       run: |
         # Check if tools are already installed, install if not
-        command -v swiftlint >/dev/null 2>&1 || brew install swiftlint
-        command -v swiftformat >/dev/null 2>&1 || brew install swiftformat
+        if ! command -v swiftlint >/dev/null 2>&1; then
+          echo "Installing swiftlint..."
+          brew install swiftlint
+        else
+          echo "swiftlint is already installed"
+        fi
+        
+        if ! command -v swiftformat >/dev/null 2>&1; then
+          echo "Installing swiftformat..."
+          brew install swiftformat
+        else
+          echo "swiftformat is already installed"
+        fi
         
     - name: Run SwiftFormat (check mode)
       id: swiftformat
@@ -105,7 +116,12 @@ jobs:
     - name: Install build tools
       run: |
         # Check if xcbeautify is already installed, install if not
-        command -v xcbeautify >/dev/null 2>&1 || brew install xcbeautify
+        if ! command -v xcbeautify >/dev/null 2>&1; then
+          echo "Installing xcbeautify..."
+          brew install xcbeautify
+        else
+          echo "xcbeautify is already installed"
+        fi
         
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable

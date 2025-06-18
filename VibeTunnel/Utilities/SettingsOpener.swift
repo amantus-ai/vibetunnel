@@ -4,26 +4,19 @@ import SwiftUI
 
 /// Helper to open the Settings window programmatically.
 ///
-/// This utility manages dock icon visibility to ensure the Settings window
-/// can be properly brought to front in menu bar apps. It temporarily shows
-/// the dock icon when settings opens and restores the user's preference
-/// when the window closes.
+/// This utility works with DockIconManager to ensure the Settings window
+/// can be properly brought to front. The dock icon visibility is managed
+/// centrally by DockIconManager.
 @MainActor
 enum SettingsOpener {
     /// SwiftUI's hardcoded settings window identifier
     private static let settingsWindowIdentifier = "com_apple_SwiftUI_Settings_window"
-    private static var windowObserver: NSObjectProtocol?
 
     /// Opens the Settings window using the environment action via notification
     /// This is needed for cases where we can't use SettingsLink (e.g., from notifications)
     static func openSettings() {
-        // Store the current dock visibility preference
-        let showInDock = UserDefaults.standard.bool(forKey: "showInDock")
-
-        // Temporarily show dock icon to ensure settings window can be brought to front
-        if !showInDock {
-            NSApp.setActivationPolicy(.regular)
-        }
+        // Ensure dock icon is visible for window activation
+        DockIconManager.shared.temporarilyShowDock()
 
         // Simple activation and window opening
         Task { @MainActor in
@@ -46,6 +39,9 @@ enum SettingsOpener {
 
             // Find and bring settings window to front
             if let settingsWindow = findSettingsWindow() {
+                // Register window with DockIconManager
+                DockIconManager.shared.trackWindow(settingsWindow)
+                
                 // Center the window
                 WindowCenteringHelper.centerOnActiveScreen(settingsWindow)
 
@@ -60,46 +56,6 @@ enum SettingsOpener {
                 Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(100))
                     settingsWindow.level = .normal
-                }
-            }
-
-            // Set up observer to apply dock visibility preference when settings window closes
-            setupDockVisibilityRestoration()
-        }
-    }
-
-    // MARK: - Dock Visibility Restoration
-
-    private static func setupDockVisibilityRestoration() {
-        // Remove any existing observer
-        if let observer = windowObserver {
-            NotificationCenter.default.removeObserver(observer)
-            windowObserver = nil
-        }
-
-        // Set up observer for window closing
-        windowObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.willCloseNotification,
-            object: nil,
-            queue: .main
-        ) { [weak windowObserver] notification in
-            guard let window = notification.object as? NSWindow else { return }
-
-            Task { @MainActor in
-                guard window.title.contains("Settings") || window.identifier?.rawValue
-                    .contains(settingsWindowIdentifier) == true
-                else {
-                    return
-                }
-
-                // Window is closing, apply the current dock visibility preference
-                let showInDock = UserDefaults.standard.bool(forKey: "showInDock")
-                NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
-
-                // Clean up observer
-                if let observer = windowObserver {
-                    NotificationCenter.default.removeObserver(observer)
-                    Self.windowObserver = nil
                 }
             }
         }

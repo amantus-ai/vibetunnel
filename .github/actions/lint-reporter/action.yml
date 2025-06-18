@@ -23,9 +23,9 @@ runs:
       with:
         github-token: ${{ inputs.github-token }}
         script: |
-          const title = '${{ inputs.title }}';
-          const result = '${{ inputs.lint-result }}';
-          const output = String.raw`${{ inputs.lint-output }}`;
+          const title = ${{ toJSON(inputs.title) }};
+          const result = ${{ toJSON(inputs.lint-result) }};
+          const output = ${{ toJSON(inputs.lint-output) }};
           
           const icon = result === 'success' ? '✅' : '❌';
           const status = result === 'success' ? 'Passed' : 'Failed';
