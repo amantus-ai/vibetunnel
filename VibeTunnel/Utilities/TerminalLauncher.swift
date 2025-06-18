@@ -508,14 +508,14 @@ final class TerminalLauncher {
         let expandedWorkingDir = (workingDirectory as NSString).expandingTildeInPath
 
         // Use provided tty-fwd path or find bundled one
-        _ = ttyFwdPath ?? findTTYFwdBinary()
+        let ttyFwd = ttyFwdPath ?? findTTYFwdBinary()
 
-        // The command comes pre-formatted from Rust, just launch it
-        // This avoids double escaping issues
         // Properly escape the directory path for shell
         let escapedDir = expandedWorkingDir.replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
-        let fullCommand = "cd \"\(escapedDir)\" && \(command)"
+        
+        // Construct the full command with tty-fwd
+        let fullCommand = "cd \"\(escapedDir)\" && TTY_SESSION_ID=\"\(sessionId)\" \(ttyFwd) -- \(command) && exit"
 
         // Get the preferred terminal or fallback
         let terminal = getValidTerminal()

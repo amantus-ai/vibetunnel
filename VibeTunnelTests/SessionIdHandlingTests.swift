@@ -31,8 +31,8 @@ struct SessionIdHandlingTests {
     
     @Test("Session IDs are case-insensitive for UUID comparison")
     func testSessionIdCaseInsensitivity() {
-        let id1 = "A37EA008C-41F6-412F-BBBA-F28F091267CE"
-        let id2 = "a37ea008c-41f6-412f-bbba-f28f091267ce"
+        let id1 = "A37EA008-41F6-412F-BBBA-F28F091267CE"
+        let id2 = "a37ea008-41f6-412f-bbba-f28f091267ce"
         
         let uuid1 = UUID(uuidString: id1)
         let uuid2 = UUID(uuidString: id2)
@@ -53,8 +53,8 @@ struct SessionIdHandlingTests {
         // Test cases representing different server response formats
         let testCases: [(json: String, expectedId: String?)] = [
             // Correct format (what we fixed the server to return)
-            (json: #"{"sessionId":"a37ea008c-41f6-412f-bbba-f28f091267ce"}"#, 
-             expectedId: "a37ea008c-41f6-412f-bbba-f28f091267ce"),
+            (json: #"{"sessionId":"a37ea008-41f6-412f-bbba-f28f091267ce"}"#, 
+             expectedId: "a37ea008-41f6-412f-bbba-f28f091267ce"),
             
             // Old incorrect format (what Swift server used to return)
             (json: #"{"sessionId":"session_1234567890_abc123"}"#,
@@ -83,11 +83,11 @@ struct SessionIdHandlingTests {
     @Test("Session ID URL encoding")
     func testSessionIdUrlEncoding() {
         // Ensure session IDs are properly encoded in URLs
-        let sessionId = "a37ea008c-41f6-412f-bbba-f28f091267ce"
+        let sessionId = "a37ea008-41f6-412f-bbba-f28f091267ce"
         let baseURL = "http://localhost:4020"
         
         let inputURL = "\(baseURL)/api/sessions/\(sessionId)/input"
-        let expectedURL = "http://localhost:4020/api/sessions/a37ea008c-41f6-412f-bbba-f28f091267ce/input"
+        let expectedURL = "http://localhost:4020/api/sessions/a37ea008-41f6-412f-bbba-f28f091267ce/input"
         
         #expect(inputURL == expectedURL)
         
@@ -98,7 +98,7 @@ struct SessionIdHandlingTests {
     @Test("Corrupted session ID in URL causes invalid URL")
     func testCorruptedSessionIdInUrl() {
         // The bug showed a corrupted ID like "e blob-http://127.0.0.1:4020/uuid"
-        let corruptedId = "e blob-http://127.0.0.1:4020/a37ea008c-41f6-412f-bbba-f28f091267ce"
+        let corruptedId = "e blob-http://127.0.0.1:4020/a37ea008-41f6-412f-bbba-f28f091267ce"
         let baseURL = "http://localhost:4020"
         
         // This would create an invalid URL due to spaces and special characters
@@ -118,7 +118,7 @@ struct SessionIdHandlingTests {
         // Test parsing the JSON response from tty-fwd --list-sessions
         let ttyFwdResponse = """
         {
-            "a37ea008c-41f6-412f-bbba-f28f091267ce": {
+            "a37ea008-41f6-412f-bbba-f28f091267ce": {
                 "cmdline": ["zsh"],
                 "cwd": "/Users/test",
                 "name": "zsh",
@@ -152,7 +152,7 @@ struct SessionIdHandlingTests {
 func testSessionIdMismatchBugFixed() async throws {
     // This test documents the specific bug that was fixed:
     // 1. Swift server generated: "session_1234567890_abc123"
-    // 2. tty-fwd generated: "a37ea008c-41f6-412f-bbba-f28f091267ce"
+    // 2. tty-fwd generated: "a37ea008-41f6-412f-bbba-f28f091267ce"
     // 3. Client used Swift's ID for input: /api/sessions/session_1234567890_abc123/input
     // 4. Server looked up session in tty-fwd's list and found nothing → 404
     
