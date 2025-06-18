@@ -71,7 +71,7 @@ struct AdvancedSettingsView: View {
                         .font(.headline)
                 } footer: {
                     Text(
-                        "Prefix any terminal commannd with 'vt' to enable remote control."
+                        "Prefix any terminal command with 'vt' to enable remote control. 🚇🌀📱"
                     )
                     .font(.caption)
                     .frame(maxWidth: .infinity)

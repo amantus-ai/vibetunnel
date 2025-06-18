@@ -459,9 +459,9 @@ export class SessionView extends LitElement {
           setTimeout(() => {
             window.scrollTo(0, 1);
             setTimeout(() => window.scrollTo(0, 0), 50);
-          }, 100);
+          }, 100) as unknown as number;
         }, 50);
-      }, 100);
+      }, 100) as unknown as number;
     }
   }
 
@@ -511,9 +511,10 @@ export class SessionView extends LitElement {
     }
   }
 
-  private async handleTerminalResize(event: CustomEvent) {
+  private async handleTerminalResize(event: Event) {
+    const customEvent = event as CustomEvent;
     // Update terminal dimensions for display
-    const { cols, rows } = event.detail;
+    const { cols, rows } = customEvent.detail;
     this.terminalCols = cols;
     this.terminalRows = rows;
     this.requestUpdate();
@@ -554,7 +555,7 @@ export class SessionView extends LitElement {
           console.warn('Failed to send resize request:', error);
         }
       }
-    }, 250); // 250ms debounce delay
+    }, 250) as unknown as number; // 250ms debounce delay
   }
 
   // Mobile input methods
@@ -904,7 +905,7 @@ export class SessionView extends LitElement {
     this.loadingInterval = window.setInterval(() => {
       this.loadingFrame = (this.loadingFrame + 1) % 4;
       this.requestUpdate();
-    }, 200); // Update every 200ms for smooth animation
+    }, 200) as unknown as number; // Update every 200ms for smooth animation
   }
 
   private stopLoading() {

@@ -7,8 +7,8 @@ vi.mock('child_process', () => ({
   spawn: vi.fn(),
 }));
 
-vi.mock('fs', () => ({
-  default: {
+vi.mock('fs', () => {
+  const mockFsDefault = {
     existsSync: vi.fn(() => true),
     mkdirSync: vi.fn(),
     readdirSync: vi.fn(() => []),
@@ -17,14 +17,24 @@ vi.mock('fs', () => ({
       process.nextTick(() => stream.emit('end'));
       return stream;
     }),
-  },
-}));
+  };
 
-vi.mock('os', () => ({
-  default: {
+  return {
+    default: mockFsDefault,
+    ...mockFsDefault, // Also export named exports
+  };
+});
+
+vi.mock('os', () => {
+  const mockOs = {
     homedir: () => '/home/test',
-  },
-}));
+  };
+
+  return {
+    default: mockOs,
+    ...mockOs, // Also export named exports
+  };
+});
 
 describe('Session Manager', () => {
   let mockSpawn: ReturnType<typeof vi.fn>;

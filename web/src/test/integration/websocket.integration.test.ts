@@ -179,7 +179,7 @@ describe('WebSocket Integration Tests', () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Should have received output
-      const outputMessages = messages.filter((m) => m.type === 'terminal-output');
+      const outputMessages = messages.filter((m: any) => m.type === 'terminal-output');
       expect(outputMessages.length).toBeGreaterThan(0);
 
       ws.close();

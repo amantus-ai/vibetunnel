@@ -120,8 +120,8 @@ export type SpecialKey =
 export interface PtySession {
   id: string;
   sessionInfo: SessionInfo;
-  ptyProcess?: unknown; // node-pty IPty instance
-  asciinemaWriter?: unknown; // AsciinemaWriter instance
+  ptyProcess?: any; // node-pty IPty instance (typed as any to avoid import dependency)
+  asciinemaWriter?: any; // AsciinemaWriter instance (typed as any to avoid import dependency)
   controlDir: string;
   streamOutPath: string;
   stdinPath: string;
