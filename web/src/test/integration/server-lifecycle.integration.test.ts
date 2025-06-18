@@ -5,6 +5,7 @@ import fs from 'fs';
 import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 import { app, server } from '../../server';
+import type { AddressInfo } from 'net';
 
 // Set up test environment
 process.env.NODE_ENV = 'test';
@@ -34,12 +35,12 @@ describe('Server Lifecycle Integration Tests', () => {
         if (!server.listening) {
           server.listen(0, () => {
             const address = server.address();
-            port = (address as any).port;
+            port = (address as AddressInfo).port;
             resolve();
           });
         } else {
           const address = server.address();
-          port = (address as any).port;
+          port = (address as AddressInfo).port;
           resolve();
         }
       });
@@ -66,7 +67,7 @@ describe('Server Lifecycle Integration Tests', () => {
         if (endpoint.method === 'post' && endpoint.body !== undefined) {
           response = await request(app)[endpoint.method](endpoint.path).send(endpoint.body);
         } else {
-          response = await (request(app) as any)[endpoint.method](endpoint.path);
+          response = await request(app)[endpoint.method as 'get'](endpoint.path);
         }
 
         // Should not return 404 (may return other errors like 400 for missing params)

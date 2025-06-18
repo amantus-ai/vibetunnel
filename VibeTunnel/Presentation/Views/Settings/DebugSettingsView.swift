@@ -336,7 +336,12 @@ private struct ServerSection: View {
 
                 // Server Mode Configuration
                 HStack {
-                    Text("Server Mode")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Server Mode")
+                        Text("Choose between the built-in Swift Hummingbird server or the Rust binary")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     Spacer()
                     Picker("", selection: Binding(
                         get: { ServerMode(rawValue: serverModeString) ?? .hummingbird },
@@ -376,13 +381,6 @@ private struct ServerSection: View {
         } header: {
             Text("HTTP Server")
                 .font(.headline)
-        } footer: {
-            Text(
-                "The HTTP server provides REST API endpoints for terminal session management. Choose between the built-in Swift Hummingbird server or the Rust tty-fwd binary."
-            )
-            .font(.caption)
-            .frame(maxWidth: .infinity)
-            .multilineTextAlignment(.center)
         }
     }
 }

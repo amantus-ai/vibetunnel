@@ -179,7 +179,7 @@ private struct PermissionsSection: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Accessibility")
                             .font(.body)
-                        Text("Required for terminals that need keystroke input (Ghostty, Warp, Hyper)")
+                        Text("Required to enter the Terminal startup command.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

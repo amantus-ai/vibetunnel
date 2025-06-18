@@ -24,7 +24,7 @@ public enum UpdateChannel: String, CaseIterable, Codable, Sendable {
         case .stable:
             "Receive only stable, production-ready releases"
         case .prerelease:
-            "Receive both stable releases and pre-release versions"
+            "Receive both stable releases and pre-release versions."
         }
     }
 

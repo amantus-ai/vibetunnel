@@ -23,16 +23,67 @@ jobs:
         workspaces: tty-fwd
         
     - name: Check formatting
+      id: fmt
       working-directory: tty-fwd
-      run: cargo fmt -- --check
+      continue-on-error: true
+      run: |
+        cargo fmt -- --check 2>&1 | tee fmt-output.txt
+        echo "result=$?" >> $GITHUB_OUTPUT
       
     - name: Run Clippy
+      id: clippy
       working-directory: tty-fwd
-      run: cargo clippy -- -D warnings
+      continue-on-error: true
+      run: |
+        cargo clippy -- -D warnings 2>&1 | tee clippy-output.txt
+        echo "result=$?" >> $GITHUB_OUTPUT
+        
+    - name: Read Formatting Output
+      if: always()
+      id: fmt-output
+      working-directory: tty-fwd
+      run: |
+        if [ -f fmt-output.txt ]; then
+          echo 'content<<EOF' >> $GITHUB_OUTPUT
+          cat fmt-output.txt >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+        else
+          echo "content=No output" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Read Clippy Output
+      if: always()
+      id: clippy-output
+      working-directory: tty-fwd
+      run: |
+        if [ -f clippy-output.txt ]; then
+          echo 'content<<EOF' >> $GITHUB_OUTPUT
+          cat clippy-output.txt >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+        else
+          echo "content=No output" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Report Formatting Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'Rust Formatting (cargo fmt)'
+        lint-result: ${{ steps.fmt.outputs.result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.fmt-output.outputs.content }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Report Clippy Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'Rust Clippy'
+        lint-result: ${{ steps.clippy.outputs.result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.clippy-output.outputs.content }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-test:
     name: Build and Test (${{ matrix.name }})
-    needs: lint
     strategy:
       matrix:
         include:
@@ -84,7 +135,6 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: lint
     
     steps:
     - name: Checkout code

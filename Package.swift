@@ -16,10 +16,10 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/realm/SwiftLint.git", from: "0.59.1"),
         .package(url: "https://github.com/nicklockwood/SwiftFormat.git", from: "0.56.4"),
-        .package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.5.0"),
-        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.14.0"),
-        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.7.0")
+        .package(url: "https://github.com/apple/swift-http-types.git", from: "1.4.0"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.6.3"),
+        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.14.1"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.7.1")
     ],
     targets: [
         .target(

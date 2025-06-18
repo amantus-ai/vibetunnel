@@ -55,5 +55,3 @@ export const mockWebSocketServer = () => {
     handleUpgrade: vi.fn(),
   };
 };
-
-// Custom type declarations for test matchers are in vitest.d.ts

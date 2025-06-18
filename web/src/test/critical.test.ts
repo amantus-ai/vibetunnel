@@ -24,7 +24,7 @@ vi.mock('os', () => ({
 }));
 
 describe('Critical VibeTunnel Functionality', () => {
-  let mockSpawn: any;
+  let mockSpawn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -136,7 +136,11 @@ describe('Critical VibeTunnel Functionality', () => {
     });
 
     it('should handle terminal input/output', async () => {
-      const mockStreamProcess = new EventEmitter() as any;
+      const mockStreamProcess = new EventEmitter() as EventEmitter & {
+        stdout: EventEmitter;
+        stderr: EventEmitter;
+        kill: ReturnType<typeof vi.fn>;
+      };
       mockStreamProcess.stdout = new EventEmitter();
       mockStreamProcess.stderr = new EventEmitter();
       mockStreamProcess.kill = vi.fn();
@@ -280,7 +284,7 @@ describe('Critical VibeTunnel Functionality', () => {
         undefined,
       ];
 
-      const isValidSessionId = (id: any) => {
+      const isValidSessionId = (id: unknown) => {
         return typeof id === 'string' && /^[a-zA-Z0-9-]+$/.test(id);
       };
 
@@ -338,7 +342,11 @@ describe('Critical VibeTunnel Functionality', () => {
     it('should handle large terminal output efficiently', () => {
       const largeOutput = 'X'.repeat(100000); // 100KB of data
 
-      const mockProcess = new EventEmitter() as any;
+      const mockProcess = new EventEmitter() as EventEmitter & {
+        stdout: EventEmitter;
+        stderr: EventEmitter;
+        kill: ReturnType<typeof vi.fn>;
+      };
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
       mockProcess.kill = vi.fn();

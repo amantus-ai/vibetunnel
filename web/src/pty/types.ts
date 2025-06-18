@@ -82,7 +82,7 @@ export interface AsciinemaEvent {
 export interface NotificationEvent {
   timestamp: string;
   event: string;
-  data: any;
+  data: unknown;
 }
 
 export interface SessionOptions {
@@ -102,7 +102,7 @@ export interface PtyConfig {
 
 export interface StreamEvent {
   type: 'header' | 'terminal' | 'exit' | 'error' | 'end';
-  data?: any;
+  data?: unknown;
 }
 
 // Special keys that can be sent to sessions
@@ -120,8 +120,8 @@ export type SpecialKey =
 export interface PtySession {
   id: string;
   sessionInfo: SessionInfo;
-  ptyProcess?: any; // node-pty IPty instance
-  asciinemaWriter?: any; // AsciinemaWriter instance
+  ptyProcess?: unknown; // node-pty IPty instance
+  asciinemaWriter?: unknown; // AsciinemaWriter instance
   controlDir: string;
   streamOutPath: string;
   stdinPath: string;

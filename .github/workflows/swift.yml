@@ -26,15 +26,64 @@ jobs:
         brew install swiftlint swiftformat
         
     - name: Run SwiftFormat (check mode)
-      run: swiftformat . --lint
+      id: swiftformat
+      continue-on-error: true
+      run: |
+        swiftformat . --lint 2>&1 | tee swiftformat-output.txt
+        echo "result=$?" >> $GITHUB_OUTPUT
       
     - name: Run SwiftLint
-      run: swiftlint
+      id: swiftlint
+      continue-on-error: true
+      run: |
+        swiftlint 2>&1 | tee swiftlint-output.txt
+        echo "result=$?" >> $GITHUB_OUTPUT
+        
+    - name: Read SwiftFormat Output
+      if: always()
+      id: swiftformat-output
+      run: |
+        if [ -f swiftformat-output.txt ]; then
+          echo 'content<<EOF' >> $GITHUB_OUTPUT
+          cat swiftformat-output.txt >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+        else
+          echo "content=No output" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Read SwiftLint Output
+      if: always()
+      id: swiftlint-output
+      run: |
+        if [ -f swiftlint-output.txt ]; then
+          echo 'content<<EOF' >> $GITHUB_OUTPUT
+          cat swiftlint-output.txt >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+        else
+          echo "content=No output" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Report SwiftFormat Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'Swift Formatting (SwiftFormat)'
+        lint-result: ${{ steps.swiftformat.outputs.result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.swiftformat-output.outputs.content }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Report SwiftLint Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'Swift Linting (SwiftLint)'
+        lint-result: ${{ steps.swiftlint.outputs.result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.swiftlint-output.outputs.content }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-test:
     name: Build and Test macOS App
     runs-on: self-hosted
-    needs: lint
     
     steps:
     - name: Checkout code

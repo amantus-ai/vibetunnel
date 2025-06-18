@@ -37,14 +37,12 @@ enum SettingsOpener {
             NotificationCenter.default.post(name: .openSettingsRequest, object: nil)
 
             // we center twice to reduce jump but also be more resilient against slow systems
-            try? await Task.sleep(for: .milliseconds(20))
             if let settingsWindow = findSettingsWindow() {
-                // Center the window
                 WindowCenteringHelper.centerOnActiveScreen(settingsWindow)
             }
 
             // Wait for window to appear
-            try? await Task.sleep(for: .milliseconds(200))
+            try? await Task.sleep(for: .milliseconds(100))
 
             // Find and bring settings window to front
             if let settingsWindow = findSettingsWindow() {
