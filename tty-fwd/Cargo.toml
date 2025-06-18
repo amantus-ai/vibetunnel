@@ -17,6 +17,7 @@ exclude = [
 [dependencies]
 anyhow = "1.0.98"
 argument-parser = { git = "https://github.com/mitsuhiko/argument", version = "0.0.1" }
+atty = "0.2"
 jiff = { version = "0.2", features = ["serde"] }
 libc = "0.2"
 nix = { version = "0.30.1", default-features = false, features = ["fs", "process", "term", "ioctl", "signal", "poll"] }

@@ -47,7 +47,9 @@ struct MenuBarView: View {
                 Menu {
                     // Show Tutorial
                     Button(action: {
+                        #if !SWIFT_PACKAGE
                         AppDelegate.showWelcomeScreen()
+                        #endif
                     }, label: {
                         HStack {
                             Image(systemName: "book")

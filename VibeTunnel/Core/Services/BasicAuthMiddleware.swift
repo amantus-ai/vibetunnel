@@ -47,13 +47,14 @@ struct BasicAuthMiddleware<Context: RequestContext>: RouterMiddleware {
         }
 
         // Split username:password
-        let parts = credentials.split(separator: ":", maxSplits: 1)
-        guard parts.count == 2 else {
+        // Find the first colon to separate username and password
+        guard let colonIndex = credentials.firstIndex(of: ":") else {
             return unauthorizedResponse()
         }
-
-        // We ignore the username and only check password
-        let providedPassword = String(parts[1])
+        
+        // Extract password (everything after the first colon)
+        let passwordStartIndex = credentials.index(after: colonIndex)
+        let providedPassword = String(credentials[passwordStartIndex...])
 
         // Verify password
         guard providedPassword == password else {
