@@ -9,7 +9,7 @@ env:
 jobs:
   lint:
     name: Lint Swift Code
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS]
     
     steps:
     - name: Checkout code
@@ -33,7 +33,7 @@ jobs:
 
   build-and-test:
     name: Build and Test macOS App
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS]
     needs: lint
     
     steps:
