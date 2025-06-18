@@ -33,7 +33,7 @@ jobs:
 
   build-and-test:
     name: Build and Test macOS App
-    runs-on: self-hosted
+    runs-on: 71412
     needs: lint
     
     steps:
