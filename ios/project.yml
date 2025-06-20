@@ -1,0 +1,92 @@
+name: VibeTunnel
+options:
+  bundleIdPrefix: com.vibetunnel
+  deploymentTarget:
+    iOS: 18.0
+  xcodeVersion: "16.0"
+  minimumXcodeGenVersion: 2.35.0
+  generateEmptyDirectories: true
+  groupSortPosition: top
+  developmentLanguage: en
+  
+settings:
+  base:
+    SWIFT_VERSION: 6.0
+    MARKETING_VERSION: 1.0.0
+    CURRENT_PROJECT_VERSION: 1
+    DEVELOPMENT_TEAM: ""
+    ENABLE_PREVIEWS: YES
+    GENERATE_INFOPLIST_FILE: NO
+    INFOPLIST_FILE: VibeTunnel/Resources/Info.plist
+    IPHONEOS_DEPLOYMENT_TARGET: 18.0
+    LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+    PRODUCT_BUNDLE_IDENTIFIER: com.vibetunnel.ios
+    PRODUCT_NAME: "$(TARGET_NAME)"
+    SWIFT_EMIT_LOC_STRINGS: YES
+    SWIFT_VERSION: 6.0
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CODE_SIGN_STYLE: Automatic
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+packages:
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm
+    from: 1.2.0
+
+targets:
+  VibeTunnel:
+    type: application
+    platform: iOS
+    deploymentTarget: 18.0
+    sources:
+      - path: VibeTunnel
+        excludes:
+          - "**/.DS_Store"
+    dependencies:
+      - package: SwiftTerm
+    info:
+      path: VibeTunnel/Resources/Info.plist
+    settings:
+      base:
+        INFOPLIST_FILE: VibeTunnel/Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.vibetunnel.ios
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: YES
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        ENABLE_TESTABILITY: YES
+        SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+          ENABLE_TESTABILITY: YES
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+          GCC_OPTIMIZATION_LEVEL: 0
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+          SWIFT_COMPILATION_MODE: wholemodule
+          GCC_OPTIMIZATION_LEVEL: s
+
+schemes:
+  VibeTunnel:
+    build:
+      targets:
+        VibeTunnel: all
+    run:
+      config: Debug
+      simulatorOS: 18.0
+      simulatorDevice: "iPhone 16 Pro"
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
