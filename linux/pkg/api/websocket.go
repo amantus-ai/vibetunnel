@@ -20,7 +20,7 @@ import (
 const (
 	// Magic byte for binary messages
 	BufferMagicByte = 0xbf
-	
+
 	// WebSocket timeouts
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
@@ -48,6 +48,22 @@ func NewBufferWebSocketHandler(manager *session.Manager) *BufferWebSocketHandler
 	}
 }
 
+// safeSend safely sends data to a channel, returning false if the channel is closed
+func safeSend(send chan []byte, data []byte, done chan struct{}) bool {
+	defer func() {
+		if r := recover(); r != nil {
+			// Channel was closed, ignore the panic
+		}
+	}()
+	
+	select {
+	case send <- data:
+		return true
+	case <-done:
+		return false
+	}
+}
+
 func (h *BufferWebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -59,9 +75,9 @@ func (h *BufferWebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	// Set up connection parameters
 	conn.SetReadLimit(maxMessageSize)
 	conn.SetReadDeadline(time.Now().Add(pongWait))
-	conn.SetPongHandler(func(string) error { 
+	conn.SetPongHandler(func(string) error {
 		conn.SetReadDeadline(time.Now().Add(pongWait))
-		return nil 
+		return nil
 	})
 
 	// Start ping ticker
@@ -113,9 +129,7 @@ func (h *BufferWebSocketHandler) handleTextMessage(conn *websocket.Conn, message
 	case "ping":
 		// Send pong response
 		pong, _ := json.Marshal(map[string]string{"type": "pong"})
-		select {
-		case send <- pong:
-		case <-done:
+		if !safeSend(send, pong, done) {
 			return
 		}
 
@@ -124,7 +138,7 @@ func (h *BufferWebSocketHandler) handleTextMessage(conn *websocket.Conn, message
 		if !ok {
 			return
 		}
-		
+
 		// Start streaming session data
 		go h.streamSession(sessionID, send, done)
 
@@ -142,10 +156,7 @@ func (h *BufferWebSocketHandler) streamSession(sessionID string, send chan []byt
 			"type":    "error",
 			"message": fmt.Sprintf("Session not found: %v", err),
 		})
-		select {
-		case send <- errorMsg:
-		case <-done:
-		}
+		safeSend(send, errorMsg, done)
 		return
 	}
 
@@ -163,10 +174,7 @@ func (h *BufferWebSocketHandler) streamSession(sessionID string, send chan []byt
 				"type":    "error",
 				"message": "Session stream not available",
 			})
-			select {
-			case send <- errorMsg:
-			case <-done:
-			}
+			safeSend(send, errorMsg, done)
 			return
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -180,10 +188,7 @@ func (h *BufferWebSocketHandler) streamSession(sessionID string, send chan []byt
 			"type":    "error",
 			"message": "Failed to create file watcher",
 		})
-		select {
-		case send <- errorMsg:
-		case <-done:
-		}
+		safeSend(send, errorMsg, done)
 		return
 	}
 	defer watcher.Close()
@@ -196,10 +201,7 @@ func (h *BufferWebSocketHandler) streamSession(sessionID string, send chan []byt
 			"type":    "error",
 			"message": fmt.Sprintf("Failed to watch session stream: %v", err),
 		})
-		select {
-		case send <- errorMsg:
-		case <-done:
-		}
+		safeSend(send, errorMsg, done)
 		return
 	}
 
@@ -214,7 +216,7 @@ func (h *BufferWebSocketHandler) streamSession(sessionID string, send chan []byt
 		select {
 		case <-done:
 			return
-			
+
 		case event, ok := <-watcher.Events:
 			if !ok {
 				return
@@ -235,10 +237,7 @@ func (h *BufferWebSocketHandler) streamSession(sessionID string, send chan []byt
 			if !sess.IsAlive() {
 				// Send exit event
 				exitMsg := h.createBinaryMessage(sessionID, []byte(`{"type":"exit","code":0}`))
-				select {
-				case send <- exitMsg:
-				case <-done:
-				}
+				safeSend(send, exitMsg, done)
 				return
 			}
 		}
@@ -307,14 +306,12 @@ func (h *BufferWebSocketHandler) processAndSendContent(sessionID, streamPath str
 				*headerSent = true
 				// Send header as binary message
 				headerData, _ := json.Marshal(map[string]interface{}{
-					"type": "header",
-					"width": header.Width,
+					"type":   "header",
+					"width":  header.Width,
 					"height": header.Height,
 				})
 				msg := h.createBinaryMessage(sessionID, headerData)
-				select {
-				case send <- msg:
-				case <-done:
+				if !safeSend(send, msg, done) {
 					return
 				}
 				continue
@@ -331,29 +328,25 @@ func (h *BufferWebSocketHandler) processAndSendContent(sessionID, streamPath str
 			if ok1 && ok2 && ok3 && eventType == "o" {
 				// Create terminal output message
 				outputData, _ := json.Marshal(map[string]interface{}{
-					"type": "output",
+					"type":      "output",
 					"timestamp": timestamp,
-					"data": data,
+					"data":      data,
 				})
-				
+
 				msg := h.createBinaryMessage(sessionID, outputData)
-				select {
-				case send <- msg:
-				case <-done:
+				if !safeSend(send, msg, done) {
 					return
 				}
 			} else if ok1 && ok2 && ok3 && eventType == "r" {
 				// Create resize message
 				resizeData, _ := json.Marshal(map[string]interface{}{
-					"type": "resize",
-					"timestamp": timestamp,
+					"type":       "resize",
+					"timestamp":  timestamp,
 					"dimensions": data,
 				})
-				
+
 				msg := h.createBinaryMessage(sessionID, resizeData)
-				select {
-				case send <- msg:
-				case <-done:
+				if !safeSend(send, msg, done) {
 					return
 				}
 			}
@@ -364,34 +357,34 @@ func (h *BufferWebSocketHandler) processAndSendContent(sessionID, streamPath str
 func (h *BufferWebSocketHandler) createBinaryMessage(sessionID string, data []byte) []byte {
 	// Binary message format:
 	// [magic byte (1)] [session ID length (4, little endian)] [session ID] [data]
-	
+
 	sessionIDBytes := []byte(sessionID)
 	totalLen := 1 + 4 + len(sessionIDBytes) + len(data)
-	
+
 	msg := make([]byte, totalLen)
 	offset := 0
-	
+
 	// Magic byte
 	msg[offset] = BufferMagicByte
 	offset++
-	
+
 	// Session ID length (little endian)
 	binary.LittleEndian.PutUint32(msg[offset:], uint32(len(sessionIDBytes)))
 	offset += 4
-	
+
 	// Session ID
 	copy(msg[offset:], sessionIDBytes)
 	offset += len(sessionIDBytes)
-	
+
 	// Data
 	copy(msg[offset:], data)
-	
+
 	return msg
 }
 
 func (h *BufferWebSocketHandler) writer(conn *websocket.Conn, send chan []byte, ticker *time.Ticker, done chan struct{}) {
 	defer close(send)
-	
+
 	for {
 		select {
 		case message, ok := <-send:
@@ -419,7 +412,7 @@ func (h *BufferWebSocketHandler) writer(conn *websocket.Conn, send chan []byte, 
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
-			
+
 		case <-done:
 			return
 		}
