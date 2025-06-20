@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use std::path::PathBuf;
 
 /// Check if the app should be moved to Applications folder
