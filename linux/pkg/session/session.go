@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 // GenerateID generates a new unique session ID
@@ -453,30 +455,42 @@ func (s *Session) IsAlive() bool {
 		return false
 	}
 
-	// Use kill(pid, 0) instead of ps command for better performance
-	// This is more efficient than spawning ps process
-	process, err := os.FindProcess(pid)
+	// On Windows, use gopsutil (no kill() available)
+	if runtime.GOOS == "windows" {
+		exists, err := process.PidExists(int32(pid))
+		if err != nil {
+			if os.Getenv("VIBETUNNEL_DEBUG") != "" {
+				log.Printf("[DEBUG] IsAlive: Windows gopsutil failed for PID %d: %v", pid, err)
+			}
+			return false
+		}
+		if os.Getenv("VIBETUNNEL_DEBUG") != "" {
+			log.Printf("[DEBUG] IsAlive: Windows gopsutil PidExists for PID %d: %t (session %s)", pid, exists, s.ID[:8])
+		}
+		return exists
+	}
+
+	// On POSIX systems (Linux, macOS, FreeBSD, etc.), use efficient kill(pid, 0)
+	osProcess, err := os.FindProcess(pid)
 	if err != nil {
 		if os.Getenv("VIBETUNNEL_DEBUG") != "" {
-			log.Printf("[DEBUG] IsAlive: FindProcess failed for PID %d: %v", pid, err)
+			log.Printf("[DEBUG] IsAlive: POSIX FindProcess failed for PID %d: %v", pid, err)
 		}
 		return false
 	}
 	
-	// Send signal 0 to check if process exists
-	err = process.Signal(syscall.Signal(0))
+	// Send signal 0 to check if process exists (POSIX only)
+	err = osProcess.Signal(syscall.Signal(0))
 	if err != nil {
-		// Process doesn't exist or we don't have permission
 		if os.Getenv("VIBETUNNEL_DEBUG") != "" {
-			log.Printf("[DEBUG] IsAlive: Signal(0) failed for PID %d: %v", pid, err)
+			log.Printf("[DEBUG] IsAlive: POSIX kill(0) failed for PID %d: %v", pid, err)
 		}
 		return false
 	}
 
 	if os.Getenv("VIBETUNNEL_DEBUG") != "" {
-		log.Printf("[DEBUG] IsAlive: Process %d is alive for session %s", pid, s.ID[:8])
+		log.Printf("[DEBUG] IsAlive: POSIX kill(0) confirmed PID %d is alive (session %s)", pid, s.ID[:8])
 	}
-	
 	return true
 }
 
