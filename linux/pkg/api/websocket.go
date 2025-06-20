@@ -91,24 +91,19 @@ func (h *BufferWebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	// Start writer goroutine
 	go h.writer(conn, send, ticker, done)
 
-	// Handle incoming messages
+	// Handle incoming messages - remove busy loop
 	for {
-		select {
-		case <-done:
+		messageType, message, err := conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("[WebSocket] Error: %v", err)
+			}
+			close(done)
 			return
-		default:
-			messageType, message, err := conn.ReadMessage()
-			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Printf("[WebSocket] Error: %v", err)
-				}
-				close(done)
-				return
-			}
+		}
 
-			if messageType == websocket.TextMessage {
-				h.handleTextMessage(conn, message, send, done)
-			}
+		if messageType == websocket.TextMessage {
+			h.handleTextMessage(conn, message, send, done)
 		}
 	}
 }
@@ -232,8 +227,8 @@ func (h *BufferWebSocketHandler) streamSession(sessionID string, send chan []byt
 			}
 			log.Printf("[WebSocket] Watcher error: %v", err)
 
-		case <-time.After(1 * time.Second):
-			// Check if session is still alive
+		case <-time.After(30 * time.Second):
+			// Check if session is still alive less frequently to reduce CPU usage
 			if !sess.IsAlive() {
 				// Send exit event
 				exitMsg := h.createBinaryMessage(sessionID, []byte(`{"type":"exit","code":0}`))

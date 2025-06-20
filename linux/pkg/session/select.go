@@ -94,8 +94,8 @@ func (p *PTY) pollWithSelect() error {
 			fds = append(fds, controlFd)
 		}
 
-		// Wait for activity with 100ms timeout
-		ready, err := selectRead(fds, 100*time.Millisecond)
+		// Wait for activity with 1s timeout to reduce CPU usage
+		ready, err := selectRead(fds, 1*time.Second)
 		if err != nil {
 			log.Printf("[ERROR] select error: %v", err)
 			return err

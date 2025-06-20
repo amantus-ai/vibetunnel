@@ -124,8 +124,10 @@ func (m *Manager) ListSessions() ([]*Info, error) {
 			continue
 		}
 
-		// Update status on-demand like Rust implementation
-		session.UpdateStatus()
+		// Only update status if it's not already marked as exited to reduce CPU usage
+		if session.info.Status != string(StatusExited) {
+			session.UpdateStatus()
+		}
 		
 		sessions = append(sessions, session.info)
 	}

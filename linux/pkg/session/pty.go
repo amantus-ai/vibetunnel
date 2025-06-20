@@ -244,8 +244,8 @@ func (p *PTY) Run() error {
 				return
 			}
 			// If we get here, n == 0 and err == nil, which is unusual for blocking reads
-			// Give a very brief pause to prevent tight loop
-			time.Sleep(1 * time.Millisecond)
+			// Give a longer pause to prevent excessive CPU usage
+			time.Sleep(10 * time.Millisecond)
 		}
 	}()
 
@@ -271,19 +271,19 @@ func (p *PTY) Run() error {
 				continue
 			}
 			if err == syscall.EAGAIN || err == syscall.EWOULDBLOCK {
-				// No data available, brief pause to prevent CPU spinning
-				time.Sleep(100 * time.Microsecond)
+				// No data available, longer pause to prevent excessive CPU usage
+				time.Sleep(10 * time.Millisecond)
 				continue
 			}
 			if err == io.EOF {
-				// No writers to the FIFO yet, brief pause before retry
-				time.Sleep(500 * time.Microsecond)
+				// No writers to the FIFO yet, longer pause before retry
+				time.Sleep(50 * time.Millisecond)
 				continue
 			}
 			if err != nil {
 				// Log other errors but don't crash the session - stdin issues shouldn't kill the PTY
 				log.Printf("[WARN] PTY.Run: Stdin read error (non-fatal): %v", err)
-				time.Sleep(1 * time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 				continue
 			}
 		}

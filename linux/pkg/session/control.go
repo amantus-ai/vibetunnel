@@ -77,8 +77,8 @@ func (s *Session) startControlListener() {
 
 			file.Close()
 
-			// Small delay before reopening
-			time.Sleep(100 * time.Millisecond)
+			// Longer delay before reopening to reduce CPU usage
+			time.Sleep(1 * time.Second)
 		}
 
 		debugLog("[DEBUG] Control listener stopped for session %s", s.ID[:8])

@@ -88,7 +88,7 @@ func (s *SSEStreamer) Stream() {
 			}
 			log.Printf("[ERROR] SSE: File watcher error: %v", err)
 
-		case <-time.After(1 * time.Second):
+		case <-time.After(30 * time.Second):
 			// Check if session is still alive less frequently for better performance
 			if !s.session.IsAlive() {
 				debugLog("[DEBUG] SSE: Session %s is dead, ending stream", s.session.ID[:8])
