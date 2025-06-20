@@ -130,7 +130,7 @@ func init() {
 	rootCmd.Flags().StringVar(&serverMode, "server-mode", "native", "Server mode (native, rust)")
 	rootCmd.Flags().StringVar(&updateChannel, "update-channel", "stable", "Update channel (stable, prerelease)")
 	rootCmd.Flags().BoolVar(&noSpawn, "no-spawn", false, "Disable terminal spawning")
-	rootCmd.Flags().BoolVar(&doNotAllowColumnSet, "do-not-allow-column-set", true, "Disable resizing for spawned shells (default: true, detached sessions always allow resizing)")
+	rootCmd.Flags().BoolVar(&doNotAllowColumnSet, "do-not-allow-column-set", true, "Disable terminal resizing for all sessions (spawned and detached)")
 
 	// Configuration file
 	rootCmd.Flags().StringVarP(&configFile, "config", "c", defaultConfigPath, "Configuration file path")

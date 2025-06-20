@@ -862,14 +862,14 @@ func (s *Server) handleResizeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if resizing is disabled for spawned sessions
-	if s.doNotAllowColumnSet && sess.IsSpawned() {
-		log.Printf("[INFO] Resize blocked for spawned session %s (--do-not-allow-column-set enabled)", vars["id"][:8])
+	// Check if resizing is disabled for all sessions
+	if s.doNotAllowColumnSet {
+		log.Printf("[INFO] Resize blocked for session %s (--do-not-allow-column-set enabled)", vars["id"][:8])
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
-			"message": "Resizing is disabled for spawned sessions",
-			"error":   "resize_disabled_for_spawned_sessions",
+			"message": "Terminal resizing is disabled by server configuration",
+			"error":   "resize_disabled_by_server",
 		})
 		return
 	}
