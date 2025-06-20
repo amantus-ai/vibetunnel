@@ -239,10 +239,14 @@ export class Terminal extends LitElement {
 
     // Update cursor color
     root.style.setProperty('--terminal-cursor-color', theme.cursor);
+    
+    // Update default foreground color
+    root.style.setProperty('--terminal-foreground', theme.foreground);
 
     // Update background color on the terminal container
     if (this.container) {
       this.container.style.backgroundColor = theme.background;
+      this.container.style.color = theme.foreground;
     }
 
     // Force re-render to apply new theme colors
@@ -776,6 +780,9 @@ export class Terminal extends LitElement {
           const b = fg & 0xff;
           style += `color: rgb(${r}, ${g}, ${b});`;
         }
+      } else {
+        // No explicit color - use theme's default foreground
+        style += `color: var(--terminal-foreground, #d4d4d4);`;
       }
 
       // Get background color
