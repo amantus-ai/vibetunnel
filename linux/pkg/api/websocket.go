@@ -87,6 +87,14 @@ func (h *BufferWebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	// Channel for writing messages
 	send := make(chan []byte, 256)
 	done := make(chan struct{})
+	var closeOnce sync.Once
+
+	// Helper function to safely close done channel
+	closeOnceFunc := func() {
+		closeOnce.Do(func() {
+			close(done)
+		})
+	}
 
 	// Start writer goroutine
 	go h.writer(conn, send, ticker, done)
@@ -98,17 +106,17 @@ func (h *BufferWebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("[WebSocket] Error: %v", err)
 			}
-			close(done)
+			closeOnceFunc()
 			return
 		}
 
 		if messageType == websocket.TextMessage {
-			h.handleTextMessage(conn, message, send, done)
+			h.handleTextMessage(conn, message, send, done, closeOnceFunc)
 		}
 	}
 }
 
-func (h *BufferWebSocketHandler) handleTextMessage(conn *websocket.Conn, message []byte, send chan []byte, done chan struct{}) {
+func (h *BufferWebSocketHandler) handleTextMessage(conn *websocket.Conn, message []byte, send chan []byte, done chan struct{}, closeFunc func()) {
 	var msg map[string]interface{}
 	if err := json.Unmarshal(message, &msg); err != nil {
 		log.Printf("[WebSocket] Failed to parse message: %v", err)
@@ -139,7 +147,7 @@ func (h *BufferWebSocketHandler) handleTextMessage(conn *websocket.Conn, message
 
 	case "unsubscribe":
 		// Currently we just close the connection when unsubscribing
-		close(done)
+		closeFunc()
 	}
 }
 
