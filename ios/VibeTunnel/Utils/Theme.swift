@@ -21,6 +21,12 @@ struct Theme {
         static let headerBackground = Color(hex: "010409")
         static let overlayBackground = Color.black.opacity(0.7)
         
+        // Additional UI colors for FileBrowser
+        static let terminalAccent = primaryAccent
+        static let terminalGray = Color(hex: "8B949E")
+        static let terminalDarkGray = Color(hex: "161B22")
+        static let terminalWhite = Color.white
+        
         // Terminal ANSI colors
         static let ansiBlack = Color(hex: "01060E")
         static let ansiRed = Color(hex: "EA6C73")

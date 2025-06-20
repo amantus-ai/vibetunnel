@@ -5,10 +5,11 @@ struct SessionCreateView: View {
     let onCreated: (String) -> Void
     
     @State private var command = "zsh"
-    @State private var workingDirectory = "~/"
+    @State private var workingDirectory = "~"
     @State private var sessionName = ""
     @State private var isCreating = false
     @State private var errorMessage: String?
+    @State private var showFileBrowser = false
     
     @FocusState private var focusedField: Field?
     
@@ -23,21 +24,7 @@ struct SessionCreateView: View {
                     .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: Theme.Spacing.xl) {
-                        // Header
-                        VStack(spacing: Theme.Spacing.sm) {
-                            Image(systemName: "terminal.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(Theme.Colors.primaryAccent)
-                                .glowEffect()
-                            
-                            Text("New Terminal Session")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                                .foregroundColor(Theme.Colors.terminalForeground)
-                        }
-                        .padding(.top, Theme.Spacing.xl)
-                        
+                    VStack(spacing: Theme.Spacing.lg) {
                         // Configuration Fields
                         VStack(spacing: Theme.Spacing.lg) {
                             // Command Field
@@ -59,11 +46,32 @@ struct SessionCreateView: View {
                                     .font(Theme.Typography.terminalSystem(size: 12))
                                     .foregroundColor(Theme.Colors.primaryAccent)
                                 
-                                TextField("~/", text: $workingDirectory)
-                                    .textFieldStyle(TerminalTextFieldStyle())
-                                    .autocapitalization(.none)
-                                    .disableAutocorrection(true)
-                                    .focused($focusedField, equals: .workingDir)
+                                HStack(spacing: Theme.Spacing.sm) {
+                                    TextField("~", text: $workingDirectory)
+                                        .textFieldStyle(TerminalTextFieldStyle())
+                                        .autocapitalization(.none)
+                                        .disableAutocorrection(true)
+                                        .focused($focusedField, equals: .workingDir)
+                                    
+                                    Button(action: {
+                                        HapticFeedback.impact(.light)
+                                        showFileBrowser = true
+                                    }) {
+                                        Image(systemName: "folder")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(Theme.Colors.primaryAccent)
+                                            .frame(width: 44, height: 44)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                                    .fill(Theme.Colors.cardBorder.opacity(0.1))
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                                    .stroke(Theme.Colors.cardBorder.opacity(0.3), lineWidth: 1)
+                                            )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
                             }
                             
                             // Session Name
@@ -80,68 +88,77 @@ struct SessionCreateView: View {
                             // Error Message
                             if let error = errorMessage {
                                 HStack(spacing: Theme.Spacing.sm) {
-                                    Image(systemName: "exclamationmark.triangle")
-                                        .font(.caption)
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.system(size: 14))
                                     Text(error)
-                                        .font(Theme.Typography.terminalSystem(size: 12))
+                                        .font(Theme.Typography.terminalSystem(size: 13))
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
                                 .foregroundColor(Theme.Colors.errorAccent)
+                                .padding(.horizontal, Theme.Spacing.md)
+                                .padding(.vertical, Theme.Spacing.sm)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(
+                                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                        .fill(Theme.Colors.errorAccent.opacity(0.15))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                        .stroke(Theme.Colors.errorAccent.opacity(0.3), lineWidth: 1)
+                                )
                                 .transition(.asymmetric(
-                                    insertion: .scale.combined(with: .opacity),
-                                    removal: .scale.combined(with: .opacity)
+                                    insertion: .scale(scale: 0.95).combined(with: .opacity),
+                                    removal: .scale(scale: 0.95).combined(with: .opacity)
                                 ))
                             }
                         }
                         .padding(.horizontal)
+                        .padding(.top, Theme.Spacing.lg)
                 
                         // Quick Directories
                         if focusedField == .workingDir {
-                            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                                 Text("COMMON DIRECTORIES")
                                     .font(Theme.Typography.terminalSystem(size: 10))
                                     .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
                                     .tracking(1)
                                     .padding(.horizontal)
                                 
-                                LazyVGrid(columns: [
-                                    GridItem(.flexible()),
-                                    GridItem(.flexible())
-                                ], spacing: Theme.Spacing.sm) {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: Theme.Spacing.sm) {
                                     ForEach(commonDirectories, id: \.self) { dir in
                                         Button(action: {
                                             workingDirectory = dir
                                             HapticFeedback.selection()
                                         }) {
-                                            HStack {
-                                                Image(systemName: "folder")
-                                                    .font(.system(size: 14))
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "folder.fill")
+                                                    .font(.system(size: 12))
                                                 Text(dir)
-                                                    .font(Theme.Typography.terminalSystem(size: 14))
-                                                Spacer()
+                                                    .font(Theme.Typography.terminalSystem(size: 13))
                                             }
                                             .foregroundColor(workingDirectory == dir ? Theme.Colors.terminalBackground : Theme.Colors.terminalForeground)
-                                            .padding(.horizontal, Theme.Spacing.md)
-                                            .padding(.vertical, Theme.Spacing.sm)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
                                             .background(
                                                 RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                                    .fill(workingDirectory == dir ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder.opacity(0.3))
+                                                    .fill(workingDirectory == dir ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder.opacity(0.1))
                                             )
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                                    .stroke(workingDirectory == dir ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder, lineWidth: 1)
+                                                    .stroke(workingDirectory == dir ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder.opacity(0.3), lineWidth: 1)
                                             )
                                         }
                                         .buttonStyle(PlainButtonStyle())
-                                        .scaleEffect(workingDirectory == dir ? 0.95 : 1.0)
-                                        .animation(Theme.Animation.quick, value: workingDirectory == dir)
                                     }
+                                    }
+                                    .padding(.horizontal)
                                 }
-                                .padding(.horizontal)
                             }
                         }
                         
                         // Quick Start Commands
-                        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                             Text("QUICK START")
                                 .font(Theme.Typography.terminalSystem(size: 10))
                                 .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
@@ -184,45 +201,45 @@ struct SessionCreateView: View {
                             .padding(.horizontal)
                         }
                         
-                        Spacer(minLength: 100)
+                        Spacer(minLength: 40)
                     }
                 }
             }
             .navigationBarHidden(true)
-            .overlay(alignment: .top) {
-                // Custom Navigation Bar
-                HStack {
-                    Button("Cancel") {
-                        HapticFeedback.impact(.light)
-                        isPresented = false
-                    }
-                    .foregroundColor(Theme.Colors.errorAccent)
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        HapticFeedback.impact(.medium)
-                        createSession()
-                    }) {
-                        if isCreating {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.primaryAccent))
-                                .scaleEffect(0.8)
-                        } else {
-                            Text("Create")
-                                .fontWeight(.semibold)
+            .safeAreaInset(edge: .top) {
+                // Custom Navigation Bar with proper safe area handling
+                VStack(spacing: 0) {
+                    HStack {
+                        Button("Cancel") {
+                            HapticFeedback.impact(.light)
+                            isPresented = false
                         }
+                        .font(.system(size: 17))
+                        .foregroundColor(Theme.Colors.errorAccent)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            HapticFeedback.impact(.medium)
+                            createSession()
+                        }) {
+                            if isCreating {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.primaryAccent))
+                                    .scaleEffect(0.8)
+                            } else {
+                                Text("Create")
+                                    .font(.system(size: 17, weight: .semibold))
+                            }
+                        }
+                        .foregroundColor(Theme.Colors.primaryAccent)
+                        .disabled(isCreating || command.isEmpty)
                     }
-                    .foregroundColor(Theme.Colors.primaryAccent)
-                    .disabled(isCreating || command.isEmpty)
+                    .padding(.horizontal)
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(.ultraThinMaterial.opacity(0.8))
                 }
-                .padding()
-                .background(
-                    Theme.Colors.terminalBackground
-                        .opacity(0.95)
-                        .background(.ultraThinMaterial)
-                        .ignoresSafeArea()
-                )
             }
             .onAppear {
                 loadDefaults()
@@ -230,6 +247,12 @@ struct SessionCreateView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showFileBrowser) {
+            FileBrowserView(initialPath: workingDirectory) { selectedPath in
+                workingDirectory = selectedPath
+                HapticFeedback.notification(.success)
+            }
+        }
     }
     
     private var recentCommands: [String] {
@@ -237,7 +260,7 @@ struct SessionCreateView: View {
     }
     
     private var commonDirectories: [String] {
-        ["~/", "~/Desktop", "~/Documents", "~/Downloads", "~/Projects", "/tmp"]
+        ["~", "~/Desktop", "~/Documents", "~/Downloads", "~/Projects", "/tmp"]
     }
     
     private func commandIcon(for command: String) -> String {
@@ -266,7 +289,7 @@ struct SessionCreateView: View {
             workingDirectory = lastDir
         } else {
             // Default to home directory on the server
-            workingDirectory = "~/"
+            workingDirectory = "~"
         }
     }
     
@@ -282,7 +305,7 @@ struct SessionCreateView: View {
             do {
                 let sessionData = SessionCreateData(
                     command: command,
-                    workingDir: workingDirectory.isEmpty ? "~/" : workingDirectory,
+                    workingDir: workingDirectory.isEmpty ? "~" : workingDirectory,
                     name: sessionName.isEmpty ? nil : sessionName
                 )
                 

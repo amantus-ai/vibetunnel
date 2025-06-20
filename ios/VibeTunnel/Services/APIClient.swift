@@ -7,6 +7,7 @@ enum APIError: LocalizedError {
     case serverError(Int, String?)
     case networkError(Error)
     case noServerConfigured
+    case invalidResponse
     
     var errorDescription: String? {
         switch self {
@@ -58,6 +59,8 @@ enum APIError: LocalizedError {
             return error.localizedDescription
         case .noServerConfigured:
             return "No server configured"
+        case .invalidResponse:
+            return "Invalid server response"
         }
     }
 }
@@ -278,5 +281,50 @@ class APIClient: APIClientProtocol {
             print("[APIClient] Server error: HTTP \(httpResponse.statusCode)")
             throw APIError.serverError(httpResponse.statusCode, nil)
         }
+    }
+    
+    // MARK: - File System Operations
+    
+    func browseDirectory(path: String) async throws -> [FileEntry] {
+        guard let baseURL = baseURL else {
+            throw APIError.noServerConfigured
+        }
+        
+        var components = URLComponents(url: baseURL.appendingPathComponent("api/fs/browse"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "path", value: path)]
+        
+        guard let url = components.url else {
+            throw APIError.invalidResponse
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+        
+        let entries = try decoder.decode([FileEntry].self, from: data)
+        return entries
+    }
+    
+    func createDirectory(path: String) async throws {
+        guard let baseURL = baseURL else {
+            throw APIError.noServerConfigured
+        }
+        
+        let url = baseURL.appendingPathComponent("api/mkdir")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        struct CreateDirectoryRequest: Codable {
+            let path: String
+        }
+        
+        let requestBody = CreateDirectoryRequest(path: path)
+        request.httpBody = try encoder.encode(requestBody)
+        
+        let (_, response) = try await session.data(for: request)
+        try validateResponse(response)
     }
 }
