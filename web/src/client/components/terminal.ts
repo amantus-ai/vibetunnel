@@ -178,7 +178,7 @@ export class Terminal extends LitElement {
 
       // Set terminal size - don't call .open() to keep it headless
       this.terminal.resize(this.cols, this.rows);
-      
+
       // Apply initial theme CSS variables
       this.applyTheme(this.themeName);
     } catch (error) {
@@ -221,7 +221,7 @@ export class Terminal extends LitElement {
 
     // Update cursor color
     root.style.setProperty('--terminal-cursor-color', theme.cursor);
-    
+
     // Update default foreground color
     root.style.setProperty('--terminal-foreground', theme.foreground);
 
@@ -1073,7 +1073,6 @@ export class Terminal extends LitElement {
     this.scrollToBottom();
     this.requestUpdate();
   };
-
 
   private handlePaste = (e: ClipboardEvent) => {
     e.preventDefault();
