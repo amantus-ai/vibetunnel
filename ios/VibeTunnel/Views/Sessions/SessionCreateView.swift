@@ -1,0 +1,252 @@
+import SwiftUI
+
+struct SessionCreateView: View {
+    @Binding var isPresented: Bool
+    let onCreated: (String) -> Void
+    
+    @State private var command = "zsh"
+    @State private var workingDirectory = ""
+    @State private var sessionName = ""
+    @State private var isCreating = false
+    @State private var errorMessage: String?
+    
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case command, workingDir, name
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Theme.Colors.terminalBackground
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: Theme.Spacing.xl) {
+                        // Header
+                        VStack(spacing: Theme.Spacing.sm) {
+                            Image(systemName: "terminal.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(Theme.Colors.primaryAccent)
+                                .glowEffect()
+                            
+                            Text("New Terminal Session")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                                .foregroundColor(Theme.Colors.terminalForeground)
+                        }
+                        .padding(.top, Theme.Spacing.xl)
+                        
+                        // Configuration Fields
+                        VStack(spacing: Theme.Spacing.lg) {
+                            // Command Field
+                            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                                Label("Command", systemImage: "terminal")
+                                    .font(Theme.Typography.terminalSystem(size: 12))
+                                    .foregroundColor(Theme.Colors.primaryAccent)
+                                
+                                TextField("zsh", text: $command)
+                                    .textFieldStyle(TerminalTextFieldStyle())
+                                    .autocapitalization(.none)
+                                    .disableAutocorrection(true)
+                                    .focused($focusedField, equals: .command)
+                            }
+                            
+                            // Working Directory
+                            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                                Label("Working Directory", systemImage: "folder")
+                                    .font(Theme.Typography.terminalSystem(size: 12))
+                                    .foregroundColor(Theme.Colors.primaryAccent)
+                                
+                                TextField(NSHomeDirectory(), text: $workingDirectory)
+                                    .textFieldStyle(TerminalTextFieldStyle())
+                                    .autocapitalization(.none)
+                                    .disableAutocorrection(true)
+                                    .focused($focusedField, equals: .workingDir)
+                            }
+                            
+                            // Session Name
+                            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                                Label("Session Name (Optional)", systemImage: "tag")
+                                    .font(Theme.Typography.terminalSystem(size: 12))
+                                    .foregroundColor(Theme.Colors.primaryAccent)
+                                
+                                TextField("My Session", text: $sessionName)
+                                    .textFieldStyle(TerminalTextFieldStyle())
+                                    .focused($focusedField, equals: .name)
+                            }
+                            
+                            // Error Message
+                            if let error = errorMessage {
+                                HStack(spacing: Theme.Spacing.sm) {
+                                    Image(systemName: "exclamationmark.triangle")
+                                        .font(.caption)
+                                    Text(error)
+                                        .font(Theme.Typography.terminalSystem(size: 12))
+                                }
+                                .foregroundColor(Theme.Colors.errorAccent)
+                                .transition(.asymmetric(
+                                    insertion: .scale.combined(with: .opacity),
+                                    removal: .scale.combined(with: .opacity)
+                                ))
+                            }
+                        }
+                        .padding(.horizontal)
+                
+                        // Quick Start Commands
+                        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                            Text("QUICK START")
+                                .font(Theme.Typography.terminalSystem(size: 10))
+                                .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
+                                .tracking(1)
+                                .padding(.horizontal)
+                            
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ], spacing: Theme.Spacing.sm) {
+                                ForEach(recentCommands, id: \.self) { cmd in
+                                    Button(action: {
+                                        command = cmd
+                                        HapticFeedback.selection()
+                                    }) {
+                                        HStack {
+                                            Image(systemName: commandIcon(for: cmd))
+                                                .font(.system(size: 14))
+                                            Text(cmd)
+                                                .font(Theme.Typography.terminalSystem(size: 14))
+                                            Spacer()
+                                        }
+                                        .foregroundColor(command == cmd ? Theme.Colors.terminalBackground : Theme.Colors.terminalForeground)
+                                        .padding(.horizontal, Theme.Spacing.md)
+                                        .padding(.vertical, Theme.Spacing.sm)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                                .fill(command == cmd ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder.opacity(0.3))
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                                .stroke(command == cmd ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder, lineWidth: 1)
+                                        )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .scaleEffect(command == cmd ? 0.95 : 1.0)
+                                    .animation(Theme.Animation.quick, value: command == cmd)
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                        
+                        Spacer(minLength: 100)
+                    }
+                }
+            }
+            .navigationBarHidden(true)
+            .overlay(alignment: .top) {
+                // Custom Navigation Bar
+                HStack {
+                    Button("Cancel") {
+                        HapticFeedback.impact(.light)
+                        isPresented = false
+                    }
+                    .foregroundColor(Theme.Colors.errorAccent)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        HapticFeedback.impact(.medium)
+                        createSession()
+                    }) {
+                        if isCreating {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.primaryAccent))
+                                .scaleEffect(0.8)
+                        } else {
+                            Text("Create")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .foregroundColor(Theme.Colors.primaryAccent)
+                    .disabled(isCreating || command.isEmpty)
+                }
+                .padding()
+                .background(
+                    Theme.Colors.terminalBackground
+                        .opacity(0.95)
+                        .background(.ultraThinMaterial)
+                        .ignoresSafeArea()
+                )
+            }
+            .onAppear {
+                loadDefaults()
+                focusedField = .command
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+    
+    private var recentCommands: [String] {
+        ["zsh", "bash", "python3", "node", "npm run dev", "irb"]
+    }
+    
+    private func commandIcon(for command: String) -> String {
+        switch command {
+        case "zsh", "bash":
+            return "terminal"
+        case "python3":
+            return "chevron.left.forwardslash.chevron.right"
+        case "node":
+            return "server.rack"
+        case "npm run dev":
+            return "play.circle"
+        case "irb":
+            return "diamond"
+        default:
+            return "terminal"
+        }
+    }
+    
+    private func loadDefaults() {
+        // Load last used values
+        if let lastCommand = UserDefaults.standard.string(forKey: "lastCommand") {
+            command = lastCommand
+        }
+        if let lastDir = UserDefaults.standard.string(forKey: "lastWorkingDir") {
+            workingDirectory = lastDir
+        } else {
+            workingDirectory = NSHomeDirectory()
+        }
+    }
+    
+    private func createSession() {
+        isCreating = true
+        errorMessage = nil
+        
+        // Save preferences
+        UserDefaults.standard.set(command, forKey: "lastCommand")
+        UserDefaults.standard.set(workingDirectory, forKey: "lastWorkingDir")
+        
+        Task {
+            do {
+                let sessionData = SessionCreateData(
+                    command: command,
+                    workingDir: workingDirectory.isEmpty ? NSHomeDirectory() : workingDirectory,
+                    name: sessionName.isEmpty ? nil : sessionName
+                )
+                
+                let sessionId = try await SessionService.shared.createSession(sessionData)
+                
+                await MainActor.run {
+                    onCreated(sessionId)
+                    isPresented = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    isCreating = false
+                }
+            }
+        }
+    }
+}
