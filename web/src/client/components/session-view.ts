@@ -28,7 +28,6 @@ export class SessionView extends LitElement {
   @state() private terminalCols = 0;
   @state() private terminalRows = 0;
   @state() private showCtrlAlpha = false;
-  @state() private terminalFitHorizontally = false;
   @state() private reconnectCount = 0;
   @state() private ctrlSequence: string[] = [];
   @state() private selectedTheme = 'VibeTunnel';
@@ -758,17 +757,6 @@ export class SessionView extends LitElement {
     }
   }
 
-  private handleTerminalFitToggle() {
-    this.terminalFitHorizontally = !this.terminalFitHorizontally;
-    // Find the terminal component and call its handleFitToggle method
-    const terminal = this.querySelector('vibe-terminal') as HTMLElement & {
-      handleFitToggle?: () => void;
-    };
-    if (terminal && terminal.handleFitToggle) {
-      // Use the terminal's own toggle method which handles scroll position correctly
-      terminal.handleFitToggle();
-    }
-  }
 
   private handleThemeToggle() {
     this.showThemeSelector = !this.showThemeSelector;
@@ -1011,7 +999,6 @@ export class SessionView extends LitElement {
                             ${themeName === 'solarized_dark' ? 'Solarized Dark' : 
                              themeName === 'github_light' ? 'GitHub Light' :
                              themeName === 'dracula' ? 'Dracula' :
-                             themeName === 'monokai' ? 'Monokai' :
                              'VibeTunnel'}
                           </div>
                         `
@@ -1020,26 +1007,6 @@ export class SessionView extends LitElement {
                   `
                 : ''}
             </div>
-            
-            <!-- Fit Toggle Button -->
-            <button
-              class="font-mono px-2 py-1 rounded transition-colors text-xs flex-shrink-0"
-              style="background: ${this.getThemeColors().background}; color: ${this.getThemeColors().text}; border: 1px solid ${this.terminalFitHorizontally ? this.getThemeColors().accent : this.getThemeColors().border};"
-              @click=${this.handleTerminalFitToggle}
-              @mouseover=${(e: Event) => {
-                const btn = e.target as HTMLElement;
-                btn.style.background = this.terminalFitHorizontally ? this.getThemeColors().accent : this.getThemeColors().border;
-                btn.style.color = this.getThemeColors().background;
-              }}
-              @mouseout=${(e: Event) => {
-                const btn = e.target as HTMLElement;
-                btn.style.background = this.getThemeColors().background;
-                btn.style.color = this.getThemeColors().text;
-              }}
-              title="Toggle horizontal fit"
-            >
-              ${this.terminalFitHorizontally ? '⇤⇥' : '↔'}
-            </button>
             
             <div class="text-vs-text min-w-0 flex-1 overflow-hidden">
               <div
@@ -1093,10 +1060,9 @@ export class SessionView extends LitElement {
           <!-- Terminal Component -->
           <vibe-terminal
             .sessionId=${this.session?.id || ''}
-            .cols=${120}
-            .rows=${30}
+            .cols=${80}
+            .rows=${24}
             .fontSize=${14}
-            .fitHorizontally=${this.terminalFitHorizontally}
             .themeName=${this.selectedTheme}
             class="w-full h-full"
           ></vibe-terminal>

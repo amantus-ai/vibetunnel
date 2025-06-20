@@ -31,7 +31,10 @@ for (const pathToCheck of possibleTtyFwdPaths) {
 
 if (!TTY_FWD_PATH) {
   console.error('tty-fwd binary not found. Please ensure it is built and available.');
-  process.exit(1);
+  // Temporarily bypass for testing themes
+  // process.exit(1);
+  console.warn('WARNING: Running without tty-fwd - terminal functionality will be limited');
+  TTY_FWD_PATH = 'dummy'; // Set a dummy value to prevent issues
 }
 
 const TTY_FWD_CONTROL_DIR =
