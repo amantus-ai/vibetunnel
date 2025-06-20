@@ -9,6 +9,16 @@ export interface TerminalPreferences {
   fitHorizontally: boolean;
 }
 
+// Common terminal widths
+export const COMMON_TERMINAL_WIDTHS = [
+  { value: 0, label: '∞', description: 'Unlimited (full width)' },
+  { value: 80, label: '80', description: 'Classic terminal' },
+  { value: 100, label: '100', description: 'Modern standard' },
+  { value: 120, label: '120', description: 'Wide terminal' },
+  { value: 132, label: '132', description: 'Mainframe width' },
+  { value: 160, label: '160', description: 'Ultra-wide' },
+] as const;
+
 const DEFAULT_PREFERENCES: TerminalPreferences = {
   maxCols: 0, // No limit by default - take as much as possible
   fontSize: 14,
