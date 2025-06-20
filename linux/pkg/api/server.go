@@ -139,6 +139,14 @@ func (s *Server) createHandler() http.Handler {
 		r.Handle("/buffers", bufferHandler)
 	}
 
+	// RAW WebSocket endpoint for direct PTY streaming (goterm-style)
+	rawHandler := NewRawTerminalWebSocketHandler(s.manager)
+	if s.password != "" {
+		r.Handle("/terminal", s.basicAuthMiddleware(rawHandler))
+	} else {
+		r.Handle("/terminal", rawHandler)
+	}
+
 	if s.staticPath != "" {
 		// Serve static files with index.html fallback for directories
 		r.PathPrefix("/").HandlerFunc(s.serveStaticWithIndex)
@@ -689,6 +697,7 @@ func (s *Server) handleSendInput(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Input string `json:"input"`
 		Text  string `json:"text"` // Alternative field name
+		Key   string `json:"key"`  // Node.js format field name
 		Type  string `json:"type"`
 	}
 
@@ -702,6 +711,9 @@ func (s *Server) handleSendInput(w http.ResponseWriter, r *http.Request) {
 	input := req.Input
 	if input == "" && req.Text != "" {
 		input = req.Text
+	}
+	if input == "" && req.Key != "" {
+		input = req.Key // Support Node.js format: {key: "enter"}
 	}
 
 	// Define special keys exactly as in Swift/macOS version

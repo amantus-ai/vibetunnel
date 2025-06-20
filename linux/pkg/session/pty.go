@@ -279,6 +279,7 @@ func (p *PTY) Pid() int {
 	return 0
 }
 
+
 // runEventDriven runs the PTY using native event-driven I/O (epoll/kqueue)
 func (p *PTY) runEventDriven() error {
 	debugLog("[DEBUG] PTY.runEventDriven: Starting event-driven I/O for session %s", p.session.ID[:8])
@@ -362,8 +363,19 @@ func (p *PTY) runEventDriven() error {
 				for {
 					n, err := syscall.Read(event.FD, ptyBuf)
 					if n > 0 {
-						if err := p.streamWriter.WriteOutput(ptyBuf[:n]); err != nil {
+						outputData := ptyBuf[:n]
+						
+						// Write to asciinema stream file
+						if err := p.streamWriter.WriteOutput(outputData); err != nil {
 							log.Printf("[ERROR] PTY.runEventDriven: Failed to write output: %v", err)
+						}
+						
+						// CRITICAL: Direct streaming like Node.js!
+						// Notify direct output callbacks immediately (no file I/O delay!)
+						if p.session.manager != nil {
+							p.session.manager.NotifyDirectOutput(p.session.ID, outputData)
+							// Also notify raw PTY callbacks for goterm-style direct streaming
+							p.session.manager.NotifyRawPTY(p.session.ID, outputData)
 						}
 					}
 					

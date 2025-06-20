@@ -148,8 +148,8 @@ func (e *epollEventLoop) Run(handler EventHandler) error {
 		default:
 		}
 		
-		// Wait for events with 100ms timeout to check for stop
-		n, err := unix.EpollWait(e.epfd, events, 100)
+		// Wait for events with 1ms timeout for maximum responsiveness
+		n, err := unix.EpollWait(e.epfd, events, 1)
 		
 		if err != nil {
 			if err == unix.EINTR {

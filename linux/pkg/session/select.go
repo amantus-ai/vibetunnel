@@ -133,9 +133,19 @@ func (p *PTY) pollWithSelect() error {
 					return err
 				}
 				if n > 0 {
-					// Write to output
-					if err := p.streamWriter.WriteOutput(buf[:n]); err != nil {
+					outputData := buf[:n]
+					
+					// Write to asciinema stream file
+					if err := p.streamWriter.WriteOutput(outputData); err != nil {
 						log.Printf("[ERROR] Failed to write to stream: %v", err)
+					}
+					
+					// CRITICAL: Direct streaming like Node.js!
+					// Notify direct output callbacks immediately (no file I/O delay!)
+					if p.session.manager != nil {
+						p.session.manager.NotifyDirectOutput(p.session.ID, outputData)
+						// Also notify raw PTY callbacks for goterm-style direct streaming
+						p.session.manager.NotifyRawPTY(p.session.ID, outputData)
 					}
 				}
 

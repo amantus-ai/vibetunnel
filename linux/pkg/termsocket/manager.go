@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/vibetunnel/linux/pkg/session"
 	"github.com/vibetunnel/linux/pkg/terminal"
 )
@@ -20,6 +19,9 @@ type SessionBuffer struct {
 	Session *session.Session
 	Buffer  *terminal.TerminalBuffer
 	mu      sync.RWMutex
+	lastSnapshot *terminal.BufferSnapshot // Cache last snapshot to avoid duplicates
+	
+	// Simplified like Node.js - no complex animation detection needed
 }
 
 // Manager manages terminal buffers for sessions
@@ -31,15 +33,19 @@ type Manager struct {
 	subMu          sync.RWMutex
 	shutdownCh     chan struct{}
 	wg             sync.WaitGroup
+	// Debounce timers for buffer notifications (like TypeScript version)
+	notificationTimers map[string]*time.Timer
+	timerMu           sync.RWMutex
 }
 
 // NewManager creates a new terminal socket manager
 func NewManager(sessionManager *session.Manager) *Manager {
 	return &Manager{
-		sessionManager: sessionManager,
-		buffers:        make(map[string]*SessionBuffer),
-		subscribers:    make(map[string][]chan *terminal.BufferSnapshot),
-		shutdownCh:     make(chan struct{}),
+		sessionManager:     sessionManager,
+		buffers:            make(map[string]*SessionBuffer),
+		subscribers:        make(map[string][]chan *terminal.BufferSnapshot),
+		shutdownCh:         make(chan struct{}),
+		notificationTimers: make(map[string]*time.Timer),
 	}
 }
 
@@ -148,98 +154,48 @@ func (m *Manager) SubscribeToBufferChanges(sessionID string, callback func(strin
 
 // monitorSession monitors a session's output and updates the terminal buffer
 func (m *Manager) monitorSession(sessionID string, sb *SessionBuffer) {
-	streamPath := sb.Session.StreamOutPath()
-	lastPos := int64(0)
-
-	// Try to use file watching
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Printf("Failed to create file watcher, using polling: %v", err)
-		m.monitorSessionPolling(sessionID, sb)
-		return
-	}
-	defer watcher.Close()
-
-	// Wait for stream file to exist
-	for i := 0; i < 50; i++ { // Wait up to 5 seconds
-		if _, err := os.Stat(streamPath); err == nil {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	// Add file to watcher
-	if err := watcher.Add(streamPath); err != nil {
-		log.Printf("Failed to watch file %s, using polling: %v", streamPath, err)
-		m.monitorSessionPolling(sessionID, sb)
-		return
-	}
-
-	// Read initial content
-	if update, newPos, err := readStreamContent(streamPath, lastPos); err == nil && update != nil {
-		if len(update.OutputData) > 0 || update.Resize != nil {
+	// CRITICAL PERFORMANCE FIX: Use direct PTY callbacks like Node.js!
+	// No more file watching - direct memory streaming!
+	
+	// Register for direct PTY output callbacks (like Node.js PTY events)
+	if sessionManager := m.sessionManager; sessionManager != nil {
+		sessionManager.RegisterDirectOutputCallback(sessionID, func(sid string, data []byte) {
+			// Process PTY output immediately (no file I/O delay!)
 			sb.mu.Lock()
-			if len(update.OutputData) > 0 {
-				sb.Buffer.Write(update.OutputData)
-			}
-			if update.Resize != nil {
-				sb.Buffer.Resize(update.Resize.Width, update.Resize.Height)
-			}
-			snapshot := sb.Buffer.GetSnapshot()
+			
+			// Simple approach like Node.js: just write and debounce
+			sb.Buffer.Write(data)
 			sb.mu.Unlock()
-			m.notifySubscribers(sessionID, snapshot)
-			lastPos = newPos
-		}
+			
+			// Schedule debounced notification (like Node.js 50ms debouncing)
+			m.scheduleBufferNotification(sessionID, sb)
+		})
 	}
 
-	// Monitor for changes
+	// Monitor session status
 	sessionCheckTicker := time.NewTicker(5 * time.Second)
 	defer sessionCheckTicker.Stop()
 
 	for {
 		select {
-		case event, ok := <-watcher.Events:
-			if !ok {
-				return
-			}
-
-			if event.Op&fsnotify.Write == fsnotify.Write {
-				// Read new content
-				update, newPos, err := readStreamContent(streamPath, lastPos)
-				if err != nil {
-					log.Printf("Error reading stream content: %v", err)
-					continue
-				}
-
-				if update != nil && (len(update.OutputData) > 0 || update.Resize != nil) {
-					// Update buffer
-					sb.mu.Lock()
-					if len(update.OutputData) > 0 {
-						sb.Buffer.Write(update.OutputData)
-					}
-					if update.Resize != nil {
-						sb.Buffer.Resize(update.Resize.Width, update.Resize.Height)
-					}
-					snapshot := sb.Buffer.GetSnapshot()
-					sb.mu.Unlock()
-
-					// Notify subscribers
-					m.notifySubscribers(sessionID, snapshot)
-				}
-
-				lastPos = newPos
-			}
-
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return
-			}
-			log.Printf("File watcher error: %v", err)
-
 		case <-sessionCheckTicker.C:
 			// Check if session is still alive
 			if !sb.Session.IsAlive() {
-				// Clean up when session ends
+				// Unregister callback and clean up when session ends
+				if sessionManager := m.sessionManager; sessionManager != nil {
+					sessionManager.UnregisterDirectOutputCallback(sessionID, nil)
+				}
+				
+				// Clean up notification timer
+				m.timerMu.Lock()
+				if timer, exists := m.notificationTimers[sessionID]; exists && timer != nil {
+					timer.Stop()
+					delete(m.notificationTimers, sessionID)
+				}
+				m.timerMu.Unlock()
+				
+				// No animation timer to clean up (simplified approach)
+				
 				m.mu.Lock()
 				delete(m.buffers, sessionID)
 				m.mu.Unlock()
@@ -248,6 +204,20 @@ func (m *Manager) monitorSession(sessionID string, sb *SessionBuffer) {
 
 		case <-m.shutdownCh:
 			// Manager is shutting down
+			if sessionManager := m.sessionManager; sessionManager != nil {
+				sessionManager.UnregisterDirectOutputCallback(sessionID, nil)
+			}
+			
+			// Clean up notification timer
+			m.timerMu.Lock()
+			if timer, exists := m.notificationTimers[sessionID]; exists && timer != nil {
+				timer.Stop()
+				delete(m.notificationTimers, sessionID)
+			}
+			m.timerMu.Unlock()
+			
+			// No animation timer to clean up (simplified approach)
+			
 			return
 		}
 	}
@@ -303,6 +273,50 @@ func (m *Manager) monitorSessionPolling(sessionID string, sb *SessionBuffer) {
 	m.mu.Lock()
 	delete(m.buffers, sessionID)
 	m.mu.Unlock()
+}
+
+// scheduleBufferNotification schedules a debounced buffer notification (like TypeScript version)
+func (m *Manager) scheduleBufferNotification(sessionID string, sb *SessionBuffer) {
+	m.timerMu.Lock()
+	defer m.timerMu.Unlock()
+	
+	// Cancel existing timer if any
+	if timer, exists := m.notificationTimers[sessionID]; exists && timer != nil {
+		timer.Stop()
+	}
+	
+	// Schedule new notification in 50ms (only for non-animation content)
+	m.notificationTimers[sessionID] = time.AfterFunc(50*time.Millisecond, func() {
+		// Get fresh snapshot (vt10x-style with built-in deduplication)
+		sb.mu.Lock()
+		snapshot := sb.Buffer.GetSnapshot()
+		
+		// vt10x-style deduplication: The buffer itself handles change detection
+		hasChanged := true
+		if sb.lastSnapshot != nil && snapshot != nil {
+			// Compare sequence IDs (if same, it's a duplicate)
+			if sb.lastSnapshot.SequenceID == snapshot.SequenceID {
+				hasChanged = false
+			} else if snapshot.ChangeFlags == 0 && len(snapshot.ChangedLines) == 0 {
+				// No changes detected by the buffer itself
+				hasChanged = false
+			}
+		}
+		
+		// Cache the snapshot  
+		sb.lastSnapshot = snapshot
+		sb.mu.Unlock()
+		
+		// Only notify if something actually changed (vt10x pattern)
+		if hasChanged {
+			m.notifySubscribers(sessionID, snapshot)
+		}
+		
+		// Clean up timer
+		m.timerMu.Lock()
+		delete(m.notificationTimers, sessionID)
+		m.timerMu.Unlock()
+	})
 }
 
 // notifySubscribers sends buffer updates to all subscribers

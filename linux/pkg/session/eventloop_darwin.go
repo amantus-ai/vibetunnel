@@ -140,10 +140,10 @@ func (e *kqueueEventLoop) Run(handler EventHandler) error {
 		default:
 		}
 		
-		// Wait for events with 100ms timeout to check for stop
+		// Wait for events with 1ms timeout for maximum responsiveness
 		n, err := unix.Kevent(e.kq, nil, events, &unix.Timespec{
 			Sec:  0,
-			Nsec: 100 * 1000 * 1000, // 100ms
+			Nsec: 1 * 1000 * 1000, // 1ms for near-instant response
 		})
 		
 		if err != nil {

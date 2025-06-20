@@ -3,6 +3,7 @@ package session
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -32,13 +33,20 @@ func configurePTYTerminal(ptyFile *os.File) error {
 	// Match node-pty's default behavior: keep most settings from the parent terminal
 	// but ensure proper signal handling and character processing
 
-	// Ensure proper input processing to match node-pty behavior
-	// ICRNL: Map CR to NL on input (important for Enter key)
+	// Configure input processing to match node-pty behavior exactly
+	// ICRNL: Map CR to NL on input (node-pty enables this!)
 	// IXON: Enable XON/XOFF flow control on output
 	// IXANY: Allow any character to restart output
 	// IMAXBEL: Ring bell on input queue full
 	// BRKINT: Send SIGINT on break
 	termios.Iflag |= unix.ICRNL | unix.IXON | unix.IXANY | unix.IMAXBEL | unix.BRKINT
+	
+	// Enable IUTF8 if available (node-pty enables this on newer systems)
+	if runtime.GOOS == "linux" {
+		// IUTF8 is a Linux-specific flag for UTF-8 input processing
+		const IUTF8 = 0x00004000
+		termios.Iflag |= IUTF8
+	}
 	// Note: We KEEP flow control enabled to match node-pty behavior
 
 	// Configure output flags

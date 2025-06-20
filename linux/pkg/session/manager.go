@@ -13,17 +13,23 @@ import (
 	"syscall"
 )
 
+// DirectOutputCallback is called when PTY output is available
+type DirectOutputCallback func(sessionID string, data []byte)
+
 type Manager struct {
 	controlPath         string
 	runningSessions     map[string]*Session
 	mutex               sync.RWMutex
 	doNotAllowColumnSet bool
+	directOutputCallbacks map[string][]DirectOutputCallback
+	callbackMutex       sync.RWMutex
 }
 
 func NewManager(controlPath string) *Manager {
 	return &Manager{
-		controlPath:     controlPath,
-		runningSessions: make(map[string]*Session),
+		controlPath:           controlPath,
+		runningSessions:       make(map[string]*Session),
+		directOutputCallbacks: make(map[string][]DirectOutputCallback),
 	}
 }
 
@@ -263,6 +269,76 @@ func (m *Manager) RemoveSession(id string) error {
 	delete(m.runningSessions, id)
 	m.mutex.Unlock()
 
+	// Remove direct output callbacks
+	m.callbackMutex.Lock()
+	delete(m.directOutputCallbacks, id)
+	m.callbackMutex.Unlock()
+
 	sessionPath := filepath.Join(m.controlPath, id)
 	return os.RemoveAll(sessionPath)
+}
+
+// RegisterDirectOutputCallback registers a callback for direct PTY output (like Node.js)
+func (m *Manager) RegisterDirectOutputCallback(sessionID string, callback DirectOutputCallback) {
+	m.callbackMutex.Lock()
+	defer m.callbackMutex.Unlock()
+	
+	m.directOutputCallbacks[sessionID] = append(m.directOutputCallbacks[sessionID], callback)
+}
+
+// UnregisterDirectOutputCallback removes a callback for direct PTY output
+func (m *Manager) UnregisterDirectOutputCallback(sessionID string, callback DirectOutputCallback) {
+	m.callbackMutex.Lock()
+	defer m.callbackMutex.Unlock()
+	
+	callbacks := m.directOutputCallbacks[sessionID]
+	for i, cb := range callbacks {
+		// Compare function pointers (this is tricky, so we'll use a different approach)
+		// For now, we'll clear all callbacks when unregistering
+		_ = cb
+		if i == 0 {
+			m.directOutputCallbacks[sessionID] = nil
+			break
+		}
+	}
+}
+
+// NotifyDirectOutput notifies all registered callbacks of new PTY output (like Node.js)
+func (m *Manager) NotifyDirectOutput(sessionID string, data []byte) {
+	m.callbackMutex.RLock()
+	callbacks := m.directOutputCallbacks[sessionID]
+	m.callbackMutex.RUnlock()
+	
+	// Call all registered callbacks immediately (like Node.js PTY events)
+	for _, callback := range callbacks {
+		go callback(sessionID, data) // Non-blocking to prevent slowdowns
+	}
+}
+
+// RegisterRawPTYCallback registers a callback for raw PTY bytes (goterm-style)
+type RawPTYCallback func(sessionID string, data []byte)
+
+var rawPTYCallbacks = make(map[string][]RawPTYCallback)
+var rawCallbackMutex sync.RWMutex
+
+func (m *Manager) RegisterRawPTYCallback(sessionID string, callback RawPTYCallback) {
+	rawCallbackMutex.Lock()
+	defer rawCallbackMutex.Unlock()
+	rawPTYCallbacks[sessionID] = append(rawPTYCallbacks[sessionID], callback)
+}
+
+func (m *Manager) UnregisterRawPTYCallback(sessionID string) {
+	rawCallbackMutex.Lock()
+	defer rawCallbackMutex.Unlock()
+	delete(rawPTYCallbacks, sessionID)
+}
+
+func (m *Manager) NotifyRawPTY(sessionID string, data []byte) {
+	rawCallbackMutex.RLock()
+	callbacks := rawPTYCallbacks[sessionID]
+	rawCallbackMutex.RUnlock()
+	
+	for _, callback := range callbacks {
+		callback(sessionID, data) // Direct call - no goroutine for raw speed
+	}
 }

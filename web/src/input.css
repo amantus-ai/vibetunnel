@@ -1,0 +1,749 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global dark theme styles */
+@layer base {
+  body {
+    @apply bg-dark-bg text-dark-text;
+  }
+
+  /* Default focus styles */
+  :focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.3);
+  }
+}
+
+/* Custom components */
+@layer components {
+  /* Glowing terminal icon */
+  .terminal-icon {
+    @apply text-accent-green;
+    filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.6));
+  }
+
+  /* Input fields with glow effect */
+  .input-field {
+    @apply bg-dark-bg-secondary border border-dark-border rounded-lg px-4 py-3 text-dark-text w-full;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:border-accent-green-darker focus:border-accent-green;
+    @apply focus:shadow-glow-green-sm;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply bg-accent-green text-dark-bg font-medium px-6 py-3 rounded-lg;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:bg-accent-green-light hover:shadow-glow-green;
+    @apply active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply border border-accent-green text-accent-green px-6 py-3 rounded-lg;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:bg-accent-green hover:text-dark-bg hover:shadow-glow-green;
+    @apply active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply text-dark-text-muted px-4 py-2 rounded-lg;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:text-dark-text hover:bg-dark-bg-tertiary;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-dark-bg-secondary border border-dark-border rounded-lg p-6;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:border-accent-green-darker hover:shadow-glow-green-sm;
+  }
+
+  /* Quick start buttons */
+  .quick-start-btn {
+    @apply bg-dark-bg-tertiary border border-dark-border rounded-lg px-4 py-3 h-12;
+    @apply transition-all duration-200 ease-in-out text-dark-text-muted;
+    @apply hover:border-accent-green hover:text-accent-green hover:shadow-glow-green-sm;
+    @apply active:scale-95;
+  }
+
+  .quick-start-btn.active {
+    @apply bg-accent-green text-dark-bg border-accent-green shadow-glow-green-sm;
+  }
+
+  /* Modal backdrop */
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black bg-opacity-80 z-40;
+    backdrop-filter: blur(4px);
+  }
+
+  /* Modal content */
+  .modal-content {
+    @apply bg-dark-bg-secondary border border-dark-border rounded-xl p-8;
+    @apply shadow-2xl shadow-black/50;
+  }
+
+  /* Labels */
+  .form-label {
+    @apply text-dark-text-muted text-sm font-medium mb-2 flex items-center gap-2;
+  }
+}
+
+/* Fira Code Variable Font */
+@font-face {
+  font-family: 'Fira Code';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src:
+    url('/fonts/FiraCode-VF.woff2') format('woff2-variations'),
+    url('/fonts/FiraCode-VF.ttf') format('truetype-variations');
+  font-variation-settings: 'wght' 400;
+}
+
+/* Hack Nerd Font */
+@font-face {
+  font-family: 'Hack Nerd Font Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/HackNerdFontMono-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Hack Nerd Font Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/HackNerdFontMono-Bold.ttf') format('truetype');
+}
+
+/* Override Tailwind's font-mono to use Hack Nerd Font */
+.font-mono {
+  font-family:
+    'Hack Nerd Font Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas,
+    'Liberation Mono', Menlo, monospace !important;
+}
+
+/* Mobile scroll and touch behavior fixes */
+html,
+body {
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent pull-to-refresh on mobile */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Terminal-specific touch handling */
+.xterm {
+  touch-action: pan-y;
+  overscroll-behavior: none;
+}
+
+.xterm .xterm-viewport {
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+}
+
+/* Fix XTerm text span touch scrolling issues */
+.xterm .xterm-rows span {
+  touch-action: pan-y;
+}
+
+.xterm .xterm-screen {
+  touch-action: pan-y;
+}
+
+/* More aggressive fix for session cards (read-only snapshots) */
+.session-preview .xterm .xterm-rows span {
+  pointer-events: none;
+  touch-action: pan-y;
+}
+
+/* Terminal container scroll prevention */
+#terminal-container {
+  touch-action: pan-y;
+  overscroll-behavior: none;
+}
+
+/* Session cards - prevent pull-to-refresh */
+.session-card {
+  overscroll-behavior: none;
+}
+
+/* App header - prevent pull-to-refresh when scrolling starts from header */
+.app-header {
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+}
+
+/* XTerm terminal styling */
+.xterm {
+  padding: 0 !important;
+  font-family:
+    'Hack Nerd Font Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas,
+    'Liberation Mono', Menlo, monospace !important;
+  font-variant-ligatures: none;
+  font-feature-settings:
+    'liga' 0,
+    'clig' 0,
+    'calt' 0;
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Terminal container styling */
+.terminal-container {
+  color: #e4e4e4;
+  white-space: pre;
+  overflow: hidden;
+  background-color: #0a0a0a;
+}
+
+/* Terminal line styling */
+.terminal-line {
+  display: block;
+  white-space: pre;
+  overflow: hidden;
+}
+
+/* Terminal character specific styling */
+.terminal-char {
+  display: inline-block;
+  font-family: inherit;
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0;
+  white-space: pre;
+}
+
+/* Terminal text decoration support */
+.terminal-char.bold {
+  font-weight: bold;
+}
+
+.terminal-char.italic {
+  font-style: italic;
+}
+
+.terminal-char.underline {
+  text-decoration: underline;
+}
+
+.terminal-char.dim {
+  opacity: 0.5;
+}
+
+.terminal-char.strikethrough {
+  text-decoration: line-through;
+}
+
+.terminal-char.overline {
+  text-decoration: overline;
+}
+
+.terminal-char.inverse {
+  filter: invert(1);
+}
+
+.terminal-char.invisible {
+  opacity: 0;
+}
+
+/* Cursor styling */
+.terminal-char.cursor {
+  animation: cursor-blink 1s infinite;
+}
+
+@keyframes cursor-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0.3;
+  }
+}
+
+.xterm .xterm-viewport {
+  background-color: transparent !important;
+}
+
+/* Ensure terminal container has proper size */
+#terminal-player,
+#interactive-terminal {
+  min-height: 480px;
+  min-width: 640px;
+  width: 100%;
+}
+
+/* Terminal focus indicator */
+.terminal-focused {
+  box-shadow: 0 0 0 2px #00ff88;
+  border-color: #00ff88 !important;
+}
+
+/* Keyboard capture indicator */
+.keyboard-capture-indicator {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid #00ff88;
+  color: #00ff88;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+}
+
+/* Force XTerm terminal to fit within session card bounds */
+.session-preview .xterm {
+  min-width: unset !important;
+  min-height: unset !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+.session-preview .xterm .xterm-screen {
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+.session-preview .xterm .xterm-viewport {
+  overflow: hidden !important;
+}
+
+.xterm .xterm-helper-textarea {
+  opacity: 0 !important;
+}
+
+/* Terminal color palette - Bright colors for dark backgrounds */
+:root {
+  --terminal-color-0: #000000;
+  --terminal-color-1: #f14c4c;
+  --terminal-color-2: #23d18b;
+  --terminal-color-3: #f5f543;
+  --terminal-color-4: #3b8eea;
+  --terminal-color-5: #d670d6;
+  --terminal-color-6: #29b8db;
+  --terminal-color-7: #e5e5e5;
+  --terminal-color-8: #666666;
+  --terminal-color-9: #ff6b6b;
+  --terminal-color-10: #5af78e;
+  --terminal-color-11: #f4f99d;
+  --terminal-color-12: #70a5ed;
+  --terminal-color-13: #d670d6;
+  --terminal-color-14: #5fb3d3;
+  --terminal-color-15: #ffffff;
+  --terminal-color-16: #000000;
+  --terminal-color-17: #00005f;
+  --terminal-color-18: #000087;
+  --terminal-color-19: #0000af;
+  --terminal-color-20: #0000d7;
+  --terminal-color-21: #0000ff;
+  --terminal-color-22: #005f00;
+  --terminal-color-23: #005f5f;
+  --terminal-color-24: #005f87;
+  --terminal-color-25: #005faf;
+  --terminal-color-26: #005fd7;
+  --terminal-color-27: #005fff;
+  --terminal-color-28: #008700;
+  --terminal-color-29: #00875f;
+  --terminal-color-30: #008787;
+  --terminal-color-31: #0087af;
+  --terminal-color-32: #0087d7;
+  --terminal-color-33: #0087ff;
+  --terminal-color-34: #00af00;
+  --terminal-color-35: #00af5f;
+  --terminal-color-36: #00af87;
+  --terminal-color-37: #00afaf;
+  --terminal-color-38: #00afd7;
+  --terminal-color-39: #00afff;
+  --terminal-color-40: #00d700;
+  --terminal-color-41: #00d75f;
+  --terminal-color-42: #00d787;
+  --terminal-color-43: #00d7af;
+  --terminal-color-44: #00d7d7;
+  --terminal-color-45: #00d7ff;
+  --terminal-color-46: #00ff00;
+  --terminal-color-47: #00ff5f;
+  --terminal-color-48: #00ff87;
+  --terminal-color-49: #00ffaf;
+  --terminal-color-50: #00ffd7;
+  --terminal-color-51: #00ffff;
+  --terminal-color-52: #5f0000;
+  --terminal-color-53: #5f005f;
+  --terminal-color-54: #5f0087;
+  --terminal-color-55: #5f00af;
+  --terminal-color-56: #5f00d7;
+  --terminal-color-57: #5f00ff;
+  --terminal-color-58: #5f5f00;
+  --terminal-color-59: #5f5f5f;
+  --terminal-color-60: #5f5f87;
+  --terminal-color-61: #5f5faf;
+  --terminal-color-62: #5f5fd7;
+  --terminal-color-63: #5f5fff;
+  --terminal-color-64: #5f8700;
+  --terminal-color-65: #5f875f;
+  --terminal-color-66: #5f8787;
+  --terminal-color-67: #5f87af;
+  --terminal-color-68: #5f87d7;
+  --terminal-color-69: #5f87ff;
+  --terminal-color-70: #5faf00;
+  --terminal-color-71: #5faf5f;
+  --terminal-color-72: #5faf87;
+  --terminal-color-73: #5fafaf;
+  --terminal-color-74: #5fafd7;
+  --terminal-color-75: #5fafff;
+  --terminal-color-76: #5fd700;
+  --terminal-color-77: #5fd75f;
+  --terminal-color-78: #5fd787;
+  --terminal-color-79: #5fd7af;
+  --terminal-color-80: #5fd7d7;
+  --terminal-color-81: #5fd7ff;
+  --terminal-color-82: #5fff00;
+  --terminal-color-83: #5fff5f;
+  --terminal-color-84: #5fff87;
+  --terminal-color-85: #5fffaf;
+  --terminal-color-86: #5fffd7;
+  --terminal-color-87: #5fffff;
+  --terminal-color-88: #870000;
+  --terminal-color-89: #87005f;
+  --terminal-color-90: #870087;
+  --terminal-color-91: #8700af;
+  --terminal-color-92: #8700d7;
+  --terminal-color-93: #8700ff;
+  --terminal-color-94: #875f00;
+  --terminal-color-95: #875f5f;
+  --terminal-color-96: #875f87;
+  --terminal-color-97: #875faf;
+  --terminal-color-98: #875fd7;
+  --terminal-color-99: #875fff;
+  --terminal-color-100: #878700;
+  --terminal-color-101: #87875f;
+  --terminal-color-102: #878787;
+  --terminal-color-103: #8787af;
+  --terminal-color-104: #8787d7;
+  --terminal-color-105: #8787ff;
+  --terminal-color-106: #87af00;
+  --terminal-color-107: #87af5f;
+  --terminal-color-108: #87af87;
+  --terminal-color-109: #87afaf;
+  --terminal-color-110: #87afd7;
+  --terminal-color-111: #87afff;
+  --terminal-color-112: #87d700;
+  --terminal-color-113: #87d75f;
+  --terminal-color-114: #87d787;
+  --terminal-color-115: #87d7af;
+  --terminal-color-116: #87d7d7;
+  --terminal-color-117: #87d7ff;
+  --terminal-color-118: #87ff00;
+  --terminal-color-119: #87ff5f;
+  --terminal-color-120: #87ff87;
+  --terminal-color-121: #87ffaf;
+  --terminal-color-122: #87ffd7;
+  --terminal-color-123: #87ffff;
+  --terminal-color-124: #af0000;
+  --terminal-color-125: #af005f;
+  --terminal-color-126: #af0087;
+  --terminal-color-127: #af00af;
+  --terminal-color-128: #af00d7;
+  --terminal-color-129: #af00ff;
+  --terminal-color-130: #af5f00;
+  --terminal-color-131: #af5f5f;
+  --terminal-color-132: #af5f87;
+  --terminal-color-133: #af5faf;
+  --terminal-color-134: #af5fd7;
+  --terminal-color-135: #af5fff;
+  --terminal-color-136: #af8700;
+  --terminal-color-137: #af875f;
+  --terminal-color-138: #af8787;
+  --terminal-color-139: #af87af;
+  --terminal-color-140: #af87d7;
+  --terminal-color-141: #af87ff;
+  --terminal-color-142: #afaf00;
+  --terminal-color-143: #afaf5f;
+  --terminal-color-144: #afaf87;
+  --terminal-color-145: #afafaf;
+  --terminal-color-146: #afafd7;
+  --terminal-color-147: #afafff;
+  --terminal-color-148: #afd700;
+  --terminal-color-149: #afd75f;
+  --terminal-color-150: #afd787;
+  --terminal-color-151: #afd7af;
+  --terminal-color-152: #afd7d7;
+  --terminal-color-153: #afd7ff;
+  --terminal-color-154: #afff00;
+  --terminal-color-155: #afff5f;
+  --terminal-color-156: #afff87;
+  --terminal-color-157: #afffaf;
+  --terminal-color-158: #afffd7;
+  --terminal-color-159: #afffff;
+  --terminal-color-160: #d70000;
+  --terminal-color-161: #d7005f;
+  --terminal-color-162: #d70087;
+  --terminal-color-163: #d700af;
+  --terminal-color-164: #d700d7;
+  --terminal-color-165: #d700ff;
+  --terminal-color-166: #d75f00;
+  --terminal-color-167: #d75f5f;
+  --terminal-color-168: #d75f87;
+  --terminal-color-169: #d75faf;
+  --terminal-color-170: #d75fd7;
+  --terminal-color-171: #d75fff;
+  --terminal-color-172: #d78700;
+  --terminal-color-173: #d7875f;
+  --terminal-color-174: #d78787;
+  --terminal-color-175: #d787af;
+  --terminal-color-176: #d787d7;
+  --terminal-color-177: #d787ff;
+  --terminal-color-178: #d7af00;
+  --terminal-color-179: #d7af5f;
+  --terminal-color-180: #d7af87;
+  --terminal-color-181: #d7afaf;
+  --terminal-color-182: #d7afd7;
+  --terminal-color-183: #d7afff;
+  --terminal-color-184: #d7d700;
+  --terminal-color-185: #d7d75f;
+  --terminal-color-186: #d7d787;
+  --terminal-color-187: #d7d7af;
+  --terminal-color-188: #d7d7d7;
+  --terminal-color-189: #d7d7ff;
+  --terminal-color-190: #d7ff00;
+  --terminal-color-191: #d7ff5f;
+  --terminal-color-192: #d7ff87;
+  --terminal-color-193: #d7ffaf;
+  --terminal-color-194: #d7ffd7;
+  --terminal-color-195: #d7ffff;
+  --terminal-color-196: #ff0000;
+  --terminal-color-197: #ff005f;
+  --terminal-color-198: #ff0087;
+  --terminal-color-199: #ff00af;
+  --terminal-color-200: #ff00d7;
+  --terminal-color-201: #ff00ff;
+  --terminal-color-202: #ff5f00;
+  --terminal-color-203: #ff5f5f;
+  --terminal-color-204: #ff5f87;
+  --terminal-color-205: #ff5faf;
+  --terminal-color-206: #ff5fd7;
+  --terminal-color-207: #ff5fff;
+  --terminal-color-208: #ff8700;
+  --terminal-color-209: #ff875f;
+  --terminal-color-210: #ff8787;
+  --terminal-color-211: #ff87af;
+  --terminal-color-212: #ff87d7;
+  --terminal-color-213: #ff87ff;
+  --terminal-color-214: #ffaf00;
+  --terminal-color-215: #ffaf5f;
+  --terminal-color-216: #ffaf87;
+  --terminal-color-217: #ffafaf;
+  --terminal-color-218: #ffafd7;
+  --terminal-color-219: #ffafff;
+  --terminal-color-220: #ffd700;
+  --terminal-color-221: #ffd75f;
+  --terminal-color-222: #ffd787;
+  --terminal-color-223: #ffd7af;
+  --terminal-color-224: #ffd7d7;
+  --terminal-color-225: #ffd7ff;
+  --terminal-color-226: #ffff00;
+  --terminal-color-227: #ffff5f;
+  --terminal-color-228: #ffff87;
+  --terminal-color-229: #ffffaf;
+  --terminal-color-230: #ffffd7;
+  --terminal-color-231: #ffffff;
+  --terminal-color-232: #080808;
+  --terminal-color-233: #121212;
+  --terminal-color-234: #1c1c1c;
+  --terminal-color-235: #262626;
+  --terminal-color-236: #303030;
+  --terminal-color-237: #3a3a3a;
+  --terminal-color-238: #444444;
+  --terminal-color-239: #4e4e4e;
+  --terminal-color-240: #585858;
+  --terminal-color-241: #626262;
+  --terminal-color-242: #6c6c6c;
+  --terminal-color-243: #767676;
+  --terminal-color-244: #808080;
+  --terminal-color-245: #8a8a8a;
+  --terminal-color-246: #949494;
+  --terminal-color-247: #9e9e9e;
+  --terminal-color-248: #a8a8a8;
+  --terminal-color-249: #b2b2b2;
+  --terminal-color-250: #bcbcbc;
+  --terminal-color-251: #c6c6c6;
+  --terminal-color-252: #d0d0d0;
+  --terminal-color-253: #dadada;
+  --terminal-color-254: #e4e4e4;
+  --terminal-color-255: #eeeeee;
+}
+
+/* Terminal link styling */
+.terminal-link {
+  color: #4fc3f7;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.terminal-link:hover {
+  background-color: rgba(79, 195, 247, 0.2);
+}
+
+/* Scroll to bottom button */
+.scroll-to-bottom {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  width: 48px;
+  height: 48px;
+  background: rgba(26, 26, 26, 0.9);
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #e4e4e4;
+  font-size: 24px;
+  transition: all 0.2s ease;
+  user-select: none;
+  z-index: 10;
+}
+
+.scroll-to-bottom:hover {
+  background: rgba(26, 26, 26, 1);
+  border-color: #00ff88;
+  color: #00ff88;
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.scroll-to-bottom:active {
+  transform: translateY(0px);
+}
+
+/* Debug overlay */
+.debug-overlay {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(26, 26, 26, 0.9);
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: #e4e4e4;
+  user-select: none;
+  z-index: 10;
+  line-height: 1.4;
+}
+
+.debug-overlay .metric {
+  display: flex;
+  justify-content: space-between;
+  min-width: 120px;
+}
+
+.debug-overlay .metric-label {
+  opacity: 0.7;
+}
+
+.debug-overlay .metric-value {
+  font-weight: bold;
+  margin-left: 8px;
+}
+
+/* Fit toggle button */
+.fit-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 48px;
+  height: 48px;
+  background: rgba(26, 26, 26, 0.9);
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #e4e4e4;
+  font-size: 20px;
+  transition: all 0.2s ease;
+  user-select: none;
+  z-index: 10;
+}
+
+.fit-toggle:hover {
+  background: rgba(26, 26, 26, 1);
+  border-color: #00ff88;
+  color: #00ff88;
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.fit-toggle:active {
+  transform: translateY(0px);
+}
+
+.fit-toggle.active {
+  border-color: #00ff88;
+  color: #00ff88;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+/* View Transitions */
+@supports (view-transition-name: none) {
+  ::view-transition {
+    /* Set the transition duration to 0.1s as requested */
+    --transition-duration: 100ms;
+  }
+
+  ::view-transition-group(*) {
+    animation-duration: var(--transition-duration);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: var(--transition-duration);
+    mix-blend-mode: normal;
+  }
+
+  /* Specific styling for terminal transitions */
+  ::view-transition-old(terminal-*) {
+    animation: view-transition-fade-out var(--transition-duration) cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  ::view-transition-new(terminal-*) {
+    animation: view-transition-fade-in var(--transition-duration) cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes view-transition-fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes view-transition-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
