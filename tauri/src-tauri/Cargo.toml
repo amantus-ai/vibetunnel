@@ -1,0 +1,97 @@
+[package]
+name = "vibetunnel"
+version = "0.1.0"
+description = "VibeTunnel - Cross-platform terminal session manager"
+authors = ["VibeTunnel Team"]
+edition = "2021"
+
+[package.metadata.bundle]
+identifier = "com.vibetunnel.app"
+copyright = "Copyright © 2024 VibeTunnel Team"
+category = "DeveloperTool"
+short_description = "Terminal session manager with remote access"
+long_description = "VibeTunnel is a powerful terminal session manager that allows you to create, manage, and share terminal sessions. Features include multiple concurrent sessions, remote access capabilities, and a modern web-based interface."
+
+[lib]
+name = "tauri_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0.3", features = [] }
+
+[dependencies]
+tauri = { version = "2.1.1", features = ["unstable", "devtools", "image-png", "image-ico", "tray-icon"] }
+tauri-plugin-shell = "2.1.0"
+tauri-plugin-dialog = "2.0.3"
+tauri-plugin-process = "2.0.1"
+tauri-plugin-fs = "2.0.3"
+tauri-plugin-http = "2.0.3"
+tauri-plugin-notification = "2.0.1"
+tauri-plugin-updater = "2.0.2"
+tauri-plugin-window-state = "2.0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Terminal handling
+portable-pty = "0.8"
+bytes = "1"
+futures = "0.3"
+
+# WebSocket server
+tokio-tungstenite = "0.24"
+tungstenite = "0.24"
+
+# SSE streaming
+async-stream = "0.3"
+tokio-stream = "0.1"
+
+# HTTP server
+axum = { version = "0.7", features = ["ws"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["fs", "cors"] }
+
+# Settings and storage
+directories = "5"
+toml = "0.8"
+
+# Utilities
+open = "5"
+
+# File system
+dirs = "5"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Auto-launch
+auto-launch = "0.5"
+
+# System info
+whoami = "1"
+hostname = "0.4"
+
+# ngrok integration
+which = "7"
+reqwest = { version = "0.12", features = ["json"] }
+
+# Authentication
+base64 = "0.22"
+sha2 = "0.10"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2.0.1"
+
+# Platform-specific dependencies
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

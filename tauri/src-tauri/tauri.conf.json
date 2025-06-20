@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "VibeTunnel",
+  "identifier": "com.vibetunnel.app",
+  "build": {
+    "beforeDevCommand": "",
+    "devUrl": "http://localhost:4020",
+    "beforeBuildCommand": "",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [{
+      "title": "VibeTunnel",
+      "width": 400,
+      "height": 500,
+      "resizable": false,
+      "fullscreen": false,
+      "decorations": true,
+      "transparent": false,
+      "skipTaskbar": true,
+      "visible": false,
+      "center": true
+    }],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "icons/menu-bar-icon.png",
+      "icons/menu-bar-icon@2x.png",
+      "icons/tray-icon.png",
+      "icons/tray-icon@2x.png"
+    ],
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15",
+      "exceptionDomain": "localhost",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "entitlements": "entitlements.plist"
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      },
+      "appimage": {
+        "bundleMediaFramework": true
+      }
+    }
+  }
+}
