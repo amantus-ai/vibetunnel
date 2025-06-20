@@ -522,35 +522,114 @@ func (s *Server) handleMultistream(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleBrowseFS(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	if path == "" {
-		path = "."
+		path = "~"
 	}
 
-	entries, err := BrowseDirectory(path)
+	log.Printf("[DEBUG] Browse directory request for path: %s", path)
+
+	// Expand ~ to home directory
+	if path == "~" || strings.HasPrefix(path, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Printf("[ERROR] Failed to get home directory: %v", err)
+			http.Error(w, "Failed to get home directory", http.StatusInternalServerError)
+			return
+		}
+		if path == "~" {
+			path = homeDir
+		} else {
+			path = filepath.Join(homeDir, path[2:])
+		}
+	}
+
+	// Ensure the path is absolute
+	absPath, err := filepath.Abs(path)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("[ERROR] Failed to get absolute path for %s: %v", path, err)
+		http.Error(w, "Invalid path", http.StatusBadRequest)
 		return
 	}
 
+	entries, err := BrowseDirectory(absPath)
+	if err != nil {
+		log.Printf("[ERROR] Failed to browse directory %s: %v", absPath, err)
+		http.Error(w, fmt.Sprintf("Failed to read directory: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[DEBUG] Found %d entries in %s", len(entries), absPath)
+
+	// Create response in the format expected by the web client
+	response := struct {
+		AbsolutePath string     `json:"absolutePath"`
+		Files        []FSEntry  `json:"files"`
+	}{
+		AbsolutePath: absPath,
+		Files:        entries,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(entries)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[ERROR] Failed to encode response: %v", err)
+	}
 }
 
 func (s *Server) handleMkdir(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Path string `json:"path"`
+		Name string `json:"name,omitempty"` // Optional name field for web client
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("[ERROR] Failed to decode mkdir request: %v", err)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	if err := os.MkdirAll(req.Path, 0755); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Support both formats:
+	// 1. iOS format: { "path": "/full/path/to/new/folder" }
+	// 2. Web format: { "path": "/parent/path", "name": "newfolder" }
+	fullPath := req.Path
+	if req.Name != "" {
+		fullPath = filepath.Join(req.Path, req.Name)
+	}
+
+	if fullPath == "" {
+		http.Error(w, "Path is required", http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	log.Printf("[DEBUG] Create directory request for path: %s", fullPath)
+
+	// Expand ~ to home directory
+	if fullPath == "~" || strings.HasPrefix(fullPath, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Printf("[ERROR] Failed to get home directory: %v", err)
+			http.Error(w, "Failed to get home directory", http.StatusInternalServerError)
+			return
+		}
+		if fullPath == "~" {
+			fullPath = homeDir
+		} else {
+			fullPath = filepath.Join(homeDir, fullPath[2:])
+		}
+	}
+
+	// Create directory with proper permissions
+	if err := os.MkdirAll(fullPath, 0755); err != nil {
+		log.Printf("[ERROR] Failed to create directory %s: %v", fullPath, err)
+		http.Error(w, fmt.Sprintf("Failed to create directory: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[DEBUG] Successfully created directory: %s", fullPath)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"path":    fullPath,
+	})
 }
 
 func (s *Server) handleResizeSession(w http.ResponseWriter, r *http.Request) {

@@ -4,7 +4,7 @@ struct SessionCreateView: View {
     @Binding var isPresented: Bool
     let onCreated: (String) -> Void
     
-    @State private var command = "zsh"
+    @State private var command = "claude"
     @State private var workingDirectory = "~"
     @State private var sessionName = ""
     @State private var isCreating = false
@@ -256,7 +256,7 @@ struct SessionCreateView: View {
     }
     
     private var recentCommands: [String] {
-        ["zsh", "bash", "python3", "node", "npm run dev", "irb"]
+        ["claude", "zsh", "bash", "python3", "node", "npm run dev"]
     }
     
     private var commonDirectories: [String] {
@@ -265,6 +265,8 @@ struct SessionCreateView: View {
     
     private func commandIcon(for command: String) -> String {
         switch command {
+        case "claude":
+            return "sparkle"
         case "zsh", "bash":
             return "terminal"
         case "python3":
