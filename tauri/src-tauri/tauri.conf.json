@@ -4,7 +4,6 @@
   "identifier": "com.vibetunnel.app",
   "build": {
     "beforeDevCommand": "",
-    "devUrl": "http://localhost:4020",
     "beforeBuildCommand": "",
     "frontendDist": "../dist"
   },
@@ -39,7 +38,8 @@
       "icons/menu-bar-icon.png",
       "icons/menu-bar-icon@2x.png",
       "icons/tray-icon.png",
-      "icons/tray-icon@2x.png"
+      "icons/tray-icon@2x.png",
+      "../public/**"
     ],
     "macOS": {
       "frameworks": [],
