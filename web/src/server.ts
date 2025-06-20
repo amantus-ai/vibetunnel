@@ -419,7 +419,7 @@ app.get('/api/sessions/:sessionId/buffer/stats', async (req, res) => {
     const fileStats = fs.statSync(streamOutPath);
     const statsWithModified = {
       ...stats,
-      lastModified: fileStats.mtime.toISOString()
+      lastModified: fileStats.mtime.toISOString(),
     };
 
     res.json(statsWithModified);
