@@ -28,6 +28,7 @@ Read the full story: [VibeTunnel: Turn Any Browser Into Your Mac Terminal](https
 - **🔒 Secure by Design** - Password protection, localhost-only mode, or secure tunneling via Tailscale/ngrok
 - **📱 Mobile Ready** - Check your terminals from your phone, tablet, or any computer
 - **🎬 Session Recording** - All sessions are recorded in asciinema format for later playback
+- **🎨 Customizable Themes** - Choose from multiple terminal themes including VibeTunnel, Solarized Dark, Dracula, and Light
 
 ## Quick Start
 

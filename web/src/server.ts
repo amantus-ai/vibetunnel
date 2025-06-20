@@ -417,9 +417,12 @@ app.get('/api/sessions/:sessionId/buffer/stats', async (req, res) => {
 
     // Add last modified time from stream file
     const fileStats = fs.statSync(streamOutPath);
-    stats.lastModified = fileStats.mtime.toISOString();
+    const statsWithModified = {
+      ...stats,
+      lastModified: fileStats.mtime.toISOString()
+    };
 
-    res.json(stats);
+    res.json(statsWithModified);
   } catch (error) {
     console.error('Error getting session buffer stats:', error);
     res.status(500).json({ error: 'Failed to get session buffer stats' });

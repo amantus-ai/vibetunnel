@@ -99,8 +99,8 @@ export class StreamWatcher {
       let exitEventFound = false;
       let lineBuffer = '';
 
-      stream.on('data', (chunk: string) => {
-        lineBuffer += chunk;
+      stream.on('data', (chunk: string | Buffer) => {
+        lineBuffer += chunk.toString();
         const lines = lineBuffer.split('\n');
         lineBuffer = lines.pop() || ''; // Keep incomplete line for next chunk
 

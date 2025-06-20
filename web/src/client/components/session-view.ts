@@ -241,7 +241,6 @@ export class SessionView extends LitElement {
     if (terminal.applyTheme && this.selectedTheme) {
       terminal.applyTheme(this.selectedTheme);
     }
-    this.terminal.fitHorizontally = false; // Allow natural terminal sizing
 
     // Listen for session exit events
     this.terminal.addEventListener(

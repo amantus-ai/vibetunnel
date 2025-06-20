@@ -234,8 +234,8 @@ export class VibeTerminalBuffer extends LitElement {
 
     cellsToRender.forEach((row, index) => {
       const actualIndex = startIndex + index;
-      const isCursorLine = actualIndex === this.buffer.cursorY;
-      const cursorCol = isCursorLine ? this.buffer.cursorX : -1;
+      const isCursorLine = this.buffer && actualIndex === this.buffer.cursorY;
+      const cursorCol = isCursorLine && this.buffer ? this.buffer.cursorX : -1;
       const lineContent = TerminalRenderer.renderLineFromCells(row, cursorCol);
 
       html += `<div class="terminal-line" style="height: ${lineHeight}px; line-height: ${lineHeight}px;">${lineContent}</div>`;
