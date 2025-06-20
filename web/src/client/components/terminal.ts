@@ -1,4 +1,4 @@
-import { LitElement, html } from 'lit';
+import { LitElement, html, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { Terminal as XtermTerminal, IBufferLine, IBufferCell } from '@xterm/headless';
 import { UrlHighlighter } from '../utils/url-highlighter.js';
@@ -15,6 +15,7 @@ export class Terminal extends LitElement {
   @property({ type: Number }) rows = 24;
   @property({ type: Number }) fontSize = 14;
   @property({ type: Boolean }) fitHorizontally = false;
+  @property({ type: Number }) maxCols = 0; // 0 means no limit
 
   private originalFontSize: number = 14;
 
@@ -87,6 +88,33 @@ export class Terminal extends LitElement {
     this.debugMode = new URLSearchParams(window.location.search).has('debug');
   }
 
+  updated(changedProperties: PropertyValues) {
+    if (changedProperties.has('cols') || changedProperties.has('rows')) {
+      if (this.terminal) {
+        this.reinitializeTerminal();
+      }
+    }
+    if (changedProperties.has('fontSize')) {
+      // Store original font size when it changes (but not during horizontal fitting)
+      if (!this.fitHorizontally) {
+        this.originalFontSize = this.fontSize;
+      }
+    }
+    if (changedProperties.has('fitHorizontally')) {
+      if (!this.fitHorizontally) {
+        // Restore original font size when turning off horizontal fitting
+        this.fontSize = this.originalFontSize;
+      }
+      this.fitTerminal();
+    }
+    // If maxCols changed, trigger a resize
+    if (changedProperties.has('maxCols')) {
+      if (this.terminal && this.container) {
+        this.fitTerminal();
+      }
+    }
+  }
+
   disconnectedCallback() {
     this.cleanup();
     super.disconnectedCallback();
@@ -107,27 +135,6 @@ export class Terminal extends LitElement {
     if (this.terminal) {
       this.terminal.dispose();
       this.terminal = null;
-    }
-  }
-
-  updated(changedProperties: Map<string, unknown>) {
-    if (changedProperties.has('cols') || changedProperties.has('rows')) {
-      if (this.terminal) {
-        this.reinitializeTerminal();
-      }
-    }
-    if (changedProperties.has('fontSize')) {
-      // Store original font size when it changes (but not during horizontal fitting)
-      if (!this.fitHorizontally) {
-        this.originalFontSize = this.fontSize;
-      }
-    }
-    if (changedProperties.has('fitHorizontally')) {
-      if (!this.fitHorizontally) {
-        // Restore original font size when turning off horizontal fitting
-        this.fontSize = this.originalFontSize;
-      }
-      this.fitTerminal();
     }
   }
 
@@ -303,7 +310,9 @@ export class Terminal extends LitElement {
       const lineHeight = this.fontSize * 1.2;
       const charWidth = this.measureCharacterWidth();
 
-      this.cols = Math.max(20, Math.floor(containerWidth / charWidth)) - 1; // This -1 should not be needed, but it is...
+      const calculatedCols = Math.max(20, Math.floor(containerWidth / charWidth)) - 1; // This -1 should not be needed, but it is...
+      // Apply maxCols constraint if set (0 means no limit)
+      this.cols = this.maxCols > 0 ? Math.min(calculatedCols, this.maxCols) : calculatedCols;
       this.rows = Math.max(6, Math.floor(containerHeight / lineHeight));
       this.actualRows = this.rows;
 

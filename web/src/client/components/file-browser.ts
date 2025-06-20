@@ -238,8 +238,12 @@ export class FileBrowser extends LitElement {
             : ''}
 
           <div class="p-4 border-t border-dark-border flex gap-4 flex-shrink-0">
-            <button class="btn-ghost font-mono flex-1 py-3" @click=${this.handleCancel}>Cancel</button>
-            <button class="btn-primary font-mono flex-1 py-3" @click=${this.handleSelect}>Select</button>
+            <button class="btn-ghost font-mono flex-1 py-3" @click=${this.handleCancel}>
+              Cancel
+            </button>
+            <button class="btn-primary font-mono flex-1 py-3" @click=${this.handleSelect}>
+              Select
+            </button>
           </div>
         </div>
       </div>

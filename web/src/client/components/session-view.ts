@@ -4,6 +4,7 @@ import type { Session } from './session-list.js';
 import './terminal.js';
 import type { Terminal } from './terminal.js';
 import { CastConverter } from '../utils/cast-converter.js';
+import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 
 @customElement('session-view')
 export class SessionView extends LitElement {
@@ -28,6 +29,9 @@ export class SessionView extends LitElement {
   @state() private terminalRows = 0;
   @state() private showCtrlAlpha = false;
   @state() private terminalFitHorizontally = false;
+  @state() private terminalMaxCols = 0;
+
+  private preferencesManager = TerminalPreferencesManager.getInstance();
   @state() private reconnectCount = 0;
   @state() private ctrlSequence: string[] = [];
 
@@ -118,6 +122,9 @@ export class SessionView extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.connected = true;
+
+    // Load terminal preferences
+    this.terminalMaxCols = this.preferencesManager.getMaxCols();
 
     // Make session-view focusable
     this.tabIndex = 0;
@@ -218,6 +225,7 @@ export class SessionView extends LitElement {
     this.terminal.rows = 24;
     this.terminal.fontSize = 14;
     this.terminal.fitHorizontally = false; // Allow natural terminal sizing
+    this.terminal.maxCols = this.terminalMaxCols; // Apply saved max width preference
 
     // Listen for session exit events
     this.terminal.addEventListener(
@@ -749,6 +757,21 @@ export class SessionView extends LitElement {
     }
   }
 
+  private handleMaxWidthToggle() {
+    // Toggle between no limit (0) and 80 columns
+    const newMaxCols = this.terminalMaxCols === 0 ? 80 : 0;
+    this.terminalMaxCols = newMaxCols;
+    this.preferencesManager.setMaxCols(newMaxCols);
+
+    // Update the terminal component
+    const terminal = this.querySelector('vibe-terminal') as Terminal;
+    if (terminal) {
+      terminal.maxCols = newMaxCols;
+      // Trigger a resize to apply the new constraint
+      terminal.requestUpdate();
+    }
+  }
+
   private async sendInputText(text: string) {
     if (!this.session) return;
 
@@ -886,6 +909,15 @@ export class SessionView extends LitElement {
             </div>
           </div>
           <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2">
+            <button
+              class="btn-secondary font-mono text-xs px-2 py-1 flex-shrink-0"
+              @click=${this.handleMaxWidthToggle}
+              title="${this.terminalMaxCols === 0
+                ? 'Limit width to 80 columns'
+                : 'Remove width limit (full width)'}"
+            >
+              ${this.terminalMaxCols === 0 ? '∞' : '80'}
+            </button>
             <div class="flex flex-col items-end gap-0">
               <span class="${this.getStatusColor()} text-xs flex items-center gap-1">
                 <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
@@ -931,6 +963,7 @@ export class SessionView extends LitElement {
             .rows=${24}
             .fontSize=${14}
             .fitHorizontally=${false}
+            .maxCols=${this.terminalMaxCols}
             class="w-full h-full"
           ></vibe-terminal>
         </div>
