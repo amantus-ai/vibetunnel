@@ -731,7 +731,6 @@
                     <div class="info-box">
                         <div>Server: <span id="serverStatus">Running</span></div>
                         <div>Port: <span id="serverPortStatus">4020</span></div>
-                        <div>Mode: <span id="serverModeStatus">Rust</span></div>
                         <div>Sessions: <span id="sessionCount">0</span></div>
                     </div>
                     <div class="button-group">
@@ -1262,7 +1261,6 @@
                 const status = await invoke('get_server_status');
                 document.getElementById('serverStatus').textContent = status.running ? 'Running' : 'Stopped';
                 document.getElementById('serverPortStatus').textContent = status.port;
-                document.getElementById('serverModeStatus').textContent = status.mode;
                 document.getElementById('sessionCount').textContent = status.session_count;
             } catch (error) {
                 console.error('Failed to update server status:', error);

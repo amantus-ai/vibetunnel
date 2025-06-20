@@ -1824,7 +1824,6 @@ pub async fn update_setting(section: String, key: String, value: String) -> Resu
         }
         "advanced" => {
             match key.as_str() {
-                "server_mode" => settings.advanced.server_mode = json_value.as_str().unwrap_or("rust").to_string(),
                 "debug_mode" => settings.advanced.debug_mode = json_value.as_bool().unwrap_or(false),
                 "log_level" => settings.advanced.log_level = json_value.as_str().unwrap_or("info").to_string(),
                 "session_timeout" => settings.advanced.session_timeout = json_value.as_u64().unwrap_or(0) as u32,
@@ -1996,7 +1995,7 @@ pub async fn get_server_logs(limit: usize) -> Result<Vec<ServerLog>, String> {
 }
 
 #[tauri::command]
-pub async fn export_logs(app_handle: tauri::AppHandle) -> Result<(), String> {
+pub async fn export_logs(_app_handle: tauri::AppHandle) -> Result<(), String> {
     // Get logs
     let logs = get_server_logs(1000).await?;
     
@@ -2010,13 +2009,12 @@ pub async fn export_logs(app_handle: tauri::AppHandle) -> Result<(), String> {
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let filename = format!("vibetunnel_logs_{}.txt", timestamp);
     
-    use tauri::api::dialog::blocking::FileDialogBuilder;
-    if let Some(path) = FileDialogBuilder::new()
-        .set_file_name(&filename)
-        .set_title("Export Logs")
-        .save_file() {
-        std::fs::write(path, log_text).map_err(|e| e.to_string())?;
-    }
+    // In Tauri v2, we should use the dialog plugin instead
+    // For now, let's just save to a default location
+    let downloads_dir = dirs::download_dir()
+        .ok_or_else(|| "Could not find downloads directory".to_string())?;
+    let path = downloads_dir.join(&filename);
+    std::fs::write(&path, log_text).map_err(|e| e.to_string())?;
     
     Ok(())
 }
@@ -2027,6 +2025,6 @@ pub async fn get_local_ip() -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn detect_terminals() -> Result<Vec<crate::terminal_detector::DetectedTerminal>, String> {
-    Ok(crate::terminal_detector::detect_terminals())
+pub async fn detect_terminals() -> Result<crate::terminal_detector::DetectedTerminals, String> {
+    crate::terminal_detector::detect_terminals()
 }

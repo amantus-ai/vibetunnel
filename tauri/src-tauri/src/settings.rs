@@ -32,7 +32,6 @@ pub struct DashboardSettings {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AdvancedSettings {
-    pub server_mode: String,
     pub debug_mode: bool,
     pub log_level: String,
     pub session_timeout: u32,
@@ -227,7 +226,6 @@ impl Default for Settings {
                 allowed_origins: Some(vec!["*".to_string()]),
             },
             advanced: AdvancedSettings {
-                server_mode: "rust".to_string(),
                 debug_mode: false,
                 log_level: "info".to_string(),
                 session_timeout: 0,
