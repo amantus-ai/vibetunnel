@@ -19,6 +19,12 @@ type SSEStreamer struct {
 	w       http.ResponseWriter
 	session *session.Session
 	flusher http.Flusher
+	// Debouncing for Claude animation optimization
+	debounceTimer *time.Timer
+	pendingUpdate bool
+	// Content deduplication
+	lastEventData string
+	duplicateCount int
 }
 
 func NewSSEStreamer(w http.ResponseWriter, session *session.Session) *SSEStreamer {
@@ -50,6 +56,10 @@ func (s *SSEStreamer) Stream() {
 		return
 	}
 	defer func() {
+		// Clean up debounce timer
+		if s.debounceTimer != nil {
+			s.debounceTimer.Stop()
+		}
 		if err := watcher.Close(); err != nil {
 			log.Printf("[ERROR] SSE: Failed to close watcher: %v", err)
 		}
@@ -82,12 +92,26 @@ func (s *SSEStreamer) Stream() {
 				return
 			}
 
-			// Process file writes (new content) and check for client disconnect
+			// Process file writes with debouncing (like Node.js approach)
 			if event.Op&fsnotify.Write == fsnotify.Write {
-				if err := s.processNewContent(streamPath, &headerSent, &seenBytes); err != nil {
-					debugLog("[DEBUG] SSE: Client disconnected during content streaming: %v", err)
-					return
+				// Cancel existing timer if any
+				if s.debounceTimer != nil {
+					s.debounceTimer.Stop()
 				}
+				
+				// Mark that we have a pending update
+				s.pendingUpdate = true
+				
+				// Set timer to process after 50ms of no more writes (like Node.js)
+				s.debounceTimer = time.AfterFunc(50*time.Millisecond, func() {
+					if s.pendingUpdate {
+						if err := s.processNewContent(streamPath, &headerSent, &seenBytes); err != nil {
+							debugLog("[DEBUG] SSE: Client disconnected during debounced content streaming: %v", err)
+							return
+						}
+						s.pendingUpdate = false
+					}
+				})
 			}
 
 		case err, ok := <-watcher.Errors:
@@ -195,6 +219,21 @@ func (s *SSEStreamer) processNewContent(streamPath string, headerSent *bool, see
 			data, ok3 := eventArray[2].(string)
 
 			if ok1 && ok2 && ok3 {
+				// Content deduplication: Skip if data is identical to last event
+				if data == s.lastEventData {
+					s.duplicateCount++
+					// Skip sending duplicate content (Claude animation optimization)
+					debugLog("[DEBUG] SSE: Skipping duplicate event (count: %d)", s.duplicateCount)
+					continue
+				}
+				
+				// Reset duplicate counter for different content
+				if s.duplicateCount > 0 {
+					debugLog("[DEBUG] SSE: Skipped %d duplicate events", s.duplicateCount)
+					s.duplicateCount = 0
+				}
+				s.lastEventData = data
+
 				event := &protocol.StreamEvent{
 					Type: "event",
 					Event: &protocol.AsciinemaEvent{
