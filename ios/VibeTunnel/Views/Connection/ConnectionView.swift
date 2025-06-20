@@ -91,8 +91,8 @@ struct ConnectionView: View {
 }
 
 class ConnectionViewModel: ObservableObject {
-    @Published var host: String = ""
-    @Published var port: String = "3000"
+    @Published var host: String = "127.0.0.1"
+    @Published var port: String = "4020"
     @Published var name: String = ""
     @Published var isConnecting: Bool = false
     @Published var errorMessage: String?

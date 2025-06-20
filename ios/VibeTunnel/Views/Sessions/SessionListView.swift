@@ -125,7 +125,50 @@ struct SessionListView: View {
     
     private var sessionList: some View {
         ScrollView {
-            LazyVStack(spacing: Theme.Spacing.md) {
+            VStack(spacing: Theme.Spacing.lg) {
+                // Header with session count and kill all button
+                HStack {
+                    Text("\(viewModel.sessions.count) Session\(viewModel.sessions.count == 1 ? "" : "s")")
+                        .font(Theme.Typography.terminalSystem(size: 16))
+                        .fontWeight(.medium)
+                        .foregroundColor(Theme.Colors.terminalForeground)
+                    
+                    Spacer()
+                    
+                    if viewModel.sessions.contains(where: { $0.isRunning }) {
+                        Button(action: {
+                            HapticFeedback.impact(.medium)
+                            Task {
+                                await viewModel.killAllSessions()
+                            }
+                        }) {
+                            HStack(spacing: Theme.Spacing.sm) {
+                                Image(systemName: "stop.circle")
+                                Text("Kill All")
+                            }
+                            .font(Theme.Typography.terminalSystem(size: 14))
+                            .foregroundColor(Theme.Colors.errorAccent)
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.vertical, Theme.Spacing.sm)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                    .fill(Theme.Colors.errorAccent.opacity(0.1))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                    .stroke(Theme.Colors.errorAccent.opacity(0.3), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.horizontal)
+                
+                // Sessions grid
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: Theme.Spacing.md),
+                    GridItem(.flexible(), spacing: Theme.Spacing.md)
+                ], spacing: Theme.Spacing.md) {
                 // Clean up all button if there are exited sessions
                 if viewModel.sessions.contains(where: { !$0.isRunning }) {
                     Button(action: {
@@ -158,28 +201,32 @@ struct SessionListView: View {
                     ))
                 }
                 
-                ForEach(viewModel.sessions) { session in
-                    SessionCardView(session: session) {
-                        HapticFeedback.selection()
-                        selectedSession = session
-                    } onKill: {
-                        HapticFeedback.impact(.medium)
-                        Task {
-                            await viewModel.killSession(session.id)
+                    ForEach(viewModel.sessions) { session in
+                        SessionCardView(session: session) {
+                            HapticFeedback.selection()
+                            if session.isRunning {
+                                selectedSession = session
+                            }
+                        } onKill: {
+                            HapticFeedback.impact(.medium)
+                            Task {
+                                await viewModel.killSession(session.id)
+                            }
+                        } onCleanup: {
+                            HapticFeedback.impact(.medium)
+                            Task {
+                                await viewModel.cleanupSession(session.id)
+                            }
                         }
-                    } onCleanup: {
-                        HapticFeedback.impact(.medium)
-                        Task {
-                            await viewModel.cleanupSession(session.id)
-                        }
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.8).combined(with: .opacity),
+                            removal: .scale(scale: 0.8).combined(with: .opacity)
+                        ))
                     }
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.8).combined(with: .opacity),
-                        removal: .scale(scale: 0.8).combined(with: .opacity)
-                    ))
                 }
+                .padding(.horizontal)
             }
-            .padding()
+            .padding(.vertical)
             .animation(Theme.Animation.smooth, value: viewModel.sessions)
         }
     }
@@ -247,12 +294,24 @@ class SessionListViewModel: ObservableObject {
     
     func cleanupAllExited() async {
         do {
-            let cleaned = try await sessionService.cleanupAllExitedSessions()
+            _ = try await sessionService.cleanupAllExitedSessions()
             await loadSessions()
             HapticFeedback.notification(.success)
         } catch {
             errorMessage = error.localizedDescription
             HapticFeedback.notification(.error)
         }
+    }
+    
+    func killAllSessions() async {
+        let runningSessions = sessions.filter { $0.isRunning }
+        for session in runningSessions {
+            do {
+                try await sessionService.killSession(session.id)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+        await loadSessions()
     }
 }

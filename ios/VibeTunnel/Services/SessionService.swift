@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 class SessionService {
     static let shared = SessionService()
     private let apiClient = APIClient.shared
@@ -11,7 +12,12 @@ class SessionService {
     }
     
     func createSession(_ data: SessionCreateData) async throws -> String {
-        return try await apiClient.createSession(data)
+        do {
+            return try await apiClient.createSession(data)
+        } catch {
+            print("[SessionService] Failed to create session: \(error)")
+            throw error
+        }
     }
     
     func killSession(_ sessionId: String) async throws {

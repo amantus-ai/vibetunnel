@@ -17,8 +17,44 @@ enum APIError: LocalizedError {
         case .decodingError(let error):
             return "Failed to decode response: \(error.localizedDescription)"
         case .serverError(let code, let message):
-            return message ?? "Server error: \(code)"
+            if let message = message {
+                return message
+            }
+            switch code {
+            case 400:
+                return "Bad request - check your input"
+            case 401:
+                return "Unauthorized - authentication required"
+            case 403:
+                return "Forbidden - access denied"
+            case 404:
+                return "Not found - endpoint doesn't exist"
+            case 500:
+                return "Server error - internal server error"
+            case 502:
+                return "Bad gateway - server is down"
+            case 503:
+                return "Service unavailable"
+            default:
+                return "Server error: \(code)"
+            }
         case .networkError(let error):
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .notConnectedToInternet:
+                    return "No internet connection"
+                case .cannotFindHost:
+                    return "Cannot find server - check the address"
+                case .cannotConnectToHost:
+                    return "Cannot connect to server - is it running?"
+                case .timedOut:
+                    return "Connection timed out"
+                case .networkConnectionLost:
+                    return "Network connection lost"
+                default:
+                    return urlError.localizedDescription
+                }
+            }
             return error.localizedDescription
         case .noServerConfigured:
             return "No server configured"
@@ -36,6 +72,7 @@ protocol APIClientProtocol {
     func resizeTerminal(sessionId: String, cols: Int, rows: Int) async throws
 }
 
+@MainActor
 class APIClient: APIClientProtocol {
     static let shared = APIClient()
     private let session = URLSession.shared
@@ -73,24 +110,56 @@ class APIClient: APIClientProtocol {
     
     func createSession(_ data: SessionCreateData) async throws -> String {
         guard let baseURL = baseURL else {
+            print("[APIClient] No server configured")
             throw APIError.noServerConfigured
         }
         
         let url = baseURL.appendingPathComponent("api/sessions")
+        print("[APIClient] Creating session at URL: \(url)")
+        
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try encoder.encode(data)
         
-        let (responseData, response) = try await session.data(for: request)
-        try validateResponse(response)
-        
-        struct CreateResponse: Codable {
-            let sessionId: String
+        do {
+            request.httpBody = try encoder.encode(data)
+            if let bodyString = String(data: request.httpBody ?? Data(), encoding: .utf8) {
+                print("[APIClient] Request body: \(bodyString)")
+            }
+        } catch {
+            print("[APIClient] Failed to encode session data: \(error)")
+            throw error
         }
         
-        let createResponse = try decoder.decode(CreateResponse.self, from: responseData)
-        return createResponse.sessionId
+        do {
+            let (responseData, response) = try await session.data(for: request)
+            
+            print("[APIClient] Response received")
+            if let httpResponse = response as? HTTPURLResponse {
+                print("[APIClient] Status code: \(httpResponse.statusCode)")
+                print("[APIClient] Headers: \(httpResponse.allHeaderFields)")
+            }
+            
+            if let responseString = String(data: responseData, encoding: .utf8) {
+                print("[APIClient] Response body: \(responseString)")
+            }
+            
+            try validateResponse(response)
+            
+            struct CreateResponse: Codable {
+                let sessionId: String
+            }
+            
+            let createResponse = try decoder.decode(CreateResponse.self, from: responseData)
+            print("[APIClient] Session created with ID: \(createResponse.sessionId)")
+            return createResponse.sessionId
+        } catch {
+            print("[APIClient] Request failed: \(error)")
+            if let urlError = error as? URLError {
+                print("[APIClient] URL Error code: \(urlError.code), description: \(urlError.localizedDescription)")
+            }
+            throw error
+        }
     }
     
     func killSession(_ sessionId: String) async throws {
@@ -131,12 +200,22 @@ class APIClient: APIClientProtocol {
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)
         
+        // Handle empty response (204 No Content) from Go server
+        if data.isEmpty {
+            return []
+        }
+        
         struct CleanupResponse: Codable {
             let cleanedSessions: [String]
         }
         
-        let cleanupResponse = try decoder.decode(CleanupResponse.self, from: data)
-        return cleanupResponse.cleanedSessions
+        do {
+            let cleanupResponse = try decoder.decode(CleanupResponse.self, from: data)
+            return cleanupResponse.cleanedSessions
+        } catch {
+            // If decoding fails, return empty array
+            return []
+        }
     }
     
     // MARK: - Terminal I/O
@@ -182,14 +261,21 @@ class APIClient: APIClientProtocol {
         return baseURL.appendingPathComponent("api/sessions/\(sessionId)/stream")
     }
     
+    func snapshotURL(for sessionId: String) -> URL? {
+        guard let baseURL = baseURL else { return nil }
+        return baseURL.appendingPathComponent("api/sessions/\(sessionId)/snapshot")
+    }
+    
     // MARK: - Helpers
     
     private func validateResponse(_ response: URLResponse) throws {
         guard let httpResponse = response as? HTTPURLResponse else {
+            print("[APIClient] Invalid response type (not HTTP)")
             throw APIError.networkError(URLError(.badServerResponse))
         }
         
         guard 200..<300 ~= httpResponse.statusCode else {
+            print("[APIClient] Server error: HTTP \(httpResponse.statusCode)")
             throw APIError.serverError(httpResponse.statusCode, nil)
         }
     }

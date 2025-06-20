@@ -84,20 +84,20 @@ struct Theme {
     }
     
     // MARK: - Shadows
-    struct Shadow {
-        static let card = SwiftUI.Shadow(
-            color: Color.black.opacity(0.3),
-            radius: 8,
-            x: 0,
-            y: 2
-        )
+    struct Shadows {
+        struct Card {
+            static let color = Color.black.opacity(0.3)
+            static let radius: CGFloat = 8
+            static let x: CGFloat = 0
+            static let y: CGFloat = 2
+        }
         
-        static let button = SwiftUI.Shadow(
-            color: Color.black.opacity(0.2),
-            radius: 4,
-            x: 0,
-            y: 1
-        )
+        struct Button {
+            static let color = Color.black.opacity(0.2)
+            static let radius: CGFloat = 4
+            static let x: CGFloat = 0
+            static let y: CGFloat = 1
+        }
     }
 }
 
@@ -163,6 +163,7 @@ extension View {
 }
 
 // MARK: - Haptic Feedback
+@MainActor
 struct HapticFeedback {
     static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
         let generator = UIImpactFeedbackGenerator(style: style)

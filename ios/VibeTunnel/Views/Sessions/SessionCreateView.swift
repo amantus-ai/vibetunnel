@@ -5,7 +5,7 @@ struct SessionCreateView: View {
     let onCreated: (String) -> Void
     
     @State private var command = "zsh"
-    @State private var workingDirectory = ""
+    @State private var workingDirectory = "~/"
     @State private var sessionName = ""
     @State private var isCreating = false
     @State private var errorMessage: String?
@@ -59,7 +59,7 @@ struct SessionCreateView: View {
                                     .font(Theme.Typography.terminalSystem(size: 12))
                                     .foregroundColor(Theme.Colors.primaryAccent)
                                 
-                                TextField(NSHomeDirectory(), text: $workingDirectory)
+                                TextField("~/", text: $workingDirectory)
                                     .textFieldStyle(TerminalTextFieldStyle())
                                     .autocapitalization(.none)
                                     .disableAutocorrection(true)
@@ -94,6 +94,52 @@ struct SessionCreateView: View {
                         }
                         .padding(.horizontal)
                 
+                        // Quick Directories
+                        if focusedField == .workingDir {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                                Text("COMMON DIRECTORIES")
+                                    .font(Theme.Typography.terminalSystem(size: 10))
+                                    .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
+                                    .tracking(1)
+                                    .padding(.horizontal)
+                                
+                                LazyVGrid(columns: [
+                                    GridItem(.flexible()),
+                                    GridItem(.flexible())
+                                ], spacing: Theme.Spacing.sm) {
+                                    ForEach(commonDirectories, id: \.self) { dir in
+                                        Button(action: {
+                                            workingDirectory = dir
+                                            HapticFeedback.selection()
+                                        }) {
+                                            HStack {
+                                                Image(systemName: "folder")
+                                                    .font(.system(size: 14))
+                                                Text(dir)
+                                                    .font(Theme.Typography.terminalSystem(size: 14))
+                                                Spacer()
+                                            }
+                                            .foregroundColor(workingDirectory == dir ? Theme.Colors.terminalBackground : Theme.Colors.terminalForeground)
+                                            .padding(.horizontal, Theme.Spacing.md)
+                                            .padding(.vertical, Theme.Spacing.sm)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                                    .fill(workingDirectory == dir ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder.opacity(0.3))
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                                    .stroke(workingDirectory == dir ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder, lineWidth: 1)
+                                            )
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                        .scaleEffect(workingDirectory == dir ? 0.95 : 1.0)
+                                        .animation(Theme.Animation.quick, value: workingDirectory == dir)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                        
                         // Quick Start Commands
                         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                             Text("QUICK START")
@@ -190,6 +236,10 @@ struct SessionCreateView: View {
         ["zsh", "bash", "python3", "node", "npm run dev", "irb"]
     }
     
+    private var commonDirectories: [String] {
+        ["~/", "~/Desktop", "~/Documents", "~/Downloads", "~/Projects", "/tmp"]
+    }
+    
     private func commandIcon(for command: String) -> String {
         switch command {
         case "zsh", "bash":
@@ -215,7 +265,8 @@ struct SessionCreateView: View {
         if let lastDir = UserDefaults.standard.string(forKey: "lastWorkingDir") {
             workingDirectory = lastDir
         } else {
-            workingDirectory = NSHomeDirectory()
+            // Default to home directory on the server
+            workingDirectory = "~/"
         }
     }
     
@@ -231,17 +282,33 @@ struct SessionCreateView: View {
             do {
                 let sessionData = SessionCreateData(
                     command: command,
-                    workingDir: workingDirectory.isEmpty ? NSHomeDirectory() : workingDirectory,
+                    workingDir: workingDirectory.isEmpty ? "~/" : workingDirectory,
                     name: sessionName.isEmpty ? nil : sessionName
                 )
                 
+                // Log the request for debugging
+                print("[SessionCreate] Creating session with data:")
+                print("  Command: \(sessionData.command)")
+                print("  Working Dir: \(sessionData.workingDir)")
+                print("  Name: \(sessionData.name ?? "nil")")
+                print("  Spawn Terminal: \(sessionData.spawn_terminal ?? false)")
+                print("  Cols: \(sessionData.cols ?? 0), Rows: \(sessionData.rows ?? 0)")
+                
                 let sessionId = try await SessionService.shared.createSession(sessionData)
+                
+                print("[SessionCreate] Session created successfully with ID: \(sessionId)")
                 
                 await MainActor.run {
                     onCreated(sessionId)
                     isPresented = false
                 }
             } catch {
+                print("[SessionCreate] Failed to create session:")
+                print("  Error: \(error)")
+                if let apiError = error as? APIError {
+                    print("  API Error: \(apiError)")
+                }
+                
                 await MainActor.run {
                     errorMessage = error.localizedDescription
                     isCreating = false

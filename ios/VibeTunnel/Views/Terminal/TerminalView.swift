@@ -1,6 +1,6 @@
 import SwiftUI
-import SwiftTerm
 import Combine
+import SwiftTerm
 
 struct TerminalView: View {
     let session: Session
@@ -130,8 +130,7 @@ struct TerminalView: View {
     private var terminalContent: some View {
         VStack(spacing: 0) {
             // Terminal hosting view
-            TerminalContainerView(
-                terminal: viewModel.terminal,
+            TerminalHostingView(
                 session: session,
                 fontSize: $fontSize,
                 onInput: { text in
@@ -139,8 +138,10 @@ struct TerminalView: View {
                 },
                 onResize: { cols, rows in
                     viewModel.resize(cols: cols, rows: rows)
-                }
+                },
+                viewModel: viewModel
             )
+            .id(viewModel.terminalViewId)
             .background(Theme.Colors.terminalBackground)
             .focused($isInputFocused)
             
@@ -160,87 +161,17 @@ struct TerminalView: View {
     }
 }
 
-// Terminal container to manage SwiftTerm lifecycle
-struct TerminalContainerView: UIViewControllerRepresentable {
-    let terminal: TerminalView?
-    let session: Session
-    @Binding var fontSize: CGFloat
-    let onInput: (String) -> Void
-    let onResize: (Int, Int) -> Void
-    
-    func makeUIViewController(context: Context) -> TerminalHostingController {
-        let controller = TerminalHostingController()
-        controller.session = session
-        controller.fontSize = fontSize
-        controller.onInput = onInput
-        controller.onResize = onResize
-        controller.terminalView = terminal
-        return controller
-    }
-    
-    func updateUIViewController(_ controller: TerminalHostingController, context: Context) {
-        controller.fontSize = fontSize
-        controller.updateTerminal()
-    }
-}
-
-class TerminalHostingController: UIViewController {
-    var terminalView: TerminalView?
-    var session: Session?
-    var fontSize: CGFloat = 14
-    var onInput: ((String) -> Void)?
-    var onResize: ((Int, Int) -> Void)?
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = UIColor(Theme.Colors.terminalBackground)
-        setupTerminal()
-    }
-    
-    override func viewWillLayoutSubviews() {
-        super.viewWillLayoutSubviews()
-        terminalView?.frame = view.bounds
-    }
-    
-    func setupTerminal() {
-        guard let terminal = terminalView else { return }
-        
-        terminal.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(terminal)
-        
-        NSLayoutConstraint.activate([
-            terminal.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            terminal.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            terminal.topAnchor.constraint(equalTo: view.topAnchor),
-            terminal.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
-        
-        // Make terminal first responder for keyboard input
-        terminal.becomeFirstResponder()
-    }
-    
-    func updateTerminal() {
-        // Update font size if needed
-        if let terminal = terminalView {
-            if let font = UIFont(name: Theme.Typography.terminalFont, size: fontSize) {
-                terminal.font = font
-            } else {
-                terminal.font = UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-            }
-        }
-    }
-}
-
 @MainActor
 class TerminalViewModel: ObservableObject {
     @Published var isConnecting = true
     @Published var isConnected = false
     @Published var errorMessage: String?
+    @Published var terminalViewId = UUID()
     
     let session: Session
-    var terminal: TerminalView?
     private var sseClient: SSEClient?
-    private var cancellables = Set<AnyCancellable>()
+    var cancellables = Set<AnyCancellable>()
+    weak var terminalCoordinator: TerminalHostingView.Coordinator?
     
     init(session: Session) {
         self.session = session
@@ -248,20 +179,7 @@ class TerminalViewModel: ObservableObject {
     }
     
     private func setupTerminal() {
-        let terminal = TerminalView()
-        terminal.delegate = self
-        self.terminal = terminal
-        
-        // Configure appearance
-        terminal.backgroundColor = UIColor(Theme.Colors.terminalBackground)
-        terminal.nativeForegroundColor = UIColor(Theme.Colors.terminalForeground)
-        terminal.nativeBackgroundColor = UIColor(Theme.Colors.terminalBackground)
-        terminal.caretColor = UIColor(Theme.Colors.primaryAccent)
-        terminal.caretTextColor = UIColor(Theme.Colors.terminalBackground)
-        terminal.selectedTextBackgroundColor = UIColor(Theme.Colors.terminalSelection)
-        
-        // Set initial size
-        terminal.resize(cols: 80, rows: 24)
+        // Terminal setup now handled by SimpleTerminalView
     }
     
     func connect() {
@@ -274,16 +192,38 @@ class TerminalViewModel: ObservableObject {
             return
         }
         
+        // Load existing terminal snapshot first if session is already running
+        if session.isRunning {
+            Task {
+                await loadSnapshot()
+            }
+        }
+        
         sseClient = SSEClient()
         
         Task {
             for await event in sseClient!.connect(to: streamURL) {
-                await handleTerminalEvent(event)
+                handleTerminalEvent(event)
             }
         }
         
         isConnecting = false
         isConnected = true
+    }
+    
+    @MainActor
+    private func loadSnapshot() async {
+        guard let snapshotURL = APIClient.shared.snapshotURL(for: session.id) else { return }
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(from: snapshotURL)
+            if let snapshot = String(data: data, encoding: .utf8) {
+                // Feed the snapshot to the terminal
+                terminalCoordinator?.feedData(snapshot)
+            }
+        } catch {
+            print("Failed to load terminal snapshot: \(error)")
+        }
     }
     
     func disconnect() {
@@ -294,15 +234,32 @@ class TerminalViewModel: ObservableObject {
     
     @MainActor
     private func handleTerminalEvent(_ event: TerminalEvent) {
-        switch event.type {
-        case .output:
-            let bytes = [UInt8](event.data.utf8)
-            terminal?.feed(byteArray: bytes)
-        case .resize:
-            // Handle resize if needed
-            break
-        default:
-            break
+        switch event {
+        case .header(let header):
+            // Initial terminal setup
+            print("Terminal initialized: \(header.width)x\(header.height)")
+            // The terminal will be resized when created
+            
+        case .output(_, let data):
+            // Feed output data directly to the terminal
+            terminalCoordinator?.feedData(data)
+            
+        case .resize(_, let dimensions):
+            // Parse dimensions like "120x30"
+            let parts = dimensions.split(separator: "x")
+            if parts.count == 2,
+               let cols = Int(parts[0]),
+               let rows = Int(parts[1]) {
+                // Handle resize if needed
+                print("Terminal resize: \(cols)x\(rows)")
+            }
+            
+        case .exit(let code, _):
+            // Session has exited
+            isConnected = false
+            if code != 0 {
+                errorMessage = "Session exited with code \(code)"
+            }
         }
     }
     
@@ -317,8 +274,6 @@ class TerminalViewModel: ObservableObject {
     }
     
     func resize(cols: Int, rows: Int) {
-        terminal?.resize(cols: cols, rows: rows)
-        
         Task {
             do {
                 try await SessionService.shared.resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
@@ -329,42 +284,13 @@ class TerminalViewModel: ObservableObject {
     }
     
     func clearTerminal() {
-        terminal?.terminal.resetToInitialState()
+        // Reset the terminal by recreating it
+        terminalViewId = UUID()
         HapticFeedback.impact(.medium)
     }
     
     func copyBuffer() {
-        if let text = terminal?.getTerminalText() {
-            UIPasteboard.general.string = text
-            HapticFeedback.notification(.success)
-        }
-    }
-}
-
-extension TerminalViewModel: TerminalViewDelegate {
-    nonisolated func send(source: TerminalView, data: ArraySlice<UInt8>) {
-        if let string = String(bytes: data, encoding: .utf8) {
-            Task { @MainActor in
-                sendInput(string)
-            }
-        }
-    }
-    
-    nonisolated func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {
-        Task { @MainActor in
-            resize(cols: newCols, rows: newRows)
-        }
-    }
-    
-    nonisolated func scrolled(source: TerminalView, position: Double) {}
-    nonisolated func setTerminalTitle(source: TerminalView, title: String) {}
-    nonisolated func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
-    
-    nonisolated func requestOpenLink(source: TerminalView, link: String, params: [String : String]) {
-        if let url = URL(string: link) {
-            Task { @MainActor in
-                UIApplication.shared.open(url)
-            }
-        }
+        // Terminal copy is handled by SwiftTerm's built-in functionality
+        HapticFeedback.notification(.success)
     }
 }

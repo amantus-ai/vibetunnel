@@ -132,7 +132,7 @@ struct ServerConfigForm: View {
                     
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Theme.Spacing.sm) {
-                            ForEach(recentServers.prefix(3), id: \Self.host) { server in
+                            ForEach(recentServers.prefix(3), id: \.host) { server in
                                 Button(action: {
                                     host = server.host
                                     port = String(server.port)

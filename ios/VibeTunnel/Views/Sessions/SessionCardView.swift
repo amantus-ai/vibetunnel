@@ -8,80 +8,120 @@ struct SessionCardView: View {
     
     @State private var isPressed = false
     
+    private var displayWorkingDir: String {
+        // Convert absolute paths back to ~ notation for display
+        let homePrefix = "/Users/"
+        if session.workingDir.hasPrefix(homePrefix),
+           let userEndIndex = session.workingDir[homePrefix.endIndex...].firstIndex(of: "/") {
+            let restOfPath = String(session.workingDir[userEndIndex...])
+            return "~\(restOfPath)"
+        }
+        return session.workingDir
+    }
+    
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                // Header
+                // Header with session ID/name and kill button
                 HStack {
-                    HStack(spacing: Theme.Spacing.sm) {
-                        Image(systemName: "terminal")
-                            .font(.system(size: 16))
-                            .foregroundColor(session.isRunning ? Theme.Colors.primaryAccent : Theme.Colors.terminalForeground.opacity(0.5))
-                        
-                        Text(session.displayName)
-                            .font(Theme.Typography.terminalSystem(size: 16))
-                            .fontWeight(.medium)
-                            .foregroundColor(Theme.Colors.terminalForeground)
-                            .lineLimit(1)
-                    }
-                    
-                    Spacer()
-                    
-                    statusBadge
-                }
-                
-                // Working Directory
-                HStack(spacing: Theme.Spacing.sm) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 12))
-                        .foregroundColor(Theme.Colors.primaryAccent.opacity(0.7))
-                    
-                    Text(session.workingDir)
-                        .font(Theme.Typography.terminalSystem(size: 12))
-                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
+                    Text(session.name ?? String(session.id.prefix(8)))
+                        .font(Theme.Typography.terminalSystem(size: 14))
+                        .fontWeight(.medium)
+                        .foregroundColor(Theme.Colors.primaryAccent)
                         .lineLimit(1)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        HapticFeedback.impact(.medium)
+                        if session.isRunning {
+                            onKill()
+                        } else {
+                            onCleanup()
+                        }
+                    }) {
+                        Text(session.isRunning ? "kill" : "clean")
+                            .font(Theme.Typography.terminalSystem(size: 12))
+                            .foregroundColor(Theme.Colors.terminalForeground)
+                            .padding(.horizontal, Theme.Spacing.sm)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                    .stroke(Theme.Colors.cardBorder, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
                 
-                // Info Row
-                HStack(spacing: Theme.Spacing.lg) {
-                    if let pid = session.pid {
-                        HStack(spacing: 4) {
-                            Text("PID")
-                                .font(Theme.Typography.terminalSystem(size: 10))
-                                .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
-                            Text(String(pid))
-                                .font(Theme.Typography.terminalSystem(size: 10))
-                                .foregroundColor(Theme.Colors.successAccent)
+                // Terminal content area showing command and working directory
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.Colors.terminalBackground)
+                    .frame(height: 120)
+                    .overlay(
+                        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                            if session.isRunning {
+                                // Show command and working directory info
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack(spacing: 4) {
+                                        Text("$")
+                                            .font(Theme.Typography.terminalSystem(size: 12))
+                                            .foregroundColor(Theme.Colors.primaryAccent)
+                                        Text(session.command)
+                                            .font(Theme.Typography.terminalSystem(size: 12))
+                                            .foregroundColor(Theme.Colors.terminalForeground)
+                                    }
+                                    
+                                    Text(displayWorkingDir)
+                                        .font(Theme.Typography.terminalSystem(size: 10))
+                                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
+                                        .lineLimit(1)
+                                }
+                                .padding(Theme.Spacing.sm)
+                                
+                                Spacer()
+                            } else {
+                                Text("Session exited")
+                                    .font(Theme.Typography.terminalSystem(size: 12))
+                                    .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            }
                         }
-                    }
-                    
-                    if let exitCode = session.exitCode {
-                        HStack(spacing: 4) {
-                            Text("EXIT")
-                                .font(Theme.Typography.terminalSystem(size: 10))
-                                .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
-                            Text(String(exitCode))
-                                .font(Theme.Typography.terminalSystem(size: 10))
-                                .foregroundColor(exitCode == 0 ? Theme.Colors.successAccent : Theme.Colors.errorAccent)
-                        }
+                    )
+                
+                // Status bar at bottom
+                HStack(spacing: Theme.Spacing.sm) {
+                    // Status indicator
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(session.isRunning ? Theme.Colors.successAccent : Theme.Colors.terminalForeground.opacity(0.3))
+                            .frame(width: 6, height: 6)
+                        Text(session.isRunning ? "running" : "exited")
+                            .font(Theme.Typography.terminalSystem(size: 10))
+                            .foregroundColor(session.isRunning ? Theme.Colors.successAccent : Theme.Colors.terminalForeground.opacity(0.5))
                     }
                     
                     Spacer()
                     
-                    Text(session.formattedStartTime)
-                        .font(Theme.Typography.terminalSystem(size: 10))
-                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
+                    // PID info
+                    if session.isRunning, let pid = session.pid {
+                        Text("PID: \(pid)")
+                            .font(Theme.Typography.terminalSystem(size: 10))
+                            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
+                            .onTapGesture {
+                                UIPasteboard.general.string = String(pid)
+                                HapticFeedback.notification(.success)
+                            }
+                    }
                 }
             }
-            .padding(Theme.Spacing.lg)
+            .padding(Theme.Spacing.md)
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
                     .fill(Theme.Colors.cardBackground)
-                    .shadow(color: Color.black.opacity(0.2), radius: isPressed ? 2 : 6, y: isPressed ? 1 : 3)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                    .stroke(session.isRunning ? Theme.Colors.primaryAccent.opacity(0.3) : Theme.Colors.cardBorder, lineWidth: 1)
+                    .stroke(Theme.Colors.cardBorder, lineWidth: 1)
             )
             .scaleEffect(isPressed ? 0.98 : 1.0)
         }
@@ -107,36 +147,5 @@ struct SessionCardView: View {
                 }
             }
         }
-    }
-    
-    private var statusBadge: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(session.isRunning ? Theme.Colors.successAccent : Theme.Colors.terminalForeground.opacity(0.3))
-                .frame(width: 8, height: 8)
-                .overlay(
-                    Circle()
-                        .fill(session.isRunning ? Theme.Colors.successAccent : .clear)
-                        .frame(width: 16, height: 16)
-                        .blur(radius: 6)
-                        .opacity(session.isRunning ? 0.5 : 0)
-                )
-            
-            Text(session.status.rawValue.uppercased())
-                .font(Theme.Typography.terminalSystem(size: 10))
-                .fontWeight(.medium)
-                .foregroundColor(session.isRunning ? Theme.Colors.successAccent : Theme.Colors.terminalForeground.opacity(0.5))
-                .tracking(1)
-        }
-        .padding(.horizontal, Theme.Spacing.sm)
-        .padding(.vertical, 4)
-        .background(
-            Capsule()
-                .fill(session.isRunning ? Theme.Colors.successAccent.opacity(0.1) : Theme.Colors.cardBorder.opacity(0.3))
-        )
-        .overlay(
-            Capsule()
-                .stroke(session.isRunning ? Theme.Colors.successAccent.opacity(0.3) : Theme.Colors.cardBorder, lineWidth: 1)
-        )
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-class SSEClient: NSObject {
+final class SSEClient: NSObject, @unchecked Sendable {
     private var eventSource: URLSessionDataTask?
     private var session: URLSession?
     private var streamContinuation: AsyncStream<TerminalEvent>.Continuation?
