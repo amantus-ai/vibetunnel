@@ -23,17 +23,20 @@ use std::fs;
 
 use crate::terminal::TerminalManager;
 use crate::auth::{AuthConfig, auth_middleware, check_auth, login};
+use crate::session_monitor::SessionMonitor;
 
 // Combined app state for Axum
 #[derive(Clone)]
 struct AppState {
     terminal_manager: Arc<TerminalManager>,
     auth_config: Arc<AuthConfig>,
+    session_monitor: Arc<SessionMonitor>,
 }
 
 pub struct HttpServer {
     terminal_manager: Arc<TerminalManager>,
     auth_config: Arc<AuthConfig>,
+    session_monitor: Arc<SessionMonitor>,
     port: u16,
     shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
     handle: Option<tokio::task::JoinHandle<()>>,
@@ -97,20 +100,22 @@ impl HttpServer {
         self.port
     }
     
-    pub fn new(terminal_manager: Arc<TerminalManager>) -> Self {
+    pub fn new(terminal_manager: Arc<TerminalManager>, session_monitor: Arc<SessionMonitor>) -> Self {
         Self {
             terminal_manager,
             auth_config: Arc::new(AuthConfig::new(false, None)),
+            session_monitor,
             port: 0,
             shutdown_tx: None,
             handle: None,
         }
     }
     
-    pub fn with_auth(terminal_manager: Arc<TerminalManager>, auth_config: AuthConfig) -> Self {
+    pub fn with_auth(terminal_manager: Arc<TerminalManager>, session_monitor: Arc<SessionMonitor>, auth_config: AuthConfig) -> Self {
         Self {
             terminal_manager,
             auth_config: Arc::new(auth_config),
+            session_monitor,
             port: 0,
             shutdown_tx: None,
             handle: None,
@@ -203,6 +208,7 @@ impl HttpServer {
         let app_state = AppState {
             terminal_manager: self.terminal_manager.clone(),
             auth_config: self.auth_config.clone(),
+            session_monitor: self.session_monitor.clone(),
         };
         
         // Don't serve static files in Tauri - the frontend is served by Tauri itself
@@ -223,8 +229,16 @@ impl HttpServer {
             .route("/api/sessions/:id/input", post(send_input))
             .route("/api/sessions/:id/stream", get(terminal_stream))
             .route("/api/sessions/:id/snapshot", get(get_snapshot))
+            .route("/api/sessions/events", get(session_events_stream))
             .route("/api/ws/:id", get(terminal_websocket))
             .route("/api/fs/browse", get(browse_directory))
+            .route("/api/fs/info", get(crate::fs_api::get_file_info))
+            .route("/api/fs/read", get(crate::fs_api::read_file))
+            .route("/api/fs/write", post(crate::fs_api::write_file))
+            .route("/api/fs/delete", delete(crate::fs_api::delete_file))
+            .route("/api/fs/move", post(crate::fs_api::move_file))
+            .route("/api/fs/copy", post(crate::fs_api::copy_file))
+            .route("/api/fs/search", get(crate::fs_api::search_files))
             .route("/api/mkdir", post(create_directory))
             .route("/api/cleanup-exited", post(cleanup_exited))
             .layer(middleware::from_fn_with_state(
@@ -456,7 +470,7 @@ async fn terminal_stream(
         
         // Poll for terminal output
         let mut poll_interval = interval(Duration::from_millis(10));
-        let mut exit_sent = false;
+        let exit_sent = false;
         
         loop {
             poll_interval.tick().await;
@@ -469,7 +483,7 @@ async fn terminal_stream(
                 yield Ok(Event::default()
                     .event("data")
                     .data(exit_event));
-                exit_sent = true;
+                let _ = exit_sent; // Prevent duplicate exit events
                 break;
             }
             
@@ -495,13 +509,32 @@ async fn terminal_stream(
                         yield Ok(Event::default()
                             .event("data")
                             .data(exit_event));
-                        exit_sent = true;
                     }
                     break;
                 }
             }
         }
     };
+    
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+}
+
+// Session monitoring SSE endpoint
+async fn session_events_stream(
+    AxumState(state): AxumState<AppState>,
+) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, StatusCode> {
+    // Clone the session monitor Arc to avoid lifetime issues
+    let session_monitor = state.session_monitor.clone();
+    
+    // Start monitoring if not already started
+    session_monitor.start_monitoring().await;
+    
+    // Create SSE stream from session monitor
+    let stream = session_monitor.create_sse_stream()
+        .map(|data| {
+            data.map(|json| Event::default().data(json))
+                .map_err(|_| unreachable!())
+        });
     
     Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }

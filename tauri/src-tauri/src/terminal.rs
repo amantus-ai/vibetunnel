@@ -7,10 +7,12 @@ use bytes::Bytes;
 use uuid::Uuid;
 use chrono::Utc;
 use tracing::{info, error, debug};
+use crate::cast::CastManager;
 
 #[derive(Clone)]
 pub struct TerminalManager {
     sessions: Arc<RwLock<HashMap<String, Arc<RwLock<TerminalSession>>>>>,
+    cast_manager: Option<Arc<CastManager>>,
 }
 
 pub struct TerminalSession {
@@ -33,7 +35,12 @@ impl TerminalManager {
     pub fn new() -> Self {
         Self {
             sessions: Arc::new(RwLock::new(HashMap::new())),
+            cast_manager: None,
         }
+    }
+
+    pub fn set_cast_manager(&mut self, cast_manager: Arc<CastManager>) {
+        self.cast_manager = Some(cast_manager);
     }
 
     pub async fn create_session(
@@ -107,6 +114,8 @@ impl TerminalManager {
 
         // Start reader thread
         let output_tx_clone = output_tx.clone();
+        let cast_manager_clone = self.cast_manager.clone();
+        let session_id_clone = id.clone();
         let reader_thread = std::thread::spawn(move || {
             let mut reader = reader;
             let mut buffer = [0u8; 4096];
@@ -119,6 +128,17 @@ impl TerminalManager {
                     }
                     Ok(n) => {
                         let data = Bytes::copy_from_slice(&buffer[..n]);
+                        
+                        // Record output to cast file if recording
+                        if let Some(cast_manager) = &cast_manager_clone {
+                            let cm = cast_manager.clone();
+                            let sid = session_id_clone.clone();
+                            let data_clone = data.clone();
+                            tokio::spawn(async move {
+                                let _ = cm.add_output(&sid, &data_clone).await;
+                            });
+                        }
+                        
                         if output_tx_clone.send(data).is_err() {
                             debug!("Output channel closed");
                             break;
@@ -201,6 +221,11 @@ impl TerminalManager {
         let mut sessions = self.sessions.write().await;
         
         if let Some(session_arc) = sessions.remove(id) {
+            // Stop recording if active
+            if let Some(cast_manager) = &self.cast_manager {
+                let _ = cast_manager.remove_recorder(id).await;
+            }
+            
             // Session will be dropped when it goes out of scope
             drop(session_arc);
             
@@ -228,6 +253,14 @@ impl TerminalManager {
             session.rows = rows;
             session.cols = cols;
             
+            // Update recorder dimensions if recording
+            if let Some(cast_manager) = &self.cast_manager {
+                if let Some(recorder) = cast_manager.get_recorder(id).await {
+                    let mut rec = recorder.lock().await;
+                    rec.resize(cols, rows).await;
+                }
+            }
+            
             debug!("Resized terminal {} to {}x{}", id, cols, rows);
             Ok(())
         } else {
@@ -238,6 +271,11 @@ impl TerminalManager {
     pub async fn write_to_session(&self, id: &str, data: &[u8]) -> Result<(), String> {
         if let Some(session_arc) = self.get_session(id).await {
             let mut session = session_arc.write().await;
+            
+            // Record input to cast file if recording
+            if let Some(cast_manager) = &self.cast_manager {
+                let _ = cast_manager.add_input(id, data).await;
+            }
             
             session.writer
                 .write_all(data)

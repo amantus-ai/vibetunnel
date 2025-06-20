@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeTunnel Settings</title>
+    <style>
+        :root {
+            /* Light mode colors */
+            --bg-color: #f5f5f7;
+            --window-bg: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --text-tertiary: #c7c7cc;
+            --accent-color: #007aff;
+            --accent-hover: #0051d5;
+            --border-color: rgba(0, 0, 0, 0.1);
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --tab-bg: #f2f2f7;
+            --tab-active-bg: #ffffff;
+            --input-bg: #ffffff;
+            --input-border: rgba(0, 0, 0, 0.15);
+            --success-color: #34c759;
+            --error-color: #ff3b30;
+            --warning-color: #ff9500;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* Dark mode colors */
+                --bg-color: #000000;
+                --window-bg: #1c1c1e;
+                --text-primary: #f5f5f7;
+                --text-secondary: #98989d;
+                --text-tertiary: #48484a;
+                --accent-color: #0a84ff;
+                --accent-hover: #409cff;
+                --border-color: rgba(255, 255, 255, 0.1);
+                --shadow-color: rgba(0, 0, 0, 0.5);
+                --tab-bg: #2c2c2e;
+                --tab-active-bg: #1c1c1e;
+                --input-bg: #2c2c2e;
+                --input-border: rgba(255, 255, 255, 0.15);
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--window-bg);
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            display: flex;
+            background-color: var(--tab-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0;
+            height: 48px;
+        }
+
+        .tab {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border-right: 1px solid var(--border-color);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .tab:last-child {
+            border-right: none;
+        }
+
+        .tab:hover {
+            background-color: var(--tab-active-bg);
+        }
+
+        .tab.active {
+            background-color: var(--tab-active-bg);
+            color: var(--text-primary);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--accent-color);
+        }
+
+        .tab-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            color: currentColor;
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            background-color: var(--window-bg);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .help-text {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 13px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .button {
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .button:active {
+            transform: scale(0.98);
+        }
+
+        .button.secondary {
+            background-color: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+        }
+
+        .button.secondary:hover {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Section Styles */
+        .section {
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        /* Status Indicators */
+        .status {
+            display: inline-flex;
+            align-items: center;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+
+        .status.success {
+            background-color: rgba(52, 199, 89, 0.1);
+            color: var(--success-color);
+        }
+
+        .status.error {
+            background-color: rgba(255, 59, 48, 0.1);
+            color: var(--error-color);
+        }
+
+        .status.warning {
+            background-color: rgba(255, 149, 0, 0.1);
+            color: var(--warning-color);
+        }
+
+        /* Button Group */
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        /* Info Box */
+        .info-box {
+            background-color: var(--tab-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
+        .info-box.warning {
+            background-color: rgba(255, 149, 0, 0.1);
+            border-color: var(--warning-color);
+            color: var(--text-primary);
+        }
+
+        /* Console */
+        .console {
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 11px;
+            line-height: 1.5;
+            max-height: 300px;
+            overflow-y: auto;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .console-line {
+            margin-bottom: 4px;
+        }
+
+        .console-line.error {
+            color: var(--error-color);
+        }
+
+        .console-line.success {
+            color: var(--success-color);
+        }
+
+        /* Loading Shimmer */
+        .shimmer {
+            background: linear-gradient(
+                90deg,
+                var(--tab-bg) 0%,
+                var(--bg-color) 50%,
+                var(--tab-bg) 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* Permission Status */
+        .permission-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .permission-item:last-child {
+            border-bottom: none;
+        }
+
+        .permission-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .permission-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .permission-icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .permission-icon.granted {
+            color: var(--success-color);
+        }
+
+        .permission-icon.denied {
+            color: var(--error-color);
+        }
+
+        /* About Section */
+        .about-content {
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        .app-icon-large {
+            width: 128px;
+            height: 128px;
+            margin-bottom: 20px;
+            border-radius: 27.6%;
+            filter: drop-shadow(0 4px 12px var(--shadow-color));
+        }
+
+        .app-name {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .app-version {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .copyright {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 32px;
+        }
+
+        /* IP Address Display */
+        .ip-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .ip-address {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+            padding: 4px 8px;
+            background-color: var(--tab-bg);
+            border-radius: 4px;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .copy-button {
+            padding: 4px 8px;
+            font-size: 11px;
+            background-color: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-button:hover {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        /* Terminal List */
+        .terminal-list {
+            margin-top: 12px;
+        }
+
+        .terminal-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background-color: var(--tab-bg);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .terminal-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <div class="tab active" data-tab="general">
+                <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                General
+            </div>
+            <div class="tab" data-tab="dashboard">
+                <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                </svg>
+                Dashboard
+            </div>
+            <div class="tab" data-tab="advanced">
+                <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                </svg>
+                Advanced
+            </div>
+            <div class="tab" data-tab="debug" id="debugTab" style="display: none;">
+                <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                </svg>
+                Debug
+            </div>
+            <div class="tab" data-tab="about">
+                <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                About
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content">
+            <!-- General Tab -->
+            <div class="tab-content active" id="general">
+                <div class="section">
+                    <h2 class="section-title">Startup</h2>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="launchAtLogin">
+                            Launch VibeTunnel at login
+                        </label>
+                        <p class="help-text">Automatically start VibeTunnel when you log in to your computer</p>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Updates</h2>
+                    <div class="form-group">
+                        <label for="updateChannel">Update Channel</label>
+                        <select id="updateChannel">
+                            <option value="stable">Stable Releases</option>
+                            <option value="beta">Beta Releases</option>
+                            <option value="nightly">Nightly Builds</option>
+                        </select>
+                        <p class="help-text">Choose which release channel to receive updates from</p>
+                    </div>
+                    <div class="form-group">
+                        <button class="button" id="checkUpdates">Check for Updates</button>
+                        <span id="updateStatus" class="status" style="display: none;"></span>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">System Permissions</h2>
+                    <div class="info-box">
+                        VibeTunnel requires certain permissions to function properly. Grant these permissions to enable all features.
+                    </div>
+                    <div id="permissionsList">
+                        <!-- Permissions will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div class="tab-content" id="dashboard">
+                <div class="section">
+                    <h2 class="section-title">Dashboard Security</h2>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enablePassword">
+                            Password protect the dashboard
+                        </label>
+                        <p class="help-text">Require a password to access the terminal dashboard</p>
+                    </div>
+                    <div class="form-group" id="passwordGroup" style="display: none;">
+                        <label for="dashboardPassword">Dashboard Password</label>
+                        <input type="password" id="dashboardPassword" placeholder="Enter password">
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Server Configuration</h2>
+                    <div class="form-group">
+                        <label for="serverPort">Server Port</label>
+                        <input type="number" id="serverPort" min="1024" max="65535" placeholder="4020">
+                        <p class="help-text">The port VibeTunnel's HTTP server will listen on</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="accessMode">Access Mode</label>
+                        <select id="accessMode">
+                            <option value="localhost">Localhost Only (127.0.0.1)</option>
+                            <option value="network">Network Access (0.0.0.0)</option>
+                        </select>
+                        <p class="help-text">Control who can access your terminal dashboard</p>
+                    </div>
+                    <div id="networkInfo" style="display: none;">
+                        <div class="form-group">
+                            <label>Local IP Address</label>
+                            <div class="ip-display">
+                                <span class="ip-address" id="localIP">192.168.1.100</span>
+                                <button class="copy-button" onclick="copyIP()">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Remote Access</h2>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableNgrok">
+                            Enable ngrok tunnel
+                        </label>
+                        <p class="help-text">Create a secure tunnel to access your terminals from anywhere</p>
+                    </div>
+                    <div id="ngrokConfig" style="display: none;">
+                        <div class="form-group">
+                            <label for="ngrokToken">ngrok Auth Token</label>
+                            <input type="password" id="ngrokToken" placeholder="Enter your ngrok auth token">
+                            <p class="help-text">Get your token from <a href="#" onclick="openNgrokDashboard()">ngrok.com</a></p>
+                        </div>
+                        <div class="form-group">
+                            <label for="ngrokRegion">Region</label>
+                            <select id="ngrokRegion">
+                                <option value="us">United States</option>
+                                <option value="eu">Europe</option>
+                                <option value="ap">Asia Pacific</option>
+                                <option value="au">Australia</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Tab -->
+            <div class="tab-content" id="advanced">
+                <div class="section">
+                    <h2 class="section-title">Terminal Settings</h2>
+                    <div class="form-group">
+                        <label for="defaultTerminal">Default Terminal</label>
+                        <select id="defaultTerminal">
+                            <option value="system">System Default</option>
+                        </select>
+                        <p class="help-text">Choose your preferred terminal emulator</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="defaultShell">Default Shell</label>
+                        <input type="text" id="defaultShell" placeholder="/bin/zsh">
+                        <p class="help-text">Shell to use for new terminal sessions</p>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">CLI Tool</h2>
+                    <div class="info-box">
+                        The <code>vt</code> command lets you quickly create terminal sessions from your existing terminal.
+                    </div>
+                    <div class="form-group">
+                        <div class="button-group">
+                            <button class="button" id="installCLI">Install CLI</button>
+                            <button class="button secondary" id="uninstallCLI">Uninstall</button>
+                        </div>
+                        <span id="cliStatus" class="status" style="display: none;"></span>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Session Management</h2>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="cleanupOnStartup">
+                            Clean up sessions on startup
+                        </label>
+                        <p class="help-text">Remove all terminal sessions when VibeTunnel starts</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="sessionTimeout">Session Timeout (minutes)</label>
+                        <input type="number" id="sessionTimeout" min="0" placeholder="0">
+                        <p class="help-text">Automatically close idle sessions (0 = disabled)</p>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Display</h2>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showInDock">
+                            Show VibeTunnel in Dock
+                        </label>
+                        <p class="help-text">Display the VibeTunnel icon in the macOS Dock</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="debugMode">
+                            Enable Debug Mode
+                        </label>
+                        <p class="help-text">Show debug options and additional logging</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug Tab -->
+            <div class="tab-content" id="debug">
+                <div class="section">
+                    <h2 class="section-title">Server Status</h2>
+                    <div class="info-box">
+                        <div>Server: <span id="serverStatus">Running</span></div>
+                        <div>Port: <span id="serverPortStatus">4020</span></div>
+                        <div>Mode: <span id="serverModeStatus">Rust</span></div>
+                        <div>Sessions: <span id="sessionCount">0</span></div>
+                    </div>
+                    <div class="button-group">
+                        <button class="button" id="restartServer">Restart Server</button>
+                        <button class="button secondary" id="stopServer">Stop Server</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">API Testing</h2>
+                    <div class="form-group">
+                        <label for="apiEndpoint">Test Endpoint</label>
+                        <select id="apiEndpoint">
+                            <option value="/health">Health Check</option>
+                            <option value="/sessions">List Sessions</option>
+                            <option value="/terminal/list">List Terminals</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button class="button" id="testAPI">Test API</button>
+                    </div>
+                    <div class="console" id="apiResponse" style="display: none;">
+                        <!-- API response will be shown here -->
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Server Console</h2>
+                    <div class="button-group">
+                        <button class="button secondary" id="clearConsole">Clear</button>
+                        <button class="button secondary" id="exportLogs">Export Logs</button>
+                    </div>
+                    <div class="console" id="serverConsole">
+                        <div class="console-line">Server started on port 4020</div>
+                        <div class="console-line success">Health check: OK</div>
+                        <!-- More log lines will be added here -->
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Developer Tools</h2>
+                    <div class="form-group">
+                        <label for="logLevel">Log Level</label>
+                        <select id="logLevel">
+                            <option value="error">Error</option>
+                            <option value="warn">Warning</option>
+                            <option value="info">Info</option>
+                            <option value="debug">Debug</option>
+                            <option value="trace">Trace</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableTelemetry">
+                            Enable anonymous telemetry
+                        </label>
+                        <p class="help-text">Help improve VibeTunnel by sending anonymous usage data</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About Tab -->
+            <div class="tab-content" id="about">
+                <div class="about-content">
+                    <img src="icon.png" alt="VibeTunnel" class="app-icon-large">
+                    <h1 class="app-name">VibeTunnel</h1>
+                    <p class="app-version">Version <span id="appVersion">1.0.0</span></p>
+                    
+                    <div class="button-group" style="justify-content: center;">
+                        <button class="button secondary" onclick="openWebsite()">Website</button>
+                        <button class="button secondary" onclick="openGitHub()">GitHub</button>
+                        <button class="button secondary" onclick="openChangelog()">Changelog</button>
+                    </div>
+
+                    <p class="copyright">
+                        © 2024 VibeTunnel. All rights reserved.<br>
+                        Built with ❤️ for developers
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { invoke } = window.__TAURI__.tauri;
+        const { open } = window.__TAURI__.shell;
+        const { appWindow } = window.__TAURI__.window;
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding content
+                tab.classList.add('active');
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Load settings on startup
+        async function loadSettings() {
+            try {
+                const settings = await invoke('get_all_settings');
+                
+                // General settings
+                document.getElementById('launchAtLogin').checked = settings.general?.launch_at_login || false;
+                document.getElementById('updateChannel').value = settings.general?.update_channel || 'stable';
+                
+                // Dashboard settings
+                document.getElementById('enablePassword').checked = settings.dashboard?.password_enabled || false;
+                document.getElementById('dashboardPassword').value = settings.dashboard?.password || '';
+                document.getElementById('serverPort').value = settings.dashboard?.server_port || '4020';
+                document.getElementById('accessMode').value = settings.dashboard?.access_mode || 'localhost';
+                document.getElementById('enableNgrok').checked = settings.dashboard?.ngrok?.enabled || false;
+                document.getElementById('ngrokToken').value = settings.dashboard?.ngrok?.auth_token || '';
+                document.getElementById('ngrokRegion').value = settings.dashboard?.ngrok?.region || 'us';
+                
+                // Advanced settings
+                document.getElementById('defaultTerminal').value = settings.advanced?.default_terminal || 'system';
+                document.getElementById('defaultShell').value = settings.advanced?.default_shell || '/bin/zsh';
+                document.getElementById('cleanupOnStartup').checked = settings.advanced?.cleanup_on_startup || false;
+                document.getElementById('sessionTimeout').value = settings.advanced?.session_timeout || 0;
+                document.getElementById('showInDock').checked = settings.advanced?.show_in_dock ?? true;
+                document.getElementById('debugMode').checked = settings.advanced?.debug_mode || false;
+                
+                // Debug settings
+                document.getElementById('logLevel').value = settings.debug?.log_level || 'info';
+                document.getElementById('enableTelemetry').checked = settings.debug?.enable_telemetry || false;
+                
+                // Update UI based on settings
+                updatePasswordVisibility();
+                updateNgrokVisibility();
+                updateNetworkInfo();
+                updateDebugTabVisibility();
+                
+                // Load permissions
+                await loadPermissions();
+                
+                // Load terminal list
+                await loadTerminals();
+                
+                // Check CLI status
+                await checkCLIStatus();
+                
+                // Get app version
+                const version = await invoke('get_app_version');
+                document.getElementById('appVersion').textContent = version;
+                
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        }
+
+        // Save settings helper
+        async function saveSetting(section, key, value) {
+            try {
+                await invoke('update_setting', { section, key, value: JSON.stringify(value) });
+            } catch (error) {
+                console.error(`Failed to save ${section}.${key}:`, error);
+            }
+        }
+
+        // General tab handlers
+        document.getElementById('launchAtLogin').addEventListener('change', async (e) => {
+            await saveSetting('general', 'launch_at_login', e.target.checked);
+            if (e.target.checked) {
+                await invoke('enable_auto_launch');
+            } else {
+                await invoke('disable_auto_launch');
+            }
+        });
+
+        document.getElementById('updateChannel').addEventListener('change', async (e) => {
+            await saveSetting('general', 'update_channel', e.target.value);
+        });
+
+        document.getElementById('checkUpdates').addEventListener('click', async () => {
+            const button = document.getElementById('checkUpdates');
+            const status = document.getElementById('updateStatus');
+            
+            button.disabled = true;
+            status.style.display = 'inline-flex';
+            status.className = 'status';
+            status.innerHTML = '<span class="spinner"></span> Checking...';
+            
+            try {
+                const result = await invoke('check_for_updates');
+                if (result.available) {
+                    status.className = 'status warning';
+                    status.textContent = 'Update available!';
+                    // Trigger update download
+                    await invoke('download_update');
+                } else {
+                    status.className = 'status success';
+                    status.textContent = 'Up to date';
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = 'Check failed';
+            } finally {
+                button.disabled = false;
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 3000);
+            }
+        });
+
+        // Dashboard tab handlers
+        document.getElementById('enablePassword').addEventListener('change', async (e) => {
+            updatePasswordVisibility();
+            await saveSetting('dashboard', 'password_enabled', e.target.checked);
+        });
+
+        document.getElementById('dashboardPassword').addEventListener('blur', async (e) => {
+            if (e.target.value) {
+                await saveSetting('dashboard', 'password', e.target.value);
+                await invoke('set_dashboard_password', { password: e.target.value });
+            }
+        });
+
+        document.getElementById('serverPort').addEventListener('blur', async (e) => {
+            const port = parseInt(e.target.value);
+            if (port >= 1024 && port <= 65535) {
+                await saveSetting('dashboard', 'server_port', port);
+                // Restart server with new port
+                await invoke('restart_server_with_port', { port });
+            }
+        });
+
+        document.getElementById('accessMode').addEventListener('change', async (e) => {
+            await saveSetting('dashboard', 'access_mode', e.target.value);
+            updateNetworkInfo();
+            // Update server bind address
+            const bindAddress = e.target.value === 'localhost' ? '127.0.0.1' : '0.0.0.0';
+            await invoke('update_server_bind_address', { address: bindAddress });
+        });
+
+        document.getElementById('enableNgrok').addEventListener('change', async (e) => {
+            updateNgrokVisibility();
+            await saveSetting('dashboard', 'ngrok.enabled', e.target.checked);
+            if (e.target.checked) {
+                await invoke('start_ngrok');
+            } else {
+                await invoke('stop_ngrok');
+            }
+        });
+
+        // Advanced tab handlers
+        document.getElementById('cleanupOnStartup').addEventListener('change', async (e) => {
+            await saveSetting('advanced', 'cleanup_on_startup', e.target.checked);
+        });
+
+        document.getElementById('sessionTimeout').addEventListener('blur', async (e) => {
+            const timeout = parseInt(e.target.value) || 0;
+            await saveSetting('advanced', 'session_timeout', timeout);
+        });
+
+        document.getElementById('showInDock').addEventListener('change', async (e) => {
+            await saveSetting('advanced', 'show_in_dock', e.target.checked);
+            await invoke('set_dock_icon_visibility', { visible: e.target.checked });
+        });
+
+        document.getElementById('debugMode').addEventListener('change', async (e) => {
+            await saveSetting('advanced', 'debug_mode', e.target.checked);
+            updateDebugTabVisibility();
+        });
+
+        // CLI handlers
+        document.getElementById('installCLI').addEventListener('click', async () => {
+            const status = document.getElementById('cliStatus');
+            status.style.display = 'inline-flex';
+            status.className = 'status';
+            status.innerHTML = '<span class="spinner"></span> Installing...';
+            
+            try {
+                await invoke('install_cli');
+                status.className = 'status success';
+                status.textContent = 'Installed';
+                await checkCLIStatus();
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = 'Failed';
+            }
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
+        });
+
+        document.getElementById('uninstallCLI').addEventListener('click', async () => {
+            const status = document.getElementById('cliStatus');
+            status.style.display = 'inline-flex';
+            status.className = 'status';
+            status.innerHTML = '<span class="spinner"></span> Uninstalling...';
+            
+            try {
+                await invoke('uninstall_cli');
+                status.className = 'status success';
+                status.textContent = 'Uninstalled';
+                await checkCLIStatus();
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = 'Failed';
+            }
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
+        });
+
+        // Debug tab handlers
+        document.getElementById('logLevel').addEventListener('change', async (e) => {
+            await saveSetting('debug', 'log_level', e.target.value);
+            await invoke('set_log_level', { level: e.target.value });
+        });
+
+        document.getElementById('restartServer').addEventListener('click', async () => {
+            await invoke('restart_server');
+        });
+
+        document.getElementById('stopServer').addEventListener('click', async () => {
+            await invoke('stop_server');
+        });
+
+        document.getElementById('testAPI').addEventListener('click', async () => {
+            const endpoint = document.getElementById('apiEndpoint').value;
+            const response = document.getElementById('apiResponse');
+            
+            response.style.display = 'block';
+            response.innerHTML = '<div class="console-line">Testing ' + endpoint + '...</div>';
+            
+            try {
+                const result = await invoke('test_api_endpoint', { endpoint });
+                response.innerHTML += '<div class="console-line success">' + JSON.stringify(result, null, 2) + '</div>';
+            } catch (error) {
+                response.innerHTML += '<div class="console-line error">Error: ' + error + '</div>';
+            }
+        });
+
+        // Helper functions
+        function updatePasswordVisibility() {
+            const enabled = document.getElementById('enablePassword').checked;
+            document.getElementById('passwordGroup').style.display = enabled ? 'block' : 'none';
+        }
+
+        function updateNgrokVisibility() {
+            const enabled = document.getElementById('enableNgrok').checked;
+            document.getElementById('ngrokConfig').style.display = enabled ? 'block' : 'none';
+        }
+
+        function updateNetworkInfo() {
+            const mode = document.getElementById('accessMode').value;
+            document.getElementById('networkInfo').style.display = mode === 'network' ? 'block' : 'none';
+            
+            if (mode === 'network') {
+                // Get local IP
+                invoke('get_local_ip').then(ip => {
+                    document.getElementById('localIP').textContent = ip;
+                });
+            }
+        }
+
+        function updateDebugTabVisibility() {
+            const enabled = document.getElementById('debugMode').checked;
+            document.getElementById('debugTab').style.display = enabled ? 'flex' : 'none';
+        }
+
+        async function loadPermissions() {
+            try {
+                const permissions = await invoke('check_all_permissions');
+                const container = document.getElementById('permissionsList');
+                container.innerHTML = '';
+                
+                for (const [name, status] of Object.entries(permissions)) {
+                    const item = document.createElement('div');
+                    item.className = 'permission-item';
+                    
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'permission-name';
+                    nameEl.textContent = formatPermissionName(name);
+                    
+                    const statusEl = document.createElement('div');
+                    statusEl.className = 'permission-status';
+                    
+                    if (status === 'granted') {
+                        statusEl.innerHTML = `
+                            <svg class="permission-icon granted" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span>Granted</span>
+                        `;
+                    } else {
+                        statusEl.innerHTML = `
+                            <svg class="permission-icon denied" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                            </svg>
+                            <button class="button" onclick="requestPermission('${name}')">Grant</button>
+                        `;
+                    }
+                    
+                    item.appendChild(nameEl);
+                    item.appendChild(statusEl);
+                    container.appendChild(item);
+                }
+            } catch (error) {
+                console.error('Failed to load permissions:', error);
+            }
+        }
+
+        async function loadTerminals() {
+            try {
+                const terminals = await invoke('detect_terminals');
+                const select = document.getElementById('defaultTerminal');
+                
+                // Clear existing options except system default
+                select.innerHTML = '<option value="system">System Default</option>';
+                
+                terminals.forEach(terminal => {
+                    const option = document.createElement('option');
+                    option.value = terminal.id;
+                    option.textContent = terminal.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load terminals:', error);
+            }
+        }
+
+        async function checkCLIStatus() {
+            try {
+                const installed = await invoke('is_cli_installed');
+                const installBtn = document.getElementById('installCLI');
+                const uninstallBtn = document.getElementById('uninstallCLI');
+                
+                installBtn.disabled = installed;
+                uninstallBtn.disabled = !installed;
+            } catch (error) {
+                console.error('Failed to check CLI status:', error);
+            }
+        }
+
+        function formatPermissionName(name) {
+            return name.split('_').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
+        }
+
+        async function requestPermission(permission) {
+            try {
+                await invoke('request_permission', { permission });
+                await loadPermissions();
+            } catch (error) {
+                console.error('Failed to request permission:', error);
+            }
+        }
+
+        function copyIP() {
+            const ip = document.getElementById('localIP').textContent;
+            navigator.clipboard.writeText(ip);
+            
+            // Show feedback
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 1500);
+        }
+
+        // External links
+        async function openWebsite() {
+            await open('https://vibetunnel.com');
+        }
+
+        async function openGitHub() {
+            await open('https://github.com/vibetunnel/vibetunnel');
+        }
+
+        async function openChangelog() {
+            await open('https://github.com/vibetunnel/vibetunnel/releases');
+        }
+
+        async function openNgrokDashboard() {
+            await open('https://dashboard.ngrok.com');
+        }
+
+        // Server console updates
+        let consoleLines = [];
+        
+        async function updateServerConsole() {
+            try {
+                const logs = await invoke('get_server_logs', { limit: 100 });
+                const console = document.getElementById('serverConsole');
+                
+                console.innerHTML = logs.map(log => {
+                    let className = 'console-line';
+                    if (log.level === 'error') className += ' error';
+                    else if (log.level === 'success') className += ' success';
+                    
+                    return `<div class="${className}">${log.message}</div>`;
+                }).join('');
+                
+                console.scrollTop = console.scrollHeight;
+            } catch (error) {
+                console.error('Failed to update server console:', error);
+            }
+        }
+
+        document.getElementById('clearConsole').addEventListener('click', () => {
+            document.getElementById('serverConsole').innerHTML = '';
+            consoleLines = [];
+        });
+
+        document.getElementById('exportLogs').addEventListener('click', async () => {
+            try {
+                await invoke('export_logs');
+            } catch (error) {
+                console.error('Failed to export logs:', error);
+            }
+        });
+
+        // Update server status periodically
+        async function updateServerStatus() {
+            try {
+                const status = await invoke('get_server_status');
+                document.getElementById('serverStatus').textContent = status.running ? 'Running' : 'Stopped';
+                document.getElementById('serverPortStatus').textContent = status.port;
+                document.getElementById('serverModeStatus').textContent = status.mode;
+                document.getElementById('sessionCount').textContent = status.session_count;
+            } catch (error) {
+                console.error('Failed to update server status:', error);
+            }
+        }
+
+        // Initialize
+        loadSettings();
+        
+        // Update server status every 5 seconds
+        setInterval(updateServerStatus, 5000);
+        
+        // Update console if debug tab is active
+        setInterval(() => {
+            if (document.getElementById('debug').classList.contains('active')) {
+                updateServerConsole();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

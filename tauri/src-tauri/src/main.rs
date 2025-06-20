@@ -19,6 +19,23 @@ mod terminal_detector;
 mod cli_installer;
 mod auth;
 mod tray_menu;
+mod cast;
+mod tty_forward;
+mod session_monitor;
+mod port_conflict;
+mod network_utils;
+mod notification_manager;
+mod welcome;
+mod permissions;
+mod updater;
+mod backend_manager;
+mod debug_features;
+mod api_testing;
+mod auth_cache;
+mod terminal_integrations;
+mod app_mover;
+mod terminal_spawn_service;
+mod fs_api;
 
 use commands::*;
 use state::AppState;
@@ -40,8 +57,8 @@ fn open_settings_window(app: AppHandle) -> Result<(), String> {
         )
         .title("VibeTunnel Settings")
         .inner_size(800.0, 600.0)
-        .resizable(false)
-        .decorations(false)
+        .resizable(true)
+        .decorations(true)
         .center()
         .build()
         .map_err(|e| e.to_string())?;
@@ -108,8 +125,197 @@ fn main() {
             cli_installer::install_cli,
             cli_installer::uninstall_cli,
             cli_installer::check_cli_installed,
+            start_terminal_recording,
+            stop_terminal_recording,
+            save_terminal_recording,
+            get_recording_status,
+            start_tty_forward,
+            stop_tty_forward,
+            list_tty_forwards,
+            get_tty_forward,
+            get_session_stats,
+            get_monitored_sessions,
+            start_session_monitoring,
+            check_port_availability,
+            detect_port_conflict,
+            resolve_port_conflict,
+            force_kill_process,
+            find_available_ports,
+            get_local_ip_address,
+            get_all_ip_addresses,
+            get_network_interfaces,
+            get_hostname,
+            test_network_connectivity,
+            get_network_stats,
+            show_notification,
+            get_notifications,
+            get_notification_history,
+            mark_notification_as_read,
+            mark_all_notifications_as_read,
+            clear_notification,
+            clear_all_notifications,
+            get_unread_notification_count,
+            update_notification_settings,
+            get_notification_settings,
+            get_welcome_state,
+            should_show_welcome,
+            get_tutorials,
+            get_tutorial_category,
+            complete_tutorial_step,
+            skip_tutorial,
+            reset_tutorial,
+            get_tutorial_progress,
+            show_welcome_window,
+            get_recording_settings,
+            save_recording_settings,
+            get_all_advanced_settings,
+            update_advanced_settings,
+            reset_settings_section,
+            export_settings,
+            import_settings,
+            check_all_permissions,
+            check_permission,
+            request_permission,
+            get_permission_info,
+            get_all_permissions,
+            get_required_permissions,
+            get_missing_required_permissions,
+            all_required_permissions_granted,
+            open_system_permission_settings,
+            get_permission_stats,
+            check_for_updates,
+            download_update,
+            install_update,
+            cancel_update,
+            get_update_state,
+            get_updater_settings,
+            update_updater_settings,
+            switch_update_channel,
+            get_update_history,
+            get_available_backends,
+            get_backend_config,
+            is_backend_installed,
+            install_backend,
+            start_backend,
+            stop_backend,
+            switch_backend,
+            get_active_backend,
+            get_backend_instances,
+            check_backend_health,
+            get_backend_stats,
+            get_debug_settings,
+            update_debug_settings,
+            log_debug_message,
+            record_performance_metric,
+            take_memory_snapshot,
+            get_debug_logs,
+            get_performance_metrics,
+            get_memory_snapshots,
+            get_network_requests,
+            run_api_tests,
+            run_benchmarks,
+            generate_diagnostic_report,
+            clear_debug_data,
+            set_debug_mode,
+            get_debug_stats,
+            get_api_test_config,
+            update_api_test_config,
+            add_api_test_suite,
+            get_api_test_suite,
+            list_api_test_suites,
+            run_single_api_test,
+            run_api_test_suite,
+            get_api_test_history,
+            clear_api_test_history,
+            import_postman_collection,
+            export_api_test_suite,
+            get_auth_cache_config,
+            update_auth_cache_config,
+            store_auth_token,
+            get_auth_token,
+            store_auth_credential,
+            get_auth_credential,
+            clear_auth_cache_entry,
+            clear_all_auth_cache,
+            get_auth_cache_stats,
+            list_auth_cache_entries,
+            export_auth_cache,
+            import_auth_cache,
+            hash_password,
+            create_auth_cache_key,
+            detect_installed_terminals,
+            get_default_terminal,
+            set_default_terminal,
+            launch_terminal_emulator,
+            get_terminal_config,
+            update_terminal_config,
+            list_detected_terminals,
+            create_terminal_ssh_url,
+            get_terminal_integration_stats,
+            // Settings UI Commands
+            get_all_settings,
+            update_setting,
+            set_dashboard_password,
+            restart_server_with_port,
+            update_server_bind_address,
+            set_dock_icon_visibility,
+            set_log_level,
+            test_api_endpoint,
+            get_server_logs,
+            export_logs,
+            get_local_ip,
+            detect_terminals,
+            // App Mover Commands
+            app_mover::prompt_move_to_applications,
+            app_mover::is_in_applications_folder,
+            // Terminal Spawn Service Commands
+            terminal_spawn_service::spawn_terminal_for_session,
+            terminal_spawn_service::spawn_terminal_with_command,
+            terminal_spawn_service::spawn_custom_terminal,
         ])
         .setup(|app| {
+            // Set app handle in managers
+            let state = app.state::<AppState>();
+            let notification_manager = state.notification_manager.clone();
+            let welcome_manager = state.welcome_manager.clone();
+            let permissions_manager = state.permissions_manager.clone();
+            let update_manager = state.update_manager.clone();
+            let app_handle = app.handle().clone();
+            let app_handle2 = app.handle().clone();
+            let app_handle3 = app.handle().clone();
+            let app_handle4 = app.handle().clone();
+            let app_handle_for_move = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                notification_manager.set_app_handle(app_handle).await;
+                welcome_manager.set_app_handle(app_handle2).await;
+                permissions_manager.set_app_handle(app_handle3).await;
+                update_manager.set_app_handle(app_handle4).await;
+                
+                // Load welcome state and check if should show welcome
+                let _ = welcome_manager.load_state().await;
+                if welcome_manager.should_show_welcome().await {
+                    let _ = welcome_manager.show_welcome_window().await;
+                }
+                
+                // Check permissions on startup
+                let _ = permissions_manager.check_all_permissions().await;
+                
+                // Check if app should be moved to Applications folder (macOS only)
+                #[cfg(target_os = "macos")]
+                {
+                    let app_handle_move = app_handle_for_move.clone();
+                    tokio::spawn(async move {
+                        // Small delay to let the app fully initialize
+                        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                        let _ = app_mover::check_and_prompt_move(app_handle_move).await;
+                    });
+                }
+                
+                // Load updater settings and start auto-check
+                let _ = update_manager.load_settings().await;
+                update_manager.clone().start_auto_check().await;
+            });
+
             // Create system tray icon using menu-bar-icon.png with template mode
             let icon_path = app.path().resource_dir().unwrap().join("icons/menu-bar-icon.png");
             let tray_icon = if let Ok(icon_data) = std::fs::read(&icon_path) {
@@ -370,9 +576,16 @@ async fn start_server_with_monitoring(app_handle: AppHandle) {
             
             // Update tray menu with server status
             update_tray_menu_status(&app_handle, status.port, 0);
+            
+            // Show notification
+            let _ = state.notification_manager.notify_server_status(true, status.port).await;
         }
         Err(e) => {
             tracing::error!("Failed to start server: {}", e);
+            let _ = state.notification_manager.notify_error(
+                "Server Start Failed",
+                &format!("Failed to start server: {}", e)
+            ).await;
         }
     }
     
@@ -416,11 +629,18 @@ async fn start_server_with_monitoring(app_handle: AppHandle) {
                             
                             // Notify frontend of server restart
                             if let Some(window) = monitoring_app.get_webview_window("main") {
-                                let _ = window.emit("server:restarted", status);
+                                let _ = window.emit("server:restarted", &status);
                             }
+                            
+                            // Show notification
+                            let _ = monitoring_state.notification_manager.notify_server_status(true, status.port).await;
                         }
                         Err(e) => {
                             tracing::error!("Failed to restart server: {}", e);
+                            let _ = monitoring_state.notification_manager.notify_error(
+                                "Server Restart Failed",
+                                &format!("Failed to restart server: {}", e)
+                            ).await;
                         }
                     }
                 }
@@ -436,11 +656,18 @@ async fn start_server_with_monitoring(app_handle: AppHandle) {
                             
                             // Notify frontend of server restart
                             if let Some(window) = monitoring_app.get_webview_window("main") {
-                                let _ = window.emit("server:restarted", status);
+                                let _ = window.emit("server:restarted", &status);
                             }
+                            
+                            // Show notification
+                            let _ = monitoring_state.notification_manager.notify_server_status(true, status.port).await;
                         }
                         Err(e) => {
                             tracing::error!("Failed to start server: {}", e);
+                            let _ = monitoring_state.notification_manager.notify_error(
+                                "Server Start Failed",
+                                &format!("Failed to start server: {}", e)
+                            ).await;
                         }
                     }
                 }
@@ -501,9 +728,9 @@ async fn start_server_internal(state: &AppState) -> Result<ServerStatus, String>
     // Start HTTP server with auth if configured
     let mut http_server = if settings.dashboard.enable_password && !settings.dashboard.password.is_empty() {
         let auth_config = crate::auth::AuthConfig::new(true, Some(settings.dashboard.password));
-        HttpServer::with_auth(state.terminal_manager.clone(), auth_config)
+        HttpServer::with_auth(state.terminal_manager.clone(), state.session_monitor.clone(), auth_config)
     } else {
-        HttpServer::new(state.terminal_manager.clone())
+        HttpServer::new(state.terminal_manager.clone(), state.session_monitor.clone())
     };
     
     // Start server with appropriate access mode

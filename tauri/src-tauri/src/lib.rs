@@ -9,6 +9,20 @@ pub mod auth;
 pub mod terminal_detector;
 pub mod cli_installer;
 pub mod tray_menu;
+pub mod cast;
+pub mod tty_forward;
+pub mod session_monitor;
+pub mod port_conflict;
+pub mod network_utils;
+pub mod notification_manager;
+pub mod welcome;
+pub mod permissions;
+pub mod updater;
+pub mod backend_manager;
+pub mod debug_features;
+pub mod api_testing;
+pub mod auth_cache;
+pub mod terminal_integrations;
 
 #[cfg(mobile)]
 pub fn init() {

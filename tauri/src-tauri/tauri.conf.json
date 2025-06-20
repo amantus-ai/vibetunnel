@@ -5,7 +5,7 @@
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
-    "frontendDist": "../dist"
+    "frontendDist": "../public"
   },
   "app": {
     "windows": [{
@@ -39,7 +39,7 @@
       "icons/menu-bar-icon@2x.png",
       "icons/tray-icon.png",
       "icons/tray-icon@2x.png",
-      "../public/**"
+      "public/**"
     ],
     "macOS": {
       "frameworks": [],

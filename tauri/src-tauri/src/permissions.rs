@@ -1,0 +1,529 @@
+use serde::{Serialize, Deserialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use std::collections::HashMap;
+use chrono::{DateTime, Utc};
+use tauri::AppHandle;
+
+/// Permission type enumeration
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum PermissionType {
+    ScreenRecording,
+    Accessibility,
+    NetworkAccess,
+    FileSystemFull,
+    FileSystemRestricted,
+    TerminalAccess,
+    NotificationAccess,
+    CameraAccess,
+    MicrophoneAccess,
+    AutoStart,
+}
+
+/// Permission status
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum PermissionStatus {
+    Granted,
+    Denied,
+    NotDetermined,
+    Restricted,
+    NotApplicable,
+}
+
+/// Permission information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionInfo {
+    pub permission_type: PermissionType,
+    pub status: PermissionStatus,
+    pub required: bool,
+    pub platform_specific: bool,
+    pub description: String,
+    pub last_checked: Option<DateTime<Utc>>,
+    pub request_count: u32,
+}
+
+/// Permission request result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionRequestResult {
+    pub permission_type: PermissionType,
+    pub status: PermissionStatus,
+    pub message: Option<String>,
+    pub requires_restart: bool,
+    pub requires_system_settings: bool,
+}
+
+/// Platform-specific permission settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlatformPermissions {
+    pub macos: HashMap<PermissionType, PermissionInfo>,
+    pub windows: HashMap<PermissionType, PermissionInfo>,
+    pub linux: HashMap<PermissionType, PermissionInfo>,
+}
+
+/// Permissions manager
+pub struct PermissionsManager {
+    permissions: Arc<RwLock<HashMap<PermissionType, PermissionInfo>>>,
+    app_handle: Arc<RwLock<Option<AppHandle>>>,
+    notification_manager: Option<Arc<crate::notification_manager::NotificationManager>>,
+}
+
+impl PermissionsManager {
+    /// Create a new permissions manager
+    pub fn new() -> Self {
+        let manager = Self {
+            permissions: Arc::new(RwLock::new(HashMap::new())),
+            app_handle: Arc::new(RwLock::new(None)),
+            notification_manager: None,
+        };
+        
+        // Initialize default permissions
+        tokio::spawn({
+            let permissions = manager.permissions.clone();
+            async move {
+                let default_permissions = Self::initialize_permissions();
+                *permissions.write().await = default_permissions;
+            }
+        });
+        
+        manager
+    }
+
+    /// Set the app handle
+    pub async fn set_app_handle(&self, app_handle: AppHandle) {
+        *self.app_handle.write().await = Some(app_handle);
+    }
+
+    /// Set the notification manager
+    pub fn set_notification_manager(&mut self, notification_manager: Arc<crate::notification_manager::NotificationManager>) {
+        self.notification_manager = Some(notification_manager);
+    }
+
+    /// Initialize default permissions based on platform
+    fn initialize_permissions() -> HashMap<PermissionType, PermissionInfo> {
+        let mut permissions = HashMap::new();
+        
+        // Get current platform
+        let platform = std::env::consts::OS;
+        
+        match platform {
+            "macos" => {
+                permissions.insert(PermissionType::ScreenRecording, PermissionInfo {
+                    permission_type: PermissionType::ScreenRecording,
+                    status: PermissionStatus::NotDetermined,
+                    required: false,
+                    platform_specific: true,
+                    description: "Required for recording terminal sessions with system UI".to_string(),
+                    last_checked: None,
+                    request_count: 0,
+                });
+                
+                permissions.insert(PermissionType::Accessibility, PermissionInfo {
+                    permission_type: PermissionType::Accessibility,
+                    status: PermissionStatus::NotDetermined,
+                    required: false,
+                    platform_specific: true,
+                    description: "Required for advanced terminal integration features".to_string(),
+                    last_checked: None,
+                    request_count: 0,
+                });
+                
+                permissions.insert(PermissionType::NotificationAccess, PermissionInfo {
+                    permission_type: PermissionType::NotificationAccess,
+                    status: PermissionStatus::NotDetermined,
+                    required: false,
+                    platform_specific: true,
+                    description: "Required to show system notifications".to_string(),
+                    last_checked: None,
+                    request_count: 0,
+                });
+            }
+            "windows" => {
+                permissions.insert(PermissionType::TerminalAccess, PermissionInfo {
+                    permission_type: PermissionType::TerminalAccess,
+                    status: PermissionStatus::NotDetermined,
+                    required: true,
+                    platform_specific: true,
+                    description: "Required to create and manage terminal sessions".to_string(),
+                    last_checked: None,
+                    request_count: 0,
+                });
+                
+                permissions.insert(PermissionType::AutoStart, PermissionInfo {
+                    permission_type: PermissionType::AutoStart,
+                    status: PermissionStatus::NotDetermined,
+                    required: false,
+                    platform_specific: true,
+                    description: "Required to start VibeTunnel with Windows".to_string(),
+                    last_checked: None,
+                    request_count: 0,
+                });
+            }
+            "linux" => {
+                permissions.insert(PermissionType::FileSystemFull, PermissionInfo {
+                    permission_type: PermissionType::FileSystemFull,
+                    status: PermissionStatus::Granted,
+                    required: true,
+                    platform_specific: false,
+                    description: "Required for saving recordings and configurations".to_string(),
+                    last_checked: None,
+                    request_count: 0,
+                });
+            }
+            _ => {}
+        }
+        
+        // Add common permissions
+        permissions.insert(PermissionType::NetworkAccess, PermissionInfo {
+            permission_type: PermissionType::NetworkAccess,
+            status: PermissionStatus::Granted,
+            required: true,
+            platform_specific: false,
+            description: "Required for web server and remote access features".to_string(),
+            last_checked: None,
+            request_count: 0,
+        });
+        
+        permissions.insert(PermissionType::FileSystemRestricted, PermissionInfo {
+            permission_type: PermissionType::FileSystemRestricted,
+            status: PermissionStatus::Granted,
+            required: true,
+            platform_specific: false,
+            description: "Required for basic application functionality".to_string(),
+            last_checked: None,
+            request_count: 0,
+        });
+        
+        permissions
+    }
+
+    /// Check all permissions
+    pub async fn check_all_permissions(&self) -> Vec<PermissionInfo> {
+        let mut permissions = self.permissions.write().await;
+        
+        for (permission_type, info) in permissions.iter_mut() {
+            info.status = self.check_permission_internal(*permission_type).await;
+            info.last_checked = Some(Utc::now());
+        }
+        
+        permissions.values().cloned().collect()
+    }
+
+    /// Check specific permission
+    pub async fn check_permission(&self, permission_type: PermissionType) -> PermissionStatus {
+        let status = self.check_permission_internal(permission_type).await;
+        
+        // Update stored status
+        if let Some(info) = self.permissions.write().await.get_mut(&permission_type) {
+            info.status = status;
+            info.last_checked = Some(Utc::now());
+        }
+        
+        status
+    }
+
+    /// Internal permission checking logic
+    async fn check_permission_internal(&self, permission_type: PermissionType) -> PermissionStatus {
+        let platform = std::env::consts::OS;
+        
+        match (platform, permission_type) {
+            #[cfg(target_os = "macos")]
+            ("macos", PermissionType::ScreenRecording) => {
+                self.check_screen_recording_permission_macos().await
+            }
+            #[cfg(target_os = "macos")]
+            ("macos", PermissionType::Accessibility) => {
+                self.check_accessibility_permission_macos().await
+            }
+            #[cfg(target_os = "macos")]
+            ("macos", PermissionType::NotificationAccess) => {
+                self.check_notification_permission_macos().await
+            }
+            #[cfg(target_os = "windows")]
+            ("windows", PermissionType::TerminalAccess) => {
+                self.check_terminal_permission_windows().await
+            }
+            #[cfg(target_os = "windows")]
+            ("windows", PermissionType::AutoStart) => {
+                self.check_auto_start_permission_windows().await
+            }
+            _ => PermissionStatus::NotApplicable,
+        }
+    }
+
+    /// Request permission
+    pub async fn request_permission(&self, permission_type: PermissionType) -> Result<PermissionRequestResult, String> {
+        // Update request count
+        if let Some(info) = self.permissions.write().await.get_mut(&permission_type) {
+            info.request_count += 1;
+        }
+        
+        let platform = std::env::consts::OS;
+        
+        match (platform, permission_type) {
+            #[cfg(target_os = "macos")]
+            ("macos", PermissionType::ScreenRecording) => {
+                self.request_screen_recording_permission_macos().await
+            }
+            #[cfg(target_os = "macos")]
+            ("macos", PermissionType::Accessibility) => {
+                self.request_accessibility_permission_macos().await
+            }
+            #[cfg(target_os = "macos")]
+            ("macos", PermissionType::NotificationAccess) => {
+                self.request_notification_permission_macos().await
+            }
+            _ => Ok(PermissionRequestResult {
+                permission_type,
+                status: PermissionStatus::NotApplicable,
+                message: Some("Permission not applicable on this platform".to_string()),
+                requires_restart: false,
+                requires_system_settings: false,
+            }),
+        }
+    }
+
+    /// Get permission info
+    pub async fn get_permission_info(&self, permission_type: PermissionType) -> Option<PermissionInfo> {
+        self.permissions.read().await.get(&permission_type).cloned()
+    }
+
+    /// Get all permissions
+    pub async fn get_all_permissions(&self) -> Vec<PermissionInfo> {
+        self.permissions.read().await.values().cloned().collect()
+    }
+
+    /// Get required permissions
+    pub async fn get_required_permissions(&self) -> Vec<PermissionInfo> {
+        self.permissions.read().await
+            .values()
+            .filter(|info| info.required)
+            .cloned()
+            .collect()
+    }
+
+    /// Get missing required permissions
+    pub async fn get_missing_required_permissions(&self) -> Vec<PermissionInfo> {
+        self.permissions.read().await
+            .values()
+            .filter(|info| info.required && info.status != PermissionStatus::Granted)
+            .cloned()
+            .collect()
+    }
+
+    /// Check if all required permissions are granted
+    pub async fn all_required_permissions_granted(&self) -> bool {
+        !self.permissions.read().await
+            .values()
+            .any(|info| info.required && info.status != PermissionStatus::Granted)
+    }
+
+    /// Open system settings for permission
+    pub async fn open_system_settings(&self, permission_type: PermissionType) -> Result<(), String> {
+        let platform = std::env::consts::OS;
+        
+        match (platform, permission_type) {
+            #[cfg(target_os = "macos")]
+            ("macos", PermissionType::ScreenRecording) => {
+                self.open_screen_recording_settings_macos().await
+            }
+            #[cfg(target_os = "macos")]
+            ("macos", PermissionType::Accessibility) => {
+                self.open_accessibility_settings_macos().await
+            }
+            #[cfg(target_os = "macos")]
+            ("macos", PermissionType::NotificationAccess) => {
+                self.open_notification_settings_macos().await
+            }
+            #[cfg(target_os = "windows")]
+            ("windows", PermissionType::AutoStart) => {
+                self.open_startup_settings_windows().await
+            }
+            _ => Err("No system settings available for this permission".to_string()),
+        }
+    }
+
+    // Platform-specific implementations
+    #[cfg(target_os = "macos")]
+    async fn check_screen_recording_permission_macos(&self) -> PermissionStatus {
+        // Use CGDisplayStream API to check screen recording permission
+        use std::process::Command;
+        
+        let output = Command::new("osascript")
+            .arg("-e")
+            .arg("tell application \"System Events\" to get properties")
+            .output();
+        
+        match output {
+            Ok(output) if output.status.success() => PermissionStatus::Granted,
+            _ => PermissionStatus::NotDetermined,
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn request_screen_recording_permission_macos(&self) -> Result<PermissionRequestResult, String> {
+        // Show notification about needing to grant permission
+        if let Some(notification_manager) = &self.notification_manager {
+            let _ = notification_manager.notify_permission_required(
+                "Screen Recording",
+                "VibeTunnel needs screen recording permission to capture terminal sessions"
+            ).await;
+        }
+        
+        // Open system preferences
+        let _ = self.open_screen_recording_settings_macos().await;
+        
+        Ok(PermissionRequestResult {
+            permission_type: PermissionType::ScreenRecording,
+            status: PermissionStatus::NotDetermined,
+            message: Some("Please grant screen recording permission in System Settings".to_string()),
+            requires_restart: true,
+            requires_system_settings: true,
+        })
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn open_screen_recording_settings_macos(&self) -> Result<(), String> {
+        use std::process::Command;
+        
+        Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+            .spawn()
+            .map_err(|e| format!("Failed to open system preferences: {}", e))?;
+        
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn check_accessibility_permission_macos(&self) -> PermissionStatus {
+        use std::process::Command;
+        
+        let output = Command::new("osascript")
+            .arg("-e")
+            .arg("tell application \"System Events\" to get UI elements enabled")
+            .output();
+        
+        match output {
+            Ok(output) if output.status.success() => {
+                let result = String::from_utf8_lossy(&output.stdout);
+                if result.trim() == "true" {
+                    PermissionStatus::Granted
+                } else {
+                    PermissionStatus::Denied
+                }
+            }
+            _ => PermissionStatus::NotDetermined,
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn request_accessibility_permission_macos(&self) -> Result<PermissionRequestResult, String> {
+        let _ = self.open_accessibility_settings_macos().await;
+        
+        Ok(PermissionRequestResult {
+            permission_type: PermissionType::Accessibility,
+            status: PermissionStatus::NotDetermined,
+            message: Some("Please grant accessibility permission in System Settings".to_string()),
+            requires_restart: false,
+            requires_system_settings: true,
+        })
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn open_accessibility_settings_macos(&self) -> Result<(), String> {
+        use std::process::Command;
+        
+        Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+            .spawn()
+            .map_err(|e| format!("Failed to open system preferences: {}", e))?;
+        
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn check_notification_permission_macos(&self) -> PermissionStatus {
+        // For now, assume granted as Tauri handles this
+        PermissionStatus::Granted
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn request_notification_permission_macos(&self) -> Result<PermissionRequestResult, String> {
+        Ok(PermissionRequestResult {
+            permission_type: PermissionType::NotificationAccess,
+            status: PermissionStatus::Granted,
+            message: Some("Notification permission is handled by the system".to_string()),
+            requires_restart: false,
+            requires_system_settings: false,
+        })
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn open_notification_settings_macos(&self) -> Result<(), String> {
+        use std::process::Command;
+        
+        Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.preference.notifications")
+            .spawn()
+            .map_err(|e| format!("Failed to open system preferences: {}", e))?;
+        
+        Ok(())
+    }
+
+    #[cfg(target_os = "windows")]
+    async fn check_terminal_permission_windows(&self) -> PermissionStatus {
+        // On Windows, terminal access is generally granted
+        PermissionStatus::Granted
+    }
+
+    #[cfg(target_os = "windows")]
+    async fn check_auto_start_permission_windows(&self) -> PermissionStatus {
+        // Check if auto-start is configured
+        use crate::auto_launch;
+        
+        match auto_launch::get_auto_launch().await {
+            Ok(enabled) => {
+                if enabled {
+                    PermissionStatus::Granted
+                } else {
+                    PermissionStatus::Denied
+                }
+            }
+            Err(_) => PermissionStatus::NotDetermined,
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    async fn open_startup_settings_windows(&self) -> Result<(), String> {
+        use std::process::Command;
+        
+        Command::new("cmd")
+            .args(&["/c", "start", "ms-settings:startupapps"])
+            .spawn()
+            .map_err(|e| format!("Failed to open startup settings: {}", e))?;
+        
+        Ok(())
+    }
+
+    /// Show permission required notification
+    pub async fn notify_permission_required(&self, permission_info: &PermissionInfo) -> Result<(), String> {
+        if let Some(notification_manager) = &self.notification_manager {
+            notification_manager.notify_permission_required(
+                &format!("{:?}", permission_info.permission_type),
+                &permission_info.description
+            ).await?;
+        }
+        
+        Ok(())
+    }
+}
+
+/// Permission statistics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionStats {
+    pub total_permissions: usize,
+    pub granted_permissions: usize,
+    pub denied_permissions: usize,
+    pub required_permissions: usize,
+    pub missing_required: usize,
+    pub platform: String,
+}
