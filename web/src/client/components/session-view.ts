@@ -794,6 +794,19 @@ export class SessionView extends LitElement {
     }
   }
 
+  private getThemeColors() {
+    const theme = themes[this.selectedTheme] || themes.VibeTunnel;
+    return {
+      text: theme.foreground,
+      background: theme.background,
+      border: theme.brightBlack || '#444',
+      accent: theme.blue || '#569cd6',
+      success: theme.green || '#23d18b',
+      warning: theme.yellow || '#d19a66',
+      error: theme.red || '#f14c4c'
+    };
+  }
+
   private async sendInputText(text: string) {
     if (!this.session) return;
 
@@ -918,17 +931,17 @@ export class SessionView extends LitElement {
           <div class="flex items-center gap-3 min-w-0 flex-1">
             <button
               class="font-mono px-2 py-1 rounded transition-colors text-xs flex-shrink-0"
-              style="background: black; color: #d4d4d4; border: 1px solid #569cd6;"
+              style="background: black; color: ${this.getThemeColors().text}; border: 1px solid ${this.getThemeColors().accent};"
               @click=${this.handleBack}
               @mouseover=${(e: Event) => {
                 const btn = e.target as HTMLElement;
-                btn.style.background = '#569cd6';
+                btn.style.background = this.getThemeColors().accent;
                 btn.style.color = 'black';
               }}
               @mouseout=${(e: Event) => {
                 const btn = e.target as HTMLElement;
                 btn.style.background = 'black';
-                btn.style.color = '#d4d4d4';
+                btn.style.color = this.getThemeColors().text;
               }}
             >
               BACK
@@ -938,17 +951,17 @@ export class SessionView extends LitElement {
             <div class="relative">
               <button
                 class="font-mono px-2 py-1 rounded transition-colors text-xs flex-shrink-0"
-                style="background: black; color: #d4d4d4; border: 1px solid #444; font-size: 16px;"
+                style="background: black; color: ${this.getThemeColors().text}; border: 1px solid ${this.getThemeColors().border}; font-size: 16px;"
                 @click=${this.handleThemeToggle}
                 @mouseover=${(e: Event) => {
                   const btn = e.target as HTMLElement;
-                  btn.style.background = '#444';
+                  btn.style.background = this.getThemeColors().border;
                   btn.style.color = 'black';
                 }}
                 @mouseout=${(e: Event) => {
                   const btn = e.target as HTMLElement;
                   btn.style.background = 'black';
-                  btn.style.color = '#d4d4d4';
+                  btn.style.color = this.getThemeColors().text;
                 }}
                 title="Theme Settings"
               >
@@ -960,7 +973,7 @@ export class SessionView extends LitElement {
                 ? html`
                     <div
                       class="absolute top-full left-0 mt-1 z-50"
-                      style="background: black; border: 1px solid #569cd6; border-radius: 4px; min-width: 200px;"
+                      style="background: black; border: 1px solid ${this.getThemeColors().accent}; border-radius: 4px; min-width: 200px;"
                     >
                       ${Object.keys(themes).map(
                         (themeName) => html`
@@ -997,6 +1010,27 @@ export class SessionView extends LitElement {
                   `
                 : ''}
             </div>
+            
+            <!-- Fit Toggle Button -->
+            <button
+              class="font-mono px-2 py-1 rounded transition-colors text-xs flex-shrink-0"
+              style="background: black; color: #d4d4d4; border: 1px solid ${this.terminalFitHorizontally ? '#569cd6' : '#444'};"
+              @click=${this.handleTerminalFitToggle}
+              @mouseover=${(e: Event) => {
+                const btn = e.target as HTMLElement;
+                btn.style.background = this.terminalFitHorizontally ? '#569cd6' : '#444';
+                btn.style.color = 'black';
+              }}
+              @mouseout=${(e: Event) => {
+                const btn = e.target as HTMLElement;
+                btn.style.background = 'black';
+                btn.style.color = '#d4d4d4';
+              }}
+              title="Toggle horizontal fit"
+            >
+              ${this.terminalFitHorizontally ? '⇤⇥' : '↔'}
+            </button>
+            
             <div class="text-vs-text min-w-0 flex-1 overflow-hidden">
               <div
                 class="text-vs-accent text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"
@@ -1048,10 +1082,10 @@ export class SessionView extends LitElement {
           <!-- Terminal Component -->
           <vibe-terminal
             .sessionId=${this.session?.id || ''}
-            .cols=${80}
-            .rows=${24}
+            .cols=${120}
+            .rows=${30}
             .fontSize=${14}
-            .fitHorizontally=${false}
+            .fitHorizontally=${this.terminalFitHorizontally}
             .themeName=${this.selectedTheme}
             class="w-full h-full"
           ></vibe-terminal>
