@@ -879,19 +879,21 @@ export class SessionView extends LitElement {
   }
 
   private getStatusColor(): string {
-    if (!this.session) return 'text-vs-muted';
+    if (!this.session) return '';
+    const colors = this.getThemeColors();
     if ('waiting' in this.session && this.session.waiting) {
-      return 'text-vs-muted';
+      return '';
     }
-    return this.session.status === 'running' ? 'text-vs-user' : 'text-vs-warning';
+    return this.session.status === 'running' ? colors.success : colors.warning;
   }
 
   private getStatusDotColor(): string {
-    if (!this.session) return 'bg-gray-500';
+    if (!this.session) return '';
+    const colors = this.getThemeColors();
     if ('waiting' in this.session && this.session.waiting) {
-      return 'bg-gray-500';
+      return colors.border;
     }
-    return this.session.status === 'running' ? 'bg-green-500' : 'bg-orange-500';
+    return this.session.status === 'running' ? colors.success : colors.warning;
   }
 
   render() {
@@ -1014,17 +1016,17 @@ export class SessionView extends LitElement {
             <!-- Fit Toggle Button -->
             <button
               class="font-mono px-2 py-1 rounded transition-colors text-xs flex-shrink-0"
-              style="background: black; color: #d4d4d4; border: 1px solid ${this.terminalFitHorizontally ? '#569cd6' : '#444'};"
+              style="background: black; color: ${this.getThemeColors().text}; border: 1px solid ${this.terminalFitHorizontally ? this.getThemeColors().accent : this.getThemeColors().border};"
               @click=${this.handleTerminalFitToggle}
               @mouseover=${(e: Event) => {
                 const btn = e.target as HTMLElement;
-                btn.style.background = this.terminalFitHorizontally ? '#569cd6' : '#444';
+                btn.style.background = this.terminalFitHorizontally ? this.getThemeColors().accent : this.getThemeColors().border;
                 btn.style.color = 'black';
               }}
               @mouseout=${(e: Event) => {
                 const btn = e.target as HTMLElement;
                 btn.style.background = 'black';
-                btn.style.color = '#d4d4d4';
+                btn.style.color = this.getThemeColors().text;
               }}
               title="Toggle horizontal fit"
             >
@@ -1033,7 +1035,8 @@ export class SessionView extends LitElement {
             
             <div class="text-vs-text min-w-0 flex-1 overflow-hidden">
               <div
-                class="text-vs-accent text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"
+                class="text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"
+                style="color: ${this.getThemeColors().text};"
                 title="${this.session.name || this.session.command}"
               >
                 ${this.session.name || this.session.command}
@@ -1042,15 +1045,15 @@ export class SessionView extends LitElement {
           </div>
           <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2">
             <div class="flex flex-col items-end gap-0">
-              <span class="${this.getStatusColor()} text-xs flex items-center gap-1">
-                <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
+              <span class="text-xs flex items-center gap-1" style="color: ${this.getStatusColor()};">
+                <div class="w-2 h-2 rounded-full" style="background-color: ${this.getStatusDotColor()};"></div>
                 ${this.getStatusText().toUpperCase()}
               </span>
               ${this.terminalCols > 0 && this.terminalRows > 0
                 ? html`
                     <span
-                      class="text-vs-muted text-xs opacity-60"
-                      style="font-size: 10px; line-height: 1;"
+                      class="text-xs opacity-60"
+                      style="font-size: 10px; line-height: 1; color: ${this.getThemeColors().border};"
                     >
                       ${this.terminalCols}×${this.terminalRows}
                     </span>
