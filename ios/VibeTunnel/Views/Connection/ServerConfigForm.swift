@@ -110,11 +110,15 @@ struct ServerConfigForm: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            .foregroundColor(isConnecting ? Theme.Colors.terminalBackground : Theme.Colors.terminalForeground)
+            .foregroundColor(isConnecting ? Theme.Colors.terminalForeground : Theme.Colors.primaryAccent)
             .padding(.vertical, Theme.Spacing.md)
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                    .fill(isConnecting ? Theme.Colors.terminalForeground : Theme.Colors.primaryAccent)
+                    .fill(isConnecting ? Theme.Colors.cardBackground : Theme.Colors.terminalBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                    .stroke(Theme.Colors.primaryAccent, lineWidth: isConnecting ? 1 : 2)
                     .opacity(host.isEmpty ? 0.5 : 1.0)
             )
             .disabled(isConnecting || host.isEmpty)

@@ -215,17 +215,39 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 		rows = 30 // Better default for modern terminals
 	}
 
-	// Expand ~ in working directory
-	if cwd != "" && cwd[0] == '~' {
-		if cwd == "~" || cwd[:2] == "~/" {
-			homeDir, err := os.UserHomeDir()
-			if err == nil {
-				if cwd == "~" {
-					cwd = homeDir
-				} else {
-					cwd = filepath.Join(homeDir, cwd[2:])
+	// Handle working directory
+	if cwd != "" {
+		// Expand ~ in working directory
+		if cwd[0] == '~' {
+			if cwd == "~" || cwd[:2] == "~/" {
+				homeDir, err := os.UserHomeDir()
+				if err == nil {
+					if cwd == "~" {
+						cwd = homeDir
+					} else {
+						cwd = filepath.Join(homeDir, cwd[2:])
+					}
 				}
 			}
+		}
+		
+		// Validate the working directory exists
+		if _, err := os.Stat(cwd); err != nil {
+			log.Printf("[WARN] Working directory '%s' not accessible: %v. Using home directory instead.", cwd, err)
+			// Fall back to home directory
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				log.Printf("[ERROR] Failed to get home directory: %v", err)
+				cwd = "" // Let PTY decide the default
+			} else {
+				cwd = homeDir
+			}
+		}
+	} else {
+		// No working directory specified, use home directory
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			cwd = homeDir
 		}
 	}
 
