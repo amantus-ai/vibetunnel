@@ -16,6 +16,7 @@ pub enum TerminalEmulator {
     Kitty,         // Kitty
     WezTerm,       // WezTerm
     Ghostty,       // Ghostty
+    Warp,          // Warp
     WindowsTerminal, // Windows Terminal
     ConEmu,        // ConEmu
     Cmder,         // Cmder
@@ -36,6 +37,7 @@ impl TerminalEmulator {
             TerminalEmulator::Kitty => "Kitty",
             TerminalEmulator::WezTerm => "WezTerm",
             TerminalEmulator::Ghostty => "Ghostty",
+            TerminalEmulator::Warp => "Warp",
             TerminalEmulator::WindowsTerminal => "Windows Terminal",
             TerminalEmulator::ConEmu => "ConEmu",
             TerminalEmulator::Cmder => "Cmder",

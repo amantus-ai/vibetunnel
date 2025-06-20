@@ -23,6 +23,9 @@ pub mod debug_features;
 pub mod api_testing;
 pub mod auth_cache;
 pub mod terminal_integrations;
+pub mod app_mover;
+pub mod terminal_spawn_service;
+pub mod fs_api;
 
 #[cfg(mobile)]
 pub fn init() {

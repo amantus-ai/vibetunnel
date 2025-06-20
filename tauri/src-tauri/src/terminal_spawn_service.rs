@@ -1,7 +1,6 @@
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
-use tauri::Manager;
 
 /// Request to spawn a terminal
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,13 +82,14 @@ impl TerminalSpawnService {
         // Build launch options
         let mut launch_options = crate::terminal_integrations::TerminalLaunchOptions {
             command: request.command,
-            working_directory: request.working_directory,
-            environment: request.environment,
+            working_directory: request.working_directory.map(|s| std::path::PathBuf::from(s)),
+            args: vec![],
+            env_vars: request.environment.unwrap_or_default(),
             title: Some(format!("VibeTunnel Session {}", request.session_id)),
-            wait_for_exit: Some(false),
-            new_window: Some(true),
-            tab_mode: Some(false),
             profile: None,
+            tab: false,
+            split: None,
+            window_size: None,
         };
         
         // If no command specified, create a VibeTunnel session command

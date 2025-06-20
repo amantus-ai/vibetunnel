@@ -267,7 +267,7 @@ fn main() {
             detect_terminals,
             // App Mover Commands
             app_mover::prompt_move_to_applications,
-            app_mover::is_in_applications_folder,
+            app_mover::is_in_applications_folder_command,
             // Terminal Spawn Service Commands
             terminal_spawn_service::spawn_terminal_for_session,
             terminal_spawn_service::spawn_terminal_with_command,

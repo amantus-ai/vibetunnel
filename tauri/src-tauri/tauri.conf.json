@@ -38,8 +38,7 @@
       "icons/menu-bar-icon.png",
       "icons/menu-bar-icon@2x.png",
       "icons/tray-icon.png",
-      "icons/tray-icon@2x.png",
-      "public/**"
+      "icons/tray-icon@2x.png"
     ],
     "macOS": {
       "frameworks": [],

@@ -5,7 +5,6 @@ use std::path::PathBuf;
 /// This is a macOS-specific feature
 #[cfg(target_os = "macos")]
 pub async fn check_and_prompt_move(app_handle: AppHandle) -> Result<(), String> {
-    use std::process::Command;
     
     // Get current app bundle path
     let bundle_path = get_app_bundle_path()?;
@@ -24,14 +23,11 @@ pub async fn check_and_prompt_move(app_handle: AppHandle) -> Result<(), String> 
         }
     }
     
-    // Show dialog asking if user wants to move to Applications
-    let response = tauri::api::dialog::blocking::ask(
-        Some(&app_handle.get_webview_window("main").unwrap()),
-        "Move to Applications Folder?",
-        "VibeTunnel works best when run from the Applications folder. Would you like to move it there?"
-    );
+    // For now, just log and return
+    // TODO: Implement dialog using tauri-plugin-dialog
+    tracing::info!("App should be moved to Applications folder");
     
-    if response {
+    if false {  // Temporarily disabled until dialog is implemented
         move_to_applications_folder(bundle_path)?;
         
         // Restart the app from the new location
@@ -94,20 +90,12 @@ fn move_to_applications_folder(bundle_path: PathBuf) -> Result<(), String> {
         .ok_or("Failed to get app name")?
         .to_string_lossy();
     
-    let dest_path = PathBuf::from("/Applications").join(&app_name);
+    let dest_path = PathBuf::from("/Applications").join(app_name.as_ref());
     
     // Check if destination already exists
     if dest_path.exists() {
-        // Ask user if they want to replace
-        let response = tauri::api::dialog::blocking::ask(
-            None,
-            "Replace Existing App?",
-            "VibeTunnel already exists in the Applications folder. Do you want to replace it?"
-        );
-        
-        if !response {
-            return Err("User cancelled move operation".to_string());
-        }
+        // For now, just remove the existing app
+        // TODO: Implement dialog using tauri-plugin-dialog
         
         // Remove existing app
         fs::remove_dir_all(&dest_path)
@@ -141,7 +129,7 @@ fn restart_from_applications() -> Result<(), String> {
     use std::process::Command;
     
     // Launch the app from the Applications folder
-    let output = Command::new("open")
+    let _output = Command::new("open")
         .arg("-n")
         .arg("/Applications/VibeTunnel.app")
         .spawn()
@@ -157,7 +145,7 @@ pub async fn prompt_move_to_applications(app_handle: AppHandle) -> Result<(), St
 }
 
 #[tauri::command]
-pub async fn is_in_applications_folder() -> Result<bool, String> {
+pub async fn is_in_applications_folder_command() -> Result<bool, String> {
     #[cfg(target_os = "macos")]
     {
         let bundle_path = get_app_bundle_path()?;

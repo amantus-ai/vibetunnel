@@ -1,9 +1,10 @@
 use axum::{
-    extract::{Path, Query, State as AxumState},
+    extract::{Query, State as AxumState},
     http::{StatusCode, header},
     response::{IntoResponse, Response},
     Json,
 };
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs;
@@ -217,7 +218,7 @@ pub async fn write_file(
     
     // Write file
     let content = if req.encoding.as_deref() == Some("base64") {
-        base64::decode(&req.content)
+        base64::engine::general_purpose::STANDARD.decode(&req.content)
             .map_err(|_| StatusCode::BAD_REQUEST)?
     } else {
         req.content.into_bytes()
