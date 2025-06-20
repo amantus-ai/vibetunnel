@@ -31,12 +31,13 @@ const (
 )
 
 type Config struct {
-	Name    string
-	Cmdline []string
-	Cwd     string
-	Env     []string
-	Width   int
-	Height  int
+	Name      string
+	Cmdline   []string
+	Cwd       string
+	Env       []string
+	Width     int
+	Height    int
+	IsSpawned bool // Whether this session was spawned in a terminal
 }
 
 type Info struct {
@@ -52,7 +53,8 @@ type Info struct {
 	Width     int               `json:"width"`
 	Height    int               `json:"height"`
 	Env       map[string]string `json:"env,omitempty"`
-	Args      []string          `json:"-"` // Internal use only
+	Args      []string          `json:"-"`    // Internal use only
+	IsSpawned bool              `json:"is_spawned"` // Whether session was spawned in terminal
 }
 
 type Session struct {
@@ -141,6 +143,7 @@ func newSessionWithID(controlPath string, id string, config Config) (*Session, e
 		Width:     width,
 		Height:    height,
 		Args:      config.Cmdline,
+		IsSpawned: config.IsSpawned,
 	}
 
 	if err := info.Save(sessionPath); err != nil {
@@ -477,6 +480,12 @@ func (s *Session) IsAlive() bool {
 	return true
 }
 
+// IsSpawned returns whether this session was spawned in a terminal
+func (s *Session) IsSpawned() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.info.IsSpawned
+}
 
 func (s *Session) UpdateStatus() error {
 	if s.info.Status == string(StatusExited) {

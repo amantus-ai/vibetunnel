@@ -59,11 +59,12 @@ var (
 	ngrokToken   string
 
 	// Advanced options
-	debugMode      bool
-	cleanupStartup bool
-	serverMode     string
-	updateChannel  string
-	noSpawn        bool
+	debugMode             bool
+	cleanupStartup        bool
+	serverMode            string
+	updateChannel         string
+	noSpawn               bool
+	doNotAllowColumnSet   bool
 
 	// Configuration file
 	configFile string
@@ -129,6 +130,7 @@ func init() {
 	rootCmd.Flags().StringVar(&serverMode, "server-mode", "native", "Server mode (native, rust)")
 	rootCmd.Flags().StringVar(&updateChannel, "update-channel", "stable", "Update channel (stable, prerelease)")
 	rootCmd.Flags().BoolVar(&noSpawn, "no-spawn", false, "Disable terminal spawning")
+	rootCmd.Flags().BoolVar(&doNotAllowColumnSet, "do-not-allow-column-set", true, "Disable resizing for spawned shells (default: true, detached sessions always allow resizing)")
 
 	// Configuration file
 	rootCmd.Flags().StringVarP(&configFile, "config", "c", defaultConfigPath, "Configuration file path")
@@ -238,9 +240,10 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	sess, err := manager.CreateSession(session.Config{
-		Name:    sessionName,
-		Cmdline: args,
-		Cwd:     ".",
+		Name:      sessionName,
+		Cmdline:   args,
+		Cwd:       ".",
+		IsSpawned: false, // Command line sessions are detached, not spawned
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create session: %w", err)
@@ -286,6 +289,7 @@ func startServer(cfg *config.Config, manager *session.Manager) error {
 	// Create and configure server
 	server := api.NewServer(manager, staticPath, serverPassword, portInt)
 	server.SetNoSpawn(noSpawn)
+	server.SetDoNotAllowColumnSet(doNotAllowColumnSet)
 
 	// Configure ngrok if enabled
 	var ngrokURL string
@@ -487,9 +491,10 @@ func main() {
 					
 					manager := session.NewManager(defaultControlPath)
 					sess, err := manager.CreateSession(session.Config{
-						Name:    "",
-						Cmdline: cmdArgs,
-						Cwd:     ".",
+						Name:      "",
+						Cmdline:   cmdArgs,
+						Cwd:       ".",
+						IsSpawned: false, // Command line sessions are detached
 					})
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -546,9 +551,10 @@ func main() {
 					
 					manager := session.NewManager(defaultControlPath)
 					sess, err := manager.CreateSession(session.Config{
-						Name:    "",
-						Cmdline: args,
-						Cwd:     ".",
+						Name:      "",
+						Cmdline:   args,
+						Cwd:       ".",
+						IsSpawned: false, // Command line sessions are detached
 					})
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "Error: %v\n", err)

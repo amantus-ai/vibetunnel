@@ -30,12 +30,13 @@ func debugLog(format string, args ...interface{}) {
 }
 
 type Server struct {
-	manager      *session.Manager
-	staticPath   string
-	password     string
-	ngrokService *ngrok.Service
-	port         int
-	noSpawn      bool
+	manager              *session.Manager
+	staticPath           string
+	password             string
+	ngrokService         *ngrok.Service
+	port                 int
+	noSpawn              bool
+	doNotAllowColumnSet  bool
 }
 
 func NewServer(manager *session.Manager, staticPath, password string, port int) *Server {
@@ -50,6 +51,10 @@ func NewServer(manager *session.Manager, staticPath, password string, port int) 
 
 func (s *Server) SetNoSpawn(noSpawn bool) {
 	s.noSpawn = noSpawn
+}
+
+func (s *Server) SetDoNotAllowColumnSet(doNotAllowColumnSet bool) {
+	s.doNotAllowColumnSet = doNotAllowColumnSet
 }
 
 func (s *Server) Start(addr string) error {
@@ -380,11 +385,12 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 			// Create the session first with the specified ID
 			sess, err := s.manager.CreateSessionWithID(sessionID, session.Config{
-				Name:    req.Name,
-				Cmdline: cmdline,
-				Cwd:     cwd,
-				Width:   cols,
-				Height:  rows,
+				Name:      req.Name,
+				Cmdline:   cmdline,
+				Cwd:       cwd,
+				Width:     cols,
+				Height:    rows,
+				IsSpawned: true, // This is a spawned session
 			})
 			if err != nil {
 				log.Printf("[ERROR] Failed to create session: %v", err)
@@ -431,11 +437,12 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 			// Create session locally
 			sess, err := s.manager.CreateSession(session.Config{
-				Name:    req.Name,
-				Cmdline: cmdline,
-				Cwd:     cwd,
-				Width:   cols,
-				Height:  rows,
+				Name:      req.Name,
+				Cmdline:   cmdline,
+				Cwd:       cwd,
+				Width:     cols,
+				Height:    rows,
+				IsSpawned: true, // This is a spawned session
 			})
 			if err != nil {
 				log.Printf("[ERROR] Failed to create session: %v", err)
@@ -477,11 +484,12 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 	// Regular session creation
 	sess, err := s.manager.CreateSession(session.Config{
-		Name:    req.Name,
-		Cmdline: cmdline,
-		Cwd:     cwd,
-		Width:   cols,
-		Height:  rows,
+		Name:      req.Name,
+		Cmdline:   cmdline,
+		Cwd:       cwd,
+		Width:     cols,
+		Height:    rows,
+		IsSpawned: false, // This is not a spawned session (detached)
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -851,6 +859,18 @@ func (s *Server) handleResizeSession(w http.ResponseWriter, r *http.Request) {
 
 	if req.Cols <= 0 || req.Rows <= 0 {
 		http.Error(w, "Cols and rows must be positive integers", http.StatusBadRequest)
+		return
+	}
+
+	// Check if resizing is disabled for spawned sessions
+	if s.doNotAllowColumnSet && sess.IsSpawned() {
+		log.Printf("[INFO] Resize blocked for spawned session %s (--do-not-allow-column-set enabled)", vars["id"][:8])
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Resizing is disabled for spawned sessions",
+			"error":   "resize_disabled_for_spawned_sessions",
+		})
 		return
 	}
 
