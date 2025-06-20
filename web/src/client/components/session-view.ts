@@ -4,6 +4,7 @@ import type { Session } from './session-list.js';
 import './terminal.js';
 import type { Terminal } from './terminal.js';
 import { CastConverter } from '../utils/cast-converter.js';
+import { themes } from '../themes.js';
 
 @customElement('session-view')
 export class SessionView extends LitElement {
@@ -30,6 +31,8 @@ export class SessionView extends LitElement {
   @state() private terminalFitHorizontally = false;
   @state() private reconnectCount = 0;
   @state() private ctrlSequence: string[] = [];
+  @state() private selectedTheme = 'VibeTunnel';
+  @state() private showThemeSelector = false;
 
   private loadingInterval: number | null = null;
   private keyboardListenerAdded = false;
@@ -118,6 +121,16 @@ export class SessionView extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.connected = true;
+
+    // Load saved theme from localStorage
+    try {
+      const savedTheme = localStorage.getItem('vibetunnel-theme');
+      if (savedTheme && themes[savedTheme]) {
+        this.selectedTheme = savedTheme;
+      }
+    } catch (e) {
+      console.error('Failed to load theme from localStorage:', e);
+    }
 
     // Make session-view focusable
     this.tabIndex = 0;
@@ -217,6 +230,14 @@ export class SessionView extends LitElement {
     this.terminal.cols = 80;
     this.terminal.rows = 24;
     this.terminal.fontSize = 14;
+
+    // Apply saved theme
+    const terminal = terminalElement as Terminal & {
+      applyTheme?: (themeName: string) => void;
+    };
+    if (terminal.applyTheme && this.selectedTheme) {
+      terminal.applyTheme(this.selectedTheme);
+    }
     this.terminal.fitHorizontally = false; // Allow natural terminal sizing
 
     // Listen for session exit events
@@ -749,6 +770,30 @@ export class SessionView extends LitElement {
     }
   }
 
+  private handleThemeToggle() {
+    this.showThemeSelector = !this.showThemeSelector;
+  }
+
+  private handleThemeSelect(themeName: string) {
+    this.selectedTheme = themeName;
+    this.showThemeSelector = false;
+
+    // Save to localStorage
+    try {
+      localStorage.setItem('vibetunnel-theme', themeName);
+    } catch (e) {
+      console.error('Failed to save theme to localStorage:', e);
+    }
+
+    // Apply theme to terminal
+    const terminal = this.querySelector('vibe-terminal') as Terminal & {
+      applyTheme?: (themeName: string) => void;
+    };
+    if (terminal && terminal.applyTheme) {
+      terminal.applyTheme(themeName);
+    }
+  }
+
   private async sendInputText(text: string) {
     if (!this.session) return;
 
@@ -888,6 +933,70 @@ export class SessionView extends LitElement {
             >
               BACK
             </button>
+
+            <!-- Theme Settings Button -->
+            <div class="relative">
+              <button
+                class="font-mono px-2 py-1 rounded transition-colors text-xs flex-shrink-0"
+                style="background: black; color: #d4d4d4; border: 1px solid #444; font-size: 16px;"
+                @click=${this.handleThemeToggle}
+                @mouseover=${(e: Event) => {
+                  const btn = e.target as HTMLElement;
+                  btn.style.background = '#444';
+                  btn.style.color = 'black';
+                }}
+                @mouseout=${(e: Event) => {
+                  const btn = e.target as HTMLElement;
+                  btn.style.background = 'black';
+                  btn.style.color = '#d4d4d4';
+                }}
+                title="Theme Settings"
+              >
+                ⚙
+              </button>
+
+              <!-- Theme Selector Dropdown -->
+              ${this.showThemeSelector
+                ? html`
+                    <div
+                      class="absolute top-full left-0 mt-1 z-50"
+                      style="background: black; border: 1px solid #569cd6; border-radius: 4px; min-width: 200px;"
+                    >
+                      ${Object.keys(themes).map(
+                        (themeName) => html`
+                          <div
+                            class="px-3 py-2 cursor-pointer transition-colors text-xs font-mono flex items-center gap-2"
+                            style="background: ${this.selectedTheme === themeName
+                              ? '#264f78'
+                              : 'black'}; color: #d4d4d4; border-bottom: 1px solid #444;"
+                            @click=${() => this.handleThemeSelect(themeName)}
+                            @mouseover=${(e: Event) => {
+                              const div = e.currentTarget as HTMLElement;
+                              if (this.selectedTheme !== themeName) {
+                                div.style.background = '#1e1e1e';
+                              }
+                            }}
+                            @mouseout=${(e: Event) => {
+                              const div = e.currentTarget as HTMLElement;
+                              if (this.selectedTheme !== themeName) {
+                                div.style.background = 'black';
+                              }
+                            }}
+                          >
+                            <span
+                              style="color: ${this.selectedTheme === themeName
+                                ? '#23d18b'
+                                : 'transparent'}; width: 16px;"
+                              >✓</span
+                            >
+                            ${themeName === 'solarized_dark' ? 'Solarized Dark' : themeName}
+                          </div>
+                        `
+                      )}
+                    </div>
+                  `
+                : ''}
+            </div>
             <div class="text-vs-text min-w-0 flex-1 overflow-hidden">
               <div
                 class="text-vs-accent text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"
@@ -943,6 +1052,7 @@ export class SessionView extends LitElement {
             .rows=${24}
             .fontSize=${14}
             .fitHorizontally=${false}
+            .themeName=${this.selectedTheme}
             class="w-full h-full"
           ></vibe-terminal>
         </div>

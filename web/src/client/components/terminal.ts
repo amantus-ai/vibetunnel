@@ -2,6 +2,7 @@ import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { Terminal as XtermTerminal, IBufferLine, IBufferCell } from '@xterm/headless';
 import { UrlHighlighter } from '../utils/url-highlighter.js';
+import { getThemeByName } from '../themes.js';
 
 @customElement('vibe-terminal')
 export class Terminal extends LitElement {
@@ -15,6 +16,7 @@ export class Terminal extends LitElement {
   @property({ type: Number }) rows = 24;
   @property({ type: Number }) fontSize = 14;
   @property({ type: Boolean }) fitHorizontally = false;
+  @property({ type: String }) themeName = 'VibeTunnel';
 
   private originalFontSize: number = 14;
 
@@ -189,29 +191,7 @@ export class Terminal extends LitElement {
         altClickMovesCursor: true,
         rightClickSelectsWord: false,
         wordSeparator: ' ()[]{}\'"`',
-        theme: {
-          background: '#1e1e1e',
-          foreground: '#d4d4d4',
-          cursor: '#00ff00',
-          cursorAccent: '#1e1e1e',
-          // Standard 16 colors (0-15) - using proper xterm colors
-          black: '#000000',
-          red: '#cd0000',
-          green: '#00cd00',
-          yellow: '#cdcd00',
-          blue: '#0000ee',
-          magenta: '#cd00cd',
-          cyan: '#00cdcd',
-          white: '#e5e5e5',
-          brightBlack: '#7f7f7f',
-          brightRed: '#ff0000',
-          brightGreen: '#00ff00',
-          brightYellow: '#ffff00',
-          brightBlue: '#5c5cff',
-          brightMagenta: '#ff00ff',
-          brightCyan: '#00ffff',
-          brightWhite: '#ffffff',
-        },
+        theme: getThemeByName(this.themeName),
       });
 
       // Set terminal size - don't call .open() to keep it headless
@@ -220,6 +200,17 @@ export class Terminal extends LitElement {
       console.error('Failed to create terminal:', error);
       throw error;
     }
+  }
+
+  public applyTheme(themeName: string) {
+    if (!this.terminal) return;
+
+    const theme = getThemeByName(themeName);
+    this.terminal.options.theme = theme;
+    this.themeName = themeName;
+
+    // Force re-render to apply new theme colors
+    this.requestRenderBuffer();
   }
 
   private measureCharacterWidth(): number {
