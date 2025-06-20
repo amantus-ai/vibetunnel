@@ -33,7 +33,7 @@ export const themes: { [key: string]: ITerminalTheme } = {
     red: '#cd0000',
     green: '#00cd00',
     yellow: '#cdcd00',
-    blue: '#0000ee',
+    blue: '#00ff00',
     magenta: '#cd00cd',
     cyan: '#00cdcd',
     white: '#e5e5e5',
@@ -92,7 +92,7 @@ export const themes: { [key: string]: ITerminalTheme } = {
     brightCyan: '#a4ffff',
     brightWhite: '#ffffff',
   },
-  github_light: {
+  light: {
     background: '#ffffff',
     foreground: '#24292e',
     cursor: '#24292e',

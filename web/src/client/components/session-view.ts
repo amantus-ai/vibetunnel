@@ -124,7 +124,11 @@ export class SessionView extends LitElement {
     // Load saved theme from localStorage
     try {
       const savedTheme = localStorage.getItem('vibetunnel-theme');
-      if (savedTheme && themes[savedTheme]) {
+      // Handle migration from old theme names
+      if (savedTheme === 'github_light') {
+        this.selectedTheme = 'light';
+        localStorage.setItem('vibetunnel-theme', 'light');
+      } else if (savedTheme && themes[savedTheme]) {
         this.selectedTheme = savedTheme;
       }
     } catch (e) {
@@ -1005,8 +1009,8 @@ export class SessionView extends LitElement {
                             >
                             ${themeName === 'solarized_dark'
                               ? 'Solarized Dark'
-                              : themeName === 'github_light'
-                                ? 'GitHub Light'
+                              : themeName === 'light'
+                                ? 'Light'
                                 : themeName === 'dracula'
                                   ? 'Dracula'
                                   : 'VibeTunnel'}
