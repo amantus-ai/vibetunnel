@@ -164,7 +164,11 @@ func (w *StreamWriter) scheduleFlush() {
 			return
 		}
 
-		fmt.Fprintf(w.writer, "%s\n", eventData)
+		if _, err := fmt.Fprintf(w.writer, "%s\n", eventData); err != nil {
+			// Log but don't fail - this is a best effort flush
+			// Cannot use log here as we might be in a defer/cleanup path
+			return
+		}
 
 		// Schedule sync instead of immediate sync for better performance
 		w.scheduleBatchSync()
@@ -187,7 +191,11 @@ func (w *StreamWriter) scheduleBatchSync() {
 	w.syncTimer = time.AfterFunc(5*time.Millisecond, func() {
 		if w.needsSync {
 			if file, ok := w.writer.(*os.File); ok {
-				file.Sync()
+				if err := file.Sync(); err != nil {
+					// Sync failed - this is not critical for streaming operations
+					// Using fmt instead of log to avoid potential deadlock in timer context
+					fmt.Fprintf(os.Stderr, "Warning: Failed to sync asciinema file: %v\n", err)
+				}
 			}
 			w.needsSync = false
 		}
@@ -214,7 +222,10 @@ func (w *StreamWriter) Close() error {
 		elapsed := time.Since(w.startTime).Seconds()
 		event := []interface{}{elapsed, string(EventOutput), string(w.buffer)}
 		eventData, _ := json.Marshal(event)
-		fmt.Fprintf(w.writer, "%s\n", eventData)
+		if _, err := fmt.Fprintf(w.writer, "%s\n", eventData); err != nil {
+			// Write failed during close - log to stderr to avoid deadlock
+			fmt.Fprintf(os.Stderr, "Warning: Failed to write final asciinema event: %v\n", err)
+		}
 	}
 
 	w.closed = true

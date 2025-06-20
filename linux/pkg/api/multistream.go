@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -54,20 +55,31 @@ func (m *MultiSSEStreamer) streamSession(sessionID string) {
 
 	sess, err := m.manager.GetSession(sessionID)
 	if err != nil {
-		m.sendError(sessionID, fmt.Sprintf("Session not found: %v", err))
+		if err := m.sendError(sessionID, fmt.Sprintf("Session not found: %v", err)); err != nil {
+			// Log error but continue - client might have disconnected
+			log.Printf("[ERROR] MultiStream: Failed to send error for session %s: %v", sessionID, err)
+		}
 		return
 	}
 
 	streamPath := sess.StreamOutPath()
 	file, err := os.Open(streamPath)
 	if err != nil {
-		m.sendError(sessionID, fmt.Sprintf("Failed to open stream: %v", err))
+		if err := m.sendError(sessionID, fmt.Sprintf("Failed to open stream: %v", err)); err != nil {
+			log.Printf("Failed to send error message: %v", err)
+		}
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Failed to close stream file: %v", err)
+		}
+	}()
 
 	// Seek to end for live streaming
-	file.Seek(0, io.SeekEnd)
+	if _, err := file.Seek(0, io.SeekEnd); err != nil {
+		log.Printf("Failed to seek to end of stream file: %v", err)
+	}
 
 	reader := protocol.NewStreamReader(file)
 	ticker := time.NewTicker(100 * time.Millisecond)
@@ -82,7 +94,9 @@ func (m *MultiSSEStreamer) streamSession(sessionID string) {
 				event, err := reader.Next()
 				if err != nil {
 					if err != io.EOF {
-						m.sendError(sessionID, fmt.Sprintf("Stream read error: %v", err))
+						if err := m.sendError(sessionID, fmt.Sprintf("Stream read error: %v", err)); err != nil {
+							log.Printf("Failed to send stream error to client: %v", err)
+						}
 						return
 					}
 					break
@@ -109,15 +123,15 @@ func (m *MultiSSEStreamer) sendEvent(sessionID string, event *protocol.StreamEve
 			string(event.Event.Type),
 			event.Event.Data,
 		}
-		
+
 		jsonData, err := json.Marshal(data)
 		if err != nil {
 			return err
 		}
-		
+
 		// Match Rust multistream format: sessionID:event_json
 		prefixedEvent := fmt.Sprintf("%s:%s", sessionID, jsonData)
-		
+
 		if _, err := fmt.Fprintf(m.w, "data: %s\n\n", prefixedEvent); err != nil {
 			return err // Client disconnected
 		}
@@ -127,10 +141,10 @@ func (m *MultiSSEStreamer) sendEvent(sessionID string, event *protocol.StreamEve
 		if err != nil {
 			return err
 		}
-		
+
 		// Match Rust multistream format: sessionID:event_json
 		prefixedEvent := fmt.Sprintf("%s:%s", sessionID, jsonData)
-		
+
 		if _, err := fmt.Fprintf(m.w, "data: %s\n\n", prefixedEvent); err != nil {
 			return err // Client disconnected
 		}

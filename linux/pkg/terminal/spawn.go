@@ -86,4 +86,3 @@ func shellQuoteArgs(args []string) string {
 	}
 	return strings.Join(quoted, " ")
 }
-

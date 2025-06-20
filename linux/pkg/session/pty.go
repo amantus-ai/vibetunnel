@@ -63,7 +63,7 @@ func NewPTY(session *Session) (*PTY, error) {
 	// Only pass safe environment variables
 	safeEnvVars := []string{"TERM", "SHELL", "LANG", "LC_ALL", "PATH", "USER", "HOME"}
 	env := make([]string, 0)
-	
+
 	// Copy only safe environment variables from parent
 	for _, v := range os.Environ() {
 		parts := strings.SplitN(v, "=", 2)
@@ -76,7 +76,7 @@ func NewPTY(session *Session) (*PTY, error) {
 			}
 		}
 	}
-	
+
 	// Ensure TERM and SHELL are set
 	hasTermVar := false
 	hasShellVar := false
@@ -88,14 +88,14 @@ func NewPTY(session *Session) (*PTY, error) {
 			hasShellVar = true
 		}
 	}
-	
+
 	if !hasTermVar {
 		env = append(env, "TERM="+session.info.Term)
 	}
 	if !hasShellVar {
 		env = append(env, "SHELL="+cmdline[0])
 	}
-	
+
 	cmd.Env = env
 
 	ptmx, err := pty.Start(cmd)
@@ -105,7 +105,7 @@ func NewPTY(session *Session) (*PTY, error) {
 	}
 
 	debugLog("[DEBUG] NewPTY: PTY started successfully, PID: %d", cmd.Process.Pid)
-	
+
 	// Log the actual command being executed
 	debugLog("[DEBUG] NewPTY: Executing command: %v in directory: %s", cmdline, cmd.Dir)
 	debugLog("[DEBUG] NewPTY: Environment has %d variables", len(cmd.Env))
@@ -115,8 +115,12 @@ func NewPTY(session *Session) (*PTY, error) {
 		Cols: uint16(session.info.Width),
 	}); err != nil {
 		log.Printf("[ERROR] NewPTY: Failed to set PTY size: %v", err)
-		ptmx.Close()
-		cmd.Process.Kill()
+		if err := ptmx.Close(); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to close PTY: %v", err)
+		}
+		if err := cmd.Process.Kill(); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to kill process: %v", err)
+		}
 		return nil, fmt.Errorf("failed to set PTY size: %w", err)
 	}
 
@@ -128,8 +132,10 @@ func NewPTY(session *Session) (*PTY, error) {
 	} else {
 		// Restore the terminal but with specific flags enabled
 		// We don't want raw mode, we want interactive mode with ISIG, ICANON, and ECHO
-		term.Restore(int(ptmx.Fd()), oldState)
-		
+		if err := term.Restore(int(ptmx.Fd()), oldState); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to restore terminal: %v", err)
+		}
+
 		// The creack/pty library should have already set up the terminal properly
 		// for interactive use. The key is that the PTY slave (not master) needs
 		// these settings, and they're typically inherited from the process.
@@ -139,8 +145,12 @@ func NewPTY(session *Session) (*PTY, error) {
 	streamOut, err := os.Create(session.StreamOutPath())
 	if err != nil {
 		log.Printf("[ERROR] NewPTY: Failed to create stream-out: %v", err)
-		ptmx.Close()
-		cmd.Process.Kill()
+		if err := ptmx.Close(); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to close PTY: %v", err)
+		}
+		if err := cmd.Process.Kill(); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to kill process: %v", err)
+		}
 		return nil, fmt.Errorf("failed to create stream-out: %w", err)
 	}
 
@@ -154,9 +164,15 @@ func NewPTY(session *Session) (*PTY, error) {
 
 	if err := streamWriter.WriteHeader(); err != nil {
 		log.Printf("[ERROR] NewPTY: Failed to write stream header: %v", err)
-		streamOut.Close()
-		ptmx.Close()
-		cmd.Process.Kill()
+		if err := streamOut.Close(); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to close stream-out: %v", err)
+		}
+		if err := ptmx.Close(); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to close PTY: %v", err)
+		}
+		if err := cmd.Process.Kill(); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to kill process: %v", err)
+		}
 		return nil, fmt.Errorf("failed to write stream header: %w", err)
 	}
 
@@ -164,9 +180,15 @@ func NewPTY(session *Session) (*PTY, error) {
 	debugLog("[DEBUG] NewPTY: Creating stdin FIFO at: %s", stdinPath)
 	if err := syscall.Mkfifo(stdinPath, 0600); err != nil {
 		log.Printf("[ERROR] NewPTY: Failed to create stdin pipe: %v", err)
-		streamOut.Close()
-		ptmx.Close()
-		cmd.Process.Kill()
+		if err := streamOut.Close(); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to close stream-out: %v", err)
+		}
+		if err := ptmx.Close(); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to close PTY: %v", err)
+		}
+		if err := cmd.Process.Kill(); err != nil {
+			log.Printf("[ERROR] NewPTY: Failed to kill process: %v", err)
+		}
 		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
 	}
 
@@ -192,7 +214,11 @@ func (p *PTY) Pid() int {
 }
 
 func (p *PTY) Run() error {
-	defer p.Close()
+	defer func() {
+		if err := p.Close(); err != nil {
+			log.Printf("[ERROR] PTY.Run: Failed to close PTY: %v", err)
+		}
+	}()
 
 	debugLog("[DEBUG] PTY.Run: Starting PTY run for session %s, PID %d", p.session.ID[:8], p.cmd.Process.Pid)
 
@@ -201,7 +227,11 @@ func (p *PTY) Run() error {
 		log.Printf("[ERROR] PTY.Run: Failed to open stdin pipe: %v", err)
 		return fmt.Errorf("failed to open stdin pipe: %w", err)
 	}
-	defer stdinPipe.Close()
+	defer func() {
+		if err := stdinPipe.Close(); err != nil {
+			log.Printf("[ERROR] PTY.Run: Failed to close stdin pipe: %v", err)
+		}
+	}()
 	p.stdinPipe = stdinPipe
 
 	debugLog("[DEBUG] PTY.Run: Stdin pipe opened successfully")
@@ -310,8 +340,10 @@ func (p *PTY) Run() error {
 			debugLog("[DEBUG] PTY.Run: Process exited normally (code 0)")
 		}
 		p.session.info.Status = string(StatusExited)
-		p.session.info.Save(p.session.Path())
-		
+		if err := p.session.info.Save(p.session.Path()); err != nil {
+			log.Printf("[ERROR] PTY.Run: Failed to save session info: %v", err)
+		}
+
 		// Reap any zombie child processes
 		for {
 			var status syscall.WaitStatus
@@ -321,7 +353,7 @@ func (p *PTY) Run() error {
 			}
 			debugLog("[DEBUG] PTY.Run: Reaped zombie process PID %d", pid)
 		}
-		
+
 		debugLog("[DEBUG] PTY.Run: PROCESS WAIT GOROUTINE sending completion to errCh")
 		errCh <- err
 	}()
@@ -345,19 +377,25 @@ func (p *PTY) Attach() error {
 	p.oldState = oldState
 
 	defer func() {
-		term.Restore(int(os.Stdin.Fd()), oldState)
+		if err := term.Restore(int(os.Stdin.Fd()), oldState); err != nil {
+			log.Printf("[ERROR] PTY.Attach: Failed to restore terminal: %v", err)
+		}
 	}()
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGWINCH)
 	go func() {
 		for range ch {
-			p.updateSize()
+			if err := p.updateSize(); err != nil {
+				log.Printf("[ERROR] PTY.Attach: Failed to update size: %v", err)
+			}
 		}
 	}()
 	defer signal.Stop(ch)
 
-	p.updateSize()
+	if err := p.updateSize(); err != nil {
+		log.Printf("[ERROR] PTY.Attach: Failed to update initial size: %v", err)
+	}
 
 	errCh := make(chan error, 2)
 
@@ -424,14 +462,30 @@ func (p *PTY) Resize(width, height int) error {
 }
 
 func (p *PTY) Close() error {
+	var firstErr error
 	if p.streamWriter != nil {
-		p.streamWriter.Close()
+		if err := p.streamWriter.Close(); err != nil {
+			log.Printf("[ERROR] PTY.Close: Failed to close stream writer: %v", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
 	}
 	if p.pty != nil {
-		p.pty.Close()
+		if err := p.pty.Close(); err != nil {
+			log.Printf("[ERROR] PTY.Close: Failed to close PTY: %v", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
 	}
 	if p.oldState != nil {
-		term.Restore(int(os.Stdin.Fd()), p.oldState)
+		if err := term.Restore(int(os.Stdin.Fd()), p.oldState); err != nil {
+			log.Printf("[ERROR] PTY.Close: Failed to restore terminal: %v", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
 	}
-	return nil
+	return firstErr
 }

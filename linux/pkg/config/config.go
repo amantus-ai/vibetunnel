@@ -105,7 +105,9 @@ func LoadConfig(filename string) *Config {
 			fmt.Printf("Warning: failed to read config file: %v\n", err)
 		}
 		// Save default config
-		cfg.Save(filename)
+		if err := cfg.Save(filename); err != nil {
+			fmt.Printf("Warning: failed to save default config: %v\n", err)
+		}
 		return cfg
 	}
 

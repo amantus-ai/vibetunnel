@@ -37,7 +37,9 @@ func (m *Manager) CreateSession(config Config) (*Session, error) {
 	}
 
 	if err := session.Start(); err != nil {
-		os.RemoveAll(session.Path())
+		if removeErr := os.RemoveAll(session.Path()); removeErr != nil {
+			log.Printf("[ERROR] Failed to remove session path after start failure: %v", removeErr)
+		}
 		return nil, err
 	}
 
@@ -60,7 +62,9 @@ func (m *Manager) CreateSessionWithID(id string, config Config) (*Session, error
 	}
 
 	if err := session.Start(); err != nil {
-		os.RemoveAll(session.Path())
+		if removeErr := os.RemoveAll(session.Path()); removeErr != nil {
+			log.Printf("[ERROR] Failed to remove session path after start failure: %v", removeErr)
+		}
 		return nil, err
 	}
 
@@ -126,9 +130,11 @@ func (m *Manager) ListSessions() ([]*Info, error) {
 
 		// Only update status if it's not already marked as exited to reduce CPU usage
 		if session.info.Status != string(StatusExited) {
-			session.UpdateStatus()
+			if err := session.UpdateStatus(); err != nil {
+				log.Printf("[WARN] Failed to update session status for %s: %v", session.ID, err)
+			}
 		}
-		
+
 		sessions = append(sessions, session.info)
 	}
 
@@ -157,7 +163,7 @@ func (m *Manager) RemoveExitedSessions() error {
 	for _, info := range sessions {
 		// Check if the process is actually alive, not just the stored status
 		shouldRemove := false
-		
+
 		if info.Pid == 0 {
 			// No PID recorded, consider it exited
 			shouldRemove = true
@@ -165,7 +171,7 @@ func (m *Manager) RemoveExitedSessions() error {
 			// Use ps command to check process status (portable across Unix systems)
 			cmd := exec.Command("ps", "-p", strconv.Itoa(info.Pid), "-o", "stat=")
 			output, err := cmd.Output()
-			
+
 			if err != nil {
 				// Process doesn't exist
 				shouldRemove = true
@@ -175,14 +181,16 @@ func (m *Manager) RemoveExitedSessions() error {
 				if strings.HasPrefix(stat, "Z") {
 					// It's a zombie, should remove
 					shouldRemove = true
-					
+
 					// Try to reap the zombie
 					var status syscall.WaitStatus
-					syscall.Wait4(info.Pid, &status, syscall.WNOHANG, nil)
+					if _, err := syscall.Wait4(info.Pid, &status, syscall.WNOHANG, nil); err != nil {
+						log.Printf("[WARN] Failed to reap zombie process %d: %v", info.Pid, err)
+					}
 				}
 			}
 		}
-		
+
 		if shouldRemove {
 			sessionPath := filepath.Join(m.controlPath, info.ID)
 			if err := os.RemoveAll(sessionPath); err != nil {
@@ -200,23 +208,23 @@ func (m *Manager) RemoveExitedSessions() error {
 	return nil
 }
 
-
 // UpdateAllSessionStatuses updates the status of all sessions
 func (m *Manager) UpdateAllSessionStatuses() error {
 	sessions, err := m.ListSessions()
 	if err != nil {
 		return err
 	}
-	
+
 	for _, info := range sessions {
 		if sess, err := m.GetSession(info.ID); err == nil {
-			sess.UpdateStatus()
+			if err := sess.UpdateStatus(); err != nil {
+				log.Printf("[WARN] Failed to update session status for %s: %v", info.ID, err)
+			}
 		}
 	}
-	
+
 	return nil
 }
-
 
 func (m *Manager) RemoveSession(id string) error {
 	// Remove from running sessions registry

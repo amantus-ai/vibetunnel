@@ -39,7 +39,6 @@ var upgrader = websocket.Upgrader{
 
 type BufferWebSocketHandler struct {
 	manager *session.Manager
-	clients sync.Map // sessionID -> *websocket.Conn
 }
 
 func NewBufferWebSocketHandler(manager *session.Manager) *BufferWebSocketHandler {
@@ -52,10 +51,11 @@ func NewBufferWebSocketHandler(manager *session.Manager) *BufferWebSocketHandler
 func safeSend(send chan []byte, data []byte, done chan struct{}) bool {
 	defer func() {
 		if r := recover(); r != nil {
-			// Channel was closed, ignore the panic
+			// Channel send panicked (likely closed channel) - expected on disconnect
+			log.Printf("Channel send panic (client likely disconnected): %v", r)
 		}
 	}()
-	
+
 	select {
 	case send <- data:
 		return true
@@ -70,13 +70,21 @@ func (h *BufferWebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		log.Printf("[WebSocket] Failed to upgrade connection: %v", err)
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("[WebSocket] Failed to close connection: %v", err)
+		}
+	}()
 
 	// Set up connection parameters
 	conn.SetReadLimit(maxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(pongWait))
+	if err := conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		log.Printf("[WebSocket] Failed to set read deadline: %v", err)
+	}
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(pongWait))
+		if err := conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+			log.Printf("[WebSocket] Failed to set read deadline in pong handler: %v", err)
+		}
 		return nil
 	})
 
@@ -194,7 +202,11 @@ func (h *BufferWebSocketHandler) streamSession(sessionID string, send chan []byt
 		safeSend(send, errorMsg, done)
 		return
 	}
-	defer watcher.Close()
+	defer func() {
+		if err := watcher.Close(); err != nil {
+			log.Printf("[WebSocket] Failed to close watcher: %v", err)
+		}
+	}()
 
 	// Add the stream file to the watcher
 	err = watcher.Add(streamPath)
@@ -254,7 +266,11 @@ func (h *BufferWebSocketHandler) processAndSendContent(sessionID, streamPath str
 		// Don't panic, just return gracefully
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("[WebSocket] Failed to close file: %v", err)
+		}
+	}()
 
 	// Get current file size
 	fileInfo, err := file.Stat()
@@ -391,9 +407,14 @@ func (h *BufferWebSocketHandler) writer(conn *websocket.Conn, send chan []byte, 
 	for {
 		select {
 		case message, ok := <-send:
-			conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				log.Printf("[WebSocket] Failed to set write deadline: %v", err)
+				return
+			}
 			if !ok {
-				conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					log.Printf("[WebSocket] Failed to write close message: %v", err)
+				}
 				return
 			}
 
@@ -411,7 +432,10 @@ func (h *BufferWebSocketHandler) writer(conn *websocket.Conn, send chan []byte, 
 			}
 
 		case <-ticker.C:
-			conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				log.Printf("[WebSocket] Failed to set write deadline for ping: %v", err)
+				return
+			}
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}

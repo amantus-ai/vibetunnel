@@ -44,16 +44,24 @@ func (s *SSEStreamer) Stream() {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Printf("[ERROR] SSE: Failed to create file watcher: %v", err)
-		s.sendError(fmt.Sprintf("Failed to create watcher: %v", err))
+		if err := s.sendError(fmt.Sprintf("Failed to create watcher: %v", err)); err != nil {
+			log.Printf("[ERROR] SSE: Failed to send error: %v", err)
+		}
 		return
 	}
-	defer watcher.Close()
+	defer func() {
+		if err := watcher.Close(); err != nil {
+			log.Printf("[ERROR] SSE: Failed to close watcher: %v", err)
+		}
+	}()
 
 	// Add the stream file to the watcher
 	err = watcher.Add(streamPath)
 	if err != nil {
 		log.Printf("[ERROR] SSE: Failed to watch stream file: %v", err)
-		s.sendError(fmt.Sprintf("Failed to watch file: %v", err))
+		if err := s.sendError(fmt.Sprintf("Failed to watch file: %v", err)); err != nil {
+			log.Printf("[ERROR] SSE: Failed to send error: %v", err)
+		}
 		return
 	}
 
@@ -108,7 +116,11 @@ func (s *SSEStreamer) processNewContent(streamPath string, headerSent *bool, see
 		log.Printf("[ERROR] SSE: Failed to open stream file: %v", err)
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("[ERROR] SSE: Failed to close file: %v", err)
+		}
+	}()
 
 	// Get current file size
 	fileInfo, err := file.Stat()
@@ -238,24 +250,24 @@ func (s *SSEStreamer) sendRawEvent(event *protocol.StreamEvent) error {
 			string(event.Event.Type),
 			event.Event.Data,
 		}
-		
+
 		jsonData, err := json.Marshal(data)
 		if err != nil {
 			return err
 		}
-		
+
 		// Send as SSE data
 		if _, err := fmt.Fprintf(s.w, "data: %s\n\n", jsonData); err != nil {
 			return err // Client disconnected
 		}
-		
+
 		if s.flusher != nil {
 			s.flusher.Flush()
 		}
-		
+
 		return nil
 	}
-	
+
 	// For other event types (error, end), send without wrapping
 	jsonData, err := json.Marshal(event)
 	if err != nil {
@@ -299,7 +311,11 @@ func GetSessionSnapshot(sess *session.Session) (*SessionSnapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("[ERROR] SSE: Failed to close file: %v", err)
+		}
+	}()
 
 	reader := protocol.NewStreamReader(file)
 	snapshot := &SessionSnapshot{

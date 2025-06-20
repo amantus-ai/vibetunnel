@@ -75,7 +75,9 @@ func (s *Session) startControlListener() {
 				s.handleControlCommand(&cmd)
 			}
 
-			file.Close()
+			if err := file.Close(); err != nil {
+				log.Printf("[ERROR] Failed to close control FIFO: %v", err)
+			}
 
 			// Longer delay before reopening to reduce CPU usage
 			time.Sleep(1 * time.Second)
@@ -113,7 +115,11 @@ func SendControlCommand(sessionPath string, cmd *ControlCommand) error {
 			done <- err
 			return
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				log.Printf("[ERROR] Failed to close control file: %v", err)
+			}
+		}()
 
 		encoder := json.NewEncoder(file)
 		if err := encoder.Encode(cmd); err != nil {

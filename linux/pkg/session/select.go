@@ -79,10 +79,14 @@ func (p *PTY) pollWithSelect() error {
 	// Open control FIFO in non-blocking mode
 	controlPath := filepath.Join(p.session.Path(), "control")
 	controlFile, err := os.OpenFile(controlPath, os.O_RDONLY|syscall.O_NONBLOCK, 0)
-	var controlFd int = -1
+	var controlFd = -1
 	if err == nil {
 		controlFd = int(controlFile.Fd())
-		defer controlFile.Close()
+		defer func() {
+			if err := controlFile.Close(); err != nil {
+				log.Printf("[ERROR] Failed to close control file: %v", err)
+			}
+		}()
 	} else {
 		log.Printf("[WARN] Failed to open control FIFO: %v", err)
 	}

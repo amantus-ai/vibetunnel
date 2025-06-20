@@ -55,7 +55,7 @@ type Info struct {
 	Width     int               `json:"width"`
 	Height    int               `json:"height"`
 	Env       map[string]string `json:"env,omitempty"`
-	Args      []string          `json:"-"`    // Internal use only
+	Args      []string          `json:"-"`          // Internal use only
 	IsSpawned bool              `json:"is_spawned"` // Whether session was spawned in terminal
 }
 
@@ -149,7 +149,9 @@ func newSessionWithID(controlPath string, id string, config Config) (*Session, e
 	}
 
 	if err := info.Save(sessionPath); err != nil {
-		os.RemoveAll(sessionPath)
+		if err := os.RemoveAll(sessionPath); err != nil {
+			log.Printf("[WARN] Failed to remove session path %s: %v", sessionPath, err)
+		}
 		return nil, fmt.Errorf("failed to save session info: %w", err)
 	}
 
@@ -185,7 +187,9 @@ func loadSession(controlPath, id string) (*Session, error) {
 			info.Status = string(StatusExited)
 			exitCode := 1
 			info.ExitCode = &exitCode
-			info.Save(sessionPath)
+			if err := info.Save(sessionPath); err != nil {
+				log.Printf("[ERROR] Failed to save session info to %s: %v", sessionPath, err)
+			}
 		}
 	}
 
@@ -222,7 +226,9 @@ func (s *Session) Start() error {
 	s.info.Pid = pty.Pid()
 
 	if err := s.info.Save(s.Path()); err != nil {
-		pty.Close()
+		if err := pty.Close(); err != nil {
+			log.Printf("[ERROR] Failed to close PTY: %v", err)
+		}
 		return fmt.Errorf("failed to update session info: %w", err)
 	}
 
@@ -285,9 +291,11 @@ func (s *Session) sendInput(data []byte) error {
 	_, err := s.stdinPipe.Write(data)
 	if err != nil {
 		// If write fails, close and reset the pipe for next attempt
-		s.stdinPipe.Close()
+		if err := s.stdinPipe.Close(); err != nil {
+			log.Printf("[ERROR] Failed to close stdin pipe: %v", err)
+		}
 		s.stdinPipe = nil
-		
+
 		// Try Node.js proxy fallback like Rust
 		if os.Getenv("VIBETUNNEL_DEBUG") != "" {
 			log.Printf("[DEBUG] Failed to write to stdin pipe, trying Node.js proxy fallback: %v", err)
@@ -302,40 +310,44 @@ func (s *Session) proxyInputToNodeJS(data []byte) error {
 	client := &http.Client{
 		Timeout: 5 * time.Second,
 	}
-	
+
 	url := fmt.Sprintf("http://localhost:3000/api/sessions/%s/input", s.ID)
-	
+
 	payload := map[string]interface{}{
 		"data": string(data),
 	}
-	
+
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal input data: %w", err)
 	}
-	
+
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create proxy request: %w", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("Node.js proxy fallback failed: %w", err)
+		return fmt.Errorf("node.js proxy fallback failed: %w", err)
 	}
-	defer resp.Body.Close()
-	
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("[WARN] Failed to close response body: %v", err)
+		}
+	}()
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("Node.js proxy returned status %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("node.js proxy returned status %d: %s", resp.StatusCode, string(body))
 	}
-	
+
 	if os.Getenv("VIBETUNNEL_DEBUG") != "" {
 		log.Printf("[DEBUG] Successfully sent input via Node.js proxy for session %s", s.ID[:8])
 	}
-	
+
 	return nil
 }
 
@@ -350,7 +362,9 @@ func (s *Session) Signal(sig string) error {
 		s.info.Status = string(StatusExited)
 		exitCode := 0
 		s.info.ExitCode = &exitCode
-		s.info.Save(s.Path())
+		if err := s.info.Save(s.Path()); err != nil {
+			log.Printf("[ERROR] Failed to save session info: %v", err)
+		}
 		return nil
 	}
 
@@ -389,13 +403,13 @@ func (s *Session) Kill() error {
 	// Try to kill the process
 	err := s.Signal("SIGKILL")
 	s.cleanup()
-	
+
 	// If the error is because the process doesn't exist, that's fine
-	if err != nil && (strings.Contains(err.Error(), "no such process") || 
+	if err != nil && (strings.Contains(err.Error(), "no such process") ||
 		strings.Contains(err.Error(), "process already finished")) {
 		return nil
 	}
-	
+
 	return err
 }
 
@@ -404,7 +418,9 @@ func (s *Session) cleanup() {
 	defer s.stdinMutex.Unlock()
 
 	if s.stdinPipe != nil {
-		s.stdinPipe.Close()
+		if err := s.stdinPipe.Close(); err != nil {
+			log.Printf("[ERROR] Failed to close stdin pipe: %v", err)
+		}
 		s.stdinPipe = nil
 	}
 }
@@ -442,7 +458,7 @@ func (s *Session) IsAlive() bool {
 	pid := s.info.Pid
 	status := s.info.Status
 	s.mu.RUnlock()
-	
+
 	if pid == 0 {
 		if os.Getenv("VIBETUNNEL_DEBUG") != "" {
 			log.Printf("[DEBUG] IsAlive: PID is 0 for session %s", s.ID[:8])
@@ -478,7 +494,7 @@ func (s *Session) IsAlive() bool {
 		}
 		return false
 	}
-	
+
 	// Send signal 0 to check if process exists (POSIX only)
 	err = osProcess.Signal(syscall.Signal(0))
 	if err != nil {
@@ -543,17 +559,17 @@ func (i *Info) Save(sessionPath string) error {
 		Rows:      &i.Height,
 		Env:       i.Env,
 	}
-	
+
 	// Only include Pid if non-zero
 	if i.Pid > 0 {
 		rustInfo.Pid = &i.Pid
 	}
-	
+
 	// Only include StartedAt if not zero time
 	if !i.StartedAt.IsZero() {
 		rustInfo.StartedAt = &i.StartedAt
 	}
-	
+
 	data, err := json.MarshalIndent(rustInfo, "", "  ")
 	if err != nil {
 		return err
@@ -593,15 +609,15 @@ func LoadInfo(sessionPath string) (*Info, error) {
 
 	// Convert Rust format to internal Info format
 	info := Info{
-		ID:        rustInfo.ID,
-		Name:      rustInfo.Name,
-		Cmdline:   strings.Join(rustInfo.Cmdline, " "),
-		Cwd:       rustInfo.Cwd,
-		Status:    rustInfo.Status,
-		ExitCode:  rustInfo.ExitCode,
-		Term:      rustInfo.Term,
-		Args:      rustInfo.Cmdline,
-		Env:       rustInfo.Env,
+		ID:       rustInfo.ID,
+		Name:     rustInfo.Name,
+		Cmdline:  strings.Join(rustInfo.Cmdline, " "),
+		Cwd:      rustInfo.Cwd,
+		Status:   rustInfo.Status,
+		ExitCode: rustInfo.ExitCode,
+		Term:     rustInfo.Term,
+		Args:     rustInfo.Cmdline,
+		Env:      rustInfo.Env,
 	}
 
 	// Handle PID conversion

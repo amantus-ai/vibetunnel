@@ -65,9 +65,13 @@ func testShellSpawn(cmdline []string, workDir string) {
 		return
 	}
 	defer func() {
-		ptmx.Close()
+		if err := ptmx.Close(); err != nil {
+			log.Printf("[ERROR] Failed to close PTY: %v", err)
+		}
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			if err := cmd.Process.Kill(); err != nil {
+				log.Printf("[ERROR] Failed to kill process: %v", err)
+			}
 		}
 	}()
 
@@ -97,7 +101,9 @@ func testShellSpawn(cmdline []string, workDir string) {
 				log.Printf("Output reading timeout")
 				return
 			default:
-				ptmx.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+				if err := ptmx.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+					log.Printf("[ERROR] Failed to set read deadline: %v", err)
+				}
 				n, err := ptmx.Read(buf)
 				if n > 0 {
 					output := strings.TrimSpace(string(buf[:n]))
@@ -118,7 +124,9 @@ func testShellSpawn(cmdline []string, workDir string) {
 	// Send a simple command to test interactivity
 	time.Sleep(500 * time.Millisecond)
 	log.Printf("Sending test command: 'echo hello'")
-	ptmx.Write([]byte("echo hello\n"))
+	if _, err := ptmx.Write([]byte("echo hello\n")); err != nil {
+		log.Printf("[ERROR] Failed to write to PTY: %v", err)
+	}
 
 	// Wait for either process exit or timeout
 	select {
@@ -139,13 +147,17 @@ func testShellSpawn(cmdline []string, workDir string) {
 	case <-time.After(5 * time.Second):
 		log.Printf("Process still running after 5 seconds - looks good!")
 		if cmd.Process != nil {
-			cmd.Process.Signal(syscall.SIGTERM)
+			if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+				log.Printf("[ERROR] Failed to send SIGTERM: %v", err)
+			}
 			select {
 			case <-done:
 				log.Printf("Process terminated")
 			case <-time.After(2 * time.Second):
 				log.Printf("Process didn't respond to SIGTERM, killing")
-				cmd.Process.Kill()
+				if err := cmd.Process.Kill(); err != nil {
+					log.Printf("[ERROR] Failed to kill process: %v", err)
+				}
 			}
 		}
 	}

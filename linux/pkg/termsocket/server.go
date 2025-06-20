@@ -97,7 +97,9 @@ func (s *Server) Start() error {
 
 	// Set socket permissions
 	if err := os.Chmod(s.socketPath, 0600); err != nil {
-		listener.Close()
+		if closeErr := listener.Close(); closeErr != nil {
+			log.Printf("[ERROR] Failed to close listener: %v", closeErr)
+		}
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
@@ -126,14 +128,18 @@ func (s *Server) Stop() error {
 	s.mu.Unlock()
 
 	if listener != nil {
-		listener.Close()
+		if err := listener.Close(); err != nil {
+			log.Printf("[ERROR] Failed to close listener: %v", err)
+		}
 	}
 
 	// Wait for all handlers to complete
 	s.wg.Wait()
 
 	// Remove socket file
-	os.Remove(s.socketPath)
+	if err := os.Remove(s.socketPath); err != nil && !os.IsNotExist(err) {
+		log.Printf("[ERROR] Failed to remove socket file: %v", err)
+	}
 
 	log.Printf("[INFO] Terminal socket server stopped")
 	return nil
@@ -171,7 +177,11 @@ func (s *Server) acceptLoop() {
 
 func (s *Server) handleConnection(conn net.Conn) {
 	defer s.wg.Done()
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("[ERROR] Failed to close connection: %v", err)
+		}
+	}()
 
 	// Decode request
 	var req SpawnRequest
@@ -249,7 +259,9 @@ func TryConnect(socketPath string) (net.Conn, error) {
 	}
 
 	// Set read/write timeout for ongoing operations
-	conn.SetDeadline(time.Now().Add(30 * time.Second))
+	if err := conn.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+		log.Printf("[WARN] Failed to set connection deadline: %v", err)
+	}
 
 	return conn, nil
 }

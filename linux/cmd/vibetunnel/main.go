@@ -18,7 +18,7 @@ import (
 var (
 	// Version injected at build time
 	version = "dev"
-	
+
 	// Session management flags
 	controlPath       string
 	sessionName       string
@@ -59,12 +59,12 @@ var (
 	ngrokToken   string
 
 	// Advanced options
-	debugMode             bool
-	cleanupStartup        bool
-	serverMode            string
-	updateChannel         string
-	noSpawn               bool
-	doNotAllowColumnSet   bool
+	debugMode           bool
+	cleanupStartup      bool
+	serverMode          string
+	updateChannel       string
+	noSpawn             bool
+	doNotAllowColumnSet bool
 
 	// Configuration file
 	configFile string
@@ -256,15 +256,15 @@ func run(cmd *cobra.Command, args []string) error {
 func startServer(cfg *config.Config, manager *session.Manager) error {
 	// Terminal spawning behavior:
 	// 1. When spawn_terminal=true in API requests, we first try to connect to the Mac app's socket
-	// 2. If Mac app is running, it handles the terminal spawn via TerminalSpawnService 
+	// 2. If Mac app is running, it handles the terminal spawn via TerminalSpawnService
 	// 3. If Mac app is not running, we fall back to native terminal spawning (osascript on macOS)
 	// This matches the Rust implementation's behavior.
-	
+
 	// Use static path from command line or config
 	if staticPath == "" {
 		staticPath = cfg.Server.StaticPath
 	}
-	
+
 	// When running from Mac app, static path should always be provided via --static-path
 	// When running standalone, user must provide the path
 	if staticPath == "" {
@@ -419,9 +419,13 @@ func main() {
 		logFile, err := os.OpenFile("/tmp/vibetunnel-session.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err == nil {
 			log.SetOutput(logFile)
-			defer logFile.Close()
+			defer func() {
+				if err := logFile.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to close log file: %v\n", err)
+				}
+			}()
 		}
-		
+
 		// Use the existing session ID instead of creating a new one
 		homeDir, _ := os.UserHomeDir()
 		defaultControlPath := filepath.Join(homeDir, ".vibetunnel", "control")
@@ -429,9 +433,9 @@ func main() {
 		if cfg.ControlPath != "" {
 			defaultControlPath = cfg.ControlPath
 		}
-		
+
 		manager := session.NewManager(defaultControlPath)
-		
+
 		// Wait for the session to be created by the API server
 		// The server creates the session before sending the spawn request
 		var sess *session.Session
@@ -442,12 +446,12 @@ func main() {
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
-		
+
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Session %s not found\n", sessionID)
 			os.Exit(1)
 		}
-		
+
 		// Attach to the session
 		if err := sess.Attach(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -455,15 +459,18 @@ func main() {
 		}
 		return
 	}
-	
+
 	// Check for special case: if we have args but no recognized VibeTunnel flags,
 	// treat everything as a command to execute (compatible with old Rust behavior)
 	if len(os.Args) > 1 {
 		// Parse flags without executing to check what we have
 		rootCmd.DisableFlagParsing = true
-		rootCmd.ParseFlags(os.Args[1:])
+		if err := rootCmd.ParseFlags(os.Args[1:]); err != nil {
+			// Parse errors are expected at this stage during command detection
+			_ = err // Explicitly ignore the error
+		}
 		rootCmd.DisableFlagParsing = false
-		
+
 		// Get the command and check if first arg is a subcommand
 		args := os.Args[1:]
 		if len(args) > 0 && (args[0] == "version" || args[0] == "config") {
@@ -477,7 +484,7 @@ func main() {
 					break
 				}
 			}
-			
+
 			if dashDashIndex >= 0 {
 				// We have a -- separator, everything after it is the command to execute
 				cmdArgs := args[dashDashIndex+1:]
@@ -488,7 +495,7 @@ func main() {
 					if cfg.ControlPath != "" {
 						defaultControlPath = cfg.ControlPath
 					}
-					
+
 					manager := session.NewManager(defaultControlPath)
 					sess, err := manager.CreateSession(session.Config{
 						Name:      "",
@@ -500,7 +507,7 @@ func main() {
 						fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 						os.Exit(1)
 					}
-					
+
 					// Attach to the session
 					if err := sess.Attach(); err != nil {
 						fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -516,7 +523,7 @@ func main() {
 						// Check if this is one of our known flags
 						flag := strings.TrimLeft(arg, "-")
 						flag = strings.Split(flag, "=")[0] // Handle --flag=value format
-						
+
 						knownFlags := []string{
 							"serve", "port", "p", "bind", "localhost", "network",
 							"password", "password-enabled", "tls", "tls-port", "tls-domain",
@@ -527,7 +534,7 @@ func main() {
 							"send-key", "send-text", "signal", "stop", "kill",
 							"cleanup-exited", "detached-session", "static-path", "help", "h",
 						}
-						
+
 						for _, known := range knownFlags {
 							if flag == known {
 								hasVibeTunnelFlags = true
@@ -539,7 +546,7 @@ func main() {
 						}
 					}
 				}
-				
+
 				// If no VibeTunnel flags found, treat everything as a command
 				if !hasVibeTunnelFlags && len(args) > 0 {
 					homeDir, _ := os.UserHomeDir()
@@ -548,7 +555,7 @@ func main() {
 					if cfg.ControlPath != "" {
 						defaultControlPath = cfg.ControlPath
 					}
-					
+
 					manager := session.NewManager(defaultControlPath)
 					sess, err := manager.CreateSession(session.Config{
 						Name:      "",
@@ -560,7 +567,7 @@ func main() {
 						fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 						os.Exit(1)
 					}
-					
+
 					// Attach to the session
 					if err := sess.Attach(); err != nil {
 						fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -571,7 +578,7 @@ func main() {
 			}
 		}
 	}
-	
+
 	// Fall back to Cobra command handling for flags and structured commands
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

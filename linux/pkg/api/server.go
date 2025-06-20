@@ -79,7 +79,9 @@ func (s *Server) Start(addr string) error {
 			for _, session := range sessions {
 				if session.Status == "running" || session.Status == "starting" {
 					if sess, err := s.manager.GetSession(session.ID); err == nil {
-						sess.UpdateStatus()
+						if err := sess.UpdateStatus(); err != nil {
+							log.Printf("Failed to update session status: %v", err)
+						}
 					}
 				}
 			}
@@ -89,7 +91,9 @@ func (s *Server) Start(addr string) error {
 		// Shutdown HTTP server
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		srv.Shutdown(ctx)
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Printf("Failed to shutdown server: %v", err)
+		}
 	}()
 	
 	return srv.ListenAndServe()
@@ -231,7 +235,9 @@ func (s *Server) unauthorized(w http.ResponseWriter) {
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		log.Printf("Failed to encode health response: %v", err)
+	}
 }
 
 func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
@@ -284,7 +290,10 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(apiSessions)
+	if err := json.NewEncoder(w).Encode(apiSessions); err != nil {
+		log.Printf("Failed to encode sessions response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
@@ -361,7 +370,11 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	if req.SpawnTerminal && !s.noSpawn {
 		// Try to use the Mac app's terminal spawn service first
 		if conn, err := termsocket.TryConnect(""); err == nil {
-			defer conn.Close()
+			defer func() {
+				if err := conn.Close(); err != nil {
+					log.Printf("Failed to close connection: %v", err)
+				}
+			}()
 
 			// Generate a session ID
 			sessionID := session.GenerateID()
@@ -403,7 +416,9 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Printf("[ERROR] Failed to send terminal spawn request: %v", err)
 				// Clean up the session since spawn failed
-				s.manager.RemoveSession(sess.ID)
+				if err := s.manager.RemoveSession(sess.ID); err != nil {
+					log.Printf("Failed to remove session: %v", err)
+				}
 				http.Error(w, fmt.Sprintf("Failed to spawn terminal: %v", err), http.StatusInternalServerError)
 				return
 			}
@@ -415,7 +430,9 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 				}
 				log.Printf("[ERROR] Terminal spawn failed: %s", errorMsg)
 				// Clean up the session since spawn failed
-				s.manager.RemoveSession(sess.ID)
+				if err := s.manager.RemoveSession(sess.ID); err != nil {
+					log.Printf("Failed to remove session: %v", err)
+				}
 				http.Error(w, fmt.Sprintf("Terminal spawn failed: %s", errorMsg), http.StatusInternalServerError)
 				return
 			}
@@ -424,12 +441,14 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 			// Return success response
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"success":   true,
 				"message":   "Terminal session spawned successfully",
 				"error":     nil,
 				"sessionId": sessionID,
-			})
+			}); err != nil {
+				log.Printf("Failed to encode response: %v", err)
+			}
 			return
 		} else {
 			// Mac app terminal spawn service not available - fallback to native terminal spawning
@@ -454,7 +473,9 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 			vtPath := findVTBinary()
 			if vtPath == "" {
 				log.Printf("[ERROR] vt binary not found for native terminal spawn")
-				s.manager.RemoveSession(sess.ID)
+				if err := s.manager.RemoveSession(sess.ID); err != nil {
+					log.Printf("Failed to remove session: %v", err)
+				}
 				http.Error(w, "vt binary not found", http.StatusInternalServerError)
 				return
 			}
@@ -463,7 +484,9 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 			if err := terminal.SpawnInTerminal(sess.ID, vtPath, cmdline, cwd); err != nil {
 				log.Printf("[ERROR] Failed to spawn native terminal: %v", err)
 				// Clean up the session since terminal spawn failed
-				s.manager.RemoveSession(sess.ID)
+				if err := s.manager.RemoveSession(sess.ID); err != nil {
+					log.Printf("Failed to remove session: %v", err)
+				}
 				http.Error(w, fmt.Sprintf("Failed to spawn terminal: %v", err), http.StatusInternalServerError)
 				return
 			}
@@ -472,12 +495,14 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 			// Return success response
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"success":   true,
 				"message":   "Terminal session spawned successfully (native)",
 				"error":     nil,
 				"sessionId": sess.ID,
-			})
+			}); err != nil {
+				log.Printf("Failed to encode response: %v", err)
+			}
 			return
 		}
 	}
@@ -497,12 +522,14 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":   true,
 		"message":   "Session created successfully",
 		"error":     nil,
 		"sessionId": sess.ID,
-	})
+	}); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
@@ -521,7 +548,9 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update status on-demand
-	sess.UpdateStatus()
+	if err := sess.UpdateStatus(); err != nil {
+		log.Printf("Failed to update session status: %v", err)
+	}
 	
 	// Convert to Rust-compatible format like in handleListSessions
 	rustInfo := session.RustSessionInfo{
@@ -568,7 +597,9 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
@@ -598,7 +629,9 @@ func (s *Server) handleSnapshotSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(snapshot)
+	if err := json.NewEncoder(w).Encode(snapshot); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 func (s *Server) handleSendInput(w http.ResponseWriter, r *http.Request) {
@@ -668,7 +701,9 @@ func (s *Server) handleKillSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update session status before attempting kill
-	sess.UpdateStatus()
+	if err := sess.UpdateStatus(); err != nil {
+		log.Printf("Failed to update session status: %v", err)
+	}
 
 	// Check if session is already dead
 	info := sess.GetInfo()
@@ -676,10 +711,12 @@ func (s *Server) handleKillSession(w http.ResponseWriter, r *http.Request) {
 		// Return 410 Gone for already dead sessions
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusGone)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"message": "Session already exited",
-		})
+		}); err != nil {
+			log.Printf("Failed to encode response: %v", err)
+		}
 		return
 	}
 
@@ -690,10 +727,12 @@ func (s *Server) handleKillSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Session deleted successfully",
-	})
+	}); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 func (s *Server) handleCleanupSession(w http.ResponseWriter, r *http.Request) {
@@ -833,10 +872,12 @@ func (s *Server) handleMkdir(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] Successfully created directory: %s", fullPath)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"path":    fullPath,
-	})
+	}); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 func (s *Server) handleResizeSession(w http.ResponseWriter, r *http.Request) {
@@ -866,11 +907,13 @@ func (s *Server) handleResizeSession(w http.ResponseWriter, r *http.Request) {
 	if s.doNotAllowColumnSet {
 		log.Printf("[INFO] Resize blocked for session %s (--do-not-allow-column-set enabled)", vars["id"][:8])
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
 			"message": "Terminal resizing is disabled by server configuration",
 			"error":   "resize_disabled_by_server",
-		})
+		}); err != nil {
+			log.Printf("Failed to encode response: %v", err)
+		}
 		return
 	}
 
@@ -880,12 +923,14 @@ func (s *Server) handleResizeSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Session resized successfully",
 		"cols":    req.Cols,
 		"rows":    req.Rows,
-	})
+	}); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 // Ngrok Handlers
@@ -906,11 +951,13 @@ func (s *Server) handleNgrokStart(w http.ResponseWriter, r *http.Request) {
 	if s.ngrokService.IsRunning() {
 		status := s.ngrokService.GetStatus()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"message": "Ngrok tunnel is already running",
 			"tunnel":  status,
-		})
+		}); err != nil {
+			log.Printf("Failed to encode response: %v", err)
+		}
 		return
 	}
 
@@ -923,11 +970,13 @@ func (s *Server) handleNgrokStart(w http.ResponseWriter, r *http.Request) {
 
 	// Return immediate response - tunnel status will be updated asynchronously
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Ngrok tunnel is starting",
 		"tunnel":  s.ngrokService.GetStatus(),
-	})
+	}); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 func (s *Server) handleNgrokStop(w http.ResponseWriter, r *http.Request) {
@@ -943,20 +992,24 @@ func (s *Server) handleNgrokStop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Ngrok tunnel stopped",
-	})
+	}); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 func (s *Server) handleNgrokStatus(w http.ResponseWriter, r *http.Request) {
 	status := s.ngrokService.GetStatus()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"tunnel":  status,
-	})
+	}); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 // StartNgrok is a convenience method for CLI integration

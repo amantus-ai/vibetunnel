@@ -34,7 +34,6 @@ type TLSConfig struct {
 type TLSServer struct {
 	*Server
 	tlsConfig *TLSConfig
-	certMagic *certmagic.Config
 }
 
 // NewTLSServer creates a new TLS-enabled server
@@ -252,5 +251,5 @@ func (s *TLSServer) startHTTPRedirect(httpAddr, httpsAddr string) {
 // setupRoutes returns the configured HTTP handler (reusing existing Server logic)
 func (s *TLSServer) setupRoutes() http.Handler {
 	// Use the existing server's router setup
-	return s.Server.createHandler()
+	return s.createHandler()
 }
