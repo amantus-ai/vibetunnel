@@ -196,6 +196,9 @@ export class Terminal extends LitElement {
 
       // Set terminal size - don't call .open() to keep it headless
       this.terminal.resize(this.cols, this.rows);
+      
+      // Apply initial theme CSS variables
+      this.applyTheme(this.themeName);
     } catch (error) {
       console.error('Failed to create terminal:', error);
       throw error;
@@ -208,6 +211,39 @@ export class Terminal extends LitElement {
     const theme = getThemeByName(themeName);
     this.terminal.options.theme = theme;
     this.themeName = themeName;
+
+    // Update CSS variables for the standard 16 colors
+    const root = document.documentElement;
+    const colorMap = [
+      { var: '--terminal-color-0', color: theme.black },
+      { var: '--terminal-color-1', color: theme.red },
+      { var: '--terminal-color-2', color: theme.green },
+      { var: '--terminal-color-3', color: theme.yellow },
+      { var: '--terminal-color-4', color: theme.blue },
+      { var: '--terminal-color-5', color: theme.magenta },
+      { var: '--terminal-color-6', color: theme.cyan },
+      { var: '--terminal-color-7', color: theme.white },
+      { var: '--terminal-color-8', color: theme.brightBlack },
+      { var: '--terminal-color-9', color: theme.brightRed },
+      { var: '--terminal-color-10', color: theme.brightGreen },
+      { var: '--terminal-color-11', color: theme.brightYellow },
+      { var: '--terminal-color-12', color: theme.brightBlue },
+      { var: '--terminal-color-13', color: theme.brightMagenta },
+      { var: '--terminal-color-14', color: theme.brightCyan },
+      { var: '--terminal-color-15', color: theme.brightWhite },
+    ];
+
+    colorMap.forEach(({ var: varName, color }) => {
+      root.style.setProperty(varName, color);
+    });
+
+    // Update cursor color
+    root.style.setProperty('--terminal-cursor-color', theme.cursor);
+
+    // Update background color on the terminal container
+    if (this.container) {
+      this.container.style.backgroundColor = theme.background;
+    }
 
     // Force re-render to apply new theme colors
     this.requestRenderBuffer();
@@ -759,7 +795,7 @@ export class Terminal extends LitElement {
 
       // Override background for cursor
       if (isCursor) {
-        style += `background-color: #23d18b;`;
+        style += `background-color: var(--terminal-cursor-color, #23d18b);`;
       }
 
       // Get text attributes/flags
