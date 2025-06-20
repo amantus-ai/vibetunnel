@@ -283,9 +283,15 @@ class APIClient: APIClientProtocol {
         }
     }
     
+    private func addAuthenticationIfNeeded(_ request: inout URLRequest) {
+        // For now, we don't have authentication configured in the iOS app
+        // This is a placeholder for future authentication support
+        // The server might be running without password protection
+    }
+    
     // MARK: - File System Operations
     
-    func browseDirectory(path: String) async throws -> [FileEntry] {
+    func browseDirectory(path: String) async throws -> (absolutePath: String, files: [FileEntry]) {
         guard let baseURL = baseURL else {
             throw APIError.noServerConfigured
         }
@@ -300,11 +306,31 @@ class APIClient: APIClientProtocol {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         
+        // Add authentication header if needed
+        addAuthenticationIfNeeded(&request)
+        
         let (data, response) = try await session.data(for: request)
+        
+        // Log response for debugging
+        if let httpResponse = response as? HTTPURLResponse {
+            print("[APIClient] Browse directory response: \(httpResponse.statusCode)")
+            if httpResponse.statusCode >= 400 {
+                if let errorString = String(data: data, encoding: .utf8) {
+                    print("[APIClient] Error response body: \(errorString)")
+                }
+            }
+        }
+        
         try validateResponse(response)
         
-        let entries = try decoder.decode([FileEntry].self, from: data)
-        return entries
+        // Decode the response which includes absolutePath and files
+        struct BrowseResponse: Codable {
+            let absolutePath: String
+            let files: [FileEntry]
+        }
+        
+        let browseResponse = try decoder.decode(BrowseResponse.self, from: data)
+        return (absolutePath: browseResponse.absolutePath, files: browseResponse.files)
     }
     
     func createDirectory(path: String) async throws {

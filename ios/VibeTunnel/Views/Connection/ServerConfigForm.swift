@@ -182,21 +182,3 @@ struct ServerConfigForm: View {
         }
     }
 }
-
-// Custom text field style
-struct TerminalTextFieldStyle: TextFieldStyle {
-    func _body(configuration: TextField<Self._Label>) -> some View {
-        configuration
-            .font(Theme.Typography.terminalSystem(size: 16))
-            .foregroundColor(Theme.Colors.terminalForeground)
-            .padding(Theme.Spacing.md)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                    .fill(Theme.Colors.cardBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                    .stroke(Theme.Colors.primaryAccent.opacity(0.3), lineWidth: 1)
-            )
-    }
-}

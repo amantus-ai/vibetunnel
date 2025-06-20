@@ -1,5 +1,23 @@
 import SwiftUI
 
+// Custom text field style for terminal-like appearance
+struct TerminalTextFieldStyle: TextFieldStyle {
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .font(Theme.Typography.terminalSystem(size: 16))
+            .foregroundColor(Theme.Colors.terminalForeground)
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.Colors.cardBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .stroke(Theme.Colors.cardBorder, lineWidth: 1)
+            )
+    }
+}
+
 struct SessionCreateView: View {
     @Binding var isPresented: Bool
     let onCreated: (String) -> Void
@@ -208,14 +226,29 @@ struct SessionCreateView: View {
             .navigationBarHidden(true)
             .safeAreaInset(edge: .top) {
                 // Custom Navigation Bar with proper safe area handling
-                VStack(spacing: 0) {
+                ZStack {
+                    // Background with blur and transparency
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .background(Theme.Colors.terminalBackground.opacity(0.5))
+                    
+                    // Content
                     HStack {
-                        Button("Cancel") {
+                        Button(action: {
                             HapticFeedback.impact(.light)
                             isPresented = false
+                        }) {
+                            Text("Cancel")
+                                .font(.system(size: 17))
+                                .foregroundColor(Theme.Colors.errorAccent)
                         }
-                        .font(.system(size: 17))
-                        .foregroundColor(Theme.Colors.errorAccent)
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        Spacer()
+                        
+                        Text("New Session")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(Theme.Colors.terminalForeground)
                         
                         Spacer()
                         
@@ -230,16 +263,23 @@ struct SessionCreateView: View {
                             } else {
                                 Text("Create")
                                     .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(command.isEmpty ? Theme.Colors.primaryAccent.opacity(0.5) : Theme.Colors.primaryAccent)
                             }
                         }
-                        .foregroundColor(Theme.Colors.primaryAccent)
+                        .buttonStyle(PlainButtonStyle())
                         .disabled(isCreating || command.isEmpty)
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, 20)
                     .padding(.vertical, 16)
-                    .frame(maxWidth: .infinity)
-                    .background(.ultraThinMaterial.opacity(0.8))
                 }
+                .frame(height: 56) // Fixed height for the header
+                .overlay(
+                    // Subtle bottom border
+                    Rectangle()
+                        .fill(Theme.Colors.cardBorder.opacity(0.15))
+                        .frame(height: 0.5),
+                    alignment: .bottom
+                )
             }
             .onAppear {
                 loadDefaults()

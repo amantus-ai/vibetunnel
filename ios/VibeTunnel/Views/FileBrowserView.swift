@@ -297,12 +297,11 @@ class FileBrowserViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
-            let fetchedEntries = try await apiClient.browseDirectory(path: path)
-            // For now, we'll use the requested path as the current path
-            // The Go server doesn't return the absolute path in the response
-            currentPath = path
+            let result = try await apiClient.browseDirectory(path: path)
+            // Use the absolute path returned by the server
+            currentPath = result.absolutePath
             withAnimation(.easeInOut(duration: 0.2)) {
-                entries = fetchedEntries
+                entries = result.files
             }
         } catch {
             print("[FileBrowser] Failed to load directory: \(error)")
