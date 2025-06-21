@@ -15,11 +15,7 @@ struct ConnectionView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Background
-                Theme.Colors.terminalBackground
-                    .ignoresSafeArea()
-
+            ScrollView {
                 // Content
                 VStack(spacing: Theme.Spacing.extraExtraLarge) {
                     // Logo and Title
@@ -83,7 +79,13 @@ struct ConnectionView: View {
                 }
                 .padding()
             }
+            .scrollBounceBehavior(.basedOnSize)
             .toolbar(.hidden, for: .navigationBar)
+            .background {
+                // Background
+                Theme.Colors.terminalBackground
+                    .ignoresSafeArea()
+            }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .preferredColorScheme(.dark)
