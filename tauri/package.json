@@ -1,0 +1,21 @@
+{
+  "name": "vibetunnel-tauri",
+  "version": "1.0.0",
+  "description": "Tauri system tray app for VibeTunnel terminal multiplexer",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0-rc.18"
+  },
+  "keywords": [
+    "terminal",
+    "multiplexer",
+    "tauri",
+    "system-tray"
+  ],
+  "author": "",
+  "license": "MIT"
+}

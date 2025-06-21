@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VibeTunnel Preferences</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    /* Theme Variables */
+    :root {
+      /* Dark theme (default) */
+      --bg-primary: #000;
+      --bg-secondary: rgba(20, 20, 20, 0.95);
+      --bg-tertiary: rgba(15, 15, 15, 0.95);
+      --bg-titlebar: rgba(28, 28, 28, 0.95);
+      --bg-hover: rgba(255, 255, 255, 0.05);
+      --bg-active: rgba(16, 185, 129, 0.1);
+      --bg-input: rgba(255, 255, 255, 0.05);
+      --bg-input-hover: rgba(255, 255, 255, 0.08);
+      --bg-button: rgba(255, 255, 255, 0.1);
+      --bg-button-hover: rgba(255, 255, 255, 0.15);
+      --bg-card: rgba(255, 255, 255, 0.03);
+      
+      --text-primary: #fff;
+      --text-secondary: rgba(255, 255, 255, 0.6);
+      --text-tertiary: rgba(255, 255, 255, 0.4);
+      --text-titlebar: rgba(255, 255, 255, 0.85);
+      
+      --border-primary: rgba(255, 255, 255, 0.08);
+      --border-secondary: rgba(255, 255, 255, 0.12);
+      
+      --accent: #10b981;
+      --accent-hover: #0ea671;
+      --accent-glow: rgba(16, 185, 129, 0.5);
+      
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+    }
+
+    /* Light theme */
+    html.light {
+      --bg-primary: #ffffff;
+      --bg-secondary: rgba(249, 250, 251, 0.95);
+      --bg-tertiary: rgba(243, 244, 246, 0.95);
+      --bg-titlebar: rgba(255, 255, 255, 0.95);
+      --bg-hover: rgba(0, 0, 0, 0.05);
+      --bg-active: rgba(16, 185, 129, 0.1);
+      --bg-input: rgba(0, 0, 0, 0.05);
+      --bg-input-hover: rgba(0, 0, 0, 0.08);
+      --bg-button: rgba(0, 0, 0, 0.05);
+      --bg-button-hover: rgba(0, 0, 0, 0.1);
+      --bg-card: rgba(0, 0, 0, 0.02);
+      
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --text-tertiary: #9ca3af;
+      --text-titlebar: #374151;
+      
+      --border-primary: rgba(0, 0, 0, 0.08);
+      --border-secondary: rgba(0, 0, 0, 0.12);
+      
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --accent-glow: rgba(16, 185, 129, 0.3);
+      
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      color: var(--text-primary);
+      background: var(--bg-primary);
+      user-select: none;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Main Window */
+    .window {
+      display: flex;
+      height: 100vh;
+      background: var(--bg-primary);
+      -webkit-app-region: no-drag;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 200px;
+      background: var(--bg-secondary);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border-right: 1px solid var(--border-primary);
+      padding: 24px 0;
+      position: relative;
+      z-index: 10;
+    }
+
+    .tabs {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: block;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      padding: 12px 24px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      font-size: 13px;
+      position: relative;
+      user-select: none;
+      -webkit-user-select: none;
+      color: var(--text-secondary);
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+
+    .tab:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .tab.active {
+      background: var(--bg-active);
+      color: var(--text-primary);
+    }
+
+    .tab.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .tab .icon {
+      width: 18px;
+      height: 18px;
+      margin-right: 12px;
+      fill: var(--text-secondary);
+      flex-shrink: 0;
+      pointer-events: none;
+      transition: all 0.2s;
+    }
+
+    .tab:hover .icon {
+      fill: var(--text-primary);
+    }
+
+    .tab.active .icon {
+      fill: var(--accent);
+      filter: drop-shadow(0 0 4px var(--accent-glow));
+    }
+
+    .tab span {
+      pointer-events: none;
+    }
+
+    /* Content Area */
+    .content {
+      flex: 1;
+      padding: 40px;
+      overflow-y: auto;
+      background: var(--bg-tertiary);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+    }
+
+    .content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .content::-webkit-scrollbar-track {
+      background: var(--bg-card);
+      border-radius: 4px;
+    }
+
+    .content::-webkit-scrollbar-thumb {
+      background: var(--bg-button);
+      border-radius: 4px;
+    }
+
+    .content::-webkit-scrollbar-thumb:hover {
+      background: var(--bg-button-hover);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    h2 {
+      margin: 0 0 32px 0;
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+    }
+
+    h3 {
+      margin: 0 0 20px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.2px;
+    }
+
+    /* Settings Grid */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .setting-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-primary);
+      border-radius: 12px;
+      padding: 24px;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      animation: fadeInUp 0.5s ease forwards;
+      opacity: 0;
+    }
+
+    .setting-card:hover {
+      background: var(--bg-card);
+      border-color: var(--border-secondary);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .setting-card:nth-child(1) { animation-delay: 0.1s; }
+    .setting-card:nth-child(2) { animation-delay: 0.15s; }
+    .setting-card:nth-child(3) { animation-delay: 0.2s; }
+    .setting-card:nth-child(4) { animation-delay: 0.25s; }
+    .setting-card:nth-child(5) { animation-delay: 0.3s; }
+    .setting-card:nth-child(6) { animation-delay: 0.35s; }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Settings */
+    .setting {
+      display: block;
+      margin-bottom: 16px;
+    }
+
+    .setting:last-child {
+      margin-bottom: 0;
+    }
+
+    .setting .label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--text-primary);
+      letter-spacing: 0.1px;
+    }
+
+    .setting .help {
+      display: block;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    /* Inputs */
+    .input, .select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border-primary);
+      border-radius: 8px;
+      font-size: 13px;
+      transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      -webkit-appearance: none;
+      appearance: none;
+      outline: none;
+    }
+
+    .input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .input:hover, .select:hover {
+      background: var(--bg-input-hover);
+      border-color: var(--border-secondary);
+    }
+
+    .input:focus, .select:focus {
+      background: var(--bg-button);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .select {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(255,255,255,0.6)' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+
+    /* Checkboxes */
+    .setting.checkbox {
+      display: flex;
+      align-items: flex-start;
+      cursor: pointer;
+      padding: 8px 0;
+      position: relative;
+    }
+
+    .setting.checkbox input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .checkbox-indicator {
+      width: 20px;
+      height: 20px;
+      background: var(--bg-hover);
+      border: 2px solid var(--border-secondary);
+      border-radius: 6px;
+      transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      position: relative;
+      flex-shrink: 0;
+      margin-right: 12px;
+      margin-top: 2px;
+    }
+
+    .setting.checkbox:hover .checkbox-indicator {
+      background: var(--bg-input-hover);
+      border-color: var(--text-tertiary);
+    }
+
+    .setting.checkbox input[type="checkbox"]:checked + .checkbox-indicator {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .setting.checkbox input[type="checkbox"]:checked + .checkbox-indicator::after {
+      content: '✓';
+      position: absolute;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: bold;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .setting-info {
+      flex: 1;
+    }
+
+    .setting-info .label {
+      margin-bottom: 4px;
+    }
+
+    /* Buttons */
+    .button {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+      color: var(--text-primary);
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      margin-right: 8px;
+      margin-bottom: 8px;
+      letter-spacing: 0.3px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: var(--bg-button);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .button:active::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    .button:hover {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--accent-glow);
+    }
+
+    .button.secondary {
+      background: var(--bg-button);
+      color: var(--text-primary);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .button.secondary:hover {
+      background: var(--bg-button-hover);
+      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+    }
+
+    .button.primary {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+    }
+
+    .button.small {
+      padding: 6px 14px;
+      font-size: 12px;
+    }
+
+    .button.danger {
+      background: linear-gradient(135deg, var(--danger) 0%, var(--danger-hover) 100%);
+    }
+
+    .button.danger:hover {
+      background: linear-gradient(135deg, var(--danger-hover) 0%, var(--danger) 100%);
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .button-group.vertical {
+      flex-direction: column;
+    }
+
+    /* Sub-settings */
+    .sub-settings {
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--bg-card);
+      border-radius: 8px;
+      border: 1px solid var(--border-primary);
+    }
+
+    .sub-settings .input {
+      margin-bottom: 12px;
+    }
+
+    /* Info and Status Boxes */
+    .info-box, .status-box {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: var(--bg-active);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+
+    .status-box {
+      background: var(--bg-hover);
+      border-color: var(--border-primary);
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .status-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-left: 8px;
+    }
+
+    /* Debug Info */
+    .debug-info {
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .debug-info.small {
+      font-size: 12px;
+    }
+
+    .debug-info .info-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      align-items: baseline;
+    }
+
+    .debug-info .info-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .debug-info .info-item span {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .debug-info .info-item strong {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .debug-info .info-item code {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      background: var(--bg-active);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--accent);
+      word-break: break-all;
+    }
+
+    .debug-info .info-item a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .debug-info .info-item a:hover {
+      text-decoration: underline;
+    }
+
+    /* About Section */
+    .about-content {
+      text-align: center;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 40px 0;
+    }
+
+    .app-icon {
+      margin-bottom: 24px;
+      filter: drop-shadow(0 10px 30px var(--accent-glow));
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    .about-content h1 {
+      font-size: 36px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .version {
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .tagline {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 40px;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+    }
+
+    .system-info {
+      background: var(--bg-hover);
+      border: 1px solid var(--border-primary);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 32px;
+      display: flex;
+      justify-content: space-around;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .system-info .info-item {
+      text-align: center;
+    }
+
+    .system-info .info-item span {
+      display: block;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-bottom: 4px;
+    }
+
+    .system-info .info-item strong {
+      display: block;
+      font-size: 14px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .action-buttons {
+      margin-bottom: 40px;
+    }
+
+    .credits {
+      padding-top: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .credits p {
+      color: var(--text-tertiary);
+      margin: 8px 0;
+      font-size: 13px;
+    }
+
+    .copyright {
+      font-size: 12px;
+      margin-top: 16px;
+    }
+
+    .team-credits {
+      margin: 20px 0;
+    }
+
+    .brought-by {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-bottom: 8px;
+    }
+
+    .team-members {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .credit-link {
+      color: var(--accent);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .credit-link:hover {
+      color: var(--accent-hover);
+      text-decoration: underline;
+    }
+
+    .separator {
+      color: var(--text-tertiary);
+      font-size: 12px;
+    }
+
+    /* Links */
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    a:hover {
+      color: var(--accent-hover);
+      text-decoration: underline;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="window">
+    <div class="sidebar">
+      <ul class="tabs">
+        <li class="tab active" data-tab="general">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97c0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1c0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z"/>
+          </svg>
+          <span>General</span>
+        </li>
+        <li class="tab" data-tab="dashboard">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M13,3V9H21V3M13,21H21V11H13M3,21H11V15H3M3,13H11V3H3V13Z"/>
+          </svg>
+          <span>Dashboard</span>
+        </li>
+        <li class="tab" data-tab="advanced">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M10,22C9.75,22 9.54,21.82 9.5,21.58L9.13,18.93C8.5,18.68 7.96,18.34 7.44,17.94L4.95,18.95C4.73,19.03 4.46,18.95 4.34,18.73L2.34,15.27C2.21,15.05 2.27,14.78 2.46,14.63L4.57,12.97L4.5,12L4.57,11L2.46,9.37C2.27,9.22 2.21,8.95 2.34,8.73L4.34,5.27C4.46,5.05 4.73,4.96 4.95,5.05L7.44,6.05C7.96,5.66 8.5,5.32 9.13,5.07L9.5,2.42C9.54,2.18 9.75,2 10,2H14C14.25,2 14.46,2.18 14.5,2.42L14.87,5.07C15.5,5.32 16.04,5.66 16.56,6.05L19.05,5.05C19.27,4.96 19.54,5.05 19.66,5.27L21.66,8.73C21.79,8.95 21.73,9.22 21.54,9.37L19.43,11L19.5,12L19.43,13L21.54,14.63C21.73,14.78 21.79,15.05 21.66,15.27L19.66,18.73C19.54,18.95 19.27,19.04 19.05,18.95L16.56,17.95C16.04,18.34 15.5,18.68 14.87,18.93L14.5,21.58C14.46,21.82 14.25,22 14,22H10Z"/>
+          </svg>
+          <span>Advanced</span>
+        </li>
+        <li class="tab" data-tab="about">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
+          </svg>
+          <span>About</span>
+        </li>
+        <li class="tab" data-tab="debug" id="debugTab" style="display: none;">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M12,1.5A2.5,2.5 0 0,1 14.5,4A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 9.5,4A2.5,2.5 0 0,1 12,1.5M8.41,18.82C8,18.56 8,18.06 8.41,17.8L11,16.2V14A1,1 0 0,0 10,13H8A1,1 0 0,0 7,14V16.17C7,16.64 6.76,17.09 6.37,17.35L2.81,19.83C2.3,20.16 2,20.74 2,21.35V22H7.86C7.86,21.89 7.88,21.78 7.93,21.68L8.67,20.07L7,19M15.59,17.8C16,18.06 16,18.56 15.59,18.82L14.91,19.23L16.29,22H22V21.35C22,20.74 21.7,20.16 21.19,19.83L17.63,17.35C17.24,17.09 17,16.64 17,16.17V14A1,1 0 0,0 16,13H14A1,1 0 0,0 13,14V16.2L15.59,17.8M10.76,20L9.93,21.73C9.79,22.04 9.91,22.4 10.17,22.56C10.25,22.6 10.34,22.63 10.43,22.63C10.64,22.63 10.83,22.5 10.93,22.31L12,20.25L13.07,22.31C13.17,22.5 13.36,22.63 13.57,22.63C13.66,22.63 13.75,22.6 13.83,22.56C14.09,22.4 14.21,22.04 14.07,21.73L13.24,20M14.59,12H14V10H13V8H14V6.31C13.42,6.75 12.72,7 12,7C11.28,7 10.58,6.75 10,6.31V8H11V10H10V12H9.41C9.77,11.71 10.24,11.5 10.76,11.5H13.24C13.76,11.5 14.23,11.71 14.59,12Z"/>
+          </svg>
+          <span>Debug</span>
+        </li>
+      </ul>
+    </div>
+    
+    <div class="content">
+      <!-- General Tab -->
+      <div class="tab-content active" id="general">
+        <h2>General</h2>
+        
+        <div class="settings-grid">
+          <div class="setting-card">
+            <h3>Startup</h3>
+            <label class="setting checkbox">
+              <input type="checkbox" id="launchAtLogin">
+              <span class="checkbox-indicator"></span>
+              <div class="setting-info">
+                <span class="label">Launch at Login</span>
+                <span class="help">Start VibeTunnel when you log in</span>
+              </div>
+            </label>
+            <label class="setting checkbox">
+              <input type="checkbox" id="showWelcomeOnStartup">
+              <span class="checkbox-indicator"></span>
+              <div class="setting-info">
+                <span class="label">Show Welcome Guide</span>
+                <span class="help">Display welcome screen on startup</span>
+              </div>
+            </label>
+          </div>
+
+          <div class="setting-card">
+            <h3>Appearance</h3>
+            <label class="setting checkbox">
+              <input type="checkbox" id="showDockIcon">
+              <span class="checkbox-indicator"></span>
+              <div class="setting-info">
+                <span class="label">Show Dock Icon</span>
+                <span class="help">Display in dock or taskbar</span>
+              </div>
+            </label>
+            <label class="setting">
+              <span class="label">Theme</span>
+              <span class="help">Application appearance</span>
+              <select id="theme" class="select">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="setting-card">
+            <h3>Terminal</h3>
+            <label class="setting">
+              <span class="label">Default Terminal</span>
+              <span class="help">Preferred terminal emulator</span>
+              <select id="defaultTerminal" class="select">
+                <option value="terminal">Terminal.app</option>
+                <option value="iterm2">iTerm2</option>
+                <option value="ghostty">Ghostty</option>
+                <option value="warp">Warp</option>
+                <option value="alacritty">Alacritty</option>
+                <option value="wezterm">WezTerm</option>
+              </select>
+            </label>
+            <label class="setting">
+              <span class="label">Default Shell</span>
+              <span class="help">Shell for new terminals</span>
+              <select id="defaultShell" class="select">
+                <option value="/bin/zsh">Zsh</option>
+                <option value="/bin/bash">Bash</option>
+                <option value="/usr/local/bin/fish">Fish</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="setting-card">
+            <h3>Updates</h3>
+            <label class="setting checkbox">
+              <input type="checkbox" id="checkUpdatesAutomatically" checked>
+              <span class="checkbox-indicator"></span>
+              <div class="setting-info">
+                <span class="label">Check Automatically</span>
+                <span class="help">Check for updates on startup</span>
+              </div>
+            </label>
+            <div class="status-box" style="margin-bottom: 16px;">
+              <div class="status-item">
+                <span>Current Version:</span>
+                <strong id="currentVersion">1.0.0</strong>
+              </div>
+              <div class="status-item">
+                <span>Status:</span>
+                <strong id="updateStatus">Up to date</strong>
+              </div>
+            </div>
+            <button class="button primary" id="checkNowBtn">Check for Updates</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Dashboard Tab -->
+      <div class="tab-content" id="dashboard">
+        <h2>Dashboard</h2>
+        
+        <div class="settings-grid">
+          <div class="setting-card">
+            <h3>Server Configuration</h3>
+            <label class="setting">
+              <span class="label">Server Port</span>
+              <span class="help">Port for VibeTunnel server</span>
+              <input type="number" id="serverPort" min="1024" max="65535" class="input" placeholder="4020">
+            </label>
+            <label class="setting checkbox">
+              <input type="checkbox" id="autoCleanup">
+              <span class="checkbox-indicator"></span>
+              <div class="setting-info">
+                <span class="label">Auto Cleanup Sessions</span>
+                <span class="help">Remove inactive sessions automatically</span>
+              </div>
+            </label>
+          </div>
+
+          <div class="setting-card">
+            <h3>Access Control</h3>
+            <label class="setting">
+              <span class="label">Access Mode</span>
+              <span class="help">How dashboard can be accessed</span>
+              <select id="accessMode" class="select">
+                <option value="localhost">Localhost Only</option>
+                <option value="network">Network Access</option>
+                <option value="ngrok">Ngrok Tunnel</option>
+              </select>
+            </label>
+            <div id="networkInfo" class="info-box" style="display: none;">
+              <div class="status-item">
+                <span>Local IP:</span>
+                <strong id="localIP">detecting...</strong>
+              </div>
+              <div class="status-item">
+                <span>Dashboard URL:</span>
+                <strong id="dashboardURL">-</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h3>Security</h3>
+            <label class="setting checkbox">
+              <input type="checkbox" id="enablePassword">
+              <span class="checkbox-indicator"></span>
+              <div class="setting-info">
+                <span class="label">Password Protection</span>
+                <span class="help">Require password for dashboard access</span>
+              </div>
+            </label>
+            <div id="passwordFields" class="sub-settings" style="display: none;">
+              <input type="password" id="dashboardPassword" class="input" placeholder="Enter password">
+              <input type="password" id="confirmPassword" class="input" placeholder="Confirm password">
+              <button class="button primary small" id="savePasswordBtn">Save Password</button>
+            </div>
+          </div>
+
+          <div class="setting-card" id="ngrokSettings" style="display: none;">
+            <h3>Ngrok Configuration</h3>
+            <label class="setting">
+              <span class="label">Auth Token</span>
+              <span class="help">Get from <a href="#" id="ngrokLink">ngrok.com</a></span>
+              <input type="password" id="ngrokAuthToken" class="input" placeholder="Enter ngrok auth token">
+            </label>
+            <label class="setting">
+              <span class="label">Region</span>
+              <span class="help">Ngrok tunnel region</span>
+              <select id="ngrokRegion" class="select">
+                <option value="">Auto</option>
+                <option value="us">United States</option>
+                <option value="eu">Europe</option>
+                <option value="ap">Asia/Pacific</option>
+              </select>
+            </label>
+            <div id="ngrokStatus" class="status-box" style="display: none;">
+              <div class="status-item">
+                <span>Status:</span>
+                <strong id="tunnelStatus">Disconnected</strong>
+              </div>
+              <div class="status-item">
+                <span>URL:</span>
+                <strong id="tunnelURL">-</strong>
+                <button class="button small" id="copyURLBtn" style="display: none;">Copy</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Advanced Tab -->
+      <div class="tab-content" id="advanced">
+        <h2>Advanced</h2>
+        
+        <div class="settings-grid">
+          <div class="setting-card">
+            <h3>Session Management</h3>
+            <label class="setting">
+              <span class="label">Session Timeout</span>
+              <span class="help">Minutes before idle cleanup (0 = disabled)</span>
+              <input type="number" id="sessionTimeout" min="0" max="1440" class="input" placeholder="30">
+            </label>
+            <label class="setting">
+              <span class="label">Session Limit</span>
+              <span class="help">Maximum concurrent sessions (0 = unlimited)</span>
+              <input type="number" id="sessionLimit" min="0" max="100" class="input" placeholder="0">
+            </label>
+          </div>
+
+
+
+          <div class="setting-card">
+            <h3>Developer</h3>
+            <label class="setting checkbox">
+              <input type="checkbox" id="debugMode">
+              <span class="checkbox-indicator"></span>
+              <div class="setting-info">
+                <span class="label">Debug Mode</span>
+                <span class="help">Enable verbose logging and debug tab</span>
+              </div>
+            </label>
+            <label class="setting">
+              <span class="label">Log Level</span>
+              <span class="help">Console output verbosity</span>
+              <select id="logLevel" class="select">
+                <option value="error">Error</option>
+                <option value="warning">Warning</option>
+                <option value="info">Info</option>
+                <option value="debug">Debug</option>
+              </select>
+            </label>
+          </div>
+
+
+          <div class="setting-card">
+            <h3>Maintenance</h3>
+            <div class="button-group">
+              <button class="button secondary" id="openLogsBtn">Open Logs</button>
+              <button class="button secondary" id="openDataDirBtn">Open Data Directory</button>
+              <button class="button secondary" id="clearCacheBtn">Clear Cache</button>
+              <button class="button danger" id="resetSettingsBtn">Reset All Settings</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- About Tab -->
+      <div class="tab-content" id="about">
+        <div class="about-content">
+          <img src="icon.png" class="app-icon" width="128" height="128" alt="VibeTunnel">
+          <h1>VibeTunnel</h1>
+          <p class="version">Version <span id="appVersion">1.0.0</span></p>
+          <p class="tagline">Turn any browser into your terminal</p>
+          
+          <div class="system-info">
+            <div class="info-item">
+              <span>Platform</span>
+              <strong id="platform">-</strong>
+            </div>
+            <div class="info-item">
+              <span>Tauri</span>
+              <strong id="tauriVersion">-</strong>
+            </div>
+            <div class="info-item">
+              <span>WebView</span>
+              <strong id="webviewVersion">-</strong>
+            </div>
+          </div>
+          
+          <div class="action-buttons">
+            <button class="button primary" id="checkUpdatesAboutBtn">Check for Updates</button>
+            <button class="button secondary" id="openWebsiteBtn">Visit Website</button>
+            <button class="button secondary" id="viewChangelogBtn">View Changelog</button>
+          </div>
+          
+          <div class="credits">
+            <p>Built with Tauri, Rust, and TypeScript</p>
+            <p>Powered by xterm.js and Axum</p>
+            <div class="team-credits">
+              <p class="brought-by">Brought to you by</p>
+              <div class="team-members">
+                <a href="https://mariozechner.at/" target="_blank" class="credit-link">@badlogic</a>
+                <span class="separator">•</span>
+                <a href="https://lucumr.pocoo.org/" target="_blank" class="credit-link">@mitsuhiko</a>
+                <span class="separator">•</span>
+                <a href="https://steipete.me" target="_blank" class="credit-link">@steipete</a>
+              </div>
+            </div>
+            <p class="copyright">© 2025 • MIT Licensed</p>
+            <p><a href="https://github.com/amantus-ai/vibetunnel" target="_blank" id="openGithubBtn">View on GitHub</a></p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Debug Tab (Hidden by default) -->
+      <div class="tab-content" id="debug">
+        <h2>Debug</h2>
+        
+        <div class="settings-grid">
+          <div class="setting-card">
+            <h3>Server Status</h3>
+            <div class="debug-info">
+              <div class="info-item">
+                <span>Status</span>
+                <strong id="debugServerStatus">-</strong>
+              </div>
+              <div class="info-item">
+                <span>Port</span>
+                <strong id="debugServerPort">-</strong>
+              </div>
+              <div class="info-item">
+                <span>URL</span>
+                <a href="#" id="debugServerURL">-</a>
+              </div>
+              <div class="info-item">
+                <span>Sessions</span>
+                <strong id="debugSessionCount">0</strong>
+              </div>
+            </div>
+            <button class="button secondary" id="restartServerBtn">Restart Server</button>
+          </div>
+
+          <div class="setting-card">
+            <h3>Developer Tools</h3>
+            <div class="button-group vertical">
+              <button class="button secondary" id="openDevToolsBtn">Open DevTools</button>
+              <button class="button secondary" id="showWelcomeBtn">Show Welcome Screen</button>
+              <button class="button secondary" id="showConsoleBtn">Server Console</button>
+              <button class="button secondary" id="testNotificationBtn">Test Notification</button>
+              <button class="button secondary" id="openAppDataBtn">Show App Data</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h3>System Paths</h3>
+            <div class="debug-info small">
+              <div class="info-item">
+                <span>App Dir</span>
+                <code id="appPath">-</code>
+              </div>
+              <div class="info-item">
+                <span>Config</span>
+                <code id="configPath">-</code>
+              </div>
+              <div class="info-item">
+                <span>Data</span>
+                <code id="dataPath">-</code>
+              </div>
+              <div class="info-item">
+                <span>Cache</span>
+                <code id="cachePath">-</code>
+              </div>
+              <div class="info-item">
+                <span>Logs</span>
+                <code id="logPath">-</code>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', async () => {
+      console.log('Settings page loaded');
+      
+      // Check if Tauri API is available
+      let tauriAvailable = false;
+      let invoke, open, appWindow;
+      
+      try {
+        if (window.__TAURI__) {
+          tauriAvailable = true;
+          invoke = window.__TAURI__.tauri.invoke;
+          open = window.__TAURI__.shell.open;
+          appWindow = window.__TAURI__.window.appWindow;
+          console.log('Tauri API available');
+        }
+      } catch (error) {
+        console.warn('Tauri API not available:', error);
+      }
+
+      // Theme application function
+      function applyTheme(theme) {
+        const html = document.documentElement;
+        
+        if (theme === 'dark') {
+          html.classList.add('dark');
+          html.classList.remove('light');
+        } else if (theme === 'light') {
+          html.classList.remove('dark');
+          html.classList.add('light');
+        } else {
+          // System theme - detect preference
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (prefersDark) {
+            html.classList.add('dark');
+            html.classList.remove('light');
+          } else {
+            html.classList.remove('dark');
+            html.classList.add('light');
+          }
+        }
+      }
+
+      // Tab switching
+      const tabs = document.querySelectorAll('.tab');
+      const tabContents = document.querySelectorAll('.tab-content');
+
+      function switchToTab(tabName) {
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        
+        const tab = document.querySelector(`.tab[data-tab="${tabName}"]`);
+        const content = document.getElementById(tabName);
+        
+        if (tab && content) {
+          tab.classList.add('active');
+          content.classList.add('active');
+        }
+      }
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const tabName = tab.getAttribute('data-tab');
+          switchToTab(tabName);
+        });
+      });
+
+      // Apply theme from system preference initially
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.add('light');
+      }
+      
+      // Check for tab parameter in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+      if (tabParam) {
+        switchToTab(tabParam);
+      }
+
+      // Load settings if Tauri is available
+      if (tauriAvailable) {
+        try {
+          const settings = await invoke('get_settings');
+          console.log('Settings loaded:', settings);
+          
+          // General settings
+          if (settings.general) {
+            // Load launch at login state from backend
+            try {
+              const autoLaunchEnabled = await invoke('get_auto_launch');
+              document.getElementById('launchAtLogin').checked = autoLaunchEnabled;
+            } catch (error) {
+              console.error('Failed to get auto launch status:', error);
+              document.getElementById('launchAtLogin').checked = settings.general.launch_at_login || false;
+            }
+            
+            document.getElementById('showDockIcon').checked = settings.general.show_dock_icon !== false;
+            document.getElementById('showWelcomeOnStartup').checked = settings.general.show_welcome_on_startup !== false;
+            document.getElementById('defaultTerminal').value = settings.general.default_terminal || 'terminal';
+            document.getElementById('defaultShell').value = settings.general.default_shell || '/bin/zsh';
+            document.getElementById('theme').value = settings.general.theme || 'system';
+            document.getElementById('checkUpdatesAutomatically').checked = settings.general.check_updates_automatically !== false;
+            
+            // Apply the loaded theme
+            applyTheme(settings.general.theme || 'system');
+          }
+          
+          // Dashboard settings
+          if (settings.dashboard) {
+            document.getElementById('serverPort').value = settings.dashboard.server_port || 4020;
+            document.getElementById('autoCleanup').checked = settings.dashboard.auto_cleanup !== false;
+            document.getElementById('accessMode').value = settings.dashboard.access_mode || 'localhost';
+            document.getElementById('enablePassword').checked = settings.dashboard.enable_password || false;
+            document.getElementById('sessionTimeout').value = settings.dashboard.idle_timeout_minutes || 30;
+            document.getElementById('sessionLimit').value = settings.dashboard.session_limit || 0;
+          }
+          
+          // Advanced settings
+          if (settings.advanced) {
+            document.getElementById('debugMode').checked = settings.advanced.debug_mode || false;
+            document.getElementById('logLevel').value = settings.advanced.log_level || 'info';
+            document.getElementById('ngrokAuthToken').value = settings.advanced.ngrok_auth_token || '';
+            document.getElementById('ngrokRegion').value = settings.advanced.ngrok_region || '';
+            document.getElementById('experimentalFeatures').checked = settings.advanced.experimental_features || false;
+            document.getElementById('enableTelemetry').checked = settings.advanced.enable_telemetry !== false;
+          }
+          
+          
+          // Show/hide debug tab based on debug mode
+          if (settings.advanced && settings.advanced.debug_mode) {
+            document.getElementById('debugTab').style.display = 'flex';
+          }
+          
+          // Update password fields visibility
+          updatePasswordFieldsVisibility();
+          
+          // Update access mode dependent fields
+          updateAccessModeFields();
+          
+        } catch (error) {
+          console.error('Failed to load settings:', error);
+        }
+
+        // Get system info
+        try {
+          const info = await invoke('get_system_info');
+          document.getElementById('appVersion').textContent = info.version || '1.0.0';
+          document.getElementById('currentVersion').textContent = info.version || '1.0.0';
+          document.getElementById('platform').textContent = info.os || 'Unknown';
+          document.getElementById('tauriVersion').textContent = info.tauri_version || 'Unknown';
+          document.getElementById('webviewVersion').textContent = info.webview_version || 'Unknown';
+        } catch (error) {
+          console.error('Failed to get system info:', error);
+        }
+
+        // Get server status for debug tab
+        if (document.getElementById('debugTab').style.display !== 'none') {
+          updateDebugInfo();
+          setInterval(updateDebugInfo, 5000);
+          // Load system paths
+          loadSystemPaths();
+        }
+      }
+
+      // Helper functions
+      function updatePasswordFieldsVisibility() {
+        const enablePassword = document.getElementById('enablePassword').checked;
+        document.getElementById('passwordFields').style.display = enablePassword ? 'block' : 'none';
+      }
+
+      function updateAccessModeFields() {
+        const accessMode = document.getElementById('accessMode').value;
+        document.getElementById('networkInfo').style.display = accessMode === 'network' ? 'block' : 'none';
+        document.getElementById('ngrokSettings').style.display = accessMode === 'ngrok' ? 'block' : 'none';
+        
+        if (accessMode === 'network' && tauriAvailable) {
+          invoke('get_local_ip').then(ip => {
+            document.getElementById('localIP').textContent = ip || 'Unable to detect';
+            const port = document.getElementById('serverPort').value || 4020;
+            document.getElementById('dashboardURL').textContent = `http://${ip}:${port}`;
+          });
+        }
+      }
+
+      async function updateDebugInfo() {
+        if (!tauriAvailable) return;
+        
+        try {
+          const status = await invoke('get_server_status');
+          document.getElementById('debugServerStatus').textContent = status.running ? 'Running' : 'Stopped';
+          document.getElementById('debugServerPort').textContent = status.port || '-';
+          document.getElementById('debugServerURL').textContent = status.url || '-';
+          document.getElementById('debugServerURL').href = status.url || '#';
+          
+          const sessions = await invoke('list_terminals');
+          document.getElementById('debugSessionCount').textContent = sessions.length;
+        } catch (error) {
+          console.error('Failed to update debug info:', error);
+        }
+      }
+
+      async function loadSystemPaths() {
+        if (!tauriAvailable) return;
+        
+        try {
+          const { appDataDir, appConfigDir, appCacheDir, appLogDir, resourceDir } = window.__TAURI__.path;
+          
+          // Load each path
+          document.getElementById('appPath').textContent = await resourceDir() || '-';
+          document.getElementById('configPath').textContent = await appConfigDir() || '-';
+          document.getElementById('dataPath').textContent = await appDataDir() || '-';
+          document.getElementById('cachePath').textContent = await appCacheDir() || '-';
+          document.getElementById('logPath').textContent = await appLogDir() || '-';
+        } catch (error) {
+          console.error('Failed to load system paths:', error);
+        }
+      }
+
+      // Event listeners
+      document.getElementById('enablePassword').addEventListener('change', updatePasswordFieldsVisibility);
+      document.getElementById('accessMode').addEventListener('change', updateAccessModeFields);
+      
+      document.getElementById('debugMode').addEventListener('change', (e) => {
+        document.getElementById('debugTab').style.display = e.target.checked ? 'flex' : 'none';
+      });
+
+      // Save settings on change
+      const settingsInputs = document.querySelectorAll('input, select');
+      settingsInputs.forEach(input => {
+        input.addEventListener('change', async () => {
+          if (!tauriAvailable) return;
+          
+          const settings = {
+            general: {
+              launch_at_login: document.getElementById('launchAtLogin').checked,
+              show_dock_icon: document.getElementById('showDockIcon').checked,
+              show_welcome_on_startup: document.getElementById('showWelcomeOnStartup').checked,
+              default_terminal: document.getElementById('defaultTerminal').value,
+              default_shell: document.getElementById('defaultShell').value,
+              theme: document.getElementById('theme').value,
+              check_updates_automatically: document.getElementById('checkUpdatesAutomatically').checked
+            },
+            dashboard: {
+              server_port: parseInt(document.getElementById('serverPort').value) || 4020,
+              auto_cleanup: document.getElementById('autoCleanup').checked,
+              access_mode: document.getElementById('accessMode').value,
+              enable_password: document.getElementById('enablePassword').checked,
+              idle_timeout_minutes: parseInt(document.getElementById('sessionTimeout').value) || 30,
+              session_limit: parseInt(document.getElementById('sessionLimit').value) || 0
+            },
+            advanced: {
+              debug_mode: document.getElementById('debugMode').checked,
+              log_level: document.getElementById('logLevel').value,
+              ngrok_auth_token: document.getElementById('ngrokAuthToken').value,
+              ngrok_region: document.getElementById('ngrokRegion').value,
+              experimental_features: document.getElementById('experimentalFeatures').checked,
+              enable_telemetry: document.getElementById('enableTelemetry').checked
+            },
+          };
+          
+          try {
+            await invoke('save_settings', { settings });
+            
+            // Apply theme immediately if it changed
+            if (input.id === 'theme') {
+              applyTheme(input.value);
+            }
+            
+            // Handle launch at login separately
+            if (input.id === 'launchAtLogin') {
+              try {
+                await invoke('set_auto_launch', { enabled: input.checked });
+              } catch (error) {
+                console.error('Failed to set auto launch:', error);
+              }
+            }
+            console.log('Settings saved');
+          } catch (error) {
+            console.error('Failed to save settings:', error);
+          }
+        });
+      });
+
+      // Button click handlers
+      const buttonHandlers = {
+        'checkNowBtn': () => invoke('check_for_updates'),
+        'checkUpdatesAboutBtn': () => invoke('check_for_updates'),
+        'openWebsiteBtn': () => open('https://vibetunnel.sh'),
+        'openSourceBtn': () => open('https://github.com/amantus-ai/vibetunnel'),
+        'viewChangelogBtn': () => open('https://github.com/amantus-ai/vibetunnel/releases'),
+        'ngrokLink': () => open('https://ngrok.com'),
+        'savePasswordBtn': async () => {
+          const password = document.getElementById('dashboardPassword').value;
+          const confirm = document.getElementById('confirmPassword').value;
+          
+          if (password !== confirm) {
+            alert('Passwords do not match');
+            return;
+          }
+          
+          if (password.length < 6) {
+            alert('Password must be at least 6 characters');
+            return;
+          }
+          
+          await invoke('set_dashboard_password', { password });
+          alert('Password saved successfully');
+          document.getElementById('dashboardPassword').value = '';
+          document.getElementById('confirmPassword').value = '';
+        },
+        'openLogsBtn': () => invoke('open_logs_directory'),
+        'openDataDirBtn': () => invoke('open_data_directory'),
+        'clearCacheBtn': async () => {
+          if (confirm('Are you sure you want to clear the cache?')) {
+            await invoke('clear_cache');
+            alert('Cache cleared successfully');
+          }
+        },
+        'resetSettingsBtn': async () => {
+          if (confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
+            await invoke('reset_settings');
+            window.location.reload();
+          }
+        },
+        'restartServerBtn': async () => {
+          try {
+            const status = await invoke('restart_server');
+            if (status.running) {
+              await updateDebugInfo();
+              alert('Server restarted successfully');
+            }
+          } catch (error) {
+            alert('Failed to restart server: ' + error);
+          }
+        },
+        'openDevToolsBtn': async () => {
+          if (appWindow) {
+            appWindow.openDevtools();
+          }
+        },
+        'showWelcomeBtn': () => invoke('show_welcome_window'),
+        'showConsoleBtn': () => invoke('show_server_console'),
+        'testNotificationBtn': () => invoke('show_notification', {
+          title: 'Test Notification',
+          body: 'This is a test notification from VibeTunnel',
+          severity: 'info'
+        }),
+        'openAppDataBtn': async () => {
+          const { open } = window.__TAURI__.shell;
+          const { appDataDir } = window.__TAURI__.path;
+          const dataPath = await appDataDir();
+          await open(dataPath);
+        }
+      };
+
+      // Attach button click handlers
+      Object.entries(buttonHandlers).forEach(([id, handler]) => {
+        const button = document.getElementById(id);
+        if (button && tauriAvailable) {
+          button.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+              await handler();
+            } catch (error) {
+              console.error(`Error handling ${id} click:`, error);
+            }
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
