@@ -22,7 +22,7 @@ export class TerminalIcon extends LitElement {
   render() {
     return html`
       <img
-        src="/icon_512x512.png"
+        src="/apple-touch-icon.png"
         alt="VibeTunnel"
         style="width: ${this.size}px; height: ${this.size}px"
         class="terminal-icon"
