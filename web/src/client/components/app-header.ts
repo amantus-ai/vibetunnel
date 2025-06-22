@@ -73,7 +73,10 @@ export class AppHeader extends LitElement {
     }
 
     return html`
-      <div class="app-header bg-dark-bg-secondary border-b border-dark-border p-6">
+      <div
+        class="app-header bg-dark-bg-secondary border-b border-dark-border p-6"
+        style="padding-top: max(env(safe-area-inset-top), 1.5rem);"
+      >
         <!-- Mobile layout -->
         <div class="flex flex-col gap-4 sm:hidden">
           <!-- Centered VibeTunnel title with stats -->

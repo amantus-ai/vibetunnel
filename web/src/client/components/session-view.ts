@@ -1042,6 +1042,7 @@ export class SessionView extends LitElement {
         <!-- Compact Header -->
         <div
           class="flex items-center justify-between px-3 py-2 border-b border-dark-border text-sm min-w-0 bg-dark-bg-secondary"
+          style="padding-top: max(env(safe-area-inset-top), 0.5rem);"
         >
           <div class="flex items-center gap-3 min-w-0 flex-1">
             <button
