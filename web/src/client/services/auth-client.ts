@@ -259,10 +259,6 @@ export class AuthClient {
    */
   getAuthHeader(): Record<string, string> {
     if (this.currentUser?.token) {
-      console.log(
-        '🎫 Providing auth header with token:',
-        this.currentUser.token.substring(0, 20) + '...'
-      );
       return { Authorization: `Bearer ${this.currentUser.token}` };
     }
     console.warn('⚠️ No token available for auth header');
