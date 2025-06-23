@@ -13,6 +13,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from '../../shared/types.js';
+import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('session-card');
@@ -27,6 +28,7 @@ export class SessionCard extends LitElement {
   }
 
   @property({ type: Object }) session!: Session;
+  @property({ type: Object }) authClient!: AuthClient;
   @state() private killing = false;
   @state() private killingFrame = 0;
   @state() private isActive = false;
@@ -129,6 +131,9 @@ export class SessionCard extends LitElement {
 
       const response = await fetch(endpoint, {
         method: 'DELETE',
+        headers: {
+          ...this.authClient.getAuthHeader(),
+        },
       });
 
       if (!response.ok) {

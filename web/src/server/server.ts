@@ -45,6 +45,7 @@ interface Config {
   port: number | null;
   bind: string | null;
   enableSSHKeys: boolean;
+  disallowUserPassword: boolean;
   noAuth: boolean;
   isHQMode: boolean;
   hqUrl: string | null;
@@ -75,6 +76,7 @@ Options:
   --port <number>       Server port (default: 4020 or PORT env var)
   --bind <address>      Bind address (default: 0.0.0.0, all interfaces)
   --enable-ssh-keys     Enable SSH key authentication UI and functionality
+  --disallow-user-password  Disable password auth, SSH keys only (auto-enables --enable-ssh-keys)
   --no-auth             Disable authentication (auto-login as current user)
   --debug               Enable debug logging
 
@@ -123,6 +125,7 @@ function parseArgs(): Config {
     port: null as number | null,
     bind: null as string | null,
     enableSSHKeys: false,
+    disallowUserPassword: false,
     noAuth: false,
     isHQMode: false,
     hqUrl: null as string | null,
@@ -162,6 +165,9 @@ function parseArgs(): Config {
       i++; // Skip the bind value in next iteration
     } else if (args[i] === '--enable-ssh-keys') {
       config.enableSSHKeys = true;
+    } else if (args[i] === '--disallow-user-password') {
+      config.disallowUserPassword = true;
+      config.enableSSHKeys = true; // Auto-enable SSH keys
     } else if (args[i] === '--no-auth') {
       config.noAuth = true;
     } else if (args[i] === '--hq') {
@@ -210,8 +216,15 @@ function parseArgs(): Config {
 // Validate configuration
 function validateConfig(config: ReturnType<typeof parseArgs>) {
   // Validate auth configuration
-  if (config.noAuth && config.enableSSHKeys) {
-    logger.warn('--no-auth overrides --enable-ssh-keys (authentication is disabled)');
+  if (config.noAuth && (config.enableSSHKeys || config.disallowUserPassword)) {
+    logger.warn(
+      '--no-auth overrides all other authentication settings (authentication is disabled)'
+    );
+  }
+
+  if (config.disallowUserPassword && !config.enableSSHKeys) {
+    logger.warn('--disallow-user-password requires SSH keys, auto-enabling --enable-ssh-keys');
+    config.enableSSHKeys = true;
   }
 
   // Validate HQ registration configuration
@@ -410,6 +423,7 @@ export async function createApp(): Promise<AppInstance> {
   // Set up authentication
   const authMiddleware = createAuthMiddleware({
     enableSSHKeys: config.enableSSHKeys,
+    disallowUserPassword: config.disallowUserPassword,
     noAuth: config.noAuth,
     isHQMode: config.isHQMode,
     bearerToken: remoteBearerToken || undefined, // Token that HQ must use to auth with us
@@ -455,6 +469,7 @@ export async function createApp(): Promise<AppInstance> {
     createAuthRoutes({
       authService,
       enableSSHKeys: config.enableSSHKeys,
+      disallowUserPassword: config.disallowUserPassword,
       noAuth: config.noAuth,
     })
   );
@@ -572,6 +587,9 @@ export async function createApp(): Promise<AppInstance> {
       if (config.noAuth) {
         logger.warn(chalk.yellow('Authentication: DISABLED (--no-auth)'));
         logger.warn('Anyone can access this server without authentication');
+      } else if (config.disallowUserPassword) {
+        logger.log(chalk.green('Authentication: SSH KEYS ONLY (--disallow-user-password)'));
+        logger.log(chalk.gray('Password authentication is disabled'));
       } else {
         logger.log(chalk.green('Authentication: SYSTEM USER PASSWORD'));
         if (config.enableSSHKeys) {

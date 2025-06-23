@@ -23,7 +23,7 @@ npm run dev
 
 ### 2. SSH Key Mode
 
-**Usage:** Enable SSH key authentication
+**Usage:** Enable SSH key authentication alongside password
 ```bash
 npm run dev -- --enable-ssh-keys
 # or
@@ -39,7 +39,25 @@ npm run dev -- --enable-ssh-keys
 
 **Best for:** Power users who prefer SSH key authentication
 
-### 3. No Authentication Mode
+### 3. SSH Keys Only Mode
+
+**Usage:** Disable password authentication, SSH keys only
+```bash
+./vibetunnel --disallow-user-password
+# or
+./vibetunnel --disallow-user-password --enable-ssh-keys  # redundant, auto-enabled
+```
+
+**Behavior:**
+- Shows login page with SSH key options only
+- Password authentication form is hidden
+- Automatically enables `--enable-ssh-keys`
+- User avatar still displayed with "SSH key authentication required" message
+- Most secure authentication mode
+
+**Best for:** High-security environments, organizations requiring key-based auth
+
+### 4. No Authentication Mode
 
 **Usage:** Disable authentication completely
 ```bash
@@ -53,6 +71,7 @@ npm run dev -- --no-auth
 - Direct access to dashboard
 - No authentication required
 - Auto-logs in as current system user
+- **Overrides all other auth flags**
 
 **Best for:** Local development, trusted networks, or demo environments
 
@@ -80,8 +99,9 @@ On non-macOS systems:
 
 ```bash
 # Authentication options
---enable-ssh-keys     Enable SSH key authentication UI and functionality
---no-auth             Disable authentication (auto-login as current user)
+--enable-ssh-keys         Enable SSH key authentication UI and functionality
+--disallow-user-password  Disable password auth, SSH keys only (auto-enables --enable-ssh-keys)
+--no-auth                 Disable authentication (auto-login as current user)
 
 # Other options
 --port <number>       Server port (default: 4020)
@@ -95,14 +115,20 @@ On non-macOS systems:
 # Default password-only authentication
 npm run dev
 
-# Enable SSH keys for power users
+# Enable SSH keys alongside password
 npm run dev -- --enable-ssh-keys
 
-# No authentication for local development
+# SSH keys only (most secure)
+./vibetunnel --disallow-user-password
+
+# No authentication for local development (npm run dev uses this by default)
 npm run dev -- --no-auth
 
 # Production with SSH keys on custom port
 ./vibetunnel --enable-ssh-keys --port 8080
+
+# High-security production (SSH keys only)
+./vibetunnel --disallow-user-password --port 8080
 ```
 
 ## Security Considerations
@@ -135,12 +161,14 @@ The frontend can query the server's authentication configuration:
 // GET /api/auth/config
 {
   "enableSSHKeys": false,
+  "disallowUserPassword": false,
   "noAuth": false
 }
 ```
 
 This allows the UI to:
 - Show/hide SSH key options dynamically
+- Hide password form when disallowed
 - Skip login page when no-auth is enabled
 - Adapt interface based on server configuration
 

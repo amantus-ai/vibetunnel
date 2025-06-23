@@ -17,7 +17,11 @@ export class AuthLogin extends LitElement {
   @state() private currentUserId = '';
   @state() private loginPassword = '';
   @state() private userAvatar = '';
-  @state() private authConfig = { enableSSHKeys: false, noAuth: false };
+  @state() private authConfig = {
+    enableSSHKeys: false,
+    disallowUserPassword: false,
+    noAuth: false,
+  };
 
   async connectedCallback() {
     super.connectedCallback();
@@ -172,10 +176,55 @@ export class AuthLogin extends LitElement {
             : ''}
 
           <div class="auth-form">
-            <!-- Password Login Section (Primary) -->
-            <div class="ssh-key-item">
-              ${this.userAvatar
-                ? html`
+            ${!this.authConfig.disallowUserPassword
+              ? html`
+                  <!-- Password Login Section (Primary) -->
+                  <div class="ssh-key-item">
+                    ${this.userAvatar
+                      ? html`
+                          <div class="flex flex-col items-center mb-6">
+                            <img
+                              src="${this.userAvatar}"
+                              alt="User Avatar"
+                              class="w-20 h-20 rounded-full border-2 border-dark-border mb-3"
+                            />
+                            <p class="text-dark-text text-sm">
+                              ${this.currentUserId
+                                ? `Welcome back, ${this.currentUserId}`
+                                : 'Please authenticate to continue'}
+                            </p>
+                          </div>
+                        `
+                      : ''}
+                    <form @submit=${this.handlePasswordLogin} class="space-y-4">
+                      <div>
+                        <label class="form-label">Password</label>
+                        <input
+                          type="password"
+                          class="input-field"
+                          placeholder="Enter your system password"
+                          .value=${this.loginPassword}
+                          @input=${(e: Event) =>
+                            (this.loginPassword = (e.target as HTMLInputElement).value)}
+                          ?disabled=${this.loading}
+                          required
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        class="btn-primary w-full"
+                        ?disabled=${this.loading || !this.loginPassword}
+                      >
+                        ${this.loading ? 'Authenticating...' : 'Login with Password'}
+                      </button>
+                    </form>
+                  </div>
+                `
+              : ''}
+            ${this.authConfig.disallowUserPassword && this.userAvatar
+              ? html`
+                  <!-- Avatar for SSH-only mode -->
+                  <div class="ssh-key-item">
                     <div class="flex flex-col items-center mb-6">
                       <img
                         src="${this.userAvatar}"
@@ -187,47 +236,23 @@ export class AuthLogin extends LitElement {
                           ? `Welcome back, ${this.currentUserId}`
                           : 'Please authenticate to continue'}
                       </p>
+                      <p class="text-dark-text-muted text-xs mt-2">
+                        SSH key authentication required
+                      </p>
                     </div>
-                  `
-                : ''}
-              <form @submit=${this.handlePasswordLogin} class="space-y-4">
-                <div>
-                  <label class="form-label">Password</label>
-                  <input
-                    type="password"
-                    class="input-field"
-                    placeholder="Enter your system password"
-                    .value=${this.loginPassword}
-                    @input=${(e: Event) =>
-                      (this.loginPassword = (e.target as HTMLInputElement).value)}
-                    ?disabled=${this.loading}
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  class="btn-primary w-full"
-                  ?disabled=${this.loading || !this.loginPassword}
-                >
-                  ${this.loading ? 'Authenticating...' : 'Login with Password'}
-                </button>
-              </form>
-            </div>
-
-            ${(() => {
-              console.log(
-                '🔧 SSH conditional check:',
-                this.authConfig.enableSSHKeys,
-                typeof this.authConfig.enableSSHKeys,
-                this.authConfig.enableSSHKeys === true
-              );
-              return this.authConfig.enableSSHKeys === true;
-            })()
-              ? html`
-                  <!-- Divider -->
-                  <div class="auth-divider">
-                    <span>or</span>
                   </div>
+                `
+              : ''}
+            ${this.authConfig.enableSSHKeys === true
+              ? html`
+                  <!-- Divider (only show if password auth is also available) -->
+                  ${!this.authConfig.disallowUserPassword
+                    ? html`
+                        <div class="auth-divider">
+                          <span>or</span>
+                        </div>
+                      `
+                    : ''}
 
                   <!-- SSH Key Management Section -->
                   <div class="ssh-key-item">

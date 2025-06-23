@@ -4,6 +4,7 @@ import { AuthService } from '../services/auth-service.js';
 
 interface AuthConfig {
   enableSSHKeys: boolean;
+  disallowUserPassword: boolean;
   noAuth: boolean;
   isHQMode: boolean;
   bearerToken?: string; // Token that HQ must use to authenticate with this remote

@@ -24,7 +24,7 @@ const commands = [
 
 // Add server watching if not client-only
 if (watchServer) {
-  commands.push(['npx', ['tsx', 'watch', 'src/cli.ts']]);
+  commands.push(['npx', ['tsx', 'watch', 'src/cli.ts', '--no-auth']]);
 }
 
 // Set up esbuild contexts for watching

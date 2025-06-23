@@ -594,9 +594,13 @@ export class SessionView extends LitElement {
             `sending resize request: ${cols}x${rows} (was ${this.lastResizeWidth}x${this.lastResizeHeight})`
           );
 
+          const authClient = new AuthClient();
           const response = await fetch(`/api/sessions/${this.session.id}/resize`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...authClient.getAuthHeader(),
+            },
             body: JSON.stringify({ cols: cols, rows: rows }),
           });
 

@@ -20,6 +20,7 @@ import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type { Session } from '../../shared/types.js';
+import type { AuthClient } from '../services/auth-client.js';
 import './session-create-form.js';
 import './session-card.js';
 import { createLogger } from '../utils/logger.js';
@@ -40,6 +41,7 @@ export class SessionList extends LitElement {
   @property({ type: Boolean }) loading = false;
   @property({ type: Boolean }) hideExited = true;
   @property({ type: Boolean }) showCreateModal = false;
+  @property({ type: Object }) authClient!: AuthClient;
 
   @state() private cleaningExited = false;
   private previousRunningCount = 0;
@@ -93,6 +95,9 @@ export class SessionList extends LitElement {
     try {
       const response = await fetch('/api/cleanup-exited', {
         method: 'POST',
+        headers: {
+          ...this.authClient.getAuthHeader(),
+        },
       });
 
       if (response.ok) {
@@ -226,6 +231,7 @@ export class SessionList extends LitElement {
                   (session) => html`
                     <session-card
                       .session=${session}
+                      .authClient=${this.authClient}
                       @session-select=${this.handleSessionSelect}
                       @session-killed=${this.handleSessionKilled}
                       @session-kill-error=${this.handleSessionKillError}
@@ -238,6 +244,7 @@ export class SessionList extends LitElement {
 
         <session-create-form
           .visible=${this.showCreateModal}
+          .authClient=${this.authClient}
           @session-created=${(e: CustomEvent) =>
             this.dispatchEvent(new CustomEvent('session-created', { detail: e.detail }))}
           @cancel=${() => this.dispatchEvent(new CustomEvent('create-modal-close'))}

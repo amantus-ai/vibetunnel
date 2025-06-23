@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C .. pull)",
+      "Bash(rg:*)"
+    ],
+    "deny": []
+  }
+}

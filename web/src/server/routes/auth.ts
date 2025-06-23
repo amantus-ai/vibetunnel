@@ -8,6 +8,7 @@ const execAsync = promisify(exec);
 interface AuthRoutesConfig {
   authService: AuthService;
   enableSSHKeys?: boolean;
+  disallowUserPassword?: boolean;
   noAuth?: boolean;
 }
 
@@ -175,6 +176,7 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
     try {
       res.json({
         enableSSHKeys: config.enableSSHKeys || false,
+        disallowUserPassword: config.disallowUserPassword || false,
         noAuth: config.noAuth || false,
       });
     } catch (error) {

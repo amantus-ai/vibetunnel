@@ -12,6 +12,7 @@ import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 import type { Session } from './session-list.js';
+import { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
 import {
   getFileIcon,
@@ -106,6 +107,7 @@ export class FileBrowser extends LitElement {
 
   private editorRef = createRef<HTMLElement>();
   private pathInputRef = createRef<HTMLInputElement>();
+  private authClient = new AuthClient();
 
   async connectedCallback() {
     super.connectedCallback();
@@ -143,7 +145,9 @@ export class FileBrowser extends LitElement {
       const url = `/api/fs/browse?${params}`;
       logger.debug(`loading directory: ${dirPath}`);
       logger.debug(`fetching URL: ${url}`);
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: { ...this.authClient.getAuthHeader() },
+      });
       logger.debug(`response status: ${response.status}`);
 
       if (response.ok) {
@@ -187,7 +191,9 @@ export class FileBrowser extends LitElement {
       logger.debug(`loading preview for file: ${file.name}`);
       logger.debug(`file path: ${file.path}`);
 
-      const response = await fetch(`/api/fs/preview?path=${encodeURIComponent(file.path)}`);
+      const response = await fetch(`/api/fs/preview?path=${encodeURIComponent(file.path)}`, {
+        headers: { ...this.authClient.getAuthHeader() },
+      });
       if (response.ok) {
         this.preview = await response.json();
         this.requestUpdate(); // Trigger re-render to initialize Monaco if needed
@@ -210,8 +216,12 @@ export class FileBrowser extends LitElement {
     try {
       // Load both the unified diff and the full content for Monaco
       const [diffResponse, contentResponse] = await Promise.all([
-        fetch(`/api/fs/diff?path=${encodeURIComponent(file.path)}`),
-        fetch(`/api/fs/diff-content?path=${encodeURIComponent(file.path)}`),
+        fetch(`/api/fs/diff?path=${encodeURIComponent(file.path)}`, {
+          headers: { ...this.authClient.getAuthHeader() },
+        }),
+        fetch(`/api/fs/diff-content?path=${encodeURIComponent(file.path)}`, {
+          headers: { ...this.authClient.getAuthHeader() },
+        }),
       ]);
 
       if (diffResponse.ok) {

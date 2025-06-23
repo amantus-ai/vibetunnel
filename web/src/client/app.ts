@@ -637,6 +637,7 @@ export class VibeTunnelApp extends LitElement {
                   .loading=${this.loading}
                   .hideExited=${this.hideExited}
                   .showCreateModal=${this.showCreateModal}
+                  .authClient=${this.authClient}
                   @session-killed=${this.handleSessionKilled}
                   @session-created=${this.handleSessionCreated}
                   @create-modal-close=${this.handleCreateModalClose}
