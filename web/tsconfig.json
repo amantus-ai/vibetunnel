@@ -20,6 +20,7 @@
   "include": [
     "src/server/**/*",
     "src/shared/**/*",
+    "src/types/**/*",
     "src/cli.ts"
   ],
   "exclude": [

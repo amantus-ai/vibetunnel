@@ -477,7 +477,7 @@ export class VibeTunnelApp extends LitElement {
         this.selectedSessionId = null;
         return;
       }
-    } catch (error) {
+    } catch (_error) {
       if (!this.authClient.isAuthenticated()) {
         this.currentView = 'auth';
         this.selectedSessionId = null;

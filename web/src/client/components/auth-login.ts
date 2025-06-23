@@ -198,7 +198,8 @@ export class AuthLogin extends LitElement {
                     class="input-field"
                     placeholder="Enter your system password"
                     .value=${this.loginPassword}
-                    @input=${(e: any) => (this.loginPassword = e.target.value)}
+                    @input=${(e: Event) =>
+                      (this.loginPassword = (e.target as HTMLInputElement).value)}
                     ?disabled=${this.loading}
                     required
                   />
