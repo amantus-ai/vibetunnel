@@ -806,43 +806,16 @@ export class SessionView extends LitElement {
         await this.sendInputText('\x1b[Z'); // Shift+Tab escape sequence
         break;
       case 'ctrl+c':
-        await this.sendInputText('\x03');
+        await this.sendInputText('\x03'); // Interrupt/Cancel
         break;
       case 'ctrl+z':
-        await this.sendInputText('\x1a');
-        break;
-      case 'ctrl+a':
-        await this.sendInputText('\x01');
-        break;
-      case 'ctrl+e':
-        await this.sendInputText('\x05');
-        break;
-      case 'ctrl+k':
-        await this.sendInputText('\x0b');
-        break;
-      case 'ctrl+l':
-        await this.sendInputText('\x0c');
-        break;
-      case 'ctrl+r':
-        await this.sendInputText('\x12');
+        await this.sendInputText('\x1a'); // Suspend process
         break;
       case 'ctrl+d':
-        await this.sendInputText('\x04');
+        await this.sendInputText('\x04'); // End of file/Exit
         break;
-      case 'ctrl+w':
-        await this.sendInputText('\x17');
-        break;
-      case 'ctrl+u':
-        await this.sendInputText('\x15');
-        break;
-      case 'alt+b':
-        await this.sendInputText('\x1bb'); // ESC + b
-        break;
-      case 'alt+f':
-        await this.sendInputText('\x1bf'); // ESC + f
-        break;
-      case 'ctrl+underscore':
-        await this.sendInputText('\x1f'); // Ctrl+_ - undo in nano/emacs
+      case 'ctrl+l':
+        await this.sendInputText('\x0c'); // Clear terminal
         break;
     }
   }
@@ -1330,81 +1303,30 @@ export class SessionView extends LitElement {
                     <button
                       class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
                       @click=${() => this.handleShortcut('ctrl+c')}
+                      title="Interrupt/Cancel"
                     >
                       Ctrl+C
                     </button>
                     <button
                       class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
                       @click=${() => this.handleShortcut('ctrl+z')}
+                      title="Suspend process"
                     >
                       Ctrl+Z
                     </button>
                     <button
                       class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('ctrl+a')}
+                      @click=${() => this.handleShortcut('ctrl+d')}
+                      title="End of file/Exit"
                     >
-                      Ctrl+A
-                    </button>
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('ctrl+e')}
-                    >
-                      Ctrl+E
-                    </button>
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('ctrl+k')}
-                    >
-                      Ctrl+K
+                      Ctrl+D
                     </button>
                     <button
                       class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
                       @click=${() => this.handleShortcut('ctrl+l')}
+                      title="Clear terminal"
                     >
                       Clear
-                    </button>
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('ctrl+r')}
-                    >
-                      Search
-                    </button>
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('ctrl+d')}
-                    >
-                      EOF
-                    </button>
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('ctrl+w')}
-                    >
-                      Del Word
-                    </button>
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('ctrl+u')}
-                    >
-                      Del Line
-                    </button>
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('alt+b')}
-                    >
-                      Word ←
-                    </button>
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('alt+f')}
-                    >
-                      Word →
-                    </button>
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('ctrl+underscore')}
-                      title="Undo (Ctrl+_) - works in nano/emacs"
-                    >
-                      Ctrl+_
                     </button>
                   </div>
                 </div>
