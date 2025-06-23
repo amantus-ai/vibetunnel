@@ -446,6 +446,13 @@ export class VibeTunnelApp extends LitElement {
     const url = new URL(window.location.href);
     const sessionId = url.searchParams.get('session');
 
+    // Check authentication status first
+    if (!this.authClient.isAuthenticated()) {
+      this.currentView = 'auth';
+      this.selectedSessionId = null;
+      return;
+    }
+
     if (sessionId) {
       this.selectedSessionId = sessionId;
       this.currentView = 'session';
@@ -623,6 +630,8 @@ export class VibeTunnelApp extends LitElement {
                 <app-header
                   .sessions=${this.sessions}
                   .hideExited=${this.hideExited}
+                  .currentUser=${this.authClient.getCurrentUser()?.userId || null}
+                  .authMethod=${this.authClient.getCurrentUser()?.authMethod || null}
                   @create-session=${this.handleCreateSession}
                   @hide-exited-change=${this.handleHideExitedChange}
                   @kill-all-sessions=${this.handleKillAll}

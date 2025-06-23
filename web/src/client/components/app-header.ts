@@ -25,7 +25,10 @@ export class AppHeader extends LitElement {
 
   @property({ type: Array }) sessions: Session[] = [];
   @property({ type: Boolean }) hideExited = true;
+  @property({ type: String }) currentUser: string | null = null;
+  @property({ type: String }) authMethod: string | null = null;
   @state() private killingAll = false;
+  @state() private showUserMenu = false;
 
   private handleCreateSession(e: MouseEvent) {
     // Capture button position for view transition
@@ -39,6 +42,32 @@ export class AppHeader extends LitElement {
     document.documentElement.style.setProperty('--vt-button-height', `${rect.height}px`);
 
     this.dispatchEvent(new CustomEvent('create-session'));
+  }
+
+  private handleLogout() {
+    this.showUserMenu = false;
+    this.dispatchEvent(new CustomEvent('logout'));
+  }
+
+  private toggleUserMenu() {
+    this.showUserMenu = !this.showUserMenu;
+  }
+
+  private handleClickOutside = (e: Event) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest('.user-menu-container')) {
+      this.showUserMenu = false;
+    }
+  };
+
+  connectedCallback() {
+    super.connectedCallback();
+    document.addEventListener('click', this.handleClickOutside);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('click', this.handleClickOutside);
   }
 
   private handleKillAll() {
@@ -254,6 +283,47 @@ export class AppHeader extends LitElement {
               >
                 Create Session
               </button>
+              ${this.currentUser
+                ? html`
+                    <div class="user-menu-container relative">
+                      <button
+                        class="btn-ghost font-mono text-xs text-dark-text flex items-center gap-1"
+                        @click=${this.toggleUserMenu}
+                        title="User menu"
+                      >
+                        <span>${this.currentUser}</span>
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 10 10"
+                          fill="currentColor"
+                          class="transition-transform ${this.showUserMenu ? 'rotate-180' : ''}"
+                        >
+                          <path d="M5 7L1 3h8z" />
+                        </svg>
+                      </button>
+                      ${this.showUserMenu
+                        ? html`
+                            <div
+                              class="absolute right-0 top-full mt-1 bg-dark-surface border border-dark-border rounded shadow-lg py-1 z-50 min-w-32"
+                            >
+                              <div
+                                class="px-3 py-2 text-xs text-dark-text-muted border-b border-dark-border"
+                              >
+                                ${this.authMethod || 'authenticated'}
+                              </div>
+                              <button
+                                class="w-full text-left px-3 py-2 text-xs font-mono text-status-warning hover:bg-dark-bg-secondary hover:text-status-error"
+                                @click=${this.handleLogout}
+                              >
+                                Logout
+                              </button>
+                            </div>
+                          `
+                        : ''}
+                    </div>
+                  `
+                : ''}
             </div>
           </div>
         </div>
