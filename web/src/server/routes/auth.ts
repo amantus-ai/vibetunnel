@@ -1,8 +1,14 @@
 import { Router } from 'express';
 import { AuthService } from '../services/auth-service.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 interface AuthRoutesConfig {
   authService: AuthService;
+  enableSSHKeys?: boolean;
+  noAuth?: boolean;
 }
 
 export function createAuthRoutes(config: AuthRoutesConfig): Router {
@@ -158,6 +164,90 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
     } catch (error) {
       console.error('Error getting current user:', error);
       res.status(500).json({ error: 'Failed to get current user' });
+    }
+  });
+
+  /**
+   * Get authentication configuration
+   * GET /api/auth/config
+   */
+  router.get('/config', (req, res) => {
+    try {
+      res.json({
+        enableSSHKeys: config.enableSSHKeys || false,
+        noAuth: config.noAuth || false,
+      });
+    } catch (error) {
+      console.error('Error getting auth config:', error);
+      res.status(500).json({ error: 'Failed to get auth config' });
+    }
+  });
+
+  /**
+   * Get user avatar (macOS only)
+   * GET /api/auth/avatar/:userId
+   */
+  router.get('/avatar/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      // Check if we're on macOS
+      if (process.platform !== 'darwin') {
+        return res.json({ avatar: null, platform: process.platform });
+      }
+
+      // Try to get user's JPEGPhoto from Directory Services
+      try {
+        const { stdout } = await execAsync(`dscl . -read /Users/${userId} JPEGPhoto`);
+
+        // Check if JPEGPhoto exists and extract the hex data
+        if (stdout.includes('JPEGPhoto:')) {
+          const lines = stdout.split('\n');
+          const hexLines = lines
+            .slice(1)
+            .filter((line) => line.trim() && !line.startsWith('dsAttrTypeNative'));
+
+          if (hexLines.length > 0) {
+            // Join all hex lines and remove spaces
+            const hexData = hexLines.join('').replace(/\s/g, '');
+
+            // Convert hex to base64
+            const buffer = Buffer.from(hexData, 'hex');
+            const base64 = buffer.toString('base64');
+
+            return res.json({
+              avatar: `data:image/jpeg;base64,${base64}`,
+              platform: 'darwin',
+              source: 'dscl',
+            });
+          }
+        }
+      } catch (_dsclError) {
+        console.log('No JPEGPhoto found for user, trying Picture attribute');
+      }
+
+      // Fallback: try Picture attribute (file path)
+      try {
+        const { stdout } = await execAsync(`dscl . -read /Users/${userId} Picture`);
+        if (stdout.includes('Picture:')) {
+          const picturePath = stdout.split('Picture:')[1].trim();
+          if (picturePath && picturePath !== 'Picture:') {
+            return res.json({
+              avatar: picturePath,
+              platform: 'darwin',
+              source: 'picture_path',
+            });
+          }
+        }
+      } catch (_pictureError) {
+        console.log('No Picture attribute found for user');
+      }
+
+      // No avatar found
+      res.json({ avatar: null, platform: 'darwin' });
+    } catch (error) {
+      console.error('Error getting user avatar:', error);
+      res.status(500).json({ error: 'Failed to get user avatar' });
     }
   });
 

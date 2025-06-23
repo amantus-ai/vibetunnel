@@ -88,6 +88,26 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private async checkAuthenticationStatus() {
+    // Check if no-auth is enabled first
+    try {
+      const configResponse = await fetch('/api/auth/config');
+      if (configResponse.ok) {
+        const authConfig = await configResponse.json();
+        console.log('🔧 Auth config:', authConfig);
+
+        if (authConfig.noAuth) {
+          console.log('🔓 No auth required, bypassing authentication');
+          this.isAuthenticated = true;
+          this.currentView = 'list';
+          this.loadSessions();
+          this.startAutoRefresh();
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not fetch auth config:', error);
+    }
+
     this.isAuthenticated = this.authClient.isAuthenticated();
     console.log('🔐 Authentication status:', this.isAuthenticated);
 
@@ -428,23 +448,41 @@ export class VibeTunnelApp extends LitElement {
     window.addEventListener('popstate', this.handlePopState.bind(this));
 
     // Parse initial URL and set state
-    this.parseUrlAndSetState();
+    this.parseUrlAndSetState().catch(console.error);
   }
 
   private handlePopState = (_event: PopStateEvent) => {
     // Handle browser back/forward navigation
-    this.parseUrlAndSetState();
+    this.parseUrlAndSetState().catch(console.error);
   };
 
-  private parseUrlAndSetState() {
+  private async parseUrlAndSetState() {
     const url = new URL(window.location.href);
     const sessionId = url.searchParams.get('session');
 
-    // Check authentication status first
-    if (!this.authClient.isAuthenticated()) {
-      this.currentView = 'auth';
-      this.selectedSessionId = null;
-      return;
+    // Check authentication status first (unless no-auth is enabled)
+    try {
+      const configResponse = await fetch('/api/auth/config');
+      if (configResponse.ok) {
+        const authConfig = await configResponse.json();
+        if (authConfig.noAuth) {
+          // Skip auth check for no-auth mode
+        } else if (!this.authClient.isAuthenticated()) {
+          this.currentView = 'auth';
+          this.selectedSessionId = null;
+          return;
+        }
+      } else if (!this.authClient.isAuthenticated()) {
+        this.currentView = 'auth';
+        this.selectedSessionId = null;
+        return;
+      }
+    } catch (error) {
+      if (!this.authClient.isAuthenticated()) {
+        this.currentView = 'auth';
+        this.selectedSessionId = null;
+        return;
+      }
     }
 
     if (sessionId) {

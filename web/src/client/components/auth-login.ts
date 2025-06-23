@@ -16,6 +16,8 @@ export class AuthLogin extends LitElement {
   @state() private success = '';
   @state() private currentUserId = '';
   @state() private loginPassword = '';
+  @state() private userAvatar = '';
+  @state() private authConfig = { enableSSHKeys: false, noAuth: false };
 
   async connectedCallback() {
     super.connectedCallback();
@@ -25,8 +27,39 @@ export class AuthLogin extends LitElement {
 
   private async loadUserInfo() {
     try {
+      // Load auth configuration first
+      try {
+        const configResponse = await fetch('/api/auth/config');
+        if (configResponse.ok) {
+          this.authConfig = await configResponse.json();
+          console.log('⚙️ Auth config loaded:', this.authConfig);
+        } else {
+          console.warn('⚠️ Failed to load auth config, using defaults:', configResponse.status);
+        }
+      } catch (error) {
+        console.error('❌ Error loading auth config:', error);
+      }
+
       this.currentUserId = await this.authClient.getCurrentSystemUser();
       console.log('👤 Current user:', this.currentUserId);
+
+      // Load user avatar
+      this.userAvatar = await this.authClient.getUserAvatar(this.currentUserId);
+      console.log('🖼️ User avatar loaded');
+
+      // If no auth required, auto-login
+      if (this.authConfig.noAuth) {
+        console.log('🔓 No auth required, auto-logging in');
+        this.dispatchEvent(
+          new CustomEvent('auth-success', {
+            detail: {
+              success: true,
+              userId: this.currentUserId,
+              authMethod: 'no-auth',
+            },
+          })
+        );
+      }
     } catch (_error) {
       this.error = 'Failed to load user information';
     }
@@ -90,7 +123,13 @@ export class AuthLogin extends LitElement {
   }
 
   render() {
-    console.log('🔍 Rendering auth login');
+    console.log(
+      '🔍 Rendering auth login',
+      'enableSSHKeys:',
+      this.authConfig.enableSSHKeys,
+      'noAuth:',
+      this.authConfig.noAuth
+    );
 
     return html`
       <div class="auth-container">
@@ -100,11 +139,7 @@ export class AuthLogin extends LitElement {
               <terminal-icon size="48"></terminal-icon>
               <h2 class="auth-title">VibeTunnel</h2>
             </div>
-            <p class="auth-subtitle">
-              ${this.currentUserId
-                ? `Welcome back, ${this.currentUserId}`
-                : 'Please authenticate to continue'}
-            </p>
+            <p class="auth-subtitle">Please authenticate to continue</p>
           </div>
 
           ${this.error
@@ -139,7 +174,22 @@ export class AuthLogin extends LitElement {
           <div class="auth-form">
             <!-- Password Login Section (Primary) -->
             <div class="ssh-key-item">
-              <h3 class="font-mono text-sm text-dark-text mb-4">Password Authentication</h3>
+              ${this.userAvatar
+                ? html`
+                    <div class="flex flex-col items-center mb-6">
+                      <img
+                        src="${this.userAvatar}"
+                        alt="User Avatar"
+                        class="w-20 h-20 rounded-full border-2 border-dark-border mb-3"
+                      />
+                      <p class="text-dark-text text-sm">
+                        ${this.currentUserId
+                          ? `Welcome back, ${this.currentUserId}`
+                          : 'Please authenticate to continue'}
+                      </p>
+                    </div>
+                  `
+                : ''}
               <form @submit=${this.handlePasswordLogin} class="space-y-4">
                 <div>
                   <label class="form-label">Password</label>
@@ -163,42 +213,54 @@ export class AuthLogin extends LitElement {
               </form>
             </div>
 
-            <!-- Divider -->
-            <div class="auth-divider">
-              <span>or</span>
-            </div>
+            ${(() => {
+              console.log(
+                '🔧 SSH conditional check:',
+                this.authConfig.enableSSHKeys,
+                typeof this.authConfig.enableSSHKeys,
+                this.authConfig.enableSSHKeys === true
+              );
+              return this.authConfig.enableSSHKeys === true;
+            })()
+              ? html`
+                  <!-- Divider -->
+                  <div class="auth-divider">
+                    <span>or</span>
+                  </div>
 
-            <!-- SSH Key Management Section -->
-            <div class="ssh-key-item">
-              <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 rounded-full bg-accent-green"></div>
-                  <span class="font-mono text-sm">SSH Key Management</span>
-                </div>
-                <button class="btn-ghost text-xs" @click=${this.handleShowSSHKeyManager}>
-                  Manage Keys
-                </button>
-              </div>
+                  <!-- SSH Key Management Section -->
+                  <div class="ssh-key-item">
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-accent-green"></div>
+                        <span class="font-mono text-sm">SSH Key Management</span>
+                      </div>
+                      <button class="btn-ghost text-xs" @click=${this.handleShowSSHKeyManager}>
+                        Manage Keys
+                      </button>
+                    </div>
 
-              <div class="space-y-3">
-                <div class="bg-dark-bg border border-dark-border rounded p-3">
-                  <p class="text-dark-text-muted text-xs mb-2">
-                    Generate SSH keys for browser-based authentication
-                  </p>
-                  <p class="text-dark-text-muted text-xs">
-                    💡 SSH keys work in both browser and terminal
-                  </p>
-                </div>
+                    <div class="space-y-3">
+                      <div class="bg-dark-bg border border-dark-border rounded p-3">
+                        <p class="text-dark-text-muted text-xs mb-2">
+                          Generate SSH keys for browser-based authentication
+                        </p>
+                        <p class="text-dark-text-muted text-xs">
+                          💡 SSH keys work in both browser and terminal
+                        </p>
+                      </div>
 
-                <button
-                  class="btn-secondary w-full"
-                  @click=${this.handleSSHKeyAuth}
-                  ?disabled=${this.loading}
-                >
-                  ${this.loading ? 'Authenticating...' : 'Login with SSH Key'}
-                </button>
-              </div>
-            </div>
+                      <button
+                        class="btn-secondary w-full"
+                        @click=${this.handleSSHKeyAuth}
+                        ?disabled=${this.loading}
+                      >
+                        ${this.loading ? 'Authenticating...' : 'Login with SSH Key'}
+                      </button>
+                    </div>
+                  </div>
+                `
+              : ''}
           </div>
         </div>
       </div>

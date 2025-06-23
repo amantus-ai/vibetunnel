@@ -44,8 +44,8 @@ export function setShuttingDown(value: boolean): void {
 interface Config {
   port: number | null;
   bind: string | null;
-  basicAuthUsername: string | null;
-  basicAuthPassword: string | null;
+  enableSSHKeys: boolean;
+  noAuth: boolean;
   isHQMode: boolean;
   hqUrl: string | null;
   hqUsername: string | null;
@@ -74,8 +74,8 @@ Options:
   --version             Show version information
   --port <number>       Server port (default: 4020 or PORT env var)
   --bind <address>      Bind address (default: 0.0.0.0, all interfaces)
-  --username <string>   Basic auth username (or VIBETUNNEL_USERNAME env var)
-  --password <string>   Basic auth password (or VIBETUNNEL_PASSWORD env var)
+  --enable-ssh-keys     Enable SSH key authentication UI and functionality
+  --no-auth             Disable authentication (auto-login as current user)
   --debug               Enable debug logging
 
 Push Notification Options:
@@ -122,8 +122,8 @@ function parseArgs(): Config {
   const config = {
     port: null as number | null,
     bind: null as string | null,
-    basicAuthUsername: null as string | null,
-    basicAuthPassword: null as string | null,
+    enableSSHKeys: false,
+    noAuth: false,
     isHQMode: false,
     hqUrl: null as string | null,
     hqUsername: null as string | null,
@@ -160,12 +160,10 @@ function parseArgs(): Config {
     } else if (args[i] === '--bind' && i + 1 < args.length) {
       config.bind = args[i + 1];
       i++; // Skip the bind value in next iteration
-    } else if (args[i] === '--username' && i + 1 < args.length) {
-      config.basicAuthUsername = args[i + 1];
-      i++; // Skip the username value in next iteration
-    } else if (args[i] === '--password' && i + 1 < args.length) {
-      config.basicAuthPassword = args[i + 1];
-      i++; // Skip the password value in next iteration
+    } else if (args[i] === '--enable-ssh-keys') {
+      config.enableSSHKeys = true;
+    } else if (args[i] === '--no-auth') {
+      config.noAuth = true;
     } else if (args[i] === '--hq') {
       config.isHQMode = true;
     } else if (args[i] === '--hq-url' && i + 1 < args.length) {
@@ -201,14 +199,6 @@ function parseArgs(): Config {
     }
   }
 
-  // Check environment variables for local auth
-  if (!config.basicAuthUsername && process.env.VIBETUNNEL_USERNAME) {
-    config.basicAuthUsername = process.env.VIBETUNNEL_USERNAME;
-  }
-  if (!config.basicAuthPassword && process.env.VIBETUNNEL_PASSWORD) {
-    config.basicAuthPassword = process.env.VIBETUNNEL_PASSWORD;
-  }
-
   // Check environment variables for push notifications
   if (!config.vapidEmail && process.env.PUSH_CONTACT_EMAIL) {
     config.vapidEmail = process.env.PUSH_CONTACT_EMAIL;
@@ -219,11 +209,9 @@ function parseArgs(): Config {
 
 // Validate configuration
 function validateConfig(config: ReturnType<typeof parseArgs>) {
-  // Validate local auth configuration
-  if (config.basicAuthUsername && !config.basicAuthPassword) {
-    logger.error('Password must be provided when username is specified');
-    logger.error('Use --username and --password together');
-    process.exit(1);
+  // Validate auth configuration
+  if (config.noAuth && config.enableSSHKeys) {
+    logger.warn('--no-auth overrides --enable-ssh-keys (authentication is disabled)');
   }
 
   // Validate HQ registration configuration
@@ -261,15 +249,6 @@ function validateConfig(config: ReturnType<typeof parseArgs>) {
     logger.error('Cannot use --hq and --hq-url together');
     logger.error('Use --hq to run as HQ server, or --hq-url to register with an HQ');
     process.exit(1);
-  }
-
-  // If not HQ mode and no HQ URL, warn about authentication
-  if (!config.basicAuthPassword && !config.isHQMode && !config.hqUrl) {
-    logger.warn('No authentication configured');
-    logger.warn('Set VIBETUNNEL_PASSWORD or use --password flag for password-only authentication');
-    logger.warn(
-      'Or use --username and --password flags together for username+password authentication'
-    );
   }
 }
 
@@ -430,8 +409,8 @@ export async function createApp(): Promise<AppInstance> {
 
   // Set up authentication
   const authMiddleware = createAuthMiddleware({
-    basicAuthUsername: config.basicAuthUsername,
-    basicAuthPassword: config.basicAuthPassword,
+    enableSSHKeys: config.enableSSHKeys,
+    noAuth: config.noAuth,
     isHQMode: config.isHQMode,
     bearerToken: remoteBearerToken || undefined, // Token that HQ must use to auth with us
     authService, // Add enhanced auth service for JWT tokens
@@ -471,7 +450,14 @@ export async function createApp(): Promise<AppInstance> {
   }
 
   // Mount authentication routes (no auth required)
-  app.use('/api/auth', createAuthRoutes({ authService }));
+  app.use(
+    '/api/auth',
+    createAuthRoutes({
+      authService,
+      enableSSHKeys: config.enableSSHKeys,
+      noAuth: config.noAuth,
+    })
+  );
   logger.debug('Mounted authentication routes');
 
   // Apply auth middleware to all API routes (except auth routes which are handled above)
@@ -583,21 +569,18 @@ export async function createApp(): Promise<AppInstance> {
         chalk.green(`VibeTunnel Server running on http://${displayAddress}:${actualPort}`)
       );
 
-      if (config.basicAuthPassword) {
-        if (config.basicAuthUsername) {
-          logger.log(chalk.green('Authentication: USERNAME + PASSWORD'));
-          logger.log(`Username: ${config.basicAuthUsername}`);
-          logger.log(`Password: ${'*'.repeat(config.basicAuthPassword.length)}`);
-        } else {
-          logger.log(chalk.green('Authentication: PASSWORD ONLY'));
-          logger.log(`Password: ${'*'.repeat(config.basicAuthPassword.length)}`);
-          logger.log(chalk.gray('(Any username will be accepted)'));
-        }
+      if (config.noAuth) {
+        logger.warn(chalk.yellow('Authentication: DISABLED (--no-auth)'));
+        logger.warn('Anyone can access this server without authentication');
       } else {
-        logger.warn('Server running without authentication');
-        logger.warn(
-          'Anyone can access this server. Use --password for password-only auth or --username and --password for full auth'
-        );
+        logger.log(chalk.green('Authentication: SYSTEM USER PASSWORD'));
+        if (config.enableSSHKeys) {
+          logger.log(chalk.green('SSH Key Authentication: ENABLED'));
+        } else {
+          logger.log(
+            chalk.gray('SSH Key Authentication: DISABLED (use --enable-ssh-keys to enable)')
+          );
+        }
       }
 
       // Initialize HQ client now that we know the actual port

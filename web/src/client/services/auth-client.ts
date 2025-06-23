@@ -72,6 +72,41 @@ export class AuthClient {
   }
 
   /**
+   * Get user avatar (macOS returns base64, others get generic)
+   */
+  async getUserAvatar(userId: string): Promise<string> {
+    try {
+      const response = await fetch(`/api/auth/avatar/${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.avatar) {
+          // If it's a data URL (base64), return as is
+          if (data.avatar.startsWith('data:')) {
+            return data.avatar;
+          }
+          // If it's a file path, we'd need to handle that differently
+          // For now, fall back to generic avatar
+        }
+      }
+    } catch (error) {
+      console.error('Failed to get user avatar:', error);
+    }
+
+    // Return generic avatar SVG for non-macOS or when no avatar found
+    return (
+      'data:image/svg+xml;base64,' +
+      btoa(`
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="24" cy="24" r="24" fill="#6B7280"/>
+        <circle cx="24" cy="18" r="8" fill="#9CA3AF"/>
+        <path d="M8 38c0-8.837 7.163-16 16-16s16 7.163 16 16" fill="#9CA3AF"/>
+      </svg>
+    `)
+    );
+  }
+
+  /**
    * Authenticate using SSH key (priority method)
    */
   async authenticateWithSSHKey(userId: string, keyId: string): Promise<AuthResponse> {

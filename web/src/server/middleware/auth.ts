@@ -3,8 +3,8 @@ import chalk from 'chalk';
 import { AuthService } from '../services/auth-service.js';
 
 interface AuthConfig {
-  basicAuthUsername: string | null;
-  basicAuthPassword: string | null;
+  enableSSHKeys: boolean;
+  noAuth: boolean;
   isHQMode: boolean;
   bearerToken?: string; // Token that HQ must use to authenticate with this remote
   authService?: AuthService; // Enhanced auth service for JWT tokens
@@ -12,19 +12,25 @@ interface AuthConfig {
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
-  authMethod?: 'ssh-key' | 'password' | 'basic' | 'hq-bearer';
+  authMethod?: 'ssh-key' | 'password' | 'hq-bearer' | 'no-auth';
   isHQRequest?: boolean;
 }
 
 export function createAuthMiddleware(config: AuthConfig) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    // Skip auth for health check endpoint and auth endpoints
-    if (req.path === '/api/health' || req.path.startsWith('/api/auth')) {
+    // Skip auth for health check endpoint, auth endpoints, client logging, and push notifications
+    if (
+      req.path === '/api/health' ||
+      req.path.startsWith('/api/auth') ||
+      req.path.startsWith('/api/logs') ||
+      req.path.startsWith('/api/push')
+    ) {
       return next();
     }
 
-    // If no auth configured, allow all requests
-    if (!config.basicAuthUsername || !config.basicAuthPassword) {
+    // If no auth is disabled, allow all requests
+    if (config.noAuth) {
+      req.authMethod = 'no-auth';
       return next();
     }
 
@@ -47,13 +53,23 @@ export function createAuthMiddleware(config: AuthConfig) {
         return next();
       }
 
-      // If we have enhanced auth service, try JWT token validation
-      if (config.authService) {
+      // If we have enhanced auth service and SSH keys are enabled, try JWT token validation
+      if (config.authService && config.enableSSHKeys) {
         const verification = config.authService.verifyToken(token);
         if (verification.valid && verification.userId) {
           console.log(`[AUTH] ✅ Valid JWT token for user: ${verification.userId}`);
           req.userId = verification.userId;
           req.authMethod = 'ssh-key'; // JWT tokens are issued for SSH key auth
+          return next();
+        } else {
+          console.log('[AUTH] ❌ Invalid JWT token');
+        }
+      } else if (config.authService) {
+        const verification = config.authService.verifyToken(token);
+        if (verification.valid && verification.userId) {
+          console.log(`[AUTH] ✅ Valid JWT token for user: ${verification.userId}`);
+          req.userId = verification.userId;
+          req.authMethod = 'password'; // Password auth only
           return next();
         } else {
           console.log('[AUTH] ❌ Invalid JWT token');
@@ -78,25 +94,10 @@ export function createAuthMiddleware(config: AuthConfig) {
       if (verification.valid && verification.userId) {
         console.log(`[AUTH] ✅ Valid query token for user: ${verification.userId}`);
         req.userId = verification.userId;
-        req.authMethod = 'ssh-key'; // JWT tokens are issued for SSH key auth
+        req.authMethod = config.enableSSHKeys ? 'ssh-key' : 'password';
         return next();
       } else {
         console.log('[AUTH] ❌ Invalid query token');
-      }
-    }
-
-    // Check Basic auth
-    if (authHeader && authHeader.startsWith('Basic ')) {
-      const base64Credentials = authHeader.substring(6);
-      const credentials = Buffer.from(base64Credentials, 'base64').toString('utf8');
-      const [username, password] = credentials.split(':');
-
-      if (username === config.basicAuthUsername && password === config.basicAuthPassword) {
-        console.log('[AUTH] ✅ Valid basic authentication');
-        req.authMethod = 'basic';
-        return next();
-      } else {
-        console.log('[AUTH] ❌ Invalid basic auth credentials');
       }
     }
 
@@ -104,7 +105,7 @@ export function createAuthMiddleware(config: AuthConfig) {
     console.log(
       chalk.red(`[AUTH] ❌ Unauthorized request to ${req.method} ${req.path} from ${req.ip}`)
     );
-    res.setHeader('WWW-Authenticate', 'Basic realm="VibeTunnel"');
+    res.setHeader('WWW-Authenticate', 'Bearer realm="VibeTunnel"');
     res.status(401).json({ error: 'Authentication required' });
   };
 }
