@@ -116,4 +116,3 @@ native/
 .node-builds/
 
 # Bun lockfile (generated during native build)
-bun.lock
