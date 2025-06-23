@@ -257,7 +257,6 @@ export class SSHKeyManager extends LitElement {
                           key for signing.
                         </p>
                       </div>
-
                       <button
                         @click=${this.handleGenerateKey}
                         class="btn-primary"
@@ -272,11 +271,9 @@ export class SSHKeyManager extends LitElement {
                       <h4 class="text-dark-text font-mono text-lg mb-4 flex items-center gap-2">
                         📁 Import Existing SSH Key
                       </h4>
-
+                      
                       <div class="mb-4">
-                        <label class="form-label"
-                          >Key Name <span class="text-accent-red">*</span></label
-                        >
+                        <label class="form-label">Key Name <span class="text-accent-red">*</span></label>
                         <input
                           type="text"
                           class="input-field"
@@ -288,9 +285,7 @@ export class SSHKeyManager extends LitElement {
                       </div>
 
                       <div class="mb-4">
-                        <label class="form-label"
-                          >Private Key (PEM format) <span class="text-accent-red">*</span></label
-                        >
+                        <label class="form-label">Private Key (PEM format) <span class="text-accent-red">*</span></label>
                         <textarea
                           class="input-field"
                           rows="6"
@@ -300,17 +295,14 @@ export class SSHKeyManager extends LitElement {
                           ?disabled=${this.loading}
                         ></textarea>
                         <p class="text-dark-text-muted text-xs mt-1">
-                          💡 If the key is password-protected, you'll be prompted for the password
-                          when using it for authentication.
+                          💡 If the key is password-protected, you'll be prompted for the password when using it for authentication.
                         </p>
                       </div>
 
                       <button
                         @click=${this.handleImportKey}
                         class="btn-secondary"
-                        ?disabled=${this.loading ||
-                        !this.importKeyName.trim() ||
-                        !this.importKeyContent.trim()}
+                        ?disabled=${this.loading || !this.importKeyName.trim() || !this.importKeyContent.trim()}
                       >
                         ${this.loading ? 'Importing...' : 'Import Key'}
                       </button>
