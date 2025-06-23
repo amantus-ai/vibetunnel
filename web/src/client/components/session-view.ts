@@ -59,6 +59,7 @@ export class SessionView extends LitElement {
   @state() private terminalFontSize = 14;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
+  private authClient = new AuthClient();
   @state() private reconnectCount = 0;
   @state() private ctrlSequence: string[] = [];
 
@@ -488,12 +489,11 @@ export class SessionView extends LitElement {
         ? { key: inputText }
         : { text: inputText };
 
-      const authClient = new AuthClient();
       const response = await fetch(`/api/sessions/${this.session.id}/input`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authClient.getAuthHeader(),
+          ...this.authClient.getAuthHeader(),
         },
         body: JSON.stringify(body),
       });
@@ -594,12 +594,11 @@ export class SessionView extends LitElement {
             `sending resize request: ${cols}x${rows} (was ${this.lastResizeWidth}x${this.lastResizeHeight})`
           );
 
-          const authClient = new AuthClient();
           const response = await fetch(`/api/sessions/${this.session.id}/resize`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              ...authClient.getAuthHeader(),
+              ...this.authClient.getAuthHeader(),
             },
             body: JSON.stringify({ cols: cols, rows: rows }),
           });
@@ -960,12 +959,11 @@ export class SessionView extends LitElement {
         ? { key: text }
         : { text };
 
-      const authClient = new AuthClient();
       const response = await fetch(`/api/sessions/${this.session.id}/input`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authClient.getAuthHeader(),
+          ...this.authClient.getAuthHeader(),
         },
         body: JSON.stringify(body),
       });
