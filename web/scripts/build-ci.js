@@ -19,7 +19,7 @@ execSync('npx tailwindcss -i ./src/client/styles.css -o ./public/bundle/styles.c
 // Bundle client JavaScript
 console.log('Bundling client JavaScript...');
 execSync('esbuild src/client/app-entry.ts --bundle --outfile=public/bundle/client-bundle.js --format=esm --minify', { stdio: 'inherit' });
-execSync('esbuild src/client/test-terminals-entry.ts --bundle --outfile=public/bundle/terminal.js --format=esm --minify', { stdio: 'inherit' });
+execSync('esbuild src/client/test-entry.ts --bundle --outfile=public/bundle/terminal.js --format=esm --minify', { stdio: 'inherit' });
 
 // Build server TypeScript
 console.log('Building server...');
