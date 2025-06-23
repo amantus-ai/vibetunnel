@@ -22,7 +22,7 @@ struct ServerSessionInfo: Codable {
 @Observable
 final class SessionMonitor {
     static let shared = SessionMonitor()
-
+    
     private(set) var sessions: [String: ServerSessionInfo] = [:]
     private(set) var lastError: Error?
 
@@ -92,7 +92,6 @@ final class SessionMonitor {
 
             // Update WindowTracker
             WindowTracker.shared.updateFromSessions(sessionsArray)
-
         } catch {
             // Only update error if it's not a simple connection error
             if !(error is URLError) {

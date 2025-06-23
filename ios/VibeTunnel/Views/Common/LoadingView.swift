@@ -7,13 +7,13 @@ import SwiftUI
 struct LoadingView: View {
     let message: String
     let useUnicodeSpinner: Bool
-    
+
     @State private var isAnimating = false
     @State private var spinnerFrame = 0
-    
-    // Unicode spinner frames matching web UI
+
+    /// Unicode spinner frames matching web UI
     private let spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-    
+
     init(message: String, useUnicodeSpinner: Bool = false) {
         self.message = message
         self.useUnicodeSpinner = useUnicodeSpinner
@@ -57,7 +57,7 @@ struct LoadingView: View {
             }
         }
     }
-    
+
     private func startUnicodeAnimation() {
         Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { _ in
             Task { @MainActor in

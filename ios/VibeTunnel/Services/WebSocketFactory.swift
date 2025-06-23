@@ -10,6 +10,6 @@ protocol WebSocketFactory {
 @MainActor
 class DefaultWebSocketFactory: WebSocketFactory {
     func createWebSocket() -> WebSocketProtocol {
-        return URLSessionWebSocket()
+        URLSessionWebSocket()
     }
 }

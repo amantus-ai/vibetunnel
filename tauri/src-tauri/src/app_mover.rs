@@ -67,7 +67,7 @@ fn get_app_bundle_path() -> Result<PathBuf, String> {
 
     // Get the executable path
     let exe_path =
-        env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
+        env::current_exe().map_err(|e| format!("Failed to get executable path: {e}"))?;
 
     // Navigate up to the .app bundle
     // Typical structure: /path/to/VibeTunnel.app/Contents/MacOS/VibeTunnel
@@ -114,7 +114,7 @@ fn move_to_applications_folder(bundle_path: PathBuf) -> Result<(), String> {
 
         // Remove existing app
         fs::remove_dir_all(&dest_path)
-            .map_err(|e| format!("Failed to remove existing app: {}", e))?;
+            .map_err(|e| format!("Failed to remove existing app: {e}"))?;
     }
 
     // Use AppleScript to move the app with proper permissions
@@ -129,11 +129,11 @@ fn move_to_applications_folder(bundle_path: PathBuf) -> Result<(), String> {
         .arg("-e")
         .arg(script)
         .output()
-        .map_err(|e| format!("Failed to execute move command: {}", e))?;
+        .map_err(|e| format!("Failed to execute move command: {e}"))?;
 
     if !output.status.success() {
         let error = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to move app: {}", error));
+        return Err(format!("Failed to move app: {error}"));
     }
 
     Ok(())
@@ -148,7 +148,7 @@ fn restart_from_applications() -> Result<(), String> {
         .arg("-n")
         .arg("/Applications/VibeTunnel.app")
         .spawn()
-        .map_err(|e| format!("Failed to restart app: {}", e))?;
+        .map_err(|e| format!("Failed to restart app: {e}"))?;
 
     // Exit the current instance
     std::process::exit(0);

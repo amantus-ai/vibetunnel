@@ -12,7 +12,7 @@ struct ServerConfigForm: View {
     let isConnecting: Bool
     let errorMessage: String?
     let onConnect: () -> Void
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @State private var networkMonitor = NetworkMonitor.shared
 
     @FocusState private var focusedField: Field?
     @State private var recentServers: [ServerConfig] = []

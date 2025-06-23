@@ -235,8 +235,8 @@ struct ToolbarButton: View {
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .fill(
                         isActive ? Theme.Colors.primaryAccent.opacity(0.2) :
-                        isPressed ? Theme.Colors.primaryAccent.opacity(0.1) :
-                        Theme.Colors.cardBorder.opacity(0.3)
+                            isPressed ? Theme.Colors.primaryAccent.opacity(0.1) :
+                            Theme.Colors.cardBorder.opacity(0.3)
                     )
             )
             .overlay(

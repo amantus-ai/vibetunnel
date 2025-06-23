@@ -1,5 +1,7 @@
 import SwiftUI
 
+private let logger = Logger(category: "ScrollToBottomButton")
+
 /// Floating action button to scroll terminal to bottom
 struct ScrollToBottomButton: View {
     let isVisible: Bool
@@ -11,7 +13,7 @@ struct ScrollToBottomButton: View {
         Button(action: {
             HapticFeedback.impact(.light)
             action()
-        }) {
+        }, label: {
             Text("↓")
                 .font(.system(size: 24, weight: .bold))
                 .foregroundColor(isHovered ? Theme.Colors.primaryAccent : Theme.Colors.terminalForeground)
@@ -35,7 +37,7 @@ struct ScrollToBottomButton: View {
                 )
                 .scaleEffect(isPressed ? 0.95 : 1.0)
                 .offset(y: isHovered && !isPressed ? -1 : 0)
-        }
+        })
         .buttonStyle(PlainButtonStyle())
         .opacity(isVisible ? 1 : 0)
         .scaleEffect(isVisible ? 1 : 0.8)
@@ -54,24 +56,14 @@ struct ScrollToBottomButton: View {
     }
 }
 
-/// Extension to add scroll-to-bottom overlay modifier
-extension View {
-    func scrollToBottomOverlay(
-        isVisible: Bool,
-        action: @escaping () -> Void
-    )
-        -> some View {
-        self.overlay(
-            ScrollToBottomButton(
-                isVisible: isVisible,
-                action: action
-            )
-            .padding(.bottom, Theme.Spacing.large)
-            .padding(.leading, Theme.Spacing.large),
-            alignment: .bottomLeading
-        )
-    }
-}
+// Note: Use ScrollToBottomButton directly with overlay instead of this extension
+// Example:
+// .overlay(
+//     ScrollToBottomButton(isVisible: showButton, action: { })
+//         .padding(.bottom, Theme.Spacing.large)
+//         .padding(.leading, Theme.Spacing.large),
+//     alignment: .bottomLeading
+// )
 
 #Preview {
     ZStack {
@@ -79,7 +71,7 @@ extension View {
             .ignoresSafeArea()
 
         ScrollToBottomButton(isVisible: true) {
-            print("Scroll to bottom")
+            logger.debug("Scroll to bottom")
         }
     }
 }

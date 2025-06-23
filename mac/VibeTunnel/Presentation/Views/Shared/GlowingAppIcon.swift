@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 
 /// Shared glowing app icon component with configurable animation and effects.
 ///
@@ -8,6 +9,8 @@ import SwiftUI
 struct GlowingAppIcon: View {
     // Configuration
     let size: CGFloat
+    
+    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "GlowingAppIcon")
     let enableFloating: Bool
     let enableInteraction: Bool
     let glowIntensity: Double
@@ -18,7 +21,8 @@ struct GlowingAppIcon: View {
     @State private var isPressed = false
     @State private var breathingScale: CGFloat = 1.0
     @State private var breathingPhase: CGFloat = 0
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorScheme)
+    private var colorScheme
 
     init(
         size: CGFloat = 128,
@@ -37,9 +41,9 @@ struct GlowingAppIcon: View {
     var body: some View {
         Group {
             if enableInteraction {
-                Button(action: { action?() }) {
+                Button(action: { action?() }, label: {
                     iconContent
-                }
+                })
                 .buttonStyle(PlainButtonStyle())
                 .pointingHandCursor()
                 .onHover { hovering in

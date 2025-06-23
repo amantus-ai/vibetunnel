@@ -1,5 +1,7 @@
 import SwiftUI
 
+private let logger = Logger(category: "SessionCreate")
+
 /// Custom text field style for terminal-like appearance.
 ///
 /// Applies terminal-themed styling to text fields including
@@ -34,11 +36,12 @@ struct SessionCreateView: View {
     @State private var workingDirectory = "~/"
     @State private var sessionName = ""
     @State private var isCreating = false
-    @State private var errorMessage: String?
+    @State private var presentedError: IdentifiableError?
     @State private var showFileBrowser = false
 
     @FocusState private var focusedField: Field?
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.horizontalSizeClass)
+    private var horizontalSizeClass
 
     enum Field {
         case command
@@ -111,21 +114,12 @@ struct SessionCreateView: View {
                             }
 
                             // Error Message
-                            if let error = errorMessage {
-                                HStack(spacing: Theme.Spacing.small) {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .font(.system(size: 14))
-                                    Text(error)
-                                        .font(Theme.Typography.terminalSystem(size: 13))
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                .foregroundColor(Theme.Colors.errorAccent)
-                                .padding(.horizontal, Theme.Spacing.medium)
-                                .padding(.vertical, Theme.Spacing.small)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(
-                                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                        .fill(Theme.Colors.errorAccent.opacity(0.15))
+                            if presentedError != nil {
+                                ErrorBanner(
+                                    message: presentedError?.error.localizedDescription ?? "An error occurred",
+                                    onDismiss: {
+                                        presentedError = nil
+                                    }
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
@@ -321,6 +315,7 @@ struct SessionCreateView: View {
                 HapticFeedback.notification(.success)
             }
         }
+        .errorAlert(item: $presentedError)
     }
 
     private struct QuickStartItem {
@@ -386,7 +381,7 @@ struct SessionCreateView: View {
 
     private func createSession() {
         isCreating = true
-        errorMessage = nil
+        presentedError = nil
 
         // Save preferences matching web localStorage keys
         UserDefaults.standard.set(command, forKey: "vibetunnel_last_command")
@@ -401,30 +396,29 @@ struct SessionCreateView: View {
                 )
 
                 // Log the request for debugging
-                print("[SessionCreate] Creating session with data:")
-                print("  Command: \(sessionData.command)")
-                print("  Working Dir: \(sessionData.workingDir)")
-                print("  Name: \(sessionData.name ?? "nil")")
-                print("  Spawn Terminal: \(sessionData.spawnTerminal ?? false)")
-                print("  Cols: \(sessionData.cols ?? 0), Rows: \(sessionData.rows ?? 0)")
+                logger.info("Creating session with data:")
+                logger.debug("  Command: \(sessionData.command)")
+                logger.debug("  Working Dir: \(sessionData.workingDir)")
+                logger.debug("  Name: \(sessionData.name ?? "nil")")
+                logger.debug("  Spawn Terminal: \(sessionData.spawnTerminal ?? false)")
+                logger.debug("  Cols: \(sessionData.cols ?? 0), Rows: \(sessionData.rows ?? 0)")
 
                 let sessionId = try await SessionService.shared.createSession(sessionData)
 
-                print("[SessionCreate] Session created successfully with ID: \(sessionId)")
+                logger.info("Session created successfully with ID: \(sessionId)")
 
                 await MainActor.run {
                     onCreated(sessionId)
                     isPresented = false
                 }
             } catch {
-                print("[SessionCreate] Failed to create session:")
-                print("  Error: \(error)")
+                logger.error("Failed to create session: \(error)")
                 if let apiError = error as? APIError {
-                    print("  API Error: \(apiError)")
+                    logger.error("  API Error: \(apiError)")
                 }
 
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
+                    presentedError = IdentifiableError(error: error)
                     isCreating = false
                 }
             }

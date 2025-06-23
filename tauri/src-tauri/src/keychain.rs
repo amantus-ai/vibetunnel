@@ -122,6 +122,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "Requires system keychain access"]
     fn test_password_operations() {
         let test_key = "test_password";
         let test_password = "super_secret_123";

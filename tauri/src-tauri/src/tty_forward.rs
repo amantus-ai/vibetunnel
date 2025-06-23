@@ -25,6 +25,12 @@ pub struct TTYForwardManager {
     listeners: Arc<RwLock<HashMap<String, oneshot::Sender<()>>>>,
 }
 
+impl Default for TTYForwardManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TTYForwardManager {
     pub fn new() -> Self {
         Self {
@@ -44,13 +50,13 @@ impl TTYForwardManager {
         let id = Uuid::new_v4().to_string();
 
         // Create TCP listener
-        let listener = TcpListener::bind(format!("127.0.0.1:{}", local_port))
+        let listener = TcpListener::bind(format!("127.0.0.1:{local_port}"))
             .await
-            .map_err(|e| format!("Failed to bind to port {}: {}", local_port, e))?;
+            .map_err(|e| format!("Failed to bind to port {local_port}: {e}"))?;
 
         let actual_port = listener
             .local_addr()
-            .map_err(|e| format!("Failed to get local address: {}", e))?
+            .map_err(|e| format!("Failed to get local address: {e}"))?
             .port();
 
         // Create session
@@ -176,25 +182,25 @@ impl TTYForwardManager {
                 pixel_width: 0,
                 pixel_height: 0,
             })
-            .map_err(|e| format!("Failed to open PTY: {}", e))?;
+            .map_err(|e| format!("Failed to open PTY: {e}"))?;
 
         // Spawn shell
         let cmd = CommandBuilder::new(&shell);
         let child = pty_pair
             .slave
             .spawn_command(cmd)
-            .map_err(|e| format!("Failed to spawn shell: {}", e))?;
+            .map_err(|e| format!("Failed to spawn shell: {e}"))?;
 
         // Get reader and writer
         let mut reader = pty_pair
             .master
             .try_clone_reader()
-            .map_err(|e| format!("Failed to clone reader: {}", e))?;
+            .map_err(|e| format!("Failed to clone reader: {e}"))?;
 
         let mut writer = pty_pair
             .master
             .take_writer()
-            .map_err(|e| format!("Failed to take writer: {}", e))?;
+            .map_err(|e| format!("Failed to take writer: {e}"))?;
 
         // Create channels for bidirectional communication
         let (tx_to_pty, mut rx_from_tcp) = mpsc::unbounded_channel::<Bytes>();
@@ -342,9 +348,9 @@ impl TTYForwardManager {
 /// HTTP endpoint handler for terminal spawn requests
 pub async fn handle_terminal_spawn(port: u16, _shell: Option<String>) -> Result<(), String> {
     // Listen for HTTP requests on the specified port
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", port))
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))
         .await
-        .map_err(|e| format!("Failed to bind spawn listener: {}", e))?;
+        .map_err(|e| format!("Failed to bind spawn listener: {e}"))?;
 
     info!("Terminal spawn service listening on port {}", port);
 
@@ -352,7 +358,7 @@ pub async fn handle_terminal_spawn(port: u16, _shell: Option<String>) -> Result<
         let (stream, addr) = listener
             .accept()
             .await
-            .map_err(|e| format!("Failed to accept spawn connection: {}", e))?;
+            .map_err(|e| format!("Failed to accept spawn connection: {e}"))?;
 
         info!("Terminal spawn request from {}", addr);
 
@@ -372,7 +378,7 @@ async fn handle_spawn_request(mut stream: TcpStream, _shell: Option<String>) -> 
     stream
         .write_all(response)
         .await
-        .map_err(|e| format!("Failed to write response: {}", e))?;
+        .map_err(|e| format!("Failed to write response: {e}"))?;
 
     // TODO: Implement actual terminal spawning logic
     // This would integrate with the system's terminal emulator

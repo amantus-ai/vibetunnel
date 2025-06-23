@@ -20,21 +20,21 @@ pub enum HttpMethod {
 
 impl HttpMethod {
     #[allow(dead_code)]
-    pub fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         match self {
-            HttpMethod::GET => "GET",
-            HttpMethod::POST => "POST",
-            HttpMethod::PUT => "PUT",
-            HttpMethod::PATCH => "PATCH",
-            HttpMethod::DELETE => "DELETE",
-            HttpMethod::HEAD => "HEAD",
-            HttpMethod::OPTIONS => "OPTIONS",
+            Self::GET => "GET",
+            Self::POST => "POST",
+            Self::PUT => "PUT",
+            Self::PATCH => "PATCH",
+            Self::DELETE => "DELETE",
+            Self::HEAD => "HEAD",
+            Self::OPTIONS => "OPTIONS",
         }
     }
 }
 
 /// API test assertion type
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum AssertionType {
     StatusCode(u16),
     StatusRange {
@@ -408,7 +408,7 @@ impl APITestingManager {
 
         // Send notification
         if let Some(notification_manager) = &self.notification_manager {
-            let message = format!("Test suite completed: {} passed, {} failed", passed, failed);
+            let message = format!("Test suite completed: {passed} passed, {failed} failed");
             let _ = notification_manager
                 .notify_success("API Tests", &message)
                 .await;
@@ -445,7 +445,7 @@ impl APITestingManager {
             .ok_or_else(|| "Test suite not found".to_string())?;
 
         serde_json::to_string_pretty(&suite)
-            .map_err(|e| format!("Failed to serialize test suite: {}", e))
+            .map_err(|e| format!("Failed to serialize test suite: {e}"))
     }
 
     // Helper methods
@@ -535,10 +535,10 @@ impl APITestingManager {
                     assertion: assertion.clone(),
                     passed: status == *expected,
                     actual_value: Some(status.to_string()),
-                    error_message: if status != *expected {
-                        Some(format!("Expected status {}, got {}", expected, status))
-                    } else {
+                    error_message: if status == *expected {
                         None
+                    } else {
+                        Some(format!("Expected status {expected}, got {status}"))
                     },
                 },
                 AssertionType::StatusRange { min, max } => AssertionResult {
@@ -547,8 +547,7 @@ impl APITestingManager {
                     actual_value: Some(status.to_string()),
                     error_message: if status < *min || status > *max {
                         Some(format!(
-                            "Expected status between {} and {}, got {}",
-                            min, max, status
+                            "Expected status between {min} and {max}, got {status}"
                         ))
                     } else {
                         None
@@ -558,10 +557,10 @@ impl APITestingManager {
                     assertion: assertion.clone(),
                     passed: headers.contains_key(key),
                     actual_value: None,
-                    error_message: if !headers.contains_key(key) {
-                        Some(format!("Header '{}' not found", key))
-                    } else {
+                    error_message: if headers.contains_key(key) {
                         None
+                    } else {
+                        Some(format!("Header '{key}' not found"))
                     },
                 },
                 AssertionType::HeaderEquals { key, value } => {
@@ -570,13 +569,12 @@ impl APITestingManager {
                         assertion: assertion.clone(),
                         passed: actual == Some(value),
                         actual_value: actual.cloned(),
-                        error_message: if actual != Some(value) {
-                            Some(format!(
-                                "Header '{}' expected '{}', got '{:?}'",
-                                key, value, actual
-                            ))
-                        } else {
+                        error_message: if actual == Some(value) {
                             None
+                        } else {
+                            Some(format!(
+                                "Header '{key}' expected '{value}', got '{actual:?}'"
+                            ))
                         },
                     }
                 }
@@ -584,10 +582,10 @@ impl APITestingManager {
                     assertion: assertion.clone(),
                     passed: body.contains(text),
                     actual_value: None,
-                    error_message: if !body.contains(text) {
-                        Some(format!("Body does not contain '{}'", text))
-                    } else {
+                    error_message: if body.contains(text) {
                         None
+                    } else {
+                        Some(format!("Body does not contain '{text}'"))
                     },
                 },
                 AssertionType::JsonPath {
@@ -618,7 +616,7 @@ impl APITestingManager {
     fn replace_variables(&self, text: &str, variables: &HashMap<String, String>) -> String {
         let mut result = text.to_string();
         for (key, value) in variables {
-            result = result.replace(&format!("{{{{{}}}}}", key), value);
+            result = result.replace(&format!("{{{{{key}}}}}"), value);
         }
         result
     }

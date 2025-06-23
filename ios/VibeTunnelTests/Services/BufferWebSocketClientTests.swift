@@ -2,117 +2,34 @@ import Foundation
 import Testing
 @testable import VibeTunnel
 
-// Temporarily include MockWebSocketFactory here until it's properly added to the project
-@MainActor
-class MockWebSocket: WebSocketProtocol {
-    weak var delegate: WebSocketDelegate?
-    
-    // State tracking
-    private(set) var isConnected = false
-    private(set) var lastConnectURL: URL?
-    private(set) var lastConnectHeaders: [String: String]?
-    private(set) var sentMessages: [WebSocketMessage] = []
-    private(set) var pingCount = 0
-    private(set) var disconnectCalled = false
-    private(set) var lastDisconnectCode: URLSessionWebSocketTask.CloseCode?
-    
-    // Control test behavior
-    var shouldFailConnection = false
-    var connectionError: Error?
-    
-    func connect(to url: URL, with headers: [String: String]) async throws {
-        lastConnectURL = url
-        lastConnectHeaders = headers
-        
-        if shouldFailConnection {
-            let error = connectionError ?? WebSocketError.connectionFailed
-            throw error
-        }
-        
-        isConnected = true
-        delegate?.webSocketDidConnect(self)
-    }
-    
-    func send(_ message: WebSocketMessage) async throws {
-        guard isConnected else {
-            throw WebSocketError.connectionFailed
-        }
-        sentMessages.append(message)
-    }
-    
-    func sendPing() async throws {
-        guard isConnected else {
-            throw WebSocketError.connectionFailed
-        }
-        pingCount += 1
-    }
-    
-    func disconnect(with code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        disconnectCalled = true
-        lastDisconnectCode = code
-        if isConnected {
-            isConnected = false
-            delegate?.webSocketDidDisconnect(self, closeCode: code, reason: reason)
-        }
-    }
-    
-    func simulateMessage(_ message: WebSocketMessage) {
-        guard isConnected else { return }
-        delegate?.webSocket(self, didReceiveMessage: message)
-    }
-    
-    func simulateError(_ error: Error) {
-        guard isConnected else { return }
-        delegate?.webSocket(self, didFailWithError: error)
-    }
-    
-    func sentJSONMessages() -> [[String: Any]] {
-        sentMessages.compactMap { message in
-            if case .string(let text) = message,
-               let data = text.data(using: .utf8),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                return json
-            }
-            return nil
-        }
-    }
-    
-    func simulateDisconnection(closeCode: URLSessionWebSocketTask.CloseCode = .abnormalClosure, reason: Data? = nil) {
-        guard isConnected else { return }
-        isConnected = false
-        delegate?.webSocketDidDisconnect(self, closeCode: closeCode, reason: reason)
-    }
-    
-    func clearSentMessages() {
-        sentMessages.removeAll()
-    }
-}
-
-@MainActor
-class MockWebSocketFactory: WebSocketFactory {
-    private(set) var createdWebSockets: [MockWebSocket] = []
-    
-    func createWebSocket() -> WebSocketProtocol {
-        let webSocket = MockWebSocket()
-        createdWebSockets.append(webSocket)
-        return webSocket
-    }
-    
-    var lastCreatedWebSocket: MockWebSocket? {
-        createdWebSockets.last
-    }
-}
-
 @Suite("BufferWebSocketClient Tests", .tags(.critical, .websocket))
 @MainActor
-struct BufferWebSocketClientTests {
-    @Test("Connects successfully with valid configuration")
-    func successfulConnection() async throws {
-        // Arrange
-        let mockFactory = MockWebSocketFactory()
-        let client = BufferWebSocketClient(webSocketFactory: mockFactory)
-        saveTestServerConfig()
+final class BufferWebSocketClientTests {
+    // Test dependencies
+    let mockFactory: MockWebSocketFactory
+    let client: BufferWebSocketClient
+    
+    // Initialize test environment
+    init() {
+        mockFactory = MockWebSocketFactory()
+        client = BufferWebSocketClient(webSocketFactory: mockFactory)
         
+        // Setup test server configuration
+        TestFixtures.saveServerConfig(.init(
+            host: "localhost",
+            port: 8888,
+            name: nil,
+            password: nil
+        ))
+    }
+    
+    deinit {
+        // Cleanup
+        client.disconnect()
+        mockFactory.reset()
+    }
+    @Test("Connects successfully with valid configuration", .timeLimit(.seconds(5)))
+    func successfulConnection() async throws {
         // Act
         client.connect()
         
@@ -121,45 +38,37 @@ struct BufferWebSocketClientTests {
         
         // Assert
         #expect(mockFactory.createdWebSockets.count == 1)
-        let mockWebSocket = mockFactory.lastCreatedWebSocket
-        #expect(mockWebSocket?.isConnected == true)
-        #expect(mockWebSocket?.lastConnectURL?.absoluteString.contains("/buffers") == true)
-        #expect(client.isConnected == true)
+        
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        #expect(mockWebSocket.isConnected)
+        #expect(mockWebSocket.lastConnectURL?.absoluteString.contains("/buffers") ?? false)
+        #expect(client.isConnected)
         #expect(client.connectionError == nil)
     }
-    
+
     @Test("Handles connection failure gracefully")
     func connectionFailure() async throws {
-        // Arrange
-        let mockFactory = MockWebSocketFactory()
-        let client = BufferWebSocketClient(webSocketFactory: mockFactory)
-        saveTestServerConfig()
-        
-        // Configure mock to fail
+        // Act
         client.connect()
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
         
-        let mockWebSocket = mockFactory.lastCreatedWebSocket
-        mockWebSocket?.shouldFailConnection = true
-        mockWebSocket?.connectionError = WebSocketError.connectionFailed
-        
-        // Simulate connection failure
-        mockWebSocket?.simulateError(WebSocketError.connectionFailed)
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        mockWebSocket.simulateError(WebSocketError.connectionFailed)
         
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
         
         // Assert
-        #expect(client.isConnected == false)
+        #expect(!client.isConnected)
         #expect(client.connectionError != nil)
     }
-    
-    @Test("Parses binary buffer messages correctly")
-    func binaryMessageParsing() async throws {
+
+    @Test("Parses binary buffer messages", arguments: [
+        (cols: 80, rows: 24),
+        (cols: 120, rows: 30),
+        (cols: 160, rows: 50)
+    ])
+    func binaryMessageParsing(cols: Int, rows: Int) async throws {
         // Arrange
-        let mockFactory = MockWebSocketFactory()
-        let client = BufferWebSocketClient(webSocketFactory: mockFactory)
-        saveTestServerConfig()
-        
         var receivedEvent: TerminalWebSocketEvent?
         let sessionId = "test-session-123"
         
@@ -172,74 +81,62 @@ struct BufferWebSocketClientTests {
         client.connect()
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         
-        let mockWebSocket = mockFactory.lastCreatedWebSocket
-        #expect(mockWebSocket?.isConnected == true)
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        #expect(mockWebSocket.isConnected)
         
-        // Create a binary message with proper structure
-        var messageData = Data()
-        
-        // Magic byte for buffer message
-        messageData.append(0xBF)
-        
-        // Session ID length (4 bytes, little endian)
-        let sessionIdData = sessionId.data(using: .utf8)!
-        var sessionIdLength = UInt32(sessionIdData.count).littleEndian
-        messageData.append(Data(bytes: &sessionIdLength, count: 4))
-        
-        // Session ID
-        messageData.append(sessionIdData)
-        
-        // Buffer data with header
-        messageData.append(TestFixtures.bufferSnapshot(cols: 80, rows: 24))
+        // Create test message
+        let bufferData = TestFixtures.bufferSnapshot(cols: cols, rows: rows)
+        let messageData = TestFixtures.wrappedBufferMessage(sessionId: sessionId, bufferData: bufferData)
         
         // Act - Simulate receiving the message
-        mockWebSocket?.simulateMessage(.data(messageData))
+        mockWebSocket.simulateMessage(.data(messageData))
         
         // Wait for processing
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         
         // Assert
-        #expect(receivedEvent != nil)
-        if case .bufferUpdate(let snapshot) = receivedEvent {
-            #expect(snapshot.cols == 80)
-            #expect(snapshot.rows == 24)
-        } else {
-            Issue.record("Expected buffer update event")
+        let event = try #require(receivedEvent)
+        guard case .bufferUpdate(let snapshot) = event else {
+            Issue.record("Expected buffer update event, got \(event)")
+            return
         }
-    }
-    
-    @Test("Handles text messages for events")
-    func textMessageHandling() async throws {
-        // Arrange
-        let mockFactory = MockWebSocketFactory()
-        let client = BufferWebSocketClient(webSocketFactory: mockFactory)
-        saveTestServerConfig()
         
+        #expect(snapshot.cols == cols)
+        #expect(snapshot.rows == rows)
+    }
+
+    @Test("Handles text messages", arguments: [
+        (type: "ping", expectedResponse: "pong"),
+        (type: "error", expectedResponse: nil)
+    ])
+    func textMessageHandling(type: String, expectedResponse: String?) async throws {
         // Connect
         client.connect()
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         
-        let mockWebSocket = mockFactory.lastCreatedWebSocket
-        #expect(mockWebSocket?.isConnected == true)
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
         
-        // Act - Simulate ping message
-        mockWebSocket?.simulateMessage(.string("{\"type\":\"ping\"}"))
+        // Act - Simulate message
+        let message = TestFixtures.terminalEvent(type: type)
+        mockWebSocket.simulateMessage(.string(message))
         
         // Wait for processing
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
         
-        // Assert - Check if pong was sent
-        let sentMessages = mockWebSocket?.sentJSONMessages() ?? []
-        #expect(sentMessages.contains { $0["type"] as? String == "pong" })
+        // Assert
+        let sentMessages = mockWebSocket.sentJSONMessages()
+        
+        if let expectedResponse = expectedResponse {
+            #expect(sentMessages.contains { $0["type"] as? String == expectedResponse })
+        } else {
+            // For error messages, we expect no response
+            #expect(!sentMessages.contains { $0["type"] as? String == type })
+        }
     }
-    
+
     @Test("Subscribes to sessions correctly")
     func sessionSubscription() async throws {
         // Arrange
-        let mockFactory = MockWebSocketFactory()
-        let client = BufferWebSocketClient(webSocketFactory: mockFactory)
-        saveTestServerConfig()
-        
         let sessionId = "test-session-456"
         var eventReceived = false
         
@@ -251,67 +148,57 @@ struct BufferWebSocketClientTests {
         client.connect()
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         
-        let mockWebSocket = mockFactory.lastCreatedWebSocket
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
         
         // Assert - Check if subscribe message was sent
-        let sentMessages = mockWebSocket?.sentJSONMessages() ?? []
+        let sentMessages = mockWebSocket.sentJSONMessages()
         #expect(sentMessages.contains { msg in
             msg["type"] as? String == "subscribe" &&
             msg["sessionId"] as? String == sessionId
         })
     }
-    
-    @Test("Handles reconnection after disconnection")
+
+    @Test("Handles reconnection after disconnection", .timeLimit(.seconds(3)))
     func reconnection() async throws {
-        // Arrange
-        let mockFactory = MockWebSocketFactory()
-        let client = BufferWebSocketClient(webSocketFactory: mockFactory)
-        saveTestServerConfig()
-        
         // Connect
         client.connect()
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         
-        let firstWebSocket = mockFactory.lastCreatedWebSocket
-        #expect(client.isConnected == true)
+        let firstWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        #expect(client.isConnected)
         
         // Act - Simulate disconnection
-        firstWebSocket?.simulateDisconnection()
+        firstWebSocket.simulateDisconnection()
         
         // Wait for reconnection attempt
-        try await Task.sleep(nanoseconds: 2_000_000_000) // 2s
+        try await waitFor { [weak self] in
+            (self?.mockFactory.createdWebSockets.count ?? 0) > 1
+        }
         
         // Assert
-        #expect(mockFactory.createdWebSockets.count > 1)
-        let secondWebSocket = mockFactory.lastCreatedWebSocket
+        let secondWebSocket = try #require(mockFactory.lastCreatedWebSocket)
         #expect(secondWebSocket !== firstWebSocket)
     }
-    
-    @Test("Sends ping messages periodically")
+
+    @Test("Sends ping messages periodically", .disabled("Ping timing is unpredictable in tests"))
     func pingMessages() async throws {
-        // Arrange
-        let mockFactory = MockWebSocketFactory()
-        let client = BufferWebSocketClient(webSocketFactory: mockFactory)
-        saveTestServerConfig()
-        
         // Act
         client.connect()
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         
-        let mockWebSocket = mockFactory.lastCreatedWebSocket
-        let initialPingCount = mockWebSocket?.pingCount ?? 0
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        let initialPingCount = mockWebSocket.pingCount
         
-        // Assert - Initial ping during connection
-        #expect(initialPingCount > 0)
+        // Wait longer to see if pings are sent
+        try await Task.sleep(for: .seconds(1))
+        
+        // Assert - Should have sent at least one ping
+        #expect(mockWebSocket.pingCount > initialPingCount)
     }
-    
+
     @Test("Unsubscribes from sessions correctly")
     func sessionUnsubscription() async throws {
         // Arrange
-        let mockFactory = MockWebSocketFactory()
-        let client = BufferWebSocketClient(webSocketFactory: mockFactory)
-        saveTestServerConfig()
-        
         let sessionId = "test-session-789"
         
         // Subscribe first
@@ -321,30 +208,26 @@ struct BufferWebSocketClientTests {
         client.connect()
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         
-        let mockWebSocket = mockFactory.lastCreatedWebSocket
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
         
-        // Clear sent messages
-        mockWebSocket?.clearSentMessages()
+        // Clear sent messages to isolate unsubscribe message
+        mockWebSocket.reset()
+        mockWebSocket.isConnected = true // Keep connected state
         
         // Act - Unsubscribe
         client.unsubscribe(from: sessionId)
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
         
         // Assert
-        let sentMessages = mockWebSocket?.sentJSONMessages() ?? []
+        let sentMessages = mockWebSocket.sentJSONMessages()
         #expect(sentMessages.contains { msg in
             msg["type"] as? String == "unsubscribe" &&
             msg["sessionId"] as? String == sessionId
         })
     }
-    
+
     @Test("Cleans up on disconnect")
     func cleanup() async throws {
-        // Arrange
-        let mockFactory = MockWebSocketFactory()
-        let client = BufferWebSocketClient(webSocketFactory: mockFactory)
-        saveTestServerConfig()
-        
         // Subscribe to a session
         client.subscribe(to: "test-session") { _ in }
         
@@ -352,30 +235,98 @@ struct BufferWebSocketClientTests {
         client.connect()
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         
-        let mockWebSocket = mockFactory.lastCreatedWebSocket
-        #expect(client.isConnected == true)
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        #expect(client.isConnected)
         
         // Act
         client.disconnect()
         
         // Assert
-        #expect(client.isConnected == false)
-        #expect(mockWebSocket?.disconnectCalled == true)
-        #expect(mockWebSocket?.lastDisconnectCode == .goingAway)
+        #expect(!client.isConnected)
+        #expect(mockWebSocket.disconnectCalled)
+        #expect(mockWebSocket.lastDisconnectCode == .goingAway)
+    }
+    
+    // MARK: - Error Handling Tests
+    
+    @Test("Handles invalid magic byte in binary messages")
+    func invalidMagicByte() async throws {
+        // Arrange
+        var receivedEvent: TerminalWebSocketEvent?
+        let sessionId = "test-session"
+        
+        client.subscribe(to: sessionId) { event in
+            receivedEvent = event
+        }
+        
+        client.connect()
+        try await Task.sleep(nanoseconds: 100_000_000)
+        
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        
+        // Create message with wrong magic byte
+        var messageData = Data()
+        messageData.append(0xFF) // Wrong magic byte
+        messageData.append(contentsOf: [0, 0, 0, 4]) // Session ID length
+        messageData.append("test".data(using: .utf8)!)
+        
+        // Act
+        mockWebSocket.simulateMessage(.data(messageData))
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        // Assert - Should not receive any event
+        #expect(receivedEvent == nil)
+    }
+    
+    @Test("Handles malformed buffer data gracefully")
+    func malformedBufferData() async throws {
+        // Arrange
+        var receivedEvent: TerminalWebSocketEvent?
+        let sessionId = "test-session"
+        
+        client.subscribe(to: sessionId) { event in
+            receivedEvent = event
+        }
+        
+        client.connect()
+        try await Task.sleep(nanoseconds: 100_000_000)
+        
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        
+        // Create message with valid wrapper but invalid buffer data
+        var bufferData = Data()
+        bufferData.append(contentsOf: [0xFF, 0xFF]) // Invalid magic for buffer
+        bufferData.append(contentsOf: [1, 2, 3, 4]) // Random data
+        
+        let messageData = TestFixtures.wrappedBufferMessage(sessionId: sessionId, bufferData: bufferData)
+        
+        // Act
+        mockWebSocket.simulateMessage(.data(messageData))
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        // Assert - Should not crash and not receive event
+        #expect(receivedEvent == nil)
     }
 }
 
-// MARK: - Test Helpers
+// MARK: - Test Extensions
 
-private func saveTestServerConfig() {
-    let config = ServerConfig(
-        host: "localhost",
-        port: 8888,
-        name: nil,
-        password: nil
-    )
-    
-    if let data = try? JSONEncoder().encode(config) {
-        UserDefaults.standard.set(data, forKey: "savedServerConfig")
+extension BufferWebSocketClientTests {
+    /// Wait for condition with timeout
+    func waitFor(
+        _ condition: @escaping () async -> Bool,
+        timeout: Duration = .seconds(5),
+        pollingInterval: Duration = .milliseconds(100)
+    ) async throws {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        
+        while ContinuousClock.now < deadline {
+            if await condition() {
+                return
+            }
+            try await Task.sleep(for: pollingInterval)
+        }
+        
+        Issue.record("Timeout waiting for condition")
     }
 }

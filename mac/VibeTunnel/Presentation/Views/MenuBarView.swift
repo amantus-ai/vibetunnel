@@ -8,7 +8,8 @@ import SwiftUI
 struct MenuBarView: View {
     @Environment(SessionMonitor.self)
     var sessionMonitor
-    @State private var serverManager = ServerManager.shared
+    @Environment(ServerManager.self)
+    var serverManager
     @AppStorage("showInDock")
     private var showInDock = false
 
@@ -189,28 +190,52 @@ struct MenuBarView: View {
 struct ServerStatusView: View {
     let isRunning: Bool
     let port: Int
+    @Environment(ServerManager.self)
+    var serverManager
 
     var body: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(isRunning ? Color.green : Color.red)
-                .frame(width: 8, height: 8)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(isRunning ? Color.green : Color.red)
+                    .frame(width: 8, height: 8)
 
-            Text(statusText)
-                .font(.system(size: 13))
-                .foregroundColor(.primary)
-                .lineLimit(1)
+                Text(statusText)
+                    .font(.system(size: 13))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+            }
+            
+            if isRunning {
+                Text(accessText)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .padding(.leading, 14) // Align with the status text
+            }
         }
         .fixedSize(horizontal: false, vertical: true)
     }
 
     private var statusText: String {
         if isRunning {
-            // Explicitly format port without thousands separator
-            let portString = String(format: "%d", port)
-            return "Server running on port \(portString)"
+            return "Server running"
         } else {
             return "Server stopped"
+        }
+    }
+    
+    private var accessText: String {
+        let bindAddress = serverManager.bindAddress
+        if bindAddress == "127.0.0.1" {
+            return "127.0.0.1:\(port)"
+        } else {
+            // Network mode - show local IP if available
+            if let localIP = NetworkUtility.getLocalIPAddress() {
+                return "\(localIP):\(port)"
+            } else {
+                return "0.0.0.0:\(port)"
+            }
         }
     }
 }
@@ -241,7 +266,8 @@ struct SessionCountView: View {
 /// Lists active SSH sessions with truncation for large lists
 struct SessionListView: View {
     let sessions: [String: ServerSessionInfo]
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openWindow)
+    private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -278,7 +304,7 @@ struct SessionRowView: View {
         Button(action: {
             // Focus the terminal window for this session
             WindowTracker.shared.focusWindow(for: session.key)
-        }) {
+        }, label: {
             HStack {
                 Text("  • \(sessionName)")
                     .font(.system(size: 12))
@@ -295,7 +321,7 @@ struct SessionRowView: View {
             .padding(.vertical, 2)
             .padding(.horizontal, 8)
             .contentShape(Rectangle())
-        }
+        })
         .buttonStyle(PlainButtonStyle())
         .background(
             RoundedRectangle(cornerRadius: 4)

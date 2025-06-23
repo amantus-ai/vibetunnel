@@ -99,7 +99,8 @@ final class BunServer {
         if fileExists && !isDirectory.boolValue {
             let attributes = try FileManager.default.attributesOfItem(atPath: binaryPath)
             if let permissions = attributes[.posixPermissions] as? NSNumber,
-               let fileSize = attributes[.size] as? NSNumber {
+               let fileSize = attributes[.size] as? NSNumber
+            {
                 logger
                     .info(
                         "vibetunnel binary size: \(fileSize.intValue) bytes, permissions: \(String(permissions.intValue, radix: 8))"
@@ -130,7 +131,7 @@ final class BunServer {
         }
 
         // Build the vibetunnel command with all arguments
-        var vibetunnelArgs = "--port \(port)"
+        var vibetunnelArgs = "--port \(port) --bind \(bindAddress)"
 
         // Add password flag if password protection is enabled
         if UserDefaults.standard.bool(forKey: "dashboardPasswordEnabled") && DashboardKeychain.shared.hasPassword() {
@@ -149,19 +150,19 @@ final class BunServer {
         // Using a subshell that monitors parent process and kills vibetunnel if parent dies
         let parentPid = ProcessInfo.processInfo.processIdentifier
         let vibetunnelCommand = """
-            # Start vibetunnel in background
-            \(binaryPath) \(vibetunnelArgs) &
-            VIBETUNNEL_PID=$!
-            
-            # Monitor parent process
-            while kill -0 \(parentPid) 2>/dev/null; do
-                sleep 1
-            done
-            
-            # Parent died, kill vibetunnel
-            kill -TERM $VIBETUNNEL_PID 2>/dev/null
-            wait $VIBETUNNEL_PID
-            """
+        # Start vibetunnel in background
+        \(binaryPath) \(vibetunnelArgs) &
+        VIBETUNNEL_PID=$!
+
+        # Monitor parent process
+        while kill -0 \(parentPid) 2>/dev/null; do
+            sleep 1
+        done
+
+        # Parent died, kill vibetunnel
+        kill -TERM $VIBETUNNEL_PID 2>/dev/null
+        wait $VIBETUNNEL_PID
+        """
         process.arguments = ["-l", "-c", vibetunnelCommand]
 
         logger.info("Executing command: /bin/zsh -l -c \"\(vibetunnelCommand)\"")
@@ -231,13 +232,12 @@ final class BunServer {
             let errorMessage: String
             if let bunError = error as? BunServerError {
                 errorMessage = bunError.localizedDescription
-            } else if let nsError = error as NSError? {
-                errorMessage = "\(nsError.localizedDescription) (Code: \(nsError.code), Domain: \(nsError.domain))"
-                if let underlyingError = nsError.userInfo[NSUnderlyingErrorKey] {
-                    logger.error("Underlying error: \(String(describing: underlyingError))")
-                }
+            } else if let urlError = error as? URLError {
+                errorMessage = "Network error: \(urlError.localizedDescription) (Code: \(urlError.code.rawValue))"
+            } else if let posixError = error as? POSIXError {
+                errorMessage = "System error: \(posixError.localizedDescription) (Code: \(posixError.code.rawValue))"
             } else {
-                errorMessage = String(describing: error)
+                errorMessage = error.localizedDescription
             }
 
             logger.error("Failed to start Bun server: \(errorMessage)")
@@ -480,7 +480,8 @@ final class BunServer {
         seconds: TimeInterval,
         operation: @escaping @Sendable () async -> T
     )
-        async -> T? {
+        async -> T?
+    {
         await withTaskGroup(of: T?.self) { group in
             group.addTask {
                 await operation()

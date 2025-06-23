@@ -90,25 +90,24 @@ fn install_cli_macos() -> Result<CliInstallResult, String> {
     if !bin_dir.exists() {
         fs::create_dir_all(bin_dir).map_err(|e| {
             format!(
-                "Failed to create /usr/local/bin: {}. Try running with sudo.",
-                e
+                "Failed to create /usr/local/bin: {e}. Try running with sudo."
             )
         })?;
     }
 
     // Write the CLI script
     fs::write(&cli_path, CLI_SCRIPT)
-        .map_err(|e| format!("Failed to write CLI script: {}. Try running with sudo.", e))?;
+        .map_err(|e| format!("Failed to write CLI script: {e}. Try running with sudo."))?;
 
     // Make it executable
     #[cfg(unix)]
     {
         let mut perms = fs::metadata(&cli_path)
-            .map_err(|e| format!("Failed to get file metadata: {}", e))?
+            .map_err(|e| format!("Failed to get file metadata: {e}"))?
             .permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&cli_path, perms)
-            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+            .map_err(|e| format!("Failed to set permissions: {e}"))?;
     }
 
     Ok(CliInstallResult {
@@ -226,7 +225,7 @@ pub fn uninstall_cli_tool() -> Result<CliInstallResult, String> {
         let cli_path = PathBuf::from("/usr/local/bin/vt");
         if cli_path.exists() {
             fs::remove_file(&cli_path)
-                .map_err(|e| format!("Failed to remove CLI tool: {}. Try running with sudo.", e))?;
+                .map_err(|e| format!("Failed to remove CLI tool: {e}. Try running with sudo."))?;
         }
 
         Ok(CliInstallResult {

@@ -127,7 +127,8 @@ struct GeneralSettingsView: View {
 // MARK: - Permissions Section
 
 private struct PermissionsSection: View {
-    @State private var permissionManager = SystemPermissionManager.shared
+    @Environment(SystemPermissionManager.self)
+    private var permissionManager
     @State private var permissionUpdateTrigger = 0
 
     // IMPORTANT: These computed properties ensure the UI always shows current permission state.

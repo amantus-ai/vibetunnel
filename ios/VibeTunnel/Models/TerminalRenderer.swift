@@ -4,30 +4,30 @@ import Foundation
 enum TerminalRenderer: String, CaseIterable, Codable {
     case swiftTerm = "SwiftTerm"
     case xterm = "xterm.js"
-    
+
     var displayName: String {
         switch self {
         case .swiftTerm:
-            return "SwiftTerm (Native)"
+            "SwiftTerm (Native)"
         case .xterm:
-            return "xterm.js (WebView)"
+            "xterm.js (WebView)"
         }
     }
-    
+
     var description: String {
         switch self {
         case .swiftTerm:
-            return "Native Swift terminal emulator with best performance"
+            "Native Swift terminal emulator with best performance"
         case .xterm:
-            return "JavaScript-based terminal, identical to web version"
+            "JavaScript-based terminal, identical to web version"
         }
     }
-    
+
     /// The currently selected renderer (persisted in UserDefaults)
-    static var selected: TerminalRenderer {
+    static var selected: Self {
         get {
             if let rawValue = UserDefaults.standard.string(forKey: "selectedTerminalRenderer"),
-               let renderer = TerminalRenderer(rawValue: rawValue) {
+               let renderer = Self(rawValue: rawValue) {
                 return renderer
             }
             return .swiftTerm // Default

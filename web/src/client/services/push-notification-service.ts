@@ -21,10 +21,12 @@ export class PushNotificationService {
   private initialized = false;
   private vapidPublicKey: string | null = null;
   private pushNotificationsAvailable = false;
+  private initializationPromise: Promise<void> | null = null;
 
   constructor() {
-    this.initialize().catch((error) => {
+    this.initializationPromise = this.initialize().catch((error) => {
       logger.error('failed to initialize push notification service:', error);
+      throw error;
     });
   }
 
@@ -242,15 +244,19 @@ export class PushNotificationService {
   }
 
   /**
+   * Wait for the service to be initialized
+   */
+  async waitForInitialization(): Promise<void> {
+    if (this.initializationPromise) {
+      await this.initializationPromise;
+    }
+  }
+
+  /**
    * Check if push notifications are supported
    */
   isSupported(): boolean {
-    return (
-      'serviceWorker' in navigator &&
-      'PushManager' in window &&
-      'Notification' in window &&
-      this.pushNotificationsAvailable
-    );
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   }
 
   /**

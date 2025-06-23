@@ -1,5 +1,7 @@
 import Foundation
 
+private let logger = Logger(category: "SessionService")
+
 /// Service layer for managing terminal sessions.
 ///
 /// SessionService provides a simplified interface for session-related operations,
@@ -19,7 +21,7 @@ class SessionService {
         do {
             return try await apiClient.createSession(data)
         } catch {
-            print("[SessionService] Failed to create session: \(error)")
+            logger.error("Failed to create session: \(error)")
             throw error
         }
     }

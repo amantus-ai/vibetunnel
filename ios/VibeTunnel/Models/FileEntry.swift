@@ -37,7 +37,16 @@ struct FileEntry: Codable, Identifiable {
     ///   - modTime: The modification time
     ///   - isGitTracked: Whether the file is in a git repository
     ///   - gitStatus: The git status of the file
-    init(name: String, path: String, isDir: Bool, size: Int64, mode: String, modTime: Date, isGitTracked: Bool? = nil, gitStatus: GitFileStatus? = nil) {
+    init(
+        name: String,
+        path: String,
+        isDir: Bool,
+        size: Int64,
+        mode: String,
+        modTime: Date,
+        isGitTracked: Bool? = nil,
+        gitStatus: GitFileStatus? = nil
+    ) {
         self.name = name
         self.path = path
         self.isDir = isDir
@@ -134,13 +143,13 @@ struct GitStatus: Codable {
 struct DirectoryListing: Codable {
     /// The absolute path of the directory being listed.
     let absolutePath: String
-    
+
     /// Array of file and subdirectory entries in this directory.
     let files: [FileEntry]
-    
+
     /// Git status information for the directory
     let gitStatus: GitStatus?
-    
+
     enum CodingKeys: String, CodingKey {
         case absolutePath = "fullPath"
         case files

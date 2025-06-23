@@ -19,7 +19,8 @@ import SwiftUI
 /// - ``SystemPermissionManager`` for all system permissions
 /// - Terminal selection stored in UserDefaults
 struct RequestPermissionsPageView: View {
-    @State private var permissionManager = SystemPermissionManager.shared
+    @Environment(SystemPermissionManager.self)
+    private var permissionManager
     @State private var permissionUpdateTrigger = 0
 
     // IMPORTANT: These computed properties ensure the UI always shows current permission state.

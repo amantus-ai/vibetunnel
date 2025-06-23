@@ -47,12 +47,12 @@ final class DockIconManager: NSObject {
         let userWantsDockHidden = !UserDefaults.standard.bool(forKey: "showInDock")
 
         // Count visible windows (excluding panels and hidden windows)
-        let visibleWindows = NSApp.windows.filter { window in
+        let visibleWindows = NSApp?.windows.filter { window in
             window.isVisible &&
                 window.frame.width > 1 && window.frame.height > 1 && // settings window hack
                 !window.isKind(of: NSPanel.self) &&
                 window.contentViewController != nil
-        }
+        } ?? []
 
         let hasVisibleWindows = !visibleWindows.isEmpty
 
@@ -67,16 +67,20 @@ final class DockIconManager: NSObject {
         // Show dock if user wants it shown OR if any windows are open
         if !userWantsDockHidden || hasVisibleWindows {
             // logger.info("Showing dock icon")
-            NSApp.setActivationPolicy(.regular)
+            NSApp?.setActivationPolicy(.regular)
         } else {
             // logger.info("Hiding dock icon")
-            NSApp.setActivationPolicy(.accessory)
+            NSApp?.setActivationPolicy(.accessory)
         }
     }
 
     /// Force show the dock icon temporarily (e.g., when opening a window).
     /// The dock visibility will be properly managed automatically via KVO.
     func temporarilyShowDock() {
+        guard NSApp != nil else {
+            logger.warning("NSApp not available, cannot temporarily show dock")
+            return
+        }
         NSApp.setActivationPolicy(.regular)
     }
 
@@ -95,11 +99,13 @@ final class DockIconManager: NSObject {
 
         // Observe changes to NSApp.windows using KVO
         // Remove .initial option to avoid triggering during initialization
-        windowsObservation = NSApp.observe(\.windows, options: [.new]) { [weak self] _, _ in
-            Task { @MainActor in
-                // Add a small delay to let window state settle
-                try? await Task.sleep(for: .milliseconds(50))
-                self?.updateDockVisibility()
+        if let app = NSApp {
+            windowsObservation = app.observe(\.windows, options: [.new]) { [weak self] _, _ in
+                Task { @MainActor in
+                    // Add a small delay to let window state settle
+                    try? await Task.sleep(for: .milliseconds(50))
+                    self?.updateDockVisibility()
+                }
             }
         }
 

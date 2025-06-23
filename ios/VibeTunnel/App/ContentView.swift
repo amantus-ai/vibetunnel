@@ -6,11 +6,15 @@ import UniformTypeIdentifiers
 /// Displays either the connection view or session list based on
 /// connection state, and handles opening cast files.
 struct ContentView: View {
-    @Environment(ConnectionManager.self) var connectionManager
+    @Environment(ConnectionManager.self)
+    var connectionManager
     @State private var showingFilePicker = false
     @State private var showingCastPlayer = false
     @State private var selectedCastFile: URL?
     @State private var isValidatingConnection = true
+    @State private var showingWelcome = false
+    @AppStorage("welcomeCompleted")
+    private var welcomeCompleted = false
 
     var body: some View {
         Group {
@@ -30,12 +34,20 @@ struct ContentView: View {
             } else if connectionManager.isConnected, connectionManager.serverConfig != nil {
                 SessionListView()
             } else {
-                ConnectionView()
+                EnhancedConnectionView()
             }
         }
         .animation(.default, value: connectionManager.isConnected)
         .onAppear {
             validateRestoredConnection()
+
+            // Show welcome on first launch
+            if !welcomeCompleted {
+                showingWelcome = true
+            }
+        }
+        .fullScreenCover(isPresented: $showingWelcome) {
+            WelcomeView()
         }
         .onOpenURL { url in
             // Handle cast file opening

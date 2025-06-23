@@ -152,7 +152,9 @@ impl Default for AuthCacheManager {
 impl AuthCacheManager {
     /// Create a new authentication cache manager
     pub fn new() -> Self {
-        let manager = Self {
+        
+
+        Self {
             config: Arc::new(RwLock::new(AuthCacheConfig::default())),
             cache: Arc::new(RwLock::new(HashMap::new())),
             stats: Arc::new(RwLock::new(AuthCacheStats {
@@ -167,9 +169,7 @@ impl AuthCacheManager {
             refresh_callbacks: Arc::new(RwLock::new(HashMap::new())),
             cleanup_handle: Arc::new(RwLock::new(None)),
             notification_manager: None,
-        };
-
-        manager
+        }
     }
 
     /// Set the notification manager
@@ -375,13 +375,13 @@ impl AuthCacheManager {
         let entries: Vec<_> = cache.values().cloned().collect();
 
         serde_json::to_string_pretty(&entries)
-            .map_err(|e| format!("Failed to serialize cache: {}", e))
+            .map_err(|e| format!("Failed to serialize cache: {e}"))
     }
 
     /// Import cache from JSON
     pub async fn import_cache(&self, json_data: &str) -> Result<(), String> {
         let entries: Vec<AuthCacheEntry> = serde_json::from_str(json_data)
-            .map_err(|e| format!("Failed to deserialize cache: {}", e))?;
+            .map_err(|e| format!("Failed to deserialize cache: {e}"))?;
 
         let mut cache = self.cache.write().await;
         let mut stats = self.stats.write().await;

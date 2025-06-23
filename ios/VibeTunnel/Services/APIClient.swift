@@ -1,5 +1,7 @@
 import Foundation
 
+private let logger = Logger(category: "APIClient")
+
 /// Errors that can occur during API operations.
 enum APIError: LocalizedError {
     case invalidURL
@@ -120,15 +122,15 @@ class APIClient: APIClientProtocol {
 
         // Debug logging
         if let jsonString = String(data: data, encoding: .utf8) {
-            print("[APIClient] getSessions response: \(jsonString)")
+            logger.debug("getSessions response: \(jsonString)")
         }
 
         do {
             return try decoder.decode([Session].self, from: data)
         } catch {
-            print("[APIClient] Decoding error: \(error)")
+            logger.error("Decoding error: \(error)")
             if let decodingError = error as? DecodingError {
-                print("[APIClient] Decoding error details: \(decodingError)")
+                logger.error("Decoding error details: \(decodingError)")
             }
             throw APIError.decodingError(error)
         }
@@ -153,12 +155,12 @@ class APIClient: APIClientProtocol {
 
     func createSession(_ data: SessionCreateData) async throws -> String {
         guard let baseURL else {
-            print("[APIClient] No server configured")
+            logger.error("No server configured")
             throw APIError.noServerConfigured
         }
 
         let url = baseURL.appendingPathComponent("api/sessions")
-        print("[APIClient] Creating session at URL: \(url)")
+        logger.debug("Creating session at URL: \(url)")
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -168,24 +170,24 @@ class APIClient: APIClientProtocol {
         do {
             request.httpBody = try encoder.encode(data)
             if let bodyString = String(data: request.httpBody ?? Data(), encoding: .utf8) {
-                print("[APIClient] Request body: \(bodyString)")
+                logger.debug("Request body: \(bodyString)")
             }
         } catch {
-            print("[APIClient] Failed to encode session data: \(error)")
+            logger.error("Failed to encode session data: \(error)")
             throw error
         }
 
         do {
             let (responseData, response) = try await session.data(for: request)
 
-            print("[APIClient] Response received")
+            logger.debug("Response received")
             if let httpResponse = response as? HTTPURLResponse {
-                print("[APIClient] Status code: \(httpResponse.statusCode)")
-                print("[APIClient] Headers: \(httpResponse.allHeaderFields)")
+                logger.debug("Status code: \(httpResponse.statusCode)")
+                logger.debug("Headers: \(httpResponse.allHeaderFields)")
             }
 
             if let responseString = String(data: responseData, encoding: .utf8) {
-                print("[APIClient] Response body: \(responseString)")
+                logger.debug("Response body: \(responseString)")
             }
 
             // Check if the response is an error
@@ -199,7 +201,7 @@ class APIClient: APIClientProtocol {
 
                 if let errorResponse = try? decoder.decode(ErrorResponse.self, from: responseData) {
                     let errorMessage = errorResponse.details ?? errorResponse.error ?? "Unknown error"
-                    print("[APIClient] Server error: \(errorMessage)")
+                    logger.error("Server error: \(errorMessage)")
                     throw APIError.serverError(httpResponse.statusCode, errorMessage)
                 } else {
                     // Fallback to generic error
@@ -212,12 +214,12 @@ class APIClient: APIClientProtocol {
             }
 
             let createResponse = try decoder.decode(CreateResponse.self, from: responseData)
-            print("[APIClient] Session created with ID: \(createResponse.sessionId)")
+            logger.info("Session created with ID: \(createResponse.sessionId)")
             return createResponse.sessionId
         } catch {
-            print("[APIClient] Request failed: \(error)")
+            logger.error("Request failed: \(error)")
             if let urlError = error as? URLError {
-                print("[APIClient] URL Error code: \(urlError.code), description: \(urlError.localizedDescription)")
+                logger.error("URL Error code: \(urlError.code), description: \(urlError.localizedDescription)")
             }
             throw error
         }
@@ -453,12 +455,12 @@ class APIClient: APIClientProtocol {
 
     private func validateResponse(_ response: URLResponse) throws {
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("[APIClient] Invalid response type (not HTTP)")
+            logger.error("Invalid response type (not HTTP)")
             throw APIError.networkError(URLError(.badServerResponse))
         }
 
         guard 200..<300 ~= httpResponse.statusCode else {
-            print("[APIClient] Server error: HTTP \(httpResponse.statusCode)")
+            logger.error("Server error: HTTP \(httpResponse.statusCode)")
             throw APIError.serverError(httpResponse.statusCode, nil)
         }
     }
@@ -472,7 +474,12 @@ class APIClient: APIClientProtocol {
 
     // MARK: - File System Operations
 
-    func browseDirectory(path: String, showHidden: Bool = false, gitFilter: String = "all") async throws -> DirectoryListing {
+    func browseDirectory(
+        path: String,
+        showHidden: Bool = false,
+        gitFilter: String = "all"
+    )
+        async throws -> DirectoryListing {
         guard let baseURL else {
             throw APIError.noServerConfigured
         }
@@ -503,10 +510,10 @@ class APIClient: APIClientProtocol {
 
         // Log response for debugging
         if let httpResponse = response as? HTTPURLResponse {
-            print("[APIClient] Browse directory response: \(httpResponse.statusCode)")
+            logger.debug("Browse directory response: \(httpResponse.statusCode)")
             if httpResponse.statusCode >= 400 {
                 if let errorString = String(data: data, encoding: .utf8) {
-                    print("[APIClient] Error response body: \(errorString)")
+                    logger.error("Error response body: \(errorString)")
                 }
             }
         }
@@ -598,12 +605,12 @@ class APIClient: APIClientProtocol {
 
         return try decoder.decode(FileInfo.self, from: data)
     }
-    
+
     func previewFile(path: String) async throws -> FilePreview {
         guard let baseURL else {
             throw APIError.noServerConfigured
         }
-        
+
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("api/fs/preview"),
             resolvingAgainstBaseURL: false
@@ -611,26 +618,26 @@ class APIClient: APIClientProtocol {
             throw APIError.invalidURL
         }
         components.queryItems = [URLQueryItem(name: "path", value: path)]
-        
+
         guard let url = components.url else {
             throw APIError.invalidURL
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         addAuthenticationIfNeeded(&request)
-        
+
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)
-        
+
         return try decoder.decode(FilePreview.self, from: data)
     }
-    
+
     func getGitDiff(path: String) async throws -> FileDiff {
         guard let baseURL else {
             throw APIError.noServerConfigured
         }
-        
+
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("api/fs/diff"),
             resolvingAgainstBaseURL: false
@@ -638,75 +645,76 @@ class APIClient: APIClientProtocol {
             throw APIError.invalidURL
         }
         components.queryItems = [URLQueryItem(name: "path", value: path)]
-        
+
         guard let url = components.url else {
             throw APIError.invalidURL
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         addAuthenticationIfNeeded(&request)
-        
+
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)
-        
+
         return try decoder.decode(FileDiff.self, from: data)
     }
-    
+
     // MARK: - System Logs
-    
+
     func getLogsRaw() async throws -> String {
         guard let baseURL else {
             throw APIError.noServerConfigured
         }
-        
+
         let url = baseURL.appendingPathComponent("api/logs/raw")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         addAuthenticationIfNeeded(&request)
-        
+
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)
-        
+
         guard let logContent = String(data: data, encoding: .utf8) else {
             throw APIError.invalidResponse
         }
-        
+
         return logContent
     }
-    
+
     func getLogsInfo() async throws -> LogsInfo {
         guard let baseURL else {
             throw APIError.noServerConfigured
         }
-        
+
         let url = baseURL.appendingPathComponent("api/logs/info")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         addAuthenticationIfNeeded(&request)
-        
+
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)
-        
+
         return try decoder.decode(LogsInfo.self, from: data)
     }
-    
+
     func clearLogs() async throws {
         guard let baseURL else {
             throw APIError.noServerConfigured
         }
-        
+
         let url = baseURL.appendingPathComponent("api/logs/clear")
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         addAuthenticationIfNeeded(&request)
-        
+
         let (_, response) = try await session.data(for: request)
         try validateResponse(response)
     }
 }
 
 // MARK: - File Preview Types
+
 struct FilePreview: Codable {
     let type: FilePreviewType
     let content: String?

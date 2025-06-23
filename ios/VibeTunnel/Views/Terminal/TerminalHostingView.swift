@@ -13,7 +13,8 @@ struct TerminalHostingView: UIViewRepresentable {
     let onResize: (Int, Int) -> Void
     var viewModel: TerminalViewModel
     @State private var isAutoScrollEnabled = true
-    @AppStorage("enableURLDetection") private var enableURLDetection = true
+    @AppStorage("enableURLDetection")
+    private var enableURLDetection = true
 
     func makeUIView(context: Context) -> SwiftTerm.TerminalView {
         let terminal = SwiftTerm.TerminalView()
@@ -120,7 +121,7 @@ struct TerminalHostingView: UIViewRepresentable {
         // Use system monospaced font which has better compatibility with SwiftTerm
         // The custom SF Mono font seems to have rendering issues
         let font = UIFont.monospacedSystemFont(ofSize: size, weight: .regular)
-        
+
         // SwiftTerm uses the font property directly
         terminal.font = font
     }
@@ -179,8 +180,11 @@ struct TerminalHostingView: UIViewRepresentable {
         /// Update terminal buffer from binary buffer data using optimized ANSI sequences
         func updateBuffer(from snapshot: BufferSnapshot) {
             guard let terminal else { return }
-            
-            logger.verbose("updateBuffer called with snapshot: \(snapshot.cols)x\(snapshot.rows), cursor: (\(snapshot.cursorX),\(snapshot.cursorY))")
+
+            logger
+                .verbose(
+                    "updateBuffer called with snapshot: \(snapshot.cols)x\(snapshot.rows), cursor: (\(snapshot.cursorX),\(snapshot.cursorY))"
+                )
 
             // Update terminal dimensions if needed
             let currentCols = terminal.getTerminal().cols
@@ -207,10 +211,14 @@ struct TerminalHostingView: UIViewRepresentable {
                 ansiData = convertBufferToOptimizedANSI(snapshot, clearScreen: isFirstUpdate)
                 isFirstUpdate = false
                 logger.verbose("Full redraw performed")
-            } else {
+            } else if let previous = previousSnapshot {
                 // Incremental update
-                ansiData = generateIncrementalUpdate(from: previousSnapshot!, to: snapshot)
+                ansiData = generateIncrementalUpdate(from: previous, to: snapshot)
                 logger.verbose("Incremental update performed")
+            } else {
+                // Fallback to full redraw if somehow previousSnapshot is nil
+                ansiData = convertBufferToOptimizedANSI(snapshot, clearScreen: false)
+                logger.verbose("Fallback full redraw performed")
             }
 
             // Store current snapshot for next update
@@ -322,10 +330,10 @@ struct TerminalHostingView: UIViewRepresentable {
                             if let fg = cell.fg {
                                 if fg & 0xFF00_0000 != 0 {
                                     // RGB color
-                                    let r = (fg >> 16) & 0xFF
-                                    let g = (fg >> 8) & 0xFF
-                                    let b = fg & 0xFF
-                                    output += "\u{001B}[38;2;\(r);\(g);\(b)m"
+                                    let red = (fg >> 16) & 0xFF
+                                    let green = (fg >> 8) & 0xFF
+                                    let blue = fg & 0xFF
+                                    output += "\u{001B}[38;2;\(red);\(green);\(blue)m"
                                 } else if fg <= 255 {
                                     // Palette color
                                     output += "\u{001B}[38;5;\(fg)m"
@@ -341,10 +349,10 @@ struct TerminalHostingView: UIViewRepresentable {
                             if let bg = cell.bg {
                                 if bg & 0xFF00_0000 != 0 {
                                     // RGB color
-                                    let r = (bg >> 16) & 0xFF
-                                    let g = (bg >> 8) & 0xFF
-                                    let b = bg & 0xFF
-                                    output += "\u{001B}[48;2;\(r);\(g);\(b)m"
+                                    let red = (bg >> 16) & 0xFF
+                                    let green = (bg >> 8) & 0xFF
+                                    let blue = bg & 0xFF
+                                    output += "\u{001B}[48;2;\(red);\(green);\(blue)m"
                                 } else if bg <= 255 {
                                     // Palette color
                                     output += "\u{001B}[48;5;\(bg)m"
@@ -552,10 +560,10 @@ struct TerminalHostingView: UIViewRepresentable {
                 if let color = new {
                     if color & 0xFF00_0000 != 0 {
                         // RGB color
-                        let r = (color >> 16) & 0xFF
-                        let g = (color >> 8) & 0xFF
-                        let b = color & 0xFF
-                        output += "\u{001B}[\(isBackground ? 48 : 38);2;\(r);\(g);\(b)m"
+                        let red = (color >> 16) & 0xFF
+                        let green = (color >> 8) & 0xFF
+                        let blue = color & 0xFF
+                        output += "\u{001B}[\(isBackground ? 48 : 38);2;\(red);\(green);\(blue)m"
                     } else if color <= 255 {
                         // Palette color
                         output += "\u{001B}[\(isBackground ? 48 : 38);5;\(color)m"
@@ -591,14 +599,14 @@ struct TerminalHostingView: UIViewRepresentable {
                 }
             }
         }
-        
+
         func getBufferContent() -> String? {
             guard let terminal else { return nil }
-            
+
             // Get the terminal buffer content
             let terminalInstance = terminal.getTerminal()
             var content = ""
-            
+
             // Read all lines from the terminal buffer
             for row in 0..<terminalInstance.rows {
                 if let line = terminalInstance.getLine(row: row) {
@@ -613,7 +621,7 @@ struct TerminalHostingView: UIViewRepresentable {
                     content += lineText.trimmingCharacters(in: .whitespaces) + "\n"
                 }
             }
-            
+
             return content.trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
@@ -646,13 +654,13 @@ struct TerminalHostingView: UIViewRepresentable {
                 terminal.feed(text: "\u{001b}[B")
             }
         }
-        
+
         func setMaxWidth(_ maxWidth: Int) {
             // Store the max width preference for terminal rendering
             // When maxWidth is 0, it means unlimited
             // This could be used to constrain terminal rendering in the future
             // For now, just log the preference
-            print("[Terminal] Max width set to: \(maxWidth == 0 ? "unlimited" : "\(maxWidth) columns")")
+            logger.info("Max width set to: \(maxWidth == 0 ? "unlimited" : "\(maxWidth) columns")")
         }
 
         func setTerminalTitle(source: SwiftTerm.TerminalView, title: String) {
@@ -684,7 +692,7 @@ struct TerminalHostingView: UIViewRepresentable {
                 // If we have buffer data, we can provide additional context
                 if previousSnapshot != nil {
                     // Log selection range for debugging
-                    print("[Terminal] Copied \(string.count) characters")
+                    logger.debug("Copied \(string.count) characters")
                 }
             }
         }

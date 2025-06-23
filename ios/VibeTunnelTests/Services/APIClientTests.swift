@@ -98,8 +98,7 @@ struct APIClientTests {
 
             // Verify request body
             if let body = request.httpBody,
-               let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any]
-            {
+               let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
                 #expect(json["command"] as? String == "/bin/bash")
                 #expect(json["workingDir"] as? String == "/Users/test")
                 #expect(json["name"] as? String == "Test Session")
@@ -151,8 +150,7 @@ struct APIClientTests {
             #expect(request.httpMethod == "POST")
 
             if let body = request.httpBody,
-               let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any]
-            {
+               let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
                 #expect(json["data"] as? String == inputText)
             } else {
                 Issue.record("Failed to parse input request body")
@@ -179,8 +177,7 @@ struct APIClientTests {
             #expect(request.httpMethod == "POST")
 
             if let body = request.httpBody,
-               let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any]
-            {
+               let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
                 #expect(json["cols"] as? Int == cols)
                 #expect(json["rows"] as? Int == rows)
             } else {

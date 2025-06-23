@@ -194,7 +194,7 @@ impl NetworkUtils {
     }
 
     /// Check if an IP address is private
-    fn is_private_ip(ip: &IpAddr) -> bool {
+    const fn is_private_ip(ip: &IpAddr) -> bool {
         match ip {
             IpAddr::V4(ipv4) => Self::is_private_ipv4(ipv4),
             IpAddr::V6(ipv6) => Self::is_private_ipv6(ipv6),
@@ -202,7 +202,7 @@ impl NetworkUtils {
     }
 
     /// Check if an IPv4 address is private
-    fn is_private_ipv4(ip: &Ipv4Addr) -> bool {
+    const fn is_private_ipv4(ip: &Ipv4Addr) -> bool {
         let octets = ip.octets();
 
         // 10.0.0.0/8
@@ -224,7 +224,7 @@ impl NetworkUtils {
     }
 
     /// Check if an IPv6 address is private
-    fn is_private_ipv6(ip: &Ipv6Addr) -> bool {
+    const fn is_private_ipv6(ip: &Ipv6Addr) -> bool {
         // Check for link-local addresses (fe80::/10)
         let segments = ip.segments();
         if segments[0] & 0xffc0 == 0xfe80 {
@@ -252,7 +252,7 @@ impl NetworkUtils {
         use tokio::net::TcpStream;
         use tokio::time::timeout;
 
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         match timeout(Duration::from_secs(3), TcpStream::connect(&addr)).await {
             Ok(Ok(_)) => true,
             _ => false,

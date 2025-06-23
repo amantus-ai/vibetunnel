@@ -2,15 +2,18 @@ import Foundation
 import Network
 import SwiftUI
 
+private let logger = Logger(category: "NetworkMonitor")
+
 /// Monitors network connectivity and provides offline/online state
 @MainActor
-final class NetworkMonitor: ObservableObject {
+@Observable
+final class NetworkMonitor {
     static let shared = NetworkMonitor()
 
-    @Published private(set) var isConnected = true
-    @Published private(set) var connectionType = NWInterface.InterfaceType.other
-    @Published private(set) var isExpensive = false
-    @Published private(set) var isConstrained = false
+    private(set) var isConnected = true
+    private(set) var connectionType = NWInterface.InterfaceType.other
+    private(set) var isExpensive = false
+    private(set) var isConstrained = false
 
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "NetworkMonitor")
@@ -40,7 +43,7 @@ final class NetworkMonitor: ObservableObject {
 
                 // Log state changes
                 if wasConnected != self.isConnected {
-                    print("[NetworkMonitor] Connection state changed: \(self.isConnected ? "Online" : "Offline")")
+                    logger.info("Connection state changed: \(self.isConnected ? "Online" : "Offline")")
 
                     // Post notification for other parts of the app
                     NotificationCenter.default.post(
@@ -121,7 +124,7 @@ extension Notification.Name {
 // MARK: - View Modifier for Offline Banner
 
 struct OfflineBanner: ViewModifier {
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @State private var networkMonitor = NetworkMonitor.shared
     @State private var showBanner = false
 
     func body(content: Content) -> some View {
@@ -132,17 +135,17 @@ struct OfflineBanner: ViewModifier {
                 VStack(spacing: 0) {
                     HStack {
                         Image(systemName: "wifi.slash")
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.Colors.terminalBackground)
 
                         Text("No Internet Connection")
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.Colors.terminalBackground)
                             .font(.footnote.bold())
 
                         Spacer()
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Color.red)
+                    .background(Theme.Colors.errorAccent)
                     .animation(.easeInOut(duration: 0.3), value: showBanner)
                     .transition(.move(edge: .top).combined(with: .opacity))
 
@@ -178,32 +181,32 @@ extension View {
 // MARK: - Connection Status View
 
 struct ConnectionStatusView: View {
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @State private var networkMonitor = NetworkMonitor.shared
 
     var body: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(networkMonitor.isConnected ? Color.green : Color.red)
+                .fill(networkMonitor.isConnected ? Theme.Colors.successAccent : Theme.Colors.errorAccent)
                 .frame(width: 8, height: 8)
 
             Text(networkMonitor.isConnected ? "Online" : "Offline")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(Theme.Colors.terminalGray)
 
             if networkMonitor.isConnected {
                 switch networkMonitor.connectionType {
                 case .wifi:
                     Image(systemName: "wifi")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Theme.Colors.terminalGray)
                 case .cellular:
                     Image(systemName: "antenna.radiowaves.left.and.right")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Theme.Colors.terminalGray)
                 case .wiredEthernet:
                     Image(systemName: "cable.connector")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Theme.Colors.terminalGray)
                 default:
                     EmptyView()
                 }
@@ -211,14 +214,14 @@ struct ConnectionStatusView: View {
                 if networkMonitor.isExpensive {
                     Image(systemName: "dollarsign.circle")
                         .font(.caption)
-                        .foregroundColor(.orange)
+                        .foregroundColor(Theme.Colors.warningAccent)
                         .help("Connection may incur charges")
                 }
 
                 if networkMonitor.isConstrained {
                     Image(systemName: "tortoise")
                         .font(.caption)
-                        .foregroundColor(.orange)
+                        .foregroundColor(Theme.Colors.warningAccent)
                         .help("Low Data Mode is enabled")
                 }
             }

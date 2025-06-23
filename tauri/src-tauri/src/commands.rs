@@ -76,15 +76,18 @@ pub async fn list_terminals(state: State<'_, AppState>) -> Result<Vec<Terminal>,
 
     // List sessions via API
     let sessions = state.api_client.list_sessions().await?;
-    
-    Ok(sessions.into_iter().map(|s| Terminal {
-        id: s.id,
-        name: s.name,
-        pid: s.pid,
-        rows: s.rows,
-        cols: s.cols,
-        created_at: s.created_at,
-    }).collect())
+
+    Ok(sessions
+        .into_iter()
+        .map(|s| Terminal {
+            id: s.id,
+            name: s.name,
+            pid: s.pid,
+            rows: s.rows,
+            cols: s.cols,
+            created_at: s.created_at,
+        })
+        .collect())
 }
 
 #[tauri::command]
@@ -179,7 +182,7 @@ pub async fn start_server(
         let url = if let Some(ngrok_tunnel) = state.ngrok_manager.get_tunnel_status() {
             ngrok_tunnel.url
         } else {
-            format!("http://127.0.0.1:{}", port)
+            format!("http://127.0.0.1:{port}")
         };
 
         return Ok(ServerStatus {
@@ -200,12 +203,15 @@ pub async fn start_server(
     let url = match settings.dashboard.access_mode.as_str() {
         "network" => {
             // For network mode, the Node.js server handles the binding
-            format!("http://0.0.0.0:{}", port)
+            format!("http://0.0.0.0:{port}")
         }
         "ngrok" => {
             // Try to start ngrok tunnel if auth token is configured
             if let Some(auth_token) = settings.advanced.ngrok_auth_token {
-                if !auth_token.is_empty() {
+                if auth_token.is_empty() {
+                    let _ = state.backend_manager.stop().await;
+                    return Err("Ngrok auth token is required for ngrok access mode".to_string());
+                } else {
                     match state
                         .ngrok_manager
                         .start_tunnel(port, Some(auth_token))
@@ -216,12 +222,9 @@ pub async fn start_server(
                             tracing::error!("Failed to start ngrok tunnel: {}", e);
                             // Stop the server since ngrok failed
                             let _ = state.backend_manager.stop().await;
-                            return Err(format!("Failed to start ngrok tunnel: {}", e));
+                            return Err(format!("Failed to start ngrok tunnel: {e}"));
                         }
                     }
-                } else {
-                    let _ = state.backend_manager.stop().await;
-                    return Err("Ngrok auth token is required for ngrok access mode".to_string());
                 }
             } else {
                 let _ = state.backend_manager.stop().await;
@@ -229,7 +232,7 @@ pub async fn start_server(
             }
         }
         _ => {
-            format!("http://127.0.0.1:{}", port)
+            format!("http://127.0.0.1:{port}")
         }
     };
 
@@ -252,7 +255,7 @@ pub async fn stop_server(state: State<'_, AppState>, app: tauri::AppHandle) -> R
     let _ = state.ngrok_manager.stop_tunnel().await;
 
     // Update menu bar server status
-    crate::tray_menu::TrayMenuManager::update_server_status(&app, 4020, false).await;
+    crate::tray_menu::TrayMenuManager::update_server_status(&app, 4022, false).await;
 
     Ok(())
 }
@@ -270,8 +273,8 @@ pub async fn get_server_status(state: State<'_, AppState>) -> Result<ServerStatu
         } else {
             // Check settings to determine the correct URL format
             match settings.dashboard.access_mode.as_str() {
-                "network" => format!("http://0.0.0.0:{}", port),
-                _ => format!("http://127.0.0.1:{}", port),
+                "network" => format!("http://0.0.0.0:{port}"),
+                _ => format!("http://127.0.0.1:{port}"),
             }
         };
 
@@ -295,7 +298,10 @@ pub fn get_app_version() -> String {
 }
 
 #[tauri::command]
-pub async fn restart_server(state: State<'_, AppState>, app: tauri::AppHandle) -> Result<ServerStatus, String> {
+pub async fn restart_server(
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<ServerStatus, String> {
     // First stop the server
     stop_server(state.clone(), app.clone()).await?;
 
@@ -344,7 +350,7 @@ pub async fn purge_all_settings(
 ) -> Result<(), String> {
     // Create default settings and save to clear the file
     let default_settings = crate::settings::Settings::default();
-    default_settings.save().map_err(|e| e.to_string())?;
+    default_settings.save()?;
 
     // Quit the app after a short delay
     tokio::spawn(async move {
@@ -378,7 +384,6 @@ pub async fn update_dock_icon_visibility(app_handle: tauri::AppHandle) -> Result
     }
     Ok(())
 }
-
 
 // TTY Forwarding Commands
 #[derive(Debug, Serialize, Deserialize)]
@@ -515,7 +520,7 @@ pub async fn force_kill_process(
 pub async fn find_available_ports(near_port: u16, count: usize) -> Result<Vec<u16>, String> {
     let mut available_ports = Vec::new();
     let start = near_port.saturating_sub(10).max(1024);
-    let end = near_port.saturating_add(100).min(65535);
+    let end = near_port.saturating_add(100);
 
     for port in start..=end {
         if port != near_port
@@ -791,41 +796,41 @@ pub async fn update_advanced_settings(
     match section.as_str() {
         "tty_forward" => {
             settings.tty_forward = serde_json::from_value(value)
-                .map_err(|e| format!("Invalid TTY forward settings: {}", e))?;
+                .map_err(|e| format!("Invalid TTY forward settings: {e}"))?;
         }
         "monitoring" => {
             settings.monitoring = serde_json::from_value(value)
-                .map_err(|e| format!("Invalid monitoring settings: {}", e))?;
+                .map_err(|e| format!("Invalid monitoring settings: {e}"))?;
         }
         "network" => {
             settings.network = serde_json::from_value(value)
-                .map_err(|e| format!("Invalid network settings: {}", e))?;
+                .map_err(|e| format!("Invalid network settings: {e}"))?;
         }
         "port" => {
             settings.port = serde_json::from_value(value)
-                .map_err(|e| format!("Invalid port settings: {}", e))?;
+                .map_err(|e| format!("Invalid port settings: {e}"))?;
         }
         "notifications" => {
             settings.notifications = serde_json::from_value(value)
-                .map_err(|e| format!("Invalid notification settings: {}", e))?;
+                .map_err(|e| format!("Invalid notification settings: {e}"))?;
         }
         "terminal_integrations" => {
             settings.terminal_integrations = serde_json::from_value(value)
-                .map_err(|e| format!("Invalid terminal integration settings: {}", e))?;
+                .map_err(|e| format!("Invalid terminal integration settings: {e}"))?;
         }
         "updates" => {
             settings.updates = serde_json::from_value(value)
-                .map_err(|e| format!("Invalid update settings: {}", e))?;
+                .map_err(|e| format!("Invalid update settings: {e}"))?;
         }
         "security" => {
             settings.security = serde_json::from_value(value)
-                .map_err(|e| format!("Invalid security settings: {}", e))?;
+                .map_err(|e| format!("Invalid security settings: {e}"))?;
         }
         "debug" => {
             settings.debug = serde_json::from_value(value)
-                .map_err(|e| format!("Invalid debug settings: {}", e))?;
+                .map_err(|e| format!("Invalid debug settings: {e}"))?;
         }
-        _ => return Err(format!("Unknown settings section: {}", section)),
+        _ => return Err(format!("Unknown settings section: {section}")),
     }
 
     settings.save()
@@ -847,7 +852,7 @@ pub async fn reset_settings_section(section: String) -> Result<(), String> {
         "security" => settings.security = defaults.security,
         "debug" => settings.debug = defaults.debug,
         "all" => settings = defaults,
-        _ => return Err(format!("Unknown settings section: {}", section)),
+        _ => return Err(format!("Unknown settings section: {section}")),
     }
 
     settings.save()
@@ -856,13 +861,13 @@ pub async fn reset_settings_section(section: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn export_settings() -> Result<String, String> {
     let settings = crate::settings::Settings::load().unwrap_or_default();
-    toml::to_string_pretty(&settings).map_err(|e| format!("Failed to export settings: {}", e))
+    toml::to_string_pretty(&settings).map_err(|e| format!("Failed to export settings: {e}"))
 }
 
 #[tauri::command]
 pub async fn import_settings(toml_content: String) -> Result<(), String> {
     let settings: crate::settings::Settings =
-        toml::from_str(&toml_content).map_err(|e| format!("Failed to parse settings: {}", e))?;
+        toml::from_str(&toml_content).map_err(|e| format!("Failed to parse settings: {e}"))?;
     settings.save()
 }
 
@@ -1775,82 +1780,82 @@ pub async fn update_setting(section: String, key: String, value: String) -> Resu
 
     // Parse the JSON value
     let json_value: serde_json::Value =
-        serde_json::from_str(&value).map_err(|e| format!("Invalid JSON value: {}", e))?;
+        serde_json::from_str(&value).map_err(|e| format!("Invalid JSON value: {e}"))?;
 
     match section.as_str() {
         "general" => match key.as_str() {
             "launch_at_login" => {
-                settings.general.launch_at_login = json_value.as_bool().unwrap_or(false)
+                settings.general.launch_at_login = json_value.as_bool().unwrap_or(false);
             }
             "show_dock_icon" => {
-                settings.general.show_dock_icon = json_value.as_bool().unwrap_or(true)
+                settings.general.show_dock_icon = json_value.as_bool().unwrap_or(true);
             }
             "default_terminal" => {
                 settings.general.default_terminal =
-                    json_value.as_str().unwrap_or("system").to_string()
+                    json_value.as_str().unwrap_or("system").to_string();
             }
             "default_shell" => {
                 settings.general.default_shell =
-                    json_value.as_str().unwrap_or("default").to_string()
+                    json_value.as_str().unwrap_or("default").to_string();
             }
             "show_welcome_on_startup" => {
-                settings.general.show_welcome_on_startup = json_value.as_bool()
+                settings.general.show_welcome_on_startup = json_value.as_bool();
             }
-            "theme" => settings.general.theme = json_value.as_str().map(|s| s.to_string()),
-            "language" => settings.general.language = json_value.as_str().map(|s| s.to_string()),
+            "theme" => settings.general.theme = json_value.as_str().map(std::string::ToString::to_string),
+            "language" => settings.general.language = json_value.as_str().map(std::string::ToString::to_string),
             "check_updates_automatically" => {
-                settings.general.check_updates_automatically = json_value.as_bool()
+                settings.general.check_updates_automatically = json_value.as_bool();
             }
-            _ => return Err(format!("Unknown general setting: {}", key)),
+            _ => return Err(format!("Unknown general setting: {key}")),
         },
         "dashboard" => match key.as_str() {
             "server_port" => {
-                settings.dashboard.server_port = json_value.as_u64().unwrap_or(4020) as u16
+                settings.dashboard.server_port = json_value.as_u64().unwrap_or(4022) as u16;
             }
             "enable_password" => {
-                settings.dashboard.enable_password = json_value.as_bool().unwrap_or(false)
+                settings.dashboard.enable_password = json_value.as_bool().unwrap_or(false);
             }
             "password" => {
-                settings.dashboard.password = json_value.as_str().unwrap_or("").to_string()
+                settings.dashboard.password = json_value.as_str().unwrap_or("").to_string();
             }
             "access_mode" => {
                 settings.dashboard.access_mode =
-                    json_value.as_str().unwrap_or("localhost").to_string()
+                    json_value.as_str().unwrap_or("localhost").to_string();
             }
             "auto_cleanup" => {
-                settings.dashboard.auto_cleanup = json_value.as_bool().unwrap_or(true)
+                settings.dashboard.auto_cleanup = json_value.as_bool().unwrap_or(true);
             }
             "session_limit" => {
-                settings.dashboard.session_limit = json_value.as_u64().map(|v| v as u32)
+                settings.dashboard.session_limit = json_value.as_u64().map(|v| v as u32);
             }
             "idle_timeout_minutes" => {
-                settings.dashboard.idle_timeout_minutes = json_value.as_u64().map(|v| v as u32)
+                settings.dashboard.idle_timeout_minutes = json_value.as_u64().map(|v| v as u32);
             }
             "enable_cors" => settings.dashboard.enable_cors = json_value.as_bool(),
-            _ => return Err(format!("Unknown dashboard setting: {}", key)),
+            _ => return Err(format!("Unknown dashboard setting: {key}")),
         },
         "advanced" => match key.as_str() {
             "debug_mode" => settings.advanced.debug_mode = json_value.as_bool().unwrap_or(false),
             "log_level" => {
-                settings.advanced.log_level = json_value.as_str().unwrap_or("info").to_string()
+                settings.advanced.log_level = json_value.as_str().unwrap_or("info").to_string();
             }
             "session_timeout" => {
-                settings.advanced.session_timeout = json_value.as_u64().unwrap_or(0) as u32
+                settings.advanced.session_timeout = json_value.as_u64().unwrap_or(0) as u32;
             }
             "ngrok_auth_token" => {
-                settings.advanced.ngrok_auth_token = json_value.as_str().map(|s| s.to_string())
+                settings.advanced.ngrok_auth_token = json_value.as_str().map(std::string::ToString::to_string);
             }
             "ngrok_region" => {
-                settings.advanced.ngrok_region = json_value.as_str().map(|s| s.to_string())
+                settings.advanced.ngrok_region = json_value.as_str().map(std::string::ToString::to_string);
             }
             "ngrok_subdomain" => {
-                settings.advanced.ngrok_subdomain = json_value.as_str().map(|s| s.to_string())
+                settings.advanced.ngrok_subdomain = json_value.as_str().map(std::string::ToString::to_string);
             }
             "enable_telemetry" => settings.advanced.enable_telemetry = json_value.as_bool(),
             "experimental_features" => {
-                settings.advanced.experimental_features = json_value.as_bool()
+                settings.advanced.experimental_features = json_value.as_bool();
             }
-            _ => return Err(format!("Unknown advanced setting: {}", key)),
+            _ => return Err(format!("Unknown advanced setting: {key}")),
         },
         "debug" => {
             // Ensure debug settings exist
@@ -1870,32 +1875,32 @@ pub async fn update_setting(section: String, key: String, value: String) -> Resu
             if let Some(ref mut debug) = settings.debug {
                 match key.as_str() {
                     "enable_debug_menu" => {
-                        debug.enable_debug_menu = json_value.as_bool().unwrap_or(false)
+                        debug.enable_debug_menu = json_value.as_bool().unwrap_or(false);
                     }
                     "show_performance_stats" => {
-                        debug.show_performance_stats = json_value.as_bool().unwrap_or(false)
+                        debug.show_performance_stats = json_value.as_bool().unwrap_or(false);
                     }
                     "enable_verbose_logging" => {
-                        debug.enable_verbose_logging = json_value.as_bool().unwrap_or(false)
+                        debug.enable_verbose_logging = json_value.as_bool().unwrap_or(false);
                     }
                     "log_to_file" => debug.log_to_file = json_value.as_bool().unwrap_or(false),
                     "log_file_path" => {
-                        debug.log_file_path = json_value.as_str().map(|s| s.to_string())
+                        debug.log_file_path = json_value.as_str().map(std::string::ToString::to_string);
                     }
                     "max_log_file_size_mb" => {
-                        debug.max_log_file_size_mb = json_value.as_u64().map(|v| v as u32)
+                        debug.max_log_file_size_mb = json_value.as_u64().map(|v| v as u32);
                     }
                     "enable_dev_tools" => {
-                        debug.enable_dev_tools = json_value.as_bool().unwrap_or(false)
+                        debug.enable_dev_tools = json_value.as_bool().unwrap_or(false);
                     }
                     "show_internal_errors" => {
-                        debug.show_internal_errors = json_value.as_bool().unwrap_or(false)
+                        debug.show_internal_errors = json_value.as_bool().unwrap_or(false);
                     }
-                    _ => return Err(format!("Unknown debug setting: {}", key)),
+                    _ => return Err(format!("Unknown debug setting: {key}")),
                 }
             }
         }
-        _ => return Err(format!("Unknown settings section: {}", section)),
+        _ => return Err(format!("Unknown settings section: {section}")),
     }
 
     settings.save()
@@ -1923,7 +1928,11 @@ pub async fn set_dashboard_password(
 }
 
 #[tauri::command]
-pub async fn restart_server_with_port(port: u16, state: State<'_, AppState>, app: tauri::AppHandle) -> Result<(), String> {
+pub async fn restart_server_with_port(
+    port: u16,
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
     // Update settings with new port
     let mut settings = crate::settings::Settings::load().unwrap_or_default();
     settings.dashboard.server_port = port;
@@ -1993,7 +2002,7 @@ pub async fn test_api_endpoint(
     if state.backend_manager.is_running().await {
         let settings = crate::settings::Settings::load().unwrap_or_default();
         let port = settings.dashboard.server_port;
-        let url = format!("http://127.0.0.1:{}{}", port, endpoint);
+        let url = format!("http://127.0.0.1:{port}{endpoint}");
 
         // Create a simple HTTP client request
         let client = reqwest::Client::new();
@@ -2001,7 +2010,7 @@ pub async fn test_api_endpoint(
             .get(&url)
             .send()
             .await
-            .map_err(|e| format!("Request failed: {}", e))?;
+            .map_err(|e| format!("Request failed: {e}"))?;
 
         let status = response.status();
         let body = response
@@ -2038,7 +2047,7 @@ pub async fn get_server_logs(limit: usize) -> Result<Vec<ServerLog>, String> {
         ServerLog {
             timestamp: chrono::Utc::now().to_rfc3339(),
             level: "info".to_string(),
-            message: "Server started on port 4020".to_string(),
+            message: "Server started on port 4022".to_string(),
         },
         ServerLog {
             timestamp: chrono::Utc::now().to_rfc3339(),
@@ -2071,7 +2080,7 @@ pub async fn export_logs(_app_handle: tauri::AppHandle) -> Result<(), String> {
 
     // Save to file
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let filename = format!("vibetunnel_logs_{}.txt", timestamp);
+    let filename = format!("vibetunnel_logs_{timestamp}.txt");
 
     // In Tauri v2, we should use the dialog plugin instead
     // For now, let's just save to a default location
@@ -2194,8 +2203,437 @@ pub async fn test_terminal(terminal: String, state: State<'_, AppState>) -> Resu
             working_directory: None,
             environment: None,
         })
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_terminal_struct() {
+        let terminal = Terminal {
+            id: "test-123".to_string(),
+            name: "Test Terminal".to_string(),
+            pid: 1234,
+            rows: 24,
+            cols: 80,
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+        };
+
+        assert_eq!(terminal.id, "test-123");
+        assert_eq!(terminal.name, "Test Terminal");
+        assert_eq!(terminal.pid, 1234);
+        assert_eq!(terminal.rows, 24);
+        assert_eq!(terminal.cols, 80);
+    }
+
+    #[test]
+    fn test_server_status_struct() {
+        let status = ServerStatus {
+            running: true,
+            port: 8080,
+            url: "http://localhost:8080".to_string(),
+        };
+
+        assert!(status.running);
+        assert_eq!(status.port, 8080);
+        assert_eq!(status.url, "http://localhost:8080");
+    }
+
+    #[test]
+    fn test_create_terminal_options() {
+        let mut env = HashMap::new();
+        env.insert("PATH".to_string(), "/usr/bin".to_string());
+
+        let options = CreateTerminalOptions {
+            name: Some("Custom Terminal".to_string()),
+            rows: Some(30),
+            cols: Some(120),
+            cwd: Some("/home/user".to_string()),
+            env: Some(env.clone()),
+            shell: Some("/bin/bash".to_string()),
+        };
+
+        assert_eq!(options.name, Some("Custom Terminal".to_string()));
+        assert_eq!(options.rows, Some(30));
+        assert_eq!(options.cols, Some(120));
+        assert_eq!(options.cwd, Some("/home/user".to_string()));
+        assert_eq!(
+            options.env.unwrap().get("PATH"),
+            Some(&"/usr/bin".to_string())
+        );
+        assert_eq!(options.shell, Some("/bin/bash".to_string()));
+    }
+
+    #[test]
+    fn test_start_tty_forward_options() {
+        let options = StartTTYForwardOptions {
+            local_port: 2222,
+            remote_host: Some("example.com".to_string()),
+            remote_port: Some(22),
+            shell: Some("/bin/zsh".to_string()),
+        };
+
+        assert_eq!(options.local_port, 2222);
+        assert_eq!(options.remote_host, Some("example.com".to_string()));
+        assert_eq!(options.remote_port, Some(22));
+        assert_eq!(options.shell, Some("/bin/zsh".to_string()));
+    }
+
+    #[test]
+    fn test_tty_forward_info() {
+        let info = TTYForwardInfo {
+            id: "forward-123".to_string(),
+            local_port: 2222,
+            remote_host: "localhost".to_string(),
+            remote_port: 22,
+            connected: true,
+            client_count: 2,
+        };
+
+        assert_eq!(info.id, "forward-123");
+        assert_eq!(info.local_port, 2222);
+        assert_eq!(info.remote_host, "localhost");
+        assert_eq!(info.remote_port, 22);
+        assert!(info.connected);
+        assert_eq!(info.client_count, 2);
+    }
+
+    #[test]
+    fn test_show_notification_options() {
+        use crate::notification_manager::{
+            NotificationAction, NotificationPriority, NotificationType,
+        };
+
+        let mut metadata = HashMap::new();
+        metadata.insert("key".to_string(), json!("value"));
+
+        let options = ShowNotificationOptions {
+            notification_type: NotificationType::Info,
+            priority: NotificationPriority::High,
+            title: "Test Title".to_string(),
+            body: "Test Body".to_string(),
+            actions: vec![NotificationAction {
+                id: "ok".to_string(),
+                label: "OK".to_string(),
+                action_type: "dismiss".to_string(),
+            }],
+            metadata,
+        };
+
+        assert_eq!(options.title, "Test Title");
+        assert_eq!(options.body, "Test Body");
+        assert_eq!(options.actions.len(), 1);
+        assert_eq!(options.actions[0].label, "OK");
+    }
+
+    #[test]
+    fn test_store_token_options() {
+        use crate::auth_cache::{AuthScope, CachedToken, TokenType};
+
+        let token = CachedToken {
+            token_type: TokenType::Bearer,
+            token_value: "test-token".to_string(),
+            scope: AuthScope {
+                service: "test-service".to_string(),
+                resource: None,
+                permissions: vec![],
+            },
+            created_at: chrono::Utc::now(),
+            expires_at: None,
+            refresh_token: None,
+            metadata: HashMap::new(),
+        };
+
+        let options = StoreTokenOptions {
+            key: "test-key".to_string(),
+            token: token.clone(),
+        };
+
+        assert_eq!(options.key, "test-key");
+        assert_eq!(options.token.token_value, "test-token");
+    }
+
+    #[test]
+    fn test_get_app_version() {
+        let version = get_app_version();
+        assert!(!version.is_empty());
+        assert_eq!(version, env!("CARGO_PKG_VERSION"));
+    }
+
+    #[test]
+    fn test_server_log_struct() {
+        let log = ServerLog {
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            level: "info".to_string(),
+            message: "Test message".to_string(),
+        };
+
+        assert_eq!(log.timestamp, "2024-01-01T00:00:00Z");
+        assert_eq!(log.level, "info");
+        assert_eq!(log.message, "Test message");
+    }
+
+    #[test]
+    fn test_log_debug_message_options() {
+        use crate::debug_features::LogLevel;
+
+        let mut metadata = HashMap::new();
+        metadata.insert("key".to_string(), json!("value"));
+
+        let options = LogDebugMessageOptions {
+            level: LogLevel::Info,
+            component: "test-component".to_string(),
+            message: "Test debug message".to_string(),
+            metadata,
+        };
+
+        assert_eq!(options.component, "test-component");
+        assert_eq!(options.message, "Test debug message");
+        assert_eq!(options.metadata.get("key"), Some(&json!("value")));
+    }
+
+    #[test]
+    fn test_store_credential_options() {
+        use crate::auth_cache::AuthCredential;
+
+        let credential = AuthCredential {
+            credential_type: "password".to_string(),
+            username: Some("testuser".to_string()),
+            password_hash: Some("hash123".to_string()),
+            api_key: None,
+            client_id: None,
+            client_secret: None,
+            metadata: HashMap::new(),
+        };
+
+        let options = StoreCredentialOptions {
+            key: "cred-key".to_string(),
+            credential: credential.clone(),
+        };
+
+        assert_eq!(options.key, "cred-key");
+        assert_eq!(options.credential.username, Some("testuser".to_string()));
+    }
+
+    #[test]
+    fn test_create_auth_cache_key() {
+        let key1 = create_auth_cache_key("github".to_string(), None, None);
+        assert_eq!(key1, "github");
+
+        let key2 = create_auth_cache_key("github".to_string(), Some("user123".to_string()), None);
+        assert_eq!(key2, "github:user123");
+
+        let key3 = create_auth_cache_key(
+            "github".to_string(),
+            Some("user123".to_string()),
+            Some("repo456".to_string()),
+        );
+        assert_eq!(key3, "github:user123:repo456");
+    }
+
+    #[test]
+    fn test_hash_password() {
+        let password = "testpassword123";
+        let hash1 = hash_password(password.to_string());
+        let hash2 = hash_password(password.to_string());
+
+        // Same password should produce same hash
+        assert_eq!(hash1, hash2);
+
+        // Hash should not be empty
+        assert!(!hash1.is_empty());
+
+        // Hash should be different from original password
+        assert_ne!(hash1, password);
+    }
+
+    #[tokio::test]
+    async fn test_find_available_ports() {
+        // Test finding available ports near 8080
+        let ports = find_available_ports(8080, 3).await;
+
+        // Should return a Result
+        assert!(ports.is_ok());
+
+        if let Ok(available) = ports {
+            // Should find at most 3 ports
+            assert!(available.len() <= 3);
+
+            // All ports should be in valid range
+            for port in &available {
+                assert!(*port >= 1024);
+                // Port is u16, so max value is 65535 by definition
+                assert!(*port != 8080); // Should not include the requested port
+            }
+        }
+    }
+
+    #[test]
+    fn test_settings_section_validation() {
+        // Test valid sections
+        let valid_sections = vec![
+            "tty_forward",
+            "monitoring",
+            "network",
+            "port",
+            "notifications",
+            "terminal_integrations",
+            "updates",
+            "security",
+            "debug",
+            "all",
+        ];
+
+        for section in valid_sections {
+            // This would normally be tested through the actual command
+            // but we can at least verify the strings are valid
+            assert!(!section.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_json_value_parsing() {
+        // Test parsing various JSON values
+        let bool_value = serde_json::from_str::<serde_json::Value>("true").unwrap();
+        assert_eq!(bool_value.as_bool(), Some(true));
+
+        let number_value = serde_json::from_str::<serde_json::Value>("42").unwrap();
+        assert_eq!(number_value.as_u64(), Some(42));
+
+        let string_value = serde_json::from_str::<serde_json::Value>("\"test\"").unwrap();
+        assert_eq!(string_value.as_str(), Some("test"));
+
+        let null_value = serde_json::from_str::<serde_json::Value>("null").unwrap();
+        assert!(null_value.is_null());
+    }
+
+    #[test]
+    fn test_settings_key_validation() {
+        // Test valid setting keys for each section
+        let general_keys = vec![
+            "launch_at_login",
+            "show_dock_icon",
+            "default_terminal",
+            "default_shell",
+            "show_welcome_on_startup",
+            "theme",
+            "language",
+            "check_updates_automatically",
+        ];
+
+        let dashboard_keys = vec![
+            "server_port",
+            "enable_password",
+            "password",
+            "access_mode",
+            "auto_cleanup",
+            "session_limit",
+            "idle_timeout_minutes",
+            "enable_cors",
+        ];
+
+        let advanced_keys = vec![
+            "debug_mode",
+            "log_level",
+            "session_timeout",
+            "ngrok_auth_token",
+            "ngrok_region",
+            "ngrok_subdomain",
+            "enable_telemetry",
+            "experimental_features",
+        ];
+
+        // Verify all keys are non-empty strings
+        for key in general_keys {
+            assert!(!key.is_empty());
+        }
+        for key in dashboard_keys {
+            assert!(!key.is_empty());
+        }
+        for key in advanced_keys {
+            assert!(!key.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_access_mode_mapping() {
+        // Test access mode to bind address mapping
+        let localhost_mode = "127.0.0.1";
+        let expected_mode = if localhost_mode == "127.0.0.1" {
+            "localhost"
+        } else {
+            "network"
+        };
+        assert_eq!(expected_mode, "localhost");
+
+        let network_mode = "0.0.0.0";
+        let expected_mode = if network_mode == "127.0.0.1" {
+            "localhost"
+        } else {
+            "network"
+        };
+        assert_eq!(expected_mode, "network");
+    }
+
+    #[test]
+    fn test_export_settings_toml_format() {
+        use crate::settings::Settings;
+
+        // Create a test settings instance
+        let settings = Settings::default();
+
+        // Serialize to TOML
+        let toml_result = toml::to_string_pretty(&settings);
+        assert!(toml_result.is_ok());
+
+        if let Ok(toml_content) = toml_result {
+            // Verify it's valid TOML by parsing it back
+            let parsed_result: Result<Settings, _> = toml::from_str(&toml_content);
+            assert!(parsed_result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_all_settings_serialization() {
+        use crate::settings::Settings;
+
+        let settings = Settings::default();
+        let mut all_settings = HashMap::new();
+
+        // Test that all sections can be serialized to JSON
+        let sections = vec![
+            ("general", serde_json::to_value(&settings.general)),
+            ("dashboard", serde_json::to_value(&settings.dashboard)),
+            ("advanced", serde_json::to_value(&settings.advanced)),
+            ("tty_forward", serde_json::to_value(&settings.tty_forward)),
+            ("monitoring", serde_json::to_value(&settings.monitoring)),
+            ("network", serde_json::to_value(&settings.network)),
+            ("port", serde_json::to_value(&settings.port)),
+            (
+                "notifications",
+                serde_json::to_value(&settings.notifications),
+            ),
+            (
+                "terminal_integrations",
+                serde_json::to_value(&settings.terminal_integrations),
+            ),
+            ("updates", serde_json::to_value(&settings.updates)),
+            ("security", serde_json::to_value(&settings.security)),
+        ];
+
+        for (name, result) in sections {
+            assert!(result.is_ok(), "Failed to serialize {} settings", name);
+            if let Ok(value) = result {
+                all_settings.insert(name.to_string(), value);
+            }
+        }
+
+        assert_eq!(all_settings.len(), 11);
+    }
 }

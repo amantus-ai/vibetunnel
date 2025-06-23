@@ -7,7 +7,7 @@ import Foundation
 /// and terminal dimensions.
 struct Session: Codable, Identifiable, Equatable, Hashable {
     let id: String
-    let command: [String]  // Changed from String to [String] to match server
+    let command: [String] // Changed from String to [String] to match server
     let workingDir: String
     let name: String?
     let status: SessionStatus
@@ -15,12 +15,12 @@ struct Session: Codable, Identifiable, Equatable, Hashable {
     let startedAt: String
     let lastModified: String?
     let pid: Int?
-    
+
     // Terminal dimensions
     let width: Int?
     let height: Int?
     let waiting: Bool?
-    
+
     // Optional fields from HQ mode
     let source: String?
     let remoteId: String?
@@ -50,7 +50,7 @@ struct Session: Codable, Identifiable, Equatable, Hashable {
     ///
     /// Returns the custom name if not empty, otherwise the command.
     var displayName: String {
-        if let name = name, !name.isEmpty {
+        if let name, !name.isEmpty {
             return name
         }
         return command.joined(separator: " ")

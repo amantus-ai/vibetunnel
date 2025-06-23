@@ -323,9 +323,11 @@ export class PtyManager extends EventEmitter {
           logger.debug(`Bell data in session ${session.id}: ${JSON.stringify(data)}`);
 
           // Count total bells and OSC-terminated bells
+          // eslint-disable-next-line no-control-regex
           const totalBells = (data.match(/\x07/g) || []).length;
 
           // Count OSC sequences terminated with bell: \x1b]...\x07
+          // eslint-disable-next-line no-control-regex
           const oscMatches = data.match(/\x1b]([^\x07\x1b]|\x1b[^]])*\x07/g) || [];
           const oscTerminatedBells = oscMatches.length;
 

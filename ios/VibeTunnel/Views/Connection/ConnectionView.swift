@@ -8,7 +8,7 @@ import SwiftUI
 struct ConnectionView: View {
     @Environment(ConnectionManager.self)
     var connectionManager
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @State private var networkMonitor = NetworkMonitor.shared
     @State private var viewModel = ConnectionViewModel()
     @State private var logoScale: CGFloat = 0.8
     @State private var contentOpacity: Double = 0

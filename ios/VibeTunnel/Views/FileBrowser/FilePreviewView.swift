@@ -4,31 +4,29 @@ import WebKit
 /// View for previewing files with syntax highlighting
 struct FilePreviewView: View {
     let path: String
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss)
+    var dismiss
     @State private var preview: FilePreview?
     @State private var isLoading = true
-    @State private var error: String?
+    @State private var presentedError: IdentifiableError?
     @State private var showingDiff = false
     @State private var gitDiff: FileDiff?
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Theme.Colors.terminalBackground
                     .ignoresSafeArea()
-                
+
                 if isLoading {
                     ProgressView("Loading...")
                         .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.primaryAccent))
-                } else if let error = error {
-                    VStack {
-                        Text("Error loading file")
-                            .font(.headline)
-                            .foregroundColor(Theme.Colors.errorAccent)
-                        Text(error)
-                            .font(.subheadline)
-                            .foregroundColor(Theme.Colors.terminalForeground)
-                            .multilineTextAlignment(.center)
+                } else if presentedError != nil {
+                    ContentUnavailableView {
+                        Label("Failed to Load File", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text("The file could not be loaded. Please try again.")
+                    } actions: {
                         Button("Retry") {
                             Task {
                                 await loadPreview()
@@ -36,7 +34,7 @@ struct FilePreviewView: View {
                         }
                         .terminalButton()
                     }
-                } else if let preview = preview {
+                } else if let preview {
                     previewContent(for: preview)
                 }
             }
@@ -49,8 +47,8 @@ struct FilePreviewView: View {
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
-                
-                if let preview = preview, preview.type == .text {
+
+                if let preview, preview.type == .text {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("Diff") {
                             showingDiff = true
@@ -74,8 +72,9 @@ struct FilePreviewView: View {
                     }
             }
         }
+        .errorAlert(item: $presentedError)
     }
-    
+
     @ViewBuilder
     private func previewContent(for preview: FilePreview) -> some View {
         switch preview.type {
@@ -100,11 +99,11 @@ struct FilePreviewView: View {
                 Image(systemName: "doc.zipper")
                     .font(.system(size: 64))
                     .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
-                
+
                 Text("Binary File")
                     .font(.headline)
                     .foregroundColor(Theme.Colors.terminalForeground)
-                
+
                 if let size = preview.size {
                     Text(formatFileSize(size))
                         .font(.caption)
@@ -113,20 +112,20 @@ struct FilePreviewView: View {
             }
         }
     }
-    
+
     private func loadPreview() async {
         isLoading = true
-        error = nil
-        
+        presentedError = nil
+
         do {
             preview = try await APIClient.shared.previewFile(path: path)
             isLoading = false
         } catch {
-            self.error = error.localizedDescription
+            presentedError = IdentifiableError(error: error)
             isLoading = false
         }
     }
-    
+
     private func loadDiff() async {
         do {
             gitDiff = try await APIClient.shared.getGitDiff(path: path)
@@ -134,7 +133,7 @@ struct FilePreviewView: View {
             // Silently fail - diff might not be available
         }
     }
-    
+
     private func formatFileSize(_ size: Int64) -> String {
         let formatter = ByteCountFormatter()
         formatter.countStyle = .binary
@@ -146,22 +145,22 @@ struct FilePreviewView: View {
 struct SyntaxHighlightedView: UIViewRepresentable {
     let content: String
     let language: String
-    
+
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
         webView.backgroundColor = UIColor(Theme.Colors.cardBackground)
         webView.scrollView.backgroundColor = UIColor(Theme.Colors.cardBackground)
-        
+
         loadContent(in: webView)
         return webView
     }
-    
+
     func updateUIView(_ webView: WKWebView, context: Context) {
         // Content is static, no updates needed
     }
-    
+
     private func loadContent(in webView: WKWebView) {
         let escapedContent = content
             .replacingOccurrences(of: "&", with: "&amp;")
@@ -169,7 +168,7 @@ struct SyntaxHighlightedView: UIViewRepresentable {
             .replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")
             .replacingOccurrences(of: "'", with: "&#39;")
-        
+
         let html = """
         <!DOCTYPE html>
         <html>
@@ -210,7 +209,7 @@ struct SyntaxHighlightedView: UIViewRepresentable {
         </body>
         </html>
         """
-        
+
         webView.loadHTMLString(html, baseURL: nil)
     }
 }
@@ -218,14 +217,15 @@ struct SyntaxHighlightedView: UIViewRepresentable {
 /// View for displaying git diffs
 struct GitDiffView: View {
     let diff: FileDiff
-    @Environment(\.dismiss) var dismiss
-    
+    @Environment(\.dismiss)
+    var dismiss
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Theme.Colors.terminalBackground
                     .ignoresSafeArea()
-                
+
                 DiffWebView(content: diff.diff)
             }
             .navigationTitle("Git Diff")
@@ -246,27 +246,27 @@ struct GitDiffView: View {
 /// WebView for displaying diffs with syntax highlighting
 struct DiffWebView: UIViewRepresentable {
     let content: String
-    
+
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
         webView.backgroundColor = UIColor(Theme.Colors.cardBackground)
-        
+
         loadDiff(in: webView)
         return webView
     }
-    
+
     func updateUIView(_ webView: WKWebView, context: Context) {
         // Content is static
     }
-    
+
     private func loadDiff(in webView: WKWebView) {
         let escapedContent = content
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
-        
+
         let html = """
         <!DOCTYPE html>
         <html>
@@ -305,7 +305,7 @@ struct DiffWebView: UIViewRepresentable {
         </body>
         </html>
         """
-        
+
         webView.loadHTMLString(html, baseURL: nil)
     }
 }

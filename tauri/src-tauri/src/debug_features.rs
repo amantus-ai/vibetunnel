@@ -229,6 +229,12 @@ pub struct DebugFeaturesManager {
     notification_manager: Option<Arc<crate::notification_manager::NotificationManager>>,
 }
 
+impl Default for DebugFeaturesManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DebugFeaturesManager {
     /// Create a new debug features manager
     pub fn new() -> Self {

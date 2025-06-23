@@ -70,7 +70,8 @@ struct SelectTerminalPageView: View {
             if errorTitle == "Permission Denied" {
                 Button("Open System Settings") {
                     if let url =
-                        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
+                        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+                    {
                         NSWorkspace.shared.open(url)
                     }
                 }

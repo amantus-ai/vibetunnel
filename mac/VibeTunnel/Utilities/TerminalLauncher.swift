@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import os.log
 import SwiftUI
+import Observation
 
 /// Terminal launch result with window/tab information
 struct TerminalLaunchResult {
@@ -183,7 +184,7 @@ enum Terminal: String, CaseIterable {
             end tell
             """
         }
-        
+
         // For other terminals, Cmd+N typically creates a new window
         return """
         tell application "\(processName)"
@@ -325,6 +326,7 @@ enum TerminalLauncherError: LocalizedError {
 /// and command execution through AppleScript or direct process launching.
 /// Supports Terminal, iTerm2, and Ghostty with automatic fallback.
 @MainActor
+@Observable
 final class TerminalLauncher {
     static let shared = TerminalLauncher()
     private let logger = Logger(subsystem: "sh.vibetunnel.VibeTunnel", category: "TerminalLauncher")
@@ -381,7 +383,8 @@ final class TerminalLauncher {
         var runningTerminals: [Terminal] = []
 
         for terminal in Terminal.allCases
-            where runningApps.contains(where: { $0.bundleIdentifier == terminal.bundleIdentifier }) {
+            where runningApps.contains(where: { $0.bundleIdentifier == terminal.bundleIdentifier })
+        {
             runningTerminals.append(terminal)
             logger.debug("Detected running terminal: \(terminal.rawValue)")
         }
@@ -413,7 +416,8 @@ final class TerminalLauncher {
         _ config: TerminalLaunchConfig,
         sessionId: String? = nil
     )
-        throws -> TerminalLaunchResult {
+        throws -> TerminalLaunchResult
+    {
         logger.debug("Launch config - command: \(config.command)")
         logger.debug("Launch config - fullCommand: \(config.fullCommand)")
         logger.debug("Launch config - keystrokeEscapedCommand: \(config.keystrokeEscapedCommand)")
@@ -440,7 +444,7 @@ final class TerminalLauncher {
                     let components = result.split(separator: "|").map(String.init)
                     logger.debug("Terminal.app components: \(components)")
                     if components.count >= 2 {
-                        windowID = CGWindowID(components[0]) ?? nil
+                        windowID = CGWindowID(components[0])
                         tabReference = "tab id \(components[1]) of window id \(components[0])"
                         logger.info("Terminal.app window ID: \(windowID ?? 0), tab reference: \(tabReference ?? "")")
                     }
@@ -537,7 +541,8 @@ final class TerminalLauncher {
         } catch let error as AppleScriptError {
             // Check if this is a permission error
             if case .executionFailed(_, let errorCode) = error,
-               let code = errorCode {
+               let code = errorCode
+            {
                 switch code {
                 case -25_211, -1_719:
                     // These error codes indicate accessibility permission issues
@@ -568,7 +573,8 @@ final class TerminalLauncher {
         } catch let error as AppleScriptError {
             // Check if this is a permission error
             if case .executionFailed(_, let errorCode) = error,
-               let code = errorCode {
+               let code = errorCode
+            {
                 switch code {
                 case -25_211, -1_719:
                     throw TerminalLauncherError.accessibilityPermissionDenied
@@ -670,7 +676,8 @@ final class TerminalLauncher {
         sessionId: String,
         vibetunnelPath: String? = nil
     )
-        throws {
+        throws
+    {
         // Expand tilde in working directory path
         let expandedWorkingDir = (workingDirectory as NSString).expandingTildeInPath
 
@@ -680,7 +687,10 @@ final class TerminalLauncher {
 
         // Check which server type is running and use appropriate command
         let fullCommand: String
-        if ServerManager.shared.bunServer != nil {
+        // Check if we have a Bun executable (it would be bundled as vibetunnel)
+        let bunServerActive = Bundle.main.path(forResource: "vibetunnel", ofType: nil) != nil &&
+                              !command.contains("TTY_SESSION_ID=") // If command already has session ID, it's from Go server
+        if bunServerActive {
             // For Bun server, use fwd command
             logger.info("Using Bun server session creation via fwd")
 
@@ -791,7 +801,8 @@ final class TerminalLauncher {
         workingDir: String,
         sessionId: String? = nil
     )
-        -> String {
+        -> String
+    {
         // Bun executable has fwd command built-in
         logger.info("Using Bun executable for session creation")
         if let sessionId {

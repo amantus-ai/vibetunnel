@@ -1,6 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+private let logger = Logger(category: "RecordingExport")
+
 /// Sheet for exporting terminal recordings.
 ///
 /// Provides interface for exporting recorded terminal sessions
@@ -8,7 +10,8 @@ import UniformTypeIdentifiers
 struct RecordingExportSheet: View {
     var recorder: CastRecorder
     let sessionName: String
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss)
+    var dismiss
     @State private var isExporting = false
     @State private var showingShareSheet = false
     @State private var exportedFileURL: URL?
@@ -126,7 +129,7 @@ struct RecordingExportSheet: View {
                         showingShareSheet = true
                     }
                 } catch {
-                    print("Failed to save cast file: \(error)")
+                    logger.error("Failed to save cast file: \(error)")
                     await MainActor.run {
                         isExporting = false
                     }

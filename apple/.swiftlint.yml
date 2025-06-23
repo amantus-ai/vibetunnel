@@ -17,7 +17,7 @@ excluded:
   - ../mac/build
   - ../ios/build
   - Package.swift
-  - *.xcodeproj
+  - "*.xcodeproj"
 
 # Rule configuration
 opt_in_rules:
@@ -128,9 +128,6 @@ custom_rules:
     regex: '\bprint\('
     message: "Use proper logging instead of print statements"
     severity: warning
-    excluded: 
-      - "*/Tests/*"
-      - "*/UITests/*"
 
 analyzer_rules:
   - unused_import

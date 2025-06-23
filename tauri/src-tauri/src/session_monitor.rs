@@ -79,16 +79,7 @@ impl SessionMonitor {
                     };
 
                     // Check if this is a new session
-                    if !sessions_map.contains_key(&session.id) {
-                        // Broadcast session created event
-                        Self::broadcast_event(
-                            &subscribers,
-                            SessionEvent::SessionCreated {
-                                session: session_info.clone(),
-                            },
-                        )
-                        .await;
-                    } else {
+                    if sessions_map.contains_key(&session.id) {
                         // Check if session was updated
                         if let Some(existing) = sessions_map.get(&session.id) {
                             if existing.rows != session_info.rows
@@ -104,6 +95,15 @@ impl SessionMonitor {
                                 .await;
                             }
                         }
+                    } else {
+                        // Broadcast session created event
+                        Self::broadcast_event(
+                            &subscribers,
+                            SessionEvent::SessionCreated {
+                                session: session_info.clone(),
+                            },
+                        )
+                        .await;
                     }
 
                     updated_sessions.insert(session.id.clone(), session_info);
@@ -231,12 +231,12 @@ impl SessionMonitor {
                 "count": session_list.len()
             });
 
-            yield Ok(format!("data: {}\n\n", initial_event));
+            yield Ok(format!("data: {initial_event}\n\n"));
 
             // Send events as they come
             while let Some(event) = rx.recv().await {
                 if let Ok(json) = serde_json::to_string(&event) {
-                    yield Ok(format!("data: {}\n\n", json));
+                    yield Ok(format!("data: {json}\n\n"));
                 }
             }
 
@@ -271,5 +271,276 @@ impl SessionMonitor {
             uptime_seconds: 0,         // TODO: Track uptime
             sessions_created_today: 0, // TODO: Track daily stats
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::terminal::TerminalManager;
+    use std::sync::Arc;
+    use tokio::time::{timeout, Duration};
+
+    // Mock terminal manager for testing
+    struct MockTerminalManager {
+        sessions: Arc<RwLock<Vec<SessionInfo>>>,
+    }
+
+    impl MockTerminalManager {
+        fn new() -> Self {
+            Self {
+                sessions: Arc::new(RwLock::new(Vec::new())),
+            }
+        }
+
+        async fn add_test_session(&self, id: &str, name: &str) {
+            let session = SessionInfo {
+                id: id.to_string(),
+                name: name.to_string(),
+                pid: 1234,
+                rows: 24,
+                cols: 80,
+                created_at: Utc::now().to_rfc3339(),
+                last_activity: Utc::now().to_rfc3339(),
+                is_active: true,
+                client_count: 0,
+            };
+            self.sessions.write().await.push(session);
+        }
+
+        async fn remove_test_session(&self, id: &str) {
+            let mut sessions = self.sessions.write().await;
+            sessions.retain(|s| s.id != id);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_session_monitor_creation() {
+        let terminal_manager = Arc::new(TerminalManager::new());
+        let monitor = SessionMonitor::new(terminal_manager);
+
+        assert_eq!(monitor.get_session_count().await, 0);
+        assert!(monitor.get_sessions().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_unsubscribe() {
+        let terminal_manager = Arc::new(TerminalManager::new());
+        let monitor = SessionMonitor::new(terminal_manager);
+
+        // Subscribe to events
+        let mut receiver = monitor.subscribe().await;
+
+        // Should have one subscriber
+        assert_eq!(monitor.event_subscribers.read().await.len(), 1);
+
+        // Drop receiver to simulate unsubscribe
+        drop(receiver);
+
+        // Wait a bit for cleanup
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    #[tokio::test]
+    async fn test_session_activity_notification() {
+        let terminal_manager = Arc::new(TerminalManager::new());
+        let monitor = SessionMonitor::new(terminal_manager);
+
+        // Add a test session manually
+        let session = SessionInfo {
+            id: "test-session".to_string(),
+            name: "Test Session".to_string(),
+            pid: 1234,
+            rows: 24,
+            cols: 80,
+            created_at: Utc::now().to_rfc3339(),
+            last_activity: Utc::now().to_rfc3339(),
+            is_active: true,
+            client_count: 0,
+        };
+
+        monitor
+            .sessions
+            .write()
+            .await
+            .insert(session.id.clone(), session.clone());
+
+        // Subscribe to events
+        let mut receiver = monitor.subscribe().await;
+
+        // Notify activity
+        monitor.notify_activity("test-session").await;
+
+        // Check that we receive the activity event
+        if let Ok(Some(event)) = timeout(Duration::from_secs(1), receiver.recv()).await {
+            match event {
+                SessionEvent::SessionActivity { id, timestamp: _ } => {
+                    assert_eq!(id, "test-session");
+                }
+                _ => panic!("Expected SessionActivity event"),
+            }
+        } else {
+            panic!("Did not receive expected event");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_session() {
+        let terminal_manager = Arc::new(TerminalManager::new());
+        let monitor = SessionMonitor::new(terminal_manager);
+
+        // Add a test session
+        let session = SessionInfo {
+            id: "test-session".to_string(),
+            name: "Test Session".to_string(),
+            pid: 1234,
+            rows: 24,
+            cols: 80,
+            created_at: Utc::now().to_rfc3339(),
+            last_activity: Utc::now().to_rfc3339(),
+            is_active: true,
+            client_count: 0,
+        };
+
+        monitor
+            .sessions
+            .write()
+            .await
+            .insert(session.id.clone(), session.clone());
+
+        // Get the session
+        let retrieved = monitor.get_session("test-session").await;
+        assert!(retrieved.is_some());
+        assert_eq!(retrieved.unwrap().name, "Test Session");
+
+        // Try to get non-existent session
+        let not_found = monitor.get_session("non-existent").await;
+        assert!(not_found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_broadcast_event() {
+        let terminal_manager = Arc::new(TerminalManager::new());
+        let monitor = SessionMonitor::new(terminal_manager);
+
+        // Create multiple subscribers
+        let mut receiver1 = monitor.subscribe().await;
+        let mut receiver2 = monitor.subscribe().await;
+
+        // Create a test event
+        let event = SessionEvent::SessionCreated {
+            session: SessionInfo {
+                id: "test".to_string(),
+                name: "Test".to_string(),
+                pid: 1234,
+                rows: 24,
+                cols: 80,
+                created_at: Utc::now().to_rfc3339(),
+                last_activity: Utc::now().to_rfc3339(),
+                is_active: true,
+                client_count: 0,
+            },
+        };
+
+        // Broadcast the event
+        SessionMonitor::broadcast_event(&monitor.event_subscribers, event.clone()).await;
+
+        // Both receivers should get the event
+        if let Ok(Some(received1)) = timeout(Duration::from_secs(1), receiver1.recv()).await {
+            match received1 {
+                SessionEvent::SessionCreated { session } => {
+                    assert_eq!(session.id, "test");
+                }
+                _ => panic!("Wrong event type"),
+            }
+        } else {
+            panic!("Receiver 1 did not receive event");
+        }
+
+        if let Ok(Some(received2)) = timeout(Duration::from_secs(1), receiver2.recv()).await {
+            match received2 {
+                SessionEvent::SessionCreated { session } => {
+                    assert_eq!(session.id, "test");
+                }
+                _ => panic!("Wrong event type"),
+            }
+        } else {
+            panic!("Receiver 2 did not receive event");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_session_stats() {
+        let terminal_manager = Arc::new(TerminalManager::new());
+        let monitor = SessionMonitor::new(terminal_manager);
+
+        // Add some test sessions
+        let session1 = SessionInfo {
+            id: "session1".to_string(),
+            name: "Session 1".to_string(),
+            pid: 1234,
+            rows: 24,
+            cols: 80,
+            created_at: Utc::now().to_rfc3339(),
+            last_activity: Utc::now().to_rfc3339(),
+            is_active: true,
+            client_count: 2,
+        };
+
+        let session2 = SessionInfo {
+            id: "session2".to_string(),
+            name: "Session 2".to_string(),
+            pid: 5678,
+            rows: 30,
+            cols: 120,
+            created_at: Utc::now().to_rfc3339(),
+            last_activity: Utc::now().to_rfc3339(),
+            is_active: false,
+            client_count: 0,
+        };
+
+        monitor
+            .sessions
+            .write()
+            .await
+            .insert(session1.id.clone(), session1);
+        monitor
+            .sessions
+            .write()
+            .await
+            .insert(session2.id.clone(), session2);
+
+        // Get stats
+        let stats = monitor.get_stats().await;
+
+        assert_eq!(stats.total_sessions, 2);
+        assert_eq!(stats.active_sessions, 1);
+        assert_eq!(stats.total_clients, 2);
+    }
+
+    #[tokio::test]
+    async fn test_dead_subscriber_cleanup() {
+        let terminal_manager = Arc::new(TerminalManager::new());
+        let monitor = SessionMonitor::new(terminal_manager);
+
+        // Create a subscriber and immediately drop it
+        let receiver = monitor.subscribe().await;
+        drop(receiver);
+
+        // Give some time for the channel to close
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // Try to broadcast an event
+        let event = SessionEvent::SessionClosed {
+            id: "test".to_string(),
+        };
+
+        SessionMonitor::broadcast_event(&monitor.event_subscribers, event).await;
+
+        // The dead subscriber should be removed
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // After cleanup, we should have no subscribers
+        assert_eq!(monitor.event_subscribers.read().await.len(), 0);
     }
 }

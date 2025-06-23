@@ -3,7 +3,8 @@ import SwiftUI
 
 /// File editor view for creating and editing text files.
 struct FileEditorView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss)
+    private var dismiss
     @State private var viewModel: FileEditorViewModel
     @State private var showingSaveAlert = false
     @State private var showingDiscardAlert = false
@@ -110,12 +111,12 @@ struct FileEditorView: View {
         }
         .preferredColorScheme(.dark)
         .onAppear {
-            if !viewModel.isNewFile {
-                Task {
-                    await viewModel.loadFile()
-                }
-            }
             isTextEditorFocused = true
+        }
+        .task {
+            if !viewModel.isNewFile {
+                await viewModel.loadFile()
+            }
         }
     }
 }

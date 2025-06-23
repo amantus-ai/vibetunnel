@@ -9,7 +9,8 @@ import UniformTypeIdentifiers
 /// supporting the Asciinema cast v2 format.
 struct CastPlayerView: View {
     let castFileURL: URL
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss)
+    var dismiss
     @State private var viewModel = CastPlayerViewModel()
     @State private var fontSize: CGFloat = 14
     @State private var isPlaying = false

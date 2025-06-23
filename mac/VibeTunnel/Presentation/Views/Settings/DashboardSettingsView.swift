@@ -1,6 +1,7 @@
 import AppKit
 import os.log
 import SwiftUI
+import UserNotifications
 
 /// Dashboard settings tab for server and access configuration
 struct DashboardSettingsView: View {
@@ -21,7 +22,12 @@ struct DashboardSettingsView: View {
     @State private var passwordError: String?
     @State private var passwordSaved = false
 
-    @State private var permissionManager = SystemPermissionManager.shared
+    @Environment(SystemPermissionManager.self)
+    private var permissionManager
+    @Environment(ServerManager.self)
+    private var serverManager
+    @Environment(NgrokService.self)
+    private var ngrokService
 
     @State private var ngrokAuthToken = ""
     @State private var ngrokStatus: NgrokTunnelStatus?
@@ -36,7 +42,6 @@ struct DashboardSettingsView: View {
     @State private var localIPAddress: String?
 
     private let dashboardKeychain = DashboardKeychain.shared
-    private let ngrokService = NgrokService.shared
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "DashboardSettings")
 
     private var accessMode: DashboardAccessMode {
@@ -46,9 +51,7 @@ struct DashboardSettingsView: View {
     // MARK: - Helper Methods
 
     /// Handles server-specific password updates (adding, changing, or removing passwords)
-    static func updateServerForPasswordChange(action: PasswordAction, logger: Logger) async {
-        let serverManager = ServerManager.shared
-
+    func updateServerForPasswordChange(action: PasswordAction, logger: Logger) async {
         // Go server handles authentication internally
         logger.info("Clearing auth cache to \(action.logMessage)")
         await serverManager.clearAuthCache()
@@ -78,7 +81,8 @@ struct DashboardSettingsView: View {
                     passwordSaved: $passwordSaved,
                     dashboardKeychain: dashboardKeychain,
                     savePassword: savePassword,
-                    logger: logger
+                    logger: logger,
+                    serverManager: serverManager
                 )
 
                 ServerConfigurationSection(
@@ -87,7 +91,8 @@ struct DashboardSettingsView: View {
                     serverPort: $serverPort,
                     localIPAddress: localIPAddress,
                     restartServerWithNewBindAddress: restartServerWithNewBindAddress,
-                    restartServerWithNewPort: restartServerWithNewPort
+                    restartServerWithNewPort: restartServerWithNewPort,
+                    serverManager: serverManager
                 )
 
                 NgrokIntegrationSection(
@@ -190,8 +195,6 @@ struct DashboardSettingsView: View {
 
             // Handle server-specific password update
             Task {
-                let serverManager = ServerManager.shared
-
                 if needsNetworkModeSwitch {
                     // If switching to network mode, update bind address before restart
                     serverManager.bindAddress = DashboardAccessMode.network.bindAddress
@@ -206,7 +209,14 @@ struct DashboardSettingsView: View {
                     // Session monitoring will automatically detect the changes
                 } else {
                     // Just password change, no network mode switch
-                    await Self.updateServerForPasswordChange(action: .apply, logger: logger)
+                    await updateServerForPasswordChange(action: .apply, logger: logger)
+                    
+                    // Restart server to apply new password
+                    logger.info("Restarting server to apply new password")
+                    await serverManager.restart()
+                    
+                    // Wait for server to be ready
+                    try? await Task.sleep(for: .seconds(1))
                 }
             }
         } else {
@@ -217,8 +227,8 @@ struct DashboardSettingsView: View {
     private func restartServerWithNewPort(_ port: Int) {
         Task {
             // Update the port in ServerManager and restart
-            ServerManager.shared.port = String(port)
-            await ServerManager.shared.restart()
+            serverManager.port = String(port)
+            await serverManager.restart()
             logger.info("Server restarted on port \(port)")
 
             // Wait for server to be fully ready before restarting session monitor
@@ -231,8 +241,8 @@ struct DashboardSettingsView: View {
     private func restartServerWithNewBindAddress() {
         Task {
             // Update the bind address in ServerManager and restart
-            ServerManager.shared.bindAddress = accessMode.bindAddress
-            await ServerManager.shared.restart()
+            serverManager.bindAddress = accessMode.bindAddress
+            await serverManager.restart()
             logger.info("Server restarted with bind address \(accessMode.bindAddress)")
 
             // Wait for server to be fully ready before restarting session monitor
@@ -342,6 +352,7 @@ private struct SecuritySection: View {
     let dashboardKeychain: DashboardKeychain
     let savePassword: () -> Void
     let logger: Logger
+    let serverManager: ServerManager
 
     var body: some View {
         Section {
@@ -358,10 +369,16 @@ private struct SecuritySection: View {
 
                             // Handle server-specific password removal
                             Task {
-                                await DashboardSettingsView.updateServerForPasswordChange(
-                                    action: .remove,
-                                    logger: logger
-                                )
+                                // Go server handles authentication internally
+                                logger.info("Clearing auth cache to remove password")
+                                await serverManager.clearAuthCache()
+                                
+                                // Restart server to remove password protection
+                                logger.info("Restarting server to remove password protection")
+                                await serverManager.restart()
+                                
+                                // Wait for server to be ready
+                                try? await Task.sleep(for: .seconds(1))
                             }
                         }
                     }
@@ -482,6 +499,7 @@ private struct ServerConfigurationSection: View {
     let localIPAddress: String?
     let restartServerWithNewBindAddress: () -> Void
     let restartServerWithNewPort: (Int) -> Void
+    let serverManager: ServerManager
 
     var body: some View {
         Section {
@@ -495,7 +513,8 @@ private struct ServerConfigurationSection: View {
 
             PortConfigurationView(
                 serverPort: $serverPort,
-                restartServerWithNewPort: restartServerWithNewPort
+                restartServerWithNewPort: restartServerWithNewPort,
+                serverManager: serverManager
             )
         } header: {
             Text("Server Configuration")
@@ -590,159 +609,159 @@ private struct AccessModeView: View {
 private struct PortConfigurationView: View {
     @Binding var serverPort: String
     let restartServerWithNewPort: (Int) -> Void
+    let serverManager: ServerManager
 
     @State private var portNumber: Int = 4_020
     @State private var portConflict: PortConflict?
     @State private var isCheckingPort = false
     @State private var alternativePorts: [Int] = []
 
-    private let serverManager = ServerManager.shared
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "PortConfiguration")
 
     var body: some View {
-            HStack {
-                Text("Server port:")
-                Spacer()
-                HStack(spacing: 4) {
-                    TextField("", text: $serverPort)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 80)
-                        .multilineTextAlignment(.center)
-                        .onChange(of: serverPort) { _, newValue in
-                            // Validate port number
-                            if let port = Int(newValue), port > 0, port < 65_536 {
-                                portNumber = port
-                                Task {
-                                    await checkPortAvailability(port)
-                                }
-                                restartServerWithNewPort(port)
+        HStack {
+            Text("Server port:")
+            Spacer()
+            HStack(spacing: 4) {
+                TextField("", text: $serverPort)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 80)
+                    .multilineTextAlignment(.center)
+                    .onChange(of: serverPort) { _, newValue in
+                        // Validate port number
+                        if let port = Int(newValue), port > 0, port < 65_536 {
+                            portNumber = port
+                            Task {
+                                await checkPortAvailability(port)
                             }
+                            restartServerWithNewPort(port)
                         }
-
-                    VStack(spacing: 0) {
-                        Button(
-                            action: {
-                                if portNumber < 65_535 {
-                                    portNumber += 1
-                                    serverPort = String(portNumber)
-                                    restartServerWithNewPort(portNumber)
-                                }
-                            },
-                            label: {
-                                Image(systemName: "chevron.up")
-                                    .font(.system(size: 10))
-                                    .frame(width: 16, height: 12)
-                            }
-                        )
-                        .buttonStyle(.plain)
-                        .help("Increase port number")
-
-                        Button(
-                            action: {
-                                if portNumber > 1 {
-                                    portNumber -= 1
-                                    serverPort = String(portNumber)
-                                    restartServerWithNewPort(portNumber)
-                                }
-                            },
-                            label: {
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 10))
-                                    .frame(width: 16, height: 12)
-                            }
-                        )
-                        .buttonStyle(.plain)
-                        .help("Decrease port number")
                     }
-                }
-                .onAppear {
-                    portNumber = Int(serverPort) ?? 4_020
-                    Task {
-                        await checkPortAvailability(portNumber)
-                    }
+
+                VStack(spacing: 0) {
+                    Button(
+                        action: {
+                            if portNumber < 65_535 {
+                                portNumber += 1
+                                serverPort = String(portNumber)
+                                restartServerWithNewPort(portNumber)
+                            }
+                        },
+                        label: {
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 10))
+                                .frame(width: 16, height: 12)
+                        }
+                    )
+                    .buttonStyle(.plain)
+                    .help("Increase port number")
+
+                    Button(
+                        action: {
+                            if portNumber > 1 {
+                                portNumber -= 1
+                                serverPort = String(portNumber)
+                                restartServerWithNewPort(portNumber)
+                            }
+                        },
+                        label: {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10))
+                                .frame(width: 16, height: 12)
+                        }
+                    )
+                    .buttonStyle(.plain)
+                    .help("Decrease port number")
                 }
             }
+            .onAppear {
+                portNumber = Int(serverPort) ?? 4_020
+            }
+            .task {
+                await checkPortAvailability(portNumber)
+            }
+        }
 
-            // Port conflict warning
-            if let conflict = portConflict {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
-                            .font(.caption)
+        // Port conflict warning
+        if let conflict = portConflict {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                        .font(.caption)
 
-                        Text("Port \(conflict.port) is used by \(conflict.process.name)")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                    }
+                    Text("Port \(conflict.port) is used by \(conflict.process.name)")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
 
-                    HStack(spacing: 8) {
-                        if !conflict.alternativePorts.isEmpty {
-                            HStack(spacing: 4) {
-                                Text("Try port:")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    if !conflict.alternativePorts.isEmpty {
+                        HStack(spacing: 4) {
+                            Text("Try port:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
 
-                                ForEach(conflict.alternativePorts.prefix(3), id: \.self) { port in
-                                    Button(String(port)) {
-                                        serverPort = String(port)
-                                        portNumber = port
-                                        restartServerWithNewPort(port)
-                                    }
-                                    .buttonStyle(.link)
-                                    .font(.caption)
-                                }
-
-                                Button("Choose...") {
-                                    showPortPicker()
+                            ForEach(conflict.alternativePorts.prefix(3), id: \.self) { port in
+                                Button(String(port)) {
+                                    serverPort = String(port)
+                                    portNumber = port
+                                    restartServerWithNewPort(port)
                                 }
                                 .buttonStyle(.link)
                                 .font(.caption)
                             }
-                        }
 
-                        Spacer()
-
-                        Button {
-                            Task {
-                                await forceQuitConflictingProcess(conflict)
+                            Button("Choose...") {
+                                showPortPicker()
                             }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.caption)
-                                Text("Kill Process")
-                                    .font(.caption)
-                            }
+                            .buttonStyle(.link)
+                            .font(.caption)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        .tint(.red)
                     }
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.orange.opacity(0.1))
-                .cornerRadius(6)
-            } else if !serverManager.isRunning && serverManager.lastError != nil {
-                // Show general server error if no specific port conflict
-                HStack(spacing: 4) {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundColor(.red)
-                        .font(.caption)
 
-                    Text("Server failed to start")
-                        .font(.caption)
-                        .foregroundColor(.red)
+                    Spacer()
+
+                    Button {
+                        Task {
+                            await forceQuitConflictingProcess(conflict)
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption)
+                            Text("Kill Process")
+                                .font(.caption)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .tint(.red)
                 }
-            } else {
-                Text("The server will automatically restart when the port is changed.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
             }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.orange.opacity(0.1))
+            .cornerRadius(6)
+        } else if !serverManager.isRunning && serverManager.lastError != nil {
+            // Show general server error if no specific port conflict
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundColor(.red)
+                    .font(.caption)
+
+                Text("Server failed to start")
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
+        } else {
+            Text("The server will automatically restart when the port is changed.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.top, 4)
         }
+    }
 
     private func checkPortAvailability(_ port: Int) async {
         isCheckingPort = true

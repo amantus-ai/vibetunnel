@@ -8,12 +8,17 @@ import UserNotifications
 struct VibeTunnelApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self)
     var appDelegate
-    @State private var sessionMonitor = SessionMonitor.shared
-    @State private var serverManager = ServerManager.shared
-    @State private var ngrokService = NgrokService.shared
-    @State private var permissionManager = SystemPermissionManager.shared
-    @State private var terminalLauncher = TerminalLauncher.shared
-    
+    @State var sessionMonitor = SessionMonitor.shared
+    @State var serverManager = ServerManager.shared
+    @State var ngrokService = NgrokService.shared
+    @State var permissionManager = SystemPermissionManager.shared
+    @State var terminalLauncher = TerminalLauncher.shared
+
+    init() {
+        // Connect the app delegate to this app instance
+        _appDelegate.wrappedValue.app = self
+    }
+
     var body: some Scene {
         #if os(macOS)
             // Hidden WindowGroup to make Settings work in MenuBarExtra-only apps
@@ -28,7 +33,11 @@ struct VibeTunnelApp: App {
             // Welcome Window
             WindowGroup("Welcome", id: "welcome") {
                 WelcomeView()
-                    .withVibeTunnelServices()
+                    .environment(sessionMonitor)
+                    .environment(serverManager)
+                    .environment(ngrokService)
+                    .environment(permissionManager)
+                    .environment(terminalLauncher)
             }
             .windowResizability(.contentSize)
             .defaultSize(width: 580, height: 480)
@@ -37,9 +46,14 @@ struct VibeTunnelApp: App {
             // Session Detail Window
             WindowGroup("Session Details", id: "session-detail", for: String.self) { $sessionId in
                 if let sessionId,
-                   let session = SessionMonitor.shared.sessions[sessionId] {
+                   let session = sessionMonitor.sessions[sessionId]
+                {
                     SessionDetailView(session: session)
-                        .withVibeTunnelServices()
+                        .environment(sessionMonitor)
+                        .environment(serverManager)
+                        .environment(ngrokService)
+                        .environment(permissionManager)
+                        .environment(terminalLauncher)
                 } else {
                     Text("Session not found")
                         .frame(width: 400, height: 300)
@@ -49,7 +63,11 @@ struct VibeTunnelApp: App {
 
             Settings {
                 SettingsView()
-                    .withVibeTunnelServices()
+                    .environment(sessionMonitor)
+                    .environment(serverManager)
+                    .environment(ngrokService)
+                    .environment(permissionManager)
+                    .environment(terminalLauncher)
             }
             .commands {
                 CommandGroup(after: .appInfo) {
@@ -70,7 +88,10 @@ struct VibeTunnelApp: App {
             MenuBarExtra {
                 MenuBarView()
                     .environment(sessionMonitor)
-                    .withVibeTunnelServices()
+                    .environment(serverManager)
+                    .environment(ngrokService)
+                    .environment(permissionManager)
+                    .environment(terminalLauncher)
             } label: {
                 Image("menubar")
                     .renderingMode(.template)
@@ -85,9 +106,7 @@ struct VibeTunnelApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
     private(set) var sparkleUpdaterManager: SparkleUpdaterManager?
-    private let serverManager = ServerManager.shared
-    private let sessionMonitor = SessionMonitor.shared
-    private let ngrokService = NgrokService.shared
+    var app: VibeTunnelApp?
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AppDelegate")
 
     /// Distributed notification name used to ask an existing instance to show the Settings window.
@@ -161,7 +180,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         }
 
         // Verify preferred terminal is still available
-        TerminalLauncher.shared.verifyPreferredTerminal()
+        app?.terminalLauncher.verifyPreferredTerminal()
 
         // Listen for update check requests
         NotificationCenter.default.addObserver(
@@ -176,12 +195,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Initialize and start HTTP server using ServerManager
         Task {
+            guard let serverManager = app?.serverManager else { return }
             logger.info("Attempting to start HTTP server using ServerManager...")
             await serverManager.start()
 
             // Check if server actually started
             if serverManager.isRunning {
-                logger.info("HTTP server started successfully on port \(self.serverManager.port)")
+                logger.info("HTTP server started successfully on port \(serverManager.port)")
 
                 // Session monitoring starts automatically
             } else {
@@ -275,7 +295,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
     /// See: https://github.com/feedback-assistant/reports/issues/246
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
         let dockMenu = NSMenu()
-        
+
         // Dashboard menu item
         let dashboardItem = NSMenuItem(
             title: "Open Dashboard",
@@ -284,7 +304,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         )
         dashboardItem.target = self
         dockMenu.addItem(dashboardItem)
-        
+
         // Settings menu item
         let settingsItem = NSMenuItem(
             title: "Settings...",
@@ -293,17 +313,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         )
         settingsItem.target = self
         dockMenu.addItem(settingsItem)
-        
+
         return dockMenu
     }
-    
-    @objc private func openDashboard() {
-        if let url = URL(string: "http://localhost:\(serverManager.port)") {
+
+    @objc
+    private func openDashboard() {
+        if let serverManager = app?.serverManager,
+           let url = URL(string: "http://localhost:\(serverManager.port)") {
             NSWorkspace.shared.open(url)
         }
     }
-    
-    @objc private func openSettings() {
+
+    @objc
+    private func openSettings() {
         SettingsOpener.openSettings()
     }
 
@@ -333,15 +356,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         TerminalSpawnService.shared.stop()
 
         // Stop HTTP server synchronously to ensure it completes before app exits
-        let semaphore = DispatchSemaphore(value: 0)
-        Task {
-            await serverManager.stop()
-            semaphore.signal()
-        }
-        // Wait up to 5 seconds for server to stop
-        let timeout = DispatchTime.now() + .seconds(5)
-        if semaphore.wait(timeout: timeout) == .timedOut {
-            logger.warning("Server stop timed out during app termination")
+        if let serverManager = app?.serverManager {
+            let semaphore = DispatchSemaphore(value: 0)
+            Task {
+                await serverManager.stop()
+                semaphore.signal()
+            }
+            // Wait up to 5 seconds for server to stop
+            let timeout = DispatchTime.now() + .seconds(5)
+            if semaphore.wait(timeout: timeout) == .timedOut {
+                logger.warning("Server stop timed out during app termination")
+            }
         }
 
         // Remove distributed notification observer

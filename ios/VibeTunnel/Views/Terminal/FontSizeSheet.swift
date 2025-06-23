@@ -6,7 +6,8 @@ import SwiftUI
 /// of how the terminal text will appear.
 struct FontSizeSheet: View {
     @Binding var fontSize: CGFloat
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss)
+    var dismiss
 
     let fontSizes: [CGFloat] = [10, 12, 14, 16, 18, 20, 22, 24, 28, 32]
 

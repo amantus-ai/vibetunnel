@@ -14,13 +14,15 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.2.0")
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.2.0"),
+        .package(url: "https://github.com/mhdhejazi/Dynamic.git", from: "1.2.0")
     ],
     targets: [
         .target(
             name: "VibeTunnelDependencies",
             dependencies: [
-                .product(name: "SwiftTerm", package: "SwiftTerm")
+                .product(name: "SwiftTerm", package: "SwiftTerm"),
+                .product(name: "Dynamic", package: "Dynamic")
             ]
         )
     ]

@@ -86,15 +86,15 @@ struct AdvancedSettingsView: View {
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
-                                
+
                                 Spacer()
-                                
+
                                 Button(action: {
                                     showingVtConflictAlert = true
-                                }) {
+                                }, label: {
                                     Text("Use a different name")
                                         .font(.caption)
-                                }
+                                })
                                 .buttonStyle(.link)
                             }
                         }
@@ -172,14 +172,14 @@ struct AdvancedSettingsView: View {
             }
         )
     }
-    
+
     private var vtScriptPath: String {
         if let path = Bundle.main.path(forResource: "vt", ofType: nil) {
             return path
         }
         return "/Applications/VibeTunnel.app/Contents/Resources/vt"
     }
-    
+
     private var vtConflictMessage: String {
         """
         You can install the `vt` bash script with a different name. For example:
@@ -187,7 +187,7 @@ struct AdvancedSettingsView: View {
         cp "\(vtScriptPath)" /usr/local/bin/vtunnel && chmod +x /usr/local/bin/vtunnel
         """
     }
-    
+
     private func copyCommandToClipboard() {
         let command = "cp \"\(vtScriptPath)\" /usr/local/bin/vtunnel && chmod +x /usr/local/bin/vtunnel"
         let pasteboard = NSPasteboard.general
@@ -319,7 +319,8 @@ private struct TerminalPreferenceSection: View {
             if errorTitle == "Permission Denied" {
                 Button("Open System Settings") {
                     if let url =
-                        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
+                        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+                    {
                         NSWorkspace.shared.open(url)
                     }
                 }

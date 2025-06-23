@@ -71,7 +71,7 @@ final class PortConflictResolver {
     /// Check if a port is available by attempting to bind to it
     func isPortAvailable(_ port: Int) async -> Bool {
         // First check if any process is using it
-        if let _ = await detectConflict(on: port) {
+        if await detectConflict(on: port) != nil {
             return false
         }
 

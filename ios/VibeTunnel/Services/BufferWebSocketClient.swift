@@ -46,6 +46,8 @@ enum WebSocketError: Error {
 @MainActor
 @Observable
 class BufferWebSocketClient: NSObject {
+    static let shared = BufferWebSocketClient()
+    
     private let logger = Logger(category: "BufferWebSocket")
     /// Magic byte for binary messages
     private static let bufferMagicByte: UInt8 = 0xBF
@@ -70,7 +72,7 @@ class BufferWebSocketClient: NSObject {
         }
         return serverConfig.baseURL
     }
-    
+
     init(webSocketFactory: WebSocketFactory = DefaultWebSocketFactory()) {
         self.webSocketFactory = webSocketFactory
         super.init()
@@ -108,7 +110,7 @@ class BufferWebSocketClient: NSObject {
 
         // Build headers
         var headers: [String: String] = [:]
-        
+
         // Add authentication header if needed
         if let config = UserDefaults.standard.data(forKey: "savedServerConfig"),
            let serverConfig = try? JSONDecoder().decode(ServerConfig.self, from: config),
@@ -388,7 +390,10 @@ class BufferWebSocketClient: NSObject {
                         if offset < data.count {
                             let typeByte = data[offset]
                             logger.verbose("Type byte: 0x\(String(format: "%02X", typeByte))")
-                            logger.verbose("Bits: hasExt=\((typeByte & 0x80) != 0), isUni=\((typeByte & 0x40) != 0), hasFg=\((typeByte & 0x20) != 0), hasBg=\((typeByte & 0x10) != 0), charType=\(typeByte & 0x03)")
+                            logger
+                                .verbose(
+                                    "Bits: hasExt=\((typeByte & 0x80) != 0), isUni=\((typeByte & 0x40) != 0), hasFg=\((typeByte & 0x20) != 0), hasBg=\((typeByte & 0x10) != 0), charType=\(typeByte & 0x03)"
+                                )
                         }
                         break
                     }
@@ -526,10 +531,10 @@ class BufferWebSocketClient: NSObject {
                         logger.debug("RGB foreground decode failed: insufficient data")
                         return nil
                     }
-                    let r = Int(data[currentOffset])
-                    let g = Int(data[currentOffset + 1])
-                    let b = Int(data[currentOffset + 2])
-                    fg = (r << 16) | (g << 8) | b | 0xFF00_0000 // Add alpha for RGB
+                    let red = Int(data[currentOffset])
+                    let green = Int(data[currentOffset + 1])
+                    let blue = Int(data[currentOffset + 2])
+                    fg = (red << 16) | (green << 8) | blue | 0xFF00_0000 // Add alpha for RGB
                     currentOffset += 3
                 } else {
                     // Palette color (1 byte)
@@ -550,10 +555,10 @@ class BufferWebSocketClient: NSObject {
                         logger.debug("RGB background decode failed: insufficient data")
                         return nil
                     }
-                    let r = Int(data[currentOffset])
-                    let g = Int(data[currentOffset + 1])
-                    let b = Int(data[currentOffset + 2])
-                    bg = (r << 16) | (g << 8) | b | 0xFF00_0000 // Add alpha for RGB
+                    let red = Int(data[currentOffset])
+                    let green = Int(data[currentOffset + 1])
+                    let blue = Int(data[currentOffset + 2])
+                    bg = (red << 16) | (green << 8) | blue | 0xFF00_0000 // Add alpha for RGB
                     currentOffset += 3
                 } else {
                     // Palette color (1 byte)
@@ -718,7 +723,7 @@ extension BufferWebSocketClient: WebSocketDelegate {
         isConnecting = false
         reconnectAttempts = 0
         startPingTask()
-        
+
         // Re-subscribe to all sessions
         Task {
             for sessionId in subscriptions.keys {
@@ -726,18 +731,22 @@ extension BufferWebSocketClient: WebSocketDelegate {
             }
         }
     }
-    
+
     func webSocket(_ webSocket: WebSocketProtocol, didReceiveMessage message: WebSocketMessage) {
         handleMessage(message)
     }
-    
+
     func webSocket(_ webSocket: WebSocketProtocol, didFailWithError error: Error) {
         logger.error("Error: \(error)")
         connectionError = error
         handleDisconnection()
     }
-    
-    func webSocketDidDisconnect(_ webSocket: WebSocketProtocol, closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+
+    func webSocketDidDisconnect(
+        _ webSocket: WebSocketProtocol,
+        closeCode: URLSessionWebSocketTask.CloseCode,
+        reason: Data?
+    ) {
         logger.info("Disconnected with code: \(closeCode)")
         handleDisconnection()
     }

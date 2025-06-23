@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "CommonJS",
-    "lib": ["ES2020", "DOM"],
+    "lib": ["ES2020", "dom"],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -18,11 +18,14 @@
     "emitDecoratorMetadata": true
   },
   "include": [
-    "src/**/*"
+    "src/server/**/*",
+    "src/shared/**/*",
+    "src/cli.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "public"
+    "public",
+    "src/client/**/*"
   ]
 }

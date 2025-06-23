@@ -115,7 +115,7 @@ fn handle_connection(
     if let Err(e) = tx.blocking_send(request.clone()) {
         let response = SpawnResponse {
             success: false,
-            error: Some(format!("Failed to queue request: {}", e)),
+            error: Some(format!("Failed to queue request: {e}")),
             session_id: None,
         };
         let response_data = serde_json::to_vec(&response)?;

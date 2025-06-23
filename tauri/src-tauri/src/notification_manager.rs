@@ -89,6 +89,12 @@ pub struct NotificationManager {
     max_history_size: usize,
 }
 
+impl Default for NotificationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NotificationManager {
     /// Create a new notification manager
     pub fn new() -> Self {
@@ -175,7 +181,7 @@ impl NotificationManager {
                 .show_system_notification(&title, &body, notification_type)
                 .await
             {
-                Ok(_) => {}
+                Ok(()) => {}
                 Err(e) => {
                     tracing::error!("Failed to show system notification: {}", e);
                 }
@@ -186,7 +192,7 @@ impl NotificationManager {
         if let Some(app_handle) = self.app_handle.read().await.as_ref() {
             app_handle
                 .emit("notification:new", &notification)
-                .map_err(|e| format!("Failed to emit notification event: {}", e))?;
+                .map_err(|e| format!("Failed to emit notification event: {e}"))?;
         }
 
         Ok(notification_id)
@@ -224,7 +230,7 @@ impl NotificationManager {
 
         builder
             .show()
-            .map_err(|e| format!("Failed to show notification: {}", e))?;
+            .map_err(|e| format!("Failed to show notification: {e}"))?;
 
         Ok(())
     }
@@ -303,7 +309,7 @@ impl NotificationManager {
         let (title, body) = if running {
             (
                 "Server Started".to_string(),
-                format!("VibeTunnel server is now running on port {}", port),
+                format!("VibeTunnel server is now running on port {port}"),
             )
         } else {
             (
@@ -344,8 +350,7 @@ impl NotificationManager {
             NotificationPriority::High,
             "Update Available".to_string(),
             format!(
-                "VibeTunnel {} is now available. Click to download.",
-                version
+                "VibeTunnel {version} is now available. Click to download."
             ),
             vec![NotificationAction {
                 id: "download".to_string(),
@@ -373,7 +378,7 @@ impl NotificationManager {
             NotificationType::PermissionRequired,
             NotificationPriority::High,
             "Permission Required".to_string(),
-            format!("{} permission is required: {}", permission, reason),
+            format!("{permission} permission is required: {reason}"),
             vec![NotificationAction {
                 id: "grant".to_string(),
                 label: "Grant Permission".to_string(),

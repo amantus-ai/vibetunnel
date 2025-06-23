@@ -73,7 +73,7 @@ final class SystemPermissionManager {
     /// Count of views that have registered for monitoring
     private var monitorRegistrationCount = 0
 
-    private init() {
+    init() {
         // No automatic monitoring - UI components will register when visible
     }
 

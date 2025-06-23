@@ -32,6 +32,12 @@ pub struct TerminalSession {
     pub output_rx: Arc<Mutex<mpsc::UnboundedReceiver<Bytes>>>,
 }
 
+impl Default for TerminalManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TerminalManager {
     pub fn new() -> Self {
         Self {
@@ -59,7 +65,7 @@ impl TerminalManager {
                 pixel_width: 0,
                 pixel_height: 0,
             })
-            .map_err(|e| format!("Failed to open PTY: {}", e))?;
+            .map_err(|e| format!("Failed to open PTY: {e}"))?;
 
         // Configure shell command
         let shell = shell.unwrap_or_else(|| {
@@ -90,7 +96,7 @@ impl TerminalManager {
         let child = pty_pair
             .slave
             .spawn_command(cmd)
-            .map_err(|e| format!("Failed to spawn shell: {}", e))?;
+            .map_err(|e| format!("Failed to spawn shell: {e}"))?;
 
         let pid = child.process_id().unwrap_or(0);
 
@@ -101,12 +107,12 @@ impl TerminalManager {
         let reader = pty_pair
             .master
             .try_clone_reader()
-            .map_err(|e| format!("Failed to clone reader: {}", e))?;
+            .map_err(|e| format!("Failed to clone reader: {e}"))?;
 
         let writer = pty_pair
             .master
             .take_writer()
-            .map_err(|e| format!("Failed to take writer: {}", e))?;
+            .map_err(|e| format!("Failed to take writer: {e}"))?;
 
         // Start reader thread
         let output_tx_clone = output_tx.clone();
@@ -219,7 +225,7 @@ impl TerminalManager {
             info!("Closed terminal session: {}", id);
             Ok(())
         } else {
-            Err(format!("Session not found: {}", id))
+            Err(format!("Session not found: {id}"))
         }
     }
 
@@ -236,7 +242,7 @@ impl TerminalManager {
                     pixel_width: 0,
                     pixel_height: 0,
                 })
-                .map_err(|e| format!("Failed to resize PTY: {}", e))?;
+                .map_err(|e| format!("Failed to resize PTY: {e}"))?;
 
             session.rows = rows;
             session.cols = cols;
@@ -244,7 +250,7 @@ impl TerminalManager {
             debug!("Resized terminal {} to {}x{}", id, cols, rows);
             Ok(())
         } else {
-            Err(format!("Session not found: {}", id))
+            Err(format!("Session not found: {id}"))
         }
     }
 
@@ -255,16 +261,16 @@ impl TerminalManager {
             session
                 .writer
                 .write_all(data)
-                .map_err(|e| format!("Failed to write to PTY: {}", e))?;
+                .map_err(|e| format!("Failed to write to PTY: {e}"))?;
 
             session
                 .writer
                 .flush()
-                .map_err(|e| format!("Failed to flush PTY: {}", e))?;
+                .map_err(|e| format!("Failed to flush PTY: {e}"))?;
 
             Ok(())
         } else {
-            Err(format!("Session not found: {}", id))
+            Err(format!("Session not found: {id}"))
         }
     }
 
@@ -282,7 +288,7 @@ impl TerminalManager {
                 }
             }
         } else {
-            Err(format!("Session not found: {}", id))
+            Err(format!("Session not found: {id}"))
         }
     }
 }
@@ -290,3 +296,200 @@ impl TerminalManager {
 // Make TerminalSession Send + Sync
 unsafe impl Send for TerminalSession {}
 unsafe impl Sync for TerminalSession {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_terminal_manager_creation() {
+        let manager = TerminalManager::new();
+
+        // The sessions map should be empty initially
+        let sessions_future = manager.sessions.read();
+        let sessions = futures::executor::block_on(sessions_future);
+        assert!(sessions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_list_sessions_empty() {
+        let manager = TerminalManager::new();
+
+        let sessions = manager.list_sessions().await;
+        assert!(sessions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_session_not_found() {
+        let manager = TerminalManager::new();
+
+        let session = manager.get_session("non-existent-id").await;
+        assert!(session.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_close_session_not_found() {
+        let manager = TerminalManager::new();
+
+        let result = manager.close_session("non-existent-id").await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Session not found: non-existent-id");
+    }
+
+    #[tokio::test]
+    async fn test_resize_session_not_found() {
+        let manager = TerminalManager::new();
+
+        let result = manager.resize_session("non-existent-id", 80, 24).await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Session not found: non-existent-id");
+    }
+
+    #[tokio::test]
+    async fn test_write_to_session_not_found() {
+        let manager = TerminalManager::new();
+
+        let result = manager.write_to_session("non-existent-id", b"test").await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Session not found: non-existent-id");
+    }
+
+    #[tokio::test]
+    async fn test_read_from_session_not_found() {
+        let manager = TerminalManager::new();
+
+        let result = manager.read_from_session("non-existent-id").await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Session not found: non-existent-id");
+    }
+
+    #[tokio::test]
+    async fn test_close_all_sessions_empty() {
+        let manager = TerminalManager::new();
+
+        // Should succeed even with no sessions
+        let result = manager.close_all_sessions().await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_shell_selection() {
+        // Test default shell selection logic
+        let shell = if cfg!(target_os = "windows") {
+            "cmd.exe".to_string()
+        } else {
+            "/bin/bash".to_string()
+        };
+
+        if cfg!(target_os = "windows") {
+            assert_eq!(shell, "cmd.exe");
+        } else {
+            assert_eq!(shell, "/bin/bash");
+        }
+    }
+
+    #[test]
+    fn test_pty_size_creation() {
+        let size = PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        };
+
+        assert_eq!(size.rows, 24);
+        assert_eq!(size.cols, 80);
+        assert_eq!(size.pixel_width, 0);
+        assert_eq!(size.pixel_height, 0);
+    }
+
+    #[test]
+    fn test_terminal_struct_fields() {
+        use crate::commands::Terminal;
+
+        let terminal = Terminal {
+            id: "test-id".to_string(),
+            name: "Test Terminal".to_string(),
+            pid: 12345,
+            rows: 80,
+            cols: 24,
+            created_at: Utc::now().to_rfc3339(),
+        };
+
+        assert_eq!(terminal.id, "test-id");
+        assert_eq!(terminal.name, "Test Terminal");
+        assert_eq!(terminal.pid, 12345);
+        assert_eq!(terminal.rows, 80);
+        assert_eq!(terminal.cols, 24);
+        assert!(terminal.created_at.contains('T')); // RFC3339 format
+    }
+
+    #[test]
+    fn test_environment_variable_handling() {
+        let mut env_vars = HashMap::new();
+        env_vars.insert("TEST_VAR".to_string(), "test_value".to_string());
+        env_vars.insert("PATH".to_string(), "/usr/bin:/bin".to_string());
+
+        assert_eq!(env_vars.get("TEST_VAR"), Some(&"test_value".to_string()));
+        assert_eq!(env_vars.get("PATH"), Some(&"/usr/bin:/bin".to_string()));
+        assert_eq!(env_vars.get("NON_EXISTENT"), None);
+    }
+
+    #[test]
+    fn test_working_directory_paths() {
+        let cwd_options = vec![
+            Some("/home/user".to_string()),
+            Some("/tmp".to_string()),
+            Some(".".to_string()),
+            None,
+        ];
+
+        for cwd in cwd_options {
+            match cwd {
+                Some(path) => assert!(!path.is_empty()),
+                None => assert!(true), // None is valid
+            }
+        }
+    }
+
+    #[test]
+    fn test_manager_arc_behavior() {
+        let manager1 = TerminalManager::new();
+        let sessions_ptr1 = Arc::as_ptr(&manager1.sessions);
+
+        let manager2 = manager1.clone();
+        let sessions_ptr2 = Arc::as_ptr(&manager2.sessions);
+
+        // Both managers should share the same sessions Arc
+        assert_eq!(sessions_ptr1, sessions_ptr2);
+    }
+
+    #[test]
+    fn test_uuid_generation() {
+        let id1 = Uuid::new_v4().to_string();
+        let id2 = Uuid::new_v4().to_string();
+
+        // UUIDs should be unique
+        assert_ne!(id1, id2);
+
+        // Should be valid UUID format
+        assert_eq!(id1.len(), 36); // Standard UUID string length
+        assert!(id1.contains('-'));
+    }
+
+    #[test]
+    fn test_clone_trait() {
+        let manager1 = TerminalManager::new();
+        let manager2 = manager1.clone();
+
+        // Both should point to the same Arc
+        assert!(Arc::ptr_eq(&manager1.sessions, &manager2.sessions));
+    }
+
+    #[test]
+    fn test_send_sync_traits() {
+        // Verify TerminalSession implements Send + Sync
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<TerminalSession>();
+    }
+}

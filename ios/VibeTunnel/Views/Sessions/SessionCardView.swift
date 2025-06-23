@@ -18,6 +18,8 @@ struct SessionCardView: View {
     @State private var scale: CGFloat = 1.0
     @State private var rotation: Double = 0
     @State private var brightness: Double = 1.0
+    
+    @Environment(\.livePreviewSubscription) private var livePreview
 
     private var displayWorkingDir: String {
         // Convert absolute paths back to ~ notation for display
@@ -71,95 +73,23 @@ struct SessionCardView: View {
                     .fill(Theme.Colors.terminalBackground)
                     .frame(height: 120)
                     .overlay(
-                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                        Group {
                             if session.isRunning {
-                                if let snapshot = terminalSnapshot, !snapshot.cleanOutputPreview.isEmpty {
-                                    // Show terminal output preview
-                                    ScrollView(.vertical, showsIndicators: false) {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            // ESC indicator if present
-                                            if snapshot.cleanOutputPreview.lowercased().contains("esc to interrupt") {
-                                                HStack(spacing: 4) {
-                                                    Image(systemName: "escape")
-                                                        .font(.system(size: 10, weight: .bold))
-                                                        .foregroundColor(Theme.Colors.warningAccent)
-                                                    Text("Press ESC to interrupt")
-                                                        .font(Theme.Typography.terminalSystem(size: 10))
-                                                        .foregroundColor(Theme.Colors.warningAccent)
-                                                }
-                                                .padding(.horizontal, 8)
-                                                .padding(.vertical, 4)
-                                                .background(
-                                                    RoundedRectangle(cornerRadius: 4)
-                                                        .fill(Theme.Colors.warningAccent.opacity(0.2))
-                                                )
-                                            }
-                                            
-                                            Text(snapshot.cleanOutputPreview)
-                                                .font(Theme.Typography.terminalSystem(size: 10))
-                                                .foregroundColor(Theme.Colors.terminalForeground.opacity(0.8))
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .lineLimit(nil)
-                                                .multilineTextAlignment(.leading)
-                                        }
-                                    }
-                                    .padding(Theme.Spacing.small)
+                                // Show live preview if available
+                                if let bufferSnapshot = livePreview?.latestSnapshot {
+                                    CompactTerminalPreview(snapshot: bufferSnapshot)
+                                        .animation(.easeInOut(duration: 0.2), value: bufferSnapshot.cursorY)
+                                } else if let snapshot = terminalSnapshot, !snapshot.cleanOutputPreview.isEmpty {
+                                    // Show static snapshot as fallback
+                                    staticSnapshotView(snapshot)
                                 } else {
                                     // Show command and working directory info as fallback
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        HStack(spacing: 4) {
-                                            Text("$")
-                                                .font(Theme.Typography.terminalSystem(size: 12))
-                                                .foregroundColor(Theme.Colors.primaryAccent)
-                                            Text(session.command.joined(separator: " "))
-                                                .font(Theme.Typography.terminalSystem(size: 12))
-                                                .foregroundColor(Theme.Colors.terminalForeground)
-                                        }
-
-                                        Text(displayWorkingDir)
-                                            .font(Theme.Typography.terminalSystem(size: 10))
-                                            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
-                                            .lineLimit(1)
-                                            .onTapGesture {
-                                                UIPasteboard.general.string = session.workingDir
-                                                HapticFeedback.notification(.success)
-                                            }
-
-                                        if isLoadingSnapshot {
-                                            HStack {
-                                                ProgressView()
-                                                    .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors
-                                                            .primaryAccent
-                                                    ))
-                                                    .scaleEffect(0.8)
-                                                Text("Loading output...")
-                                                    .font(Theme.Typography.terminalSystem(size: 10))
-                                                    .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
-                                            }
-                                            .padding(.top, Theme.Spacing.extraSmall)
-                                        }
-                                    }
-                                    .padding(Theme.Spacing.small)
-
-                                    Spacer()
+                                    commandInfoView
                                 }
                             } else {
+                                // For exited sessions, show last output if available
                                 if let snapshot = terminalSnapshot, !snapshot.cleanOutputPreview.isEmpty {
-                                    // Show last output for exited sessions
-                                    ScrollView(.vertical, showsIndicators: false) {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Session exited")
-                                                .font(Theme.Typography.terminalSystem(size: 10))
-                                                .foregroundColor(Theme.Colors.errorAccent)
-                                            Text(snapshot.cleanOutputPreview)
-                                                .font(Theme.Typography.terminalSystem(size: 10))
-                                                .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .lineLimit(nil)
-                                                .multilineTextAlignment(.leading)
-                                        }
-                                    }
-                                    .padding(Theme.Spacing.small)
+                                    exitedSessionView(snapshot)
                                 } else {
                                     Text("Session exited")
                                         .font(Theme.Typography.terminalSystem(size: 12))
@@ -184,6 +114,25 @@ struct SessionCardView: View {
                             .foregroundColor(session.isRunning ? Theme.Colors.successAccent : Theme.Colors
                                 .terminalForeground.opacity(0.5)
                             )
+                        
+                        // Live preview indicator
+                        if session.isRunning && livePreview?.latestSnapshot != nil {
+                            HStack(spacing: 2) {
+                                Image(systemName: "dot.radiowaves.left.and.right")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(Theme.Colors.primaryAccent)
+                                    .symbolEffect(.pulse)
+                                Text("live")
+                                    .font(Theme.Typography.terminalSystem(size: 9))
+                                    .foregroundColor(Theme.Colors.primaryAccent)
+                            }
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill(Theme.Colors.primaryAccent.opacity(0.1))
+                            )
+                        }
                     }
 
                     Spacer()
@@ -306,5 +255,94 @@ struct SessionCardView: View {
             brightness = 1.0
             opacity = 1.0
         }
+    }
+    
+    // MARK: - View Components
+    
+    @ViewBuilder
+    private var commandInfoView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Text("$")
+                    .font(Theme.Typography.terminalSystem(size: 12))
+                    .foregroundColor(Theme.Colors.primaryAccent)
+                Text(session.command.joined(separator: " "))
+                    .font(Theme.Typography.terminalSystem(size: 12))
+                    .foregroundColor(Theme.Colors.terminalForeground)
+            }
+
+            Text(displayWorkingDir)
+                .font(Theme.Typography.terminalSystem(size: 10))
+                .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
+                .lineLimit(1)
+                .onTapGesture {
+                    UIPasteboard.general.string = session.workingDir
+                    HapticFeedback.notification(.success)
+                }
+
+            if isLoadingSnapshot {
+                HStack {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.primaryAccent))
+                        .scaleEffect(0.8)
+                    Text("Connecting...")
+                        .font(Theme.Typography.terminalSystem(size: 10))
+                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
+                }
+                .padding(.top, Theme.Spacing.extraSmall)
+            }
+        }
+        .padding(Theme.Spacing.small)
+    }
+    
+    @ViewBuilder
+    private func staticSnapshotView(_ snapshot: TerminalSnapshot) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 4) {
+                // ESC indicator if present
+                if snapshot.cleanOutputPreview.lowercased().contains("esc to interrupt") {
+                    HStack(spacing: 4) {
+                        Image(systemName: "escape")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Theme.Colors.warningAccent)
+                        Text("Press ESC to interrupt")
+                            .font(Theme.Typography.terminalSystem(size: 10))
+                            .foregroundColor(Theme.Colors.warningAccent)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Theme.Colors.warningAccent.opacity(0.2))
+                    )
+                }
+
+                Text(snapshot.cleanOutputPreview)
+                    .font(Theme.Typography.terminalSystem(size: 10))
+                    .foregroundColor(Theme.Colors.terminalForeground.opacity(0.8))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+            }
+        }
+        .padding(Theme.Spacing.small)
+    }
+    
+    @ViewBuilder
+    private func exitedSessionView(_ snapshot: TerminalSnapshot) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Session exited")
+                    .font(Theme.Typography.terminalSystem(size: 10))
+                    .foregroundColor(Theme.Colors.errorAccent)
+                Text(snapshot.cleanOutputPreview)
+                    .font(Theme.Typography.terminalSystem(size: 10))
+                    .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+            }
+        }
+        .padding(Theme.Spacing.small)
     }
 }

@@ -3,10 +3,7 @@
 /// <reference lib="webworker" />
 
 declare const self: ServiceWorkerGlobalScope;
-
-// Version for cache busting
-const CACHE_VERSION = 'v1';
-const CACHE_NAME = `vibetunnel-${CACHE_VERSION}`;
+export {};
 
 // Notification tag prefix for VibeTunnel notifications
 const NOTIFICATION_TAG_PREFIX = 'vibetunnel-';
@@ -63,43 +60,21 @@ interface PushNotificationPayload {
   requireInteraction?: boolean;
 }
 
-// Install event - cache essential resources
+// Install event
 self.addEventListener('install', (event: ExtendableEvent) => {
   console.log('[SW] Installing service worker');
-
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      // Cache essential resources for offline functionality
-      return cache
-        .addAll(['/', '/favicon.ico', '/apple-touch-icon.png', '/manifest.json'])
-        .catch((error) => {
-          // Don't fail installation if caching fails
-          console.warn('[SW] Cache preload failed:', error);
-        });
-    })
-  );
 
   // Force activation of new service worker
   self.skipWaiting();
 });
 
-// Activate event - cleanup old caches
+// Activate event
 self.addEventListener('activate', (event: ExtendableEvent) => {
   console.log('[SW] Activating service worker');
 
   event.waitUntil(
-    Promise.all([
-      // Cleanup old caches
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames
-            .filter((cacheName) => cacheName.startsWith('vibetunnel-') && cacheName !== CACHE_NAME)
-            .map((cacheName) => caches.delete(cacheName))
-        );
-      }),
-      // Take control of all pages
-      self.clients.claim(),
-    ])
+    // Take control of all pages
+    self.clients.claim()
   );
 });
 
@@ -147,12 +122,7 @@ self.addEventListener('notificationclose', (event: NotificationEvent) => {
   }
 });
 
-// Background sync event - handle offline notifications
-self.addEventListener('sync', (event: SyncEvent) => {
-  if (event.tag === 'notification-sync') {
-    event.waitUntil(syncOfflineNotifications());
-  }
-});
+// No background sync needed
 
 async function handlePushNotification(payload: PushNotificationPayload): Promise<void> {
   const { title, body, icon, badge, data, actions, tag, requireInteraction } = payload;
@@ -167,6 +137,7 @@ async function handlePushNotification(payload: PushNotificationPayload): Promise
       tag: tag || `${NOTIFICATION_TAG_PREFIX}${data.type}-${Date.now()}`,
       requireInteraction: requireInteraction || data.type === 'session-error',
       silent: false,
+      // @ts-expect-error - renotify is a valid option but not in TypeScript types
       renotify: true,
       actions: actions || getDefaultActions(data),
       timestamp: data.timestamp,
@@ -174,6 +145,7 @@ async function handlePushNotification(payload: PushNotificationPayload): Promise
 
     // Add vibration pattern for mobile devices
     if ('vibrate' in navigator) {
+      // @ts-expect-error - vibrate is a valid option but not in TypeScript types
       notificationOptions.vibrate = getVibrationPattern(data.type);
     }
 
@@ -186,8 +158,8 @@ async function handlePushNotification(payload: PushNotificationPayload): Promise
   }
 }
 
-function getDefaultActions(data: NotificationData): NotificationAction[] {
-  const baseActions: NotificationAction[] = [
+function getDefaultActions(data: NotificationData): any[] {
+  const baseActions: any[] = [
     {
       action: 'dismiss',
       title: 'Dismiss',
@@ -291,95 +263,15 @@ async function handleNotificationClick(action: string, data: NotificationData): 
   }
 }
 
-async function syncOfflineNotifications(): Promise<void> {
-  console.log('[SW] Syncing offline notifications');
+// No offline notification handling needed
 
-  try {
-    // Get pending notifications from IndexedDB or cache
-    const pendingNotifications = await getPendingNotifications();
-
-    for (const notification of pendingNotifications) {
-      await handlePushNotification(notification);
-    }
-
-    // Clear pending notifications
-    await clearPendingNotifications();
-
-    console.log('[SW] Offline notification sync completed');
-  } catch (error) {
-    console.error('[SW] Failed to sync offline notifications:', error);
-  }
-}
-
-async function getPendingNotifications(): Promise<PushNotificationPayload[]> {
-  // This would typically use IndexedDB to store offline notifications
-  // For now, return empty array as placeholder
-  return [];
-}
-
-async function clearPendingNotifications(): Promise<void> {
-  // Clear stored offline notifications
-  // Placeholder for IndexedDB cleanup
-}
-
-// Handle fetch events for offline caching
-self.addEventListener('fetch', (event: FetchEvent) => {
-  const { request } = event;
-
-  // Only handle GET requests
-  if (request.method !== 'GET') {
-    return;
-  }
-
-  // Skip chrome-extension and other non-http(s) requests
-  if (!request.url.startsWith('http')) {
-    return;
-  }
-
-  // Handle API requests differently
-  if (request.url.includes('/api/')) {
-    // Don't cache API requests, but could implement offline fallback
-    return;
-  }
-
-  // Cache-first strategy for static assets
-  if (request.url.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf)$/)) {
-    event.respondWith(
-      caches.match(request).then((response) => {
-        if (response) {
-          return response;
-        }
-
-        return fetch(request).then((response) => {
-          // Don't cache non-successful responses
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          // Clone the response for caching
-          const responseToCache = response.clone();
-
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
-
-          return response;
-        });
-      })
-    );
-  }
-});
+// No fetch event handler needed - we don't cache anything
 
 // Message handler for communication with main thread
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
   const { data } = event;
 
   switch (data.type) {
-    case 'QUEUE_NOTIFICATION': {
-      // Queue notification for later delivery when online
-      queueNotification(data.payload);
-      break;
-    }
     case 'CLEAR_NOTIFICATIONS': {
       // Clear all VibeTunnel notifications
       clearAllNotifications();
@@ -392,18 +284,7 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   }
 });
 
-async function queueNotification(payload: PushNotificationPayload): Promise<void> {
-  // Store notification for offline sync
-  // This would typically use IndexedDB
-  console.log('[SW] Queueing notification for offline sync:', payload.title);
-
-  // Register for background sync
-  try {
-    await self.registration.sync.register('notification-sync');
-  } catch (error) {
-    console.warn('[SW] Background sync not supported:', error);
-  }
-}
+// No queueing needed
 
 async function clearAllNotifications(): Promise<void> {
   try {

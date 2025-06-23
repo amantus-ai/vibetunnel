@@ -99,7 +99,7 @@ export class NotificationSettings extends LitElement {
       logger.error('failed to enable notifications:', error);
       this.dispatchEvent(
         new CustomEvent('error', {
-          detail: `Failed to enable notifications: ${error.message}`,
+          detail: `Failed to enable notifications: ${error instanceof Error ? error.message : String(error)}`,
         })
       );
     } finally {
@@ -120,7 +120,7 @@ export class NotificationSettings extends LitElement {
       logger.error('failed to disable notifications:', error);
       this.dispatchEvent(
         new CustomEvent('error', {
-          detail: `Failed to disable notifications: ${error.message}`,
+          detail: `Failed to disable notifications: ${error instanceof Error ? error.message : String(error)}`,
         })
       );
     } finally {
@@ -142,7 +142,7 @@ export class NotificationSettings extends LitElement {
       logger.error('failed to send test notification:', error);
       this.dispatchEvent(
         new CustomEvent('error', {
-          detail: `Failed to send test notification: ${error.message}`,
+          detail: `Failed to send test notification: ${error instanceof Error ? error.message : String(error)}`,
         })
       );
     } finally {
@@ -162,7 +162,7 @@ export class NotificationSettings extends LitElement {
       logger.error('failed to clear notifications:', error);
       this.dispatchEvent(
         new CustomEvent('error', {
-          detail: `Failed to clear notifications: ${error.message}`,
+          detail: `Failed to clear notifications: ${error instanceof Error ? error.message : String(error)}`,
         })
       );
     }

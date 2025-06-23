@@ -292,4 +292,26 @@ class CastPlayer {
             }
         }
     }
+    
+    /// Modern async version of play that supports cancellation and error handling.
+    ///
+    /// - Parameter onEvent: Async closure called for each event during playback.
+    /// - Throws: Throws if playback is cancelled or encounters an error.
+    ///
+    /// Events are delivered on the main actor with delays matching
+    /// their original timing.
+    @MainActor
+    func play(onEvent: @Sendable (CastEvent) async -> Void) async throws {
+        for event in events {
+            // Check for cancellation
+            try Task.checkCancellation()
+            
+            // Wait for the appropriate time
+            if event.time > 0 {
+                try await Task.sleep(nanoseconds: UInt64(event.time * 1_000_000_000))
+            }
+            
+            await onEvent(event)
+        }
+    }
 }

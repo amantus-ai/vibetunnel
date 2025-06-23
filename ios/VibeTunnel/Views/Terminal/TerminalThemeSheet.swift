@@ -3,7 +3,8 @@ import SwiftUI
 /// Sheet for selecting terminal color themes.
 struct TerminalThemeSheet: View {
     @Binding var selectedTheme: TerminalTheme
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss)
+    var dismiss
 
     var body: some View {
         NavigationStack {
@@ -29,7 +30,7 @@ struct TerminalThemeSheet: View {
                                 HapticFeedback.impact(.light)
                                 // Save to UserDefaults
                                 TerminalTheme.selected = theme
-                            }) {
+                            }, label: {
                                 HStack(spacing: Theme.Spacing.medium) {
                                     // Color preview
                                     HStack(spacing: 2) {
@@ -86,7 +87,7 @@ struct TerminalThemeSheet: View {
                                             lineWidth: 1
                                         )
                                 )
-                            }
+                            })
                             .buttonStyle(PlainButtonStyle())
                         }
                     }

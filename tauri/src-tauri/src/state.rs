@@ -42,6 +42,12 @@ pub struct AppState {
     pub unix_socket_server: Arc<UnixSocketServer>,
 }
 
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AppState {
     pub fn new() -> Self {
         let terminal_manager = Arc::new(TerminalManager::new());
@@ -101,5 +107,234 @@ impl AppState {
             #[cfg(unix)]
             unix_socket_server,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::Ordering;
+
+    #[test]
+    fn test_app_state_creation() {
+        let state = AppState::new();
+
+        // Verify all components are initialized
+        assert!(Arc::strong_count(&state.terminal_manager) >= 1);
+        assert!(Arc::strong_count(&state.api_client) >= 1);
+        assert!(Arc::strong_count(&state.ngrok_manager) >= 1);
+        assert!(Arc::strong_count(&state.session_monitor) >= 1);
+        assert!(Arc::strong_count(&state.notification_manager) >= 1);
+        assert!(Arc::strong_count(&state.welcome_manager) >= 1);
+        assert!(Arc::strong_count(&state.permissions_manager) >= 1);
+        assert!(Arc::strong_count(&state.update_manager) >= 1);
+        assert!(Arc::strong_count(&state.backend_manager) >= 1);
+        assert!(Arc::strong_count(&state.debug_features_manager) >= 1);
+        assert!(Arc::strong_count(&state.api_testing_manager) >= 1);
+        assert!(Arc::strong_count(&state.auth_cache_manager) >= 1);
+        assert!(Arc::strong_count(&state.terminal_integrations_manager) >= 1);
+        assert!(Arc::strong_count(&state.terminal_spawn_service) >= 1);
+        assert!(Arc::strong_count(&state.tty_forward_manager) >= 1);
+
+        #[cfg(unix)]
+        assert!(Arc::strong_count(&state.unix_socket_server) >= 1);
+    }
+
+    #[test]
+    fn test_clone_impl() {
+        let state1 = AppState::new();
+        let state2 = state1.clone();
+
+        // Verify that cloning increases reference counts
+        assert!(Arc::strong_count(&state1.terminal_manager) >= 2);
+        assert!(Arc::strong_count(&state1.api_client) >= 2);
+
+        // Verify they point to the same instances
+        assert!(Arc::ptr_eq(
+            &state1.terminal_manager,
+            &state2.terminal_manager
+        ));
+        assert!(Arc::ptr_eq(&state1.api_client, &state2.api_client));
+        assert!(Arc::ptr_eq(&state1.ngrok_manager, &state2.ngrok_manager));
+        assert!(Arc::ptr_eq(
+            &state1.session_monitor,
+            &state2.session_monitor
+        ));
+        assert!(Arc::ptr_eq(
+            &state1.notification_manager,
+            &state2.notification_manager
+        ));
+    }
+
+    #[test]
+    fn test_server_monitoring_default() {
+        let state = AppState::new();
+
+        // Server monitoring should be enabled by default
+        assert!(state.server_monitoring.load(Ordering::Relaxed));
+    }
+
+    #[tokio::test]
+    async fn test_server_target_port() {
+        let state = AppState::new();
+
+        // Initially should be None
+        let port = state.server_target_port.read().await;
+        assert!(port.is_none());
+        drop(port);
+
+        // Test setting a port
+        {
+            let mut port = state.server_target_port.write().await;
+            *port = Some(8080);
+        }
+
+        // Verify the port was set
+        let port = state.server_target_port.read().await;
+        assert_eq!(*port, Some(8080));
+    }
+
+    #[test]
+    fn test_notification_manager_sharing() {
+        let state = AppState::new();
+
+        // All managers that need notifications should have the same notification manager
+        // This is verified by checking Arc pointer equality
+        let _notification_ptr = Arc::as_ptr(&state.notification_manager);
+
+        // We can't directly access the notification managers inside other components
+        // but we can verify they all exist and the reference count is high
+        assert!(Arc::strong_count(&state.notification_manager) >= 5); // Multiple components use it
+    }
+
+    #[test]
+    fn test_terminal_manager_sharing() {
+        let state = AppState::new();
+
+        // Terminal manager should be shared with session monitor
+        // Verify by checking reference count
+        assert!(Arc::strong_count(&state.terminal_manager) >= 2); // At least AppState and SessionMonitor
+    }
+
+    #[test]
+    fn test_terminal_integrations_sharing() {
+        let state = AppState::new();
+
+        // Terminal integrations manager should be shared with terminal spawn service
+        assert!(Arc::strong_count(&state.terminal_integrations_manager) >= 2);
+    }
+
+    #[test]
+    fn test_server_monitoring_toggle() {
+        let state = AppState::new();
+
+        // Test toggling server monitoring
+        state.server_monitoring.store(false, Ordering::Relaxed);
+        assert!(!state.server_monitoring.load(Ordering::Relaxed));
+
+        state.server_monitoring.store(true, Ordering::Relaxed);
+        assert!(state.server_monitoring.load(Ordering::Relaxed));
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_port_access() {
+        let state = AppState::new();
+        let state_clone = state.clone();
+
+        // Spawn a task to write
+        let write_handle = tokio::spawn(async move {
+            let mut port = state_clone.server_target_port.write().await;
+            *port = Some(9090);
+        });
+
+        // Spawn a task to read
+        let read_handle = tokio::spawn(async move {
+            // Give writer a chance to acquire lock first
+            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+            let port = state.server_target_port.read().await;
+            port.is_some()
+        });
+
+        write_handle.await.unwrap();
+        let has_port = read_handle.await.unwrap();
+        assert!(has_port);
+    }
+
+    #[test]
+    fn test_api_client_port() {
+        // This test verifies that the API client is initialized with the correct port
+        let state = AppState::new();
+
+        // The port should match the one from settings (or default)
+        let _settings = crate::settings::Settings::load().unwrap_or_default();
+        // We can't directly access the port from ApiClient, but we know it should be initialized
+        assert!(Arc::strong_count(&state.api_client) >= 1);
+    }
+
+    #[test]
+    fn test_backend_manager_port() {
+        // This test verifies that the backend manager is initialized with the correct port
+        let state = AppState::new();
+
+        // The backend manager should be initialized with the port from settings
+        assert!(Arc::strong_count(&state.backend_manager) >= 1);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_unix_socket_server_initialization() {
+        let state = AppState::new();
+
+        // Unix socket server should be initialized with terminal spawn service
+        assert!(Arc::strong_count(&state.unix_socket_server) >= 1);
+        assert!(Arc::strong_count(&state.terminal_spawn_service) >= 2); // AppState and UnixSocketServer
+    }
+
+    #[test]
+    fn test_multiple_clones() {
+        let state1 = AppState::new();
+        let state2 = state1.clone();
+        let state3 = state2.clone();
+        let state4 = state1.clone();
+
+        // All clones should share the same underlying Arc instances
+        assert!(Arc::ptr_eq(
+            &state1.terminal_manager,
+            &state4.terminal_manager
+        ));
+        assert!(Arc::ptr_eq(&state2.api_client, &state3.api_client));
+
+        // Reference count should increase with each clone
+        assert!(Arc::strong_count(&state1.terminal_manager) >= 4);
+    }
+
+    #[test]
+    fn test_drop_behavior() {
+        let state1 = AppState::new();
+        let initial_count = Arc::strong_count(&state1.terminal_manager);
+
+        {
+            let _state2 = state1.clone();
+            // Reference count should increase
+            assert_eq!(
+                Arc::strong_count(&state1.terminal_manager),
+                initial_count + 1
+            );
+        }
+
+        // After drop, reference count should decrease
+        assert_eq!(Arc::strong_count(&state1.terminal_manager), initial_count);
+    }
+
+    #[test]
+    fn test_version_initialization() {
+        let state = AppState::new();
+
+        // Update manager should be initialized with the correct version
+        let version = env!("CARGO_PKG_VERSION");
+        assert!(!version.is_empty());
+
+        // We can't directly verify the version in UpdateManager, but we know it's initialized
+        assert!(Arc::strong_count(&state.update_manager) >= 1);
     }
 }

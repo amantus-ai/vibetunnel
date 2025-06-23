@@ -12,7 +12,7 @@ initializeMonaco().catch(console.error);
 // The services are initialized automatically when imported
 
 // Handle notification actions from service worker
-window.addEventListener('notification-action', (event: CustomEvent) => {
+window.addEventListener('notification-action', ((event: CustomEvent) => {
   const { action, data } = event.detail;
 
   // Dispatch the action to the main app component
@@ -24,4 +24,4 @@ window.addEventListener('notification-action', (event: CustomEvent) => {
       })
     );
   }
-});
+}) as EventListener);

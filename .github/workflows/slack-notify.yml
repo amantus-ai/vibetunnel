@@ -1,0 +1,120 @@
+name: Slack CI Notifications
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+jobs:
+  slack-notify:
+    name: Send CI Results to Slack
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion != 'cancelled' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download workflow run data
+      uses: actions/github-script@v7
+      id: workflow-data
+      with:
+        script: |
+          const workflowRun = context.payload.workflow_run;
+          
+          // Get job details
+          const jobs = await github.rest.actions.listJobsForWorkflowRun({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: workflowRun.id
+          });
+          
+          // Categorize job results
+          const jobResults = jobs.data.jobs.map(job => ({
+            name: job.name,
+            status: job.conclusion || job.status,
+            url: job.html_url
+          }));
+          
+          const failedJobs = jobResults.filter(j => j.status === 'failure');
+          const successfulJobs = jobResults.filter(j => j.status === 'success');
+          
+          return {
+            conclusion: workflowRun.conclusion,
+            branch: workflowRun.head_branch,
+            sha: workflowRun.head_sha.substring(0, 7),
+            actor: workflowRun.actor.login,
+            runUrl: workflowRun.html_url,
+            isPR: workflowRun.event === 'pull_request',
+            prNumber: workflowRun.pull_requests[0]?.number || null,
+            failedJobs: failedJobs,
+            successfulJobs: successfulJobs,
+            totalJobs: jobResults.length
+          };
+          
+    - name: Format Slack message
+      id: slack-message
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const data = ${{ steps.workflow-data.outputs.result }};
+          const isSuccess = data.conclusion === 'success';
+          const emoji = isSuccess ? ':white_check_mark:' : ':x:';
+          const color = isSuccess ? 'good' : 'danger';
+          
+          let title = `${emoji} CI ${data.conclusion} on ${data.branch}`;
+          if (data.isPR && data.prNumber) {
+            title = `${emoji} CI ${data.conclusion} on PR #${data.prNumber}`;
+          }
+          
+          const fields = [
+            {
+              title: "Commit",
+              value: `\`${data.sha}\` by ${data.actor}`,
+              short: true
+            },
+            {
+              title: "Status",
+              value: `${data.successfulJobs.length}/${data.totalJobs} jobs passed`,
+              short: true
+            }
+          ];
+          
+          // Add failed job details if any
+          if (data.failedJobs.length > 0) {
+            const failedJobsList = data.failedJobs.map(job => 
+              `• <${job.url}|${job.name}>`
+            ).join('\n');
+            
+            fields.push({
+              title: "Failed Jobs",
+              value: failedJobsList,
+              short: false
+            });
+          }
+          
+          const message = {
+            attachments: [{
+              color: color,
+              title: title,
+              title_link: data.runUrl,
+              fields: fields,
+              footer: "VibeTunnel CI",
+              ts: Math.floor(Date.now() / 1000)
+            }]
+          };
+          
+          core.setOutput('message', message);
+          return message;
+          
+    - name: Send to Slack
+      if: ${{ github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.event == 'pull_request' }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        echo '${{ toJson(steps.slack-message.outputs.message) }}' | \
+        curl -X POST \
+          -H 'Content-type: application/json' \
+          --data @- \
+          "$SLACK_WEBHOOK_URL"

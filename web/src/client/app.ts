@@ -19,7 +19,6 @@ import './components/session-view.js';
 import './components/session-card.js';
 import './components/file-browser.js';
 import './components/log-viewer.js';
-import './components/notification-permission-banner.js';
 import './components/notification-settings.js';
 import './components/notification-status.js';
 
@@ -554,9 +553,6 @@ export class VibeTunnelApp extends LitElement {
         .session=${null}
         @browser-cancel=${() => (this.showFileBrowser = false)}
       ></file-browser>
-
-      <!-- Notification Permission Banner -->
-      <notification-permission-banner></notification-permission-banner>
 
       <!-- Notification Settings Modal -->
       <notification-settings

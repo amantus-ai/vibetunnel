@@ -15,21 +15,21 @@ pub enum UpdateChannel {
 }
 
 impl UpdateChannel {
-    pub fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         match self {
-            UpdateChannel::Stable => "stable",
-            UpdateChannel::Beta => "beta",
-            UpdateChannel::Nightly => "nightly",
-            UpdateChannel::Custom => "custom",
+            Self::Stable => "stable",
+            Self::Beta => "beta",
+            Self::Nightly => "nightly",
+            Self::Custom => "custom",
         }
     }
 
     pub fn from_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
-            "stable" => UpdateChannel::Stable,
-            "beta" => UpdateChannel::Beta,
-            "nightly" => UpdateChannel::Nightly,
-            _ => UpdateChannel::Custom,
+            "stable" => Self::Stable,
+            "beta" => Self::Beta,
+            "nightly" => Self::Nightly,
+            _ => Self::Custom,
         }
     }
 }
@@ -332,7 +332,7 @@ impl UpdateManager {
                             Ok(None)
                         }
                         Err(e) => {
-                            let error_msg = format!("Failed to check for updates: {}", e);
+                            let error_msg = format!("Failed to check for updates: {e}");
 
                             let mut state = self.state.write().await;
                             state.status = UpdateStatus::Error;
@@ -346,7 +346,7 @@ impl UpdateManager {
                     }
                 }
                 Err(e) => {
-                    let error_msg = format!("Failed to build updater: {}", e);
+                    let error_msg = format!("Failed to build updater: {e}");
 
                     let mut state = self.state.write().await;
                     state.status = UpdateStatus::Error;
@@ -356,7 +356,7 @@ impl UpdateManager {
                 }
             },
             Err(e) => {
-                let error_msg = format!("Failed to configure updater endpoints: {}", e);
+                let error_msg = format!("Failed to configure updater endpoints: {e}");
 
                 let mut state = self.state.write().await;
                 state.status = UpdateStatus::Error;
@@ -506,7 +506,7 @@ impl UpdateManager {
         }
 
         let check_interval =
-            std::time::Duration::from_secs(settings.check_interval_hours as u64 * 3600);
+            std::time::Duration::from_secs(u64::from(settings.check_interval_hours) * 3600);
         drop(settings);
 
         tokio::spawn(async move {

@@ -41,6 +41,7 @@ export function setShuttingDown(value: boolean): void {
 
 interface Config {
   port: number | null;
+  bind: string | null;
   basicAuthUsername: string | null;
   basicAuthPassword: string | null;
   isHQMode: boolean;
@@ -70,6 +71,7 @@ Options:
   --help                Show this help message
   --version             Show version information
   --port <number>       Server port (default: 4020 or PORT env var)
+  --bind <address>      Bind address (default: 0.0.0.0, all interfaces)
   --username <string>   Basic auth username (or VIBETUNNEL_USERNAME env var)
   --password <string>   Basic auth password (or VIBETUNNEL_PASSWORD env var)
   --debug               Enable debug logging
@@ -117,6 +119,7 @@ function parseArgs(): Config {
   const args = process.argv.slice(2);
   const config = {
     port: null as number | null,
+    bind: null as string | null,
     basicAuthUsername: null as string | null,
     basicAuthPassword: null as string | null,
     isHQMode: false,
@@ -152,6 +155,9 @@ function parseArgs(): Config {
     if (args[i] === '--port' && i + 1 < args.length) {
       config.port = parseInt(args[i + 1], 10);
       i++; // Skip the port value in next iteration
+    } else if (args[i] === '--bind' && i + 1 < args.length) {
+      config.bind = args[i + 1];
+      i++; // Skip the bind value in next iteration
     } else if (args[i] === '--username' && i + 1 < args.length) {
       config.basicAuthUsername = args[i + 1];
       i++; // Skip the username value in next iteration
@@ -560,11 +566,15 @@ export async function createApp(): Promise<AppInstance> {
       }
     });
 
-    server.listen(requestedPort, () => {
+    const bindAddress = config.bind || '0.0.0.0';
+    server.listen(requestedPort, bindAddress, () => {
       const address = server.address();
       const actualPort =
         typeof address === 'string' ? requestedPort : address?.port || requestedPort;
-      logger.log(chalk.green(`VibeTunnel Server running on http://localhost:${actualPort}`));
+      const displayAddress = bindAddress === '0.0.0.0' ? 'localhost' : bindAddress;
+      logger.log(
+        chalk.green(`VibeTunnel Server running on http://${displayAddress}:${actualPort}`)
+      );
 
       if (config.basicAuthUsername && config.basicAuthPassword) {
         logger.log(chalk.green('Basic authentication: ENABLED'));

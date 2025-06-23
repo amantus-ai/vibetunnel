@@ -10,8 +10,12 @@ class MockAPIClient: APIClientProtocol {
     var getSessionId: String?
     var createSessionCalled = false
     var createSessionData: SessionCreateData?
+    var lastCreateData: SessionCreateData?
     var killSessionCalled = false
     var killSessionId: String?
+    var lastKilledSessionId: String?
+    var killSessionCallCount = 0
+    var killedSessionIds: [String] = []
     var cleanupSessionCalled = false
     var cleanupSessionId: String?
     var cleanupAllExitedSessionsCalled = false
@@ -19,11 +23,22 @@ class MockAPIClient: APIClientProtocol {
     var sendInputCalled = false
     var sendInputSessionId: String?
     var sendInputText: String?
+    var lastInputSessionId: String?
+    var lastInputText: String?
     var resizeTerminalCalled = false
     var resizeTerminalSessionId: String?
     var resizeTerminalCols: Int?
     var resizeTerminalRows: Int?
+    var lastResizeSessionId: String?
+    var lastResizeCols: Int?
+    var lastResizeRows: Int?
     var checkHealthCalled = false
+
+    // Simple configuration properties
+    var sessionsToReturn: [Session] = []
+    var sessionIdToReturn: String = "mock-session-id"
+    var shouldThrowError = false
+    var errorToThrow: Error = APIError.networkError(URLError(.notConnectedToInternet))
 
     // Response configuration
     var sessionsResponse: Result<[Session], Error> = .success([])
@@ -42,8 +57,14 @@ class MockAPIClient: APIClientProtocol {
 
     func getSessions() async throws -> [Session] {
         getSessionsCalled = true
+        if shouldThrowError {
+            throw errorToThrow
+        }
         if responseDelay > 0 {
             try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        }
+        if !sessionsToReturn.isEmpty {
+            return sessionsToReturn
         }
         return try sessionsResponse.get()
     }
@@ -60,8 +81,12 @@ class MockAPIClient: APIClientProtocol {
     func createSession(_ data: SessionCreateData) async throws -> String {
         createSessionCalled = true
         createSessionData = data
+        lastCreateData = data
         if responseDelay > 0 {
             try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        }
+        if !sessionIdToReturn.isEmpty {
+            return sessionIdToReturn
         }
         return try createSessionResponse.get()
     }
@@ -69,6 +94,9 @@ class MockAPIClient: APIClientProtocol {
     func killSession(_ sessionId: String) async throws {
         killSessionCalled = true
         killSessionId = sessionId
+        lastKilledSessionId = sessionId
+        killSessionCallCount += 1
+        killedSessionIds.append(sessionId)
         if responseDelay > 0 {
             try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
         }
@@ -104,6 +132,8 @@ class MockAPIClient: APIClientProtocol {
         sendInputCalled = true
         sendInputSessionId = sessionId
         sendInputText = text
+        lastInputSessionId = sessionId
+        lastInputText = text
         if responseDelay > 0 {
             try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
         }
@@ -115,6 +145,9 @@ class MockAPIClient: APIClientProtocol {
         resizeTerminalSessionId = sessionId
         resizeTerminalCols = cols
         resizeTerminalRows = rows
+        lastResizeSessionId = sessionId
+        lastResizeCols = cols
+        lastResizeRows = rows
         if responseDelay > 0 {
             try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
         }

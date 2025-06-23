@@ -3,6 +3,46 @@ import Observation
 import OSLog
 import SwiftUI
 
+/// Errors that can occur during server operations
+enum ServerError: LocalizedError {
+    case repeatedCrashes(count: Int)
+    case portInUse(port: Int)
+    case startupFailed(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .repeatedCrashes:
+            return "Server keeps crashing"
+        case .portInUse(let port):
+            return "Port \(port) is already in use"
+        case .startupFailed(let reason):
+            return "Server startup failed: \(reason)"
+        }
+    }
+    
+    var failureReason: String? {
+        switch self {
+        case .repeatedCrashes(let count):
+            return "The server crashed \(count) times in a row"
+        case .portInUse(let port):
+            return "Another process is using port \(port)"
+        case .startupFailed:
+            return nil
+        }
+    }
+    
+    var recoverySuggestion: String? {
+        switch self {
+        case .repeatedCrashes:
+            return "Check the logs for errors or try a different port"
+        case .portInUse:
+            return "Stop the other process or choose a different port"
+        case .startupFailed:
+            return "Check the server configuration and try again"
+        }
+    }
+}
+
 /// Manages the VibeTunnel server lifecycle.
 ///
 /// `ServerManager` is the central coordinator for server lifecycle management in VibeTunnel.
@@ -11,8 +51,8 @@ import SwiftUI
 @MainActor
 @Observable
 class ServerManager {
-    @MainActor static let shared = ServerManager()
-
+    static let shared = ServerManager()
+    
     var port: String {
         get { UserDefaults.standard.string(forKey: "serverPort") ?? "4020" }
         set { UserDefaults.standard.set(newValue, forKey: "serverPort") }
@@ -141,7 +181,7 @@ class ServerManager {
 
             case .reportExternalApp(let appName):
                 logger.error("Port \(self.port) is used by external app: \(appName)")
-                lastError = PortConflictError.portInUseByApp(
+                lastError = ServerManagerError.portInUseByApp(
                     appName: appName,
                     port: Int(self.port) ?? 4_020,
                     alternatives: conflict.alternativePorts
@@ -284,7 +324,8 @@ class ServerManager {
                 if httpResponse.statusCode == 200 {
                     // Try to parse the response
                     if let jsonData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let cleanedCount = jsonData["cleaned_count"] as? Int {
+                       let cleanedCount = jsonData["cleaned_count"] as? Int
+                    {
                         logger.info("Initial cleanup completed: cleaned \(cleanedCount) exited sessions")
                     } else {
                         logger.info("Initial cleanup completed successfully")
@@ -353,15 +394,7 @@ class ServerManager {
         let maxRetries = 3
         guard consecutiveCrashes <= maxRetries else {
             logger.error("Server crashed \(self.consecutiveCrashes) times in a row, giving up on auto-restart")
-            lastError = NSError(
-                domain: "sh.vibetunnel.vibetunnel.ServerManager",
-                code: 1_002,
-                userInfo: [
-                    NSLocalizedDescriptionKey: "Server keeps crashing",
-                    NSLocalizedFailureReasonErrorKey: "The server crashed \(consecutiveCrashes) times in a row",
-                    NSLocalizedRecoverySuggestionErrorKey: "Check the logs for errors or try a different port"
-                ]
-            )
+            lastError = ServerError.repeatedCrashes(count: consecutiveCrashes)
             return
         }
 
@@ -467,21 +500,36 @@ class ServerManager {
     }
 }
 
-// MARK: - Port Conflict Error Extension
+// MARK: - Server Manager Error
 
-extension PortConflictError {
-    static func portInUseByApp(appName: String, port: Int, alternatives: [Int]) -> Error {
-        NSError(
-            domain: "sh.vibetunnel.vibetunnel.ServerManager",
-            code: 1_001,
-            userInfo: [
-                NSLocalizedDescriptionKey: "Port \(port) is in use by \(appName)",
-                NSLocalizedFailureReasonErrorKey: "The port is being used by another application",
-                NSLocalizedRecoverySuggestionErrorKey: "Try one of these ports: \(alternatives.map(String.init).joined(separator: ", "))",
-                "appName": appName,
-                "port": port,
-                "alternatives": alternatives
-            ]
-        )
+enum ServerManagerError: LocalizedError {
+    case portInUseByApp(appName: String, port: Int, alternatives: [Int])
+    
+    var errorDescription: String? {
+        switch self {
+        case .portInUseByApp(let appName, let port, _):
+            return "Port \(port) is in use by \(appName)"
+        }
+    }
+    
+    var failureReason: String? {
+        switch self {
+        case .portInUseByApp:
+            return "The port is being used by another application"
+        }
+    }
+    
+    var recoverySuggestion: String? {
+        switch self {
+        case .portInUseByApp(_, _, let alternatives):
+            return "Try one of these ports: \(alternatives.map(String.init).joined(separator: ", "))"
+        }
+    }
+    
+    var helpAnchor: String? {
+        switch self {
+        case .portInUseByApp:
+            return "port-conflict"
+        }
     }
 }

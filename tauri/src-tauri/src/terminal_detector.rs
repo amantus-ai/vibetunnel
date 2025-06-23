@@ -21,7 +21,7 @@ pub fn detect_terminals() -> Result<DetectedTerminals, String> {
     #[cfg(target_os = "macos")]
     {
         // Check for Terminal.app
-        if let Ok(_) = Command::new("open").args(&["-Ra", "Terminal.app"]).output() {
+        if let Ok(_) = Command::new("open").args(["-Ra", "Terminal.app"]).output() {
             available_terminals.push(TerminalInfo {
                 name: "Terminal".to_string(),
                 path: "/System/Applications/Utilities/Terminal.app".to_string(),
@@ -30,7 +30,7 @@ pub fn detect_terminals() -> Result<DetectedTerminals, String> {
         }
 
         // Check for iTerm2
-        if let Ok(_) = Command::new("open").args(&["-Ra", "iTerm.app"]).output() {
+        if let Ok(_) = Command::new("open").args(["-Ra", "iTerm.app"]).output() {
             available_terminals.push(TerminalInfo {
                 name: "iTerm2".to_string(),
                 path: "/Applications/iTerm.app".to_string(),
@@ -50,7 +50,7 @@ pub fn detect_terminals() -> Result<DetectedTerminals, String> {
         }
 
         // Check for Hyper
-        if let Ok(_) = Command::new("open").args(&["-Ra", "Hyper.app"]).output() {
+        if let Ok(_) = Command::new("open").args(["-Ra", "Hyper.app"]).output() {
             available_terminals.push(TerminalInfo {
                 name: "Hyper".to_string(),
                 path: "/Applications/Hyper.app".to_string(),

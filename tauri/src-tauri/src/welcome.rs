@@ -65,6 +65,12 @@ pub struct WelcomeManager {
     app_handle: Arc<RwLock<Option<AppHandle>>>,
 }
 
+impl Default for WelcomeManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WelcomeManager {
     /// Create a new welcome manager
     pub fn new() -> Self {
@@ -104,7 +110,7 @@ impl WelcomeManager {
         if let Ok(mut settings) = crate::settings::Settings::load() {
             settings.general.show_welcome_on_startup =
                 Some(!state.tutorial_completed && !state.tutorial_skipped);
-            settings.save().map_err(|e| e.to_string())?;
+            settings.save()?;
         }
 
         Ok(())

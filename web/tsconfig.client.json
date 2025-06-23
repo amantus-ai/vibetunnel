@@ -2,9 +2,9 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ES2020",
-    "lib": ["ES2020", "DOM"],
+    "lib": ["ES2020", "dom", "dom.iterable"],
     "outDir": "./public",
-    "rootDir": "./src/client",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -24,6 +24,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "src/cli.ts"
+    "src/cli.ts",
+    "src/client/sw.ts"
   ]
 }

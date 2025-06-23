@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::RwLock;
@@ -22,6 +22,7 @@ pub struct NodeJsServer {
     process: Arc<RwLock<Option<Child>>>,
     state: Arc<RwLock<ServerState>>,
     port: String,
+    #[allow(dead_code)]
     bind_address: String,
     on_crash: Arc<RwLock<Option<Box<dyn Fn(i32) + Send + Sync>>>>,
 }
@@ -147,29 +148,29 @@ impl NodeJsServer {
                             *process_guard = None;
                             drop(process_guard);
                             *self.state.write().await = ServerState::Idle;
-                            
+
                             if exit_code == 9 {
-                                return Err(format!("Port {} is already in use", self.port));
+                                Err(format!("Port {} is already in use", self.port))
                             } else {
-                                return Err("Server failed to start".to_string());
+                                Err("Server failed to start".to_string())
                             }
                         }
                         Ok(None) => {
                             // Process is still running
                             drop(process_guard);
-                            
+
                             // Start monitoring for unexpected termination
                             self.monitor_process().await;
-                            
+
                             // Wait a bit more for server to be ready
                             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                            
+
                             // Update state if not already updated by stdout monitor
                             let mut state = self.state.write().await;
                             if *state == ServerState::Starting {
                                 *state = ServerState::Running;
                             }
-                            
+
                             info!("Node.js server started successfully");
                             Ok(())
                         }
@@ -189,7 +190,7 @@ impl NodeJsServer {
             Err(e) => {
                 error!("Failed to spawn vibetunnel process: {}", e);
                 *self.state.write().await = ServerState::Idle;
-                Err(format!("Failed to spawn process: {}", e))
+                Err(format!("Failed to spawn process: {e}"))
             }
         }
     }
@@ -217,22 +218,19 @@ impl NodeJsServer {
             {
                 use nix::sys::signal::{self, Signal};
                 use nix::unistd::Pid;
-                
+
                 if let Some(pid) = child.id() {
                     let _ = signal::kill(Pid::from_raw(pid as i32), Signal::SIGTERM);
                 }
             }
-            
+
             #[cfg(windows)]
             {
                 let _ = child.kill();
             }
 
             // Wait for process to exit with timeout
-            match tokio::time::timeout(
-                tokio::time::Duration::from_secs(5),
-                child.wait()
-            ).await {
+            match tokio::time::timeout(tokio::time::Duration::from_secs(5), child.wait()).await {
                 Ok(Ok(status)) => {
                     info!("Server stopped with status: {:?}", status);
                 }
@@ -275,22 +273,22 @@ impl NodeJsServer {
     ) {
         // Mark that we're handling a crash
         is_handling_crash.store(true, Ordering::Relaxed);
-        
+
         warn!("Server crashed with exit code: {}", exit_code);
-        
+
         // Update state
         *self.state.write().await = ServerState::Idle;
-        
+
         // Check if crash recovery is enabled
         if !crash_recovery_enabled.load(Ordering::Relaxed) {
             info!("Crash recovery disabled, not restarting");
             is_handling_crash.store(false, Ordering::Relaxed);
             return;
         }
-        
+
         // Increment crash counter
         let crashes = consecutive_crashes.fetch_add(1, Ordering::Relaxed) + 1;
-        
+
         // Check if we've crashed too many times
         const MAX_CONSECUTIVE_CRASHES: u32 = 5;
         if crashes >= MAX_CONSECUTIVE_CRASHES {
@@ -298,7 +296,7 @@ impl NodeJsServer {
             is_handling_crash.store(false, Ordering::Relaxed);
             return;
         }
-        
+
         // Calculate backoff delay
         let delay_secs = match crashes {
             1 => 2,
@@ -307,13 +305,16 @@ impl NodeJsServer {
             4 => 16,
             _ => 32,
         };
-        
-        info!("Restarting server after {} seconds (attempt {})", delay_secs, crashes);
+
+        info!(
+            "Restarting server after {} seconds (attempt {})",
+            delay_secs, crashes
+        );
         tokio::time::sleep(tokio::time::Duration::from_secs(delay_secs)).await;
-        
+
         // Try to restart
         match self.restart().await {
-            Ok(_) => {
+            Ok(()) => {
                 info!("Server restarted successfully");
                 // Reset crash counter on successful restart
                 consecutive_crashes.store(0, Ordering::Relaxed);
@@ -322,7 +323,7 @@ impl NodeJsServer {
                 error!("Failed to restart server: {}", e);
             }
         }
-        
+
         is_handling_crash.store(false, Ordering::Relaxed);
     }
 
@@ -339,21 +340,41 @@ impl NodeJsServer {
         } else {
             "vibetunnel"
         };
-        
+
         // Try multiple locations for the vibetunnel executable
+        let current_exe = std::env::current_exe().ok();
         let possible_paths = vec![
-            // Next to the Tauri executable
-            std::env::current_exe()
-                .ok()
-                .and_then(|p| p.parent().map(|p| p.join(exe_name))),
             // In resources directory (common for packaged apps)
-            std::env::current_exe()
-                .ok()
+            current_exe
+                .as_ref()
                 .and_then(|p| p.parent().map(|p| p.join("resources").join(exe_name))),
-            // Development path
-            PathBuf::from("../web/native").join(exe_name).canonicalize().ok(),
-            // Another development path
-            PathBuf::from("../../web/native").join(exe_name).canonicalize().ok(),
+            // Development path relative to Cargo.toml location (more reliable)
+            std::env::var("CARGO_MANIFEST_DIR").ok()
+                .map(PathBuf::from)
+                .map(|p| p.join("../../web/native").join(exe_name)),
+            // Development path relative to current exe in target/debug
+            current_exe
+                .as_ref()
+                .and_then(|p| p.parent()) // target/debug
+                .and_then(|p| p.parent()) // target
+                .and_then(|p| p.parent()) // src-tauri
+                .and_then(|p| p.parent()) // tauri
+                .map(|p| p.join("web/native").join(exe_name)),
+            // Development path relative to src-tauri
+            Some(PathBuf::from("../../web/native").join(exe_name)),
+            // Development path with canonicalize
+            PathBuf::from("../../web/native")
+                .join(exe_name)
+                .canonicalize()
+                .ok(),
+            // Next to the Tauri executable (but check it's not the Tauri binary itself)
+            current_exe
+                .as_ref()
+                .and_then(|p| p.parent().map(|p| p.join(exe_name)))
+                .filter(|path| {
+                    // Make sure this isn't the Tauri executable itself
+                    current_exe.as_ref() != Some(path)
+                }),
         ];
 
         for path_opt in possible_paths {
@@ -369,6 +390,7 @@ impl NodeJsServer {
                             let _ = std::fs::set_permissions(&path, perms);
                         }
                     }
+                    info!("Using vibetunnel executable at: {:?}", path);
                     return Ok(path);
                 }
             }
@@ -381,7 +403,7 @@ impl NodeJsServer {
     async fn get_auth_credentials(&self) -> Option<(String, String)> {
         // Load settings to check if password is enabled
         let settings = crate::settings::Settings::load().ok()?;
-        
+
         if settings.dashboard.enable_password && !settings.dashboard.password.is_empty() {
             Some(("admin".to_string(), settings.dashboard.password))
         } else {
@@ -392,7 +414,7 @@ impl NodeJsServer {
     /// Log server output
     fn log_output(line: &str, is_error: bool) {
         let line_lower = line.to_lowercase();
-        
+
         if is_error || line_lower.contains("error") || line_lower.contains("failed") {
             error!("Server: {}", line);
         } else if line_lower.contains("warn") {
@@ -407,11 +429,11 @@ impl NodeJsServer {
         let process = self.process.clone();
         let state = self.state.clone();
         let on_crash = self.on_crash.clone();
-        
+
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                
+
                 let mut process_guard = process.write().await;
                 if let Some(ref mut child) = *process_guard {
                     match child.try_wait() {
@@ -419,17 +441,20 @@ impl NodeJsServer {
                             // Process exited
                             let exit_code = status.code().unwrap_or(-1);
                             let was_running = *state.read().await == ServerState::Running;
-                            
+
                             if was_running {
-                                error!("Server terminated unexpectedly with exit code: {}", exit_code);
+                                error!(
+                                    "Server terminated unexpectedly with exit code: {}",
+                                    exit_code
+                                );
                                 *state.write().await = ServerState::Crashed;
-                                
+
                                 // Call crash handler if set
                                 if let Some(ref callback) = *on_crash.read().await {
                                     callback(exit_code);
                                 }
                             }
-                            
+
                             *process_guard = None;
                             break;
                         }
@@ -461,12 +486,9 @@ pub struct BackendManager {
 impl BackendManager {
     /// Create a new backend manager
     pub fn new(port: u16) -> Self {
-        let server = Arc::new(NodeJsServer::new(
-            port.to_string(),
-            "127.0.0.1".to_string(),
-        ));
-        
-        Self { 
+        let server = Arc::new(NodeJsServer::new(port.to_string(), "127.0.0.1".to_string()));
+
+        Self {
             server,
             crash_recovery_enabled: Arc::new(AtomicBool::new(true)),
             consecutive_crashes: Arc::new(AtomicU32::new(0)),
@@ -478,40 +500,45 @@ impl BackendManager {
     pub async fn start(&self) -> Result<(), String> {
         // Start the server first
         let result = self.server.start().await;
-        
+
         if result.is_ok() {
             // Reset consecutive crashes on successful start
             self.consecutive_crashes.store(0, Ordering::Relaxed);
-            
+
             // Set up crash handler after successful start
             let consecutive_crashes = self.consecutive_crashes.clone();
             let is_handling_crash = self.is_handling_crash.clone();
             let crash_recovery_enabled = self.crash_recovery_enabled.clone();
             let server = self.server.clone();
-            
-            self.server.set_on_crash(move |exit_code| {
-                let consecutive_crashes = consecutive_crashes.clone();
-                let is_handling_crash = is_handling_crash.clone();
-                let crash_recovery_enabled = crash_recovery_enabled.clone();
-                let server = server.clone();
-                
-                tokio::spawn(async move {
-                    server.handle_crash(
-                        exit_code,
-                        consecutive_crashes,
-                        is_handling_crash,
-                        crash_recovery_enabled,
-                    ).await;
-                });
-            }).await;
+
+            self.server
+                .set_on_crash(move |exit_code| {
+                    let consecutive_crashes = consecutive_crashes.clone();
+                    let is_handling_crash = is_handling_crash.clone();
+                    let crash_recovery_enabled = crash_recovery_enabled.clone();
+                    let server = server.clone();
+
+                    tokio::spawn(async move {
+                        server
+                            .handle_crash(
+                                exit_code,
+                                consecutive_crashes,
+                                is_handling_crash,
+                                crash_recovery_enabled,
+                            )
+                            .await;
+                    });
+                })
+                .await;
         }
-        
+
         result
     }
-    
+
     /// Enable or disable crash recovery
     pub async fn set_crash_recovery_enabled(&self, enabled: bool) {
-        self.crash_recovery_enabled.store(enabled, Ordering::Relaxed);
+        self.crash_recovery_enabled
+            .store(enabled, Ordering::Relaxed);
     }
 
     /// Stop the backend server
@@ -540,5 +567,258 @@ impl BackendManager {
     /// Get server instance
     pub fn get_server(&self) -> Arc<NodeJsServer> {
         self.server.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::Ordering;
+
+    #[tokio::test]
+    async fn test_server_state_transitions() {
+        let server = NodeJsServer::new("8080".to_string(), "127.0.0.1".to_string());
+
+        // Initial state should be Idle
+        assert_eq!(server.get_state().await, ServerState::Idle);
+
+        // Manual state transitions for testing
+        *server.state.write().await = ServerState::Starting;
+        assert_eq!(server.get_state().await, ServerState::Starting);
+
+        *server.state.write().await = ServerState::Running;
+        assert_eq!(server.get_state().await, ServerState::Running);
+        assert!(server.is_running().await);
+
+        *server.state.write().await = ServerState::Stopping;
+        assert_eq!(server.get_state().await, ServerState::Stopping);
+        assert!(!server.is_running().await);
+
+        *server.state.write().await = ServerState::Crashed;
+        assert_eq!(server.get_state().await, ServerState::Crashed);
+    }
+
+    #[tokio::test]
+    async fn test_server_creation() {
+        let server = NodeJsServer::new("3000".to_string(), "localhost".to_string());
+        assert_eq!(server.port, "3000");
+        assert_eq!(server.bind_address, "localhost");
+        assert_eq!(server.get_state().await, ServerState::Idle);
+    }
+
+    #[tokio::test]
+    async fn test_backend_manager_creation() {
+        let manager = BackendManager::new(8080);
+        assert!(!manager.is_running().await);
+        assert_eq!(manager.consecutive_crashes.load(Ordering::Relaxed), 0);
+        assert!(manager.crash_recovery_enabled.load(Ordering::Relaxed));
+        assert!(!manager.is_handling_crash.load(Ordering::Relaxed));
+    }
+
+    #[tokio::test]
+    async fn test_crash_recovery_toggle() {
+        let manager = BackendManager::new(8080);
+
+        // Should be enabled by default
+        assert!(manager.crash_recovery_enabled.load(Ordering::Relaxed));
+
+        // Disable crash recovery
+        manager.set_crash_recovery_enabled(false).await;
+        assert!(!manager.crash_recovery_enabled.load(Ordering::Relaxed));
+
+        // Re-enable crash recovery
+        manager.set_crash_recovery_enabled(true).await;
+        assert!(manager.crash_recovery_enabled.load(Ordering::Relaxed));
+    }
+
+    #[tokio::test]
+    async fn test_stop_when_not_running() {
+        let server = NodeJsServer::new("8080".to_string(), "127.0.0.1".to_string());
+
+        // Stopping when not running should succeed
+        let result = server.stop().await;
+        assert!(result.is_ok());
+        assert_eq!(server.get_state().await, ServerState::Idle);
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_start_attempts() {
+        let server = Arc::new(NodeJsServer::new(
+            "8080".to_string(),
+            "127.0.0.1".to_string(),
+        ));
+
+        // Simulate server already starting
+        *server.state.write().await = ServerState::Starting;
+
+        // Attempt to start should return Ok but not change state
+        let result = server.start().await;
+        assert!(result.is_ok());
+        assert_eq!(server.get_state().await, ServerState::Starting);
+
+        // Simulate server running
+        *server.state.write().await = ServerState::Running;
+
+        // Another start attempt should also return Ok
+        let result = server.start().await;
+        assert!(result.is_ok());
+        assert_eq!(server.get_state().await, ServerState::Running);
+    }
+
+    #[tokio::test]
+    async fn test_start_while_stopping() {
+        let server = NodeJsServer::new("8080".to_string(), "127.0.0.1".to_string());
+
+        // Set state to Stopping
+        *server.state.write().await = ServerState::Stopping;
+
+        // Start should fail
+        let result = server.start().await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Cannot start server while stopping");
+    }
+
+    #[tokio::test]
+    async fn test_crash_callback() {
+        let server = NodeJsServer::new("8080".to_string(), "127.0.0.1".to_string());
+        let callback_called = Arc::new(AtomicBool::new(false));
+        let callback_called_clone = callback_called.clone();
+
+        // Set crash callback
+        server
+            .set_on_crash(move |_exit_code| {
+                callback_called_clone.store(true, Ordering::Relaxed);
+            })
+            .await;
+
+        // Verify callback was set
+        assert!(server.on_crash.read().await.is_some());
+
+        // Simulate calling the callback
+        if let Some(ref callback) = *server.on_crash.read().await {
+            callback(1);
+        }
+
+        assert!(callback_called.load(Ordering::Relaxed));
+    }
+
+    #[tokio::test]
+    async fn test_handle_crash_recovery_disabled() {
+        let server = NodeJsServer::new("8080".to_string(), "127.0.0.1".to_string());
+        let consecutive_crashes = Arc::new(AtomicU32::new(0));
+        let is_handling_crash = Arc::new(AtomicBool::new(false));
+        let crash_recovery_enabled = Arc::new(AtomicBool::new(false));
+
+        // Set server to running state
+        *server.state.write().await = ServerState::Running;
+
+        // Handle crash with recovery disabled
+        server
+            .handle_crash(
+                1,
+                consecutive_crashes.clone(),
+                is_handling_crash.clone(),
+                crash_recovery_enabled,
+            )
+            .await;
+
+        // Should not restart, state should be Idle
+        assert_eq!(server.get_state().await, ServerState::Idle);
+        // is_handling_crash should be reset to false
+        assert!(!is_handling_crash.load(Ordering::Relaxed));
+        // When crash recovery is disabled, it should still return early without restarting
+    }
+
+    #[tokio::test]
+    async fn test_handle_crash_max_retries() {
+        let server = NodeJsServer::new("8080".to_string(), "127.0.0.1".to_string());
+        let consecutive_crashes = Arc::new(AtomicU32::new(4)); // One less than max
+        let is_handling_crash = Arc::new(AtomicBool::new(false));
+        let crash_recovery_enabled = Arc::new(AtomicBool::new(true));
+
+        // Set server to running state
+        *server.state.write().await = ServerState::Running;
+
+        // Handle crash - should exceed max retries
+        server
+            .handle_crash(
+                1,
+                consecutive_crashes.clone(),
+                is_handling_crash.clone(),
+                crash_recovery_enabled,
+            )
+            .await;
+
+        // Should give up after max retries
+        assert_eq!(consecutive_crashes.load(Ordering::Relaxed), 5);
+        assert!(!is_handling_crash.load(Ordering::Relaxed));
+    }
+
+    #[tokio::test]
+    async fn test_blocking_is_running() {
+        let manager = BackendManager::new(8080);
+
+        // Initially should not be running
+        assert!(!manager.is_running().await);
+
+        // Simulate running state
+        *manager.server.state.write().await = ServerState::Running;
+        assert!(manager.is_running().await);
+    }
+
+    #[test]
+    fn test_log_output_classification() {
+        // This tests the log classification logic indirectly through behavior
+        // The actual log_output function logs to tracing, which we can't easily test
+        // But we can verify the logic would work correctly
+
+        let error_lines = vec![
+            "Error: connection failed",
+            "FAILED to start server",
+            "Something went wrong",
+        ];
+
+        let warn_lines = vec!["Warning: deprecated feature", "warn: using default config"];
+
+        let info_lines = vec!["Server started successfully", "Listening on port 8080"];
+
+        // Verify our test cases match expected patterns
+        for (i, line) in error_lines.iter().enumerate() {
+            let lower = line.to_lowercase();
+            match i {
+                0 => assert!(lower.contains("error")),
+                1 => assert!(lower.contains("failed")),
+                2 => assert!(lower.contains("wrong")),
+                _ => {}
+            }
+        }
+
+        for line in &warn_lines {
+            let lower = line.to_lowercase();
+            assert!(lower.contains("warn"));
+        }
+
+        for line in &info_lines {
+            let lower = line.to_lowercase();
+            assert!(
+                !lower.contains("error") && !lower.contains("failed") && !lower.contains("warn")
+            );
+        }
+    }
+
+    #[test]
+    fn test_vibetunnel_path_logic() {
+        // Test the executable name generation
+        let exe_name = if cfg!(windows) {
+            "vibetunnel.exe"
+        } else {
+            "vibetunnel"
+        };
+
+        if cfg!(windows) {
+            assert_eq!(exe_name, "vibetunnel.exe");
+        } else {
+            assert_eq!(exe_name, "vibetunnel");
+        }
     }
 }

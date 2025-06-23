@@ -80,9 +80,7 @@ pub async fn get_file_info(
         .map_err(|_| StatusCode::NOT_FOUND)?;
 
     let name = path
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| path.to_string_lossy().to_string());
+        .file_name().map_or_else(|| path.to_string_lossy().to_string(), |n| n.to_string_lossy().to_string());
 
     let is_symlink = fs::symlink_metadata(&path)
         .await

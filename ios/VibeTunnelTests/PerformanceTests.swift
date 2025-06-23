@@ -274,7 +274,7 @@ struct PerformanceTests {
 
             // Create a data task with invalid URL to test error handling
             let url = URL(string: "https://invalid-domain-\(i).test")!
-            let task = session.dataTask(with: url) { data, response, error in
+            let task = session.dataTask(with: url) { _, _, error in
                 countQueue.sync {
                     if error != nil {
                         successCount += 1 // We expect errors for invalid domains

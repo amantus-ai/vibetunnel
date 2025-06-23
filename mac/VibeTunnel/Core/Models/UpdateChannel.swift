@@ -72,7 +72,8 @@ public enum UpdateChannel: String, CaseIterable, Codable, Sendable {
     /// The current update channel based on user defaults
     public static var current: Self {
         if let rawValue = UserDefaults.standard.string(forKey: "updateChannel"),
-           let channel = Self(rawValue: rawValue) {
+           let channel = Self(rawValue: rawValue)
+        {
             return channel
         }
         return defaultChannel
@@ -88,7 +89,8 @@ public enum UpdateChannel: String, CaseIterable, Codable, Sendable {
         // First check if this build was marked as a pre-release during build time
         if let isPrereleaseValue = Bundle.main.object(forInfoDictionaryKey: "IS_PRERELEASE_BUILD"),
            let isPrerelease = isPrereleaseValue as? Bool,
-           isPrerelease {
+           isPrerelease
+        {
             return .prerelease
         }
 

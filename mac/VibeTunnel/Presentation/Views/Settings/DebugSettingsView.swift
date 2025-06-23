@@ -8,7 +8,8 @@ struct DebugSettingsView: View {
     private var debugMode = false
     @AppStorage("logLevel")
     private var logLevel = "info"
-    @State private var serverManager = ServerManager.shared
+    @Environment(ServerManager.self)
+    private var serverManager
     @State private var showPurgeConfirmation = false
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "DebugSettings")
@@ -18,7 +19,7 @@ struct DebugSettingsView: View {
     }
 
     private var serverPort: Int {
-        Int(serverManager.port) ?? 4020
+        Int(serverManager.port) ?? 4_020
     }
 
     var body: some View {
@@ -212,15 +213,11 @@ private struct ServerSection: View {
                 }
             }
             .padding(.vertical, 4)
-            .onAppear {
-                Task {
-                    await checkPortAvailability()
-                }
+            .task {
+                await checkPortAvailability()
             }
-            .onChange(of: serverPort) { _, _ in
-                Task {
-                    await checkPortAvailability()
-                }
+            .task(id: serverPort) {
+                await checkPortAvailability()
             }
         } header: {
             Text("HTTP Server")

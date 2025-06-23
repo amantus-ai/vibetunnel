@@ -6,7 +6,7 @@ struct WidthSelectorPopover: View {
     @Binding var isPresented: Bool
     @State private var customWidth: String = ""
     @State private var showCustomInput = false
-    
+
     var body: some View {
         NavigationStack {
             List {
@@ -14,20 +14,19 @@ struct WidthSelectorPopover: View {
                     ForEach(TerminalWidth.allCases, id: \.value) { width in
                         WidthPresetRow(
                             width: width,
-                            isSelected: currentWidth.value == width.value,
-                            onSelect: {
-                                currentWidth = width
-                                HapticFeedback.impact(.light)
-                                isPresented = false
-                            }
-                        )
+                            isSelected: currentWidth.value == width.value
+                        ) {
+                            currentWidth = width
+                            HapticFeedback.impact(.light)
+                            isPresented = false
+                        }
                     }
                 }
-                
+
                 Section {
                     Button(action: {
                         showCustomInput = true
-                    }) {
+                    }, label: {
                         HStack {
                             Image(systemName: "square.and.pencil")
                                 .font(.system(size: 16))
@@ -38,9 +37,9 @@ struct WidthSelectorPopover: View {
                             Spacer()
                         }
                         .padding(.vertical, 4)
-                    }
+                    })
                 }
-                
+
                 // Show recent custom widths if any
                 let customWidths = TerminalWidthManager.shared.customWidths
                 if !customWidths.isEmpty {
@@ -51,13 +50,12 @@ struct WidthSelectorPopover: View {
                         ForEach(customWidths, id: \.self) { width in
                             WidthPresetRow(
                                 width: .custom(width),
-                                isSelected: currentWidth.value == width && !currentWidth.isPreset,
-                                onSelect: {
-                                    currentWidth = .custom(width)
-                                    HapticFeedback.impact(.light)
-                                    isPresented = false
-                                }
-                            )
+                                isSelected: currentWidth.value == width && !currentWidth.isPreset
+                            ) {
+                                currentWidth = .custom(width)
+                                HapticFeedback.impact(.light)
+                                isPresented = false
+                            }
                         }
                     }
                 }
@@ -78,17 +76,16 @@ struct WidthSelectorPopover: View {
         .frame(width: 320, height: 400)
         .sheet(isPresented: $showCustomInput) {
             CustomWidthSheet(
-                customWidth: $customWidth,
-                onSave: { width in
-                    if let intWidth = Int(width), intWidth >= 20 && intWidth <= 500 {
-                        currentWidth = .custom(intWidth)
-                        TerminalWidthManager.shared.addCustomWidth(intWidth)
-                        HapticFeedback.notification(.success)
-                        showCustomInput = false
-                        isPresented = false
-                    }
+                customWidth: $customWidth
+            ) { width in
+                if let intWidth = Int(width), intWidth >= 20 && intWidth <= 500 {
+                    currentWidth = .custom(intWidth)
+                    TerminalWidthManager.shared.addCustomWidth(intWidth)
+                    HapticFeedback.notification(.success)
+                    showCustomInput = false
+                    isPresented = false
                 }
-            )
+            }
         }
     }
 }
@@ -98,7 +95,7 @@ private struct WidthPresetRow: View {
     let width: TerminalWidth
     let isSelected: Bool
     let onSelect: () -> Void
-    
+
     var body: some View {
         Button(action: onSelect) {
             HStack {
@@ -108,21 +105,21 @@ private struct WidthPresetRow: View {
                             .font(Theme.Typography.terminalSystem(size: 16))
                             .fontWeight(.medium)
                             .foregroundColor(Theme.Colors.terminalForeground)
-                        
+
                         if width.value > 0 {
                             Text("columns")
                                 .font(.caption)
                                 .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
                         }
                     }
-                    
+
                     Text(width.description)
                         .font(.caption)
                         .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
                 }
-                
+
                 Spacer()
-                
+
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 20))
@@ -139,9 +136,10 @@ private struct WidthPresetRow: View {
 private struct CustomWidthSheet: View {
     @Binding var customWidth: String
     let onSave: (String) -> Void
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss)
+    var dismiss
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: Theme.Spacing.large) {
@@ -150,7 +148,7 @@ private struct CustomWidthSheet: View {
                     .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
-                
+
                 HStack {
                     TextField("Width", text: $customWidth)
                         .font(Theme.Typography.terminalSystem(size: 24))
@@ -162,12 +160,12 @@ private struct CustomWidthSheet: View {
                         .padding()
                         .background(Theme.Colors.cardBackground)
                         .cornerRadius(Theme.CornerRadius.medium)
-                    
+
                     Text("columns")
                         .font(.body)
                         .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
                 }
-                
+
                 Spacer()
             }
             .padding(.top, Theme.Spacing.extraLarge)
@@ -180,7 +178,7 @@ private struct CustomWidthSheet: View {
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
                         onSave(customWidth)

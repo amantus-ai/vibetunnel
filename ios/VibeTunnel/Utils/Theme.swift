@@ -14,25 +14,31 @@ enum Theme {
         static let terminalBackground = Color(light: Color(hex: "FFFFFF"), dark: Color(hex: "0A0E14"))
         static let cardBackground = Color(light: Color(hex: "F8F9FA"), dark: Color(hex: "0D1117"))
         static let headerBackground = Color(light: Color(hex: "FFFFFF"), dark: Color(hex: "010409"))
-        
-        // Border colors
+
+        /// Border colors
         static let cardBorder = Color(light: Color(hex: "E1E4E8"), dark: Color(hex: "1C2128"))
-        
-        // Text colors
+
+        /// Text colors
         static let terminalForeground = Color(light: Color(hex: "24292E"), dark: Color(hex: "B3B1AD"))
-        
+
         // Accent colors (same for both modes)
-        static let primaryAccent = Color(light: Color(hex: "22C55E"), dark: Color(hex: "00FF88")) // Darker green for light mode
+        static let primaryAccent = Color(hex: "007AFF") // iOS system blue
         static let secondaryAccent = Color(hex: "59C2FF")
         static let successAccent = Color(hex: "AAD94C")
         static let warningAccent = Color(hex: "FFB454")
         static let errorAccent = Color(hex: "F07178")
-        
-        // Selection colors
+
+        /// Selection colors
         static let terminalSelection = Color(light: Color(hex: "E1E4E8"), dark: Color(hex: "273747"))
-        
-        // Overlay colors
+
+        /// Overlay colors
         static let overlayBackground = Color(light: Color.black.opacity(0.5), dark: Color.black.opacity(0.7))
+
+        // Additional UI colors
+        static let secondaryText = Color(light: Color(hex: "6E7781"), dark: Color(hex: "8B949E"))
+        static let secondaryBackground = Color(light: Color(hex: "F6F8FA"), dark: Color(hex: "161B22"))
+        static let success = successAccent
+        static let error = errorAccent
 
         // Additional UI colors for FileBrowser
         static let terminalAccent = primaryAccent
@@ -59,6 +65,15 @@ enum Theme {
         static let ansiBrightMagenta = Color(light: Color(hex: "5A32A3"), dark: Color(hex: "FFEE99"))
         static let ansiBrightCyan = Color(light: Color(hex: "0598BC"), dark: Color(hex: "95E6CB"))
         static let ansiBrightWhite = Color(light: Color(hex: "24292E"), dark: Color(hex: "FFFFFF"))
+
+        // File type colors
+        static let fileTypeJS = Color(light: Color(hex: "B08800"), dark: Color(hex: "FFB454"))
+        static let fileTypeTS = Color(light: Color(hex: "0366D6"), dark: Color(hex: "007ACC"))
+        static let fileTypeJSON = Color(light: Color(hex: "E36209"), dark: Color(hex: "FF8C42"))
+        static let fileTypeCSS = Color(light: Color(hex: "563D7C"), dark: Color(hex: "7B68EE"))
+        static let fileTypePython = Color(light: Color(hex: "3776AB"), dark: Color(hex: "4B8BBE"))
+        static let fileTypeGo = Color(light: Color(hex: "00ADD8"), dark: Color(hex: "00ADD8"))
+        static let fileTypeImage = Color(light: Color(hex: "28A745"), dark: Color(hex: "91B362"))
     }
 
     // MARK: - Typography
@@ -77,6 +92,18 @@ enum Theme {
         static func terminalSystem(size: CGFloat) -> Font {
             Font.system(size: size, design: .monospaced)
         }
+
+        static func terminalSystem(size: CGFloat, weight: Font.Weight) -> Font {
+            Font.system(size: size, weight: weight, design: .monospaced)
+        }
+
+        static func largeTitle() -> Font {
+            Font.largeTitle.weight(.semibold)
+        }
+
+        static func title() -> Font {
+            Font.title2.weight(.medium)
+        }
     }
 
     // MARK: - Spacing
@@ -88,6 +115,7 @@ enum Theme {
         static let medium: CGFloat = 12
         static let large: CGFloat = 16
         static let extraLarge: CGFloat = 24
+        static let xlarge: CGFloat = 24 // Alias for extraLarge
         static let extraExtraLarge: CGFloat = 32
     }
 
@@ -99,6 +127,13 @@ enum Theme {
         static let medium: CGFloat = 10
         static let large: CGFloat = 16
         static let card: CGFloat = 12
+    }
+
+    // MARK: - Layout
+
+    /// Layout constants
+    enum Layout {
+        static let cornerRadius: CGFloat = 10
     }
 
     // MARK: - Animation
@@ -154,15 +189,15 @@ extension Color {
             opacity: Double(alpha) / 255
         )
     }
-    
+
     /// Creates a color that automatically adapts to light/dark mode
     init(light: Color, dark: Color) {
         self.init(UIColor { traitCollection in
             switch traitCollection.userInterfaceStyle {
             case .dark:
-                return UIColor(dark)
+                UIColor(dark)
             default:
-                return UIColor(light)
+                UIColor(light)
             }
         })
     }
@@ -205,14 +240,8 @@ extension View {
                     .stroke(Theme.Colors.primaryAccent, lineWidth: 1)
             )
     }
-    
-    /// Interactive button style with press and hover animations
-    func interactiveButton(isPressed: Bool = false, isHovered: Bool = false) -> some View {
-        self
-            .scaleEffect(isPressed ? 0.95 : 1.0)
-            .animation(Theme.Animation.quick, value: isPressed)
-            .animation(Theme.Animation.quick, value: isHovered)
-    }
+
+    // Removed: interactiveButton - use explicit scaleEffect and animation instead
 }
 
 // MARK: - Haptic Feedback
@@ -268,36 +297,5 @@ struct HapticFeedback {
     }
 }
 
-// MARK: - SwiftUI Haptic View Modifiers
-
-extension View {
-    /// Provides haptic feedback when the view is tapped
-    func hapticOnTap(_ style: HapticFeedback.ImpactStyle = .light) -> some View {
-        self.onTapGesture {
-            HapticFeedback.impact(style)
-        }
-    }
-
-    /// Provides haptic feedback when a value changes
-    func hapticOnChange(of value: some Equatable, style: HapticFeedback.ImpactStyle = .light) -> some View {
-        self.onChange(of: value) { _, _ in
-            HapticFeedback.impact(style)
-        }
-    }
-
-    /// Provides selection haptic feedback when a value changes
-    func hapticSelection(on value: some Equatable) -> some View {
-        self.onChange(of: value) { _, _ in
-            HapticFeedback.selection()
-        }
-    }
-
-    /// Provides notification haptic feedback
-    func hapticNotification(_ type: HapticFeedback.NotificationType, when condition: Bool) -> some View {
-        self.onChange(of: condition) { _, newValue in
-            if newValue {
-                HapticFeedback.notification(type)
-            }
-        }
-    }
-}
+// Note: Call HapticFeedback methods directly instead of using view modifiers
+// Example: HapticFeedback.impact(.light) or HapticFeedback.selection()

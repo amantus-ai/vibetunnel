@@ -45,6 +45,8 @@ use state::AppState;
 
 #[tauri::command]
 fn open_settings_window(app: AppHandle, tab: Option<String>) -> Result<(), String> {
+    tracing::info!("Opening settings window");
+    
     // Build URL with optional tab parameter
     let url = if let Some(tab_name) = tab {
         format!("settings.html?tab={}", tab_name)
@@ -62,6 +64,7 @@ fn open_settings_window(app: AppHandle, tab: Option<String>) -> Result<(), Strin
         window.set_focus().map_err(|e| e.to_string())?;
     } else {
         // Create new settings window
+        tracing::info!("Creating new settings window with URL: {}", url);
         let window =
             tauri::WebviewWindowBuilder::new(&app, "settings", tauri::WebviewUrl::App(url.into()))
                 .title("VibeTunnel Settings")
@@ -70,7 +73,12 @@ fn open_settings_window(app: AppHandle, tab: Option<String>) -> Result<(), Strin
                 .decorations(true)
                 .center()
                 .build()
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| {
+                    tracing::error!("Failed to create settings window: {}", e);
+                    e.to_string()
+                })?;
+        
+        tracing::info!("Settings window created successfully");
 
         // Handle close event to destroy the window
         let window_clone = window.clone();
@@ -89,7 +97,7 @@ fn focus_terminal_window(session_id: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         use std::process::Command;
-        
+
         // Use AppleScript to focus the terminal window
         let script = format!(
             r#"tell application "System Events"
@@ -108,26 +116,26 @@ fn focus_terminal_window(session_id: String) -> Result<(), String> {
             end tell"#,
             session_id
         );
-        
+
         let output = Command::new("osascript")
             .arg("-e")
             .arg(&script)
             .output()
             .map_err(|e| format!("Failed to execute AppleScript: {}", e))?;
-            
+
         if !output.status.success() {
             let error = String::from_utf8_lossy(&output.stderr);
             return Err(format!("AppleScript failed: {}", error));
         }
     }
-    
+
     #[cfg(not(target_os = "macos"))]
     {
         // On other platforms, we can try to use wmctrl or similar tools
         // For now, just return an error
         return Err("Terminal window focus not implemented for this platform".to_string());
     }
-    
+
     Ok(())
 }
 
@@ -136,25 +144,22 @@ fn open_session_detail_window(app: AppHandle, session_id: String) -> Result<(), 
     // Build URL with session ID parameter
     let url = format!("session-detail.html?id={}", session_id);
     let window_id = format!("session-detail-{}", session_id);
-    
+
     // Check if session detail window already exists for this session
     if let Some(window) = app.get_webview_window(&window_id) {
         window.show().map_err(|e| e.to_string())?;
         window.set_focus().map_err(|e| e.to_string())?;
     } else {
         // Create new session detail window
-        let window = tauri::WebviewWindowBuilder::new(
-            &app,
-            window_id,
-            tauri::WebviewUrl::App(url.into()),
-        )
-        .title("Session Details")
-        .inner_size(600.0, 450.0)
-        .resizable(true)
-        .decorations(true)
-        .center()
-        .build()
-        .map_err(|e| e.to_string())?;
+        let window =
+            tauri::WebviewWindowBuilder::new(&app, window_id, tauri::WebviewUrl::App(url.into()))
+                .title("Session Details")
+                .inner_size(600.0, 450.0)
+                .resizable(true)
+                .decorations(true)
+                .center()
+                .build()
+                .map_err(|e| e.to_string())?;
 
         // Handle close event to destroy the window
         let window_clone = window.clone();
@@ -512,9 +517,25 @@ fn main() {
             // Set initial dock icon visibility on macOS
             #[cfg(target_os = "macos")]
             {
-                if !settings.general.show_dock_icon {
-                    app.set_activation_policy(tauri::ActivationPolicy::Accessory);
-                }
+                // Force dock icon to be visible for debugging
+                app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                // if !settings.general.show_dock_icon {
+                //     app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+                // }
+            }
+
+            // Show settings window for debugging
+            #[cfg(debug_assertions)]
+            {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    // Wait a bit for the app to fully initialize
+                    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                    // Open settings window
+                    if let Err(e) = open_settings_window(app_handle, None) {
+                        tracing::error!("Failed to open settings window: {}", e);
+                    }
+                });
             }
 
             // Auto-start server with monitoring

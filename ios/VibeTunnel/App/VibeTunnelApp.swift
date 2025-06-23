@@ -7,7 +7,7 @@ struct VibeTunnelApp: App {
     @State private var connectionManager = ConnectionManager()
     @State private var navigationManager = NavigationManager()
     @State private var networkMonitor = NetworkMonitor.shared
-    
+
     init() {
         // Configure app logging level
         AppConfig.configureLogging()
@@ -26,8 +26,18 @@ struct VibeTunnelApp: App {
                     // Initialize network monitoring
                     _ = networkMonitor
                 }
+                #if targetEnvironment(macCatalyst)
+                .macCatalystWindowStyle(getStoredWindowStyle())
+                #endif
         }
     }
+    
+    #if targetEnvironment(macCatalyst)
+    private func getStoredWindowStyle() -> MacWindowStyle {
+        let styleRaw = UserDefaults.standard.string(forKey: "macWindowStyle") ?? "standard"
+        return styleRaw == "inline" ? .inline : .standard
+    }
+    #endif
 
     private func handleURL(_ url: URL) {
         // Handle vibetunnel://session/{sessionId} URLs
@@ -112,8 +122,7 @@ class ConnectionManager {
 
 /// Make ConnectionManager accessible globally for APIClient
 extension ConnectionManager {
-    @MainActor
-    static let shared = ConnectionManager()
+    @MainActor static let shared = ConnectionManager()
 }
 
 /// Manages app-wide navigation state.

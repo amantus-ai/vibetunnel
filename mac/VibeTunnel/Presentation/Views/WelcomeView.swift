@@ -24,7 +24,8 @@ struct WelcomeView: View {
     @AppStorage(AppConstants.UserDefaultsKeys.welcomeVersion)
     private var welcomeVersion = 0
     @State private var cliInstaller = CLIInstaller()
-    @State private var permissionManager = SystemPermissionManager.shared
+    @Environment(SystemPermissionManager.self)
+    private var permissionManager
 
     private let pageWidth: CGFloat = 640
     private let contentHeight: CGFloat = 468 // Total height minus navigation area
@@ -84,10 +85,10 @@ struct WelcomeView: View {
                 // Back button with consistent space reservation
                 ZStack(alignment: .leading) {
                     // Invisible placeholder that's always there
-                    Button(action: {}) {
+                    Button(action: {}, label: {
                         Label("Back", systemImage: "chevron.left")
                             .labelStyle(.iconOnly)
-                    }
+                    })
                     .buttonStyle(.plain)
                     .opacity(0)
                     .disabled(true)

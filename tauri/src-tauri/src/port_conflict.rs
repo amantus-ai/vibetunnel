@@ -13,7 +13,7 @@ pub struct ProcessDetails {
 }
 
 impl ProcessDetails {
-    /// Check if this is a VibeTunnel process
+    /// Check if this is a `VibeTunnel` process
     pub fn is_vibetunnel(&self) -> bool {
         if let Some(path) = &self.path {
             return path.contains("vibetunnel") || path.contains("VibeTunnel");
@@ -28,8 +28,7 @@ impl ProcessDetails {
                 && self
                     .path
                     .as_ref()
-                    .map(|p| p.contains("VibeTunnel"))
-                    .unwrap_or(false)
+                    .is_some_and(|p| p.contains("VibeTunnel"))
     }
 }
 
@@ -58,7 +57,7 @@ pub struct PortConflictResolver;
 impl PortConflictResolver {
     /// Check if a port is available
     pub async fn is_port_available(port: u16) -> bool {
-        TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok()
+        TcpListener::bind(format!("127.0.0.1:{port}")).is_ok()
     }
 
     /// Detect what process is using a port
@@ -83,7 +82,7 @@ impl PortConflictResolver {
     async fn detect_conflict_macos(port: u16) -> Option<PortConflict> {
         // Use lsof to find process using the port
         let output = Command::new("/usr/sbin/lsof")
-            .args(&["-i", &format!(":{}", port), "-n", "-P", "-F"])
+            .args(["-i", &format!(":{port}"), "-n", "-P", "-F"])
             .output()
             .ok()?;
 
@@ -267,7 +266,7 @@ impl PortConflictResolver {
         #[cfg(unix)]
         {
             if let Ok(output) = Command::new("ps")
-                .args(&["-p", &pid.to_string(), "-o", "comm="])
+                .args(["-p", &pid.to_string(), "-o", "comm="])
                 .output()
             {
                 let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -311,11 +310,11 @@ impl PortConflictResolver {
         #[cfg(unix)]
         {
             if let Ok(output) = Command::new("ps")
-                .args(&["-p", &pid.to_string(), "-o", "pid=,ppid=,comm="])
+                .args(["-p", &pid.to_string(), "-o", "pid=,ppid=,comm="])
                 .output()
             {
                 let stdout = String::from_utf8_lossy(&output.stdout);
-                let parts: Vec<&str> = stdout.trim().split_whitespace().collect();
+                let parts: Vec<&str> = stdout.split_whitespace().collect();
 
                 if parts.len() >= 3 {
                     let pid = parts[0].parse().ok()?;
@@ -346,7 +345,7 @@ impl PortConflictResolver {
     async fn find_available_ports(near_port: u16, count: usize) -> Vec<u16> {
         let mut available_ports = Vec::new();
         let start = near_port.saturating_sub(10).max(1024);
-        let end = near_port.saturating_add(100).min(65535);
+        let end = near_port.saturating_add(100);
 
         for port in start..=end {
             if port != near_port && Self::is_port_available(port).await {
@@ -409,12 +408,12 @@ impl PortConflictResolver {
                 #[cfg(unix)]
                 {
                     let output = Command::new("kill")
-                        .args(&["-9", &pid.to_string()])
+                        .args(["-9", &pid.to_string()])
                         .output()
-                        .map_err(|e| format!("Failed to execute kill command: {}", e))?;
+                        .map_err(|e| format!("Failed to execute kill command: {e}"))?;
 
                     if !output.status.success() {
-                        return Err(format!("Failed to kill process {}", pid));
+                        return Err(format!("Failed to kill process {pid}"));
                     }
                 }
 
@@ -451,9 +450,9 @@ impl PortConflictResolver {
         #[cfg(unix)]
         {
             let output = Command::new("kill")
-                .args(&["-9", &conflict.process.pid.to_string()])
+                .args(["-9", &conflict.process.pid.to_string()])
                 .output()
-                .map_err(|e| format!("Failed to execute kill command: {}", e))?;
+                .map_err(|e| format!("Failed to execute kill command: {e}"))?;
 
             if !output.status.success() {
                 error!("Failed to kill process with regular permissions");

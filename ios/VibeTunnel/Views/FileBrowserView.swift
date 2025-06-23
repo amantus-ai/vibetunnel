@@ -28,10 +28,15 @@ struct FileBrowserView: View {
     enum FileBrowserMode {
         case selectDirectory
         case browseFiles
-        case insertPath  // New mode for inserting paths into terminal
+        case insertPath // New mode for inserting paths into terminal
     }
 
-    init(initialPath: String = "~", mode: FileBrowserMode = .selectDirectory, onSelect: @escaping (String) -> Void, onInsertPath: ((String, Bool) -> Void)? = nil) {
+    init(
+        initialPath: String = "~",
+        mode: FileBrowserMode = .selectDirectory,
+        onSelect: @escaping (String) -> Void,
+        onInsertPath: ((String, Bool) -> Void)? = nil
+    ) {
         self.initialPath = initialPath
         self.mode = mode
         self.onSelect = onSelect
@@ -74,7 +79,7 @@ struct FileBrowserView: View {
                     .foregroundColor(Theme.Colors.terminalGray)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                
+
                 // Git branch indicator
                 if let gitStatus = viewModel.gitStatus, gitStatus.isGitRepo, let branch = gitStatus.branch {
                     Text("📍 \(branch)")
@@ -88,7 +93,7 @@ struct FileBrowserView: View {
         .padding(.vertical, 16)
         .background(Theme.Colors.terminalDarkGray)
     }
-    
+
     private var filterToolbar: some View {
         HStack(spacing: 12) {
             // Git filter toggle
@@ -103,16 +108,20 @@ struct FileBrowserView: View {
                     Text(viewModel.gitFilter == .changed ? "Git Changes" : "All Files")
                         .font(.custom("SF Mono", size: 12))
                 }
-                .foregroundColor(viewModel.gitFilter == .changed ? Theme.Colors.successAccent : Theme.Colors.terminalGray)
+                .foregroundColor(viewModel.gitFilter == .changed ? Theme.Colors.successAccent : Theme.Colors
+                    .terminalGray
+                )
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(viewModel.gitFilter == .changed ? Theme.Colors.successAccent.opacity(0.2) : Theme.Colors.terminalGray.opacity(0.1))
+                        .fill(viewModel.gitFilter == .changed ? Theme.Colors.successAccent.opacity(0.2) : Theme.Colors
+                            .terminalGray.opacity(0.1)
+                        )
                 )
             }
             .buttonStyle(TerminalButtonStyle())
-            
+
             // Hidden files toggle
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -130,23 +139,25 @@ struct FileBrowserView: View {
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(viewModel.showHidden ? Theme.Colors.terminalAccent.opacity(0.2) : Theme.Colors.terminalGray.opacity(0.1))
+                        .fill(viewModel.showHidden ? Theme.Colors.terminalAccent.opacity(0.2) : Theme.Colors
+                            .terminalGray.opacity(0.1)
+                        )
                 )
             }
             .buttonStyle(TerminalButtonStyle())
-            
+
             Spacer()
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(Theme.Colors.terminalDarkGray.opacity(0.5))
     }
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
                 // Background
-                Color.black.ignoresSafeArea()
+                Theme.Colors.terminalBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     navigationHeader
@@ -210,7 +221,7 @@ struct FileBrowserView: View {
                                     .foregroundColor(Theme.Colors.terminalGray)
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(Color.black.opacity(0.8))
+                            .background(Theme.Colors.terminalBackground.opacity(0.8))
                         }
                     }
 
@@ -274,7 +285,7 @@ struct FileBrowserView: View {
                             }, label: {
                                 Text("select")
                                     .font(.custom("SF Mono", size: 14))
-                                    .foregroundColor(.black)
+                                    .foregroundColor(Theme.Colors.terminalBackground)
                                     .padding(.horizontal, 24)
                                     .padding(.vertical, 10)
                                     .background(
@@ -408,19 +419,19 @@ struct FileBrowserView: View {
             viewModel.loadDirectory(path: initialPath)
         }
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func insertPath(_ path: String, isDirectory: Bool) {
         // Escape the path if it contains spaces
         let escapedPath = path.contains(" ") ? "\"\(path)\"" : path
-        
+
         // Call the insertion handler
         onInsertPath?(escapedPath, isDirectory)
-        
+
         // Provide haptic feedback
         HapticFeedback.impact(.light)
-        
+
         // Dismiss the file browser
         dismiss()
     }
@@ -461,10 +472,10 @@ struct FileBrowserRow: View {
         if isDirectory {
             return "folder.fill"
         }
-        
+
         // Get file extension
         let ext = name.split(separator: ".").last?.lowercased() ?? ""
-        
+
         switch ext {
         case "js", "jsx", "ts", "tsx", "mjs", "cjs":
             return "doc.text.fill"
@@ -504,44 +515,44 @@ struct FileBrowserRow: View {
             return "doc.fill"
         }
     }
-    
+
     var iconColor: Color {
         if isDirectory {
             return Theme.Colors.terminalAccent
         }
-        
+
         let ext = name.split(separator: ".").last?.lowercased() ?? ""
-        
+
         switch ext {
         case "js", "jsx", "mjs", "cjs":
-            return .yellow
+            return Theme.Colors.fileTypeJS
         case "ts", "tsx":
-            return Color(red: 0.0, green: 0.48, blue: 0.78) // TypeScript blue
+            return Theme.Colors.fileTypeTS
         case "json":
-            return .orange
+            return Theme.Colors.fileTypeJSON
         case "html", "htm":
-            return .orange
+            return Theme.Colors.fileTypeJSON
         case "css", "scss", "sass", "less":
-            return Color(red: 0.21, green: 0.46, blue: 0.74) // CSS blue
+            return Theme.Colors.fileTypeCSS
         case "md", "markdown":
-            return .gray
+            return Theme.Colors.terminalGray
         case "png", "jpg", "jpeg", "gif", "svg", "ico", "webp":
-            return .green
+            return Theme.Colors.fileTypeImage
         case "swift":
-            return .orange
+            return Theme.Colors.fileTypeJSON
         case "py":
-            return Color(red: 0.22, green: 0.49, blue: 0.72) // Python blue
+            return Theme.Colors.fileTypePython
         case "go":
-            return Color(red: 0.0, green: 0.68, blue: 0.85) // Go cyan
+            return Theme.Colors.fileTypeGo
         case "rs":
-            return .orange
+            return Theme.Colors.fileTypeJSON
         case "sh", "bash", "zsh", "fish":
-            return .green
+            return Theme.Colors.fileTypeImage
         default:
             return Theme.Colors.terminalGray.opacity(0.6)
         }
     }
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
@@ -563,7 +574,7 @@ struct FileBrowserRow: View {
                 Spacer()
 
                 // Git status indicator
-                if let gitStatus = gitStatus, gitStatus != .unchanged {
+                if let gitStatus, gitStatus != .unchanged {
                     GitStatusBadge(status: gitStatus)
                         .padding(.trailing, 8)
                 }
@@ -609,7 +620,7 @@ struct FileBrowserRow: View {
                 } label: {
                     Label("Copy Name", systemImage: "doc.on.doc")
                 }
-                
+
                 Button {
                     UIPasteboard.general.string = isDirectory ? "\(name)/" : name
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -648,7 +659,7 @@ class FileBrowserViewModel {
     var gitStatus: GitStatus?
     var showHidden = false
     var gitFilter: GitFilterOption = .all
-    
+
     enum GitFilterOption: String {
         case all = "all"
         case changed = "changed"
@@ -702,8 +713,8 @@ class FileBrowserViewModel {
 
         do {
             let result = try await apiClient.browseDirectory(
-                path: path, 
-                showHidden: showHidden, 
+                path: path,
+                showHidden: showHidden,
                 gitFilter: gitFilter.rawValue
             )
             // Use the absolute path returned by the server
@@ -777,27 +788,27 @@ class FileBrowserViewModel {
 /// Git status badge component for displaying file status
 struct GitStatusBadge: View {
     let status: GitFileStatus
-    
+
     var label: String {
         switch status {
-        case .modified: return "M"
-        case .added: return "A"
-        case .deleted: return "D"
-        case .untracked: return "?"
-        case .unchanged: return ""
+        case .modified: "M"
+        case .added: "A"
+        case .deleted: "D"
+        case .untracked: "?"
+        case .unchanged: ""
         }
     }
-    
+
     var color: Color {
         switch status {
-        case .modified: return .yellow
-        case .added: return .green
-        case .deleted: return .red
-        case .untracked: return .gray
-        case .unchanged: return .clear
+        case .modified: .yellow
+        case .added: .green
+        case .deleted: .red
+        case .untracked: .gray
+        case .unchanged: .clear
         }
     }
-    
+
     var body: some View {
         if status != .unchanged {
             Text(label)

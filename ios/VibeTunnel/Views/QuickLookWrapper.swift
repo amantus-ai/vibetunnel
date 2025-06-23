@@ -43,7 +43,8 @@ struct QuickLookWrapper: UIViewControllerRepresentable {
         }
 
         @MainActor
-        @objc func dismiss() {
+        @objc
+        func dismiss() {
             quickLookManager.isPresenting = false
         }
     }

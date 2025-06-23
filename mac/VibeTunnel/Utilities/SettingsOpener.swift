@@ -71,13 +71,15 @@ enum SettingsOpener {
             if window.isVisible && window.styleMask.contains(.titled) &&
                 (window.title.localizedCaseInsensitiveContains("settings") ||
                     window.title.localizedCaseInsensitiveContains("preferences")
-                ) {
+                )
+            {
                 return true
             }
 
             // Check by content view controller type
             if let contentVC = window.contentViewController,
-               String(describing: type(of: contentVC)).contains("Settings") {
+               String(describing: type(of: contentVC)).contains("Settings")
+            {
                 return true
             }
 

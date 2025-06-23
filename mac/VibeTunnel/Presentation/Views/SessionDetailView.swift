@@ -1,9 +1,12 @@
 import SwiftUI
+import os
 
 /// View displaying detailed information about a specific terminal session
 struct SessionDetailView: View {
     let session: ServerSessionInfo
     @State private var windowTitle = ""
+    
+    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionDetailView")
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -87,12 +90,12 @@ struct SessionDetailView: View {
 
     private func openInTerminal() {
         // TODO: Implement opening session in terminal
-        print("Open session \(session.id) in terminal")
+        logger.info("Opening session \(session.id) in terminal")
     }
 
     private func terminateSession() {
         // TODO: Implement session termination
-        print("Terminate session \(session.id)")
+        logger.info("Terminating session \(session.id)")
     }
 }
 

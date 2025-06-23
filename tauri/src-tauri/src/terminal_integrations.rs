@@ -27,24 +27,24 @@ pub enum TerminalEmulator {
 }
 
 impl TerminalEmulator {
-    pub fn display_name(&self) -> &str {
+    pub const fn display_name(&self) -> &str {
         match self {
-            TerminalEmulator::SystemDefault => "System Default",
-            TerminalEmulator::Terminal => "Terminal",
-            TerminalEmulator::ITerm2 => "iTerm2",
-            TerminalEmulator::Hyper => "Hyper",
-            TerminalEmulator::Alacritty => "Alacritty",
-            TerminalEmulator::Kitty => "Kitty",
-            TerminalEmulator::WezTerm => "WezTerm",
-            TerminalEmulator::Ghostty => "Ghostty",
-            TerminalEmulator::Warp => "Warp",
-            TerminalEmulator::WindowsTerminal => "Windows Terminal",
-            TerminalEmulator::ConEmu => "ConEmu",
-            TerminalEmulator::Cmder => "Cmder",
-            TerminalEmulator::Gnome => "GNOME Terminal",
-            TerminalEmulator::Konsole => "Konsole",
-            TerminalEmulator::Xterm => "XTerm",
-            TerminalEmulator::Custom => "Custom",
+            Self::SystemDefault => "System Default",
+            Self::Terminal => "Terminal",
+            Self::ITerm2 => "iTerm2",
+            Self::Hyper => "Hyper",
+            Self::Alacritty => "Alacritty",
+            Self::Kitty => "Kitty",
+            Self::WezTerm => "WezTerm",
+            Self::Ghostty => "Ghostty",
+            Self::Warp => "Warp",
+            Self::WindowsTerminal => "Windows Terminal",
+            Self::ConEmu => "ConEmu",
+            Self::Cmder => "Cmder",
+            Self::Gnome => "GNOME Terminal",
+            Self::Konsole => "Konsole",
+            Self::Xterm => "XTerm",
+            Self::Custom => "Custom",
         }
     }
 }
@@ -121,6 +121,12 @@ pub struct TerminalIntegrationsManager {
     default_terminal: Arc<RwLock<TerminalEmulator>>,
     url_schemes: Arc<RwLock<HashMap<TerminalEmulator, TerminalURLScheme>>>,
     notification_manager: Option<Arc<crate::notification_manager::NotificationManager>>,
+}
+
+impl Default for TerminalIntegrationsManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TerminalIntegrationsManager {
@@ -525,7 +531,7 @@ impl TerminalIntegrationsManager {
         // Launch terminal
         command
             .spawn()
-            .map_err(|e| format!("Failed to launch terminal: {}", e))?;
+            .map_err(|e| format!("Failed to launch terminal: {e}"))?;
 
         Ok(())
     }
@@ -558,8 +564,7 @@ impl TerminalIntegrationsManager {
                 format!("{} {}", command, options.args.join(" "))
             };
             script.push_str(&format!(
-                "    do script \"{}\" in front window\n",
-                full_command
+                "    do script \"{full_command}\" in front window\n"
             ));
         }
 
@@ -569,7 +574,7 @@ impl TerminalIntegrationsManager {
             .arg("-e")
             .arg(script)
             .spawn()
-            .map_err(|e| format!("Failed to launch Terminal: {}", e))?;
+            .map_err(|e| format!("Failed to launch Terminal: {e}"))?;
 
         Ok(())
     }

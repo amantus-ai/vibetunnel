@@ -7,9 +7,11 @@ import UniformTypeIdentifiers
 /// Shows active and exited sessions with options to create new sessions,
 /// manage existing ones, and navigate to terminal views.
 struct SessionListView: View {
-    @Environment(ConnectionManager.self) var connectionManager
-    @Environment(NavigationManager.self) var navigationManager
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(ConnectionManager.self)
+    var connectionManager
+    @Environment(NavigationManager.self)
+    var navigationManager
+    @State private var networkMonitor = NetworkMonitor.shared
     @State private var viewModel = SessionListViewModel()
     @State private var showingCreateSession = false
     @State private var selectedSession: Session?
@@ -19,6 +21,8 @@ struct SessionListView: View {
     @State private var searchText = ""
     @State private var showingCastImporter = false
     @State private var importedCastFile: CastFileItem?
+    @State private var presentedError: IdentifiableError?
+    @AppStorage("enableLivePreviews") private var enableLivePreviews = true
 
     var filteredSessions: [Session] {
         let sessions = viewModel.sessions.filter { showExitedSessions || $0.isRunning }
@@ -101,16 +105,16 @@ struct SessionListView: View {
                             Button(action: {
                                 HapticFeedback.impact(.light)
                                 showingSettings = true
-                            }) {
+                            }, label: {
                                 Label("Settings", systemImage: "gearshape")
-                            }
-                            
+                            })
+
                             Button(action: {
                                 HapticFeedback.impact(.light)
                                 showingCastImporter = true
-                            }) {
+                            }, label: {
                                 Label("Import Recording", systemImage: "square.and.arrow.down")
-                            }
+                            })
                         } label: {
                             Image(systemName: "ellipsis.circle")
                                 .font(.title3)
@@ -170,21 +174,27 @@ struct SessionListView: View {
                         importedCastFile = CastFileItem(url: url)
                     }
                 case .failure(let error):
-                    print("Failed to import cast file: \(error)")
+                    logger.error("Failed to import cast file: \(error)")
                 }
             }
             .sheet(item: $importedCastFile) { item in
                 CastPlayerView(castFileURL: item.url)
             }
+            .errorAlert(item: $presentedError)
             .refreshable {
                 await viewModel.loadSessions()
             }
             .searchable(text: $searchText, prompt: "Search sessions")
-            .onAppear {
-                viewModel.startAutoRefresh()
-            }
-            .onDisappear {
-                viewModel.stopAutoRefresh()
+            .task {
+                await viewModel.loadSessions()
+                
+                // Refresh every 3 seconds
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                    if !Task.isCancelled {
+                        await viewModel.loadSessions()
+                    }
+                }
             }
         }
         .onChange(of: navigationManager.shouldNavigateToSession) { _, shouldNavigate in
@@ -193,6 +203,12 @@ struct SessionListView: View {
                let session = viewModel.sessions.first(where: { $0.id == sessionId }) {
                 selectedSession = session
                 navigationManager.clearNavigation()
+            }
+        }
+        .onChange(of: viewModel.errorMessage) { _, newError in
+            if let error = newError {
+                presentedError = IdentifiableError(error: APIError.serverError(0, error))
+                viewModel.errorMessage = nil
             }
         }
     }
@@ -256,10 +272,10 @@ struct SessionListView: View {
                     .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
             }
 
-            Button(action: { searchText = "" }) {
+            Button(action: { searchText = "" }, label: {
                 Label("Clear Search", systemImage: "xmark.circle.fill")
                     .font(Theme.Typography.terminalSystem(size: 14))
-            }
+            })
             .terminalButton()
         }
         .padding()
@@ -295,7 +311,6 @@ struct SessionListView: View {
                     GridItem(.flexible(), spacing: Theme.Spacing.medium),
                     GridItem(.flexible(), spacing: Theme.Spacing.medium)
                 ], spacing: Theme.Spacing.medium) {
-
                     ForEach(filteredSessions) { session in
                         SessionCardView(session: session) {
                             HapticFeedback.selection()
@@ -313,6 +328,7 @@ struct SessionListView: View {
                                 await viewModel.cleanupSession(session.id)
                             }
                         }
+                        .livePreview(for: session.id, enabled: session.isRunning && enableLivePreviews)
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.8).combined(with: .opacity),
                             removal: .scale(scale: 0.8).combined(with: .opacity)
@@ -372,31 +388,6 @@ struct SessionListView: View {
     }
 }
 
-// MARK: - Error Banner
-
-struct ErrorBanner: View {
-    let message: String
-    let isOffline: Bool
-
-    var body: some View {
-        HStack {
-            Image(systemName: isOffline ? "wifi.slash" : "exclamationmark.triangle")
-                .foregroundColor(Theme.Colors.terminalBackground)
-
-            Text(message)
-                .font(Theme.Typography.terminalSystem(size: 14))
-                .foregroundColor(Theme.Colors.terminalBackground)
-                .lineLimit(2)
-
-            Spacer()
-        }
-        .padding()
-        .background(isOffline ? Color.orange : Theme.Colors.errorAccent)
-        .cornerRadius(Theme.CornerRadius.small)
-        .padding(.horizontal)
-        .padding(.top, 8)
-    }
-}
 
 /// View model for managing session list state and operations.
 @MainActor
@@ -406,28 +397,7 @@ class SessionListViewModel {
     var isLoading = false
     var errorMessage: String?
 
-    private var refreshTask: Task<Void, Never>?
     private let sessionService = SessionService.shared
-
-    func startAutoRefresh() {
-        refreshTask?.cancel()
-        refreshTask = Task {
-            await loadSessions()
-
-            // Refresh every 3 seconds using modern async approach
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-                if !Task.isCancelled {
-                    await loadSessions()
-                }
-            }
-        }
-    }
-
-    func stopAutoRefresh() {
-        refreshTask?.cancel()
-        refreshTask = nil
-    }
 
     func loadSessions() async {
         if sessions.isEmpty {
@@ -493,8 +463,8 @@ struct SessionHeaderView: View {
     let onKillAll: () -> Void
     let onCleanupAll: () -> Void
 
-    private var runningCount: Int { sessions.count(where: { $0.isRunning }) }
-    private var exitedCount: Int { sessions.count(where: { !$0.isRunning }) }
+    private var runningCount: Int { sessions.count { $0.isRunning }}
+    private var exitedCount: Int { sessions.count { !$0.isRunning }}
 
     var body: some View {
         VStack(spacing: Theme.Spacing.medium) {
@@ -505,28 +475,28 @@ struct SessionHeaderView: View {
                     count: runningCount,
                     color: Theme.Colors.successAccent
                 )
-                
+
                 SessionCountBadge(
                     label: "Exited",
                     count: exitedCount,
                     color: Theme.Colors.errorAccent
                 )
-                
+
                 Spacer()
             }
-            
+
             // Action buttons
             HStack(spacing: Theme.Spacing.medium) {
                 if exitedCount > 0 {
                     ExitedSessionToggle(showExitedSessions: $showExitedSessions)
                 }
-                
+
                 Spacer()
-                
+
                 if showExitedSessions && sessions.contains(where: { !$0.isRunning }) {
                     CleanupAllHeaderButton(onCleanup: onCleanupAll)
                 }
-                
+
                 if sessions.contains(where: \.isRunning) {
                     KillAllButton(onKillAll: onKillAll)
                 }
@@ -540,14 +510,14 @@ struct SessionCountBadge: View {
     let label: String
     let count: Int
     let color: Color
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(Theme.Typography.terminalSystem(size: 12))
                 .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
                 .textCase(.uppercase)
-            
+
             Text("\(count)")
                 .font(Theme.Typography.terminalSystem(size: 28))
                 .fontWeight(.bold)
@@ -683,3 +653,7 @@ struct CastFileItem: Identifiable {
     let id = UUID()
     let url: URL
 }
+
+// MARK: - Logging
+
+private let logger = Logger(category: "SessionListView")

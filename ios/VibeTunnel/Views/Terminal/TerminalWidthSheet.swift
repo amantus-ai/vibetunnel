@@ -7,7 +7,8 @@ import SwiftUI
 struct TerminalWidthSheet: View {
     @Binding var selectedWidth: Int?
     let isResizeBlockedByServer: Bool
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss)
+    var dismiss
     @State private var showCustomInput = false
     @State private var customWidthText = ""
     @FocusState private var isCustomInputFocused: Bool

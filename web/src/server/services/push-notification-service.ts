@@ -201,7 +201,7 @@ export class PushNotificationService {
         } else {
           // Debug log for unhandled errors
           logger.debug(
-            `Not removing subscription ${subscription.id}, error: ${error.message}, statusCode: ${(error as any).statusCode}`
+            `Not removing subscription ${subscription.id}, error: ${error instanceof Error ? error.message : String(error)}, statusCode: ${(error as any).statusCode}`
           );
         }
       }

@@ -119,7 +119,8 @@ final class WindowTracker {
                                      let x = boundsDict["X"],
                                      let y = boundsDict["Y"],
                                      let width = boundsDict["Width"],
-                                     let height = boundsDict["Height"] {
+                                     let height = boundsDict["Height"]
+            {
                 CGRect(x: x, y: y, width: width, height: height)
             } else {
                 nil
@@ -149,7 +150,8 @@ final class WindowTracker {
         tabReference: String?,
         tabID: String?
     )
-        -> WindowInfo? {
+        -> WindowInfo?
+    {
         let allWindows = Self.getAllTerminalWindows()
 
         // Filter windows for the specific terminal
@@ -308,7 +310,8 @@ final class WindowTracker {
             var windowIDValue: CFTypeRef?
             if AXUIElementCopyAttributeValue(window, kAXWindowAttribute as CFString, &windowIDValue) == .success,
                let windowNumber = windowIDValue as? Int,
-               windowNumber == windowInfo.windowID {
+               windowNumber == windowInfo.windowID
+            {
                 // Found the matching window, make it main and focused
                 AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
                 AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
@@ -327,7 +330,8 @@ final class WindowTracker {
         // Check for Screen Recording permission (required for CGWindowListCopyWindowInfo)
         let options: CGWindowListOption = [.excludeDesktopElements]
         if let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]],
-           !windowList.isEmpty {
+           !windowList.isEmpty
+        {
             return true
         }
         return false
@@ -358,7 +362,8 @@ final class WindowTracker {
         for window in allWindows {
             // Check if window title contains session ID
             if let title = window.title,
-               title.contains(sessionID) || title.contains("vt") || title.contains("vibetunnel") {
+               title.contains(sessionID) || title.contains("vt") || title.contains("vibetunnel")
+            {
                 logger.info("Found potential window for session \(sessionID): \(title)")
 
                 // Create window info for this session

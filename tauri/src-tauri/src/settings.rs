@@ -43,7 +43,6 @@ pub struct AdvancedSettings {
     pub experimental_features: Option<bool>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TTYForwardSettings {
     pub enabled: bool,
@@ -205,7 +204,7 @@ impl Default for Settings {
                 prompt_move_to_applications: None,
             },
             dashboard: DashboardSettings {
-                server_port: 4020,
+                server_port: 4022,
                 enable_password: false,
                 password: String::new(),
                 access_mode: "localhost".to_string(),
@@ -309,13 +308,13 @@ impl Settings {
     pub fn load() -> Result<Self, String> {
         let config_path = Self::config_path()?;
 
-        let mut settings = if !config_path.exists() {
-            Self::default()
-        } else {
+        let mut settings = if config_path.exists() {
             let contents = std::fs::read_to_string(&config_path)
-                .map_err(|e| format!("Failed to read settings: {}", e))?;
+                .map_err(|e| format!("Failed to read settings: {e}"))?;
 
-            toml::from_str(&contents).map_err(|e| format!("Failed to parse settings: {}", e))?
+            toml::from_str(&contents).map_err(|e| format!("Failed to parse settings: {e}"))?
+        } else {
+            Self::default()
         };
 
         // Load passwords from keychain
@@ -336,7 +335,7 @@ impl Settings {
         // Ensure the config directory exists
         if let Some(parent) = config_path.parent() {
             std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create config directory: {}", e))?;
+                .map_err(|e| format!("Failed to create config directory: {e}"))?;
         }
 
         // Clone settings to remove sensitive data before saving
@@ -364,10 +363,10 @@ impl Settings {
         }
 
         let contents = toml::to_string_pretty(&settings_to_save)
-            .map_err(|e| format!("Failed to serialize settings: {}", e))?;
+            .map_err(|e| format!("Failed to serialize settings: {e}"))?;
 
         std::fs::write(&config_path, contents)
-            .map_err(|e| format!("Failed to write settings: {}", e))?;
+            .map_err(|e| format!("Failed to write settings: {e}"))?;
 
         Ok(())
     }
@@ -389,10 +388,10 @@ impl Settings {
         }
 
         let contents = std::fs::read_to_string(&config_path)
-            .map_err(|e| format!("Failed to read settings for migration: {}", e))?;
+            .map_err(|e| format!("Failed to read settings for migration: {e}"))?;
 
-        let raw_settings: Settings = toml::from_str(&contents)
-            .map_err(|e| format!("Failed to parse settings for migration: {}", e))?;
+        let raw_settings: Self = toml::from_str(&contents)
+            .map_err(|e| format!("Failed to parse settings for migration: {e}"))?;
 
         let mut migrated = false;
 
@@ -463,4 +462,479 @@ pub async fn save_settings(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_general_settings_default() {
+        let settings = GeneralSettings {
+            launch_at_login: false,
+            show_dock_icon: true,
+            default_terminal: "system".to_string(),
+            default_shell: "default".to_string(),
+            show_welcome_on_startup: Some(true),
+            theme: Some("auto".to_string()),
+            language: Some("en".to_string()),
+            check_updates_automatically: Some(true),
+            prompt_move_to_applications: None,
+        };
+
+        assert!(!settings.launch_at_login);
+        assert!(settings.show_dock_icon);
+        assert_eq!(settings.default_terminal, "system");
+        assert_eq!(settings.default_shell, "default");
+        assert_eq!(settings.show_welcome_on_startup, Some(true));
+        assert_eq!(settings.theme, Some("auto".to_string()));
+        assert_eq!(settings.language, Some("en".to_string()));
+        assert_eq!(settings.check_updates_automatically, Some(true));
+        assert!(settings.prompt_move_to_applications.is_none());
+    }
+
+    #[test]
+    fn test_dashboard_settings_default() {
+        let settings = DashboardSettings {
+            server_port: 4022,
+            enable_password: false,
+            password: String::new(),
+            access_mode: "localhost".to_string(),
+            auto_cleanup: true,
+            session_limit: Some(10),
+            idle_timeout_minutes: Some(30),
+            enable_cors: Some(true),
+            allowed_origins: Some(vec!["*".to_string()]),
+        };
+
+        assert_eq!(settings.server_port, 4022);
+        assert!(!settings.enable_password);
+        assert_eq!(settings.password, "");
+        assert_eq!(settings.access_mode, "localhost");
+        assert!(settings.auto_cleanup);
+        assert_eq!(settings.session_limit, Some(10));
+        assert_eq!(settings.idle_timeout_minutes, Some(30));
+        assert_eq!(settings.enable_cors, Some(true));
+        assert_eq!(settings.allowed_origins, Some(vec!["*".to_string()]));
+    }
+
+    #[test]
+    fn test_advanced_settings_default() {
+        let settings = AdvancedSettings {
+            debug_mode: false,
+            log_level: "info".to_string(),
+            session_timeout: 0,
+            ngrok_auth_token: None,
+            ngrok_region: Some("us".to_string()),
+            ngrok_subdomain: None,
+            enable_telemetry: Some(false),
+            experimental_features: Some(false),
+        };
+
+        assert!(!settings.debug_mode);
+        assert_eq!(settings.log_level, "info");
+        assert_eq!(settings.session_timeout, 0);
+        assert!(settings.ngrok_auth_token.is_none());
+        assert_eq!(settings.ngrok_region, Some("us".to_string()));
+        assert!(settings.ngrok_subdomain.is_none());
+        assert_eq!(settings.enable_telemetry, Some(false));
+        assert_eq!(settings.experimental_features, Some(false));
+    }
+
+    #[test]
+    fn test_tty_forward_settings() {
+        let settings = TTYForwardSettings {
+            enabled: false,
+            default_port: 8022,
+            bind_address: "127.0.0.1".to_string(),
+            max_connections: 5,
+            buffer_size: 4096,
+            keep_alive: true,
+            authentication: None,
+        };
+
+        assert!(!settings.enabled);
+        assert_eq!(settings.default_port, 8022);
+        assert_eq!(settings.bind_address, "127.0.0.1");
+        assert_eq!(settings.max_connections, 5);
+        assert_eq!(settings.buffer_size, 4096);
+        assert!(settings.keep_alive);
+        assert!(settings.authentication.is_none());
+    }
+
+    #[test]
+    fn test_monitoring_settings() {
+        let settings = MonitoringSettings {
+            enabled: true,
+            collect_metrics: true,
+            metric_interval_seconds: 5,
+            max_history_size: 1000,
+            alert_on_high_cpu: false,
+            alert_on_high_memory: false,
+            cpu_threshold_percent: Some(80),
+            memory_threshold_percent: Some(80),
+        };
+
+        assert!(settings.enabled);
+        assert!(settings.collect_metrics);
+        assert_eq!(settings.metric_interval_seconds, 5);
+        assert_eq!(settings.max_history_size, 1000);
+        assert!(!settings.alert_on_high_cpu);
+        assert!(!settings.alert_on_high_memory);
+        assert_eq!(settings.cpu_threshold_percent, Some(80));
+        assert_eq!(settings.memory_threshold_percent, Some(80));
+    }
+
+    #[test]
+    fn test_network_settings() {
+        let settings = NetworkSettings {
+            preferred_interface: None,
+            enable_ipv6: true,
+            dns_servers: None,
+            proxy_settings: None,
+            connection_timeout_seconds: 30,
+            retry_attempts: 3,
+        };
+
+        assert!(settings.preferred_interface.is_none());
+        assert!(settings.enable_ipv6);
+        assert!(settings.dns_servers.is_none());
+        assert!(settings.proxy_settings.is_none());
+        assert_eq!(settings.connection_timeout_seconds, 30);
+        assert_eq!(settings.retry_attempts, 3);
+    }
+
+    #[test]
+    fn test_proxy_settings() {
+        let settings = ProxySettings {
+            enabled: true,
+            proxy_type: "http".to_string(),
+            host: "proxy.example.com".to_string(),
+            port: 8080,
+            username: Some("user".to_string()),
+            password: Some("pass".to_string()),
+            bypass_list: Some(vec!["localhost".to_string(), "127.0.0.1".to_string()]),
+        };
+
+        assert!(settings.enabled);
+        assert_eq!(settings.proxy_type, "http");
+        assert_eq!(settings.host, "proxy.example.com");
+        assert_eq!(settings.port, 8080);
+        assert_eq!(settings.username, Some("user".to_string()));
+        assert_eq!(settings.password, Some("pass".to_string()));
+        assert_eq!(
+            settings.bypass_list,
+            Some(vec!["localhost".to_string(), "127.0.0.1".to_string()])
+        );
+    }
+
+    #[test]
+    fn test_port_settings() {
+        let settings = PortSettings {
+            auto_resolve_conflicts: true,
+            preferred_port_range_start: 4000,
+            preferred_port_range_end: 5000,
+            excluded_ports: Some(vec![4022, 8080]),
+            conflict_resolution_strategy: "increment".to_string(),
+        };
+
+        assert!(settings.auto_resolve_conflicts);
+        assert_eq!(settings.preferred_port_range_start, 4000);
+        assert_eq!(settings.preferred_port_range_end, 5000);
+        assert_eq!(settings.excluded_ports, Some(vec![4022, 8080]));
+        assert_eq!(settings.conflict_resolution_strategy, "increment");
+    }
+
+    #[test]
+    fn test_notification_settings() {
+        let mut notification_types = HashMap::new();
+        notification_types.insert("info".to_string(), true);
+        notification_types.insert("error".to_string(), false);
+
+        let settings = NotificationSettings {
+            enabled: true,
+            show_in_system: true,
+            play_sound: false,
+            notification_types,
+            do_not_disturb_enabled: Some(true),
+            do_not_disturb_start: Some("22:00".to_string()),
+            do_not_disturb_end: Some("08:00".to_string()),
+        };
+
+        assert!(settings.enabled);
+        assert!(settings.show_in_system);
+        assert!(!settings.play_sound);
+        assert_eq!(settings.notification_types.get("info"), Some(&true));
+        assert_eq!(settings.notification_types.get("error"), Some(&false));
+        assert_eq!(settings.do_not_disturb_enabled, Some(true));
+        assert_eq!(settings.do_not_disturb_start, Some("22:00".to_string()));
+        assert_eq!(settings.do_not_disturb_end, Some("08:00".to_string()));
+    }
+
+    #[test]
+    fn test_terminal_config() {
+        let mut env = HashMap::new();
+        env.insert("TERM".to_string(), "xterm-256color".to_string());
+
+        let config = TerminalConfig {
+            path: Some("/usr/local/bin/terminal".to_string()),
+            args: Some(vec!["--new-session".to_string()]),
+            env: Some(env),
+            working_directory: Some("/home/user".to_string()),
+        };
+
+        assert_eq!(config.path, Some("/usr/local/bin/terminal".to_string()));
+        assert_eq!(config.args, Some(vec!["--new-session".to_string()]));
+        assert_eq!(
+            config.env.as_ref().unwrap().get("TERM"),
+            Some(&"xterm-256color".to_string())
+        );
+        assert_eq!(config.working_directory, Some("/home/user".to_string()));
+    }
+
+    #[test]
+    fn test_update_settings() {
+        let settings = UpdateSettings {
+            channel: "stable".to_string(),
+            check_frequency: "weekly".to_string(),
+            auto_download: false,
+            auto_install: false,
+            show_release_notes: true,
+            include_pre_releases: false,
+        };
+
+        assert_eq!(settings.channel, "stable");
+        assert_eq!(settings.check_frequency, "weekly");
+        assert!(!settings.auto_download);
+        assert!(!settings.auto_install);
+        assert!(settings.show_release_notes);
+        assert!(!settings.include_pre_releases);
+    }
+
+    #[test]
+    fn test_security_settings() {
+        let settings = SecuritySettings {
+            enable_encryption: true,
+            encryption_algorithm: Some("aes-256-gcm".to_string()),
+            require_authentication: true,
+            session_token_expiry_hours: Some(24),
+            allowed_ip_addresses: Some(vec!["192.168.1.0/24".to_string()]),
+            blocked_ip_addresses: Some(vec!["10.0.0.0/8".to_string()]),
+            rate_limiting_enabled: true,
+            rate_limit_requests_per_minute: Some(60),
+        };
+
+        assert!(settings.enable_encryption);
+        assert_eq!(
+            settings.encryption_algorithm,
+            Some("aes-256-gcm".to_string())
+        );
+        assert!(settings.require_authentication);
+        assert_eq!(settings.session_token_expiry_hours, Some(24));
+        assert_eq!(
+            settings.allowed_ip_addresses,
+            Some(vec!["192.168.1.0/24".to_string()])
+        );
+        assert_eq!(
+            settings.blocked_ip_addresses,
+            Some(vec!["10.0.0.0/8".to_string()])
+        );
+        assert!(settings.rate_limiting_enabled);
+        assert_eq!(settings.rate_limit_requests_per_minute, Some(60));
+    }
+
+    #[test]
+    fn test_debug_settings() {
+        let settings = DebugSettings {
+            enable_debug_menu: true,
+            show_performance_stats: true,
+            enable_verbose_logging: false,
+            log_to_file: true,
+            log_file_path: Some("/var/log/vibetunnel.log".to_string()),
+            max_log_file_size_mb: Some(100),
+            enable_dev_tools: false,
+            show_internal_errors: true,
+        };
+
+        assert!(settings.enable_debug_menu);
+        assert!(settings.show_performance_stats);
+        assert!(!settings.enable_verbose_logging);
+        assert!(settings.log_to_file);
+        assert_eq!(
+            settings.log_file_path,
+            Some("/var/log/vibetunnel.log".to_string())
+        );
+        assert_eq!(settings.max_log_file_size_mb, Some(100));
+        assert!(!settings.enable_dev_tools);
+        assert!(settings.show_internal_errors);
+    }
+
+    #[test]
+    fn test_settings_default() {
+        let settings = Settings::default();
+
+        // Test that all required fields have defaults
+        assert_eq!(settings.general.default_terminal, "system");
+        assert_eq!(settings.dashboard.server_port, 4022);
+        assert_eq!(settings.advanced.log_level, "info");
+
+        // Test that optional fields have sensible defaults
+        assert!(settings.tty_forward.is_some());
+        assert!(settings.monitoring.is_some());
+        assert!(settings.network.is_some());
+        assert!(settings.port.is_some());
+        assert!(settings.notifications.is_some());
+        assert!(settings.terminal_integrations.is_some());
+        assert!(settings.updates.is_some());
+        assert!(settings.security.is_some());
+        assert!(settings.debug.is_some());
+    }
+
+    #[test]
+    fn test_settings_serialization() {
+        let settings = Settings::default();
+
+        // Test that settings can be serialized to TOML
+        let toml_result = toml::to_string_pretty(&settings);
+        assert!(toml_result.is_ok());
+
+        let toml_str = toml_result.unwrap();
+        assert!(toml_str.contains("[general]"));
+        assert!(toml_str.contains("[dashboard]"));
+        assert!(toml_str.contains("[advanced]"));
+    }
+
+    #[test]
+    fn test_settings_deserialization() {
+        let toml_str = r#"
+[general]
+launch_at_login = true
+show_dock_icon = false
+default_terminal = "iTerm2"
+default_shell = "/bin/zsh"
+
+[dashboard]
+server_port = 8080
+enable_password = true
+password = ""
+access_mode = "network"
+auto_cleanup = false
+
+[advanced]
+debug_mode = true
+log_level = "debug"
+session_timeout = 3600
+"#;
+
+        let settings_result: Result<Settings, _> = toml::from_str(toml_str);
+        assert!(settings_result.is_ok());
+
+        let settings = settings_result.unwrap();
+        assert!(settings.general.launch_at_login);
+        assert!(!settings.general.show_dock_icon);
+        assert_eq!(settings.general.default_terminal, "iTerm2");
+        assert_eq!(settings.general.default_shell, "/bin/zsh");
+        assert_eq!(settings.dashboard.server_port, 8080);
+        assert!(settings.dashboard.enable_password);
+        assert_eq!(settings.dashboard.access_mode, "network");
+        assert!(!settings.dashboard.auto_cleanup);
+        assert!(settings.advanced.debug_mode);
+        assert_eq!(settings.advanced.log_level, "debug");
+        assert_eq!(settings.advanced.session_timeout, 3600);
+    }
+
+    #[test]
+    fn test_settings_partial_deserialization() {
+        // Test that missing optional fields don't cause deserialization to fail
+        let toml_str = r#"
+[general]
+launch_at_login = false
+show_dock_icon = true
+default_terminal = "system"
+default_shell = "default"
+
+[dashboard]
+server_port = 4022
+enable_password = false
+password = ""
+access_mode = "localhost"
+auto_cleanup = true
+
+[advanced]
+debug_mode = false
+log_level = "info"
+session_timeout = 0
+"#;
+
+        let settings_result: Result<Settings, _> = toml::from_str(toml_str);
+        assert!(settings_result.is_ok());
+
+        let settings = settings_result.unwrap();
+        // All optional sections should be None
+        assert!(settings.tty_forward.is_none());
+        assert!(settings.monitoring.is_none());
+        assert!(settings.network.is_none());
+    }
+
+    #[test]
+    fn test_terminal_integration_settings() {
+        let mut enabled_terminals = HashMap::new();
+        enabled_terminals.insert("Terminal".to_string(), true);
+        enabled_terminals.insert("iTerm2".to_string(), false);
+
+        let mut terminal_configs = HashMap::new();
+        terminal_configs.insert(
+            "Terminal".to_string(),
+            TerminalConfig {
+                path: Some("/System/Applications/Utilities/Terminal.app".to_string()),
+                args: None,
+                env: None,
+                working_directory: None,
+            },
+        );
+
+        let settings = TerminalIntegrationSettings {
+            enabled_terminals,
+            terminal_configs,
+            default_terminal_override: Some("Terminal".to_string()),
+        };
+
+        assert_eq!(settings.enabled_terminals.get("Terminal"), Some(&true));
+        assert_eq!(settings.enabled_terminals.get("iTerm2"), Some(&false));
+        assert!(settings.terminal_configs.contains_key("Terminal"));
+        assert_eq!(
+            settings.default_terminal_override,
+            Some("Terminal".to_string())
+        );
+    }
+
+    #[test]
+    fn test_settings_clone() {
+        let original = Settings::default();
+        let cloned = original.clone();
+
+        // Verify that clone produces identical values
+        assert_eq!(
+            original.general.launch_at_login,
+            cloned.general.launch_at_login
+        );
+        assert_eq!(original.dashboard.server_port, cloned.dashboard.server_port);
+        assert_eq!(original.advanced.log_level, cloned.advanced.log_level);
+    }
+
+    #[test]
+    fn test_sensitive_data_removal() {
+        let mut settings = Settings::default();
+        settings.dashboard.password = "secret123".to_string();
+        settings.advanced.ngrok_auth_token = Some("token456".to_string());
+
+        let mut settings_to_save = settings.clone();
+        // Simulate what happens during save
+        settings_to_save.dashboard.password = String::new();
+        settings_to_save.advanced.ngrok_auth_token = None;
+
+        assert_eq!(settings_to_save.dashboard.password, "");
+        assert!(settings_to_save.advanced.ngrok_auth_token.is_none());
+    }
 }

@@ -67,6 +67,12 @@ pub struct PermissionsManager {
     notification_manager: Option<Arc<crate::notification_manager::NotificationManager>>,
 }
 
+impl Default for PermissionsManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PermissionsManager {
     /// Create a new permissions manager
     pub fn new() -> Self {
@@ -436,7 +442,7 @@ impl PermissionsManager {
         Command::new("open")
             .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
             .spawn()
-            .map_err(|e| format!("Failed to open system preferences: {}", e))?;
+            .map_err(|e| format!("Failed to open system preferences: {e}"))?;
 
         Ok(())
     }
@@ -485,7 +491,7 @@ impl PermissionsManager {
         Command::new("open")
             .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
             .spawn()
-            .map_err(|e| format!("Failed to open system preferences: {}", e))?;
+            .map_err(|e| format!("Failed to open system preferences: {e}"))?;
 
         Ok(())
     }
@@ -516,7 +522,7 @@ impl PermissionsManager {
         Command::new("open")
             .arg("x-apple.systempreferences:com.apple.preference.notifications")
             .spawn()
-            .map_err(|e| format!("Failed to open system preferences: {}", e))?;
+            .map_err(|e| format!("Failed to open system preferences: {e}"))?;
 
         Ok(())
     }

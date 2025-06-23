@@ -31,10 +31,10 @@ pub fn enable_auto_launch() -> Result<(), String> {
         .set_app_path(&get_app_path())
         .set_args(&["--auto-launch"])
         .build()
-        .map_err(|e| format!("Failed to build auto-launch: {}", e))?;
+        .map_err(|e| format!("Failed to build auto-launch: {e}"))?;
 
     auto.enable()
-        .map_err(|e| format!("Failed to enable auto-launch: {}", e))?;
+        .map_err(|e| format!("Failed to enable auto-launch: {e}"))?;
 
     Ok(())
 }
@@ -44,10 +44,10 @@ pub fn disable_auto_launch() -> Result<(), String> {
         .set_app_name("VibeTunnel")
         .set_app_path(&get_app_path())
         .build()
-        .map_err(|e| format!("Failed to build auto-launch: {}", e))?;
+        .map_err(|e| format!("Failed to build auto-launch: {e}"))?;
 
     auto.disable()
-        .map_err(|e| format!("Failed to disable auto-launch: {}", e))?;
+        .map_err(|e| format!("Failed to disable auto-launch: {e}"))?;
 
     Ok(())
 }
@@ -57,10 +57,10 @@ pub fn is_auto_launch_enabled() -> Result<bool, String> {
         .set_app_name("VibeTunnel")
         .set_app_path(&get_app_path())
         .build()
-        .map_err(|e| format!("Failed to build auto-launch: {}", e))?;
+        .map_err(|e| format!("Failed to build auto-launch: {e}"))?;
 
     auto.is_enabled()
-        .map_err(|e| format!("Failed to check auto-launch status: {}", e))
+        .map_err(|e| format!("Failed to check auto-launch status: {e}"))
 }
 
 #[tauri::command]

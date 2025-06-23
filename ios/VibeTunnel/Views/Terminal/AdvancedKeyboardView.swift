@@ -1,5 +1,7 @@
 import SwiftUI
 
+private let logger = Logger(category: "AdvancedKeyboard")
+
 /// Advanced keyboard view with special keys and control combinations
 struct AdvancedKeyboardView: View {
     @Binding var isPresented: Bool
@@ -230,8 +232,9 @@ struct CtrlKeyButton: View {
     var body: some View {
         Button(action: {
             // Calculate control character (Ctrl+A = 1, Ctrl+B = 2, etc.)
-            if let scalar = char.unicodeScalars.first {
-                let ctrlChar = Character(UnicodeScalar(scalar.value - 64)!)
+            if let scalar = char.unicodeScalars.first,
+               let ctrlScalar = UnicodeScalar(scalar.value - 64) {
+                let ctrlChar = Character(ctrlScalar)
                 onPress(String(ctrlChar))
             }
         }) {
@@ -292,6 +295,6 @@ struct FunctionKeyButton: View {
 
 #Preview {
     AdvancedKeyboardView(isPresented: .constant(true)) { input in
-        print("Input: \(input)")
+        logger.debug("Input: \(input)")
     }
 }
