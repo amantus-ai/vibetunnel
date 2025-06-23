@@ -154,6 +154,11 @@ struct ConnectionManagerTests {
 
     @Test("CurrentServerConfig returns saved config")
     func testCurrentServerConfig() throws {
+        // Clean up UserDefaults first
+        UserDefaults.standard.removeObject(forKey: "savedServerConfig")
+        UserDefaults.standard.removeObject(forKey: "connectionState")
+        UserDefaults.standard.removeObject(forKey: "lastConnectionTime")
+        
         // Arrange
         let manager = ConnectionManager()
         let config = TestFixtures.validServerConfig
@@ -230,14 +235,14 @@ struct ConnectionManagerTests {
 struct ConnectionManagerIntegrationTests {
     @Test("Full connection lifecycle", .timeLimit(.minutes(1)))
     func fullConnectionLifecycle() async throws {
-        // Arrange
-        let manager = ConnectionManager()
-        let config = TestFixtures.sslServerConfig
-
-        // Clear state
+        // Clear state BEFORE creating manager
         UserDefaults.standard.removeObject(forKey: "savedServerConfig")
         UserDefaults.standard.removeObject(forKey: "connectionState")
         UserDefaults.standard.removeObject(forKey: "lastConnectionTime")
+        
+        // Arrange
+        let manager = ConnectionManager()
+        let config = TestFixtures.sslServerConfig
 
         // Act & Assert through lifecycle
 

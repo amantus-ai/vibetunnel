@@ -15,7 +15,8 @@
     "sourceMap": true,
     "declaration": false,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": [
     "src/server/**/*",

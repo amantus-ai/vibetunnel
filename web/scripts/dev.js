@@ -43,9 +43,17 @@ async function startBuilding() {
       outfile: 'public/bundle/test.js',
     });
 
+    const swContext = await esbuild.context({
+      ...devOptions,
+      entryPoints: ['src/client/sw.ts'],
+      outfile: 'public/sw.js',
+      format: 'iife', // Service workers need IIFE format
+    });
+
     // Start watching
     await clientContext.watch();
     await testContext.watch();
+    await swContext.watch();
     console.log('ESBuild watching client bundles...');
 
     // Start other processes
@@ -67,6 +75,7 @@ async function startBuilding() {
       console.log('\nStopping all processes...');
       await clientContext.dispose();
       await testContext.dispose();
+      await swContext.dispose();
       processes.forEach(proc => proc.kill());
       process.exit(0);
     });

@@ -15,10 +15,12 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
+import { copyToClipboard } from '../utils/path-utils.js';
 
 const logger = createLogger('session-card');
 import './vibe-terminal-buffer.js';
 import './copy-icon.js';
+import './clickable-path.js';
 
 @customElement('session-card')
 export class SessionCard extends LitElement {
@@ -197,47 +199,25 @@ export class SessionCard extends LitElement {
     e.preventDefault();
 
     if (this.session.pid) {
-      try {
-        await navigator.clipboard.writeText(this.session.pid.toString());
+      const success = await copyToClipboard(this.session.pid.toString());
+      if (success) {
         logger.log('PID copied to clipboard', { pid: this.session.pid });
-      } catch (error) {
-        logger.error('Failed to copy PID to clipboard', { error, pid: this.session.pid });
-        // Fallback: select text manually
-        this.fallbackCopyToClipboard(this.session.pid.toString());
+      } else {
+        logger.error('Failed to copy PID to clipboard', { pid: this.session.pid });
       }
     }
   }
 
-  private fallbackCopyToClipboard(text: string) {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      logger.log('Text copied to clipboard (fallback)', { text });
-    } catch (error) {
-      logger.error('Fallback copy failed', { error });
-    }
-    document.body.removeChild(textArea);
-  }
-
-  private async handlePathClick(e: Event) {
-    e.stopPropagation();
-    e.preventDefault();
-
-    try {
-      await navigator.clipboard.writeText(this.session.workingDir);
-      logger.log('Path copied to clipboard', { path: this.session.workingDir });
-    } catch (error) {
-      logger.error('Failed to copy path to clipboard', { error, path: this.session.workingDir });
-      // Fallback: select text manually
-      this.fallbackCopyToClipboard(this.session.workingDir);
-    }
-  }
-
   render() {
+    // Debug logging to understand what's in the session
+    if (!this.session.name) {
+      logger.warn('Session missing name', {
+        sessionId: this.session.id,
+        name: this.session.name,
+        command: this.session.command,
+      });
+    }
+
     return html`
       <div
         class="card cursor-pointer overflow-hidden flex flex-col h-full ${this.killing
@@ -253,8 +233,8 @@ export class SessionCard extends LitElement {
           class="flex justify-between items-center px-3 py-2 border-b border-dark-border bg-dark-bg-tertiary"
         >
           <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-accent-green">
-            <div class="truncate" title="${this.session.name || this.session.command}">
-              ${this.session.name || this.session.command}
+            <div class="truncate" title="${this.session.name || this.session.command.join(' ')}">
+              ${this.session.name || this.session.command.join(' ')}
             </div>
           </div>
           ${this.session.status === 'running' || this.session.status === 'exited'
@@ -347,14 +327,7 @@ export class SessionCard extends LitElement {
               : ''}
           </div>
           <div class="text-xs opacity-75 min-w-0 mt-1">
-            <div
-              class="truncate cursor-pointer hover:text-accent-green transition-colors inline-flex items-center gap-1 max-w-full"
-              title="Click to copy path"
-              @click=${this.handlePathClick}
-            >
-              <span class="truncate">${this.session.workingDir}</span>
-              <copy-icon size="12" class="flex-shrink-0"></copy-icon>
-            </div>
+            <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
           </div>
         </div>
       </div>

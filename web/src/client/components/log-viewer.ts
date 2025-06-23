@@ -299,15 +299,31 @@ export class LogViewer extends LitElement {
       ${scrollbarStyles}
       <div class="flex flex-col h-full bg-dark-bg text-dark-text font-mono">
         <!-- Header -->
-        <div
-          class="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 bg-dark-bg-secondary border-b border-dark-border"
-        >
-          <h1 class="text-lg font-bold text-accent-green flex-1 flex items-center gap-2">
+        <div class="flex items-center gap-3 p-4 bg-dark-bg-secondary border-b border-dark-border">
+          <!-- Back button -->
+          <button
+            class="px-3 py-1.5 bg-dark-bg border border-dark-border rounded text-sm text-dark-text hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-2 flex-shrink-0"
+            @click=${() => (window.location.href = '/')}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Back
+          </button>
+
+          <h1 class="text-lg font-bold text-accent-green flex items-center gap-2 flex-shrink-0">
             <terminal-icon size="24"></terminal-icon>
             <span>System Logs</span>
           </h1>
 
-          <div class="flex flex-wrap gap-2 items-center w-full sm:w-auto">
+          <div class="flex-1 flex flex-wrap gap-2 items-center justify-end">
             <!-- Search input -->
             <input
               type="text"

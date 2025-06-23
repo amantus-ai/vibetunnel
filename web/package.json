@@ -11,7 +11,7 @@
     "build:ci": "node scripts/build-ci.js",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
-    "typecheck": "tsc --noEmit --project tsconfig.client.json && tsc --noEmit --project tsconfig.sw.json && tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit --project tsconfig.client.json && tsc --noEmit --project tsconfig.sw.json",
     "test": "vitest",
     "test:ci": "vitest run --reporter=verbose",
     "format": "prettier --write 'src/**/*.{ts,tsx,js,jsx,json,css,md}'",

@@ -31,6 +31,7 @@ import {
 import { IPty } from '@homebridge/node-pty-prebuilt-multiarch';
 import { createLogger } from '../utils/logger.js';
 import chalk from 'chalk';
+import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
 
 const logger = createLogger('pty-manager');
 
@@ -47,6 +48,7 @@ export class PtyManager extends EventEmitter {
   >();
   private lastBellTime = new Map<string, number>(); // Track last bell time per session
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
+  private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
 
   constructor(controlPath?: string) {
     super();
@@ -338,10 +340,9 @@ export class PtyManager extends EventEmitter {
             logger.debug(
               `Real bell(s) detected in session ${session.id}: ${realBells} bells (${oscTerminatedBells} OSC-terminated)`
             );
-            this.emit('bell', {
-              sessionInfo: session.sessionInfo,
-              timestamp: new Date(),
-            });
+
+            // Capture process information for bell source identification
+            this.captureProcessInfoForBell(session, realBells);
           } else {
             logger.debug(
               `Ignoring OSC sequence bells in session ${session.id}: ${oscTerminatedBells} OSC bells, ${realBells} real bells`
@@ -982,6 +983,56 @@ export class PtyManager extends EventEmitter {
    */
   isSessionActive(sessionId: string): boolean {
     return this.sessions.has(sessionId);
+  }
+
+  /**
+   * Capture process information for bell source identification
+   */
+  private async captureProcessInfoForBell(session: PtySession, bellCount: number): Promise<void> {
+    try {
+      const sessionPid = session.ptyProcess?.pid;
+      if (!sessionPid) {
+        logger.warn(`Cannot capture process info for session ${session.id}: no PID available`);
+        // Emit basic bell event without process info
+        this.emit('bell', {
+          sessionInfo: session.sessionInfo,
+          timestamp: new Date(),
+          bellCount,
+        });
+        return;
+      }
+
+      logger.log(
+        `Capturing process snapshot for bell in session ${session.id} (PID: ${sessionPid})`
+      );
+
+      // Capture process information asynchronously
+      const processSnapshot = await this.processTreeAnalyzer.captureProcessSnapshot(sessionPid);
+
+      // Emit enhanced bell event with process information
+      this.emit('bell', {
+        sessionInfo: session.sessionInfo,
+        timestamp: new Date(),
+        bellCount,
+        processSnapshot,
+        suspectedSource: processSnapshot.suspectedBellSource,
+      });
+
+      logger.log(
+        `Bell event emitted for session ${session.id} with suspected source: ${
+          processSnapshot.suspectedBellSource?.command || 'unknown'
+        } (PID: ${processSnapshot.suspectedBellSource?.pid || 'unknown'})`
+      );
+    } catch (error) {
+      logger.warn(`Failed to capture process info for bell in session ${session.id}:`, error);
+
+      // Fallback: emit basic bell event without process info
+      this.emit('bell', {
+        sessionInfo: session.sessionInfo,
+        timestamp: new Date(),
+        bellCount,
+      });
+    }
   }
 
   /**

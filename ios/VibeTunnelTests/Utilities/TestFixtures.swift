@@ -98,6 +98,37 @@ enum TestFixtures {
     }
     """
 
+    static func saveServerConfig(_ config: ServerConfig) {
+        // Mock implementation for tests
+        // In real tests, this would save to UserDefaults or similar
+    }
+    
+    static func wrappedBufferMessage(sessionId: String, bufferData: Data) -> Data {
+        var data = Data()
+        
+        // Magic byte for wrapped message
+        data.append(0xB1)
+        
+        // Session ID length and content
+        let sessionIdData = sessionId.data(using: .utf8)!
+        data.append(contentsOf: withUnsafeBytes(of: Int32(sessionIdData.count).littleEndian) { Array($0) })
+        data.append(sessionIdData)
+        
+        // Buffer data
+        data.append(bufferData)
+        
+        return data
+    }
+    
+    static func terminalEvent(type: String) -> String {
+        """
+        {
+            "type": "\(type)",
+            "timestamp": "\(ISO8601DateFormatter().string(from: Date()))"
+        }
+        """
+    }
+    
     static func bufferSnapshot(cols: Int = 80, rows: Int = 24) -> Data {
         var data = Data()
 

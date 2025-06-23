@@ -31,9 +31,11 @@ struct ServerConfig: Codable, Equatable {
     /// (which should not happen with valid host/port), returns
     /// a file URL as fallback to ensure non-nil return.
     var baseURL: URL {
+        // Handle IPv6 addresses by wrapping in brackets
+        let formattedHost = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
         // This should always succeed with valid host and port
         // Fallback ensures we always have a valid URL
-        URL(string: "http://\(host):\(port)") ?? URL(fileURLWithPath: "/")
+        return URL(string: "http://\(formattedHost):\(port)") ?? URL(fileURLWithPath: "/")
     }
 
     /// User-friendly display name for the server.

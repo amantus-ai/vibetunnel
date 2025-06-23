@@ -21,6 +21,7 @@ import {
   UIIcons,
   type GitStatus as GitStatusType,
 } from '../utils/file-icons.js';
+import { copyToClipboard } from '../utils/path-utils.js';
 import './monaco-editor.js';
 
 const logger = createLogger('file-browser');
@@ -257,12 +258,12 @@ export class FileBrowser extends LitElement {
     }
   }
 
-  private async copyToClipboard(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
+  private async handleCopyToClipboard(text: string) {
+    const success = await copyToClipboard(text);
+    if (success) {
       logger.debug(`copied to clipboard: ${text}`);
-    } catch (err) {
-      logger.error('failed to copy to clipboard:', err);
+    } else {
+      logger.error('failed to copy to clipboard');
     }
   }
 
@@ -719,7 +720,8 @@ export class FileBrowser extends LitElement {
                               <button
                                 class="btn-secondary text-xs px-2 py-1 font-mono"
                                 @click=${() =>
-                                  this.selectedFile && this.copyToClipboard(this.selectedFile.path)}
+                                  this.selectedFile &&
+                                  this.handleCopyToClipboard(this.selectedFile.path)}
                                 title="Copy path to clipboard (⌘C)"
                               >
                                 Copy Path
@@ -805,7 +807,7 @@ export class FileBrowser extends LitElement {
       this.insertPathIntoTerminal();
     } else if ((e.metaKey || e.ctrlKey) && e.key === 'c' && this.selectedFile) {
       e.preventDefault();
-      this.copyToClipboard(this.selectedFile.path);
+      this.handleCopyToClipboard(this.selectedFile.path);
     }
   };
 

@@ -8,15 +8,19 @@
 import { SessionInfo } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
 import { PushNotificationService } from './push-notification-service.js';
+import { ProcessSnapshot, ProcessInfo, ProcessTreeAnalyzer } from './process-tree-analyzer.js';
 
 const logger = createLogger('bell-event-handler');
 
 /**
- * Simplified bell event context
+ * Enhanced bell event context with process information
  */
 export interface BellEventContext {
   sessionInfo: SessionInfo;
   timestamp: Date;
+  bellCount?: number;
+  processSnapshot?: ProcessSnapshot;
+  suspectedSource?: ProcessInfo | null;
 }
 
 /**
@@ -39,6 +43,9 @@ export interface BellNotificationPayload {
   data: {
     sessionId: string;
     timestamp: string;
+    processName?: string;
+    processCommand?: string;
+    processPid?: number;
   };
 }
 
@@ -88,13 +95,25 @@ export class BellEventHandler {
   }
 
   /**
-   * Create simple notification payload
+   * Create enhanced notification payload with process information
    */
   private createNotificationPayload(context: BellEventContext): BellNotificationPayload {
     const sessionName = context.sessionInfo.name || 'Terminal Session';
 
+    // Extract process information if available
+    const processName = context.suspectedSource
+      ? ProcessTreeAnalyzer.extractProcessName(context.suspectedSource.command)
+      : null;
+    const processDescription = ProcessTreeAnalyzer.getProcessDescription(
+      context.suspectedSource || null
+    );
+
+    // Create title and body with process information
     const title = '🔔 Terminal Activity';
-    const body = `${sessionName} triggered a bell`;
+    const body =
+      processName && processName !== 'shell'
+        ? `${processDescription} in ${sessionName} triggered a bell`
+        : `${sessionName} triggered a bell`;
     const tag = `vibetunnel-bell-${context.sessionInfo.id}`;
 
     return {
@@ -120,6 +139,9 @@ export class BellEventHandler {
       data: {
         sessionId: context.sessionInfo.id,
         timestamp: context.timestamp.toISOString(),
+        processName: processName || undefined,
+        processCommand: context.suspectedSource?.command || undefined,
+        processPid: context.suspectedSource?.pid || undefined,
       },
     };
   }
