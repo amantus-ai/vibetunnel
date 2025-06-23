@@ -109,3 +109,7 @@ server/vibetunnel-fwd
 # Bun prebuilt executables (should be built during build process)
 mac/Resources/BunPrebuilts/
 /ios/TestResults.xcresult
+
+# Embedded git repositories - these should not be submodules
+linux/vt10x-investigation/
+vscode-web/vscode/
