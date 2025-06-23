@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git rm:*)",
       "Bash(npm run format:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(npm run typecheck:*)"
     ],
     "deny": []
   }
