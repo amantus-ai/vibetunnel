@@ -35,9 +35,8 @@ export function createAuthMiddleware(config: AuthConfig) {
       return next();
     }
 
-    console.log(
-      `[AUTH] ${req.method} ${req.path}, auth header: ${req.headers.authorization ? req.headers.authorization.substring(0, 20) + '...' : 'none'}`
-    );
+    // Only log auth requests that might be problematic (no header or failures)
+    // Remove verbose logging for successful token auth to reduce spam
 
     const authHeader = req.headers.authorization;
     const tokenQuery = req.query.token as string;
@@ -58,7 +57,6 @@ export function createAuthMiddleware(config: AuthConfig) {
       if (config.authService && config.enableSSHKeys) {
         const verification = config.authService.verifyToken(token);
         if (verification.valid && verification.userId) {
-          console.log(`[AUTH] ✅ Valid JWT token for user: ${verification.userId}`);
           req.userId = verification.userId;
           req.authMethod = 'ssh-key'; // JWT tokens are issued for SSH key auth
           return next();
