@@ -235,8 +235,9 @@ export class SessionCard extends LitElement {
   render() {
     return html`
       <div
-        class="card cursor-pointer overflow-hidden ${this.killing ? 'opacity-60' : ''} ${this
-          .isActive && this.session.status === 'running'
+        class="card cursor-pointer overflow-hidden flex flex-col h-full ${this.killing
+          ? 'opacity-60'
+          : ''} ${this.isActive && this.session.status === 'running'
           ? 'shadow-[0_0_0_2px_#00ff88] shadow-glow-green-sm'
           : ''}"
         style="view-transition-name: session-${this.session.id}"
@@ -292,10 +293,10 @@ export class SessionCard extends LitElement {
 
         <!-- Terminal display (main content) -->
         <div
-          class="session-preview bg-dark-bg overflow-hidden ${this.session.status === 'exited'
+          class="session-preview bg-dark-bg overflow-hidden flex-1 ${this.session.status ===
+          'exited'
             ? 'session-exited'
             : ''}"
-          style="aspect-ratio: 640/480;"
         >
           ${this.killing
             ? html`

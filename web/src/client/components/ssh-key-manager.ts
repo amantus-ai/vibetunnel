@@ -213,7 +213,8 @@ export class SSHKeyManager extends LitElement {
                             class="input-field"
                             placeholder="Enter name for new key"
                             .value=${this.newKeyName}
-                            @input=${(e: any) => (this.newKeyName = e.target.value)}
+                            @input=${(e: Event) =>
+                              (this.newKeyName = (e.target as HTMLInputElement).value)}
                             ?disabled=${this.loading}
                           />
                         </div>
@@ -234,7 +235,8 @@ export class SSHKeyManager extends LitElement {
                           class="input-field"
                           placeholder="Enter password to encrypt private key (optional)"
                           .value=${this.newKeyPassword}
-                          @input=${(e: any) => (this.newKeyPassword = e.target.value)}
+                          @input=${(e: Event) =>
+                            (this.newKeyPassword = (e.target as HTMLInputElement).value)}
                           ?disabled=${this.loading}
                         />
                         <p class="text-dark-text-muted text-xs mt-1">
@@ -266,7 +268,8 @@ export class SSHKeyManager extends LitElement {
                           class="input-field"
                           placeholder="Enter name for imported key"
                           .value=${this.importKeyName}
-                          @input=${(e: any) => (this.importKeyName = e.target.value)}
+                          @input=${(e: Event) =>
+                            (this.importKeyName = (e.target as HTMLInputElement).value)}
                           ?disabled=${this.loading}
                         />
                       </div>
@@ -280,7 +283,8 @@ export class SSHKeyManager extends LitElement {
                           rows="6"
                           placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
                           .value=${this.importKeyContent}
-                          @input=${(e: any) => (this.importKeyContent = e.target.value)}
+                          @input=${(e: Event) =>
+                            (this.importKeyContent = (e.target as HTMLTextAreaElement).value)}
                           ?disabled=${this.loading}
                         ></textarea>
                         <p class="text-dark-text-muted text-xs mt-1">

@@ -105,29 +105,25 @@
     @apply text-dark-text-muted text-sm font-medium mb-2 flex items-center gap-2;
   }
 
-  /* Responsive session flex layout */
+  /* Responsive session grid layout */
   .session-flex-responsive {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-auto-rows: 380px;
     gap: 1rem;
     padding: 0 0.5rem;
-    justify-content: flex-start;
   }
 
   .session-flex-responsive > * {
-    flex: 1 1 auto;
-    min-width: 300px;
-    max-width: 500px;
+    height: 100%;
+    overflow: hidden;
   }
 
   @media (max-width: 420px) {
     .session-flex-responsive {
       padding: 0 0.25rem;
-    }
-
-    .session-flex-responsive > * {
-      min-width: 100%;
-      max-width: 100%;
+      grid-template-columns: 1fr;
+      grid-auto-rows: 300px;
     }
   }
 
