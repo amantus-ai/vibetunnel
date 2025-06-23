@@ -841,14 +841,7 @@ export class SessionView extends LitElement {
       case 'alt+f':
         await this.sendInputText('\x1bf'); // ESC + f
         break;
-      case 'cmd+k':
-        // On macOS, Cmd+K is often used to clear the terminal
-        await this.sendInputText('\x0c'); // Ctrl+L - clear terminal
-        break;
-      case 'cmd+z':
-        // For undo functionality, we need to send the actual Cmd+Z
-        // Most terminal apps don't support undo, so we'll remove this
-        // or could send Ctrl+_ (\x1f) which is undo in some terminals
+      case 'ctrl+underscore':
         await this.sendInputText('\x1f'); // Ctrl+_ - undo in nano/emacs
         break;
     }
@@ -1408,14 +1401,7 @@ export class SessionView extends LitElement {
                     </button>
                     <button
                       class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('cmd+k')}
-                      title="Clear terminal"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
-                      @click=${() => this.handleShortcut('cmd+z')}
+                      @click=${() => this.handleShortcut('ctrl+underscore')}
                       title="Undo (Ctrl+_) - works in nano/emacs"
                     >
                       Ctrl+_
