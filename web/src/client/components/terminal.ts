@@ -14,6 +14,8 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { Terminal as XtermTerminal, IBufferLine, IBufferCell } from '@xterm/headless';
 import { UrlHighlighter } from '../utils/url-highlighter.js';
 import { createLogger } from '../utils/logger.js';
+import './terminal-search.js';
+import type { TerminalSearch, SearchMatch } from './terminal-search.js';
 
 const logger = createLogger('terminal');
 
@@ -54,6 +56,8 @@ export class Terminal extends LitElement {
   }
   @state() private actualRows = 24; // Rows that fit in viewport
   @state() private cursorVisible = true; // Track cursor visibility state
+  @state() private searchMatches: SearchMatch[] = [];
+  @state() private currentSearchMatch: SearchMatch | null = null;
 
   private container: HTMLElement | null = null;
   private resizeTimeout: NodeJS.Timeout | null = null;
@@ -102,7 +106,18 @@ export class Terminal extends LitElement {
 
     // Check for debug mode
     this.debugMode = new URLSearchParams(window.location.search).has('debug');
+
+    // Add keyboard shortcuts
+    this.addEventListener('keydown', this.handleGlobalKeydown);
   }
+
+  private handleGlobalKeydown = (e: KeyboardEvent) => {
+    // Cmd/Ctrl + F for search
+    if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+      e.preventDefault();
+      this.showSearch();
+    }
+  };
 
   updated(changedProperties: PropertyValues) {
     if (changedProperties.has('cols') || changedProperties.has('rows')) {
@@ -136,6 +151,7 @@ export class Terminal extends LitElement {
   }
 
   disconnectedCallback() {
+    this.removeEventListener('keydown', this.handleGlobalKeydown);
     this.cleanup();
     super.disconnectedCallback();
   }
@@ -704,7 +720,7 @@ export class Terminal extends LitElement {
       // Hide cursor for exited sessions or when explicitly disabled via ANSI escape sequences
       const shouldShowCursor =
         isCursorLine && this.cursorVisible && this.sessionStatus !== 'exited';
-      const lineContent = this.renderLine(line, cell, shouldShowCursor ? cursorX : -1);
+      const lineContent = this.renderLine(line, cell, shouldShowCursor ? cursorX : -1, row);
 
       html += `<div class="terminal-line"${style}>${lineContent || ''}</div>`;
     }
@@ -726,11 +742,19 @@ export class Terminal extends LitElement {
     }
   }
 
-  private renderLine(line: IBufferLine, cell: IBufferCell, cursorCol: number = -1): string {
+  private renderLine(
+    line: IBufferLine,
+    cell: IBufferCell,
+    cursorCol: number = -1,
+    rowIndex: number = -1
+  ): string {
     let html = '';
     let currentChars = '';
     let currentClasses = '';
     let currentStyle = '';
+
+    // Check if this row has search matches
+    const rowMatches = this.searchMatches.filter((m) => m.row === rowIndex);
 
     const escapeHtml = (text: string): string => {
       return text
@@ -769,6 +793,23 @@ export class Terminal extends LitElement {
       const isCursor = col === cursorCol;
       if (isCursor) {
         classes += ' cursor';
+      }
+
+      // Check if this cell is part of a search match
+      const isSearchMatch = rowMatches.some(
+        (match) => col >= match.col && col < match.col + match.length
+      );
+      const isCurrentMatch =
+        this.currentSearchMatch &&
+        rowIndex === this.currentSearchMatch.row &&
+        col >= this.currentSearchMatch.col &&
+        col < this.currentSearchMatch.col + this.currentSearchMatch.length;
+
+      if (isSearchMatch) {
+        classes += ' search-match';
+        if (isCurrentMatch) {
+          classes += ' search-current';
+        }
       }
 
       // Get foreground color
@@ -1218,9 +1259,116 @@ export class Terminal extends LitElement {
     }
   };
 
+  // === SEARCH FUNCTIONALITY ===
+
+  private showSearch() {
+    const searchComponent = this.querySelector('terminal-search') as TerminalSearch | null;
+    if (searchComponent) {
+      searchComponent.show();
+    }
+  }
+
+  private performSearch(term: string): SearchMatch[] {
+    if (!this.terminal || !term) return [];
+
+    const matches: SearchMatch[] = [];
+    const buffer = this.terminal.buffer.active;
+    const searchLower = term.toLowerCase();
+    const cell = buffer.getNullCell();
+
+    // Search through entire buffer including scrollback
+    for (let row = 0; row < buffer.length; row++) {
+      const line = buffer.getLine(row);
+      if (!line) continue;
+
+      // Extract line text
+      let lineText = '';
+      for (let col = 0; col < line.length; col++) {
+        line.getCell(col, cell);
+        const char = cell.getChars() || ' ';
+        lineText += char;
+      }
+
+      // Search for matches in this line
+      const lineLower = lineText.toLowerCase();
+      let searchIndex = 0;
+
+      while ((searchIndex = lineLower.indexOf(searchLower, searchIndex)) !== -1) {
+        matches.push({
+          row,
+          col: searchIndex,
+          length: term.length,
+          text: lineText.substring(searchIndex, searchIndex + term.length),
+        });
+        searchIndex += term.length;
+      }
+    }
+
+    return matches;
+  }
+
+  private handleSearchPerform = (e: CustomEvent) => {
+    const { term } = e.detail;
+    this.searchMatches = this.performSearch(term);
+
+    const searchComponent = this.querySelector('terminal-search') as TerminalSearch | null;
+    if (searchComponent) {
+      searchComponent.updateMatches(this.searchMatches);
+    }
+
+    // Trigger re-render to show highlights
+    this.requestRenderBuffer();
+  };
+
+  private handleSearchNavigate = (e: CustomEvent) => {
+    const { match } = e.detail;
+    this.currentSearchMatch = match;
+
+    // Scroll to the match position
+    if (match) {
+      const lineHeight = this.fontSize * 1.2;
+      const targetY = match.row * lineHeight;
+
+      // Calculate viewport position to center the match
+      const viewportCenterOffset = (this.actualRows / 2) * lineHeight;
+      const newViewportY = Math.max(0, targetY - viewportCenterOffset);
+
+      // Ensure we don't scroll past the buffer
+      const buffer = this.terminal?.buffer.active;
+      if (buffer) {
+        const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * lineHeight);
+        this.viewportY = Math.min(newViewportY, maxScrollPixels);
+      }
+    }
+
+    // Trigger re-render to update highlight
+    this.requestRenderBuffer();
+  };
+
+  private handleSearchClear = () => {
+    this.searchMatches = [];
+    this.currentSearchMatch = null;
+    this.requestRenderBuffer();
+  };
+
+  private handleSearchClose = () => {
+    this.searchMatches = [];
+    this.currentSearchMatch = null;
+    this.requestRenderBuffer();
+  };
+
   render() {
     return html`
       <style>
+        /* Search highlight styles */
+        .terminal-char.search-match {
+          background-color: rgba(255, 255, 0, 0.3) !important;
+        }
+
+        .terminal-char.search-current {
+          background-color: rgba(255, 165, 0, 0.5) !important;
+          outline: 1px solid orange;
+        }
         /* Dynamic terminal sizing */
         .terminal-container {
           font-size: ${this.fontSize}px;
@@ -1243,6 +1391,12 @@ export class Terminal extends LitElement {
           @paste=${this.handlePaste}
           @click=${this.handleClick}
         ></div>
+        <terminal-search
+          @search-perform=${this.handleSearchPerform}
+          @search-navigate=${this.handleSearchNavigate}
+          @search-clear=${this.handleSearchClear}
+          @search-close=${this.handleSearchClose}
+        ></terminal-search>
         ${!this.followCursorEnabled
           ? html`
               <div
