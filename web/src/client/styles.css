@@ -145,7 +145,7 @@
   }
 
   .auth-subtitle {
-    @apply text-dark-text-secondary font-mono;
+    @apply text-dark-text-muted font-mono;
   }
 
   .auth-form {
@@ -153,7 +153,7 @@
   }
 
   .auth-divider {
-    @apply relative text-center text-dark-text-secondary font-mono text-sm;
+    @apply relative text-center text-dark-text-muted font-mono text-sm;
   }
 
   .auth-divider::before {

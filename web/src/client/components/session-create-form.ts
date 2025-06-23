@@ -388,7 +388,7 @@ export class SessionCreateForm extends LitElement {
 
             <!-- Quick Start Section -->
             <div class="mb-6">
-              <label class="form-label text-dark-text-secondary uppercase text-xs tracking-wider"
+              <label class="form-label text-dark-text-muted uppercase text-xs tracking-wider"
                 >Quick Start</label
               >
               <div class="grid grid-cols-2 gap-3 mt-3">

@@ -656,7 +656,6 @@ export class VibeTunnelApp extends LitElement {
         @browser-cancel=${() => (this.showFileBrowser = false)}
       ></file-browser>
 
-<<<<<<< HEAD
       <!-- Notification Settings Modal -->
       <notification-settings
         .visible=${this.showNotificationSettings}
@@ -666,17 +665,16 @@ export class VibeTunnelApp extends LitElement {
         @success=${(e: CustomEvent) => this.showSuccess(e.detail)}
         @error=${(e: CustomEvent) => this.showError(e.detail)}
       ></notification-settings>
-=======
+
       <!-- SSH Key Manager Modal -->
       <ssh-key-manager
         .visible=${this.showSSHKeyManager}
         .sshAgent=${this.authClient.getSSHAgent()}
         @close=${this.handleCloseSSHKeyManager}
       ></ssh-key-manager>
->>>>>>> f5b18dc (Implement comprehensive user authentication system)
 
       <!-- Version and logs link in bottom right -->
-      <div class="fixed bottom-4 right-4 text-dark-text-secondary text-xs font-mono">
+      <div class="fixed bottom-4 right-4 text-dark-text-muted text-xs font-mono">
         <a href="/logs" class="hover:text-dark-text transition-colors">Logs</a>
         <span class="ml-2">v${VERSION}</span>
       </div>
