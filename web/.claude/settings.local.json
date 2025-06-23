@@ -4,7 +4,8 @@
       "Bash(git rm:*)",
       "Bash(npm run format:*)",
       "Bash(git restore:*)",
-      "Bash(npm run typecheck:*)"
+      "Bash(npm run typecheck:*)",
+      "Bash(node:*)"
     ],
     "deny": []
   }

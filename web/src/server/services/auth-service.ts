@@ -194,22 +194,57 @@ export class AuthService {
       }
 
       const keyType = keyParts[0];
+      const keyData = keyParts[1];
 
-      // Check signature length based on key type
-      if (keyType === 'ssh-ed25519' && signature.length !== 64) {
-        console.error(`Invalid Ed25519 signature length: ${signature.length} (expected 64)`);
-        return false;
+      if (keyType === 'ssh-ed25519') {
+        // Check signature length
+        if (signature.length !== 64) {
+          console.error(`Invalid Ed25519 signature length: ${signature.length} (expected 64)`);
+          return false;
+        }
+
+        // Decode the SSH public key
+        const sshKeyBuffer = Buffer.from(keyData, 'base64');
+
+        // Parse SSH wire format: length + "ssh-ed25519" + length + 32-byte key
+        let offset = 0;
+
+        // Skip algorithm name length and value
+        const algLength = sshKeyBuffer.readUInt32BE(offset);
+        offset += 4 + algLength;
+
+        // Read public key length and value
+        const keyLength = sshKeyBuffer.readUInt32BE(offset);
+        offset += 4;
+
+        if (keyLength !== 32) {
+          console.error(`Invalid Ed25519 key length: ${keyLength} (expected 32)`);
+          return false;
+        }
+
+        const rawPublicKey = sshKeyBuffer.subarray(offset, offset + 32);
+
+        // Create a Node.js public key object
+        const publicKey = crypto.createPublicKey({
+          key: Buffer.concat([
+            Buffer.from([0x30, 0x2a]), // DER sequence header
+            Buffer.from([0x30, 0x05]), // Algorithm identifier sequence
+            Buffer.from([0x06, 0x03, 0x2b, 0x65, 0x70]), // Ed25519 OID
+            Buffer.from([0x03, 0x21, 0x00]), // Public key bit string
+            rawPublicKey,
+          ]),
+          format: 'der',
+          type: 'spki',
+        });
+
+        // Verify the signature
+        const isValid = crypto.verify(null, challenge, publicKey, signature);
+        console.log(`🔐 Ed25519 signature verification: ${isValid ? 'PASSED' : 'FAILED'}`);
+        return isValid;
       }
 
-      if (keyType === 'ssh-rsa' && signature.length < 128) {
-        console.error(`Invalid RSA signature length: ${signature.length} (expected >= 128)`);
-        return false;
-      }
-
-      // For now, return true after basic checks
-      // TODO: Implement full cryptographic verification
-      console.log(`✅ SSH signature verification passed for ${keyType} key`);
-      return true;
+      console.error(`Unsupported key type: ${keyType}`);
+      return false;
     } catch (error) {
       console.error('SSH signature verification failed:', error);
       return false;
