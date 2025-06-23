@@ -799,6 +799,58 @@ export class SessionView extends LitElement {
     await this.sendInputText(key);
   }
 
+  private async handleShortcut(shortcut: string) {
+    switch (shortcut) {
+      case 'shift+tab':
+        // Send the key sequence that enables Claude Code file writes
+        await this.sendInputText('\x1b[Z'); // Shift+Tab escape sequence
+        break;
+      case 'ctrl+c':
+        await this.sendInputText('\x03');
+        break;
+      case 'ctrl+z':
+        await this.sendInputText('\x1a');
+        break;
+      case 'ctrl+a':
+        await this.sendInputText('\x01');
+        break;
+      case 'ctrl+e':
+        await this.sendInputText('\x05');
+        break;
+      case 'ctrl+k':
+        await this.sendInputText('\x0b');
+        break;
+      case 'ctrl+l':
+        await this.sendInputText('\x0c');
+        break;
+      case 'ctrl+r':
+        await this.sendInputText('\x12');
+        break;
+      case 'ctrl+d':
+        await this.sendInputText('\x04');
+        break;
+      case 'ctrl+w':
+        await this.sendInputText('\x17');
+        break;
+      case 'ctrl+u':
+        await this.sendInputText('\x15');
+        break;
+      case 'alt+b':
+        await this.sendInputText('\x1bb'); // ESC + b
+        break;
+      case 'alt+f':
+        await this.sendInputText('\x1bf'); // ESC + f
+        break;
+      case 'cmd+k':
+        // On macOS, Cmd+K is often used to clear the terminal
+        await this.sendInputText('\x0b');
+        break;
+      case 'cmd+z':
+        await this.sendInputText('\x1a');
+        break;
+    }
+  }
+
   private handleCtrlAlphaToggle() {
     this.showCtrlAlpha = !this.showCtrlAlpha;
   }
@@ -1052,6 +1104,21 @@ export class SessionView extends LitElement {
           outline: 2px solid #00ff88 !important;
           outline-offset: -2px;
         }
+        /* Custom scrollbar styling for shortcuts */
+        .shortcuts-scrollbar::-webkit-scrollbar {
+          height: 6px;
+        }
+        .shortcuts-scrollbar::-webkit-scrollbar-track {
+          background: #1e1e1e;
+          border-radius: 3px;
+        }
+        .shortcuts-scrollbar::-webkit-scrollbar-thumb {
+          background: #569cd6;
+          border-radius: 3px;
+        }
+        .shortcuts-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #6ba3e0;
+        }
       </style>
       <div
         class="flex flex-col bg-dark-bg font-mono"
@@ -1251,28 +1318,127 @@ export class SessionView extends LitElement {
         ${this.isMobile && !this.showMobileInput
           ? html`
               <div class="flex-shrink-0 p-4" style="background: black;">
+                <!-- Horizontal scrollbar with shortcuts -->
+                <div
+                  class="overflow-x-auto mb-2 -mx-4 px-4 shortcuts-scrollbar"
+                  style="scrollbar-width: thin; scrollbar-color: #569cd6 #1e1e1e;"
+                >
+                  <div class="flex gap-2 pb-2" style="min-width: max-content;">
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('shift+tab')}
+                      title="Enable Claude Code file writes"
+                    >
+                      Shift+Tab
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('ctrl+c')}
+                    >
+                      Ctrl+C
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('ctrl+z')}
+                    >
+                      Ctrl+Z
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('ctrl+a')}
+                    >
+                      Ctrl+A
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('ctrl+e')}
+                    >
+                      Ctrl+E
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('ctrl+k')}
+                    >
+                      Ctrl+K
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('ctrl+l')}
+                    >
+                      Clear
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('ctrl+r')}
+                    >
+                      Search
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('ctrl+d')}
+                    >
+                      EOF
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('ctrl+w')}
+                    >
+                      Del Word
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('ctrl+u')}
+                    >
+                      Del Line
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('alt+b')}
+                    >
+                      Word ←
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('alt+f')}
+                    >
+                      Word →
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('cmd+k')}
+                    >
+                      Cmd+K
+                    </button>
+                    <button
+                      class="font-mono px-3 py-2 text-xs transition-all cursor-pointer mobile-keyboard-btn whitespace-nowrap"
+                      @click=${() => this.handleShortcut('cmd+z')}
+                    >
+                      Undo
+                    </button>
+                  </div>
+                </div>
                 <!-- First row: Arrow keys -->
                 <div class="flex gap-2 mb-2">
                   <button
-                    class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
+                    class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer mobile-keyboard-btn"
                     @click=${() => this.handleSpecialKey('arrow_up')}
                   >
                     <span class="text-xl">↑</span>
                   </button>
                   <button
-                    class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
+                    class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer mobile-keyboard-btn"
                     @click=${() => this.handleSpecialKey('arrow_down')}
                   >
                     <span class="text-xl">↓</span>
                   </button>
                   <button
-                    class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
+                    class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer mobile-keyboard-btn"
                     @click=${() => this.handleSpecialKey('arrow_left')}
                   >
                     <span class="text-xl">←</span>
                   </button>
                   <button
-                    class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
+                    class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer mobile-keyboard-btn"
                     @click=${() => this.handleSpecialKey('arrow_right')}
                   >
                     <span class="text-xl">→</span>
@@ -1282,31 +1448,31 @@ export class SessionView extends LitElement {
                 <!-- Second row: Special keys -->
                 <div class="flex gap-2">
                   <button
-                    class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                    class="font-mono text-sm transition-all cursor-pointer w-16 mobile-keyboard-btn"
                     @click=${() => this.handleSpecialKey('escape')}
                   >
                     ESC
                   </button>
                   <button
-                    class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                    class="font-mono text-sm transition-all cursor-pointer w-16 mobile-keyboard-btn"
                     @click=${() => this.handleSpecialKey('\t')}
                   >
                     <span class="text-xl">⇥</span>
                   </button>
                   <button
-                    class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
+                    class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer mobile-keyboard-btn"
                     @click=${this.handleMobileInputToggle}
                   >
                     ABC123
                   </button>
                   <button
-                    class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                    class="font-mono text-sm transition-all cursor-pointer w-16 mobile-keyboard-btn"
                     @click=${this.handleCtrlAlphaToggle}
                   >
                     CTRL
                   </button>
                   <button
-                    class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                    class="font-mono text-sm transition-all cursor-pointer w-16 mobile-keyboard-btn"
                     @click=${() => this.handleSpecialKey('enter')}
                   >
                     <span class="text-xl">⏎</span>

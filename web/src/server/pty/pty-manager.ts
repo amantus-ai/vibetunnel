@@ -321,25 +321,29 @@ export class PtyManager extends EventEmitter {
         // Check for bell character (ASCII 7) - filter out OSC sequences
         if (data.includes('\x07')) {
           logger.debug(`Bell data in session ${session.id}: ${JSON.stringify(data)}`);
-          
+
           // Count total bells and OSC-terminated bells
           const totalBells = (data.match(/\x07/g) || []).length;
-          
+
           // Count OSC sequences terminated with bell: \x1b]...\x07
           const oscMatches = data.match(/\x1b]([^\x07\x1b]|\x1b[^]])*\x07/g) || [];
           const oscTerminatedBells = oscMatches.length;
-          
+
           // If there are more bells than OSC terminators, we have real bells
           const realBells = totalBells - oscTerminatedBells;
-          
+
           if (realBells > 0) {
-            logger.debug(`Real bell(s) detected in session ${session.id}: ${realBells} bells (${oscTerminatedBells} OSC-terminated)`);
+            logger.debug(
+              `Real bell(s) detected in session ${session.id}: ${realBells} bells (${oscTerminatedBells} OSC-terminated)`
+            );
             this.emit('bell', {
               sessionInfo: session.sessionInfo,
               timestamp: new Date(),
             });
           } else {
-            logger.debug(`Ignoring OSC sequence bells in session ${session.id}: ${oscTerminatedBells} OSC bells, ${realBells} real bells`);
+            logger.debug(
+              `Ignoring OSC sequence bells in session ${session.id}: ${oscTerminatedBells} OSC bells, ${realBells} real bells`
+            );
           }
         }
 

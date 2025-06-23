@@ -84,6 +84,33 @@
     @apply active:scale-95;
   }
 
+  /* Mobile keyboard buttons - specific class for keyboard shortcuts */
+  .mobile-keyboard-btn {
+    @apply bg-dark-bg-tertiary border border-dark-border rounded-lg px-4 py-3 h-12;
+    @apply text-dark-text-muted;
+    /* Slow transition for returning to normal state */
+    transition:
+      border-color 2s ease-out,
+      color 2s ease-out,
+      box-shadow 2s ease-out,
+      transform 0.2s ease-out;
+  }
+
+  /* Instant highlight when pressed */
+  .mobile-keyboard-btn:active {
+    @apply border-accent-green text-accent-green shadow-glow-green-sm;
+    @apply scale-95;
+    /* Override transition to make the active state instant */
+    transition: transform 0.1s ease-out;
+  }
+
+  /* Only apply hover styles on devices that support hover */
+  @media (hover: hover) {
+    .mobile-keyboard-btn:hover {
+      @apply border-accent-green text-accent-green shadow-glow-green-sm;
+    }
+  }
+
   .quick-start-btn.active {
     @apply bg-accent-green text-dark-bg border-accent-green shadow-glow-green-sm;
   }
