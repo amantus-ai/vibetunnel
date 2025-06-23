@@ -19,13 +19,10 @@ import './components/session-view.js';
 import './components/session-card.js';
 import './components/file-browser.js';
 import './components/log-viewer.js';
-<<<<<<< HEAD
 import './components/notification-settings.js';
 import './components/notification-status.js';
-=======
 import './components/auth-login.js';
 import './components/ssh-key-manager.js';
->>>>>>> f5b18dc (Implement comprehensive user authentication system)
 
 import type { SessionCard } from './components/session-card.js';
 import { AuthClient } from './services/auth-client.js';
@@ -48,12 +45,9 @@ export class VibeTunnelApp extends LitElement {
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
   @state() private showFileBrowser = false;
-<<<<<<< HEAD
   @state() private showNotificationSettings = false;
-=======
   @state() private showSSHKeyManager = false;
   @state() private isAuthenticated = false;
->>>>>>> f5b18dc (Implement comprehensive user authentication system)
   private initialLoadComplete = false;
   private authClient = new AuthClient();
 
@@ -567,46 +561,6 @@ export class VibeTunnelApp extends LitElement {
         : ''}
 
       <!-- Main content -->
-<<<<<<< HEAD
-      ${this.currentView === 'session' && this.selectedSessionId
-        ? keyed(
-            this.selectedSessionId,
-            html`
-              <session-view
-                .session=${this.sessions.find((s) => s.id === this.selectedSessionId)}
-                @navigate-to-list=${this.handleNavigateToList}
-              ></session-view>
-            `
-          )
-        : html`
-            <div>
-              <app-header
-                .sessions=${this.sessions}
-                .hideExited=${this.hideExited}
-                @create-session=${this.handleCreateSession}
-                @hide-exited-change=${this.handleHideExitedChange}
-                @kill-all-sessions=${this.handleKillAll}
-                @clean-exited-sessions=${this.handleCleanExited}
-                @open-file-browser=${() => (this.showFileBrowser = true)}
-                @open-notification-settings=${this.handleShowNotificationSettings}
-              ></app-header>
-              <session-list
-                .sessions=${this.sessions}
-                .loading=${this.loading}
-                .hideExited=${this.hideExited}
-                .showCreateModal=${this.showCreateModal}
-                @session-killed=${this.handleSessionKilled}
-                @session-created=${this.handleSessionCreated}
-                @create-modal-close=${this.handleCreateModalClose}
-                @refresh=${this.handleRefresh}
-                @error=${this.handleError}
-                @hide-exited-change=${this.handleHideExitedChange}
-                @kill-all-sessions=${this.handleKillAll}
-                @navigate-to-session=${this.handleNavigateToSession}
-              ></session-list>
-            </div>
-          `}
-=======
       ${this.currentView === 'auth'
         ? html`
             <auth-login
@@ -637,6 +591,7 @@ export class VibeTunnelApp extends LitElement {
                   @kill-all-sessions=${this.handleKillAll}
                   @clean-exited-sessions=${this.handleCleanExited}
                   @open-file-browser=${() => (this.showFileBrowser = true)}
+                  @open-notification-settings=${this.handleShowNotificationSettings}
                   @logout=${this.handleLogout}
                 ></app-header>
                 <session-list
@@ -655,7 +610,6 @@ export class VibeTunnelApp extends LitElement {
                 ></session-list>
               </div>
             `}
->>>>>>> f5b18dc (Implement comprehensive user authentication system)
 
       <!-- File Browser Modal -->
       <file-browser

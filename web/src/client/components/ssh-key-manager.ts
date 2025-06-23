@@ -52,7 +52,10 @@ export class SSHKeyManager extends LitElement {
     this.error = '';
 
     try {
-      const result = await this.sshAgent.generateKeyPair(this.newKeyName, this.newKeyPassword || undefined);
+      const result = await this.sshAgent.generateKeyPair(
+        this.newKeyName,
+        this.newKeyPassword || undefined
+      );
 
       // Automatically download the private key
       this.downloadPrivateKey(result.privateKeyPEM, this.newKeyName);
@@ -160,10 +163,7 @@ export class SSHKeyManager extends LitElement {
         >
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-xl font-mono text-dark-text">SSH Key Manager</h2>
-            <button
-              @click=${this.handleClose}
-              class="text-dark-text-muted hover:text-dark-text"
-            >
+            <button @click=${this.handleClose} class="text-dark-text-muted hover:text-dark-text">
               ✕
             </button>
           </div>
@@ -217,10 +217,12 @@ export class SSHKeyManager extends LitElement {
                       <h4 class="text-dark-text font-mono text-lg mb-4 flex items-center gap-2">
                         🔑 Generate New SSH Key
                       </h4>
-                      
+
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
-                          <label class="form-label">Key Name <span class="text-accent-red">*</span></label>
+                          <label class="form-label"
+                            >Key Name <span class="text-accent-red">*</span></label
+                          >
                           <input
                             type="text"
                             class="input-field"
@@ -232,7 +234,9 @@ export class SSHKeyManager extends LitElement {
                         </div>
                         <div>
                           <label class="form-label">Algorithm</label>
-                          <div class="input-field bg-dark-bg-secondary text-dark-text-muted cursor-not-allowed">
+                          <div
+                            class="input-field bg-dark-bg-secondary text-dark-text-muted cursor-not-allowed"
+                          >
                             Ed25519 (recommended)
                           </div>
                         </div>
@@ -249,7 +253,8 @@ export class SSHKeyManager extends LitElement {
                           ?disabled=${this.loading}
                         />
                         <p class="text-dark-text-muted text-xs mt-1">
-                          💡 Leave empty for unencrypted key. Password is required when using the key for signing.
+                          💡 Leave empty for unencrypted key. Password is required when using the
+                          key for signing.
                         </p>
                       </div>
 
@@ -267,9 +272,11 @@ export class SSHKeyManager extends LitElement {
                       <h4 class="text-dark-text font-mono text-lg mb-4 flex items-center gap-2">
                         📁 Import Existing SSH Key
                       </h4>
-                      
+
                       <div class="mb-4">
-                        <label class="form-label">Key Name <span class="text-accent-red">*</span></label>
+                        <label class="form-label"
+                          >Key Name <span class="text-accent-red">*</span></label
+                        >
                         <input
                           type="text"
                           class="input-field"
@@ -281,7 +288,9 @@ export class SSHKeyManager extends LitElement {
                       </div>
 
                       <div class="mb-4">
-                        <label class="form-label">Private Key (PEM format) <span class="text-accent-red">*</span></label>
+                        <label class="form-label"
+                          >Private Key (PEM format) <span class="text-accent-red">*</span></label
+                        >
                         <textarea
                           class="input-field"
                           rows="6"
@@ -291,14 +300,17 @@ export class SSHKeyManager extends LitElement {
                           ?disabled=${this.loading}
                         ></textarea>
                         <p class="text-dark-text-muted text-xs mt-1">
-                          💡 If the key is password-protected, you'll be prompted for the password when using it for authentication.
+                          💡 If the key is password-protected, you'll be prompted for the password
+                          when using it for authentication.
                         </p>
                       </div>
 
                       <button
                         @click=${this.handleImportKey}
                         class="btn-secondary"
-                        ?disabled=${this.loading || !this.importKeyName.trim() || !this.importKeyContent.trim()}
+                        ?disabled=${this.loading ||
+                        !this.importKeyName.trim() ||
+                        !this.importKeyContent.trim()}
                       >
                         ${this.loading ? 'Importing...' : 'Import Key'}
                       </button>
@@ -323,10 +335,15 @@ export class SSHKeyManager extends LitElement {
                   </div>
                   <div class="space-y-4">
                     <div class="bg-dark-bg border border-dark-border rounded p-3">
-                      <p class="text-dark-text-muted text-xs mb-2">1. Add the public key to your authorized_keys file:</p>
+                      <p class="text-dark-text-muted text-xs mb-2">
+                        1. Add the public key to your authorized_keys file:
+                      </p>
                       <div class="relative">
-                        <pre class="bg-dark-bg-secondary p-2 rounded text-xs overflow-x-auto text-dark-text pr-20">
-echo "${this.sshAgent.getPublicKey(this.instructionsKeyId)}" >> ~/.ssh/authorized_keys</pre>
+                        <pre
+                          class="bg-dark-bg-secondary p-2 rounded text-xs overflow-x-auto text-dark-text pr-20"
+                        >
+echo "${this.sshAgent.getPublicKey(this.instructionsKeyId)}" >> ~/.ssh/authorized_keys</pre
+                        >
                         <button
                           @click=${async () => {
                             const publicKey = this.sshAgent.getPublicKey(this.instructionsKeyId);

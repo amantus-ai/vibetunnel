@@ -110,7 +110,7 @@ export class BrowserSSHAgent {
         }
         privateKeyPEM = await this.decryptPrivateKey(key.privateKey, password);
       }
-      
+
       // Import the private key for signing
       const privateKey = await this.importPrivateKey(privateKeyPEM, key.algorithm);
 
@@ -133,7 +133,10 @@ export class BrowserSSHAgent {
   /**
    * Generate SSH key pair in the browser
    */
-  async generateKeyPair(name: string, password?: string): Promise<{ keyId: string; privateKeyPEM: string }> {
+  async generateKeyPair(
+    name: string,
+    password?: string
+  ): Promise<{ keyId: string; privateKeyPEM: string }> {
     console.log(`🔑 SSH Agent: Starting Ed25519 key generation for "${name}"`);
 
     try {
@@ -153,7 +156,7 @@ export class BrowserSSHAgent {
       // Convert to proper formats
       let privateKeyPEM = this.arrayBufferToPEM(privateKeyBuffer, 'PRIVATE KEY');
       const publicKeySSH = this.convertEd25519ToSSHPublicKey(publicKeyBuffer);
-      
+
       // Encrypt private key if password provided
       const isEncrypted = !!password;
       if (password) {
@@ -346,7 +349,7 @@ export class BrowserSSHAgent {
   private async encryptPrivateKey(privateKeyPEM: string, password: string): Promise<string> {
     const encoder = new TextEncoder();
     const data = encoder.encode(privateKeyPEM);
-    
+
     // Derive key from password using PBKDF2
     const passwordKey = await subtle.importKey(
       'raw',
@@ -355,10 +358,10 @@ export class BrowserSSHAgent {
       false,
       ['deriveKey']
     );
-    
+
     // Generate random salt
     const salt = crypto.getRandomValues(new Uint8Array(16));
-    
+
     // Derive encryption key
     const encryptionKey = await subtle.deriveKey(
       {
@@ -372,46 +375,45 @@ export class BrowserSSHAgent {
       false,
       ['encrypt']
     );
-    
+
     // Generate random IV
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    
+
     // Encrypt the data
-    const encryptedData = await subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      encryptionKey,
-      data
-    );
-    
+    const encryptedData = await subtle.encrypt({ name: 'AES-GCM', iv }, encryptionKey, data);
+
     // Combine salt + iv + encrypted data and base64 encode
     const combined = new Uint8Array(salt.length + iv.length + encryptedData.byteLength);
     combined.set(salt, 0);
     combined.set(iv, salt.length);
     combined.set(new Uint8Array(encryptedData), salt.length + iv.length);
-    
+
     return `-----BEGIN ENCRYPTED PRIVATE KEY-----\n${this.arrayBufferToBase64(combined.buffer)}\n-----END ENCRYPTED PRIVATE KEY-----`;
   }
 
   /**
    * Decrypt private key with password
    */
-  private async decryptPrivateKey(encryptedPrivateKeyPEM: string, password: string): Promise<string> {
+  private async decryptPrivateKey(
+    encryptedPrivateKeyPEM: string,
+    password: string
+  ): Promise<string> {
     // Extract base64 data
     const base64Data = encryptedPrivateKeyPEM
       .replace('-----BEGIN ENCRYPTED PRIVATE KEY-----', '')
       .replace('-----END ENCRYPTED PRIVATE KEY-----', '')
       .replace(/\s/g, '');
-    
+
     const combinedData = this.base64ToArrayBuffer(base64Data);
     const combined = new Uint8Array(combinedData);
-    
+
     // Extract salt, iv, and encrypted data
     const salt = combined.slice(0, 16);
     const iv = combined.slice(16, 28);
     const encryptedData = combined.slice(28);
-    
+
     const encoder = new TextEncoder();
-    
+
     // Derive key from password
     const passwordKey = await subtle.importKey(
       'raw',
@@ -420,7 +422,7 @@ export class BrowserSSHAgent {
       false,
       ['deriveKey']
     );
-    
+
     const encryptionKey = await subtle.deriveKey(
       {
         name: 'PBKDF2',
@@ -433,14 +435,14 @@ export class BrowserSSHAgent {
       false,
       ['decrypt']
     );
-    
+
     // Decrypt the data
     const decryptedData = await subtle.decrypt(
       { name: 'AES-GCM', iv },
       encryptionKey,
       encryptedData
     );
-    
+
     const decoder = new TextDecoder();
     return decoder.decode(decryptedData);
   }

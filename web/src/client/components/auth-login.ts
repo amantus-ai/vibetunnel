@@ -189,7 +189,7 @@ export class AuthLogin extends LitElement {
                     💡 SSH keys work in both browser and terminal
                   </p>
                 </div>
-                
+
                 <button
                   class="btn-secondary w-full"
                   @click=${this.handleSSHKeyAuth}

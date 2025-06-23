@@ -91,32 +91,12 @@ export function createAuthMiddleware(config: AuthConfig) {
       const credentials = Buffer.from(base64Credentials, 'base64').toString('utf8');
       const [username, password] = credentials.split(':');
 
-<<<<<<< HEAD
-      // If no username is configured, accept any username as long as password matches
-      // This allows for password-only authentication mode
-      if (!config.basicAuthUsername) {
-        // Password-only mode: ignore username, only check password
-        if (password === config.basicAuthPassword) {
-          logger.log(chalk.green(`authenticated via password-only mode from ${req.ip}`));
-          return next();
-        } else {
-          logger.warn(`failed password-only auth attempt from ${req.ip}`);
-        }
-      } else {
-        // Username+password mode: check both
-        if (username === config.basicAuthUsername && password === config.basicAuthPassword) {
-          return next();
-        } else {
-          logger.warn(`failed basic auth attempt from ${req.ip} for user: ${username}`);
-        }
-=======
       if (username === config.basicAuthUsername && password === config.basicAuthPassword) {
         console.log('[AUTH] ✅ Valid basic authentication');
         req.authMethod = 'basic';
         return next();
       } else {
         console.log('[AUTH] ❌ Invalid basic auth credentials');
->>>>>>> f5b18dc (Implement comprehensive user authentication system)
       }
     }
 

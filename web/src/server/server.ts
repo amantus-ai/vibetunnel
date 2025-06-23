@@ -15,12 +15,9 @@ import { createSessionRoutes } from './routes/sessions.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
-<<<<<<< HEAD
 import { createPushRoutes } from './routes/push.js';
-=======
 import { createAuthRoutes } from './routes/auth.js';
 import { AuthService } from './services/auth-service.js';
->>>>>>> f5b18dc (Implement comprehensive user authentication system)
 import { ControlDirWatcher } from './services/control-dir-watcher.js';
 import { VapidManager } from './utils/vapid-manager.js';
 import { PushNotificationService } from './services/push-notification-service.js';
@@ -463,7 +460,6 @@ export async function createApp(): Promise<AppInstance> {
     });
   });
 
-<<<<<<< HEAD
   // Connect bell event handler to PTY manager if push notifications are enabled
   if (bellEventHandler) {
     ptyManager.on('bell', (bellContext) => {
@@ -473,7 +469,7 @@ export async function createApp(): Promise<AppInstance> {
     });
     logger.debug('Connected bell event handler to PTY manager');
   }
-=======
+
   // Mount authentication routes (no auth required)
   app.use('/api/auth', createAuthRoutes({ authService }));
   logger.debug('Mounted authentication routes');
@@ -481,7 +477,6 @@ export async function createApp(): Promise<AppInstance> {
   // Apply auth middleware to all API routes (except auth routes which are handled above)
   app.use('/api', authMiddleware);
   logger.debug('Applied authentication middleware to /api routes');
->>>>>>> f5b18dc (Implement comprehensive user authentication system)
 
   // Mount routes
   app.use(

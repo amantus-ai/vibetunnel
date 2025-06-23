@@ -149,7 +149,7 @@
   }
 
   .auth-form {
-    @apply bg-dark-bg-secondary border border-dark-border rounded-lg p-6 w-full max-w-md space-y-6;
+    @apply bg-dark-bg-secondary border border-dark-border rounded-lg p-6 w-full space-y-6;
   }
 
   .auth-divider {
