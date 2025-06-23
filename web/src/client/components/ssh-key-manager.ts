@@ -123,21 +123,6 @@ export class SSHKeyManager extends LitElement {
     }
   }
 
-  private handleDownloadPrivateKey(keyId: string, keyName: string) {
-    const privateKey = this.sshAgent.getPrivateKey(keyId);
-    if (privateKey) {
-      const blob = new Blob([privateKey], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${keyName.replace(/\s+/g, '_')}_private.pem`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-  }
-
   private handleDownloadPublicKey(keyId: string, keyName: string) {
     const publicKey = this.sshAgent.getPublicKey(keyId);
     if (publicKey) {
@@ -422,13 +407,6 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                             title="Download Public Key"
                           >
                             📥 Public
-                          </button>
-                          <button
-                            @click=${() => this.handleDownloadPrivateKey(key.id, key.name)}
-                            class="btn-ghost text-xs"
-                            title="Download Private Key"
-                          >
-                            📥 Private
                           </button>
                           <button
                             @click=${() => this.handleRemoveKey(key.id, key.name)}
