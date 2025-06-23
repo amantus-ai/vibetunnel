@@ -19,10 +19,16 @@ import './components/session-view.js';
 import './components/session-card.js';
 import './components/file-browser.js';
 import './components/log-viewer.js';
+<<<<<<< HEAD
 import './components/notification-settings.js';
 import './components/notification-status.js';
+=======
+import './components/auth-login.js';
+import './components/ssh-key-manager.js';
+>>>>>>> f5b18dc (Implement comprehensive user authentication system)
 
 import type { SessionCard } from './components/session-card.js';
+import { AuthClient } from './services/auth-client.js';
 
 const logger = createLogger('app');
 
@@ -37,13 +43,19 @@ export class VibeTunnelApp extends LitElement {
   @state() private successMessage = '';
   @state() private sessions: Session[] = [];
   @state() private loading = false;
-  @state() private currentView: 'list' | 'session' = 'list';
+  @state() private currentView: 'list' | 'session' | 'auth' = 'auth';
   @state() private selectedSessionId: string | null = null;
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
   @state() private showFileBrowser = false;
+<<<<<<< HEAD
   @state() private showNotificationSettings = false;
+=======
+  @state() private showSSHKeyManager = false;
+  @state() private isAuthenticated = false;
+>>>>>>> f5b18dc (Implement comprehensive user authentication system)
   private initialLoadComplete = false;
+  private authClient = new AuthClient();
 
   private hotReloadWs: WebSocket | null = null;
   private errorTimeoutId: number | null = null;
@@ -52,8 +64,7 @@ export class VibeTunnelApp extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.setupHotReload();
-    this.loadSessions();
-    this.startAutoRefresh();
+    this.checkAuthenticationStatus();
     this.setupRouting();
     this.setupKeyboardShortcuts();
     this.setupNotificationHandlers();
@@ -80,6 +91,43 @@ export class VibeTunnelApp extends LitElement {
 
   private setupKeyboardShortcuts() {
     window.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  private async checkAuthenticationStatus() {
+    this.isAuthenticated = this.authClient.isAuthenticated();
+    console.log('🔐 Authentication status:', this.isAuthenticated);
+
+    if (this.isAuthenticated) {
+      this.currentView = 'list';
+      this.loadSessions();
+      this.startAutoRefresh();
+    } else {
+      this.currentView = 'auth';
+    }
+  }
+
+  private handleAuthSuccess() {
+    console.log('✅ Authentication successful');
+    this.isAuthenticated = true;
+    this.currentView = 'list';
+    this.loadSessions();
+    this.startAutoRefresh();
+  }
+
+  private async handleLogout() {
+    console.log('👋 Logging out');
+    await this.authClient.logout();
+    this.isAuthenticated = false;
+    this.currentView = 'auth';
+    this.sessions = [];
+  }
+
+  private handleShowSSHKeyManager() {
+    this.showSSHKeyManager = true;
+  }
+
+  private handleCloseSSHKeyManager() {
+    this.showSSHKeyManager = false;
   }
 
   private showError(message: string) {
@@ -134,10 +182,15 @@ export class VibeTunnelApp extends LitElement {
       this.loading = true;
     }
     try {
-      const response = await fetch('/api/sessions');
+      const headers = this.authClient.getAuthHeader();
+      const response = await fetch('/api/sessions', { headers });
       if (response.ok) {
         this.sessions = (await response.json()) as Session[];
         this.clearError();
+      } else if (response.status === 401) {
+        // Authentication failed, redirect to login
+        this.handleLogout();
+        return;
       } else {
         this.showError('Failed to load sessions');
       }
@@ -507,6 +560,7 @@ export class VibeTunnelApp extends LitElement {
         : ''}
 
       <!-- Main content -->
+<<<<<<< HEAD
       ${this.currentView === 'session' && this.selectedSessionId
         ? keyed(
             this.selectedSessionId,
@@ -545,6 +599,54 @@ export class VibeTunnelApp extends LitElement {
               ></session-list>
             </div>
           `}
+=======
+      ${this.currentView === 'auth'
+        ? html`
+            <auth-login
+              .authClient=${this.authClient}
+              @auth-success=${this.handleAuthSuccess}
+              @show-ssh-key-manager=${this.handleShowSSHKeyManager}
+            ></auth-login>
+          `
+        : this.currentView === 'session' && this.selectedSessionId
+          ? keyed(
+              this.selectedSessionId,
+              html`
+                <session-view
+                  .session=${this.sessions.find((s) => s.id === this.selectedSessionId)}
+                  @navigate-to-list=${this.handleNavigateToList}
+                ></session-view>
+              `
+            )
+          : html`
+              <div>
+                <app-header
+                  .sessions=${this.sessions}
+                  .hideExited=${this.hideExited}
+                  @create-session=${this.handleCreateSession}
+                  @hide-exited-change=${this.handleHideExitedChange}
+                  @kill-all-sessions=${this.handleKillAll}
+                  @clean-exited-sessions=${this.handleCleanExited}
+                  @open-file-browser=${() => (this.showFileBrowser = true)}
+                  @logout=${this.handleLogout}
+                ></app-header>
+                <session-list
+                  .sessions=${this.sessions}
+                  .loading=${this.loading}
+                  .hideExited=${this.hideExited}
+                  .showCreateModal=${this.showCreateModal}
+                  @session-killed=${this.handleSessionKilled}
+                  @session-created=${this.handleSessionCreated}
+                  @create-modal-close=${this.handleCreateModalClose}
+                  @refresh=${this.handleRefresh}
+                  @error=${this.handleError}
+                  @hide-exited-change=${this.handleHideExitedChange}
+                  @kill-all-sessions=${this.handleKillAll}
+                  @navigate-to-session=${this.handleNavigateToSession}
+                ></session-list>
+              </div>
+            `}
+>>>>>>> f5b18dc (Implement comprehensive user authentication system)
 
       <!-- File Browser Modal -->
       <file-browser
@@ -554,6 +656,7 @@ export class VibeTunnelApp extends LitElement {
         @browser-cancel=${() => (this.showFileBrowser = false)}
       ></file-browser>
 
+<<<<<<< HEAD
       <!-- Notification Settings Modal -->
       <notification-settings
         .visible=${this.showNotificationSettings}
@@ -563,6 +666,14 @@ export class VibeTunnelApp extends LitElement {
         @success=${(e: CustomEvent) => this.showSuccess(e.detail)}
         @error=${(e: CustomEvent) => this.showError(e.detail)}
       ></notification-settings>
+=======
+      <!-- SSH Key Manager Modal -->
+      <ssh-key-manager
+        .visible=${this.showSSHKeyManager}
+        .sshAgent=${this.authClient.getSSHAgent()}
+        @close=${this.handleCloseSSHKeyManager}
+      ></ssh-key-manager>
+>>>>>>> f5b18dc (Implement comprehensive user authentication system)
 
       <!-- Version and logs link in bottom right -->
       <div class="fixed bottom-4 right-4 text-dark-text-secondary text-xs font-mono">

@@ -130,6 +130,60 @@
       max-width: 100%;
     }
   }
+
+  /* Authentication styles */
+  .auth-container {
+    @apply min-h-screen bg-dark-bg flex items-center justify-center p-6;
+  }
+
+  .auth-header {
+    @apply text-center mb-8;
+  }
+
+  .auth-title {
+    @apply text-3xl font-mono font-bold text-dark-text mb-2;
+  }
+
+  .auth-subtitle {
+    @apply text-dark-text-secondary font-mono;
+  }
+
+  .auth-form {
+    @apply bg-dark-bg-secondary border border-dark-border rounded-lg p-6 w-full max-w-md space-y-6;
+  }
+
+  .auth-divider {
+    @apply relative text-center text-dark-text-secondary font-mono text-sm;
+  }
+
+  .auth-divider::before {
+    @apply absolute top-1/2 left-0 w-full h-px bg-dark-border;
+    content: '';
+    transform: translateY(-50%);
+  }
+
+  .auth-divider span {
+    @apply bg-dark-bg-secondary px-4;
+  }
+
+  /* SSH Key Manager styles */
+  .ssh-key-item {
+    @apply bg-dark-bg border border-dark-border rounded-lg p-4;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:border-accent-green-darker;
+  }
+
+  .badge {
+    @apply px-2 py-1 rounded text-xs font-mono font-semibold;
+  }
+
+  .badge-rsa {
+    @apply bg-blue-500 text-white;
+  }
+
+  .badge-ed25519 {
+    @apply bg-purple-500 text-white;
+  }
 }
 
 /* Fira Code Variable Font */

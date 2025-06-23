@@ -15,7 +15,12 @@ import { createSessionRoutes } from './routes/sessions.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
+<<<<<<< HEAD
 import { createPushRoutes } from './routes/push.js';
+=======
+import { createAuthRoutes } from './routes/auth.js';
+import { AuthService } from './services/auth-service.js';
+>>>>>>> f5b18dc (Implement comprehensive user authentication system)
 import { ControlDirWatcher } from './services/control-dir-watcher.js';
 import { VapidManager } from './utils/vapid-manager.js';
 import { PushNotificationService } from './services/push-notification-service.js';
@@ -422,17 +427,18 @@ export async function createApp(): Promise<AppInstance> {
   });
   logger.debug('Initialized buffer aggregator');
 
+  // Initialize authentication service
+  const authService = new AuthService();
+  logger.debug('Initialized authentication service');
+
   // Set up authentication
   const authMiddleware = createAuthMiddleware({
     basicAuthUsername: config.basicAuthUsername,
     basicAuthPassword: config.basicAuthPassword,
     isHQMode: config.isHQMode,
     bearerToken: remoteBearerToken || undefined, // Token that HQ must use to auth with us
+    authService, // Add enhanced auth service for JWT tokens
   });
-
-  // Apply auth middleware to all API routes
-  app.use('/api', authMiddleware);
-  logger.debug('Applied authentication middleware to /api routes');
 
   // Serve static files with .html extension handling
   const publicPath = path.join(process.cwd(), 'public');
@@ -457,6 +463,7 @@ export async function createApp(): Promise<AppInstance> {
     });
   });
 
+<<<<<<< HEAD
   // Connect bell event handler to PTY manager if push notifications are enabled
   if (bellEventHandler) {
     ptyManager.on('bell', (bellContext) => {
@@ -466,6 +473,15 @@ export async function createApp(): Promise<AppInstance> {
     });
     logger.debug('Connected bell event handler to PTY manager');
   }
+=======
+  // Mount authentication routes (no auth required)
+  app.use('/api/auth', createAuthRoutes({ authService }));
+  logger.debug('Mounted authentication routes');
+
+  // Apply auth middleware to all API routes (except auth routes which are handled above)
+  app.use('/api', authMiddleware);
+  logger.debug('Applied authentication middleware to /api routes');
+>>>>>>> f5b18dc (Implement comprehensive user authentication system)
 
   // Mount routes
   app.use(
