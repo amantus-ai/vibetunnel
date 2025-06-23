@@ -11,6 +11,11 @@ import { createLogger } from './utils/logger.js';
 // Import version
 import { VERSION } from './version.js';
 
+// Import utilities
+import { BREAKPOINTS, SIDEBAR, TRANSITIONS, TIMING } from './utils/constants.js';
+import { triggerTerminalResize } from './utils/terminal-utils.js';
+import { responsiveObserver, type MediaQueryState } from './utils/responsive-utils.js';
+
 // Import components
 import './components/app-header.js';
 import './components/session-create-form.js';
@@ -55,18 +60,27 @@ export class VibeTunnelApp extends LitElement {
   @state() private showNotificationSettings = false;
   @state() private showSSHKeyManager = false;
   @state() private isAuthenticated = false;
+  @state() private sidebarCollapsed = this.loadSidebarState();
+  @state() private sidebarWidth = this.loadSidebarWidth();
+  @state() private isResizing = false;
+  @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   private initialLoadComplete = false;
   private authClient = new AuthClient();
+  private responsiveObserverInitialized = false;
 
   private hotReloadWs: WebSocket | null = null;
   private errorTimeoutId: number | null = null;
   private successTimeoutId: number | null = null;
+  private autoRefreshIntervalId: number | null = null;
+  private responsiveUnsubscribe?: () => void;
+  private resizeCleanupFunctions: (() => void)[] = [];
 
   connectedCallback() {
     super.connectedCallback();
     this.setupHotReload();
     this.setupKeyboardShortcuts();
     this.setupNotificationHandlers();
+    this.setupResponsiveObserver();
     // Initialize authentication and routing together
     this.initializeApp();
   }
@@ -80,6 +94,17 @@ export class VibeTunnelApp extends LitElement {
     window.removeEventListener('popstate', this.handlePopState);
     // Clean up keyboard shortcuts
     window.removeEventListener('keydown', this.handleKeyDown);
+    // Clean up auto refresh interval
+    if (this.autoRefreshIntervalId !== null) {
+      clearInterval(this.autoRefreshIntervalId);
+      this.autoRefreshIntervalId = null;
+    }
+    // Clean up responsive observer
+    if (this.responsiveUnsubscribe) {
+      this.responsiveUnsubscribe();
+    }
+    // Clean up any active resize listeners
+    this.cleanupResizeListeners();
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
@@ -87,6 +112,18 @@ export class VibeTunnelApp extends LitElement {
     if ((e.metaKey || e.ctrlKey) && e.key === 'o' && this.currentView === 'list') {
       e.preventDefault();
       this.showFileBrowser = true;
+    }
+
+
+    // Handle Escape to close the session and return to list view
+    if (
+      e.key === 'Escape' &&
+      this.currentView === 'session' &&
+      !this.showFileBrowser &&
+      !this.showCreateModal
+    ) {
+      e.preventDefault();
+      this.handleNavigateToList();
     }
   };
 
@@ -179,11 +216,11 @@ export class VibeTunnelApp extends LitElement {
     }
 
     this.errorMessage = message;
-    // Clear error after 5 seconds
+    // Clear error after configured timeout
     this.errorTimeoutId = window.setTimeout(() => {
       this.errorMessage = '';
       this.errorTimeoutId = null;
-    }, 5000);
+    }, TIMING.ERROR_MESSAGE_TIMEOUT);
   }
 
   private showSuccess(message: string) {
@@ -194,11 +231,11 @@ export class VibeTunnelApp extends LitElement {
     }
 
     this.successMessage = message;
-    // Clear success after 5 seconds
+    // Clear success after configured timeout
     this.successTimeoutId = window.setTimeout(() => {
       this.successMessage = '';
       this.successTimeoutId = null;
-    }, 5000);
+    }, TIMING.SUCCESS_MESSAGE_TIMEOUT);
   }
 
   private clearError() {
@@ -245,12 +282,12 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private startAutoRefresh() {
-    // Refresh sessions every 3 seconds, but only when showing session list
-    setInterval(() => {
+    // Refresh sessions at configured interval, but only when showing session list
+    this.autoRefreshIntervalId = window.setInterval(() => {
       if (this.currentView === 'list') {
         this.loadSessions();
       }
-    }, 3000);
+    }, TIMING.AUTO_REFRESH_INTERVAL);
   }
 
   private async handleSessionCreated(e: CustomEvent) {
@@ -277,7 +314,7 @@ export class VibeTunnelApp extends LitElement {
 
   private async waitForSessionAndSwitch(sessionId: string) {
     const maxAttempts = 10;
-    const delay = 500; // 500ms between attempts
+    const delay = TIMING.SESSION_SEARCH_DELAY; // Configured delay between attempts
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await this.loadSessions();
@@ -296,7 +333,7 @@ export class VibeTunnelApp extends LitElement {
       }
 
       // Wait before next attempt
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      await new Promise((resolve) => window.setTimeout(resolve, delay));
     }
 
     // If we get here, session creation might have failed
@@ -361,6 +398,16 @@ export class VibeTunnelApp extends LitElement {
       this.cleanupSessionViewStream();
     }
 
+    // Debug: Log current state before navigation
+    logger.debug('Navigation to session:', {
+      sessionId,
+      windowWidth: window.innerWidth,
+      mobileBreakpoint: BREAKPOINTS.MOBILE,
+      isMobile: this.mediaState.isMobile,
+      currentSidebarCollapsed: this.sidebarCollapsed,
+      mediaStateIsMobile: this.mediaState.isMobile,
+    });
+
     // Check if View Transitions API is supported
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
       // Debug: Check what elements have view-transition-name before transition
@@ -376,8 +423,17 @@ export class VibeTunnelApp extends LitElement {
         this.currentView = 'session';
         this.updateUrl(sessionId);
 
+        // Collapse sidebar on mobile after selecting a session
+        if (this.mediaState.isMobile) {
+          this.sidebarCollapsed = true;
+          this.saveSidebarState(true);
+        }
+
         // Wait for LitElement to complete its update
         await this.updateComplete;
+
+        // Trigger terminal resize after session switch to ensure proper dimensions
+        triggerTerminalResize(sessionId, this);
 
         // Debug: Check what elements have view-transition-name after transition
         logger.debug('after transition - elements with view-transition-name:');
@@ -399,6 +455,17 @@ export class VibeTunnelApp extends LitElement {
       this.selectedSessionId = sessionId;
       this.currentView = 'session';
       this.updateUrl(sessionId);
+
+      // Collapse sidebar on mobile after selecting a session
+      if (this.mediaState.isMobile) {
+        this.sidebarCollapsed = true;
+        this.saveSidebarState(true);
+      }
+
+      // Trigger terminal resize after session switch to ensure proper dimensions
+      this.updateComplete.then(() => {
+        triggerTerminalResize(sessionId, this);
+      });
     }
   }
 
@@ -456,9 +523,9 @@ export class VibeTunnelApp extends LitElement {
     }
 
     // Refresh the session list after a short delay to allow animations to complete
-    setTimeout(() => {
+    window.setTimeout(() => {
       this.loadSessions();
-    }, 500);
+    }, TIMING.KILL_ALL_ANIMATION_DELAY);
   }
 
   private handleCleanExited() {
@@ -469,6 +536,11 @@ export class VibeTunnelApp extends LitElement {
     if (sessionList?.handleCleanupExited) {
       sessionList.handleCleanupExited();
     }
+  }
+
+  private handleToggleSidebar() {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
+    this.saveSidebarState(this.sidebarCollapsed);
   }
 
   // State persistence methods
@@ -489,6 +561,122 @@ export class VibeTunnelApp extends LitElement {
       logger.error('error saving hideExited state:', error);
     }
   }
+
+  private loadSidebarState(): boolean {
+    try {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      // Default to false (expanded) on desktop, true (collapsed) on mobile
+      // Use window.innerWidth for initial load since mediaState might not be initialized yet
+      const isMobile = window.innerWidth < BREAKPOINTS.MOBILE;
+
+      // Force expanded on desktop regardless of localStorage for better UX
+      const result = isMobile ? (saved !== null ? saved === 'true' : true) : false;
+
+      logger.debug('Loading sidebar state:', {
+        savedValue: saved,
+        windowWidth: window.innerWidth,
+        mobileBreakpoint: BREAKPOINTS.MOBILE,
+        isMobile,
+        forcedDesktopExpanded: !isMobile,
+        resultingState: result ? 'collapsed' : 'expanded',
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('error loading sidebar state:', error);
+      return window.innerWidth < BREAKPOINTS.MOBILE; // Default based on screen size on error
+    }
+  }
+
+  private saveSidebarState(value: boolean): void {
+    try {
+      localStorage.setItem('sidebarCollapsed', String(value));
+    } catch (error) {
+      logger.error('error saving sidebar state:', error);
+    }
+  }
+
+  private loadSidebarWidth(): number {
+    try {
+      const saved = localStorage.getItem('sidebarWidth');
+      const width = saved !== null ? parseInt(saved, 10) : SIDEBAR.DEFAULT_WIDTH;
+      // Validate width is within bounds
+      return Math.max(SIDEBAR.MIN_WIDTH, Math.min(SIDEBAR.MAX_WIDTH, width));
+    } catch (error) {
+      logger.error('error loading sidebar width:', error);
+      return SIDEBAR.DEFAULT_WIDTH;
+    }
+  }
+
+  private saveSidebarWidth(value: number): void {
+    try {
+      localStorage.setItem('sidebarWidth', String(value));
+    } catch (error) {
+      logger.error('error saving sidebar width:', error);
+    }
+  }
+
+  private setupResponsiveObserver(): void {
+    this.responsiveUnsubscribe = responsiveObserver.subscribe((state) => {
+      const oldState = this.mediaState;
+      this.mediaState = state;
+
+      // Only trigger state changes after initial setup, not on first callback
+      // This prevents the sidebar from flickering on page load
+      if (this.responsiveObserverInitialized) {
+        // Auto-collapse sidebar when switching to mobile
+        if (!oldState.isMobile && state.isMobile && !this.sidebarCollapsed) {
+          this.sidebarCollapsed = true;
+          this.saveSidebarState(true);
+        }
+      } else {
+        // Mark as initialized after first callback
+        this.responsiveObserverInitialized = true;
+      }
+    });
+  }
+
+  private cleanupResizeListeners(): void {
+    this.resizeCleanupFunctions.forEach((cleanup) => cleanup());
+    this.resizeCleanupFunctions = [];
+
+    // Reset any global styles that might have been applied
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+
+  private handleResizeStart = (e: MouseEvent) => {
+    e.preventDefault();
+    this.isResizing = true;
+
+    // Clean up any existing listeners first
+    this.cleanupResizeListeners();
+
+    document.addEventListener('mousemove', this.handleResize);
+    document.addEventListener('mouseup', this.handleResizeEnd);
+
+    // Store cleanup functions
+    this.resizeCleanupFunctions.push(() => {
+      document.removeEventListener('mousemove', this.handleResize);
+      document.removeEventListener('mouseup', this.handleResizeEnd);
+    });
+
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  private handleResize = (e: MouseEvent) => {
+    if (!this.isResizing) return;
+
+    const newWidth = Math.max(SIDEBAR.MIN_WIDTH, Math.min(SIDEBAR.MAX_WIDTH, e.clientX));
+    this.sidebarWidth = newWidth;
+    this.saveSidebarWidth(newWidth);
+  };
+
+  private handleResizeEnd = () => {
+    this.isResizing = false;
+    this.cleanupResizeListeners();
+  };
 
   // URL Routing methods
   private setupRouting() {
@@ -619,7 +807,69 @@ export class VibeTunnelApp extends LitElement {
     }
   };
 
+  private get showSplitView(): boolean {
+    return this.currentView === 'session' && this.selectedSessionId !== null;
+  }
+
+  private get selectedSession(): Session | undefined {
+    return this.sessions.find((s) => s.id === this.selectedSessionId);
+  }
+
+  private get sidebarClasses(): string {
+    if (!this.showSplitView) {
+      // Main view - allow normal document flow and scrolling
+      return 'w-full min-h-screen flex flex-col';
+    }
+
+    const baseClasses = 'bg-dark-bg border-r border-dark-border flex flex-col';
+    const isMobile = this.mediaState.isMobile;
+    const mobileClasses = isMobile
+      ? 'absolute left-0 top-0 bottom-0 z-30 flex'
+      : 'sidebar-transition';
+
+    const collapsedClasses = this.sidebarCollapsed
+      ? isMobile
+        ? 'hidden mobile-sessions-sidebar collapsed'
+        : 'sm:w-0 sm:overflow-hidden sm:translate-x-0 flex'
+      : isMobile
+        ? 'overflow-visible sm:translate-x-0 flex mobile-sessions-sidebar expanded'
+        : 'overflow-visible sm:translate-x-0 flex';
+
+    return `${baseClasses} ${this.showSplitView ? collapsedClasses : ''} ${this.showSplitView ? mobileClasses : ''}`;
+  }
+
+  private get sidebarStyles(): string {
+    if (!this.showSplitView || this.sidebarCollapsed) {
+      const isMobile = this.mediaState.isMobile;
+      return this.showSplitView && this.sidebarCollapsed && !isMobile ? 'width: 0px;' : '';
+    }
+
+    const isMobile = this.mediaState.isMobile;
+    if (isMobile) {
+      return `width: calc(100vw - ${SIDEBAR.MOBILE_RIGHT_MARGIN}px);`;
+    }
+
+    return `width: ${this.sidebarWidth}px;`;
+  }
+
+  private get shouldShowMobileOverlay(): boolean {
+    return this.showSplitView && !this.sidebarCollapsed && this.mediaState.isMobile;
+  }
+
+  private get shouldShowResizeHandle(): boolean {
+    return this.showSplitView && !this.sidebarCollapsed && !this.mediaState.isMobile;
+  }
+
+  private get mainContainerClasses(): string {
+    // In split view, we need strict height control and overflow hidden
+    // In main view, we need normal document flow for scrolling
+    return this.showSplitView ? 'flex h-screen overflow-hidden relative' : 'min-h-screen';
+  }
+
   render() {
+    const showSplitView = this.showSplitView;
+    const selectedSession = this.selectedSession;
+
     return html`
       <!-- Error notification overlay -->
       ${
@@ -683,49 +933,102 @@ export class VibeTunnelApp extends LitElement {
               @show-ssh-key-manager=${this.handleShowSSHKeyManager}
             ></auth-login>
           `
-          : this.currentView === 'session' && this.selectedSessionId
-            ? keyed(
-                this.selectedSessionId,
-                html`
-                <session-view
-                  .session=${this.sessions.find((s) => s.id === this.selectedSessionId)}
-                  @navigate-to-list=${this.handleNavigateToList}
-                ></session-view>
-              `
-              )
-            : html`
-              <div>
-                <app-header
-                  .sessions=${this.sessions}
-                  .hideExited=${this.hideExited}
-                  .currentUser=${this.authClient.getCurrentUser()?.userId || null}
-                  .authMethod=${this.authClient.getCurrentUser()?.authMethod || null}
-                  @create-session=${this.handleCreateSession}
-                  @hide-exited-change=${this.handleHideExitedChange}
-                  @kill-all-sessions=${this.handleKillAll}
-                  @clean-exited-sessions=${this.handleCleanExited}
-                  @open-file-browser=${this.handleOpenFileBrowser}
-                  @open-notification-settings=${this.handleShowNotificationSettings}
-                  @logout=${this.handleLogout}
-                ></app-header>
-                <session-list
-                  .sessions=${this.sessions}
-                  .loading=${this.loading}
-                  .hideExited=${this.hideExited}
-                  .showCreateModal=${this.showCreateModal}
-                  .authClient=${this.authClient}
-                  @session-killed=${this.handleSessionKilled}
-                  @session-created=${this.handleSessionCreated}
-                  @create-modal-close=${this.handleCreateModalClose}
-                  @refresh=${this.handleRefresh}
-                  @error=${this.handleError}
-                  @hide-exited-change=${this.handleHideExitedChange}
-                  @kill-all-sessions=${this.handleKillAll}
-                  @navigate-to-session=${this.handleNavigateToSession}
-                ></session-list>
+          : html`
+      <!-- Main content with split view support -->
+      <div class="${this.mainContainerClasses}">
+        <!-- Mobile overlay when sidebar is open -->
+        ${this.shouldShowMobileOverlay
+          ? html`
+              <!-- Translucent overlay over session content -->
+              <div
+                class="absolute inset-0 bg-black bg-opacity-10 sm:hidden transition-opacity"
+                style="left: calc(100vw - ${SIDEBAR.MOBILE_RIGHT_MARGIN}px); transition-duration: ${TRANSITIONS.MOBILE_SLIDE}ms;"
+                @click=${this.handleToggleSidebar}
+              ></div>
+              <!-- Clickable area behind sidebar -->
+              <div
+                class="absolute inset-0 bg-black bg-opacity-50 sm:hidden transition-opacity"
+                style="right: ${SIDEBAR.MOBILE_RIGHT_MARGIN}px; transition-duration: ${TRANSITIONS.MOBILE_SLIDE}ms;"
+                @click=${this.handleToggleSidebar}
+              ></div>
+            `
+          : ''}
+
+        <!-- Sidebar with session list - always visible on desktop -->
+        <div class="${this.sidebarClasses}" style="${this.sidebarStyles}">
+          <app-header
+            .sessions=${this.sessions}
+            .hideExited=${this.hideExited}
+            .showSplitView=${showSplitView}
+            .currentUser=${this.authClient.getCurrentUser()?.userId || null}
+            .authMethod=${this.authClient.getCurrentUser()?.authMethod || null}
+            @create-session=${this.handleCreateSession}
+            @hide-exited-change=${this.handleHideExitedChange}
+            @kill-all-sessions=${this.handleKillAll}
+            @clean-exited-sessions=${this.handleCleanExited}
+            @open-file-browser=${this.handleOpenFileBrowser}
+            @open-notification-settings=${this.handleShowNotificationSettings}
+            @logout=${this.handleLogout}
+          ></app-header>
+          <div class="${this.showSplitView ? 'flex-1 overflow-y-auto' : 'flex-1'} bg-dark-bg">
+            <session-list
+              .sessions=${this.sessions}
+              .loading=${this.loading}
+              .hideExited=${this.hideExited}
+              .showCreateModal=${this.showCreateModal}
+              .selectedSessionId=${this.selectedSessionId}
+              .compactMode=${showSplitView}
+              .authClient=${this.authClient}
+              @session-killed=${this.handleSessionKilled}
+              @session-created=${this.handleSessionCreated}
+              @create-modal-close=${this.handleCreateModalClose}
+              @refresh=${this.handleRefresh}
+              @error=${this.handleError}
+              @hide-exited-change=${this.handleHideExitedChange}
+              @kill-all-sessions=${this.handleKillAll}
+              @navigate-to-session=${this.handleNavigateToSession}
+              @open-file-browser=${() => (this.showFileBrowser = true)}
+            ></session-list>
+          </div>
+        </div>
+
+        <!-- Resize handle for sidebar -->
+        ${this.shouldShowResizeHandle
+          ? html`
+              <div
+                class="w-1 bg-dark-border hover:bg-accent-green cursor-ew-resize transition-colors ${this
+                  .isResizing
+                  ? 'bg-accent-green'
+                  : ''}"
+                style="transition-duration: ${TRANSITIONS.RESIZE_HANDLE}ms;"
+                @mousedown=${this.handleResizeStart}
+                title="Drag to resize sidebar"
+              ></div>
+            `
+          : ''}
+
+        <!-- Main content area -->
+        ${showSplitView
+          ? html`
+              <div class="flex-1 relative sm:static transition-none">
+                ${keyed(
+                  this.selectedSessionId,
+                  html`
+                    <session-view
+                      .session=${selectedSession}
+                      .showBackButton=${false}
+                      .showSidebarToggle=${true}
+                      .sidebarCollapsed=${this.sidebarCollapsed}
+                      @navigate-to-list=${this.handleNavigateToList}
+                      @toggle-sidebar=${this.handleToggleSidebar}
+                    ></session-view>
+                  `
+                )}
               </div>
             `
-      }
+          : ''}
+      </div>
+      `}
 
       <!-- File Browser Modal -->
       <file-browser
@@ -755,7 +1058,7 @@ export class VibeTunnelApp extends LitElement {
       ></ssh-key-manager>
 
       <!-- Version and logs link in bottom right -->
-      <div class="fixed bottom-4 right-4 text-dark-text-muted text-xs font-mono">
+      <div class="fixed bottom-4 right-4 text-dark-text-muted text-xs font-mono z-20">
         <a href="/logs" class="hover:text-dark-text transition-colors">Logs</a>
         <span class="ml-2">v${VERSION}</span>
       </div>

@@ -200,7 +200,7 @@ export class VibeTerminalBuffer extends LitElement {
       </style>
       <div
         class="relative w-full h-full overflow-hidden bg-black"
-        style="view-transition-name: terminal-${this.sessionId}"
+        style="view-transition-name: terminal-${this.sessionId}; min-height: 200px;"
       >
         ${
           this.error
@@ -243,6 +243,14 @@ export class VibeTerminalBuffer extends LitElement {
       const lineContent = TerminalRenderer.renderLineFromCells(row, cursorCol);
 
       html += `<div class="terminal-line" style="height: ${lineHeight}px; line-height: ${lineHeight}px;">${lineContent}</div>`;
+    }
+
+    // If no content, add empty lines to maintain consistent height
+    if (html === '' || this.buffer.cells.length === 0) {
+      // Add a few empty lines to ensure the terminal has some height
+      for (let i = 0; i < Math.max(3, this.visibleRows); i++) {
+        html += `<div class="terminal-line" style="height: ${lineHeight}px; line-height: ${lineHeight}px;">&nbsp;</div>`;
+      }
     }
 
     // Set innerHTML directly like terminal.ts does

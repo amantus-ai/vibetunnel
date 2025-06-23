@@ -42,6 +42,8 @@ export class SessionList extends LitElement {
   @property({ type: Boolean }) hideExited = true;
   @property({ type: Boolean }) showCreateModal = false;
   @property({ type: Object }) authClient!: AuthClient;
+  @property({ type: String }) selectedSessionId: string | null = null;
+  @property({ type: Boolean }) compactMode = false;
 
   @state() private cleaningExited = false;
   private previousRunningCount = 0;
@@ -145,6 +147,14 @@ export class SessionList extends LitElement {
     }
   }
 
+  private handleOpenFileBrowser() {
+    this.dispatchEvent(
+      new CustomEvent('open-file-browser', {
+        bubbles: true,
+      })
+    );
+  }
+
   render() {
     const filteredSessions = this.hideExited
       ? this.sessions.filter((session) => session.status !== 'exited')
@@ -226,20 +236,126 @@ export class SessionList extends LitElement {
                 }
               </div>
             `
-            : html`
-              <div class="session-flex-responsive">
+          : html`
+              <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'}">
+                ${this.compactMode
+                  ? html`
+                      <!-- Browse Files button as special tab -->
+                      <div
+                        class="flex items-center gap-2 p-3 rounded-md cursor-pointer transition-all hover:bg-dark-bg-tertiary border border-dark-border bg-dark-bg-secondary"
+                        @click=${this.handleOpenFileBrowser}
+                        title="Browse Files (⌘O)"
+                      >
+                        <div class="flex-1 min-w-0">
+                          <div class="text-sm font-mono text-accent-green truncate">
+                            📁 Browse Files
+                          </div>
+                          <div class="text-xs text-dark-text-muted truncate">Open file browser</div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                          <span class="text-dark-text-muted text-xs">⌘O</span>
+                        </div>
+                      </div>
+                    `
+                  : ''}
                 ${repeat(
                   filteredSessions,
                   (session) => session.id,
                   (session) => html`
-                    <session-card
-                      .session=${session}
-                      .authClient=${this.authClient}
-                      @session-select=${this.handleSessionSelect}
-                      @session-killed=${this.handleSessionKilled}
-                      @session-kill-error=${this.handleSessionKillError}
-                    >
-                    </session-card>
+                    ${this.compactMode
+                      ? html`
+                          <!-- Compact list item for sidebar -->
+                          <div
+                            class="flex items-center gap-2 p-3 rounded-md cursor-pointer transition-all hover:bg-dark-bg-tertiary ${session.id ===
+                            this.selectedSessionId
+                              ? 'bg-dark-bg-tertiary border border-accent-green shadow-sm'
+                              : 'border border-transparent'}"
+                            @click=${() =>
+                              this.handleSessionSelect({ detail: session } as CustomEvent)}
+                          >
+                            <div class="flex-1 min-w-0">
+                              <div
+                                class="text-sm font-mono text-accent-green truncate"
+                                title="${session.name || session.command}"
+                              >
+                                ${session.name || session.command}
+                              </div>
+                              <div class="text-xs text-dark-text-muted truncate">
+                                ${session.workingDir}
+                              </div>
+                            </div>
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                              <span
+                                class="${session.status === 'running'
+                                  ? 'text-status-success'
+                                  : 'text-status-warning'} text-xs flex items-center gap-1"
+                              >
+                                <div
+                                  class="w-2 h-2 rounded-full ${session.status === 'running'
+                                    ? 'bg-status-success'
+                                    : 'bg-status-warning'}"
+                                ></div>
+                                ${session.status}
+                              </span>
+                              ${session.status === 'running' || session.status === 'exited'
+                                ? html`
+                                    <button
+                                      class="btn-ghost text-status-error p-1 rounded hover:bg-dark-bg"
+                                      @click=${async (e: Event) => {
+                                        e.stopPropagation();
+                                        // Kill the session
+                                        try {
+                                          const endpoint =
+                                            session.status === 'exited'
+                                              ? `/api/sessions/${session.id}/cleanup`
+                                              : `/api/sessions/${session.id}`;
+                                          const response = await fetch(endpoint, {
+                                            method: 'DELETE',
+                                            headers: this.authClient.getAuthHeader(),
+                                          });
+                                          if (response.ok) {
+                                            this.handleSessionKilled({
+                                              detail: { sessionId: session.id },
+                                            } as CustomEvent);
+                                          }
+                                        } catch (error) {
+                                          logger.error('Failed to kill session', error);
+                                        }
+                                      }}
+                                      title="${session.status === 'running'
+                                        ? 'Kill session'
+                                        : 'Clean up session'}"
+                                    >
+                                      <svg
+                                        class="w-4 h-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          stroke-width="2"
+                                          d="M6 18L18 6M6 6l12 12"
+                                        />
+                                      </svg>
+                                    </button>
+                                  `
+                                : ''}
+                            </div>
+                          </div>
+                        `
+                      : html`
+                          <!-- Full session card for main view -->
+                          <session-card
+                            .session=${session}
+                            .authClient=${this.authClient}
+                            @session-select=${this.handleSessionSelect}
+                            @session-killed=${this.handleSessionKilled}
+                            @session-kill-error=${this.handleSessionKillError}
+                          >
+                          </session-card>
+                        `}
                   `
                 )}
               </div>

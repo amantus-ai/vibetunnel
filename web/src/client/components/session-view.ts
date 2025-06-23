@@ -38,6 +38,9 @@ export class SessionView extends LitElement {
   }
 
   @property({ type: Object }) session: Session | null = null;
+  @property({ type: Boolean }) showBackButton = true;
+  @property({ type: Boolean }) showSidebarToggle = false;
+  @property({ type: Boolean }) sidebarCollapsed = false;
   @state() private connected = false;
   @state() private terminal: Terminal | null = null;
   @state() private streamConnection: {
@@ -570,6 +573,16 @@ export class SessionView extends LitElement {
     // Dispatch a custom event that the app can handle with view transitions
     this.dispatchEvent(
       new CustomEvent('navigate-to-list', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private handleSidebarToggle() {
+    // Dispatch event to toggle sidebar
+    this.dispatchEvent(
+      new CustomEvent('toggle-sidebar', {
         bubbles: true,
         composed: true,
       })
@@ -1150,7 +1163,7 @@ export class SessionView extends LitElement {
         }
       </style>
       <div
-        class="flex flex-col bg-black font-mono"
+        class="flex flex-col bg-black font-mono relative"
         style="height: 100vh; height: 100dvh; outline: none !important; box-shadow: none !important;"
       >
         <!-- Compact Header -->
@@ -1159,13 +1172,43 @@ export class SessionView extends LitElement {
           style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(0.75rem, env(safe-area-inset-left)); padding-right: max(0.75rem, env(safe-area-inset-right));"
         >
           <div class="flex items-center gap-3 min-w-0 flex-1">
-            <button
-              class="btn-secondary font-mono text-xs px-3 py-1 flex-shrink-0"
-              @click=${this.handleBack}
-            >
-              Back
-            </button>
-            <div class="text-dark-text min-w-0 flex-1 overflow-hidden">
+            <!-- Mobile Hamburger Menu Button (only on phones, only when session is shown) -->
+            ${this.showSidebarToggle && this.sidebarCollapsed
+              ? html`
+                  <button
+                    class="sm:hidden bg-dark-bg-tertiary border border-dark-border rounded-lg p-1 font-mono text-accent-green transition-all duration-300 hover:bg-dark-bg hover:border-accent-green flex-shrink-0"
+                    @click=${this.handleSidebarToggle}
+                    title="Show sessions"
+                  >
+                    <!-- Hamburger menu icon -->
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <line x1="3" y1="6" x2="21" y2="6"></line>
+                      <line x1="3" y1="12" x2="21" y2="12"></line>
+                      <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                  </button>
+                `
+              : ''}
+            ${this.showBackButton
+              ? html`
+                  <button
+                    class="btn-secondary font-mono text-xs px-3 py-1 flex-shrink-0"
+                    @click=${this.handleBack}
+                  >
+                    Back
+                  </button>
+                `
+              : ''}
+            <div class="text-dark-text min-w-0 flex-1 overflow-hidden max-w-[50vw] sm:max-w-none">
               <div
                 class="text-accent-green text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"
                 title="${
@@ -1354,7 +1397,7 @@ export class SessionView extends LitElement {
           this.session?.status === 'exited'
             ? html`
               <div
-                class="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
+                class="fixed inset-0 flex items-center justify-center pointer-events-none z-[100]"
               >
                 <div
                   class="bg-dark-bg-secondary border border-dark-border ${this.getStatusColor()} font-medium text-sm tracking-wide px-4 py-2 rounded-lg shadow-lg"

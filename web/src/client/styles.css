@@ -2,6 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Custom Properties for VibeTunnel constants */
+:root {
+  /* Breakpoints */
+  --vt-breakpoint-mobile: 768px;
+  --vt-breakpoint-tablet: 1024px;
+  --vt-breakpoint-desktop: 1280px;
+
+  /* Sidebar dimensions */
+  --vt-sidebar-default-width: 320px;
+  --vt-sidebar-min-width: 240px;
+  --vt-sidebar-max-width: 600px;
+  --vt-sidebar-mobile-right-margin: 80px;
+
+  /* Transitions */
+  --vt-transition-sidebar: 200ms;
+  --vt-transition-mobile-slide: 200ms;
+  --vt-transition-resize-handle: 200ms;
+
+  /* Z-index layers */
+  --vt-z-mobile-overlay: 20;
+  --vt-z-sidebar-mobile: 30;
+  --vt-z-session-exited-overlay: 100;
+
+  /* Terminal */
+  --vt-terminal-min-height: 200px;
+  --vt-terminal-default-visible-rows: 24;
+  --vt-terminal-resize-debounce: 100ms;
+}
+
 /* Global dark theme styles */
 @layer base {
   body {
@@ -1000,6 +1029,46 @@ body {
   }
 }
 
+/* Split view sidebar animations */
+.sidebar-transition {
+  transition: width var(--vt-transition-sidebar) cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Mobile sessions list slide animation */
+@media (max-width: 768px) {
+  .mobile-sessions-sidebar {
+    transition: transform var(--vt-transition-mobile-slide) cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .mobile-sessions-sidebar.collapsed {
+    transform: translateX(-100%);
+  }
+
+  .mobile-sessions-sidebar.expanded {
+    transform: translateX(0);
+  }
+}
+
+/* Ensure proper scrolling in split view */
+.split-view-sidebar {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Responsive breakpoints for split view */
+@media (max-width: 768px) {
+  /* On mobile, sidebar should take most of the width when expanded, leaving 80px for tap-to-close */
+  .split-view-sidebar-expanded {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: calc(100vw - 80px) !important;
+    z-index: 30;
+  }
+}
+
 /* Phosphor Terminal Decay effect for exited sessions */
 .session-exited {
   filter: sepia(0.3) hue-rotate(45deg) brightness(0.8) contrast(1.2);
@@ -1040,4 +1109,75 @@ body {
   );
   pointer-events: none;
   opacity: 0.5;
+}
+
+/* View transition animations for split view */
+@view-transition {
+  navigation: auto;
+}
+
+/* Fade transition for header elements during view transitions */
+::view-transition-old(app-header),
+::view-transition-new(app-header) {
+  animation-duration: 0.3s;
+  animation-timing-function: ease-in-out;
+}
+
+::view-transition-old(app-header) {
+  animation-name: fade-out;
+}
+
+::view-transition-new(app-header) {
+  animation-name: fade-in;
+}
+
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Disable morphing animations for sidebar elements */
+.sidebar-header {
+  view-transition-name: sidebar-header;
+}
+
+::view-transition-old(sidebar-header),
+::view-transition-new(sidebar-header) {
+  animation-duration: 0s !important;
+}
+
+/* Prevent header flicker during session transitions */
+.app-header {
+  view-transition-name: none !important;
+}
+
+@keyframes fade-out-fast {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in-fast {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
