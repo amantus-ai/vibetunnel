@@ -38,6 +38,7 @@ export interface ServerInstance {
  * Default paths and timeouts
  */
 const CLI_PATH = path.join(process.cwd(), 'src', 'cli.ts');
+const BUILT_CLI_PATH = path.join(process.cwd(), 'dist', 'vibetunnel-cli');
 const DEFAULT_TIMEOUT = 10000;
 const HEALTH_CHECK_INTERVAL = 100;
 const PROCESS_KILL_TIMEOUT = 5000;
@@ -140,9 +141,10 @@ export async function startTestServer(config: ServerConfig = {}): Promise<Server
     serverType = 'SERVER',
   } = config;
 
-  // Build spawn command
-  const command = usePnpm ? 'pnpm' : 'tsx';
-  const spawnArgs = usePnpm ? ['exec', 'tsx', CLI_PATH, ...args] : [CLI_PATH, ...args];
+  // Build spawn command - use built binary if available for better compatibility
+  const useBuiltBinary = fs.existsSync(BUILT_CLI_PATH);
+  const command = useBuiltBinary ? BUILT_CLI_PATH : (usePnpm ? 'pnpm' : 'tsx');
+  const spawnArgs = useBuiltBinary ? args : (usePnpm ? ['exec', 'tsx', CLI_PATH, ...args] : [CLI_PATH, ...args]);
 
   // Merge environment variables
   const processEnv = {

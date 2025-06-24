@@ -27,7 +27,7 @@ describe('Logs API Tests', () => {
 
   afterAll(async () => {
     if (server) {
-      await stopServer(server);
+      await stopServer(server.process);
     }
   });
 
@@ -230,14 +230,20 @@ describe('Logs API Tests', () => {
 
       // Check log format
       const lines = logs.split('\n');
-      const testLogLine = lines.find((line) => line.includes('CLIENT:format-test'));
-
-      expect(testLogLine).toBeDefined();
+      const testLogLineIndex = lines.findIndex((line) => line.includes('CLIENT:format-test'));
+      
+      expect(testLogLineIndex).toBeGreaterThanOrEqual(0);
+      const testLogLine = lines[testLogLineIndex];
+      
       expect(testLogLine).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/); // Timestamp format
       expect(testLogLine).toContain('WARN');
       expect(testLogLine).toContain('[CLIENT:format-test]');
       expect(testLogLine).toContain('Test warning message');
-      expect(testLogLine).toContain('{\n  "details": "test object"\n}');
+      
+      // Check for JSON object in subsequent lines
+      expect(testLogLine).toContain('{');
+      expect(lines[testLogLineIndex + 1]).toContain('"details": "test object"');
+      expect(lines[testLogLineIndex + 2]).toContain('}');
     });
   });
 });
