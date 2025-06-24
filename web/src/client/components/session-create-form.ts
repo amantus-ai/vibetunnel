@@ -314,13 +314,13 @@ export class SessionCreateForm extends LitElement {
     return html`
       <div class="modal-backdrop flex items-center justify-center">
         <div
-          class="modal-content font-mono text-sm w-96 lg:w-[576px] max-w-full mx-2 sm:mx-4"
+          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] mx-2 sm:mx-4"
           style="view-transition-name: create-session-modal"
         >
-          <div class="pb-6 mb-6 border-b border-dark-border relative">
+          <div class="p-4 pb-6 mb-6 border-b border-dark-border relative">
             <h2 class="text-accent-green text-lg font-bold">New Session</h2>
             <button
-              class="absolute top-0 right-0 text-dark-text-muted hover:text-dark-text transition-colors p-1"
+              class="absolute top-4 right-4 text-dark-text-muted hover:text-dark-text transition-colors p-1"
               @click=${this.handleCancel}
               title="Close"
               aria-label="Close modal"
@@ -342,7 +342,7 @@ export class SessionCreateForm extends LitElement {
             </button>
           </div>
 
-          <div class="p-3 sm:p-4 lg:p-8">
+          <div class="px-4 pb-4 sm:p-4 lg:p-8">
             <!-- Session Name -->
             <div class="mb-6">
               <label class="form-label">Session Name (Optional):</label>
