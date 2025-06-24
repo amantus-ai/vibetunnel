@@ -8,6 +8,7 @@ import { customElement } from 'lit/decorators.js';
 import { HeaderBase } from './header-base.js';
 import type { Session } from './session-list.js';
 import './terminal-icon.js';
+import './notification-status.js';
 
 @customElement('full-header')
 export class FullHeader extends HeaderBase {
@@ -51,6 +52,7 @@ export class FullHeader extends HeaderBase {
             <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
               ${this.renderExitedToggleButton(exitedSessions)}
               ${this.renderActionButtons(exitedSessions, runningSessions)}
+              ${this.renderUtilityButtons()}
             </div>
           </div>
         </div>
@@ -117,6 +119,36 @@ export class FullHeader extends HeaderBase {
               ></div>
               <span class="text-status-error font-mono text-xs">Killing...</span>
             </div>
+          `
+        : ''}
+    `;
+  }
+
+  private renderUtilityButtons() {
+    return html`
+      <button
+        class="btn-ghost font-mono text-xs px-4 py-2"
+        @click=${this.handleOpenFileBrowser}
+        title="Browse files"
+      >
+        Browse Files
+      </button>
+      <button
+        class="btn-ghost font-mono text-xs px-4 py-2"
+        @click=${this.handleOpenNotificationSettings}
+        title="Notification settings"
+      >
+        <notification-status></notification-status>
+      </button>
+      ${this.currentUser
+        ? html`
+            <button
+              class="btn-ghost font-mono text-xs px-4 py-2"
+              @click=${this.handleLogout}
+              title="Logout ${this.currentUser}"
+            >
+              Logout
+            </button>
           `
         : ''}
     `;

@@ -13,6 +13,8 @@ export abstract class HeaderBase extends LitElement {
 
   @property({ type: Array }) sessions: Session[] = [];
   @property({ type: Boolean }) hideExited = true;
+  @property({ type: String }) currentUser: string | null = null;
+  @property({ type: String }) authMethod: string | null = null;
   @state() protected killingAll = false;
 
   protected get runningSessions(): Session[] {
@@ -61,5 +63,17 @@ export abstract class HeaderBase extends LitElement {
         detail: !this.hideExited,
       })
     );
+  }
+
+  protected handleOpenFileBrowser() {
+    this.dispatchEvent(new CustomEvent('open-file-browser'));
+  }
+
+  protected handleOpenNotificationSettings() {
+    this.dispatchEvent(new CustomEvent('open-notification-settings'));
+  }
+
+  protected handleLogout() {
+    this.dispatchEvent(new CustomEvent('logout'));
   }
 }
