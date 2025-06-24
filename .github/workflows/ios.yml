@@ -12,9 +12,15 @@ permissions:
 jobs:
   lint:
     name: Lint iOS Code
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64]
     
     steps:
+    - name: Clean workspace
+      run: |
+        # Clean workspace for self-hosted runner
+        rm -rf * || true
+        rm -rf .* || true
+        
     - name: Checkout code
       uses: actions/checkout@v4
     
@@ -112,11 +118,17 @@ jobs:
 
   build:
     name: Build iOS App
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64]
     # Run in parallel with lint
     timeout-minutes: 30
     
     steps:
+    - name: Clean workspace
+      run: |
+        # Clean workspace for self-hosted runner
+        rm -rf * || true
+        rm -rf .* || true
+        
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -187,11 +199,17 @@ jobs:
 
   test:
     name: Test iOS App
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64]
     # Run in parallel with lint and build
     timeout-minutes: 15
     
     steps:
+    - name: Clean workspace
+      run: |
+        # Clean workspace for self-hosted runner
+        rm -rf * || true
+        rm -rf .* || true
+        
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -321,6 +339,12 @@ jobs:
     if: always() && github.event_name == 'pull_request'
 
     steps:
+    - name: Clean workspace
+      run: |
+        # Clean workspace for self-hosted runner
+        rm -rf * || true
+        rm -rf .* || true
+        
     - name: Checkout code
       uses: actions/checkout@v4
 

@@ -15,6 +15,12 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64]
     
     steps:
+    - name: Clean workspace
+      run: |
+        # Clean workspace for self-hosted runner
+        rm -rf * || true
+        rm -rf .* || true
+        
     - name: Checkout code
       uses: actions/checkout@v4
     
@@ -116,6 +122,12 @@ jobs:
     # Run in parallel with lint
     
     steps:
+    - name: Clean workspace
+      run: |
+        # Clean workspace for self-hosted runner
+        rm -rf * || true
+        rm -rf .* || true
+        
     - name: Checkout code
       uses: actions/checkout@v4
       
@@ -307,6 +319,12 @@ jobs:
     if: always() && github.event_name == 'pull_request'
 
     steps:
+    - name: Clean workspace
+      run: |
+        # Clean workspace for self-hosted runner
+        rm -rf * || true
+        rm -rf .* || true
+        
     - name: Checkout code
       uses: actions/checkout@v4
 
