@@ -4,7 +4,7 @@ import Testing
 
 // MARK: - Server Manager Tests
 
-@Suite("Server Manager Tests")
+@Suite("Server Manager Tests", .serialized)
 @MainActor
 final class ServerManagerTests {
     /// We'll use the shared ServerManager instance since it's a singleton
