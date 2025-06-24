@@ -259,6 +259,30 @@ body {
   overscroll-behavior-y: contain;
 }
 
+/* iOS Safari specific fixes for split view */
+@supports (-webkit-touch-callout: none) {
+  /* Target iOS Safari only */
+  .h-screen {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+  
+  /* Prevent rubber band scrolling in split view */
+  .ios-split-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    -webkit-overflow-scrolling: auto;
+  }
+  
+  .ios-split-view > * {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Terminal-specific touch handling */
 .xterm {
   touch-action: pan-y;

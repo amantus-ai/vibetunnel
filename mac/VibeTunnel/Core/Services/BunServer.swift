@@ -128,7 +128,7 @@ final class BunServer {
 
         // Create the process using login shell
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.executableURL = URL(fileURLWithPath: binaryPath)
 
         // Get the Resources directory path
         let resourcesPath = Bundle.main.resourcePath ?? Bundle.main.bundlePath
@@ -146,8 +146,8 @@ final class BunServer {
             logger.error("Web directory not found at expected location: \(staticPath)")
         }
 
-        // Build the vibetunnel command with all arguments
-        var vibetunnelArgs = "--port \(port) --bind \(bindAddress)"
+        // Build the vibetunnel command arguments as an array
+        var vibetunnelArgs = ["--port", String(port), "--bind", bindAddress]
 
         // Add authentication flags based on configuration
         let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
@@ -155,11 +155,11 @@ final class BunServer {
 
         switch authMode {
         case "none":
-            vibetunnelArgs += " --no-auth"
+            vibetunnelArgs.append("--no-auth")
         case "ssh":
-            vibetunnelArgs += " --enable-ssh-keys --disallow-user-password"
+            vibetunnelArgs.append(contentsOf: ["--enable-ssh-keys", "--disallow-user-password"])
         case "both":
-            vibetunnelArgs += " --enable-ssh-keys"
+            vibetunnelArgs.append("--enable-ssh-keys")
         case "os":
             fallthrough
         default:
@@ -170,30 +170,18 @@ final class BunServer {
         // Add local bypass authentication for the Mac app
         if authMode != "none" {
             // Enable local bypass with our generated token
-            vibetunnelArgs += " --allow-local-bypass --local-auth-token \(localAuthToken)"
+            vibetunnelArgs.append(contentsOf: ["--allow-local-bypass", "--local-auth-token", localAuthToken])
             logger.info("Local authentication bypass enabled for Mac app")
         }
 
-        // Create wrapper to run vibetunnel with a parent death signal
-        // Using a subshell that monitors parent process and kills vibetunnel if parent dies
-        let parentPid = ProcessInfo.processInfo.processIdentifier
-        let vibetunnelCommand = """
-        # Start vibetunnel in background
-        \(binaryPath) \(vibetunnelArgs) &
-        VIBETUNNEL_PID=$!
+        process.arguments = vibetunnelArgs
 
-        # Monitor parent process
-        while kill -0 \(parentPid) 2>/dev/null; do
-            sleep 1
-        done
-
-        # Parent died, kill vibetunnel
-        kill -TERM $VIBETUNNEL_PID 2>/dev/null
-        wait $VIBETUNNEL_PID
-        """
-        process.arguments = ["-l", "-c", vibetunnelCommand]
-
-        logger.info("Executing command: /bin/zsh -l -c \"\(vibetunnelCommand)\"")
+        // Set up a termination handler for logging
+        process.terminationHandler = { [weak self] process in
+            self?.logger.info("vibetunnel process terminated with status: \(process.terminationStatus)")
+        }
+        
+        logger.info("Executing command: \(binaryPath) \(vibetunnelArgs.joined(separator: " "))")
         logger.info("Binary location: \(resourcesPath)")
 
         // Set up environment - login shell will load the rest
@@ -219,8 +207,8 @@ final class BunServer {
         startOutputMonitoring()
 
         do {
-            // Start the process (this just launches it and returns immediately)
-            try await process.runAsync()
+            // Start the process with parent termination handling
+            try await process.runWithParentTerminationAsync()
 
             logger.info("Bun server process started")
 

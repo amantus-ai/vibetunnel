@@ -125,28 +125,18 @@ export class SidebarHeader extends HeaderBase {
   }
 
   private renderUtilityAndKillButtons(runningSessions: Session[]) {
+    // Only show Kill button if there are running sessions
+    if (runningSessions.length === 0 || this.killingAll) {
+      return '';
+    }
+
     return html`
-      <div class="flex gap-1 w-full">
-        <button
-          class="btn-ghost font-mono text-xs px-3 py-1.5 flex-1"
-          @click=${this.handleOpenFileBrowser}
-          title="Browse files"
-        >
-          Browse Files
-        </button>
-        ${
-          runningSessions.length > 0 && !this.killingAll
-            ? html`
-              <button
-                class="btn-ghost font-mono text-xs px-3 py-1.5 flex-1 text-status-error"
-                @click=${this.handleKillAll}
-              >
-                Kill (${runningSessions.length})
-              </button>
-            `
-            : ''
-        }
-      </div>
+      <button
+        class="btn-ghost font-mono text-xs px-3 py-1.5 w-full text-status-error"
+        @click=${this.handleKillAll}
+      >
+        Kill All (${runningSessions.length})
+      </button>
     `;
   }
 }

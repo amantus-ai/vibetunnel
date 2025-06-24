@@ -859,7 +859,16 @@ export class VibeTunnelApp extends LitElement {
   private get mainContainerClasses(): string {
     // In split view, we need strict height control and overflow hidden
     // In main view, we need normal document flow for scrolling
-    return this.showSplitView ? 'flex h-screen overflow-hidden relative' : 'min-h-screen';
+    if (this.showSplitView) {
+      // Add iOS-specific class to prevent rubber band scrolling
+      const iosClass = this.isIOS() ? 'ios-split-view' : '';
+      return `flex h-screen overflow-hidden relative ${iosClass}`;
+    }
+    return 'min-h-screen';
+  }
+
+  private isIOS(): boolean {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
   }
 
   render() {
