@@ -70,15 +70,13 @@ jobs:
     - name: Resolve Dependencies (once)
       run: |
         echo "Resolving Swift package dependencies..."
-        cd mac
-        # Resolve dependencies
+        # Workspace is at root level
         xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
     
     # BUILD PHASE
     - name: Build Debug (Native Architecture)
       timeout-minutes: 15
       run: |
-        cd mac
         set -o pipefail && xcodebuild build \
           -workspace VibeTunnel.xcworkspace \
           -scheme VibeTunnel-Mac \
@@ -98,7 +96,6 @@ jobs:
     - name: Build Release (Native Architecture)
       timeout-minutes: 15
       run: |
-        cd mac
         set -o pipefail && \
         xcodebuild build \
           -workspace VibeTunnel.xcworkspace \
@@ -138,7 +135,6 @@ jobs:
       id: test-coverage
       timeout-minutes: 10
       run: |
-        cd mac
         # Use xcodebuild test for workspace testing with coverage enabled
         set -o pipefail && \
         xcodebuild test \
@@ -164,7 +160,6 @@ jobs:
       if: always()
       id: coverage
       run: |
-        cd mac
         if [ -f TestResults.xcresult ]; then
           # Use faster xcrun command to extract coverage percentage
           COVERAGE_PCT=$(xcrun xccov view --report --json TestResults.xcresult 2>/dev/null | jq -r '.lineCoverage // 0' | awk '{printf "%.1f", $1 * 100}') || {
@@ -212,8 +207,8 @@ jobs:
       with:
         name: mac-coverage
         path: |
-          mac/coverage-summary.json
-          mac/TestResults.xcresult
+          coverage-summary.json
+          TestResults.xcresult
     
     # LINT REPORTING
     - name: Read SwiftFormat Output
