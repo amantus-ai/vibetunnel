@@ -25,7 +25,7 @@ describe('Sessions API Tests', () => {
 
   afterAll(async () => {
     if (server) {
-      await stopServer(server);
+      await stopServer(server.process);
     }
   });
 

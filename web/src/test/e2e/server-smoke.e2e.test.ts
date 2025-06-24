@@ -16,7 +16,7 @@ describe('Server Smoke Test', () => {
 
   afterAll(async () => {
     if (server) {
-      await stopServer(server);
+      await stopServer(server.process);
     }
   });
 
