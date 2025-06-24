@@ -1,6 +1,6 @@
+import chalk from 'chalk';
 import { isShuttingDown } from '../server.js';
 import { createLogger } from '../utils/logger.js';
-import chalk from 'chalk';
 
 const logger = createLogger('remote-registry');
 

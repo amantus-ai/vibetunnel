@@ -7,12 +7,12 @@
  */
 
 import * as fs from 'fs/promises';
-import * as path from 'path';
 import * as os from 'os';
-import webpush from 'web-push';
-import { VapidManager } from '../utils/vapid-manager.js';
+import * as path from 'path';
+import type webpush from 'web-push';
 import { createLogger } from '../utils/logger.js';
-import { BellNotificationPayload } from './bell-event-handler.js';
+import type { VapidManager } from '../utils/vapid-manager.js';
+import type { BellNotificationPayload } from './bell-event-handler.js';
 
 const logger = createLogger('push-notification-service');
 

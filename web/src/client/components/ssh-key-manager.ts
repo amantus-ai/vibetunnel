@@ -1,6 +1,6 @@
-import { LitElement, html } from 'lit';
-import { customElement, state, property } from 'lit/decorators.js';
-import { BrowserSSHAgent } from '../services/ssh-agent.js';
+import { html, LitElement } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import type { BrowserSSHAgent } from '../services/ssh-agent.js';
 
 interface SSHKey {
   id: string;
@@ -153,8 +153,9 @@ export class SSHKeyManager extends LitElement {
             </button>
           </div>
 
-          ${this.error
-            ? html`
+          ${
+            this.error
+              ? html`
                 <div class="bg-status-error text-dark-bg px-4 py-2 rounded mb-4 font-mono text-sm">
                   ${this.error}
                   <button
@@ -165,9 +166,11 @@ export class SSHKeyManager extends LitElement {
                   </button>
                 </div>
               `
-            : ''}
-          ${this.success
-            ? html`
+              : ''
+          }
+          ${
+            this.success
+              ? html`
                 <div
                   class="bg-status-success text-dark-bg px-4 py-2 rounded mb-4 font-mono text-sm"
                 >
@@ -180,7 +183,8 @@ export class SSHKeyManager extends LitElement {
                   </button>
                 </div>
               `
-            : ''}
+              : ''
+          }
 
           <div class="mb-6">
             <div class="flex items-center justify-between mb-4">
@@ -194,8 +198,9 @@ export class SSHKeyManager extends LitElement {
               </button>
             </div>
 
-            ${this.showAddForm
-              ? html`
+            ${
+              this.showAddForm
+                ? html`
                   <div class="space-y-6 mb-4">
                     <!-- Generate New Key Section -->
                     <div class="bg-dark-surface border border-dark-border rounded p-4">
@@ -296,21 +301,25 @@ export class SSHKeyManager extends LitElement {
                       <button
                         @click=${this.handleImportKey}
                         class="btn-secondary"
-                        ?disabled=${this.loading ||
-                        !this.importKeyName.trim() ||
-                        !this.importKeyContent.trim()}
+                        ?disabled=${
+                          this.loading ||
+                          !this.importKeyName.trim() ||
+                          !this.importKeyContent.trim()
+                        }
                       >
                         ${this.loading ? 'Importing...' : 'Import Key'}
                       </button>
                     </div>
                   </div>
                 `
-              : ''}
+                : ''
+            }
           </div>
 
           <!-- Instructions for new key -->
-          ${this.showInstructions && this.instructionsKeyId
-            ? html`
+          ${
+            this.showInstructions && this.instructionsKeyId
+              ? html`
                 <div class="bg-dark-surface border border-dark-border rounded p-4 mb-6">
                   <div class="flex items-center justify-between mb-4">
                     <h4 class="text-dark-text font-mono text-lg">Setup Instructions</h4>
@@ -375,28 +384,32 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                   </div>
                 </div>
               `
-            : ''}
+              : ''
+          }
 
           <!-- Keys List -->
           <div class="space-y-4">
-            ${this.keys.length === 0
-              ? html`
+            ${
+              this.keys.length === 0
+                ? html`
                   <div class="text-center py-8 text-dark-text-muted">
                     <p class="font-mono text-lg mb-2">No SSH keys found</p>
                     <p class="text-sm">Generate or import a key to get started</p>
                   </div>
                 `
-              : this.keys.map(
-                  (key) => html`
+                : this.keys.map(
+                    (key) => html`
                     <div class="ssh-key-item">
                       <div class="flex items-start justify-between">
                         <div class="flex-1">
                           <div class="flex items-center gap-2 mb-2">
                             <h4 class="font-mono font-semibold text-dark-text">${key.name}</h4>
                             <span class="badge badge-ed25519">${key.algorithm}</span>
-                            ${key.encrypted
-                              ? html`<span class="badge badge-encrypted">🔒 Encrypted</span>`
-                              : ''}
+                            ${
+                              key.encrypted
+                                ? html`<span class="badge badge-encrypted">🔒 Encrypted</span>`
+                                : ''
+                            }
                           </div>
                           <div class="text-sm text-dark-text-muted font-mono space-y-1">
                             <div>ID: ${key.id}</div>
@@ -423,7 +436,8 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                       </div>
                     </div>
                   `
-                )}
+                  )
+            }
           </div>
         </div>
       </div>

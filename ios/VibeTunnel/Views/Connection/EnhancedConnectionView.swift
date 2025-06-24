@@ -14,7 +14,7 @@ struct EnhancedConnectionView: View {
     @State private var showingProfileEditor = false
 
     #if targetEnvironment(macCatalyst)
-    @StateObject private var windowManager = MacCatalystWindowManager.shared
+        @StateObject private var windowManager = MacCatalystWindowManager.shared
     #endif
 
     var body: some View {
@@ -26,9 +26,9 @@ struct EnhancedConnectionView: View {
                         headerView
                             .padding(.top, {
                                 #if targetEnvironment(macCatalyst)
-                                return windowManager.windowStyle == .inline ? 60 : 40
+                                    return windowManager.windowStyle == .inline ? 60 : 40
                                 #else
-                                return 40
+                                    return 40
                                 #endif
                             }())
 

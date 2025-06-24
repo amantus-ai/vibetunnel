@@ -1,4 +1,4 @@
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import '../components/monaco-editor.js';
 
@@ -142,7 +142,7 @@ async def main():
 
     // Always set diff content so it's ready when switching modes
     this.originalContent = baseContent;
-    this.modifiedContent = baseContent + '\n\n// Modified by user\nconsole.log("Changes made!");';
+    this.modifiedContent = `${baseContent}\n\n// Modified by user\nconsole.log("Changes made!");`;
   }
 
   private handleModeChange(newMode: 'normal' | 'diff') {
@@ -174,23 +174,29 @@ async def main():
           <div class="flex gap-3 flex-wrap items-center">
             <span class="text-sm text-gray-400">Mode:</span>
             <button
-              class="${this.mode === 'normal'
-                ? 'bg-emerald-500 text-background'
-                : 'bg-gray-800 hover:bg-gray-700 text-foreground'} px-3 py-1.5 border ${this
-                .mode === 'normal'
-                ? 'border-emerald-500'
-                : 'border-gray-700 hover:border-emerald-400'} rounded text-sm transition-colors"
+              class="${
+                this.mode === 'normal'
+                  ? 'bg-emerald-500 text-background'
+                  : 'bg-gray-800 hover:bg-gray-700 text-foreground'
+              } px-3 py-1.5 border ${
+                this.mode === 'normal'
+                  ? 'border-emerald-500'
+                  : 'border-gray-700 hover:border-emerald-400'
+              } rounded text-sm transition-colors"
               @click=${() => this.handleModeChange('normal')}
             >
               Normal
             </button>
             <button
-              class="${this.mode === 'diff'
-                ? 'bg-emerald-500 text-background'
-                : 'bg-gray-800 hover:bg-gray-700 text-foreground'} px-3 py-1.5 border ${this
-                .mode === 'diff'
-                ? 'border-emerald-500'
-                : 'border-gray-700 hover:border-emerald-400'} rounded text-sm transition-colors"
+              class="${
+                this.mode === 'diff'
+                  ? 'bg-emerald-500 text-background'
+                  : 'bg-gray-800 hover:bg-gray-700 text-foreground'
+              } px-3 py-1.5 border ${
+                this.mode === 'diff'
+                  ? 'border-emerald-500'
+                  : 'border-gray-700 hover:border-emerald-400'
+              } rounded text-sm transition-colors"
               @click=${() => this.handleModeChange('diff')}
             >
               Diff
@@ -218,8 +224,9 @@ async def main():
               <span>Read Only</span>
             </label>
 
-            ${this.mode === 'diff'
-              ? html`
+            ${
+              this.mode === 'diff'
+                ? html`
                   <label class="flex items-center gap-2 ml-4 text-sm cursor-pointer">
                     <input
                       type="checkbox"
@@ -231,7 +238,8 @@ async def main():
                     <span>Show Mode Toggle</span>
                   </label>
                 `
-              : ''}
+                : ''
+            }
           </div>
         </div>
 

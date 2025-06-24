@@ -1,7 +1,7 @@
-import { Router } from 'express';
-import { AuthService } from '../services/auth-service.js';
 import { exec } from 'child_process';
+import { Router } from 'express';
 import { promisify } from 'util';
+import type { AuthService } from '../services/auth-service.js';
 
 const execAsync = promisify(exec);
 
@@ -158,7 +158,7 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
    * Get current system user (for initial auth)
    * GET /api/auth/current-user
    */
-  router.get('/current-user', (req, res) => {
+  router.get('/current-user', (_req, res) => {
     try {
       const currentUser = authService.getCurrentUser();
       res.json({ userId: currentUser });
@@ -172,7 +172,7 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
    * Get authentication configuration
    * GET /api/auth/config
    */
-  router.get('/config', (req, res) => {
+  router.get('/config', (_req, res) => {
     try {
       res.json({
         enableSSHKeys: config.enableSSHKeys || false,
@@ -257,7 +257,7 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
    * Logout (invalidate token - client-side only for now)
    * POST /api/auth/logout
    */
-  router.post('/logout', (req, res) => {
+  router.post('/logout', (_req, res) => {
     // For JWT tokens, logout is primarily client-side (remove token)
     // In the future, we could implement token blacklisting
     res.json({ success: true, message: 'Logged out successfully' });

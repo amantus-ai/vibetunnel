@@ -62,7 +62,7 @@ struct SessionCardView: View {
                             Image(systemName: session.isRunning ? "xmark.circle" : "trash.circle")
                                 .font(.system(size: 18))
                                 .foregroundColor(session.isRunning ? Theme.Colors.errorAccent : Theme.Colors
-                                                    .terminalForeground.opacity(0.6)
+                                    .terminalForeground.opacity(0.6)
                                 )
                         }
                     })
@@ -107,13 +107,13 @@ struct SessionCardView: View {
                     HStack(spacing: 4) {
                         Circle()
                             .fill(session.isRunning ? Theme.Colors.successAccent : Theme.Colors.terminalForeground
-                                    .opacity(0.3)
+                                .opacity(0.3)
                             )
                             .frame(width: 6, height: 6)
                         Text(session.isRunning ? "running" : "exited")
                             .font(Theme.Typography.terminalSystem(size: 10))
                             .foregroundColor(session.isRunning ? Theme.Colors.successAccent : Theme.Colors
-                                                .terminalForeground.opacity(0.5)
+                                .terminalForeground.opacity(0.5)
                             )
 
                         // Live preview indicator

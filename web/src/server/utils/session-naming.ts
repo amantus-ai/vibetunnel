@@ -1,5 +1,5 @@
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
 
 /**
  * Abbreviate a file path to make it more readable
@@ -16,7 +16,7 @@ export function abbreviatePath(fullPath: string): string {
 
   // Replace home directory with ~
   if (fullPath.startsWith(homedir)) {
-    abbreviated = '~' + fullPath.slice(homedir.length);
+    abbreviated = `~${fullPath.slice(homedir.length)}`;
   }
 
   // Common abbreviations
@@ -28,7 +28,7 @@ export function abbreviatePath(fullPath: string): string {
   // If still long, show only last 2 path components
   const parts = abbreviated.split('/').filter((p) => p);
   if (parts.length > 3) {
-    return '…/' + parts.slice(-2).join('/');
+    return `…/${parts.slice(-2).join('/')}`;
   }
 
   return abbreviated;

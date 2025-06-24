@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { spawn, type ChildProcess } from 'child_process';
-import * as path from 'path';
+import { type ChildProcess, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -39,7 +39,7 @@ async function startServer(
       const output = data.toString();
       const portMatch = output.match(/VibeTunnel Server running on http:\/\/localhost:(\d+)/);
       if (portMatch) {
-        port = parseInt(portMatch[1], 10);
+        port = Number.parseInt(portMatch[1], 10);
         serverProcess.stdout?.off('data', portListener);
         resolve({ process: serverProcess, port });
       }
@@ -153,17 +153,28 @@ describe('WebSocket Buffer Tests', () => {
     it('should reject unauthorized connections', async () => {
       const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`);
 
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          ws.terminate();
+          reject(new Error('WebSocket connection did not close within timeout'));
+        }, 5000);
+
         ws.on('error', () => {
+          clearTimeout(timeout);
           resolve();
         });
         ws.on('close', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        ws.on('unexpected-response', () => {
+          clearTimeout(timeout);
           resolve();
         });
       });
 
       expect(ws.readyState).toBe(WebSocket.CLOSED);
-    });
+    }, 10000);
   });
 
   describe('Buffer Subscription', () => {
@@ -195,10 +206,10 @@ describe('WebSocket Buffer Tests', () => {
 
       // Verify binary format header
       const buffer = bufferMessage as Buffer;
-      
+
       // Check magic byte
       expect(buffer.readUInt8(0)).toBe(0xbf);
-      
+
       // Read session ID length (4 bytes, little endian)
       const sessionIdLength = buffer.readUInt32LE(1);
       expect(sessionIdLength).toBe(sessionId.length);
@@ -246,14 +257,17 @@ describe('WebSocket Buffer Tests', () => {
         })
       );
 
-      // Should not receive more messages
-      let receivedMessage = false;
-      ws.on('message', () => {
-        receivedMessage = true;
+      // Should not receive more binary buffer messages
+      let receivedBufferMessage = false;
+      ws.on('message', (data: Buffer) => {
+        // Only count binary messages (not JSON control messages)
+        if (data.length > 0 && data.readUInt8(0) === 0xbf) {
+          receivedBufferMessage = true;
+        }
       });
 
       await sleep(2000); // Wait for potential messages
-      expect(receivedMessage).toBe(false);
+      expect(receivedBufferMessage).toBe(false);
 
       ws.close();
     });
@@ -304,7 +318,7 @@ describe('WebSocket Buffer Tests', () => {
         ws.on('message', (data: Buffer) => {
           // Skip if not a binary message
           if (data.readUInt8(0) !== 0xbf) return;
-          
+
           const sessionIdLength = data.readUInt32LE(1);
           const extractedSessionId = data.slice(5, 5 + sessionIdLength).toString('utf8');
           receivedSessions.add(extractedSessionId);
@@ -361,14 +375,17 @@ describe('WebSocket Buffer Tests', () => {
         })
       );
 
-      // Should not receive any messages
-      let receivedMessage = false;
-      ws.on('message', () => {
-        receivedMessage = true;
+      // Should not receive any binary buffer messages (but may receive JSON responses)
+      let receivedBufferMessage = false;
+      ws.on('message', (data: Buffer) => {
+        // Only count binary messages (not JSON control messages)
+        if (data.length > 0 && data.readUInt8(0) === 0xbf) {
+          receivedBufferMessage = true;
+        }
       });
 
       await sleep(1000);
-      expect(receivedMessage).toBe(false);
+      expect(receivedBufferMessage).toBe(false);
 
       ws.close();
     });
@@ -446,12 +463,13 @@ describe('WebSocket Buffer Tests', () => {
       });
 
       // Parse binary format
-      const sessionIdLength = bufferMessage.readUInt8(0);
-      const headerStart = 1 + sessionIdLength;
+      expect(bufferMessage.readUInt8(0)).toBe(0xbf); // Magic byte
+      const sessionIdLength = bufferMessage.readUInt32LE(1);
+      const terminalBufferStart = 5 + sessionIdLength;
       const view = new DataView(
         bufferMessage.buffer,
-        bufferMessage.byteOffset + headerStart,
-        bufferMessage.byteLength - headerStart
+        bufferMessage.byteOffset + terminalBufferStart,
+        bufferMessage.byteLength - terminalBufferStart
       );
 
       // Verify header

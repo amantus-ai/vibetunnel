@@ -24,9 +24,9 @@ struct Logger {
 
     // Global log level - only messages at this level or higher will be printed
     #if DEBUG
-    nonisolated(unsafe) static var globalLevel: LogLevel = .info // Default to info level in debug builds
+        nonisolated(unsafe) static var globalLevel: LogLevel = .info // Default to info level in debug builds
     #else
-    nonisolated(unsafe) static var globalLevel: LogLevel = .warning // Only warnings and errors in release
+        nonisolated(unsafe) static var globalLevel: LogLevel = .warning // Only warnings and errors in release
     #endif
 
     init(category: String) {

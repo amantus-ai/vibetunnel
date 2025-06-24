@@ -10,7 +10,7 @@
 export function formatPathForDisplay(path: string): string {
   const homeDir = '/Users/steipete';
   if (path.startsWith(homeDir)) {
-    return '~' + path.slice(homeDir.length);
+    return `~${path.slice(homeDir.length)}`;
   }
   return path;
 }

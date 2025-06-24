@@ -1,8 +1,8 @@
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import {
-  pushNotificationService,
   type PushSubscription,
+  pushNotificationService,
 } from '../services/push-notification-service.js';
 import { createLogger } from '../utils/logger.js';
 

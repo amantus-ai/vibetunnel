@@ -7,7 +7,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { AsciinemaHeader, AsciinemaEvent, PtyError } from './types.js';
+import { createLogger } from '../utils/logger.js';
+import { type AsciinemaEvent, type AsciinemaHeader, PtyError } from './types.js';
+
+const logger = createLogger('AsciinemaWriter');
 
 export class AsciinemaWriter {
   private writeStream: fs.WriteStream;
@@ -74,7 +77,7 @@ export class AsciinemaWriter {
     if (this.headerWritten) return;
 
     const headerJson = JSON.stringify(this.header);
-    this.writeStream.write(headerJson + '\n');
+    this.writeStream.write(`${headerJson}\n`);
     this.headerWritten = true;
   }
 
@@ -147,7 +150,7 @@ export class AsciinemaWriter {
    */
   writeRawJson(jsonValue: unknown): void {
     const jsonString = JSON.stringify(jsonValue);
-    this.writeStream.write(jsonString + '\n');
+    this.writeStream.write(`${jsonString}\n`);
   }
 
   /**
@@ -157,7 +160,7 @@ export class AsciinemaWriter {
     // Asciinema format: [time, type, data]
     const eventArray = [event.time, event.type, event.data];
     const eventJson = JSON.stringify(eventArray);
-    this.writeStream.write(eventJson + '\n');
+    this.writeStream.write(`${eventJson}\n`);
 
     // Force immediate disk write to trigger file watchers
     if (this.fd !== null) {

@@ -10,7 +10,7 @@
  *
  * @listens content-changed - From vibe-terminal-buffer when terminal content changes
  */
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
@@ -220,11 +220,13 @@ export class SessionCard extends LitElement {
 
     return html`
       <div
-        class="card cursor-pointer overflow-hidden flex flex-col h-full ${this.killing
-          ? 'opacity-60'
-          : ''} ${this.isActive && this.session.status === 'running'
-          ? 'shadow-[0_0_0_2px_#00ff88] shadow-glow-green-sm'
-          : ''}"
+        class="card cursor-pointer overflow-hidden flex flex-col h-full ${
+          this.killing ? 'opacity-60' : ''
+        } ${
+          this.isActive && this.session.status === 'running'
+            ? 'shadow-[0_0_0_2px_#00ff88] shadow-glow-green-sm'
+            : ''
+        }"
         style="view-transition-name: session-${this.session.id}"
         @click=${this.handleCardClick}
       >
@@ -237,24 +239,27 @@ export class SessionCard extends LitElement {
               ${this.session.name || this.session.command.join(' ')}
             </div>
           </div>
-          ${this.session.status === 'running' || this.session.status === 'exited'
-            ? html`
+          ${
+            this.session.status === 'running' || this.session.status === 'exited'
+              ? html`
                 <button
-                  class="btn-ghost ${this.session.status === 'running'
-                    ? 'text-status-error'
-                    : 'text-status-warning'} disabled:opacity-50 flex-shrink-0 p-1 rounded-full hover:bg-opacity-20 transition-all ${this
-                    .session.status === 'running'
-                    ? 'hover:bg-status-error'
-                    : 'hover:bg-status-warning'}"
+                  class="btn-ghost ${
+                    this.session.status === 'running' ? 'text-status-error' : 'text-status-warning'
+                  } disabled:opacity-50 flex-shrink-0 p-1 rounded-full hover:bg-opacity-20 transition-all ${
+                    this.session.status === 'running'
+                      ? 'hover:bg-status-error'
+                      : 'hover:bg-status-warning'
+                  }"
                   @click=${this.handleKillClick}
                   ?disabled=${this.killing}
                   title="${this.session.status === 'running' ? 'Kill session' : 'Clean up session'}"
                 >
-                  ${this.killing
-                    ? html`<span class="block w-5 h-5 flex items-center justify-center"
+                  ${
+                    this.killing
+                      ? html`<span class="block w-5 h-5 flex items-center justify-center"
                         >${this.getKillingText()}</span
                       >`
-                    : html`
+                      : html`
                         <svg
                           class="w-5 h-5"
                           fill="none"
@@ -270,20 +275,23 @@ export class SessionCard extends LitElement {
                             d="M15 9l-6 6m0-6l6 6"
                           />
                         </svg>
-                      `}
+                      `
+                  }
                 </button>
               `
-            : ''}
+              : ''
+          }
         </div>
 
         <!-- Terminal display (main content) -->
         <div
-          class="session-preview bg-black overflow-hidden flex-1 ${this.session.status === 'exited'
-            ? 'session-exited'
-            : ''}"
+          class="session-preview bg-black overflow-hidden flex-1 ${
+            this.session.status === 'exited' ? 'session-exited' : ''
+          }"
         >
-          ${this.killing
-            ? html`
+          ${
+            this.killing
+              ? html`
                 <div class="w-full h-full flex items-center justify-center text-status-error">
                   <div class="text-center font-mono">
                     <div class="text-4xl mb-2">${this.getKillingText()}</div>
@@ -291,14 +299,15 @@ export class SessionCard extends LitElement {
                   </div>
                 </div>
               `
-            : html`
+              : html`
                 <vibe-terminal-buffer
                   .sessionId=${this.session.id}
                   class="w-full h-full"
                   style="pointer-events: none;"
                   @content-changed=${this.handleContentChanged}
                 ></vibe-terminal-buffer>
-              `}
+              `
+          }
         </div>
 
         <!-- Compact Footer -->
@@ -309,12 +318,15 @@ export class SessionCard extends LitElement {
             <span class="${this.getStatusColor()} text-xs flex items-center gap-1 flex-shrink-0">
               <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
               ${this.getStatusText()}
-              ${this.session.status === 'running' && this.isActive
-                ? html`<span class="text-accent-green animate-pulse ml-1">●</span>`
-                : ''}
+              ${
+                this.session.status === 'running' && this.isActive
+                  ? html`<span class="text-accent-green animate-pulse ml-1">●</span>`
+                  : ''
+              }
             </span>
-            ${this.session.pid
-              ? html`
+            ${
+              this.session.pid
+                ? html`
                   <span
                     class="cursor-pointer hover:text-accent-green transition-colors text-xs flex-shrink-0 ml-2 inline-flex items-center gap-1"
                     @click=${this.handlePidClick}
@@ -323,7 +335,8 @@ export class SessionCard extends LitElement {
                     PID: ${this.session.pid} <copy-icon size="14"></copy-icon>
                   </span>
                 `
-              : ''}
+                : ''
+            }
           </div>
           <div class="text-xs opacity-75 min-w-0 mt-1">
             <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>

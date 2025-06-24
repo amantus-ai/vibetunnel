@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { spawn, ChildProcess } from 'child_process';
-import path from 'path';
+import { type ChildProcess, spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
+import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 describe('Server Smoke Test', () => {
   let serverProcess: ChildProcess | null = null;
@@ -37,7 +37,7 @@ describe('Server Smoke Test', () => {
         }
       }, 10000);
 
-      if (serverProcess && serverProcess.stdout) {
+      if (serverProcess?.stdout) {
         serverProcess.stdout.on('data', (data) => {
           const chunk = data.toString();
           outputBuffer += chunk;
@@ -50,13 +50,13 @@ describe('Server Smoke Test', () => {
           if (portMatch && !resolved) {
             resolved = true;
             clearTimeout(timeout);
-            const port = parseInt(portMatch[1]);
+            const port = Number.parseInt(portMatch[1]);
             resolve(port);
           }
         });
       }
 
-      if (serverProcess && serverProcess.stderr) {
+      if (serverProcess?.stderr) {
         serverProcess.stderr.on('data', (data) => {
           console.error(`[SERVER ERROR] ${data.toString().trim()}`);
         });

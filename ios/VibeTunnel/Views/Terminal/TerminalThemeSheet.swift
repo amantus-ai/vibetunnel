@@ -74,8 +74,8 @@ struct TerminalThemeSheet: View {
                                 .background(
                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                                         .fill(selectedTheme.id == theme.id
-                                                ? Theme.Colors.primaryAccent.opacity(0.1)
-                                                : Theme.Colors.cardBorder.opacity(0.1)
+                                            ? Theme.Colors.primaryAccent.opacity(0.1)
+                                            : Theme.Colors.cardBorder.opacity(0.1)
                                         )
                                 )
                                 .overlay(

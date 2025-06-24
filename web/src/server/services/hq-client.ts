@@ -1,6 +1,6 @@
+import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../utils/logger.js';
-import chalk from 'chalk';
 
 const logger = createLogger('hq-client');
 
@@ -68,7 +68,7 @@ export class HQClient {
             id: this.remoteId,
             name: this.remoteName,
             url: this.remoteUrl,
-            token: this.token.substring(0, 8) + '...',
+            token: `${this.token.substring(0, 8)}...`,
           },
         });
         throw new Error(`Registration failed (${response.status}): ${errorText}`);
@@ -81,7 +81,7 @@ export class HQClient {
       logger.debug('registration details', {
         remoteId: this.remoteId,
         remoteName: this.remoteName,
-        token: this.token.substring(0, 8) + '...',
+        token: `${this.token.substring(0, 8)}...`,
       });
     } catch (error) {
       logger.error('failed to register with hq:', error);

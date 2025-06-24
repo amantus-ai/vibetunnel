@@ -2,7 +2,7 @@
  * Common test data fixtures for unit tests
  */
 
-import type { SessionWithId, SessionEntryWithId } from '../../server/types';
+import type { SessionEntryWithId, SessionWithId } from '../../server/types';
 
 export const mockSessions: SessionWithId[] = [
   {

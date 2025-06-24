@@ -4,7 +4,7 @@
  * Provides icon rendering for different file types and git statuses.
  * Icons are rendered as Lit template results using inline SVGs.
  */
-import { html, TemplateResult } from 'lit';
+import { html, type TemplateResult } from 'lit';
 
 export type FileType = 'file' | 'directory';
 export type GitStatus = 'modified' | 'added' | 'deleted' | 'untracked' | 'unchanged';

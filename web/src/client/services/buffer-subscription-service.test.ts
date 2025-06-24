@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { BufferSubscriptionService } from './buffer-subscription-service';
-import { MockWebSocket } from '../../test/utils/lit-test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockBinaryBuffer } from '../../test/fixtures/test-data';
-import type { BufferSnapshot } from '../utils/terminal-renderer';
 import type { MockWebSocketConstructor } from '../../test/types/test-types';
+import { MockWebSocket } from '../../test/utils/lit-test-utils';
+import type { BufferSnapshot } from '../utils/terminal-renderer';
+import { BufferSubscriptionService } from './buffer-subscription-service';
 
 // Mock the terminal renderer module
 vi.mock('../utils/terminal-renderer.js', () => ({
@@ -54,11 +54,22 @@ describe('BufferSubscriptionService', () => {
     vi.spyOn(global, 'setInterval');
     vi.spyOn(global, 'clearInterval');
 
-    // Mock window.location.host
-    Object.defineProperty(window, 'location', {
-      value: { host: 'localhost' },
-      writable: true,
-    });
+    // Mock window object for Node environment
+    if (typeof window === 'undefined') {
+      global.window = {
+        location: { host: 'localhost', protocol: 'http:' },
+        setTimeout: global.setTimeout,
+        clearTimeout: global.clearTimeout,
+        setInterval: global.setInterval,
+        clearInterval: global.clearInterval,
+      } as any;
+    } else {
+      // Mock window.location.host
+      Object.defineProperty(window, 'location', {
+        value: { host: 'localhost', protocol: 'http:' },
+        writable: true,
+      });
+    }
 
     // Create a mock WebSocket instance
     mockWebSocketInstance = new MockWebSocket('ws://localhost/buffers');
@@ -80,6 +91,10 @@ describe('BufferSubscriptionService', () => {
     vi.clearAllMocks();
     if (service) {
       service.dispose();
+    }
+    // Clean up global window mock
+    if (typeof window === 'undefined' && global.window) {
+      delete (global as any).window;
     }
   });
 

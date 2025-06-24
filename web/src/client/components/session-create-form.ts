@@ -11,12 +11,12 @@
  * @listens file-selected - From file browser when directory is selected
  * @listens browser-cancel - From file browser when cancelled
  */
-import { LitElement, html, PropertyValues } from 'lit';
+import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
-import type { Session } from './session-list.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
+import type { Session } from './session-list.js';
 
 const logger = createLogger('session-create-form');
 
@@ -402,14 +402,16 @@ export class SessionCreateForm extends LitElement {
                     <button
                       @click=${() => this.handleQuickStart(command)}
                       class="px-4 py-3 rounded border text-left transition-all
-                        ${this.command === command
-                        ? 'bg-accent-green bg-opacity-20 border-accent-green text-accent-green'
-                        : 'bg-dark-border bg-opacity-10 border-dark-border text-dark-text hover:bg-opacity-20 hover:border-dark-text-secondary'}"
+                        ${
+                          this.command === command
+                            ? 'bg-accent-green bg-opacity-20 border-accent-green text-accent-green'
+                            : 'bg-dark-border bg-opacity-10 border-dark-border text-dark-text hover:bg-opacity-20 hover:border-dark-text-secondary'
+                        }"
                       ?disabled=${this.disabled || this.isCreating}
                     >
-                      ${label === 'claude' ? '✨ ' : ''}${label === 'npm run dev'
-                        ? '▶️ '
-                        : ''}${label}
+                      ${label === 'claude' ? '✨ ' : ''}${
+                        label === 'npm run dev' ? '▶️ ' : ''
+                      }${label}
                     </button>
                   `
                 )}
@@ -427,10 +429,12 @@ export class SessionCreateForm extends LitElement {
               <button
                 class="btn-primary font-mono flex-1 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 @click=${this.handleCreate}
-                ?disabled=${this.disabled ||
-                this.isCreating ||
-                !this.workingDir.trim() ||
-                !this.command.trim()}
+                ?disabled=${
+                  this.disabled ||
+                  this.isCreating ||
+                  !this.workingDir.trim() ||
+                  !this.command.trim()
+                }
               >
                 ${this.isCreating ? 'Creating...' : 'Create'}
               </button>

@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { spawn, type ChildProcess } from 'child_process';
-import * as path from 'path';
+import { type ChildProcess, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { SessionData } from '../types/test-types';
+import { testLogger } from '../utils/test-logger';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -39,7 +40,7 @@ async function startServer(
       const output = data.toString();
       const portMatch = output.match(/Server listening on port (\d+)/);
       if (portMatch) {
-        port = parseInt(portMatch[1], 10);
+        port = Number.parseInt(portMatch[1], 10);
         serverProcess.stdout?.off('data', portListener);
         resolve({ process: serverProcess, port });
       }
@@ -47,7 +48,7 @@ async function startServer(
 
     serverProcess.stdout?.on('data', portListener);
     serverProcess.stderr?.on('data', (data) => {
-      console.error(`Server stderr: ${data}`);
+      testLogger.error('Server stderr', data.toString());
     });
 
     serverProcess.on('error', reject);
@@ -108,7 +109,7 @@ describe('Sessions API Tests', () => {
     try {
       fs.rmSync(testDir, { recursive: true, force: true });
     } catch (_e) {
-      console.error('Failed to clean test directory:', _e);
+      testLogger.error('Test cleanup', 'Failed to clean test directory:', _e);
     }
   });
 
@@ -144,8 +145,7 @@ describe('Sessions API Tests', () => {
       });
 
       if (response.status !== 200) {
-        const error = await response.text();
-        console.error('Session creation failed:', response.status, error);
+        await testLogger.logHttpError('Session creation', response);
       }
       expect(response.status).toBe(200);
       const result = await response.json();

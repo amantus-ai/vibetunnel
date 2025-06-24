@@ -1,8 +1,8 @@
-import { WebSocket } from 'ws';
 import chalk from 'chalk';
-import { RemoteRegistry } from './remote-registry.js';
-import { TerminalManager } from './terminal-manager.js';
+import { WebSocket } from 'ws';
 import { createLogger } from '../utils/logger.js';
+import type { RemoteRegistry } from './remote-registry.js';
+import type { TerminalManager } from './terminal-manager.js';
 
 const logger = createLogger('buffer-aggregator');
 

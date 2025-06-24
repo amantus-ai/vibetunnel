@@ -1,8 +1,8 @@
+import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SessionActivity } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
-import chalk from 'chalk';
 
 const logger = createLogger('activity-monitor');
 

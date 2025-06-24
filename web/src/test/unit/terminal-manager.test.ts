@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { TerminalManager } from '../../server/services/terminal-manager';
 import type { SessionEntry } from '../../server/types';
 
@@ -28,7 +28,7 @@ describe.skip('TerminalManager - OUTDATED TESTS', () => {
       terminalManager.createTerminal(session);
 
       // Terminal should be created
-      const terminal = terminalManager['terminals'].get('test123');
+      const terminal = terminalManager.terminals.get('test123');
       expect(terminal).toBeDefined();
       expect(terminal?.cols).toBe(80);
       expect(terminal?.rows).toBe(24);
@@ -56,7 +56,7 @@ describe.skip('TerminalManager - OUTDATED TESTS', () => {
       const updatedSession = { ...session, cols: 120, rows: 40 };
       terminalManager.createTerminal(updatedSession);
 
-      const terminal = terminalManager['terminals'].get('test456');
+      const terminal = terminalManager.terminals.get('test456');
       expect(terminal?.cols).toBe(120);
       expect(terminal?.rows).toBe(40);
     });
@@ -85,7 +85,7 @@ describe.skip('TerminalManager - OUTDATED TESTS', () => {
       expect(buffer).toBeDefined();
 
       // Verify terminal contains the output
-      const terminal = terminalManager['terminals'].get('output-test');
+      const terminal = terminalManager.terminals.get('output-test');
       const lines = [];
       if (!terminal) {
         throw new Error('Terminal not found');
@@ -121,7 +121,7 @@ describe.skip('TerminalManager - OUTDATED TESTS', () => {
       terminalManager.writeOutput('ansi-test', '\x1b[31mRed Text\x1b[0m\n');
       terminalManager.writeOutput('ansi-test', '\x1b[1mBold Text\x1b[0m\n');
 
-      const terminal = terminalManager['terminals'].get('ansi-test');
+      const terminal = terminalManager.terminals.get('ansi-test');
       expect(terminal).toBeDefined();
 
       // Terminal should process the escape sequences
@@ -162,7 +162,7 @@ describe.skip('TerminalManager - OUTDATED TESTS', () => {
       terminalManager.createTerminal(session);
       terminalManager.resize('resize-test', 120, 40);
 
-      const terminal = terminalManager['terminals'].get('resize-test');
+      const terminal = terminalManager.terminals.get('resize-test');
       expect(terminal?.cols).toBe(120);
       expect(terminal?.rows).toBe(40);
     });
@@ -351,10 +351,10 @@ describe.skip('TerminalManager - OUTDATED TESTS', () => {
       };
 
       terminalManager.createTerminal(session);
-      expect(terminalManager['terminals'].has('cleanup-test')).toBe(true);
+      expect(terminalManager.terminals.has('cleanup-test')).toBe(true);
 
       terminalManager.removeTerminal('cleanup-test');
-      expect(terminalManager['terminals'].has('cleanup-test')).toBe(false);
+      expect(terminalManager.terminals.has('cleanup-test')).toBe(false);
     });
 
     it('should handle removing non-existent terminal', () => {

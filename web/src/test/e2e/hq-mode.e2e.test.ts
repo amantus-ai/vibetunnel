@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { spawn, ChildProcess } from 'child_process';
-import path from 'path';
+import { type ChildProcess, spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
+import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 
 describe('HQ Mode E2E Tests', () => {
@@ -75,7 +75,7 @@ describe('HQ Mode E2E Tests', () => {
           /VibeTunnel Server running on http:\/\/localhost:(\d+)/
         );
         if (portMatch && !resolved) {
-          port = parseInt(portMatch[1]);
+          port = Number.parseInt(portMatch[1]);
           resolved = true;
           resolve({ process: serverProcess, port });
         }

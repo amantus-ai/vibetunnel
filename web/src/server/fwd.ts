@@ -11,13 +11,13 @@
  *   npx tsx src/fwd.ts claude --resume
  */
 
-import * as path from 'path';
-import * as os from 'os';
 import chalk from 'chalk';
+import * as os from 'os';
+import * as path from 'path';
 import { PtyManager } from './pty/index.js';
-import { VERSION, BUILD_DATE, GIT_COMMIT } from './version.js';
-import { createLogger, closeLogger } from './utils/logger.js';
+import { closeLogger, createLogger } from './utils/logger.js';
 import { generateSessionName } from './utils/session-naming.js';
+import { BUILD_DATE, GIT_COMMIT, VERSION } from './version.js';
 
 const logger = createLogger('fwd');
 

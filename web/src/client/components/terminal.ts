@@ -9,11 +9,12 @@
  * @fires terminal-resize - When terminal is resized (detail: { cols: number, rows: number })
  * @fires url-clicked - When a URL is clicked (detail: string)
  */
-import { LitElement, html, PropertyValues } from 'lit';
+
+import { type IBufferCell, type IBufferLine, Terminal as XtermTerminal } from '@xterm/headless';
+import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { Terminal as XtermTerminal, IBufferLine, IBufferCell } from '@xterm/headless';
-import { UrlHighlighter } from '../utils/url-highlighter.js';
 import { createLogger } from '../utils/logger.js';
+import { UrlHighlighter } from '../utils/url-highlighter.js';
 
 const logger = createLogger('terminal');
 
@@ -1243,8 +1244,9 @@ export class Terminal extends LitElement {
           @paste=${this.handlePaste}
           @click=${this.handleClick}
         ></div>
-        ${!this.followCursorEnabled
-          ? html`
+        ${
+          !this.followCursorEnabled
+            ? html`
               <div
                 class="scroll-to-bottom"
                 @click=${this.handleScrollToBottom}
@@ -1253,9 +1255,11 @@ export class Terminal extends LitElement {
                 ↓
               </div>
             `
-          : ''}
-        ${this.debugMode
-          ? html`
+            : ''
+        }
+        ${
+          this.debugMode
+            ? html`
               <div class="debug-overlay">
                 <div class="metric">
                   <span class="metric-label">Renders:</span>
@@ -1264,9 +1268,11 @@ export class Terminal extends LitElement {
                 <div class="metric">
                   <span class="metric-label">Avg:</span>
                   <span class="metric-value"
-                    >${this.renderCount > 0
-                      ? (this.totalRenderTime / this.renderCount).toFixed(2)
-                      : '0.00'}ms</span
+                    >${
+                      this.renderCount > 0
+                        ? (this.totalRenderTime / this.renderCount).toFixed(2)
+                        : '0.00'
+                    }ms</span
                   >
                 </div>
                 <div class="metric">
@@ -1275,7 +1281,8 @@ export class Terminal extends LitElement {
                 </div>
               </div>
             `
-          : ''}
+            : ''
+        }
       </div>
     `;
   }

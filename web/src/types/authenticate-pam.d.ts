@@ -1,7 +1,5 @@
 declare module 'authenticate-pam' {
-  interface AuthenticateCallback {
-    (error: Error | null, authenticated?: boolean): void;
-  }
+  type AuthenticateCallback = (error: Error | null, authenticated?: boolean) => void;
 
   export function authenticate(
     username: string,

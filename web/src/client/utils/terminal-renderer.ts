@@ -1,4 +1,4 @@
-import { IBufferCell } from '@xterm/headless';
+import type { IBufferCell } from '@xterm/headless';
 
 export interface BufferCell {
   char: string;
@@ -42,7 +42,7 @@ export class TerminalRenderer {
 
     const flushGroup = () => {
       if (currentChars) {
-        const escapedChars = this.escapeHtml(currentChars);
+        const escapedChars = TerminalRenderer.escapeHtml(currentChars);
         html += `<span class="${currentClasses}"${currentStyle ? ` style="${currentStyle}"` : ''}>${escapedChars}</span>`;
         currentChars = '';
       }
@@ -60,7 +60,7 @@ export class TerminalRenderer {
       if (width === 0) continue;
 
       // Get styling
-      const { classes, style } = this.getCellStyling(cell, col === cursorCol);
+      const { classes, style } = TerminalRenderer.getCellStyling(cell, col === cursorCol);
 
       // Check if styling changed
       if (classes !== currentClasses || style !== currentStyle) {
@@ -89,7 +89,7 @@ export class TerminalRenderer {
 
     const flushGroup = () => {
       if (currentChars) {
-        const escapedChars = this.escapeHtml(currentChars);
+        const escapedChars = TerminalRenderer.escapeHtml(currentChars);
         html += `<span class="${currentClasses}"${currentStyle ? ` style="${currentStyle}"` : ''}>${escapedChars}</span>`;
         currentChars = '';
       }
@@ -102,7 +102,7 @@ export class TerminalRenderer {
       if (cell.width === 0) continue;
 
       // Get styling
-      const { classes, style } = this.getCellStylingFromBuffer(cell, col === cursorCol);
+      const { classes, style } = TerminalRenderer.getCellStylingFromBuffer(cell, col === cursorCol);
 
       // Check if styling changed
       if (classes !== currentClasses || style !== currentStyle) {
@@ -333,7 +333,7 @@ export class TerminalRenderer {
 
         const rowCells: BufferCell[] = [];
         for (let i = 0; i < cellCount; i++) {
-          const result = this.decodeCell(uint8, offset);
+          const result = TerminalRenderer.decodeCell(uint8, offset);
           offset = result.offset;
           rowCells.push(result.cell);
         }

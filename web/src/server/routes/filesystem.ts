@@ -1,12 +1,12 @@
-import { Router, Request, Response } from 'express';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import mime from 'mime-types';
-import { createReadStream, statSync } from 'fs';
-import { createLogger } from '../utils/logger.js';
 import chalk from 'chalk';
+import { exec } from 'child_process';
+import { type Request, type Response, Router } from 'express';
+import { createReadStream, statSync } from 'fs';
+import * as fs from 'fs/promises';
+import mime from 'mime-types';
+import * as path from 'path';
+import { promisify } from 'util';
+import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('filesystem');
 
@@ -187,7 +187,7 @@ export function createFilesystemRoutes(): Router {
           // If we're at repo root, show all files
           if (fullPath === gitRepoRoot) return true;
           // Otherwise, only show files under current directory
-          return f.path.startsWith(currentDirRelativeToRepo + '/');
+          return f.path.startsWith(`${currentDirRelativeToRepo}/`);
         });
 
         // Convert to FileInfo objects
@@ -689,5 +689,5 @@ function formatBytes(bytes: number, decimals = 2): string {
 
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  return `${Number.parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
 }

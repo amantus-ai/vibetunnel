@@ -1,4 +1,4 @@
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 import '../components/terminal.js';
@@ -83,7 +83,7 @@ export class TerminalTest extends LitElement {
     const terminal = this.terminalRef.value;
     if (!terminal) return;
 
-    terminal.write(this.testData[type] + '\r\n\x1b[32m$ \x1b[0m');
+    terminal.write(`${this.testData[type]}\r\n\x1b[32m$ \x1b[0m`);
   }
 
   private resizeTerminal(newCols: number, newRows: number) {
@@ -102,7 +102,7 @@ export class TerminalTest extends LitElement {
     const terminal = this.terminalRef.value;
     if (!terminal) return;
 
-    terminal.write(this.inputText + '\r\n\x1b[32m$ \x1b[0m');
+    terminal.write(`${this.inputText}\r\n\x1b[32m$ \x1b[0m`);
     this.inputText = '';
   }
 

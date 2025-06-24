@@ -11,7 +11,7 @@
  * @fires clean-exited-sessions - When clean exited button is clicked
  * @fires open-file-browser - When browse button is clicked
  */
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from './session-list.js';
 import './terminal-icon.js';
@@ -128,12 +128,15 @@ export class AppHeader extends LitElement {
           <!-- Controls row: left buttons and right buttons -->
           <div class="flex items-center justify-between">
             <div class="flex gap-2">
-              ${exitedSessions.length > 0
-                ? html`
+              ${
+                exitedSessions.length > 0
+                  ? html`
                     <button
-                      class="btn-secondary font-mono text-xs px-4 py-2 ${this.hideExited
-                        ? ''
-                        : 'bg-accent-green text-dark-bg hover:bg-accent-green-darker'}"
+                      class="btn-secondary font-mono text-xs px-4 py-2 ${
+                        this.hideExited
+                          ? ''
+                          : 'bg-accent-green text-dark-bg hover:bg-accent-green-darker'
+                      }"
                       @click=${() =>
                         this.dispatchEvent(
                           new CustomEvent('hide-exited-change', {
@@ -141,14 +144,18 @@ export class AppHeader extends LitElement {
                           })
                         )}
                     >
-                      ${this.hideExited
-                        ? `Show (${exitedSessions.length})`
-                        : `Hide (${exitedSessions.length})`}
+                      ${
+                        this.hideExited
+                          ? `Show (${exitedSessions.length})`
+                          : `Hide (${exitedSessions.length})`
+                      }
                     </button>
                   `
-                : ''}
-              ${!this.hideExited && exitedSessions.length > 0
-                ? html`
+                  : ''
+              }
+              ${
+                !this.hideExited && exitedSessions.length > 0
+                  ? html`
                     <button
                       class="btn-ghost font-mono text-xs text-status-warning"
                       @click=${this.handleCleanExited}
@@ -156,9 +163,11 @@ export class AppHeader extends LitElement {
                       Clean Exited
                     </button>
                   `
-                : ''}
-              ${runningSessions.length > 0 && !this.killingAll
-                ? html`
+                  : ''
+              }
+              ${
+                runningSessions.length > 0 && !this.killingAll
+                  ? html`
                     <button
                       class="btn-ghost font-mono text-xs text-status-error"
                       @click=${this.handleKillAll}
@@ -166,7 +175,8 @@ export class AppHeader extends LitElement {
                       Kill (${runningSessions.length})
                     </button>
                   `
-                : ''}
+                  : ''
+              }
             </div>
 
             <div class="flex gap-2">
@@ -218,12 +228,15 @@ export class AppHeader extends LitElement {
             </div>
           </a>
           <div class="flex items-center gap-3">
-            ${exitedSessions.length > 0
-              ? html`
+            ${
+              exitedSessions.length > 0
+                ? html`
                   <button
-                    class="btn-secondary font-mono text-xs px-4 py-2 ${this.hideExited
-                      ? ''
-                      : 'bg-accent-green text-dark-bg hover:bg-accent-green-darker'}"
+                    class="btn-secondary font-mono text-xs px-4 py-2 ${
+                      this.hideExited
+                        ? ''
+                        : 'bg-accent-green text-dark-bg hover:bg-accent-green-darker'
+                    }"
                     @click=${() =>
                       this.dispatchEvent(
                         new CustomEvent('hide-exited-change', {
@@ -231,15 +244,19 @@ export class AppHeader extends LitElement {
                         })
                       )}
                   >
-                    ${this.hideExited
-                      ? `Show Exited (${exitedSessions.length})`
-                      : `Hide Exited (${exitedSessions.length})`}
+                    ${
+                      this.hideExited
+                        ? `Show Exited (${exitedSessions.length})`
+                        : `Hide Exited (${exitedSessions.length})`
+                    }
                   </button>
                 `
-              : ''}
+                : ''
+            }
             <div class="flex gap-2">
-              ${!this.hideExited && this.sessions.filter((s) => s.status === 'exited').length > 0
-                ? html`
+              ${
+                !this.hideExited && this.sessions.filter((s) => s.status === 'exited').length > 0
+                  ? html`
                     <button
                       class="btn-ghost font-mono text-xs text-status-warning"
                       @click=${this.handleCleanExited}
@@ -247,9 +264,11 @@ export class AppHeader extends LitElement {
                       Clean Exited
                     </button>
                   `
-                : ''}
-              ${runningSessions.length > 0 && !this.killingAll
-                ? html`
+                  : ''
+              }
+              ${
+                runningSessions.length > 0 && !this.killingAll
+                  ? html`
                     <button
                       class="btn-ghost font-mono text-xs text-status-error"
                       @click=${this.handleKillAll}
@@ -257,7 +276,8 @@ export class AppHeader extends LitElement {
                       Kill All (${runningSessions.length})
                     </button>
                   `
-                : ''}
+                  : ''
+              }
               <button
                 class="btn-secondary font-mono text-xs px-4 py-2"
                 @click=${this.handleOpenFileBrowser}
@@ -283,8 +303,9 @@ export class AppHeader extends LitElement {
               >
                 Create Session
               </button>
-              ${this.currentUser
-                ? html`
+              ${
+                this.currentUser
+                  ? html`
                     <div class="user-menu-container relative">
                       <button
                         class="btn-ghost font-mono text-xs text-dark-text flex items-center gap-1"
@@ -302,8 +323,9 @@ export class AppHeader extends LitElement {
                           <path d="M5 7L1 3h8z" />
                         </svg>
                       </button>
-                      ${this.showUserMenu
-                        ? html`
+                      ${
+                        this.showUserMenu
+                          ? html`
                             <div
                               class="absolute right-0 top-full mt-1 bg-dark-surface border border-dark-border rounded shadow-lg py-1 z-50 min-w-32"
                             >
@@ -320,10 +342,12 @@ export class AppHeader extends LitElement {
                               </button>
                             </div>
                           `
-                        : ''}
+                          : ''
+                      }
                     </div>
                   `
-                : ''}
+                  : ''
+              }
             </div>
           </div>
         </div>

@@ -16,7 +16,7 @@
  * @listens session-kill-error - From session-card when kill fails
  * @listens clean-exited-sessions - To trigger cleanup of exited sessions
  */
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type { Session } from '../../shared/types.js';
@@ -152,13 +152,15 @@ export class SessionList extends LitElement {
 
     return html`
       <div class="font-mono text-sm p-4 bg-black">
-        ${filteredSessions.length === 0
-          ? html`
+        ${
+          filteredSessions.length === 0
+            ? html`
               <div class="text-dark-text-muted text-center py-8">
-                ${this.loading
-                  ? 'Loading sessions...'
-                  : this.hideExited && this.sessions.length > 0
-                    ? html`
+                ${
+                  this.loading
+                    ? 'Loading sessions...'
+                    : this.hideExited && this.sessions.length > 0
+                      ? html`
                         <div class="space-y-4 max-w-2xl mx-auto text-left">
                           <div class="text-lg font-semibold text-dark-text">
                             No running sessions
@@ -168,7 +170,7 @@ export class SessionList extends LitElement {
                           </div>
                         </div>
                       `
-                    : html`
+                      : html`
                         <div class="space-y-6 max-w-2xl mx-auto text-left">
                           <div class="text-lg font-semibold text-dark-text">
                             No terminal sessions yet!
@@ -220,10 +222,11 @@ export class SessionList extends LitElement {
                             here, accessible from any browser at localhost:4020.
                           </div>
                         </div>
-                      `}
+                      `
+                }
               </div>
             `
-          : html`
+            : html`
               <div class="session-flex-responsive">
                 ${repeat(
                   filteredSessions,
@@ -240,7 +243,8 @@ export class SessionList extends LitElement {
                   `
                 )}
               </div>
-            `}
+            `
+        }
 
         <session-create-form
           .visible=${this.showCreateModal}

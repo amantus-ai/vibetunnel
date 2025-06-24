@@ -1,34 +1,34 @@
-import express from 'express';
-import { createServer, IncomingMessage } from 'http';
-import { WebSocketServer } from 'ws';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
 import chalk from 'chalk';
-import { PtyManager } from './pty/index.js';
-import { TerminalManager } from './services/terminal-manager.js';
-import { StreamWatcher } from './services/stream-watcher.js';
-import { RemoteRegistry } from './services/remote-registry.js';
-import { HQClient } from './services/hq-client.js';
-import { createAuthMiddleware } from './middleware/auth.js';
+import type { Response as ExpressResponse } from 'express';
+import express from 'express';
+import * as fs from 'fs';
+import { createServer } from 'http';
+import * as os from 'os';
+import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import { WebSocketServer } from 'ws';
 import type { AuthenticatedRequest } from './middleware/auth.js';
-import { createSessionRoutes } from './routes/sessions.js';
-import { createRemoteRoutes } from './routes/remotes.js';
+import { createAuthMiddleware } from './middleware/auth.js';
+import { PtyManager } from './pty/index.js';
+import { createAuthRoutes } from './routes/auth.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
 import { createPushRoutes } from './routes/push.js';
-import { createAuthRoutes } from './routes/auth.js';
+import { createRemoteRoutes } from './routes/remotes.js';
+import { createSessionRoutes } from './routes/sessions.js';
+import { ActivityMonitor } from './services/activity-monitor.js';
 import { AuthService } from './services/auth-service.js';
-import { ControlDirWatcher } from './services/control-dir-watcher.js';
-import { VapidManager } from './utils/vapid-manager.js';
-import { PushNotificationService } from './services/push-notification-service.js';
 import { BellEventHandler } from './services/bell-event-handler.js';
 import { BufferAggregator } from './services/buffer-aggregator.js';
-import { ActivityMonitor } from './services/activity-monitor.js';
-import { v4 as uuidv4 } from 'uuid';
+import { ControlDirWatcher } from './services/control-dir-watcher.js';
+import { HQClient } from './services/hq-client.js';
+import { PushNotificationService } from './services/push-notification-service.js';
+import { RemoteRegistry } from './services/remote-registry.js';
+import { StreamWatcher } from './services/stream-watcher.js';
+import { TerminalManager } from './services/terminal-manager.js';
+import { closeLogger, createLogger, initLogger, setDebugMode } from './utils/logger.js';
+import { VapidManager } from './utils/vapid-manager.js';
 import { getVersionInfo, printVersionBanner } from './version.js';
-import { createLogger, initLogger, closeLogger, setDebugMode } from './utils/logger.js';
-import type { Response as ExpressResponse } from 'express';
 
 const logger = createLogger('server');
 
@@ -168,7 +168,7 @@ function parseArgs(): Config {
   // Check for command line arguments
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--port' && i + 1 < args.length) {
-      config.port = parseInt(args[i + 1], 10);
+      config.port = Number.parseInt(args[i + 1], 10);
       i++; // Skip the port value in next iteration
     } else if (args[i] === '--bind' && i + 1 < args.length) {
       config.bind = args[i + 1];
@@ -457,7 +457,7 @@ export async function createApp(): Promise<AppInstance> {
   logger.debug(`Serving static files from: ${publicPath}`);
 
   // Health check endpoint (no auth required)
-  app.get('/api/health', (req, res) => {
+  app.get('/api/health', (_req, res) => {
     const versionInfo = getVersionInfo();
     res.json({
       status: 'ok',
@@ -571,16 +571,24 @@ export async function createApp(): Promise<AppInstance> {
         acceptsLanguages: () => false,
       } as unknown as AuthenticatedRequest;
 
+      let responseWritten = false;
       const res = {
-        status: () => ({ json: () => {} }),
+        status: (_code: number) => {
+          responseWritten = true;
+          return { json: () => {} };
+        },
         setHeader: () => {},
       } as unknown as ExpressResponse;
 
       const next = (error?: unknown) => {
-        resolve(!error);
+        resolve(!error && !responseWritten);
       };
 
-      authMiddleware(req, res, next);
+      // Call authMiddleware and handle potential async errors
+      Promise.resolve(authMiddleware(req, res, next)).catch((error) => {
+        logger.error('Auth middleware error:', error);
+        resolve(false);
+      });
     });
 
     if (!isAuthenticated) {
@@ -607,7 +615,7 @@ export async function createApp(): Promise<AppInstance> {
   });
 
   // Serve index.html for client-side routes (but not API routes)
-  app.get('/', (req, res) => {
+  app.get('/', (_req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
   });
 

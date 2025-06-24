@@ -143,13 +143,13 @@ struct ServerConfigForm: View {
                 }
             })
             .foregroundColor(isConnecting || !networkMonitor.isConnected ? Theme.Colors.terminalForeground : Theme
-                                .Colors.primaryAccent
+                .Colors.primaryAccent
             )
             .padding(.vertical, Theme.Spacing.medium)
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                     .fill(isConnecting || !networkMonitor.isConnected ? Theme.Colors.cardBackground : Theme.Colors
-                            .terminalBackground
+                        .terminalBackground
                     )
             )
             .overlay(

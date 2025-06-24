@@ -109,14 +109,14 @@ struct FileBrowserView: View {
                         .font(.custom("SF Mono", size: 12))
                 }
                 .foregroundColor(viewModel.gitFilter == .changed ? Theme.Colors.successAccent : Theme.Colors
-                                    .terminalGray
+                    .terminalGray
                 )
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
                         .fill(viewModel.gitFilter == .changed ? Theme.Colors.successAccent.opacity(0.2) : Theme.Colors
-                                .terminalGray.opacity(0.1)
+                            .terminalGray.opacity(0.1)
                         )
                 )
             }
@@ -140,7 +140,7 @@ struct FileBrowserView: View {
                 .background(
                     RoundedRectangle(cornerRadius: 6)
                         .fill(viewModel.showHidden ? Theme.Colors.terminalAccent.opacity(0.2) : Theme.Colors
-                                .terminalGray.opacity(0.1)
+                            .terminalGray.opacity(0.1)
                         )
                 )
             }
@@ -566,7 +566,7 @@ struct FileBrowserRow: View {
                 Text(name)
                     .font(.custom("SF Mono", size: 14))
                     .foregroundColor(isParent ? Theme.Colors
-                                        .terminalAccent : (isDirectory ? Theme.Colors.terminalWhite : Theme.Colors.terminalGray)
+                        .terminalAccent : (isDirectory ? Theme.Colors.terminalWhite : Theme.Colors.terminalGray)
                     )
                     .lineLimit(1)
                     .truncationMode(.middle)

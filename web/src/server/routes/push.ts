@@ -1,8 +1,8 @@
-import { Router, Request, Response } from 'express';
-import { VapidManager } from '../utils/vapid-manager.js';
-import { PushNotificationService } from '../services/push-notification-service.js';
-import { BellEventHandler } from '../services/bell-event-handler.js';
+import { type Request, type Response, Router } from 'express';
+import type { BellEventHandler } from '../services/bell-event-handler.js';
+import type { PushNotificationService } from '../services/push-notification-service.js';
 import { createLogger } from '../utils/logger.js';
+import type { VapidManager } from '../utils/vapid-manager.js';
 
 const logger = createLogger('push-routes');
 
@@ -19,7 +19,7 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
   /**
    * Get VAPID public key for client registration
    */
-  router.get('/push/vapid-public-key', (req: Request, res: Response) => {
+  router.get('/push/vapid-public-key', (_req: Request, res: Response) => {
     try {
       const publicKey = vapidManager.getPublicKey();
 
@@ -135,7 +135,7 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
   /**
    * Send test notification
    */
-  router.post('/push/test', async (req: Request, res: Response) => {
+  router.post('/push/test', async (_req: Request, res: Response) => {
     if (!pushNotificationService) {
       return res.status(503).json({
         error: 'Push notifications not initialized',
@@ -181,7 +181,7 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
   /**
    * Get service status
    */
-  router.get('/push/status', (req: Request, res: Response) => {
+  router.get('/push/status', (_req: Request, res: Response) => {
     if (!pushNotificationService) {
       return res.status(503).json({
         error: 'Push notifications not initialized',

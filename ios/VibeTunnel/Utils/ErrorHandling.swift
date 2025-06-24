@@ -30,7 +30,7 @@ extension View {
         error: Binding<Error?>,
         onDismiss: (() -> Void)? = nil
     )
-    -> some View
+        -> some View
     {
         modifier(ErrorAlertModifier(error: error, onDismiss: onDismiss))
     }
@@ -154,7 +154,7 @@ extension Task where Failure == Error {
         errorHandler: @escaping @Sendable (Error) -> Void,
         operation: @escaping @Sendable () async throws -> T
     )
-    -> Task<T, Error>
+        -> Task<T, Error>
     {
         Task<T, Error>(priority: priority) {
             do {

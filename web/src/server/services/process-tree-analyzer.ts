@@ -110,9 +110,9 @@ export class ProcessTreeAnalyzer {
           // We need to handle the multi-word timestamp properly
           const parts = line.trim().split(/\s+/);
           if (parts.length >= 10) {
-            const pid = parseInt(parts[0]);
-            const ppid = parseInt(parts[1]);
-            const pgid = parseInt(parts[2]);
+            const pid = Number.parseInt(parts[0]);
+            const ppid = Number.parseInt(parts[1]);
+            const pgid = Number.parseInt(parts[2]);
             const tty = parts[3] === '?' ? undefined : parts[3];
             const state = parts[4];
             // STARTED timestamp spans multiple parts: parts[5] through parts[9]
@@ -120,7 +120,7 @@ export class ProcessTreeAnalyzer {
             // COMMAND is everything from part 10 onwards
             const command = parts.slice(10).join(' ');
 
-            if (!isNaN(pid) && !isNaN(ppid) && !isNaN(pgid) && command) {
+            if (!Number.isNaN(pid) && !Number.isNaN(ppid) && !Number.isNaN(pgid) && command) {
               logger.log(
                 'ProcessTreeAnalyzer',
                 `Parsed macOS process: PID=${pid}, COMMAND="${command.trim()}"`
@@ -144,10 +144,10 @@ export class ProcessTreeAnalyzer {
           if (match) {
             const [, pid, ppid, pgid, sid, tty, state, startTime, command] = match;
             processes.push({
-              pid: parseInt(pid),
-              ppid: parseInt(ppid),
-              pgid: parseInt(pgid),
-              sid: parseInt(sid),
+              pid: Number.parseInt(pid),
+              ppid: Number.parseInt(ppid),
+              pgid: Number.parseInt(pgid),
+              sid: Number.parseInt(sid),
               tty: tty === '?' ? undefined : tty,
               state,
               startTime,
@@ -184,11 +184,11 @@ export class ProcessTreeAnalyzer {
 
       const parts = line.split(',');
       if (parts.length >= 3) {
-        const pid = parseInt(parts[1]);
-        const ppid = parseInt(parts[2]);
+        const pid = Number.parseInt(parts[1]);
+        const ppid = Number.parseInt(parts[2]);
         const command = parts[3] || 'unknown';
 
-        if (!isNaN(pid) && !isNaN(ppid)) {
+        if (!Number.isNaN(pid) && !Number.isNaN(ppid)) {
           processes.push({
             pid,
             ppid,

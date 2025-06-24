@@ -1,8 +1,8 @@
 import { Terminal as XtermTerminal } from '@xterm/headless';
+import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '../utils/logger.js';
-import chalk from 'chalk';
 
 const logger = createLogger('terminal-manager');
 
@@ -182,8 +182,8 @@ export class TerminalManager {
           // Resize event
           const match = eventData.match(/^(\d+)x(\d+)$/);
           if (match) {
-            const cols = parseInt(match[1], 10);
-            const rows = parseInt(match[2], 10);
+            const cols = Number.parseInt(match[1], 10);
+            const rows = Number.parseInt(match[2], 10);
             sessionTerminal.terminal.resize(cols, rows);
             this.notifyBufferChange(sessionId);
           }

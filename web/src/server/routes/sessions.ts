@@ -1,18 +1,18 @@
+import chalk from 'chalk';
 import { Router } from 'express';
-import { PtyManager, PtyError } from '../pty/index.js';
-import type { Session, SessionActivity } from '../../shared/types.js';
-import { TerminalManager } from '../services/terminal-manager.js';
-import { StreamWatcher } from '../services/stream-watcher.js';
-import { RemoteRegistry } from '../services/remote-registry.js';
-import { ActivityMonitor } from '../services/activity-monitor.js';
+import * as fs from 'fs';
+import * as net from 'net';
+import * as os from 'os';
+import * as path from 'path';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
+import type { Session, SessionActivity } from '../../shared/types.js';
+import { PtyError, type PtyManager } from '../pty/index.js';
+import type { ActivityMonitor } from '../services/activity-monitor.js';
+import type { RemoteRegistry } from '../services/remote-registry.js';
+import type { StreamWatcher } from '../services/stream-watcher.js';
+import type { TerminalManager } from '../services/terminal-manager.js';
 import { createLogger } from '../utils/logger.js';
 import { generateSessionName } from '../utils/session-naming.js';
-import chalk from 'chalk';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import * as net from 'net';
 
 const logger = createLogger('sessions');
 
@@ -48,7 +48,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
     config;
 
   // List all sessions (aggregate local + remote in HQ mode)
-  router.get('/sessions', async (req, res) => {
+  router.get('/sessions', async (_req, res) => {
     logger.debug('listing all sessions');
     try {
       let allSessions = [];
@@ -256,7 +256,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
   });
 
   // Get activity status for all sessions
-  router.get('/sessions/activity', async (req, res) => {
+  router.get('/sessions/activity', async (_req, res) => {
     logger.debug('getting activity status for all sessions');
     try {
       const activityStatus: Record<string, SessionActivity> = {};
@@ -300,7 +300,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
         // Merge remote activity data
         for (const result of remoteResults) {
-          if (result && result.activity) {
+          if (result?.activity) {
             // Merge remote activity data
             Object.assign(activityStatus, result.activity);
           }
@@ -509,7 +509,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
   });
 
   // Cleanup all exited sessions (local and remote)
-  router.post('/cleanup-exited', async (req, res) => {
+  router.post('/cleanup-exited', async (_req, res) => {
     logger.log(chalk.blue('cleaning up all exited sessions'));
     try {
       // Clean up local sessions

@@ -96,7 +96,7 @@ export class CastConverter {
       throw new Error(`Failed to load cast file: ${response.status} ${response.statusText}`);
     }
     const content = await response.text();
-    return this.convertCast(content);
+    return CastConverter.convertCast(content);
   }
 
   /**
@@ -105,7 +105,7 @@ export class CastConverter {
    * @returns Just the output content as a string
    */
   static convertToOutputOnly(castContent: string): string {
-    const converted = this.convertCast(castContent);
+    const converted = CastConverter.convertCast(castContent);
     return converted.content;
   }
 
@@ -115,7 +115,7 @@ export class CastConverter {
    * @returns Terminal dimensions or defaults
    */
   static getTerminalDimensions(castContent: string): { cols: number; rows: number } {
-    const converted = this.convertCast(castContent);
+    const converted = CastConverter.convertCast(castContent);
     return {
       cols: converted.header?.width || 80,
       rows: converted.header?.height || 24,
@@ -134,7 +134,7 @@ export class CastConverter {
     cols?: number;
     rows?: number;
   }> {
-    const converted = this.convertCast(castContent);
+    const converted = CastConverter.convertCast(castContent);
     const timedEvents: Array<{
       delay: number;
       type: 'output' | 'resize';
@@ -162,8 +162,8 @@ export class CastConverter {
             delay,
             type: 'resize',
             data: event.data,
-            cols: parseInt(match[1], 10),
-            rows: parseInt(match[2], 10),
+            cols: Number.parseInt(match[1], 10),
+            rows: Number.parseInt(match[2], 10),
           });
         }
       }
@@ -189,8 +189,8 @@ export class CastConverter {
     castContent: string,
     speedMultiplier: number = 1.0
   ): Promise<void> {
-    const timedEvents = this.convertToTimedEvents(castContent);
-    const converted = this.convertCast(castContent);
+    const timedEvents = CastConverter.convertToTimedEvents(castContent);
+    const converted = CastConverter.convertCast(castContent);
 
     // Set initial terminal size if possible
     if (terminal.setTerminalSize && converted.header) {
@@ -229,7 +229,7 @@ export class CastConverter {
     },
     castContent: string
   ): Promise<void> {
-    const converted = this.convertCast(castContent);
+    const converted = CastConverter.convertCast(castContent);
 
     // Get initial terminal dimensions from header
     const initialCols = converted.header?.width || 80;
@@ -274,8 +274,8 @@ export class CastConverter {
 
         const match = event.data.match(/^(\d+)x(\d+)$/);
         if (match && terminal.setTerminalSize) {
-          const cols = parseInt(match[1], 10);
-          const rows = parseInt(match[2], 10);
+          const cols = Number.parseInt(match[1], 10);
+          const rows = Number.parseInt(match[2], 10);
           terminal.setTerminalSize(cols, rows);
         }
       }
@@ -387,8 +387,8 @@ export class CastConverter {
             // Update terminal dimensions
             const match = eventData.match(/^(\d+)x(\d+)$/);
             if (match && terminal.setTerminalSize) {
-              const cols = parseInt(match[1], 10);
-              const rows = parseInt(match[2], 10);
+              const cols = Number.parseInt(match[1], 10);
+              const rows = Number.parseInt(match[2], 10);
               terminal.setTerminalSize(cols, rows);
 
               // Dispatch resize event if terminal supports it

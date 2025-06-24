@@ -1,5 +1,5 @@
+import { PushNotificationPreferences, PushSubscription } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
-import { PushSubscription, PushNotificationPreferences } from '../../shared/types.js';
 
 // Re-export types for components
 export { PushSubscription, PushNotificationPreferences };
@@ -314,7 +314,7 @@ export class PushNotificationService {
       const notifications = await this.serviceWorkerRegistration.getNotifications();
 
       for (const notification of notifications) {
-        if (notification.tag && notification.tag.startsWith('vibetunnel-')) {
+        if (notification.tag?.startsWith('vibetunnel-')) {
           notification.close();
         }
       }

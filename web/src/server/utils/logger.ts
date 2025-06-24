@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 import chalk from 'chalk';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 // Log file path
 const LOG_DIR = path.join(os.homedir(), '.vibetunnel');
@@ -110,7 +110,7 @@ function writeToFile(message: string): void {
     try {
       // Strip ANSI color codes from message
       const cleanMessage = message.replace(ANSI_PATTERN, '');
-      logFileHandle.write(cleanMessage + '\n');
+      logFileHandle.write(`${cleanMessage}\n`);
     } catch {
       // Silently ignore file write errors
     }

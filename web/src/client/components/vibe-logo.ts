@@ -1,4 +1,4 @@
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 
 @customElement('vibe-logo')
@@ -90,15 +90,13 @@ export class VibeLogo extends LitElement {
         char === ' ' ? ' ' : html`<span style="color: ${colors[i % colors.length]};">${char}</span>`
       );
 
-    const coloredRight = rightPart
-      .split('')
-      .map((char, i) =>
-        char === ' '
-          ? ' '
-          : html`<span style="color: ${colors[(leftPart.length - 1 - i) % colors.length]};"
+    const coloredRight = rightPart.split('').map((char, i) =>
+      char === ' '
+        ? ' '
+        : html`<span style="color: ${colors[(leftPart.length - 1 - i) % colors.length]};"
               >${char}</span
             >`
-      );
+    );
 
     return html`
       <div class="font-mono text-sm select-none leading-tight text-center">

@@ -481,7 +481,7 @@ class APIClient: APIClientProtocol {
         showHidden: Bool = false,
         gitFilter: String = "all"
     )
-    async throws -> DirectoryListing
+        async throws -> DirectoryListing
     {
         guard let baseURL else {
             throw APIError.noServerConfigured

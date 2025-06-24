@@ -1,7 +1,7 @@
-import { Router } from 'express';
-import { RemoteRegistry } from '../services/remote-registry.js';
 import chalk from 'chalk';
+import { Router } from 'express';
 import { isShuttingDown } from '../server.js';
+import type { RemoteRegistry } from '../services/remote-registry.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('remotes');
@@ -16,7 +16,7 @@ export function createRemoteRoutes(config: RemoteRoutesConfig): Router {
   const { remoteRegistry, isHQMode } = config;
 
   // HQ Mode: List all registered remotes
-  router.get('/remotes', (req, res) => {
+  router.get('/remotes', (_req, res) => {
     if (!isHQMode || !remoteRegistry) {
       logger.debug('remotes list requested but not in HQ mode');
       return res.status(404).json({ error: 'Not running in HQ mode' });

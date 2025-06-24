@@ -16,7 +16,7 @@ export class UrlHighlighter {
     if (lines.length === 0) return;
 
     for (let i = 0; i < lines.length; i++) {
-      const lineText = this.getLineText(lines[i]);
+      const lineText = UrlHighlighter.getLineText(lines[i]);
 
       // Look for http(s):// in this line
       const httpMatch = lineText.match(/(https?:\/\/)/);
@@ -34,7 +34,7 @@ export class UrlHighlighter {
             remainingText = lineText.substring(urlStart);
           } else {
             // Subsequent lines: take the whole trimmed line
-            remainingText = this.getLineText(lines[j]).trim();
+            remainingText = UrlHighlighter.getLineText(lines[j]).trim();
           }
 
           // Stop if line is empty (after trimming)
@@ -63,7 +63,7 @@ export class UrlHighlighter {
         // Now create links for this URL across the lines it spans
         if (fullUrl.length > 7) {
           // More than just "http://"
-          this.createUrlLinks(lines, fullUrl, i, endLine, urlStart);
+          UrlHighlighter.createUrlLinks(lines, fullUrl, i, endLine, urlStart);
         }
       }
     }
@@ -80,14 +80,20 @@ export class UrlHighlighter {
 
     for (let lineIdx = startLine; lineIdx <= endLine; lineIdx++) {
       const line = lines[lineIdx];
-      const lineText = this.getLineText(line);
+      const lineText = UrlHighlighter.getLineText(line);
 
       if (lineIdx === startLine) {
         // First line: URL starts at startCol
         const lineUrlPart = lineText.substring(startCol);
         const urlPartLength = Math.min(lineUrlPart.length, remainingUrl.length);
 
-        this.createClickableInLine(line, fullUrl, 'url', startCol, startCol + urlPartLength);
+        UrlHighlighter.createClickableInLine(
+          line,
+          fullUrl,
+          'url',
+          startCol,
+          startCol + urlPartLength
+        );
         remainingUrl = remainingUrl.substring(urlPartLength);
       } else {
         // Subsequent lines: take from start of trimmed content
@@ -96,7 +102,7 @@ export class UrlHighlighter {
 
         if (urlPartLength > 0) {
           const startColForLine = lineText.indexOf(trimmedLine);
-          this.createClickableInLine(
+          UrlHighlighter.createClickableInLine(
             line,
             fullUrl,
             'url',
@@ -120,7 +126,7 @@ export class UrlHighlighter {
   private static createClickableInLine(
     lineElement: Element,
     url: string,
-    type: 'url',
+    _type: 'url',
     startCol: number,
     endCol: number
   ): void {
@@ -150,7 +156,7 @@ export class UrlHighlighter {
         const linkEnd = Math.min(nodeText.length, endCol - nodeStart);
 
         if (linkStart < linkEnd) {
-          this.wrapTextInClickable(
+          UrlHighlighter.wrapTextInClickable(
             textNode,
             linkStart,
             linkEnd,

@@ -28,64 +28,64 @@ jobs:
       working-directory: web
       run: npm ci
 
-    - name: Check formatting with Prettier
-      id: prettier
+    - name: Check formatting with Biome
+      id: biome-format
       working-directory: web
       continue-on-error: true
       run: |
-        npm run format:check 2>&1 | tee prettier-output.txt
+        npm run format:check 2>&1 | tee biome-format-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
 
-    - name: Run ESLint
-      id: eslint
+    - name: Run Biome linting
+      id: biome-lint
       working-directory: web
       continue-on-error: true
       run: |
-        npm run lint 2>&1 | tee eslint-output.txt
+        npm run lint 2>&1 | tee biome-lint-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
 
-    - name: Read Prettier Output
+    - name: Read Biome Format Output
       if: always()
-      id: prettier-output
+      id: biome-format-output
       working-directory: web
       run: |
-        if [ -f prettier-output.txt ]; then
+        if [ -f biome-format-output.txt ]; then
           echo 'content<<EOF' >> $GITHUB_OUTPUT
-          cat prettier-output.txt >> $GITHUB_OUTPUT
+          cat biome-format-output.txt >> $GITHUB_OUTPUT
           echo 'EOF' >> $GITHUB_OUTPUT
         else
           echo "content=No output" >> $GITHUB_OUTPUT
         fi
 
-    - name: Read ESLint Output
+    - name: Read Biome Lint Output
       if: always()
-      id: eslint-output
+      id: biome-lint-output
       working-directory: web
       run: |
-        if [ -f eslint-output.txt ]; then
+        if [ -f biome-lint-output.txt ]; then
           echo 'content<<EOF' >> $GITHUB_OUTPUT
-          cat eslint-output.txt >> $GITHUB_OUTPUT
+          cat biome-lint-output.txt >> $GITHUB_OUTPUT
           echo 'EOF' >> $GITHUB_OUTPUT
         else
           echo "content=No output" >> $GITHUB_OUTPUT
         fi
 
-    - name: Report Prettier Results
+    - name: Report Biome Format Results
       if: always()
       uses: ./.github/actions/lint-reporter
       with:
-        title: 'Node.js Prettier Formatting'
-        lint-result: ${{ steps.prettier.outputs.result == '0' && 'success' || 'failure' }}
-        lint-output: ${{ steps.prettier-output.outputs.content }}
+        title: 'Node.js Biome Formatting'
+        lint-result: ${{ steps.biome-format.outputs.result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.biome-format-output.outputs.content }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Report ESLint Results
+    - name: Report Biome Lint Results
       if: always()
       uses: ./.github/actions/lint-reporter
       with:
-        title: 'Node.js ESLint'
-        lint-result: ${{ steps.eslint.outputs.result == '0' && 'success' || 'failure' }}
-        lint-output: ${{ steps.eslint-output.outputs.content }}
+        title: 'Node.js Biome Linting'
+        lint-result: ${{ steps.biome-lint.outputs.result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.biome-lint-output.outputs.content }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-test:

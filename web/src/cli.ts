@@ -2,8 +2,8 @@
 // Entry point for the server - imports the modular server which starts automatically
 import { startVibeTunnelForward } from './server/fwd.js';
 import { startVibeTunnelServer } from './server/server.js';
+import { closeLogger, createLogger, initLogger } from './server/utils/logger.js';
 import { VERSION } from './server/version.js';
-import { createLogger, initLogger, closeLogger } from './server/utils/logger.js';
 
 // Initialize logger before anything else
 // Check VIBETUNNEL_DEBUG environment variable for debug mode

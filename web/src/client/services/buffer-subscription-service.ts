@@ -1,5 +1,5 @@
-import { BufferCell } from '../utils/terminal-renderer.js';
 import { createLogger } from '../utils/logger.js';
+import type { BufferCell } from '../utils/terminal-renderer.js';
 
 const logger = createLogger('buffer-subscription-service');
 
@@ -92,7 +92,7 @@ export class BufferSubscriptionService {
   private scheduleReconnect() {
     if (this.reconnectTimer) return;
 
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 30000);
     this.reconnectAttempts++;
 
     logger.log(`reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);

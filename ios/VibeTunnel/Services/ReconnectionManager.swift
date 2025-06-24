@@ -116,7 +116,7 @@ extension ReconnectionManager {
         baseDelay: TimeInterval = 1.0,
         maxDelay: TimeInterval = 60.0
     )
-    -> TimeInterval
+        -> TimeInterval
     {
         let exponentialDelay = baseDelay * pow(2.0, Double(attempt - 1))
         return min(exponentialDelay, maxDelay)

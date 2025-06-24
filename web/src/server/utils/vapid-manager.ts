@@ -1,6 +1,6 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
 import webpush from 'web-push';
 import { createLogger } from './logger.js';
 

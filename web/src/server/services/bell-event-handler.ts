@@ -5,10 +5,14 @@
  * without any filtering, correlation, or user tracking.
  */
 
-import { SessionInfo } from '../../shared/types.js';
+import type { SessionInfo } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
-import { PushNotificationService } from './push-notification-service.js';
-import { ProcessSnapshot, ProcessInfo, ProcessTreeAnalyzer } from './process-tree-analyzer.js';
+import {
+  type ProcessInfo,
+  type ProcessSnapshot,
+  ProcessTreeAnalyzer,
+} from './process-tree-analyzer.js';
+import type { PushNotificationService } from './push-notification-service.js';
 
 const logger = createLogger('bell-event-handler');
 

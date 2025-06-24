@@ -67,9 +67,6 @@
     "chokidar-cli": "^3.0.0",
     "concurrently": "^9.1.2",
     "esbuild": "^0.25.5",
-    "eslint": "^9.29.0",
-    "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-prettier": "^5.5.0",
     "happy-dom": "^18.0.1",
     "node-fetch": "^3.3.2",
     "postcss": "^8.5.6",
@@ -79,7 +76,6 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.34.1",
     "uuid": "^11.1.0",
     "vitest": "^3.2.4",
     "ws-mock": "^0.1.0"

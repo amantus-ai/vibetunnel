@@ -1,13 +1,11 @@
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
 
-interface AuthenticateFunction {
-  (
-    username: string,
-    password: string,
-    callback: (err: Error | null, authenticated?: boolean) => void
-  ): void;
-}
+type AuthenticateFunction = (
+  username: string,
+  password: string,
+  callback: (err: Error | null, authenticated?: boolean) => void
+) => void;
 
 // Helper function to load native module using dlopen
 function loadNativeModule(modulePath: string): { authenticate?: AuthenticateFunction } {
@@ -56,8 +54,8 @@ if (fs.existsSync(seaPamPath) || fs.existsSync(seaNativePamPath)) {
     );
     // Provide a stub implementation
     authenticate = (
-      username: string,
-      password: string,
+      _username: string,
+      _password: string,
       callback: (err: Error | null, authenticated?: boolean) => void
     ) => {
       callback(new Error('PAM authentication not available'));
@@ -76,8 +74,8 @@ if (fs.existsSync(seaPamPath) || fs.existsSync(seaNativePamPath)) {
     );
     // Provide a stub implementation
     authenticate = (
-      username: string,
-      password: string,
+      _username: string,
+      _password: string,
       callback: (err: Error | null, authenticated?: boolean) => void
     ) => {
       callback(new Error('PAM authentication not available'));

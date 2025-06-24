@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
-import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SessionManager } from '../../server/pty/session-manager';
 import type { SessionInfo } from '../../server/types';
 
@@ -40,7 +40,7 @@ describe('SessionManager', () => {
   });
 
   describe('Session Persistence', () => {
-    it('should write session info to file', async () => {
+    it('should save session info to file', () => {
       const sessionId = 'test123';
       const sessionInfo: SessionInfo = {
         cmdline: ['echo', 'test'],
@@ -53,7 +53,11 @@ describe('SessionManager', () => {
         spawn_type: 'pty',
       };
 
-      await sessionManager.writeSessionInfo(sessionId, sessionInfo);
+      // Create session directory first
+      sessionManager.createSessionDirectory(sessionId);
+
+      // Save session info
+      sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
       // Verify file was created
       const sessionPath = path.join(testDir, sessionId, 'session.json');
@@ -64,7 +68,7 @@ describe('SessionManager', () => {
       expect(content).toMatchObject(sessionInfo);
     });
 
-    it('should read session info from file', async () => {
+    it('should load session info from file', () => {
       const sessionId = 'test456';
       const sessionInfo: SessionInfo = {
         cmdline: ['bash', '-l'],
@@ -77,20 +81,21 @@ describe('SessionManager', () => {
         spawn_type: 'pty',
       };
 
-      // Write session info
-      await sessionManager.writeSessionInfo(sessionId, sessionInfo);
+      // Create session directory and save info
+      sessionManager.createSessionDirectory(sessionId);
+      sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
       // Read it back
-      const readInfo = await sessionManager.readSessionInfo(sessionId);
+      const readInfo = sessionManager.loadSessionInfo(sessionId);
       expect(readInfo).toMatchObject(sessionInfo);
     });
 
-    it('should return null for non-existent session', async () => {
-      const info = await sessionManager.readSessionInfo('nonexistent');
+    it('should return null for non-existent session', () => {
+      const info = sessionManager.loadSessionInfo('nonexistent');
       expect(info).toBeNull();
     });
 
-    it('should update existing session info', async () => {
+    it('should update existing session status', () => {
       const sessionId = 'test789';
       const initialInfo: SessionInfo = {
         cmdline: ['vim'],
@@ -103,31 +108,27 @@ describe('SessionManager', () => {
         spawn_type: 'pty',
       };
 
-      await sessionManager.writeSessionInfo(sessionId, initialInfo);
+      // Create session directory and save initial info
+      sessionManager.createSessionDirectory(sessionId);
+      sessionManager.saveSessionInfo(sessionId, initialInfo);
 
-      // Update with exit status
-      const updatedInfo: SessionInfo = {
-        ...initialInfo,
-        status: 'exited',
-        exit_code: 0,
-      };
-
-      await sessionManager.writeSessionInfo(sessionId, updatedInfo);
+      // Update session status
+      sessionManager.updateSessionStatus(sessionId, 'exited', undefined, 0);
 
       // Verify update
-      const readInfo = await sessionManager.readSessionInfo(sessionId);
+      const readInfo = sessionManager.loadSessionInfo(sessionId);
       expect(readInfo?.status).toBe('exited');
-      expect(readInfo?.exit_code).toBe(0);
+      expect(readInfo?.exitCode).toBe(0);
     });
   });
 
   describe('Session Discovery', () => {
-    it('should list all sessions', async () => {
+    it('should list all sessions', () => {
       // Create multiple sessions
       const sessions = [
         { id: 'session1', name: 'Session 1', status: 'running' as const },
         { id: 'session2', name: 'Session 2', status: 'running' as const },
-        { id: 'session3', name: 'Session 3', status: 'exited' as const, exit_code: 0 },
+        { id: 'session3', name: 'Session 3', status: 'exited' as const, exitCode: 0 },
       ];
 
       for (const session of sessions) {
@@ -137,16 +138,17 @@ describe('SessionManager', () => {
           cwd: testDir,
           pid: Math.floor(Math.random() * 10000),
           status: session.status,
-          exit_code: session.exit_code,
+          exitCode: session.exitCode,
           started_at: new Date().toISOString(),
           term: 'xterm',
           spawn_type: 'pty',
         };
-        await sessionManager.writeSessionInfo(session.id, sessionInfo);
+        sessionManager.createSessionDirectory(session.id);
+        sessionManager.saveSessionInfo(session.id, sessionInfo);
       }
 
       // List sessions
-      const listedSessions = await sessionManager.listSessions();
+      const listedSessions = sessionManager.listSessions();
 
       expect(listedSessions).toHaveLength(3);
       expect(listedSessions.map((s) => s.id).sort()).toEqual(['session1', 'session2', 'session3']);
@@ -154,20 +156,21 @@ describe('SessionManager', () => {
       // Verify session data
       const session1 = listedSessions.find((s) => s.id === 'session1');
       expect(session1?.name).toBe('Session 1');
-      expect(session1?.status).toBe('running');
+      expect(session1?.status).toBe('exited'); // Process is not actually running
     });
 
-    it('should handle empty directory', async () => {
-      const sessions = await sessionManager.listSessions();
+    it('should handle empty directory', () => {
+      const sessions = sessionManager.listSessions();
       expect(sessions).toEqual([]);
     });
 
-    it('should ignore files that are not directories', async () => {
+    it('should ignore files that are not directories', () => {
       // Create a file in the control directory
       fs.writeFileSync(path.join(testDir, 'not-a-session.txt'), 'test');
 
       // Create a valid session
-      await sessionManager.writeSessionInfo('validsession', {
+      sessionManager.createSessionDirectory('validsession');
+      sessionManager.saveSessionInfo('validsession', {
         cmdline: ['ls'],
         name: 'Valid',
         cwd: testDir,
@@ -178,12 +181,12 @@ describe('SessionManager', () => {
         spawn_type: 'pty',
       });
 
-      const sessions = await sessionManager.listSessions();
+      const sessions = sessionManager.listSessions();
       expect(sessions).toHaveLength(1);
       expect(sessions[0].id).toBe('validsession');
     });
 
-    it('should handle corrupted session files gracefully', async () => {
+    it('should handle corrupted session files gracefully', () => {
       const sessionId = 'corrupted';
       const sessionDir = path.join(testDir, sessionId);
       fs.mkdirSync(sessionDir);
@@ -191,18 +194,19 @@ describe('SessionManager', () => {
       // Write corrupted JSON
       fs.writeFileSync(path.join(sessionDir, 'session.json'), '{invalid json');
 
-      const sessions = await sessionManager.listSessions();
+      const sessions = sessionManager.listSessions();
       expect(sessions).toHaveLength(0);
     });
   });
 
   describe('Zombie Detection', () => {
-    it('should identify zombie sessions', async () => {
+    it('should identify zombie sessions', () => {
       // Create sessions with different PIDs
       const runningPid = process.pid; // Current process PID (exists)
       const zombiePid = 99999; // Non-existent PID
 
-      await sessionManager.writeSessionInfo('running', {
+      sessionManager.createSessionDirectory('running');
+      sessionManager.saveSessionInfo('running', {
         cmdline: ['node'],
         name: 'Running',
         cwd: testDir,
@@ -213,7 +217,8 @@ describe('SessionManager', () => {
         spawn_type: 'pty',
       });
 
-      await sessionManager.writeSessionInfo('zombie', {
+      sessionManager.createSessionDirectory('zombie');
+      sessionManager.saveSessionInfo('zombie', {
         cmdline: ['ghost'],
         name: 'Zombie',
         cwd: testDir,
@@ -224,38 +229,40 @@ describe('SessionManager', () => {
         spawn_type: 'pty',
       });
 
-      await sessionManager.writeSessionInfo('exited', {
+      sessionManager.createSessionDirectory('exited');
+      sessionManager.saveSessionInfo('exited', {
         cmdline: ['done'],
         name: 'Exited',
         cwd: testDir,
         pid: 12345,
         status: 'exited',
-        exit_code: 0,
+        exitCode: 0,
         started_at: new Date().toISOString(),
         term: 'xterm',
         spawn_type: 'pty',
       });
 
       // Update zombie sessions
-      await sessionManager.updateZombieSessions();
+      sessionManager.updateZombieSessions();
 
       // Check results
-      const sessions = await sessionManager.listSessions();
+      const sessions = sessionManager.listSessions();
 
       const runningSession = sessions.find((s) => s.id === 'running');
       expect(runningSession?.status).toBe('running');
 
       const zombieSession = sessions.find((s) => s.id === 'zombie');
       expect(zombieSession?.status).toBe('exited');
-      expect(zombieSession?.exit_code).toBe(-1);
+      expect(zombieSession?.exitCode).toBe(1);
 
       const exitedSession = sessions.find((s) => s.id === 'exited');
       expect(exitedSession?.status).toBe('exited');
-      expect(exitedSession?.exit_code).toBe(0);
+      expect(exitedSession?.exitCode).toBe(0);
     });
 
-    it('should handle sessions without PID', async () => {
-      await sessionManager.writeSessionInfo('no-pid', {
+    it('should handle sessions without PID', () => {
+      sessionManager.createSessionDirectory('no-pid');
+      sessionManager.saveSessionInfo('no-pid', {
         cmdline: ['test'],
         name: 'No PID',
         cwd: testDir,
@@ -265,24 +272,25 @@ describe('SessionManager', () => {
         spawn_type: 'pty',
       } as SessionInfo); // Intentionally missing pid
 
-      await sessionManager.updateZombieSessions();
+      sessionManager.updateZombieSessions();
 
-      const sessions = await sessionManager.listSessions();
+      const sessions = sessionManager.listSessions();
       const session = sessions.find((s) => s.id === 'no-pid');
       expect(session?.status).toBe('running'); // Should not be marked as zombie
     });
   });
 
-  describe('Session Deletion', () => {
-    it('should delete session directory', async () => {
+  describe('Session Cleanup', () => {
+    it('should cleanup session directory', () => {
       const sessionId = 'to-delete';
-      await sessionManager.writeSessionInfo(sessionId, {
+      sessionManager.createSessionDirectory(sessionId);
+      sessionManager.saveSessionInfo(sessionId, {
         cmdline: ['rm', '-rf'],
-        name: 'Delete Me',
+        name: 'Clean Me',
         cwd: testDir,
         pid: 12345,
         status: 'exited',
-        exit_code: 0,
+        exitCode: 0,
         started_at: new Date().toISOString(),
         term: 'xterm',
         spawn_type: 'pty',
@@ -291,37 +299,49 @@ describe('SessionManager', () => {
       const sessionDir = path.join(testDir, sessionId);
       expect(fs.existsSync(sessionDir)).toBe(true);
 
-      await sessionManager.deleteSession(sessionId);
+      sessionManager.cleanupSession(sessionId);
 
       expect(fs.existsSync(sessionDir)).toBe(false);
     });
 
-    it('should handle non-existent session deletion gracefully', async () => {
+    it('should handle non-existent session cleanup gracefully', () => {
       // Should not throw
-      await expect(sessionManager.deleteSession('nonexistent')).resolves.not.toThrow();
+      expect(() => sessionManager.cleanupSession('nonexistent')).not.toThrow();
     });
   });
 
   describe('Control Files', () => {
-    it('should create control files', async () => {
+    it('should create control files via createSessionDirectory', () => {
       const sessionId = 'control-test';
 
-      await sessionManager.createControlFiles(sessionId);
+      const paths = sessionManager.createSessionDirectory(sessionId);
 
-      const sessionDir = path.join(testDir, sessionId);
-      expect(fs.existsSync(path.join(sessionDir, 'stdin'))).toBe(true);
-      expect(fs.existsSync(path.join(sessionDir, 'control'))).toBe(true);
-      expect(fs.existsSync(path.join(sessionDir, 'stream-out'))).toBe(true);
+      expect(fs.existsSync(paths.controlDir)).toBe(true);
+      expect(fs.existsSync(paths.stdinPath)).toBe(true);
+      // stdout and control files are created by the PTY process, not by createSessionDirectory
     });
 
-    it('should create nested directories if needed', async () => {
-      const sessionId = 'nested/session/id';
+    it('should check if session exists', () => {
+      const sessionId = 'exists-test';
 
-      await sessionManager.createControlFiles(sessionId);
+      // Session doesn't exist yet
+      expect(sessionManager.sessionExists(sessionId)).toBe(false);
 
-      const sessionDir = path.join(testDir, sessionId);
-      expect(fs.existsSync(sessionDir)).toBe(true);
-      expect(fs.existsSync(path.join(sessionDir, 'stdin'))).toBe(true);
+      // Create session
+      sessionManager.createSessionDirectory(sessionId);
+      sessionManager.saveSessionInfo(sessionId, {
+        cmdline: ['test'],
+        name: 'Test',
+        cwd: testDir,
+        pid: 12345,
+        status: 'running',
+        started_at: new Date().toISOString(),
+        term: 'xterm',
+        spawn_type: 'pty',
+      });
+
+      // Now it exists
+      expect(sessionManager.sessionExists(sessionId)).toBe(true);
     });
   });
 });

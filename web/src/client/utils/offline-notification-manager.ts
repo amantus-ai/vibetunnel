@@ -186,7 +186,7 @@ export class OfflineNotificationManager {
         logger.warn('notification max retries reached, removing:', notification.id);
       } else {
         // Schedule retry with exponential backoff
-        const backoffMs = Math.pow(2, notification.retryCount) * 1000;
+        const backoffMs = 2 ** notification.retryCount * 1000;
         notification.nextRetry = Date.now() + backoffMs;
 
         await this.updateNotification(notification);

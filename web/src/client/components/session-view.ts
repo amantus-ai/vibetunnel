@@ -13,20 +13,20 @@
  * @listens file-selected - From file browser when file is selected
  * @listens browser-cancel - From file browser when cancelled
  */
-import { LitElement, PropertyValues, html } from 'lit';
+import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from './session-list.js';
 import './terminal.js';
 import './file-browser.js';
 import './clickable-path.js';
-import type { Terminal } from './terminal.js';
-import { CastConverter } from '../utils/cast-converter.js';
-import {
-  TerminalPreferencesManager,
-  COMMON_TERMINAL_WIDTHS,
-} from '../utils/terminal-preferences.js';
-import { createLogger } from '../utils/logger.js';
 import { AuthClient } from '../services/auth-client.js';
+import { CastConverter } from '../utils/cast-converter.js';
+import { createLogger } from '../utils/logger.js';
+import {
+  COMMON_TERMINAL_WIDTHS,
+  TerminalPreferencesManager,
+} from '../utils/terminal-preferences.js';
+import type { Terminal } from './terminal.js';
 
 const logger = createLogger('session-view');
 
@@ -902,7 +902,7 @@ export class SessionView extends LitElement {
     const terminal = this.querySelector('vibe-terminal') as HTMLElement & {
       handleFitToggle?: () => void;
     };
-    if (terminal && terminal.handleFitToggle) {
+    if (terminal?.handleFitToggle) {
       // Use the terminal's own toggle method which handles scroll position correctly
       terminal.handleFitToggle();
     }
@@ -932,8 +932,8 @@ export class SessionView extends LitElement {
   }
 
   private handleCustomWidthSubmit() {
-    const width = parseInt(this.customWidth, 10);
-    if (!isNaN(width) && width >= 20 && width <= 500) {
+    const width = Number.parseInt(this.customWidth, 10);
+    if (!Number.isNaN(width) && width >= 20 && width <= 500) {
       this.handleWidthSelect(width);
       this.customWidth = '';
     }
@@ -1168,15 +1168,19 @@ export class SessionView extends LitElement {
             <div class="text-dark-text min-w-0 flex-1 overflow-hidden">
               <div
                 class="text-accent-green text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"
-                title="${this.session.name ||
-                (Array.isArray(this.session.command)
-                  ? this.session.command.join(' ')
-                  : this.session.command)}"
+                title="${
+                  this.session.name ||
+                  (Array.isArray(this.session.command)
+                    ? this.session.command.join(' ')
+                    : this.session.command)
+                }"
               >
-                ${this.session.name ||
-                (Array.isArray(this.session.command)
-                  ? this.session.command.join(' ')
-                  : this.session.command)}
+                ${
+                  this.session.name ||
+                  (Array.isArray(this.session.command)
+                    ? this.session.command.join(' ')
+                    : this.session.command)
+                }
               </div>
               <div class="text-xs opacity-75 mt-0.5">
                 <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
@@ -1198,14 +1202,15 @@ export class SessionView extends LitElement {
             <button
               class="btn-secondary font-mono text-xs px-2 py-1 flex-shrink-0 width-selector-button"
               @click=${this.handleMaxWidthToggle}
-              title="Terminal width: ${this.terminalMaxCols === 0
-                ? 'Unlimited'
-                : this.terminalMaxCols + ' columns'}"
+              title="Terminal width: ${
+                this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`
+              }"
             >
               ${this.getCurrentWidthLabel()}
             </button>
-            ${this.showWidthSelector
-              ? html`
+            ${
+              this.showWidthSelector
+                ? html`
                   <div
                     class="width-selector-container absolute top-8 right-0 bg-dark-bg-secondary border border-dark-border rounded-md shadow-lg z-50 min-w-48"
                   >
@@ -1215,9 +1220,11 @@ export class SessionView extends LitElement {
                         (width) => html`
                           <button
                             class="w-full text-left px-2 py-1 text-xs hover:bg-dark-border rounded-sm flex justify-between items-center
-                              ${this.terminalMaxCols === width.value
-                              ? 'bg-dark-border text-accent-green'
-                              : 'text-dark-text'}"
+                              ${
+                                this.terminalMaxCols === width.value
+                                  ? 'bg-dark-border text-accent-green'
+                                  : 'text-dark-text'
+                              }"
                             @click=${() => this.handleWidthSelect(width.value)}
                           >
                             <span class="font-mono">${width.label}</span>
@@ -1242,9 +1249,11 @@ export class SessionView extends LitElement {
                           <button
                             class="btn-secondary text-xs px-2 py-1"
                             @click=${this.handleCustomWidthSubmit}
-                            ?disabled=${!this.customWidth ||
-                            parseInt(this.customWidth) < 20 ||
-                            parseInt(this.customWidth) > 500}
+                            ?disabled=${
+                              !this.customWidth ||
+                              Number.parseInt(this.customWidth) < 20 ||
+                              Number.parseInt(this.customWidth) > 500
+                            }
                           >
                             Set
                           </button>
@@ -1282,14 +1291,16 @@ export class SessionView extends LitElement {
                     </div>
                   </div>
                 `
-              : ''}
+                : ''
+            }
             <div class="flex flex-col items-end gap-0">
               <span class="${this.getStatusColor()} text-xs flex items-center gap-1">
                 <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
                 ${this.getStatusText().toUpperCase()}
               </span>
-              ${this.terminalCols > 0 && this.terminalRows > 0
-                ? html`
+              ${
+                this.terminalCols > 0 && this.terminalRows > 0
+                  ? html`
                     <span
                       class="text-dark-text-muted text-xs opacity-60"
                       style="font-size: 10px; line-height: 1;"
@@ -1297,21 +1308,22 @@ export class SessionView extends LitElement {
                       ${this.terminalCols}×${this.terminalRows}
                     </span>
                   `
-                : ''}
+                  : ''
+              }
             </div>
           </div>
         </div>
 
         <!-- Terminal Container -->
         <div
-          class="flex-1 bg-black overflow-hidden min-h-0 relative ${this.session?.status ===
-          'exited'
-            ? 'session-exited'
-            : ''}"
+          class="flex-1 bg-black overflow-hidden min-h-0 relative ${
+            this.session?.status === 'exited' ? 'session-exited' : ''
+          }"
           id="terminal-container"
         >
-          ${this.loading
-            ? html`
+          ${
+            this.loading
+              ? html`
                 <!-- Loading overlay -->
                 <div
                   class="absolute inset-0 bg-dark-bg bg-opacity-80 flex items-center justify-center z-10"
@@ -1322,7 +1334,8 @@ export class SessionView extends LitElement {
                   </div>
                 </div>
               `
-            : ''}
+              : ''
+          }
           <!-- Terminal Component -->
           <vibe-terminal
             .sessionId=${this.session?.id || ''}
@@ -1337,8 +1350,9 @@ export class SessionView extends LitElement {
         </div>
 
         <!-- Floating Session Exited Banner (outside terminal container to avoid filter effects) -->
-        ${this.session?.status === 'exited'
-          ? html`
+        ${
+          this.session?.status === 'exited'
+            ? html`
               <div
                 class="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
               >
@@ -1349,11 +1363,13 @@ export class SessionView extends LitElement {
                 </div>
               </div>
             `
-          : ''}
+            : ''
+        }
 
         <!-- Mobile Input Controls -->
-        ${this.isMobile && !this.showMobileInput
-          ? html`
+        ${
+          this.isMobile && !this.showMobileInput
+            ? html`
               <div class="flex-shrink-0 p-4" style="background: black;">
                 <!-- First row: Arrow keys -->
                 <div class="flex gap-2 mb-2">
@@ -1418,11 +1434,13 @@ export class SessionView extends LitElement {
                 </div>
               </div>
             `
-          : ''}
+            : ''
+        }
 
         <!-- Full-Screen Input Overlay (only when opened) -->
-        ${this.isMobile && this.showMobileInput
-          ? html`
+        ${
+          this.isMobile && this.showMobileInput
+            ? html`
               <div
                 class="fixed inset-0 z-50 flex flex-col"
                 style="background: rgba(0, 0, 0, 0.8);"
@@ -1495,11 +1513,13 @@ export class SessionView extends LitElement {
                 </div>
               </div>
             `
-          : ''}
+            : ''
+        }
 
         <!-- Ctrl+Alpha Overlay -->
-        ${this.isMobile && this.showCtrlAlpha
-          ? html`
+        ${
+          this.isMobile && this.showCtrlAlpha
+            ? html`
               <div
                 class="fixed inset-0 z-50 flex items-center justify-center"
                 style="background: rgba(0, 0, 0, 0.8);"
@@ -1518,8 +1538,9 @@ export class SessionView extends LitElement {
                   </div>
 
                   <!-- Current sequence display -->
-                  ${this.ctrlSequence.length > 0
-                    ? html`
+                  ${
+                    this.ctrlSequence.length > 0
+                      ? html`
                         <div class="text-center mb-4 p-2 border border-vs-muted rounded bg-vs-bg">
                           <div class="text-xs text-vs-muted mb-1">Current sequence:</div>
                           <div class="text-sm text-vs-accent font-bold">
@@ -1527,7 +1548,8 @@ export class SessionView extends LitElement {
                           </div>
                         </div>
                       `
-                    : ''}
+                      : ''
+                  }
 
                   <!-- Grid of A-Z buttons -->
                   <div class="grid grid-cols-6 gap-2 mb-4">
@@ -1583,8 +1605,9 @@ export class SessionView extends LitElement {
                     >
                       CANCEL
                     </button>
-                    ${this.ctrlSequence.length > 0
-                      ? html`
+                    ${
+                      this.ctrlSequence.length > 0
+                        ? html`
                           <button
                             class="font-mono px-3 py-2 text-sm transition-all cursor-pointer btn-ghost"
                             @click=${this.handleClearCtrlSequence}
@@ -1598,12 +1621,14 @@ export class SessionView extends LitElement {
                             SEND
                           </button>
                         `
-                      : ''}
+                        : ''
+                    }
                   </div>
                 </div>
               </div>
             `
-          : ''}
+            : ''
+        }
 
         <!-- File Browser Modal -->
         <file-browser

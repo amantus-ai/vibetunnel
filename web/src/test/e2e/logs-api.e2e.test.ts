@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { spawn, type ChildProcess } from 'child_process';
-import * as path from 'path';
+import { type ChildProcess, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { waitForServerPort } from '../utils/port-detection';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -27,36 +28,18 @@ async function startServer(
 ): Promise<{ process: ChildProcess; port: number }> {
   const cliPath = path.join(process.cwd(), 'src', 'cli.ts');
 
-  return new Promise((resolve, reject) => {
-    const serverProcess = spawn('npx', ['tsx', cliPath, ...args], {
-      env: { ...process.env, ...env },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let port = 0;
-    const portListener = (data: Buffer) => {
-      const output = data.toString();
-      const portMatch = output.match(/VibeTunnel Server running on http:\/\/localhost:(\d+)/);
-      if (portMatch) {
-        port = parseInt(portMatch[1], 10);
-        serverProcess.stdout?.off('data', portListener);
-        resolve({ process: serverProcess, port });
-      }
-    };
-
-    serverProcess.stdout?.on('data', portListener);
-    serverProcess.stderr?.on('data', (data) => {
-      console.error(`Server stderr: ${data}`);
-    });
-
-    serverProcess.on('error', reject);
-
-    setTimeout(() => {
-      if (port === 0) {
-        reject(new Error('Server did not report port within timeout'));
-      }
-    }, 5000);
+  const serverProcess = spawn('npx', ['tsx', cliPath, ...args], {
+    env: { ...process.env, ...env },
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
+
+  try {
+    const port = await waitForServerPort(serverProcess);
+    return { process: serverProcess, port };
+  } catch (error) {
+    serverProcess.kill();
+    throw error;
+  }
 }
 
 describe('Logs API Tests', () => {

@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../services/auth-service.js';
+import type { NextFunction, Request, Response } from 'express';
+import type { AuthService } from '../services/auth-service.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('auth');
@@ -93,7 +93,7 @@ export function createAuthMiddleware(config: AuthConfig) {
     const tokenQuery = req.query.token as string;
 
     // Check for Basic auth (username:password)
-    if (authHeader && authHeader.startsWith('Basic ')) {
+    if (authHeader?.startsWith('Basic ')) {
       const credentials = authHeader.substring(6);
       const decoded = Buffer.from(credentials, 'base64').toString('utf-8');
       const [username, password] = decoded.split(':');
@@ -111,7 +111,7 @@ export function createAuthMiddleware(config: AuthConfig) {
     }
 
     // Check for Bearer token
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
 
       // In HQ mode, check if this is a valid HQ-to-remote bearer token
@@ -172,7 +172,7 @@ export function createAuthMiddleware(config: AuthConfig) {
     logger.error(`Unauthorized request to ${req.method} ${req.path} from ${req.ip}`);
     logger.debug('Auth debug:', {
       hasAuthHeader: !!authHeader,
-      authHeaderPrefix: authHeader ? authHeader.substring(0, 20) + '...' : 'none',
+      authHeaderPrefix: authHeader ? `${authHeader.substring(0, 20)}...` : 'none',
       hasTokenQuery: !!tokenQuery,
       config: {
         noAuth: config.noAuth,

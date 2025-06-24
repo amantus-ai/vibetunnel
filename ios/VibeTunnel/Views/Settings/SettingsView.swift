@@ -40,7 +40,7 @@ struct SettingsView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Theme.Spacing.medium)
                             .foregroundColor(selectedTab == tab ? Theme.Colors.primaryAccent : Theme.Colors
-                                                .terminalForeground.opacity(0.5)
+                                .terminalForeground.opacity(0.5)
                             )
                             .background(
                                 selectedTab == tab ? Theme.Colors.primaryAccent.opacity(0.1) : Color.clear
@@ -209,13 +209,13 @@ struct AdvancedSettingsView: View {
     @State private var showingSystemLogs = false
 
     #if targetEnvironment(macCatalyst)
-    @AppStorage("macWindowStyle")
-    private var macWindowStyleRaw = "standard"
-    @StateObject private var windowManager = MacCatalystWindowManager.shared
+        @AppStorage("macWindowStyle")
+        private var macWindowStyleRaw = "standard"
+        @StateObject private var windowManager = MacCatalystWindowManager.shared
 
-    private var macWindowStyle: MacWindowStyle {
-        macWindowStyleRaw == "inline" ? .inline : .standard
-    }
+        private var macWindowStyle: MacWindowStyle {
+            macWindowStyleRaw == "inline" ? .inline : .standard
+        }
     #endif
 
     var body: some View {
@@ -268,43 +268,43 @@ struct AdvancedSettingsView: View {
             }
 
             #if targetEnvironment(macCatalyst)
-            // Mac Catalyst Section
-            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                Text("Mac Catalyst")
-                    .font(.headline)
-                    .foregroundColor(Theme.Colors.terminalForeground)
+                // Mac Catalyst Section
+                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                    Text("Mac Catalyst")
+                        .font(.headline)
+                        .foregroundColor(Theme.Colors.terminalForeground)
 
-                VStack(spacing: Theme.Spacing.medium) {
-                    // Window Style Picker
-                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                        Text("Window Style")
-                            .font(Theme.Typography.terminalSystem(size: 14))
-                            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
+                    VStack(spacing: Theme.Spacing.medium) {
+                        // Window Style Picker
+                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                            Text("Window Style")
+                                .font(Theme.Typography.terminalSystem(size: 14))
+                                .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
 
-                        Picker("Window Style", selection: $macWindowStyleRaw) {
-                            Label("Standard", systemImage: "macwindow")
-                                .tag("standard")
-                            Label("Inline Traffic Lights", systemImage: "macwindow.badge.plus")
-                                .tag("inline")
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
-                        .onChange(of: macWindowStyleRaw) { _, newValue in
-                            let style: MacWindowStyle = newValue == "inline" ? .inline : .standard
-                            windowManager.setWindowStyle(style)
-                        }
+                            Picker("Window Style", selection: $macWindowStyleRaw) {
+                                Label("Standard", systemImage: "macwindow")
+                                    .tag("standard")
+                                Label("Inline Traffic Lights", systemImage: "macwindow.badge.plus")
+                                    .tag("inline")
+                            }
+                            .pickerStyle(SegmentedPickerStyle())
+                            .onChange(of: macWindowStyleRaw) { _, newValue in
+                                let style: MacWindowStyle = newValue == "inline" ? .inline : .standard
+                                windowManager.setWindowStyle(style)
+                            }
 
-                        Text(macWindowStyle == .inline ?
+                            Text(macWindowStyle == .inline ?
                                 "Traffic light buttons appear inline with content" :
                                 "Standard macOS title bar with traffic lights"
-                        )
-                        .font(Theme.Typography.terminalSystem(size: 12))
-                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
+                            )
+                            .font(Theme.Typography.terminalSystem(size: 12))
+                            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
+                        }
+                        .padding()
+                        .background(Theme.Colors.cardBackground)
+                        .cornerRadius(Theme.CornerRadius.card)
                     }
-                    .padding()
-                    .background(Theme.Colors.cardBackground)
-                    .cornerRadius(Theme.CornerRadius.card)
                 }
-            }
             #endif
 
             // Developer Section

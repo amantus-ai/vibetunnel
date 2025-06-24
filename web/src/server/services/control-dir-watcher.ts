@@ -1,11 +1,11 @@
+import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
-import chalk from 'chalk';
-import { RemoteRegistry } from './remote-registry.js';
-import { HQClient } from './hq-client.js';
+import type { PtyManager } from '../pty/index.js';
 import { isShuttingDown } from '../server.js';
-import { PtyManager } from '../pty/index.js';
 import { createLogger } from '../utils/logger.js';
+import type { HQClient } from './hq-client.js';
+import type { RemoteRegistry } from './remote-registry.js';
 
 const logger = createLogger('control-dir-watcher');
 

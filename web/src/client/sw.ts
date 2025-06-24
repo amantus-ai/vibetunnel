@@ -296,7 +296,7 @@ async function clearAllNotifications(): Promise<void> {
     const notifications = await self.registration.getNotifications();
 
     for (const notification of notifications) {
-      if (notification.tag && notification.tag.startsWith(NOTIFICATION_TAG_PREFIX)) {
+      if (notification.tag?.startsWith(NOTIFICATION_TAG_PREFIX)) {
         notification.close();
       }
     }

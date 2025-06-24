@@ -1,6 +1,6 @@
-import { authenticate as pamAuthenticate } from './authenticate-pam-loader.js';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
+import { authenticate as pamAuthenticate } from './authenticate-pam-loader.js';
 
 interface AuthChallenge {
   challengeId: string;

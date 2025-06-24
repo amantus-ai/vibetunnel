@@ -5,15 +5,15 @@
  * and file operations to maintain compatibility with tty-fwd format.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { PtyError } from './types.js';
-import { ProcessUtils } from './process-utils.js';
-import { Session, SessionInfo } from '../../shared/types.js';
-import { spawnSync } from 'child_process';
-import { createLogger } from '../utils/logger.js';
 import chalk from 'chalk';
+import { spawnSync } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import type { Session, SessionInfo } from '../../shared/types.js';
+import { createLogger } from '../utils/logger.js';
+import { ProcessUtils } from './process-utils.js';
+import { PtyError } from './types.js';
 
 const logger = createLogger('session-manager');
 
@@ -102,7 +102,7 @@ export class SessionManager {
 
       // Write to temporary file first, then move to final location (atomic write)
       const sessionJsonPath = path.join(this.controlPath, sessionId, 'session.json');
-      const tempPath = sessionJsonPath + '.tmp';
+      const tempPath = `${sessionJsonPath}.tmp`;
       fs.writeFileSync(tempPath, sessionInfoStr, 'utf8');
       fs.renameSync(tempPath, sessionJsonPath);
       logger.debug(`session info saved for ${sessionId}`);

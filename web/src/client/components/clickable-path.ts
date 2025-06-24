@@ -7,10 +7,10 @@
  * @fires path-copied - When path is successfully copied (detail: { path: string })
  * @fires path-copy-failed - When path copy fails (detail: { path: string, error: string })
  */
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { formatPathForDisplay, copyToClipboard } from '../utils/path-utils.js';
 import { createLogger } from '../utils/logger.js';
+import { copyToClipboard, formatPathForDisplay } from '../utils/path-utils.js';
 import './copy-icon.js';
 
 const logger = createLogger('clickable-path');
@@ -68,8 +68,9 @@ export class ClickablePath extends LitElement {
 
     return html`
       <div
-        class="truncate cursor-pointer hover:text-accent-green transition-colors inline-flex items-center gap-1 max-w-full ${this
-          .class}"
+        class="truncate cursor-pointer hover:text-accent-green transition-colors inline-flex items-center gap-1 max-w-full ${
+          this.class
+        }"
         title="Click to copy path"
         @click=${this.handleClick}
       >

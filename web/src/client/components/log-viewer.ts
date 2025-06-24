@@ -1,4 +1,4 @@
-import { LitElement, html, TemplateResult } from 'lit';
+import { html, LitElement, type TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { AuthClient } from '../services/auth-client.js';
 
@@ -141,7 +141,7 @@ export class LogViewer extends LitElement {
         };
       } else if (currentLog) {
         // This is a continuation line - append to the current log's message
-        currentLog.message += '\n' + line;
+        currentLog.message += `\n${line}`;
       } else {
         // Unparseable line with no current log - create a new entry
         logs.push({
@@ -298,183 +298,50 @@ export class LogViewer extends LitElement {
     return html`
       ${scrollbarStyles}
       <div class="flex flex-col h-full bg-dark-bg text-dark-text font-mono">
-        <!-- Header - single row on desktop, two rows on mobile -->
-        <div class="bg-dark-bg-secondary border-b border-dark-border p-3 sm:p-4">
-          <!-- Mobile layout (two rows) -->
-          <div class="sm:hidden">
-            <!-- Top row with back button and title -->
-            <div class="flex items-center gap-2 mb-3">
-              <!-- Back button -->
-              <button
-                class="p-2 bg-dark-bg border border-dark-border rounded text-sm text-dark-text hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-1 flex-shrink-0"
-                @click=${() => (window.location.href = '/')}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
-              </button>
-
-              <h1
-                class="text-base font-bold text-accent-green flex items-center gap-2 flex-shrink-0"
-              >
-                <terminal-icon size="20"></terminal-icon>
-                <span>System Logs</span>
-              </h1>
-
-              <!-- Auto-scroll toggle (mobile position) -->
-              <div class="ml-auto">
-                <button
-                  class="p-2 text-xs uppercase font-bold rounded transition-colors ${this.autoScroll
-                    ? 'bg-accent-green text-dark-bg'
-                    : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'}"
-                  @click=${() => {
-                    this.autoScroll = !this.autoScroll;
-                  }}
-                  title="Auto Scroll"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path d="M12 5v14M19 12l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <!-- Filters row -->
-            <div class="flex flex-wrap gap-2">
-              <!-- Search input -->
-              <input
-                type="text"
-                class="px-3 py-1.5 bg-dark-bg border border-dark-border rounded text-sm text-dark-text placeholder-dark-text-muted focus:outline-none focus:border-accent-green transition-colors w-full"
-                placeholder="Filter logs..."
-                .value=${this.filter}
-                @input=${(e: Event) => {
-                  this.filter = (e.target as HTMLInputElement).value;
-                }}
-              />
-
-              <!-- Filters container -->
-              <div class="flex gap-2 items-center">
-                <!-- Level filters -->
-                <div class="flex gap-1">
-                  ${levels.map(
-                    (level) => html`
-                      <button
-                        class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${this.levelFilter.has(
-                          level
-                        )
-                          ? level === 'error'
-                            ? 'bg-status-error text-dark-bg'
-                            : level === 'warn'
-                              ? 'bg-status-warning text-dark-bg'
-                              : level === 'debug'
-                                ? 'bg-dark-text-muted text-dark-bg'
-                                : 'bg-dark-text text-dark-bg'
-                          : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'}"
-                        @click=${() => this.toggleLevel(level)}
-                        title="${level} logs"
-                      >
-                        ${level === 'error'
-                          ? 'ERR'
-                          : level === 'warn'
-                            ? 'WRN'
-                            : level === 'debug'
-                              ? 'DBG'
-                              : 'LOG'}
-                      </button>
-                    `
-                  )}
-                </div>
-
-                <!-- Client/Server toggles -->
-                <div class="flex gap-1">
-                  <button
-                    class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${this
-                      .showClient
-                      ? 'bg-orange-500 text-dark-bg'
-                      : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'}"
-                    @click=${() => {
-                      this.showClient = !this.showClient;
-                    }}
-                    title="Client logs"
-                  >
-                    C
-                  </button>
-                  <button
-                    class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${this
-                      .showServer
-                      ? 'bg-accent-green text-dark-bg'
-                      : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'}"
-                    @click=${() => {
-                      this.showServer = !this.showServer;
-                    }}
-                    title="Server logs"
-                  >
-                    S
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Desktop layout (single row) -->
-          <div class="hidden sm:flex items-center gap-3">
-            <!-- Back button -->
-            <button
-              class="px-3 py-1.5 bg-dark-bg border border-dark-border rounded text-sm text-dark-text hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-2 flex-shrink-0"
-              @click=${() => (window.location.href = '/')}
+        <!-- Header -->
+        <div class="flex items-center gap-3 p-4 bg-dark-bg-secondary border-b border-dark-border">
+          <!-- Back button -->
+          <button
+            class="px-3 py-1.5 bg-dark-bg border border-dark-border rounded text-sm text-dark-text hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-2 flex-shrink-0"
+            @click=${() => (window.location.href = '/')}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-              Back
-            </button>
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Back
+          </button>
 
-            <h1 class="text-lg font-bold text-accent-green flex items-center gap-2 flex-shrink-0">
-              <terminal-icon size="24"></terminal-icon>
-              <span>System Logs</span>
-            </h1>
+          <h1 class="text-lg font-bold text-accent-green flex items-center gap-2 flex-shrink-0">
+            <terminal-icon size="24"></terminal-icon>
+            <span>System Logs</span>
+          </h1>
 
-            <div class="flex-1 flex flex-wrap gap-2 items-center justify-end">
-              <!-- Search input -->
-              <input
-                type="text"
-                class="px-3 py-1.5 bg-dark-bg border border-dark-border rounded text-sm text-dark-text placeholder-dark-text-muted focus:outline-none focus:border-accent-green transition-colors flex-1 sm:flex-initial sm:w-64 md:w-80"
-                placeholder="Filter logs..."
-                .value=${this.filter}
-                @input=${(e: Event) => {
-                  this.filter = (e.target as HTMLInputElement).value;
-                }}
-              />
+          <div class="flex-1 flex flex-wrap gap-2 items-center justify-end">
+            <!-- Search input -->
+            <input
+              type="text"
+              class="px-3 py-1.5 bg-dark-bg border border-dark-border rounded text-sm text-dark-text placeholder-dark-text-muted focus:outline-none focus:border-accent-green transition-colors flex-1 sm:flex-initial sm:w-64 md:w-80"
+              placeholder="Filter logs..."
+              .value=${this.filter}
+              @input=${(e: Event) => {
+                this.filter = (e.target as HTMLInputElement).value;
+              }}
+            />
 
-              <!-- Level filters -->
-              <div class="flex gap-1">
-                ${levels.map(
-                  (level) => html`
-                    <button
-                      class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${this.levelFilter.has(
-                        level
-                      )
+            <!-- Level filters -->
+            <div class="flex gap-1">
+              ${levels.map(
+                (level) => html`
+                  <button
+                    class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
+                      this.levelFilter.has(level)
                         ? level === 'error'
                           ? 'bg-status-error text-dark-bg'
                           : level === 'warn'
@@ -482,54 +349,57 @@ export class LogViewer extends LitElement {
                             : level === 'debug'
                               ? 'bg-dark-text-muted text-dark-bg'
                               : 'bg-dark-text text-dark-bg'
-                        : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'}"
-                      @click=${() => this.toggleLevel(level)}
-                    >
-                      ${level}
-                    </button>
-                  `
-                )}
-              </div>
+                        : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                    }"
+                    @click=${() => this.toggleLevel(level)}
+                  >
+                    ${level}
+                  </button>
+                `
+              )}
+            </div>
 
-              <!-- Client/Server toggles -->
-              <div class="flex gap-1">
-                <button
-                  class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${this
-                    .showClient
-                    ? 'bg-orange-500 text-dark-bg'
-                    : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'}"
-                  @click=${() => {
-                    this.showClient = !this.showClient;
-                  }}
-                >
-                  CLIENT
-                </button>
-                <button
-                  class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${this
-                    .showServer
-                    ? 'bg-accent-green text-dark-bg'
-                    : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'}"
-                  @click=${() => {
-                    this.showServer = !this.showServer;
-                  }}
-                >
-                  SERVER
-                </button>
-              </div>
-
-              <!-- Auto-scroll toggle -->
+            <!-- Client/Server toggles -->
+            <div class="flex gap-1">
               <button
-                class="px-3 py-1 text-xs uppercase font-bold rounded transition-colors ${this
-                  .autoScroll
-                  ? 'bg-accent-green text-dark-bg'
-                  : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'}"
+                class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
+                  this.showClient
+                    ? 'bg-orange-500 text-dark-bg'
+                    : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                }"
                 @click=${() => {
-                  this.autoScroll = !this.autoScroll;
+                  this.showClient = !this.showClient;
                 }}
               >
-                AUTO SCROLL
+                CLIENT
+              </button>
+              <button
+                class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
+                  this.showServer
+                    ? 'bg-accent-green text-dark-bg'
+                    : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                }"
+                @click=${() => {
+                  this.showServer = !this.showServer;
+                }}
+              >
+                SERVER
               </button>
             </div>
+
+            <!-- Auto-scroll toggle -->
+            <button
+              class="px-3 py-1 text-xs uppercase font-bold rounded transition-colors ${
+                this.autoScroll
+                  ? 'bg-accent-green text-dark-bg'
+                  : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+              }"
+              @click=${() => {
+                this.autoScroll = !this.autoScroll;
+              }}
+            >
+              AUTO SCROLL
+            </button>
           </div>
         </div>
 
@@ -537,23 +407,24 @@ export class LogViewer extends LitElement {
         <div
           class="log-container flex-1 overflow-y-auto p-4 bg-dark-bg font-mono text-xs leading-relaxed"
         >
-          ${this.filteredLogs.length === 0
-            ? html`
+          ${
+            this.filteredLogs.length === 0
+              ? html`
                 <div class="flex items-center justify-center h-full text-dark-text-muted">
                   <div class="text-center">
                     <div>No logs to display</div>
                   </div>
                 </div>
               `
-            : this.filteredLogs.map((log) => {
-                const isMultiline = log.message.includes('\n');
-                const messageLines = log.message.split('\n');
+              : this.filteredLogs.map((log) => {
+                  const isMultiline = log.message.includes('\n');
+                  const messageLines = log.message.split('\n');
 
-                return html`
+                  return html`
                   <div
-                    class="group hover:bg-dark-bg-secondary/50 transition-colors rounded ${log.isClient
-                      ? 'bg-orange-500/5 pl-2'
-                      : 'pl-2'}"
+                    class="group hover:bg-dark-bg-secondary/50 transition-colors rounded ${
+                      log.isClient ? 'bg-orange-500/5 pl-2' : 'pl-2'
+                    }"
                   >
                     <!-- Desktop layout (hidden on mobile) -->
                     <div class="hidden sm:flex items-start gap-2 py-0.5">
@@ -564,28 +435,31 @@ export class LogViewer extends LitElement {
 
                       <!-- Level -->
                       <span
-                        class="w-10 text-center font-mono uppercase tracking-wider flex-shrink-0 ${log.level ===
-                        'error'
-                          ? 'text-red-500 bg-red-500/20 px-1 rounded font-bold'
-                          : log.level === 'warn'
-                            ? 'text-yellow-500 bg-yellow-500/20 px-1 rounded font-bold'
-                            : log.level === 'debug'
-                              ? 'text-gray-600'
-                              : 'text-gray-500'}"
-                        >${log.level === 'error'
-                          ? 'ERR'
-                          : log.level === 'warn'
-                            ? 'WRN'
-                            : log.level === 'debug'
-                              ? 'DBG'
-                              : 'LOG'}</span
+                        class="w-10 text-center font-mono uppercase tracking-wider flex-shrink-0 ${
+                          log.level === 'error'
+                            ? 'text-red-500 bg-red-500/20 px-1 rounded font-bold'
+                            : log.level === 'warn'
+                              ? 'text-yellow-500 bg-yellow-500/20 px-1 rounded font-bold'
+                              : log.level === 'debug'
+                                ? 'text-gray-600'
+                                : 'text-gray-500'
+                        }"
+                        >${
+                          log.level === 'error'
+                            ? 'ERR'
+                            : log.level === 'warn'
+                              ? 'WRN'
+                              : log.level === 'debug'
+                                ? 'DBG'
+                                : 'LOG'
+                        }</span
                       >
 
                       <!-- Source indicator -->
                       <span
-                        class="flex-shrink-0 ${log.isClient
-                          ? 'text-orange-400 font-bold'
-                          : 'text-green-600'}"
+                        class="flex-shrink-0 ${
+                          log.isClient ? 'text-orange-400 font-bold' : 'text-green-600'
+                        }"
                         >${log.isClient ? '◆ C' : '▸ S'}</span
                       >
 
@@ -597,15 +471,17 @@ export class LogViewer extends LitElement {
 
                       <!-- Message -->
                       <span
-                        class="flex-1 ${log.level === 'error'
-                          ? 'text-red-400'
-                          : log.level === 'warn'
-                            ? 'text-yellow-400'
-                            : log.level === 'debug'
-                              ? 'text-gray-600'
-                              : log.isClient
-                                ? 'text-orange-200'
-                                : 'text-gray-300'}"
+                        class="flex-1 ${
+                          log.level === 'error'
+                            ? 'text-red-400'
+                            : log.level === 'warn'
+                              ? 'text-yellow-400'
+                              : log.level === 'debug'
+                                ? 'text-gray-600'
+                                : log.isClient
+                                  ? 'text-orange-200'
+                                  : 'text-gray-300'
+                        }"
                         >${messageLines[0]}</span
                       >
                     </div>
@@ -617,13 +493,15 @@ export class LogViewer extends LitElement {
                           >${this.formatRelativeTime(log.timestamp)}</span
                         >
                         <span
-                          class="${log.level === 'error'
-                            ? 'text-red-500 font-bold'
-                            : log.level === 'warn'
-                              ? 'text-yellow-500 font-bold'
-                              : log.level === 'debug'
-                                ? 'text-gray-600'
-                                : 'text-gray-500'} uppercase"
+                          class="${
+                            log.level === 'error'
+                              ? 'text-red-500 font-bold'
+                              : log.level === 'warn'
+                                ? 'text-yellow-500 font-bold'
+                                : log.level === 'debug'
+                                  ? 'text-gray-600'
+                                  : 'text-gray-500'
+                          } uppercase"
                           >${log.level}</span
                         >
                         <span class="${log.isClient ? 'text-orange-400' : 'text-green-600'}"
@@ -632,48 +510,57 @@ export class LogViewer extends LitElement {
                         <span class="text-gray-600">${log.module}</span>
                       </div>
                       <div
-                        class="mt-1 ${log.level === 'error'
-                          ? 'text-red-400'
-                          : log.level === 'warn'
-                            ? 'text-yellow-400'
-                            : log.level === 'debug'
-                              ? 'text-gray-600'
-                              : log.isClient
-                                ? 'text-orange-200'
-                                : 'text-gray-300'}"
+                        class="mt-1 ${
+                          log.level === 'error'
+                            ? 'text-red-400'
+                            : log.level === 'warn'
+                              ? 'text-yellow-400'
+                              : log.level === 'debug'
+                                ? 'text-gray-600'
+                                : log.isClient
+                                  ? 'text-orange-200'
+                                  : 'text-gray-300'
+                        }"
                       >
                         ${messageLines[0]}
                       </div>
                     </div>
-                    ${isMultiline
-                      ? html`
+                    ${
+                      isMultiline
+                        ? html`
                           <div
-                            class="hidden sm:block ml-36 ${log.level === 'error'
-                              ? 'text-red-400'
-                              : log.level === 'warn'
-                                ? 'text-yellow-400'
-                                : 'text-gray-500'}"
+                            class="hidden sm:block ml-36 ${
+                              log.level === 'error'
+                                ? 'text-red-400'
+                                : log.level === 'warn'
+                                  ? 'text-yellow-400'
+                                  : 'text-gray-500'
+                            }"
                           >
                             ${messageLines
                               .slice(1)
                               .map((line) => html`<div class="py-0.5">${line}</div>`)}
                           </div>
                           <div
-                            class="sm:hidden mt-1 ${log.level === 'error'
-                              ? 'text-red-400'
-                              : log.level === 'warn'
-                                ? 'text-yellow-400'
-                                : 'text-gray-500'}"
+                            class="sm:hidden mt-1 ${
+                              log.level === 'error'
+                                ? 'text-red-400'
+                                : log.level === 'warn'
+                                  ? 'text-yellow-400'
+                                  : 'text-gray-500'
+                            }"
                           >
                             ${messageLines
                               .slice(1)
                               .map((line) => html`<div class="py-0.5">${line}</div>`)}
                           </div>
                         `
-                      : ''}
+                        : ''
+                    }
                   </div>
                 `;
-              })}
+                })
+          }
         </div>
 
         <!-- Footer -->
@@ -682,9 +569,9 @@ export class LogViewer extends LitElement {
         >
           <div class="text-dark-text-muted">
             ${this.filteredLogs.length} / ${this.logs.length} logs
-            ${this.logSize
-              ? html` <span class="text-dark-text-muted">• ${this.logSize}</span>`
-              : ''}
+            ${
+              this.logSize ? html` <span class="text-dark-text-muted">• ${this.logSize}</span>` : ''
+            }
           </div>
           <div class="flex gap-2">
             <button

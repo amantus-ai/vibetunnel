@@ -10,7 +10,7 @@
  * @fires save - When save is triggered (Cmd/Ctrl+S) in edit mode (detail: { content: string })
  * @fires content-changed - When content changes in edit mode (detail: { content: string })
  */
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 import type { editor } from 'monaco-editor';
@@ -474,8 +474,9 @@ export class MonacoEditor extends LitElement {
           ${ref(this.containerRef)}
           style="width: 100%; height: 100%; position: relative; background: #1e1e1e;"
         >
-          ${this.isLoading
-            ? html`
+          ${
+            this.isLoading
+              ? html`
                 <div
                   class="loading"
                   style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #666; font-family: ui-monospace, monospace;"
@@ -483,9 +484,11 @@ export class MonacoEditor extends LitElement {
                   Loading editor...
                 </div>
               `
-            : ''}
-          ${this.showModeToggle && this.mode === 'diff' && !this.isLoading
-            ? html`
+              : ''
+          }
+          ${
+            this.showModeToggle && this.mode === 'diff' && !this.isLoading
+              ? html`
                 <button
                   class="mode-toggle"
                   style="position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;"
@@ -505,7 +508,8 @@ export class MonacoEditor extends LitElement {
                   ${this.diffMode === 'inline' ? 'Side by Side' : 'Inline'}
                 </button>
               `
-            : ''}
+              : ''
+          }
         </div>
       </div>
     `;

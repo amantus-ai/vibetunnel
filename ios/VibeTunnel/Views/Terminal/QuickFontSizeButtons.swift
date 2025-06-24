@@ -13,7 +13,7 @@ struct QuickFontSizeButtons: View {
                 Image(systemName: "minus")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(fontSize > minSize ? Theme.Colors.primaryAccent : Theme.Colors.secondaryText
-                                        .opacity(0.5)
+                        .opacity(0.5)
                     )
                     .frame(width: 30, height: 30)
                     .background(Theme.Colors.cardBackground)
@@ -44,7 +44,7 @@ struct QuickFontSizeButtons: View {
                 Image(systemName: "plus")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(fontSize < maxSize ? Theme.Colors.primaryAccent : Theme.Colors.secondaryText
-                                        .opacity(0.5)
+                        .opacity(0.5)
                     )
                     .frame(width: 30, height: 30)
                     .background(Theme.Colors.cardBackground)

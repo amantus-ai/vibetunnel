@@ -217,7 +217,6 @@ export class AuthClient {
           }
         } catch (error) {
           console.warn(`❌ SSH key authentication failed for key ${key.name}:`, error);
-          continue;
         }
       }
     } else {

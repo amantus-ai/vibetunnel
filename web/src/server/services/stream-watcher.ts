@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import { Response } from 'express';
 import chalk from 'chalk';
+import type { Response } from 'express';
+import * as fs from 'fs';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('stream-watcher');

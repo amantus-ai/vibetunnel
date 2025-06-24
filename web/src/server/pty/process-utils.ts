@@ -4,11 +4,11 @@
  * Provides reliable process existence checking across Windows, macOS, and Linux.
  */
 
-import { spawnSync } from 'child_process';
-import { createLogger } from '../utils/logger.js';
 import chalk from 'chalk';
+import { spawnSync } from 'child_process';
 import * as os from 'os';
 import * as path from 'path';
+import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('process-utils');
 

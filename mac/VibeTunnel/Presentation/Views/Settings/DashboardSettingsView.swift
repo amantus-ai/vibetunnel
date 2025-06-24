@@ -64,7 +64,7 @@ struct DashboardSettingsView: View {
                     restartServerWithNewPort: restartServerWithNewPort,
                     serverManager: serverManager
                 )
-                
+
                 // Dashboard URL display
                 VStack(spacing: 4) {
                     if accessMode == .localhost {
@@ -72,7 +72,7 @@ struct DashboardSettingsView: View {
                             Text("Dashboard available at")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            
+
                             if let url = URL(string: "http://127.0.0.1:\(serverPort)") {
                                 Link(url.absoluteString, destination: url)
                                     .font(.caption)
@@ -85,7 +85,7 @@ struct DashboardSettingsView: View {
                                 Text("Dashboard available at")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                
+
                                 if let url = URL(string: "http://\(ip):\(serverPort)") {
                                     Link(url.absoluteString, destination: url)
                                         .font(.caption)
@@ -505,10 +505,10 @@ private struct PortConfigurationView: View {
                                 pendingPort = String(newValue.prefix(5))
                             }
                         }
-                    
+
                     VStack(spacing: 0) {
                         Button(action: {
-                            if let port = Int(pendingPort), port < 65535 {
+                            if let port = Int(pendingPort), port < 65_535 {
                                 pendingPort = String(port + 1)
                                 validateAndUpdatePort()
                             }
@@ -518,9 +518,9 @@ private struct PortConfigurationView: View {
                                 .frame(width: 16, height: 11)
                         }
                         .buttonStyle(.borderless)
-                        
+
                         Button(action: {
-                            if let port = Int(pendingPort), port > 1024 {
+                            if let port = Int(pendingPort), port > 1_024 {
                                 pendingPort = String(port - 1)
                                 validateAndUpdatePort()
                             }

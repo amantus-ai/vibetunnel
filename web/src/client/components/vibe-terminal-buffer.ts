@@ -7,11 +7,11 @@
  *
  * @fires content-changed - When terminal content changes (no detail)
  */
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { TerminalRenderer, type BufferCell } from '../utils/terminal-renderer.js';
-import { bufferSubscriptionService } from '../services/buffer-subscription-service.js';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
+import { bufferSubscriptionService } from '../services/buffer-subscription-service.js';
+import { type BufferCell, TerminalRenderer } from '../utils/terminal-renderer.js';
 
 interface BufferSnapshot {
   cols: number;
@@ -202,18 +202,20 @@ export class VibeTerminalBuffer extends LitElement {
         class="relative w-full h-full overflow-hidden bg-black"
         style="view-transition-name: terminal-${this.sessionId}"
       >
-        ${this.error
-          ? html`
+        ${
+          this.error
+            ? html`
               <div class="absolute inset-0 flex items-center justify-center">
                 <div class="text-red-500 text-sm">${this.error}</div>
               </div>
             `
-          : html`
+            : html`
               <div
                 id="buffer-container"
                 class="terminal-container w-full h-full overflow-x-auto overflow-y-hidden font-mono antialiased"
               ></div>
-            `}
+            `
+        }
       </div>
     `;
   }

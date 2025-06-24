@@ -1,6 +1,6 @@
-import { LitElement, TemplateResult } from 'lit';
 import { fixture } from '@open-wc/testing';
-import type { SessionData, ActivityStatus } from '../types/test-types';
+import { LitElement, type TemplateResult } from 'lit';
+import type { ActivityStatus, SessionData } from '../types/test-types';
 
 /**
  * Creates a test fixture for a LitElement component

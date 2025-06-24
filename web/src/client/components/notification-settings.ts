@@ -1,9 +1,9 @@
-import { LitElement, html } from 'lit';
-import { customElement, state, property } from 'lit/decorators.js';
+import { html, LitElement } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
 import {
-  pushNotificationService,
   type NotificationPreferences,
   type PushSubscription,
+  pushNotificationService,
 } from '../services/push-notification-service.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -241,8 +241,9 @@ export class NotificationSettings extends LitElement {
 
           <!-- Content -->
           <div class="p-4 space-y-6">
-            ${!isSupported
-              ? html`
+            ${
+              !isSupported
+                ? html`
                   <div
                     class="p-3 bg-status-warning bg-opacity-10 border border-status-warning rounded"
                   >
@@ -251,7 +252,7 @@ export class NotificationSettings extends LitElement {
                     </p>
                   </div>
                 `
-              : html`
+                : html`
                   <!-- Status Section -->
                   <div class="space-y-3">
                     <h3 class="text-sm font-semibold text-dark-text uppercase tracking-wide">
@@ -284,8 +285,9 @@ export class NotificationSettings extends LitElement {
                         </p>
                       </div>
                       <div class="flex items-center space-x-2">
-                        ${hasSubscription
-                          ? html`
+                        ${
+                          hasSubscription
+                            ? html`
                               <button
                                 @click=${this.handleDisableNotifications}
                                 ?disabled=${this.isLoading}
@@ -294,7 +296,7 @@ export class NotificationSettings extends LitElement {
                                 ${this.isLoading ? 'Disabling...' : 'Disable'}
                               </button>
                             `
-                          : html`
+                            : html`
                               <button
                                 @click=${this.handleEnableNotifications}
                                 ?disabled=${this.isLoading || this.permission === 'denied'}
@@ -302,14 +304,16 @@ export class NotificationSettings extends LitElement {
                               >
                                 ${this.isLoading ? 'Enabling...' : 'Enable'}
                               </button>
-                            `}
+                            `
+                        }
                       </div>
                     </div>
                   </div>
 
                   <!-- Notification Types -->
-                  ${hasSubscription
-                    ? html`
+                  ${
+                    hasSubscription
+                      ? html`
                         <div class="space-y-3">
                           <h3 class="text-sm font-semibold text-dark-text uppercase tracking-wide">
                             Notification Types
@@ -471,9 +475,11 @@ export class NotificationSettings extends LitElement {
                           </div>
                         </div>
                       `
-                    : ''}
-                  ${this.permission === 'denied'
-                    ? html`
+                      : ''
+                  }
+                  ${
+                    this.permission === 'denied'
+                      ? html`
                         <div
                           class="p-3 bg-status-error bg-opacity-10 border border-status-error rounded"
                         >
@@ -483,14 +489,17 @@ export class NotificationSettings extends LitElement {
                           </p>
                         </div>
                       `
-                    : ''}
-                `}
+                      : ''
+                  }
+                `
+            }
           </div>
 
           <!-- Footer -->
           <div class="flex items-center justify-end space-x-2 p-4 border-t border-dark-border">
-            ${this.hasChanges
-              ? html`
+            ${
+              this.hasChanges
+                ? html`
                   <button
                     @click=${this.savePreferences}
                     class="px-4 py-2 text-sm font-medium rounded bg-dark-accent text-dark-text hover:bg-dark-accent-hover transition-colors"
@@ -498,7 +507,8 @@ export class NotificationSettings extends LitElement {
                     Save Changes
                   </button>
                 `
-              : ''}
+                : ''
+            }
             <button
               @click=${this.handleClose}
               class="px-4 py-2 text-sm font-medium rounded border border-dark-border text-dark-text hover:bg-dark-border transition-colors"
