@@ -182,18 +182,10 @@ export class ProcessUtils {
   }
 
   /**
-   * Resolve a command to determine how to spawn it
-   * Handles executables, aliases, shell builtins, and interactive shells
-   * Returns everything needed to spawn the PTY correctly
+   * Determine how to spawn a command, checking if it exists in PATH or needs shell execution
+   * Returns the actual command and args to use for spawning
    */
-  static resolveCommand(command: string[]): {
-    command: string;
-    args: string[];
-    useShell: boolean;
-    isInteractive: boolean;
-    resolvedFrom?: 'path' | 'alias' | 'builtin' | 'shell';
-    originalCommand?: string;
-  } {
+  static resolveCommand(command: string[]): { command: string; args: string[]; useShell: boolean } {
     if (command.length === 0) {
       throw new Error('No command provided');
     }
@@ -201,177 +193,99 @@ export class ProcessUtils {
     const cmdName = command[0];
     const cmdArgs = command.slice(1);
 
-    // First, check if this is an interactive shell request
-    if (ProcessUtils.isInteractiveShellCommand(cmdName, cmdArgs)) {
-      logger.debug(`Interactive shell requested: ${cmdName}`);
-      return {
-        command: cmdName,
-        args: cmdArgs,
-        useShell: false,
-        isInteractive: true,
-        resolvedFrom: 'shell',
-      };
-    }
-
-    // Try to resolve as a regular executable first
-    const executablePath = ProcessUtils.resolveExecutablePath(cmdName);
-    if (executablePath) {
-      logger.debug(`Command '${cmdName}' found at: ${executablePath}`);
-      return {
-        command: executablePath,
-        args: cmdArgs,
-        useShell: false,
-        isInteractive: false,
-        resolvedFrom: 'path',
-        originalCommand: cmdName !== executablePath ? cmdName : undefined,
-      };
-    }
-
-    // Not in PATH - try to resolve as an alias
-    const aliasValue = ProcessUtils.getAliasValue(cmdName);
-    if (aliasValue) {
-      logger.log(chalk.cyan(`Using alias '${cmdName}' → '${aliasValue}'`));
-
-      // Expand the alias and add any additional arguments
-      const expandedCommand =
-        cmdArgs.length > 0 ? `${aliasValue} ${cmdArgs.join(' ')}` : aliasValue;
-
-      const userShell = ProcessUtils.getUserShell();
-      const shellArgs = ProcessUtils.getShellExecuteArgs(userShell, expandedCommand, false);
-
-      return {
-        command: userShell,
-        args: shellArgs,
-        useShell: true,
-        isInteractive: false,
-        resolvedFrom: 'alias',
-        originalCommand: cmdName,
-      };
-    }
-
-    // Not an executable or alias - probably a shell builtin or function
-    logger.debug(`Command '${cmdName}' not found in PATH or aliases, using shell`);
-    const userShell = ProcessUtils.getUserShell();
-    const shellArgs = ProcessUtils.getShellExecuteArgs(userShell, command.join(' '), false);
-    return {
-      command: userShell,
-      args: shellArgs,
-      useShell: true,
-      isInteractive: false,
-      resolvedFrom: 'builtin',
-      originalCommand: cmdName,
-    };
-  }
-
-  /**
-   * Resolve an executable path using 'which' command
-   * Returns the absolute path if found, null otherwise
-   */
-  private static resolveExecutablePath(executable: string): string | null {
-    // If already an absolute path, return as is
-    if (path.isAbsolute(executable)) {
-      return executable;
-    }
-
-    // If it's a relative path with directory separators, resolve it
-    if (executable.includes('/') || executable.includes('\\')) {
-      return path.resolve(executable);
-    }
-
-    // Use 'which' to find the executable in PATH
+    // Check if command exists in PATH using 'which' (Unix) or 'where' (Windows)
     const whichCommand = process.platform === 'win32' ? 'where' : 'which';
+
     try {
-      const result = spawnSync(whichCommand, [executable], {
+      const result = spawnSync(whichCommand, [cmdName], {
         encoding: 'utf8',
         windowsHide: true,
-        timeout: 2000,
+        timeout: 2000, // 2 second timeout
       });
 
       if (result.status === 0 && result.stdout && result.stdout.trim()) {
-        return result.stdout.trim().split('\n')[0]; // Take first result on Windows
+        // Command found in PATH
+        logger.debug(`Command '${cmdName}' found at: ${result.stdout.trim()}`);
+        return {
+          command: cmdName,
+          args: cmdArgs,
+          useShell: false,
+        };
       }
     } catch (error) {
-      logger.debug(`Failed to resolve executable '${executable}':`, error);
+      logger.debug(`Failed to check command existence for '${cmdName}':`, error);
     }
 
-    return null;
-  }
+    // Command not found in PATH, likely an alias or shell builtin
+    // Need to run through shell
+    logger.debug(`Command '${cmdName}' not found in PATH, will use shell`);
 
-  /**
-   * Get the raw alias value for a command
-   * Returns null if not an alias
-   */
-  private static getAliasValue(aliasName: string): string | null {
-    // Alias resolution is platform-specific
+    // Determine user's shell
+    const userShell = ProcessUtils.getUserShell();
+
+    // Check if this is trying to execute a command (not an interactive shell session)
+    // If so, use non-interactive mode to ensure shell exits after execution
+    const isCommand = !ProcessUtils.isInteractiveShellCommand(cmdName, cmdArgs);
+
+    // Use interactive shell to execute the command
+    // This ensures aliases and shell functions are available
     if (process.platform === 'win32') {
-      // Windows doesn't have Unix-style aliases
-      // PowerShell has aliases but they work differently
-      // For now, skip alias resolution on Windows
-      logger.debug(`Alias resolution not implemented for Windows`);
-      return null;
-    }
-
-    try {
-      // Get the user's shell to check aliases
-      const userShell = process.env.SHELL || '/bin/bash';
-
-      // Get all aliases from the user's shell
-      const aliasListCommand = `${userShell} -i -c "alias"`;
-      const aliasOutput = spawnSync(aliasListCommand, {
-        encoding: 'utf8',
-        shell: true,
-        timeout: 2000,
-      });
-
-      if (aliasOutput.status !== 0 || !aliasOutput.stdout) {
-        return null;
-      }
-
-      // Parse the alias output
-      // Format can be either "alias name='value'" or just "name='value'"
-      const lines = aliasOutput.stdout.split('\n');
-      for (const line of lines) {
-        // Match both formats: with or without 'alias' prefix
-        const match = line.match(/^(?:alias\s+)?([^=]+)=(['"]?)(.+)\2$/);
-        if (match && match[1] === aliasName) {
-          // Return the value with quotes stripped
-          return match[3];
+      // Windows shells have different syntax
+      if (userShell.includes('bash')) {
+        // Git Bash on Windows: Use Unix-style syntax
+        if (isCommand) {
+          // Non-interactive command execution
+          return {
+            command: userShell,
+            args: ['-c', command.join(' ')],
+            useShell: true,
+          };
+        } else {
+          // Interactive shell session
+          return {
+            command: userShell,
+            args: ['-i', '-c', command.join(' ')],
+            useShell: true,
+          };
         }
+      } else if (userShell.includes('pwsh') || userShell.includes('powershell')) {
+        // PowerShell: Use -Command for execution
+        // Note: PowerShell aliases work differently than Unix aliases
+        return {
+          command: userShell,
+          args: ['-NoLogo', '-Command', command.join(' ')],
+          useShell: true,
+        };
+      } else {
+        // cmd.exe: Use /C to execute and exit
+        // Note: cmd.exe uses 'doskey' for aliases, not traditional aliases
+        return {
+          command: userShell,
+          args: ['/C', command.join(' ')],
+          useShell: true,
+        };
       }
-    } catch (error) {
-      logger.debug(`Failed to get alias value for '${aliasName}':`, error);
-    }
-
-    return null;
-  }
-
-  /**
-   * Get platform-specific shell execution arguments
-   */
-  private static getShellExecuteArgs(
-    shell: string,
-    command: string,
-    needsInteractive: boolean
-  ): string[] {
-    const shellName = path.basename(shell).toLowerCase();
-
-    if (process.platform === 'win32') {
-      // Windows shells
-      if (shellName.includes('powershell') || shellName.includes('pwsh')) {
-        // PowerShell
-        return ['-NoProfile', '-Command', command];
-      } else if (shellName.includes('cmd')) {
-        // cmd.exe
-        return ['/C', command];
-      } else if (shellName.includes('bash')) {
-        // Git Bash on Windows
-        return needsInteractive ? ['-i', '-c', command] : ['-c', command];
-      }
-      // Default Windows
-      return ['/C', command];
     } else {
-      // Unix shells - handle interactive mode for aliases
-      return needsInteractive ? ['-i', '-c', command] : ['-c', command];
+      // Unix shells: Choose execution mode based on command type
+      if (isCommand) {
+        // Non-interactive command execution: shell will exit after completion
+        // Source shell config to ensure aliases and functions are available
+        const shellConfig = userShell.includes('zsh') ? '~/.zshrc' : '~/.bashrc';
+        const commandStr = `source ${shellConfig} 2>/dev/null || true; ${command.join(' ')}`;
+
+        return {
+          command: userShell,
+          args: ['-c', commandStr],
+          useShell: true,
+        };
+      } else {
+        // Interactive shell session: use -i for alias support
+        return {
+          command: userShell,
+          args: ['-i', '-c', command.join(' ')],
+          useShell: true,
+        };
+      }
     }
   }
 

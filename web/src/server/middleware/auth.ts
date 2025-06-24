@@ -17,7 +17,7 @@ interface AuthConfig {
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
-  authMethod?: 'ssh-key' | 'password' | 'hq-bearer' | 'no-auth' | 'local-bypass';
+  authMethod?: 'ssh-key' | 'password' | 'hq-bearer' | 'no-auth' | 'local-bypass' | 'basic';
   isHQRequest?: boolean;
 }
 
@@ -48,7 +48,7 @@ function isLocalRequest(req: Request): boolean {
 }
 
 export function createAuthMiddleware(config: AuthConfig) {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // Skip auth for health check endpoint, auth endpoints, client logging, and push notifications
     if (
       req.path === '/api/health' ||
@@ -92,6 +92,24 @@ export function createAuthMiddleware(config: AuthConfig) {
 
     const authHeader = req.headers.authorization;
     const tokenQuery = req.query.token as string;
+
+    // Check for Basic auth (username:password)
+    if (authHeader && authHeader.startsWith('Basic ')) {
+      const credentials = authHeader.substring(6);
+      const decoded = Buffer.from(credentials, 'base64').toString('utf-8');
+      const [username, password] = decoded.split(':');
+
+      if (config.authService) {
+        const result = await config.authService.authenticateWithPassword(username, password);
+        if (result.success) {
+          req.userId = result.userId;
+          req.authMethod = 'basic';
+          return next();
+        } else {
+          logger.error('Invalid Basic auth credentials');
+        }
+      }
+    }
 
     // Check for Bearer token
     if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -153,6 +171,16 @@ export function createAuthMiddleware(config: AuthConfig) {
 
     // No valid auth provided
     logger.error(`Unauthorized request to ${req.method} ${req.path} from ${req.ip}`);
+    logger.debug('Auth debug:', {
+      hasAuthHeader: !!authHeader,
+      authHeaderPrefix: authHeader ? authHeader.substring(0, 20) + '...' : 'none',
+      hasTokenQuery: !!tokenQuery,
+      config: {
+        noAuth: config.noAuth,
+        isHQMode: config.isHQMode,
+        hasAuthService: !!config.authService,
+      },
+    });
     res.setHeader('WWW-Authenticate', 'Bearer realm="VibeTunnel"');
     res.status(401).json({ error: 'Authentication required' });
   };

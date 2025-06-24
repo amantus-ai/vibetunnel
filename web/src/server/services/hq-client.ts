@@ -56,11 +56,22 @@ export class HQClient {
       });
 
       if (!response.ok) {
-        const errorBody = (await response.json().catch(() => ({ error: response.statusText }))) as {
-          error: string;
-        };
-        logger.debug(`registration failed with status ${response.status}`, errorBody);
-        throw new Error(`Registration failed: ${errorBody.error || response.statusText}`);
+        const errorText = await response.text();
+        logger.error(`registration failed with status ${response.status}: ${errorText}`);
+        logger.debug('registration request details:', {
+          url: `${this.hqUrl}/api/remotes/register`,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Basic ${Buffer.from(`${this.hqUsername}:${this.hqPassword}`).toString('base64')}`,
+          },
+          body: {
+            id: this.remoteId,
+            name: this.remoteName,
+            url: this.remoteUrl,
+            token: this.token.substring(0, 8) + '...',
+          },
+        });
+        throw new Error(`Registration failed (${response.status}): ${errorText}`);
       }
 
       logger.log(

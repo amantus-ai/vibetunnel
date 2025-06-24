@@ -73,6 +73,7 @@ export class SessionView extends LitElement {
   private resizeTimeout: number | null = null;
   private lastResizeWidth = 0;
   private lastResizeHeight = 0;
+  private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
 
   private keyboardHandler = (e: KeyboardEvent) => {
     // Check if we're typing in an input field

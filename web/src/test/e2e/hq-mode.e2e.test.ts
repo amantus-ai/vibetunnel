@@ -108,16 +108,19 @@ describe('HQ Mode E2E Tests', () => {
     fs.mkdirSync(hqDir, { recursive: true });
     testDirs.push(hqDir);
 
-    const hqResult = await startServer(
-      ['--port', '0', '--hq', '--username', hqUsername, '--password', hqPassword],
-      {
-        VIBETUNNEL_CONTROL_DIR: hqDir,
-      }
-    );
+    const hqResult = await startServer(['--port', '0', '--hq'], {
+      VIBETUNNEL_CONTROL_DIR: hqDir,
+      VIBETUNNEL_USERNAME: hqUsername,
+      VIBETUNNEL_PASSWORD: hqPassword,
+    });
     hqProcess = hqResult.process;
     hqPort = hqResult.port;
 
     expect(hqPort).toBeGreaterThan(0);
+
+    // Wait for HQ server to be fully ready
+    const hqReady = await waitForServer(hqPort, hqUsername, hqPassword);
+    expect(hqReady).toBe(true);
 
     // Start remote servers
     for (let i = 0; i < 3; i++) {
@@ -129,10 +132,6 @@ describe('HQ Mode E2E Tests', () => {
         [
           '--port',
           '0',
-          '--username',
-          `remote${i}`,
-          '--password',
-          `remotepass${i}`,
           '--hq-url',
           `http://localhost:${hqPort}`,
           '--hq-username',
@@ -145,6 +144,8 @@ describe('HQ Mode E2E Tests', () => {
         ],
         {
           VIBETUNNEL_CONTROL_DIR: remoteDir,
+          VIBETUNNEL_USERNAME: `remote${i}`,
+          VIBETUNNEL_PASSWORD: `remotepass${i}`,
         }
       );
 
@@ -154,9 +155,9 @@ describe('HQ Mode E2E Tests', () => {
       expect(remoteResult.port).not.toBe(hqPort);
     }
 
-    // Wait for HQ server to be ready
-    const hqReady = await waitForServer(hqPort, hqUsername, hqPassword);
-    expect(hqReady).toBe(true);
+    // Verify HQ server is ready (already waited above)
+    const hqReadyCheck = await waitForServer(hqPort, hqUsername, hqPassword);
+    expect(hqReadyCheck).toBe(true);
 
     // Wait for all remote servers to be ready
     for (let i = 0; i < remotePorts.length; i++) {

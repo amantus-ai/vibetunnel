@@ -1,0 +1,221 @@
+import { LitElement, TemplateResult } from 'lit';
+import { fixture, html } from '@testing-library/lit';
+
+/**
+ * Creates a test fixture for a LitElement component
+ */
+export async function createFixture<T extends LitElement>(template: TemplateResult): Promise<T> {
+  const element = await fixture<T>(template);
+  await element.updateComplete;
+  return element;
+}
+
+/**
+ * Waits for an element to finish updating
+ */
+export async function waitForElement(element: LitElement): Promise<void> {
+  await element.updateComplete;
+  // Wait for any pending microtasks
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Triggers an event on an element and waits for updates
+ */
+export async function triggerEvent(
+  element: HTMLElement,
+  eventName: string,
+  detail?: any
+): Promise<void> {
+  const event = new CustomEvent(eventName, {
+    detail,
+    bubbles: true,
+    composed: true,
+  });
+  element.dispatchEvent(event);
+
+  if (element instanceof LitElement) {
+    await element.updateComplete;
+  }
+}
+
+/**
+ * Mocks a fetch response
+ */
+export function mockFetch(
+  response: any,
+  options: {
+    status?: number;
+    headers?: Record<string, string>;
+    ok?: boolean;
+  } = {}
+): void {
+  const { status = 200, headers = { 'Content-Type': 'application/json' }, ok = true } = options;
+
+  (global.fetch as any).mockResolvedValueOnce({
+    ok,
+    status,
+    headers: new Headers(headers),
+    json: async () => response,
+    text: async () => JSON.stringify(response),
+  });
+}
+
+/**
+ * Creates a mock WebSocket instance
+ */
+export class MockWebSocket extends EventTarget {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
+
+  url: string;
+  readyState: number = MockWebSocket.CONNECTING;
+  binaryType: 'blob' | 'arraybuffer' = 'arraybuffer';
+
+  onopen?: (event: Event) => void;
+  onclose?: (event: CloseEvent) => void;
+  onerror?: (event: Event) => void;
+  onmessage?: (event: MessageEvent) => void;
+
+  constructor(url: string) {
+    super();
+    this.url = url;
+  }
+
+  send = vi.fn();
+  close = vi.fn(() => {
+    this.readyState = MockWebSocket.CLOSED;
+    const event = new CloseEvent('close');
+    this.dispatchEvent(event);
+    this.onclose?.(event);
+  });
+
+  mockOpen(): void {
+    this.readyState = MockWebSocket.OPEN;
+    const event = new Event('open');
+    this.dispatchEvent(event);
+    this.onopen?.(event);
+  }
+
+  mockMessage(data: any): void {
+    const event = new MessageEvent('message', { data });
+    this.dispatchEvent(event);
+    this.onmessage?.(event);
+  }
+
+  mockError(): void {
+    const event = new Event('error');
+    this.dispatchEvent(event);
+    this.onerror?.(event);
+  }
+
+  mockClose(code?: number, reason?: string): void {
+    this.readyState = MockWebSocket.CLOSED;
+    const event = new CloseEvent('close', { code, reason });
+    this.dispatchEvent(event);
+    this.onclose?.(event);
+  }
+}
+
+/**
+ * Creates a mock EventSource instance
+ */
+export class MockEventSource extends EventTarget {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSED = 2;
+
+  url: string;
+  readyState: number = MockEventSource.CONNECTING;
+  withCredentials: boolean = false;
+
+  onopen?: (event: Event) => void;
+  onerror?: (event: Event) => void;
+  onmessage?: (event: MessageEvent) => void;
+
+  constructor(url: string, eventSourceInitDict?: EventSourceInit) {
+    super();
+    this.url = url;
+    if (eventSourceInitDict?.withCredentials) {
+      this.withCredentials = eventSourceInitDict.withCredentials;
+    }
+  }
+
+  close = vi.fn(() => {
+    this.readyState = MockEventSource.CLOSED;
+  });
+
+  mockOpen(): void {
+    this.readyState = MockEventSource.OPEN;
+    const event = new Event('open');
+    this.dispatchEvent(event);
+    this.onopen?.(event);
+  }
+
+  mockMessage(data: string, eventType?: string): void {
+    const event = new MessageEvent(eventType || 'message', { data });
+    this.dispatchEvent(event);
+    if (!eventType || eventType === 'message') {
+      this.onmessage?.(event);
+    }
+  }
+
+  mockError(): void {
+    const event = new Event('error');
+    this.dispatchEvent(event);
+    this.onerror?.(event);
+  }
+}
+
+/**
+ * Wait for a specific condition to be true
+ */
+export async function waitFor(
+  condition: () => boolean,
+  timeout: number = 5000,
+  interval: number = 50
+): Promise<void> {
+  const startTime = Date.now();
+
+  while (!condition()) {
+    if (Date.now() - startTime > timeout) {
+      throw new Error('Timeout waiting for condition');
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+}
+
+/**
+ * Creates mock session data for testing
+ */
+export function createMockSession(overrides: Partial<any> = {}): any {
+  return {
+    id: 'test-session-123',
+    cmdline: ['bash', '-l'],
+    name: 'Test Session',
+    cwd: '/home/user',
+    pid: 12345,
+    status: 'running',
+    started_at: new Date().toISOString(),
+    exit_code: null,
+    term: 'xterm-256color',
+    spawn_type: 'pty',
+    cols: 80,
+    rows: 24,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates mock activity status for testing
+ */
+export function createMockActivityStatus(overrides: Partial<any> = {}): any {
+  return {
+    isActive: false,
+    timestamp: new Date().toISOString(),
+    session: createMockSession(),
+    ...overrides,
+  };
+}

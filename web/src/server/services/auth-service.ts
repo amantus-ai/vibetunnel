@@ -101,6 +101,25 @@ export class AuthService {
    */
   async authenticateWithPassword(userId: string, password: string): Promise<AuthResult> {
     try {
+      // Check environment variables first (for testing and simple deployments)
+      const envUsername = process.env.VIBETUNNEL_USERNAME;
+      const envPassword = process.env.VIBETUNNEL_PASSWORD;
+
+      if (envUsername && envPassword) {
+        // Use environment variable authentication
+        if (userId === envUsername && password === envPassword) {
+          const token = this.generateToken(userId);
+          return {
+            success: true,
+            userId,
+            token,
+          };
+        } else {
+          return { success: false, error: 'Invalid username or password' };
+        }
+      }
+
+      // Fall back to PAM authentication
       const isValid = await this.verifyPAMCredentials(userId, password);
       if (!isValid) {
         return { success: false, error: 'Invalid username or password' };

@@ -4,8 +4,15 @@ import path from 'path';
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
     include: ['src/**/*.test.ts'],
+    environmentMatchGlobs: [
+      // Use happy-dom for client-side component tests
+      ['src/client/**/*.test.ts', 'happy-dom'],
+      // Use node for server-side and e2e tests
+      ['src/server/**/*.test.ts', 'node'],
+      ['src/test/e2e/**/*.test.ts', 'node'],
+    ],
+    setupFiles: ['./src/test/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

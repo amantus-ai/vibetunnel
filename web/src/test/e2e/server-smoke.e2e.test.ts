@@ -14,7 +14,7 @@ describe('Server Smoke Test', () => {
   async function startServer(): Promise<number> {
     const cliPath = path.join(__dirname, '..', '..', 'cli.ts');
 
-    serverProcess = spawn('tsx', [cliPath, '--port', '0'], {
+    serverProcess = spawn('tsx', [cliPath, '--port', '0', '--no-auth'], {
       env: {
         ...process.env,
         VIBETUNNEL_CONTROL_DIR: testDir,
