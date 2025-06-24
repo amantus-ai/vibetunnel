@@ -20,6 +20,8 @@ jobs:
   build-mac:
     name: Build macOS App
     runs-on: macos-15
+    env:
+      GITHUB_REPO_NAME: ${{ github.repository }}
     
     steps:
     - name: Checkout code
@@ -123,6 +125,8 @@ jobs:
   build-ios:
     name: Build iOS App
     runs-on: macos-15
+    env:
+      GITHUB_REPO_NAME: ${{ github.repository }}
     
     steps:
     - name: Checkout code

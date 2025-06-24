@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../services/auth-service.js';
+import type { NextFunction, Request, Response } from 'express';
+import type { AuthService } from '../services/auth-service.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('auth');
@@ -94,7 +94,7 @@ export function createAuthMiddleware(config: AuthConfig) {
     const tokenQuery = req.query.token as string;
 
     // Check for Bearer token
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
 
       // In HQ mode, check if this is a valid HQ-to-remote bearer token

@@ -15,6 +15,8 @@ jobs:
   lint:
     name: Lint TypeScript/JavaScript Code
     runs-on: blacksmith-8vcpu-ubuntu-2204
+    env:
+      GITHUB_REPO_NAME: ${{ github.repository }}
 
     steps:
     - name: Checkout code
@@ -116,6 +118,8 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: blacksmith-8vcpu-ubuntu-2204
+    env:
+      GITHUB_REPO_NAME: ${{ github.repository }}
 
     steps:
     - name: Checkout code
@@ -214,6 +218,8 @@ jobs:
   type-check:
     name: TypeScript Type Checking
     runs-on: blacksmith-8vcpu-ubuntu-2204
+    env:
+      GITHUB_REPO_NAME: ${{ github.repository }}
 
     steps:
     - name: Checkout code

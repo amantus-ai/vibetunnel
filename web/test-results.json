@@ -1,1 +1,533 @@
-{"numTotalTestSuites":18,"numPassedTestSuites":16,"numFailedTestSuites":2,"numPendingTestSuites":0,"numTotalTests":31,"numPassedTests":14,"numFailedTests":0,"numPendingTests":17,"numTodoTests":0,"snapshot":{"added":0,"failure":false,"filesAdded":0,"filesRemoved":0,"filesRemovedList":[],"filesUnmatched":0,"filesUpdated":0,"matched":0,"total":0,"unchecked":0,"uncheckedKeysByFile":[],"unmatched":0,"updated":0,"didUpdate":false},"startTime":1750780240591,"success":false,"testResults":[{"assertionResults":[],"startTime":1750780240591,"endTime":1750780240591,"status":"failed","message":"window is not defined","name":"/Users/steipete/Projects/vibetunnel/web/src/test/unit/buffer-subscription-service.test.ts"},{"assertionResults":[],"startTime":1750780240591,"endTime":1750780240591,"status":"failed","message":"Could not find pty.node next to executable at: /Users/steipete/.nvm/versions/node/v24.1.0/bin/pty.node","name":"/Users/steipete/Projects/vibetunnel/web/src/test/unit/pty-manager.test.ts"},{"assertionResults":[{"ancestorTitles":["SessionManager","Session Persistence"],"fullName":"SessionManager Session Persistence should save session info to file","status":"passed","title":"should save session info to file","duration":6.290417000000019,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Session Persistence"],"fullName":"SessionManager Session Persistence should load session info from file","status":"passed","title":"should load session info from file","duration":3.841458000000017,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Session Persistence"],"fullName":"SessionManager Session Persistence should return null for non-existent session","status":"passed","title":"should return null for non-existent session","duration":0.16995800000000827,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Session Persistence"],"fullName":"SessionManager Session Persistence should update existing session status","status":"passed","title":"should update existing session status","duration":4.015332999999998,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Session Discovery"],"fullName":"SessionManager Session Discovery should list all sessions","status":"passed","title":"should list all sessions","duration":11.461791999999974,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Session Discovery"],"fullName":"SessionManager Session Discovery should handle empty directory","status":"passed","title":"should handle empty directory","duration":0.13750000000004547,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Session Discovery"],"fullName":"SessionManager Session Discovery should ignore files that are not directories","status":"passed","title":"should ignore files that are not directories","duration":4.601958000000025,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Session Discovery"],"fullName":"SessionManager Session Discovery should handle corrupted session files gracefully","status":"passed","title":"should handle corrupted session files gracefully","duration":0.6266250000000468,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Zombie Detection"],"fullName":"SessionManager Zombie Detection should identify zombie sessions","status":"passed","title":"should identify zombie sessions","duration":11.353541000000007,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Zombie Detection"],"fullName":"SessionManager Zombie Detection should handle sessions without PID","status":"passed","title":"should handle sessions without PID","duration":3.998583999999994,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Session Cleanup"],"fullName":"SessionManager Session Cleanup should cleanup session directory","status":"passed","title":"should cleanup session directory","duration":3.5891249999999673,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Session Cleanup"],"fullName":"SessionManager Session Cleanup should handle non-existent session cleanup gracefully","status":"passed","title":"should handle non-existent session cleanup gracefully","duration":0.35691600000001245,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Control Files"],"fullName":"SessionManager Control Files should create control files via createSessionDirectory","status":"passed","title":"should create control files via createSessionDirectory","duration":3.118417000000022,"failureMessages":[],"meta":{}},{"ancestorTitles":["SessionManager","Control Files"],"fullName":"SessionManager Control Files should check if session exists","status":"passed","title":"should check if session exists","duration":3.590750000000014,"failureMessages":[],"meta":{}}],"startTime":1750780240928,"endTime":1750780240984.5908,"status":"passed","message":"","name":"/Users/steipete/Projects/vibetunnel/web/src/test/unit/session-manager.test.ts"},{"assertionResults":[{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Terminal Creation"],"fullName":"TerminalManager - OUTDATED TESTS Terminal Creation should create a new terminal","status":"skipped","title":"should create a new terminal","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Terminal Creation"],"fullName":"TerminalManager - OUTDATED TESTS Terminal Creation should update existing terminal on recreation","status":"skipped","title":"should update existing terminal on recreation","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Terminal Output"],"fullName":"TerminalManager - OUTDATED TESTS Terminal Output should write output to terminal","status":"skipped","title":"should write output to terminal","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Terminal Output"],"fullName":"TerminalManager - OUTDATED TESTS Terminal Output should handle ANSI escape sequences","status":"skipped","title":"should handle ANSI escape sequences","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Terminal Output"],"fullName":"TerminalManager - OUTDATED TESTS Terminal Output should ignore output for non-existent terminal","status":"skipped","title":"should ignore output for non-existent terminal","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Terminal Resize"],"fullName":"TerminalManager - OUTDATED TESTS Terminal Resize should resize terminal","status":"skipped","title":"should resize terminal","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Terminal Resize"],"fullName":"TerminalManager - OUTDATED TESTS Terminal Resize should handle resize for non-existent terminal","status":"skipped","title":"should handle resize for non-existent terminal","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Buffer Snapshot"],"fullName":"TerminalManager - OUTDATED TESTS Buffer Snapshot should get buffer snapshot","status":"skipped","title":"should get buffer snapshot","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Buffer Snapshot"],"fullName":"TerminalManager - OUTDATED TESTS Buffer Snapshot should include cursor position in snapshot","status":"skipped","title":"should include cursor position in snapshot","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Buffer Snapshot"],"fullName":"TerminalManager - OUTDATED TESTS Buffer Snapshot should return null for non-existent terminal","status":"skipped","title":"should return null for non-existent terminal","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Binary Encoding"],"fullName":"TerminalManager - OUTDATED TESTS Binary Encoding should encode snapshot to binary format","status":"skipped","title":"should encode snapshot to binary format","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Binary Encoding"],"fullName":"TerminalManager - OUTDATED TESTS Binary Encoding should encode empty lines efficiently","status":"skipped","title":"should encode empty lines efficiently","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Binary Encoding"],"fullName":"TerminalManager - OUTDATED TESTS Binary Encoding should encode styled text","status":"skipped","title":"should encode styled text","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Terminal Cleanup"],"fullName":"TerminalManager - OUTDATED TESTS Terminal Cleanup should remove terminal","status":"skipped","title":"should remove terminal","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Terminal Cleanup"],"fullName":"TerminalManager - OUTDATED TESTS Terminal Cleanup should handle removing non-existent terminal","status":"skipped","title":"should handle removing non-existent terminal","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Buffer Change Notifications"],"fullName":"TerminalManager - OUTDATED TESTS Buffer Change Notifications should emit buffer change events","status":"skipped","title":"should emit buffer change events","failureMessages":[],"meta":{}},{"ancestorTitles":["TerminalManager - OUTDATED TESTS","Buffer Change Notifications"],"fullName":"TerminalManager - OUTDATED TESTS Buffer Change Notifications should debounce rapid changes","status":"skipped","title":"should debounce rapid changes","failureMessages":[],"meta":{}}],"startTime":1750780240591,"endTime":1750780240591,"status":"passed","message":"","name":"/Users/steipete/Projects/vibetunnel/web/src/test/unit/terminal-manager.test.ts"}]}
+
+> @vibetunnel/vibetunnel-cli@1.0.0 test /Users/steipete/Projects/vibetunnel/web
+> vitest -- --reporter\=json
+
+ DEPRECATED  "environmentMatchGlobs" is deprecated. Use `test.projects` to define different configurations instead.
+
+ RUN  v3.2.4 /Users/steipete/Projects/vibetunnel/web
+
+ ↓ src/test/e2e/server-smoke.e2e.test.ts (1 test | 1 skipped)
+ ↓ src/test/e2e/websocket.e2e.test.ts (21 tests | 21 skipped)
+ ↓ src/test/unit/terminal-manager.test.ts (17 tests | 17 skipped)
+stdout | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests
+[SERVER] 2025-06-24T16:14:27.935Z LOG   [cli] Starting VibeTunnel server...
+
+stdout | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests
+[SERVER] 2025-06-24T16:14:27.936Z LOG   [version] VibeTunnel Server v1.0.0-beta.3
+2025-06-24T16:14:27.936Z LOG   [version] Built: 2025-06-24T15:15:52.877Z
+2025-06-24T16:14:27.936Z LOG   [version] Platform: darwin/arm64 Node v24.1.0
+2025-06-24T16:14:27.936Z LOG   [version] PID: 54161
+2025-06-24T16:14:27.936Z LOG   [version] running in development mode
+2025-06-24T16:14:27.936Z LOG   [server] Initializing VibeTunnel server components
+2025-06-24T16:14:27.937Z LOG   [server] Initializing push notification services
+
+stdout | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests
+[SERVER] 2025-06-24T16:14:27.935Z LOG   [cli] Starting VibeTunnel server...
+2025-06-24T16:14:27.936Z LOG   [version] VibeTunnel Server v1.0.0-beta.3
+2025-06-24T16:14:27.936Z LOG   [version] Built: 2025-06-24T15:15:52.877Z
+2025-06-24T16:14:27.936Z LOG   [version] Platform: darwin/arm64 Node v24.1.0
+2025-06-24T16:14:27.936Z LOG   [version] PID: 54160
+2025-06-24T16:14:27.937Z LOG   [version] running in development mode
+2025-06-24T16:14:27.937Z LOG   [server] Initializing VibeTunnel server components
+
+stdout | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests
+[SERVER] 2025-06-24T16:14:27.937Z LOG   [server] Initializing push notification services
+
+stdout | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests
+[SERVER] 2025-06-24T16:14:27.938Z LOG   [vapid-manager] Using existing VAPID keys
+2025-06-24T16:14:27.938Z LOG   [server] VAPID keys initialized successfully
+
+stdout | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests
+[SERVER] 2025-06-24T16:14:27.938Z LOG   [vapid-manager] Using existing VAPID keys
+2025-06-24T16:14:27.938Z LOG   [server] VAPID keys initialized successfully
+
+stdout | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests
+[SERVER] 2025-06-24T16:14:27.939Z LOG   [push-notification-service] PushNotificationService initialized
+
+stdout | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests
+[SERVER] 2025-06-24T16:14:27.939Z LOG   [server] Push notification services initialized
+2025-06-24T16:14:27.939Z LOG   [buffer-aggregator] BufferAggregator initialized (HQ mode: false)
+
+stdout | src/test/e2e/resource-limits.e2e.test.ts > Resource Limits and Concurrent Sessions
+[RESOURCE_TEST] 2025-06-24T16:14:27.934Z LOG   [cli] Starting VibeTunnel server...
+
+stdout | src/test/e2e/resource-limits.e2e.test.ts > Resource Limits and Concurrent Sessions
+[RESOURCE_TEST] 2025-06-24T16:14:27.936Z LOG   [version] VibeTunnel Server v1.0.0-beta.3
+2025-06-24T16:14:27.936Z LOG   [version] Built: 2025-06-24T15:15:52.877Z
+2025-06-24T16:14:27.936Z LOG   [version] Platform: darwin/arm64 Node v24.1.0
+2025-06-24T16:14:27.936Z LOG   [version] PID: 54162
+2025-06-24T16:14:27.936Z LOG   [version] running in development mode
+2025-06-24T16:14:27.936Z LOG   [server] Initializing VibeTunnel server components
+2025-06-24T16:14:27.937Z LOG   [server] Initializing push notification services
+2025-06-24T16:14:27.938Z LOG   [vapid-manager] Using existing VAPID keys
+2025-06-24T16:14:27.938Z LOG   [server] VAPID keys initialized successfully
+2025-06-24T16:14:27.939Z LOG   [push-notification-service] PushNotificationService initialized
+2025-06-24T16:14:27.939Z LOG   [server] Push notification services initialized
+2025-06-24T16:14:27.939Z LOG   [buffer-aggregator] BufferAggregator initialized (HQ mode: false)
+
+stdout | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests
+[SERVER] 2025-06-24T16:14:27.939Z LOG   [push-notification-service] PushNotificationService initialized
+2025-06-24T16:14:27.939Z LOG   [server] Push notification services initialized
+
+stdout | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests
+[SERVER] 2025-06-24T16:14:27.939Z LOG   [buffer-aggregator] BufferAggregator initialized (HQ mode: false)
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[HQ] 2025-06-24T16:14:27.938Z LOG   [cli] Starting VibeTunnel server...
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[HQ] 2025-06-24T16:14:27.940Z LOG   [version] VibeTunnel Server v1.0.0-beta.3
+2025-06-24T16:14:27.940Z LOG   [version] Built: 2025-06-24T15:15:52.877Z
+2025-06-24T16:14:27.940Z LOG   [version] Platform: darwin/arm64 Node v24.1.0
+2025-06-24T16:14:27.940Z LOG   [version] PID: 54159
+2025-06-24T16:14:27.940Z LOG   [version] running in development mode
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[HQ] 2025-06-24T16:14:27.940Z LOG   [server] Initializing VibeTunnel server components
+
+stdout | src/test/e2e/resource-limits.e2e.test.ts > Resource Limits and Concurrent Sessions
+[RESOURCE_TEST] 2025-06-24T16:14:27.941Z LOG   [server] Starting server on port 0
+
+stdout | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests
+[SERVER] 2025-06-24T16:14:27.941Z LOG   [server] Starting server on port 0
+
+stdout | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests
+[SERVER] 2025-06-24T16:14:27.941Z LOG   [server] Starting server on port 0
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[HQ] 2025-06-24T16:14:27.942Z LOG   [server] Initializing push notification services
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[HQ] 2025-06-24T16:14:27.942Z LOG   [vapid-manager] Using existing VAPID keys
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[HQ] 2025-06-24T16:14:27.942Z LOG   [server] VAPID keys initialized successfully
+
+stdout | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests
+[SERVER] 2025-06-24T16:14:27.944Z LOG   [server] VibeTunnel Server running on http://localhost:62817
+2025-06-24T16:14:27.944Z LOG   [server] Authentication: SYSTEM USER PASSWORD
+2025-06-24T16:14:27.944Z LOG   [server] SSH Key Authentication: DISABLED (use --enable-ssh-keys to enable)
+
+stdout | src/test/e2e/resource-limits.e2e.test.ts > Resource Limits and Concurrent Sessions
+[RESOURCE_TEST] 2025-06-24T16:14:27.944Z LOG   [server] VibeTunnel Server running on http://localhost:62815
+2025-06-24T16:14:27.944Z LOG   [server] Authentication: SYSTEM USER PASSWORD
+2025-06-24T16:14:27.944Z LOG   [server] SSH Key Authentication: DISABLED (use --enable-ssh-keys to enable)
+2025-06-24T16:14:27.944Z LOG   [control-dir-watcher] Control directory watcher started for /var/folders/qp/t4t5pw1n1279_1qckf4gqhyc0000gn/T/resource-limits/d0d8beae
+2025-06-24T16:14:27.945Z LOG   [activity-monitor] activity monitor started
+
+stdout | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests
+[SERVER] 2025-06-24T16:14:27.944Z LOG   [server] VibeTunnel Server running on http://localhost:62816
+2025-06-24T16:14:27.944Z LOG   [server] Authentication: SYSTEM USER PASSWORD
+2025-06-24T16:14:27.944Z LOG   [server] SSH Key Authentication: DISABLED (use --enable-ssh-keys to enable)
+2025-06-24T16:14:27.945Z LOG   [control-dir-watcher] Control directory watcher started for /var/folders/qp/t4t5pw1n1279_1qckf4gqhyc0000gn/T/vt-test/e724fde2
+2025-06-24T16:14:27.945Z LOG   [activity-monitor] activity monitor started
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[HQ] 2025-06-24T16:14:27.945Z LOG   [push-notification-service] PushNotificationService initialized
+2025-06-24T16:14:27.945Z LOG   [server] Push notification services initialized
+2025-06-24T16:14:27.946Z LOG   [server] Running in HQ mode
+2025-06-24T16:14:27.946Z LOG   [buffer-aggregator] BufferAggregator initialized (HQ mode: true)
+
+stdout | src/test/unit/session-manager.test.ts > SessionManager > Session Persistence > should save session info to file
+2025-06-24T16:14:27.946Z LOG   [session-manager] session directory created for test123
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[HQ] 2025-06-24T16:14:27.947Z LOG   [server] Starting server on port 0
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[HQ] 2025-06-24T16:14:27.950Z LOG   [server] VibeTunnel Server running on http://localhost:62818
+2025-06-24T16:14:27.950Z LOG   [server] Authentication: SYSTEM USER PASSWORD
+
+stdout | src/test/unit/session-manager.test.ts > SessionManager > Session Persistence > should load session info from file
+2025-06-24T16:14:27.952Z LOG   [session-manager] session directory created for test456
+
+stdout | src/test/unit/session-manager.test.ts > SessionManager > Session Persistence > should update existing session status
+2025-06-24T16:14:27.957Z LOG   [session-manager] session directory created for test789
+2025-06-24T16:14:27.958Z LOG   [session-manager] session test789 status updated to exited (exit code: 0)
+
+stdout | src/test/unit/buffer-subscription-service.test.ts
+[buffer-subscription-service] connecting to ws://localhost:3000/buffers
+
+stdout | src/test/unit/session-manager.test.ts > SessionManager > Session Discovery > should list all sessions
+2025-06-24T16:14:27.966Z LOG   [session-manager] session directory created for session1
+2025-06-24T16:14:27.975Z LOG   [session-manager] session directory created for session2
+2025-06-24T16:14:27.979Z LOG   [session-manager] session directory created for session3
+2025-06-24T16:14:27.980Z LOG   [session-manager] process 6882 no longer running for session session1
+2025-06-24T16:14:27.981Z LOG   [session-manager] process 4991 no longer running for session session2
+
+ ↓ src/test/unit/buffer-subscription-service.test.ts (22 tests | 22 skipped)
+stderr | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests > GET /api/sessions > should require authentication
+[SERVER ERROR] 2025-06-24T16:14:27.981Z ERROR [auth] Unauthorized request to GET /sessions from 127.0.0.1
+[Test Error - SERVER stderr] 2025-06-24T16:14:27.981Z ERROR [auth] Unauthorized request to GET /sessions from 127.0.0.1
+
+
+(node:54137) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/steipete/Projects/vibetunnel/web/node_modules/.pnpm/@open-wc+testing@4.0.0/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/steipete/Projects/vibetunnel/web/node_modules/.pnpm/@open-wc+testing@4.0.0/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+stderr | src/client/services/buffer-subscription-service.test.ts
+Lit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+stdout | src/test/unit/session-manager.test.ts > SessionManager > Session Discovery > should ignore files that are not directories
+2025-06-24T16:14:27.994Z LOG   [session-manager] session directory created for validsession
+2025-06-24T16:14:28.015Z LOG   [session-manager] process 12345 no longer running for session validsession
+
+stderr | src/test/unit/session-manager.test.ts > SessionManager > Session Discovery > should handle corrupted session files gracefully
+2025-06-24T16:14:28.025Z WARN  [session-manager] failed to load session info for corrupted: {}
+
+stdout | src/test/unit/session-manager.test.ts > SessionManager > Zombie Detection > should identify zombie sessions
+2025-06-24T16:14:28.029Z LOG   [session-manager] session directory created for running
+2025-06-24T16:14:28.033Z LOG   [session-manager] session directory created for zombie
+2025-06-24T16:14:28.036Z LOG   [session-manager] session directory created for exited
+2025-06-24T16:14:28.041Z LOG   [session-manager] process 99999 no longer running for session zombie
+
+ ✓ src/client/services/buffer-subscription-service.test.ts (16 tests) 59ms
+stdout | src/test/unit/session-manager.test.ts > SessionManager > Zombie Detection > should handle sessions without PID
+2025-06-24T16:14:28.076Z LOG   [session-manager] session directory created for no-pid
+
+stdout | src/test/unit/session-manager.test.ts > SessionManager > Session Cleanup > should cleanup session directory
+2025-06-24T16:14:28.079Z LOG   [session-manager] session directory created for to-delete
+2025-06-24T16:14:28.080Z LOG   [session-manager] session to-delete cleaned up
+
+stdout | src/test/unit/session-manager.test.ts > SessionManager > Control Files > should create control files via createSessionDirectory
+2025-06-24T16:14:28.083Z LOG   [session-manager] session directory created for control-test
+
+stdout | src/test/unit/session-manager.test.ts > SessionManager > Control Files > should check if session exists
+2025-06-24T16:14:28.087Z LOG   [session-manager] session directory created for exists-test
+
+ ✓ src/test/unit/session-manager.test.ts (14 tests) 153ms
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.275Z LOG   [cli] Starting VibeTunnel server...
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.277Z LOG   [version] VibeTunnel Server v1.0.0-beta.3
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.277Z LOG   [version] Built: 2025-06-24T15:15:52.877Z
+2025-06-24T16:14:28.277Z LOG   [version] Platform: darwin/arm64 Node v24.1.0
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.277Z LOG   [version] PID: 54255
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.277Z LOG   [version] running in development mode
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.277Z LOG   [server] Initializing VibeTunnel server components
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.278Z LOG   [server] Initializing push notification services
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.278Z LOG   [vapid-manager] Using existing VAPID keys
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.278Z LOG   [server] VAPID keys initialized successfully
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.279Z LOG   [push-notification-service] PushNotificationService initialized
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.279Z LOG   [server] Push notification services initialized
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.279Z LOG   [buffer-aggregator] BufferAggregator initialized (HQ mode: false)
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.281Z LOG   [server] Starting server on port 0
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0] 2025-06-24T16:14:28.283Z LOG   [server] VibeTunnel Server running on http://localhost:62849
+
+stderr | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests > POST /api/logs/client > should accept different log levels
+[SERVER ERROR] 2025-06-24T16:14:28.468Z WARN  [CLIENT:test-module] Test warn message
+[Test Error - SERVER stderr] 2025-06-24T16:14:28.468Z WARN  [CLIENT:test-module] Test warn message
+
+
+stderr | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests > POST /api/logs/client > should accept different log levels
+[SERVER ERROR] 2025-06-24T16:14:28.469Z ERROR [CLIENT:test-module] Test error message
+[Test Error - SERVER stderr] 2025-06-24T16:14:28.469Z ERROR [CLIENT:test-module] Test error message
+
+
+stderr | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests > POST /api/logs/client > should require authentication
+[SERVER ERROR] 2025-06-24T16:14:28.472Z ERROR [auth] Unauthorized request to POST /logs/client from 127.0.0.1
+[Test Error - SERVER stderr] 2025-06-24T16:14:28.472Z ERROR [auth] Unauthorized request to POST /logs/client from 127.0.0.1
+
+
+stderr | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests > GET /api/logs/info > should require authentication
+[SERVER ERROR] 2025-06-24T16:14:28.477Z ERROR [auth] Unauthorized request to GET /logs/info from 127.0.0.1
+[Test Error - SERVER stderr] 2025-06-24T16:14:28.477Z ERROR [auth] Unauthorized request to GET /logs/info from 127.0.0.1
+
+
+stderr | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests > GET /api/logs/raw > should require authentication
+[SERVER ERROR] 2025-06-24T16:14:28.478Z ERROR [auth] Unauthorized request to GET /logs/raw from 127.0.0.1
+[Test Error - SERVER stderr] 2025-06-24T16:14:28.478Z ERROR [auth] Unauthorized request to GET /logs/raw from 127.0.0.1
+
+
+stderr | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests > Error handling > should return 404 for non-existent session
+[SERVER ERROR] 2025-06-24T16:14:28.852Z ERROR [sessions] SSE client error for session c80c371e-d50b-4c4d-bf59-955c6682e30e: {
+  "code": "ECONNRESET"
+}
+[Test Error - SERVER stderr] 2025-06-24T16:14:28.852Z ERROR [sessions] SSE client error for session c80c371e-d50b-4c4d-bf59-955c6682e30e: {
+  "code": "ECONNRESET"
+}
+
+
+stderr | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests > Error handling > should return 404 for non-existent session
+[SERVER ERROR] 2025-06-24T16:14:28.852Z ERROR [sessions] session nonexistent not found for input
+[Test Error - SERVER stderr] 2025-06-24T16:14:28.852Z ERROR [sessions] session nonexistent not found for input
+
+
+stderr | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests > Error handling > should handle invalid input data
+[SERVER ERROR] 2025-06-24T16:14:28.862Z WARN  [sessions] invalid input request for session 6570df08-be1c-4d37-b7bf-dd63b426683c: both or neither text/key provided
+[Test Error - SERVER stderr] 2025-06-24T16:14:28.862Z WARN  [sessions] invalid input request for session 6570df08-be1c-4d37-b7bf-dd63b426683c: both or neither text/key provided
+
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.862Z LOG   [cli] Starting VibeTunnel server...
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.864Z LOG   [version] VibeTunnel Server v1.0.0-beta.3
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.864Z LOG   [version] Built: 2025-06-24T15:15:52.877Z
+2025-06-24T16:14:28.864Z LOG   [version] Platform: darwin/arm64 Node v24.1.0
+2025-06-24T16:14:28.864Z LOG   [version] PID: 55072
+2025-06-24T16:14:28.864Z LOG   [version] running in development mode
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.864Z LOG   [server] Initializing VibeTunnel server components
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.865Z LOG   [server] Initializing push notification services
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.865Z LOG   [vapid-manager] Using existing VAPID keys
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.865Z LOG   [server] VAPID keys initialized successfully
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.866Z LOG   [push-notification-service] PushNotificationService initialized
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.866Z LOG   [server] Push notification services initialized
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.866Z LOG   [buffer-aggregator] BufferAggregator initialized (HQ mode: false)
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.868Z LOG   [server] Starting server on port 0
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1] 2025-06-24T16:14:28.871Z LOG   [server] VibeTunnel Server running on http://localhost:62862
+
+stderr | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests > Error handling > should handle invalid resize dimensions
+[SERVER ERROR] 2025-06-24T16:14:28.873Z WARN  [sessions] invalid resize request for session b9dedb13-4af3-44cd-b7dd-f46d8665fadd: cols=-1, rows=40 out of range
+[Test Error - SERVER stderr] 2025-06-24T16:14:28.873Z WARN  [sessions] invalid resize request for session b9dedb13-4af3-44cd-b7dd-f46d8665fadd: cols=-1, rows=40 out of range
+
+
+stdout | src/test/e2e/sessions-api.e2e.test.ts > Sessions API Tests
+[SERVER EXIT] code: 0, signal: null
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.932Z LOG   [cli] Starting VibeTunnel server...
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.933Z LOG   [version] VibeTunnel Server v1.0.0-beta.3
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.933Z LOG   [version] Built: 2025-06-24T15:15:52.877Z
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.933Z LOG   [version] Platform: darwin/arm64 Node v24.1.0
+2025-06-24T16:14:28.933Z LOG   [version] PID: 55211
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.933Z LOG   [version] running in development mode
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.933Z LOG   [server] Initializing VibeTunnel server components
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.934Z LOG   [server] Initializing push notification services
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.934Z LOG   [vapid-manager] Using existing VAPID keys
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.935Z LOG   [server] VAPID keys initialized successfully
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.935Z LOG   [push-notification-service] PushNotificationService initialized
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.935Z LOG   [server] Push notification services initialized
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.935Z LOG   [buffer-aggregator] BufferAggregator initialized (HQ mode: false)
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.937Z LOG   [server] Starting server on port 0
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2] 2025-06-24T16:14:28.939Z LOG   [server] VibeTunnel Server running on http://localhost:62867
+
+ ✓ src/test/e2e/sessions-api.e2e.test.ts (18 tests | 2 skipped) 1105ms
+stderr | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests > DELETE /api/logs/clear > should require authentication
+[SERVER ERROR] 2025-06-24T16:14:29.087Z ERROR [auth] Unauthorized request to DELETE /logs/clear from 127.0.0.1
+[Test Error - SERVER stderr] 2025-06-24T16:14:29.087Z ERROR [auth] Unauthorized request to DELETE /logs/clear from 127.0.0.1
+
+
+stdout | src/test/e2e/logs-api.e2e.test.ts > Logs API Tests > Log file format
+[SERVER EXIT] code: 0, signal: null
+
+ ✓ src/test/e2e/logs-api.e2e.test.ts (11 tests | 2 skipped) 1321ms
+   ✓ Logs API Tests > DELETE /api/logs/clear > should clear the log file  608ms
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should create sessions on remote servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:30.964Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:30.964Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should create sessions on remote servers
+[REMOTE-1 ERROR] 2025-06-24T16:14:30.976Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-1 stderr] 2025-06-24T16:14:30.976Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should create sessions on remote servers
+[REMOTE-2 ERROR] 2025-06-24T16:14:31.023Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-2 stderr] 2025-06-24T16:14:31.023Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should create sessions on remote servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:31.085Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:31.085Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should create sessions on remote servers
+[REMOTE-1 ERROR] 2025-06-24T16:14:31.122Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-1 stderr] 2025-06-24T16:14:31.122Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should create sessions on remote servers
+[REMOTE-2 ERROR] 2025-06-24T16:14:31.136Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-2 stderr] 2025-06-24T16:14:31.136Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should create sessions on remote servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:32.038Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:32.038Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should create sessions on remote servers
+[REMOTE-1 ERROR] 2025-06-24T16:14:32.038Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-1 stderr] 2025-06-24T16:14:32.038Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should create sessions on remote servers
+[REMOTE-2 ERROR] 2025-06-24T16:14:32.038Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-2 stderr] 2025-06-24T16:14:32.038Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should proxy session operations to remote servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:32.042Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:32.042Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should proxy session operations to remote servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:32.167Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:32.167Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should proxy session operations to remote servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:33.069Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:33.069Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should proxy session operations to remote servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:33.072Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:33.072Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should proxy session operations to remote servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:33.088Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:33.088Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should cleanup exited sessions across all servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:33.598Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:33.598Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should cleanup exited sessions across all servers
+[REMOTE-1 ERROR] 2025-06-24T16:14:33.606Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-1 stderr] 2025-06-24T16:14:33.606Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should cleanup exited sessions across all servers
+[REMOTE-2 ERROR] 2025-06-24T16:14:33.618Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-2 stderr] 2025-06-24T16:14:33.618Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should cleanup exited sessions across all servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:33.715Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:33.715Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should cleanup exited sessions across all servers
+[REMOTE-1 ERROR] 2025-06-24T16:14:33.717Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-1 stderr] 2025-06-24T16:14:33.717Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should cleanup exited sessions across all servers
+[REMOTE-2 ERROR] 2025-06-24T16:14:33.731Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-2 stderr] 2025-06-24T16:14:33.731Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should cleanup exited sessions across all servers
+[REMOTE-0 ERROR] 2025-06-24T16:14:35.636Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-0 stderr] 2025-06-24T16:14:35.636Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should cleanup exited sessions across all servers
+[REMOTE-1 ERROR] 2025-06-24T16:14:35.636Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-1 stderr] 2025-06-24T16:14:35.636Z ERROR [auth] Invalid JWT token
+
+
+stderr | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests > should cleanup exited sessions across all servers
+[REMOTE-2 ERROR] 2025-06-24T16:14:35.636Z ERROR [auth] Invalid JWT token
+[Test Error - REMOTE-2 stderr] 2025-06-24T16:14:35.636Z ERROR [auth] Invalid JWT token
+
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-0 EXIT] code: 0, signal: null
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-1 EXIT] code: 0, signal: null
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[REMOTE-2 EXIT] code: 0, signal: null
+
+stdout | src/test/e2e/hq-mode.e2e.test.ts > HQ Mode E2E Tests
+[HQ EXIT] code: 0, signal: null
+
+ ✓ src/test/e2e/hq-mode.e2e.test.ts (5 tests | 1 skipped) 7992ms
+   ✓ HQ Mode E2E Tests > should create sessions on remote servers  1083ms
+   ✓ HQ Mode E2E Tests > should proxy session operations to remote servers  1554ms
+   ✓ HQ Mode E2E Tests > should cleanup exited sessions across all servers  2059ms
+stderr | src/test/e2e/resource-limits.e2e.test.ts > Resource Limits and Concurrent Sessions > Error Recovery > should handle invalid session operations gracefully
+[RESOURCE_TEST ERROR] 2025-06-24T16:14:39.987Z ERROR [sessions] session non-existent-session not found for input
+[Test Error - RESOURCE_TEST stderr] 2025-06-24T16:14:39.987Z ERROR [sessions] session non-existent-session not found for input
+
+
+stdout | src/test/e2e/resource-limits.e2e.test.ts > Resource Limits and Concurrent Sessions
+[RESOURCE_TEST EXIT] code: 0, signal: null
+
+ ✓ src/test/e2e/resource-limits.e2e.test.ts (8 tests | 4 skipped) 15914ms
+   ✓ Resource Limits and Concurrent Sessions > Concurrent Session Creation > should handle multiple concurrent sessions  686ms
+   ✓ Resource Limits and Concurrent Sessions > Concurrent Session Creation > should handle rapid session creation and deletion  11311ms
+
+ Test Files  6 passed | 4 skipped (10)
+      Tests  63 passed | 70 skipped (133)
+   Start at  18:14:27
+   Duration  16.27s (transform 277ms, setup 91ms, collect 647ms, tests 26.54s, environment 223ms, prepare 555ms)
+
