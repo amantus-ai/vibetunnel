@@ -177,10 +177,30 @@ export class PtyManager extends EventEmitter {
       // Create session directory structure
       const paths = this.sessionManager.createSessionDirectory(sessionId);
 
-      // Create initial session info
+      // Resolve the command using unified resolution logic
+      const resolved = ProcessUtils.resolveCommand(command);
+      const { command: finalCommand, args: finalArgs } = resolved;
+      const resolvedCommand = [finalCommand, ...finalArgs];
+
+      // Log resolution details
+      if (resolved.resolvedFrom === 'alias') {
+        logger.log(
+          chalk.cyan(`Using alias: '${resolved.originalCommand}' → '${resolvedCommand.join(' ')}'`)
+        );
+      } else if (resolved.resolvedFrom === 'path' && resolved.originalCommand) {
+        logger.log(chalk.gray(`Resolved '${resolved.originalCommand}' → '${finalCommand}'`));
+      } else if (resolved.useShell) {
+        logger.debug(`Using shell to execute ${resolved.resolvedFrom}: ${command.join(' ')}`);
+      }
+
+      // Log the final command
+      logger.log(chalk.blue(`Creating PTY session with command: ${resolvedCommand.join(' ')}`));
+      logger.debug(`Working directory: ${workingDir}`);
+
+      // Create initial session info with resolved command
       const sessionInfo: SessionInfo = {
         id: sessionId,
-        command: command,
+        command: resolvedCommand,
         name: sessionName,
         workingDir: workingDir,
         status: 'starting',
@@ -209,14 +229,7 @@ export class PtyManager extends EventEmitter {
           TERM: term,
         };
 
-        // Resolve command to handle aliases and shell builtins
-        const resolved = ProcessUtils.resolveCommand(command);
-
-        if (resolved.useShell) {
-          logger.debug(`Using shell to execute command: ${command.join(' ')}`);
-        }
-
-        ptyProcess = pty.spawn(resolved.command, resolved.args, {
+        ptyProcess = pty.spawn(finalCommand, finalArgs, {
           name: term,
           cols,
           rows,
@@ -267,6 +280,7 @@ export class PtyManager extends EventEmitter {
       this.sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
       logger.log(chalk.green(`Session ${sessionId} created successfully (PID: ${ptyProcess.pid})`));
+      logger.log(chalk.gray(`Running: ${resolvedCommand.join(' ')} in ${workingDir}`));
 
       // Setup PTY event handlers
       this.setupPtyHandlers(session, options.forwardToStdout || false, options.onExit);
