@@ -2,13 +2,13 @@ import SwiftUI
 
 /// Form component for entering server connection details.
 ///
-/// Provides input fields for host, port, name, and password
+/// Provides input fields for host, port, name, and secret token
 /// with validation and recent servers functionality.
 struct ServerConfigForm: View {
     @Binding var host: String
     @Binding var port: String
     @Binding var name: String
-    @Binding var password: String
+    @Binding var secretToken: String
     let isConnecting: Bool
     let errorMessage: String?
     let onConnect: () -> Void
@@ -21,7 +21,7 @@ struct ServerConfigForm: View {
         case host
         case port
         case name
-        case password
+        case secretToken
     }
 
     var body: some View {
@@ -72,19 +72,19 @@ struct ServerConfigForm: View {
                         .focused($focusedField, equals: .name)
                         .submitLabel(.next)
                         .onSubmit {
-                            focusedField = .password
+                            focusedField = .secretToken
                         }
                 }
 
-                // Password Field (optional)
+                // Secret Token Field (optional)
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    Label("Password (optional)", systemImage: "lock")
+                    Label("Secret Token (optional)", systemImage: "key.horizontal")
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.primaryAccent)
 
-                    SecureField("Enter password", text: $password)
+                    SecureField("Enter secret token", text: $secretToken)
                         .textFieldStyle(TerminalTextFieldStyle())
-                        .focused($focusedField, equals: .password)
+                        .focused($focusedField, equals: .secretToken)
                         .submitLabel(.done)
                         .onSubmit {
                             focusedField = nil

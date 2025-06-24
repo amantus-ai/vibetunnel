@@ -9,18 +9,18 @@ struct ServerConfig: Codable, Equatable {
     let host: String
     let port: Int
     let name: String?
-    let password: String?
+    let secretToken: String?
 
     init(
         host: String,
         port: Int,
         name: String? = nil,
-        password: String? = nil
+        secretToken: String? = nil
     ) {
         self.host = host
         self.port = port
         self.name = name
-        self.password = password
+        self.secretToken = secretToken
     }
 
     /// Constructs the base URL for API requests.
@@ -48,23 +48,19 @@ struct ServerConfig: Codable, Equatable {
 
     /// Indicates whether the server requires authentication.
     ///
-    /// - Returns: true if a password is configured, false otherwise.
+    /// - Returns: true if a secret token is configured, false otherwise.
     var requiresAuthentication: Bool {
-        if let password {
-            return !password.isEmpty
+        if let token = secretToken {
+            return !token.isEmpty
         }
         return false
     }
 
-    /// Generates the Authorization header value if a password is configured.
+    /// Generates the Authorization header value if a secret token is configured.
     ///
-    /// - Returns: A Basic auth header string using "admin" as username,
-    ///   or nil if no password is configured.
+    /// - Returns: A Bearer token header string, or nil if no token is configured.
     var authorizationHeader: String? {
-        guard let password, !password.isEmpty else { return nil }
-        let credentials = "admin:\(password)"
-        guard let data = credentials.data(using: .utf8) else { return nil }
-        let base64 = data.base64EncodedString()
-        return "Basic \(base64)"
+        guard let token = secretToken, !token.isEmpty else { return nil }
+        return "Bearer \(token)"
     }
 }

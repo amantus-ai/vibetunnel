@@ -63,7 +63,7 @@ struct ConnectionView: View {
                         host: $viewModel.host,
                         port: $viewModel.port,
                         name: $viewModel.name,
-                        password: $viewModel.password,
+                        secretToken: $viewModel.secretToken,
                         isConnecting: viewModel.isConnecting,
                         errorMessage: viewModel.errorMessage,
                         onConnect: connectToServer
@@ -115,7 +115,7 @@ class ConnectionViewModel {
     var host: String = "127.0.0.1"
     var port: String = "4020"
     var name: String = ""
-    var password: String = ""
+    var secretToken: String = ""
     var isConnecting: Bool = false
     var errorMessage: String?
 
@@ -126,7 +126,7 @@ class ConnectionViewModel {
             self.host = serverConfig.host
             self.port = String(serverConfig.port)
             self.name = serverConfig.name ?? ""
-            self.password = serverConfig.password ?? ""
+            self.secretToken = serverConfig.secretToken ?? ""
         }
     }
 
@@ -150,11 +150,11 @@ class ConnectionViewModel {
             host: host,
             port: portNumber,
             name: name.isEmpty ? nil : name,
-            password: password.isEmpty ? nil : password
+            secretToken: secretToken.isEmpty ? nil : secretToken
         )
 
         do {
-            // Test connection by fetching sessions
+            // Test connection by fetching sessions (requires auth if token provided)
             let url = config.baseURL.appendingPathComponent("api/sessions")
             var request = URLRequest(url: url)
             if let authHeader = config.authorizationHeader {
@@ -165,12 +165,28 @@ class ConnectionViewModel {
             if let httpResponse = response as? HTTPURLResponse,
                httpResponse.statusCode == 200
             {
+                // Connection successful
                 onSuccess(config)
             } else {
                 errorMessage = "Failed to connect to server"
             }
         } catch {
-            errorMessage = "Connection failed: \(error.localizedDescription)"
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .notConnectedToInternet:
+                    errorMessage = "No internet connection"
+                case .cannotFindHost:
+                    errorMessage = "Cannot find server"
+                case .cannotConnectToHost:
+                    errorMessage = "Cannot connect to server"
+                case .timedOut:
+                    errorMessage = "Connection timed out"
+                default:
+                    errorMessage = "Connection failed: \(error.localizedDescription)"
+                }
+            } else {
+                errorMessage = "Connection failed: \(error.localizedDescription)"
+            }
         }
 
         isConnecting = false
