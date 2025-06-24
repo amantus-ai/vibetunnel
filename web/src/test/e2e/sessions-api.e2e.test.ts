@@ -233,6 +233,9 @@ describe('Sessions API Tests', () => {
     });
 
     it('should get session buffer', async () => {
+      // Wait a bit after resize to ensure it's processed
+      await sleep(200);
+
       const response = await fetch(
         `http://localhost:${server?.port}/api/sessions/${sessionId}/buffer`,
         {
@@ -248,8 +251,12 @@ describe('Sessions API Tests', () => {
       expect(view.getUint16(0)).toBe(0x5654); // Magic bytes "VT"
       expect(view.getUint8(2)).toBe(1); // Version
 
+      // Check dimensions match the resize (120x40)
+      expect(view.getUint32(4)).toBe(120); // Cols
+      expect(view.getUint32(8)).toBe(40); // Rows
+
       // Buffer size check - just verify it's a reasonable size
-      expect(buffer.byteLength).toBeGreaterThan(20); // At least header + some data
+      expect(buffer.byteLength).toBeGreaterThan(32); // At least header + some data
       expect(buffer.byteLength).toBeLessThan(1000000); // Less than 1MB
     });
 
