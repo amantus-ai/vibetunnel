@@ -66,6 +66,8 @@ interface Config {
   // Local bypass configuration
   allowLocalBypass: boolean;
   localAuthToken: string | null;
+  // HQ auth bypass for testing
+  noHqAuth: boolean;
 }
 
 // Show help message
@@ -102,6 +104,7 @@ Remote Server Options:
   --hq-password <pass>  Password for HQ authentication
   --name <name>         Unique name for this remote server
   --allow-insecure-hq   Allow HTTP URLs for HQ (default: HTTPS only)
+  --no-hq-auth          Disable HQ authentication (for testing only)
 
 Environment Variables:
   PORT                  Default port if --port not specified
@@ -151,6 +154,8 @@ function parseArgs(): Config {
     // Local bypass configuration
     allowLocalBypass: false,
     localAuthToken: null as string | null,
+    // HQ auth bypass for testing
+    noHqAuth: false,
   };
 
   // Check for help flag first
@@ -212,6 +217,8 @@ function parseArgs(): Config {
     } else if (args[i] === '--local-auth-token' && i + 1 < args.length) {
       config.localAuthToken = args[i + 1];
       i++; // Skip the token value in next iteration
+    } else if (args[i] === '--no-hq-auth') {
+      config.noHqAuth = true;
     } else if (args[i].startsWith('--')) {
       // Unknown argument
       logger.error(`Unknown argument: ${args[i]}`);
@@ -243,9 +250,10 @@ function validateConfig(config: ReturnType<typeof parseArgs>) {
   }
 
   // Validate HQ registration configuration
-  if (config.hqUrl && (!config.hqUsername || !config.hqPassword)) {
+  if (config.hqUrl && (!config.hqUsername || !config.hqPassword) && !config.noHqAuth) {
     logger.error('HQ username and password required when --hq-url is specified');
     logger.error('Use --hq-username and --hq-password with --hq-url');
+    logger.error('Or use --no-hq-auth for testing without authentication');
     process.exit(1);
   }
 
@@ -266,9 +274,11 @@ function validateConfig(config: ReturnType<typeof parseArgs>) {
   // Validate HQ registration configuration
   if (
     (config.hqUrl || config.hqUsername || config.hqPassword) &&
-    (!config.hqUrl || !config.hqUsername || !config.hqPassword)
+    (!config.hqUrl || !config.hqUsername || !config.hqPassword) &&
+    !config.noHqAuth
   ) {
     logger.error('All HQ parameters required: --hq-url, --hq-username, --hq-password');
+    logger.error('Or use --no-hq-auth for testing without authentication');
     process.exit(1);
   }
 
@@ -277,6 +287,12 @@ function validateConfig(config: ReturnType<typeof parseArgs>) {
     logger.error('Cannot use --hq and --hq-url together');
     logger.error('Use --hq to run as HQ server, or --hq-url to register with an HQ');
     process.exit(1);
+  }
+
+  // Warn about no-hq-auth
+  if (config.noHqAuth && config.hqUrl) {
+    logger.warn('--no-hq-auth is enabled: Remote servers can register without authentication');
+    logger.warn('This should only be used for testing!');
   }
 }
 
@@ -417,7 +433,11 @@ export async function createApp(): Promise<AppInstance> {
     remoteRegistry = new RemoteRegistry();
     logger.log(chalk.green('Running in HQ mode'));
     logger.debug('Initialized remote registry for HQ mode');
-  } else if (config.hqUrl && config.hqUsername && config.hqPassword && config.remoteName) {
+  } else if (
+    config.hqUrl &&
+    config.remoteName &&
+    (config.noHqAuth || (config.hqUsername && config.hqPassword))
+  ) {
     // Generate bearer token for this remote server
     remoteBearerToken = uuidv4();
     logger.debug(`Generated bearer token for remote server: ${config.remoteName}`);
@@ -725,20 +745,32 @@ export async function createApp(): Promise<AppInstance> {
       }
 
       // Initialize HQ client now that we know the actual port
-      if (config.hqUrl && config.hqUsername && config.hqPassword && config.remoteName) {
+      if (
+        config.hqUrl &&
+        config.remoteName &&
+        (config.noHqAuth || (config.hqUsername && config.hqPassword))
+      ) {
         const remoteUrl = `http://localhost:${actualPort}`;
         hqClient = new HQClient(
           config.hqUrl,
-          config.hqUsername,
-          config.hqPassword,
+          config.hqUsername || 'no-auth',
+          config.hqPassword || 'no-auth',
           config.remoteName,
           remoteUrl,
           remoteBearerToken || ''
         );
-        logger.log(
-          chalk.green(`Remote mode: ${config.remoteName} will accept Bearer token for HQ access`)
-        );
-        logger.debug(`Bearer token: ${hqClient.getToken()}`);
+        if (config.noHqAuth) {
+          logger.log(
+            chalk.yellow(
+              `Remote mode: ${config.remoteName} registering WITHOUT HQ authentication (--no-hq-auth)`
+            )
+          );
+        } else {
+          logger.log(
+            chalk.green(`Remote mode: ${config.remoteName} will accept Bearer token for HQ access`)
+          );
+          logger.debug(`Bearer token: ${hqClient.getToken()}`);
+        }
       }
 
       // Send message to parent process if running as child (for testing)

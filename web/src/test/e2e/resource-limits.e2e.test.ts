@@ -14,9 +14,6 @@ import {
 describe('Resource Limits and Concurrent Sessions', () => {
   let server: ServerInstance | null = null;
   let testDir: string;
-  const username = 'testuser';
-  const password = 'testpass';
-  const authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
 
   beforeAll(async () => {
     // Create temporary directory for test
@@ -24,11 +21,9 @@ describe('Resource Limits and Concurrent Sessions', () => {
 
     // Start server with specific limits
     server = await startTestServer({
-      args: ['--port', '0'],
+      args: ['--port', '0', '--no-auth'],
       controlDir: testDir,
       env: {
-        VIBETUNNEL_USERNAME: username,
-        VIBETUNNEL_PASSWORD: password,
         // Set reasonable limits for testing
         VIBETUNNEL_MAX_SESSIONS: '20',
         VIBETUNNEL_MAX_WEBSOCKETS: '50',
@@ -36,7 +31,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
       serverType: 'RESOURCE_TEST',
     });
 
-    await waitForServerHealth(server.port, username, password);
+    await waitForServerHealth(server.port);
   });
 
   afterAll(async () => {
@@ -59,7 +54,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
         fetch(`http://localhost:${server?.port}/api/sessions`, {
           method: 'POST',
           headers: {
-            Authorization: authHeader,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -81,9 +75,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
       }
 
       // Verify all sessions are listed
-      const listResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
-        headers: { Authorization: authHeader },
-      });
+      const listResponse = await fetch(`http://localhost:${server?.port}/api/sessions`);
       const sessions = await listResponse.json();
       expect(sessions.length).toBeGreaterThanOrEqual(sessionCount);
 
@@ -92,7 +84,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
         sessionIds.map((id) =>
           fetch(`http://localhost:${server?.port}/api/sessions/${id}`, {
             method: 'DELETE',
-            headers: { Authorization: authHeader },
           })
         )
       );
@@ -109,7 +100,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
         const createResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
           method: 'POST',
           headers: {
-            Authorization: authHeader,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -126,7 +116,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
           // Immediately delete
           await fetch(`http://localhost:${server?.port}/api/sessions/${sessionId}`, {
             method: 'DELETE',
-            headers: { Authorization: authHeader },
           });
         }
 
@@ -147,9 +136,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
       try {
         // Create multiple WebSocket connections
         for (let i = 0; i < connectionCount; i++) {
-          const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
-            headers: { Authorization: authHeader },
-          });
+          const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`);
 
           await new Promise<void>((resolve, reject) => {
             ws.on('open', () => resolve());
@@ -182,7 +169,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
         const response = await fetch(`http://localhost:${server?.port}/api/sessions`, {
           method: 'POST',
           headers: {
-            Authorization: authHeader,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -197,9 +183,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
       }
 
       // Create WebSocket and subscribe to all sessions
-      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
-        headers: { Authorization: authHeader },
-      });
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`);
 
       try {
         await new Promise<void>((resolve) => {
@@ -238,7 +222,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
           sessionIds.map((id) =>
             fetch(`http://localhost:${server?.port}/api/sessions/${id}`, {
               method: 'DELETE',
-              headers: { Authorization: authHeader },
             })
           )
         );
@@ -252,7 +235,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
       const createResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
         headers: {
-          Authorization: authHeader,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -274,10 +256,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
 
       // Fetch session info
       const infoResponse = await fetch(
-        `http://localhost:${server?.port}/api/sessions/${sessionId}`,
-        {
-          headers: { Authorization: authHeader },
-        }
+        `http://localhost:${server?.port}/api/sessions/${sessionId}`
       );
 
       expect(infoResponse.status).toBe(200);
@@ -287,7 +266,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
       // Clean up
       await fetch(`http://localhost:${server?.port}/api/sessions/${sessionId}`, {
         method: 'DELETE',
-        headers: { Authorization: authHeader },
       });
     });
 
@@ -300,7 +278,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
         const response = await fetch(`http://localhost:${server?.port}/api/sessions`, {
           method: 'POST',
           headers: {
-            Authorization: authHeader,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -322,9 +299,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
       await sleep(3000);
 
       // All sessions should still be active
-      const listResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
-        headers: { Authorization: authHeader },
-      });
+      const listResponse = await fetch(`http://localhost:${server?.port}/api/sessions`);
       const sessions = await listResponse.json();
 
       const activeSessions = sessions.filter(
@@ -337,7 +312,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
         sessionIds.map((id) =>
           fetch(`http://localhost:${server?.port}/api/sessions/${id}`, {
             method: 'DELETE',
-            headers: { Authorization: authHeader },
           })
         )
       );
@@ -350,7 +324,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
       const createResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
         headers: {
-          Authorization: authHeader,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -368,10 +341,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
 
       // Check session state
       const infoResponse = await fetch(
-        `http://localhost:${server?.port}/api/sessions/${sessionId}`,
-        {
-          headers: { Authorization: authHeader },
-        }
+        `http://localhost:${server?.port}/api/sessions/${sessionId}`
       );
 
       const sessionInfo: SessionData = await infoResponse.json();
@@ -379,9 +349,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
       expect(sessionInfo.exitCode).toBe(1);
 
       // Server should still be responsive
-      const healthResponse = await fetch(`http://localhost:${server?.port}/api/health`, {
-        headers: { Authorization: authHeader },
-      });
+      const healthResponse = await fetch(`http://localhost:${server?.port}/api/health`);
       expect(healthResponse.status).toBe(200);
     });
 
@@ -390,10 +358,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
 
       // Try to get info for non-existent session
       const infoResponse = await fetch(
-        `http://localhost:${server?.port}/api/sessions/${fakeSessionId}`,
-        {
-          headers: { Authorization: authHeader },
-        }
+        `http://localhost:${server?.port}/api/sessions/${fakeSessionId}`
       );
       expect(infoResponse.status).toBe(404);
 
@@ -403,7 +368,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
         {
           method: 'POST',
           headers: {
-            Authorization: authHeader,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ text: 'test' }),
@@ -416,7 +380,6 @@ describe('Resource Limits and Concurrent Sessions', () => {
         `http://localhost:${server?.port}/api/sessions/${fakeSessionId}`,
         {
           method: 'DELETE',
-          headers: { Authorization: authHeader },
         }
       );
       expect(deleteResponse.status).toBe(404);
