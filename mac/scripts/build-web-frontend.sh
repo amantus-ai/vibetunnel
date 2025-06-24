@@ -175,7 +175,7 @@ else
     if [ -f "$CUSTOM_NODE_PATH" ]; then
         CUSTOM_NODE_VERSION=$("$CUSTOM_NODE_PATH" --version 2>/dev/null || echo "unknown")
         echo "Debug build - found existing custom Node.js $CUSTOM_NODE_VERSION, using it for consistency"
-        ppnpm run build -- --custom-node
+        pnpm run build -- --custom-node
     else
         echo "Debug build - using system Node.js for faster builds"
         echo "System Node.js: $(node --version)"
