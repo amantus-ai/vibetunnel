@@ -112,7 +112,7 @@ export class FullHeader extends HeaderBase {
     return html`
       <div class="user-menu-container relative">
         <button
-          class="btn-secondary font-mono text-sm px-5 py-2.5 text-dark-text border-dark-border hover:bg-dark-bg-tertiary hover:border-accent-green flex items-center gap-2"
+          class="font-mono text-sm px-5 py-2.5 text-dark-text border border-dark-border hover:bg-dark-bg-tertiary hover:text-dark-text rounded-lg transition-all duration-200 flex items-center gap-2"
           @click=${this.toggleUserMenu}
           title="User menu"
         >
