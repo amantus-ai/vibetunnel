@@ -155,7 +155,7 @@ describe('Logs API Tests', () => {
       expect(response.headers.get('content-type')).toBe('text/plain; charset=utf-8');
 
       const content = await response.text();
-      expect(content).toContain('Server started');
+      expect(content).toContain('Starting VibeTunnel server');
       expect(content).toContain('CLIENT:test-raw');
       expect(content).toContain('This is a test log for raw endpoint');
     });
@@ -233,11 +233,11 @@ describe('Logs API Tests', () => {
       const testLogLine = lines.find((line) => line.includes('CLIENT:format-test'));
 
       expect(testLogLine).toBeDefined();
-      expect(testLogLine).toMatch(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\]/); // Timestamp format
-      expect(testLogLine).toContain('[warn]');
+      expect(testLogLine).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/); // Timestamp format
+      expect(testLogLine).toContain('WARN');
       expect(testLogLine).toContain('[CLIENT:format-test]');
       expect(testLogLine).toContain('Test warning message');
-      expect(testLogLine).toContain('{"details":"test object"}');
+      expect(testLogLine).toContain('{\n  "details": "test object"\n}');
     });
   });
 });

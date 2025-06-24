@@ -45,7 +45,7 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
       // Log to server log file via logFromModule
       logFromModule(serverLevel === 'LOG' ? 'LOG' : serverLevel, clientModule, args);
 
-      res.json({ success: true });
+      res.status(204).send();
     } catch (error) {
       logger.error('Failed to process client log:', error);
       res.status(500).json({ error: 'Failed to process log' });
@@ -91,7 +91,7 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
         exists: true,
         size: stats.size,
         sizeHuman: formatBytes(stats.size),
-        modified: stats.mtime,
+        lastModified: stats.mtime,
         path: logPath,
       });
     } catch (error) {
@@ -110,7 +110,7 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
         logger.log('Log file cleared');
       }
 
-      res.json({ success: true });
+      res.status(204).send();
     } catch (error) {
       logger.error('Failed to clear log file:', error);
       res.status(500).json({ error: 'Failed to clear log file' });
