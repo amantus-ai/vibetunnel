@@ -182,6 +182,15 @@ jobs:
       env:
         CI: true
 
+    - name: Check test results
+      if: always()
+      working-directory: web
+      run: |
+        if [ "${{ steps.test-coverage.outputs.result }}" != "0" ]; then
+          echo "::error::Tests failed with exit code ${{ steps.test-coverage.outputs.result }}"
+          exit 1
+        fi
+
     - name: Generate coverage summary
       if: always()
       working-directory: web
