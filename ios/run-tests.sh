@@ -39,9 +39,9 @@ rm -rf TestResults.xcresult
 # Run tests using xcodebuild with proper destination
 set -o pipefail
 
-# Check if xcpretty is available
-if command -v xcpretty &> /dev/null; then
-    echo "Running tests with xcpretty formatter..."
+# Check if xcbeautify is available
+if command -v xcbeautify &> /dev/null; then
+    echo "Running tests with xcbeautify formatter..."
     xcodebuild test \
         -workspace ../VibeTunnel.xcworkspace \
         -scheme VibeTunnel-iOS \
@@ -50,7 +50,7 @@ if command -v xcpretty &> /dev/null; then
         CODE_SIGN_IDENTITY="" \
         CODE_SIGNING_REQUIRED=NO \
         CODE_SIGNING_ALLOWED=NO \
-        2>&1 | xcpretty || {
+        2>&1 | xcbeautify || {
             EXIT_CODE=$?
             echo "Tests failed with exit code: $EXIT_CODE"
             
@@ -65,7 +65,7 @@ if command -v xcpretty &> /dev/null; then
             exit $EXIT_CODE
         }
 else
-    echo "Running tests without xcpretty..."
+    echo "Running tests without xcbeautify..."
     xcodebuild test \
         -workspace ../VibeTunnel.xcworkspace \
         -scheme VibeTunnel-iOS \

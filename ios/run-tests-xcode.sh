@@ -13,6 +13,6 @@ xcodebuild test \
     -scheme VibeTunnel \
     -destination 'platform=iOS Simulator,name=iPhone 15,OS=18.0' \
     -quiet \
-    | xcpretty
+    | xcbeautify
 
 echo "Tests completed!"
