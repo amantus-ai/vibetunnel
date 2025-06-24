@@ -192,25 +192,32 @@ export class AuthLogin extends LitElement {
                 ? html`
                   <!-- Password Login Section (Primary) -->
                   <div class="p-8">
-                    ${
-                      this.userAvatar
-                        ? html`
-                          <div class="flex flex-col items-center mb-6">
-                            <img
-                              src="${this.userAvatar}"
-                              alt="User Avatar"
-                              class="w-20 h-20 rounded-full mb-3 block"
-                              style="box-shadow: 0 0 20px rgba(124, 230, 161, 0.3); aspect-ratio: 1;"
-                              width="80"
-                              height="80"
-                            />
-                            <p class="text-dark-text text-lg font-medium">
-                              Welcome back, ${this.currentUserId}
-                            </p>
-                          </div>
-                        `
-                        : ''
-                    }
+                    <div class="flex flex-col items-center mb-6">
+                      <div class="w-20 h-20 rounded-full mb-3 overflow-hidden" style="box-shadow: 0 0 20px rgba(124, 230, 161, 0.3);">
+                        ${
+                          this.userAvatar
+                            ? html`
+                              <img
+                                src="${this.userAvatar}"
+                                alt="User Avatar"
+                                class="w-full h-full object-cover"
+                                width="80"
+                                height="80"
+                              />
+                            `
+                            : html`
+                              <div class="w-full h-full bg-dark-bg-secondary flex items-center justify-center">
+                                <svg class="w-10 h-10 text-dark-text-muted" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                                </svg>
+                              </div>
+                            `
+                        }
+                      </div>
+                      <p class="text-dark-text text-lg font-medium">
+                        Welcome back, ${this.currentUserId || '...'}
+                      </p>
+                    </div>
                     <form @submit=${this.handlePasswordLogin} class="space-y-4">
                       <div>
                         <label class="form-label text-xs mb-2">Password</label>
@@ -239,16 +246,32 @@ export class AuthLogin extends LitElement {
                 : ''
             }
             ${
-              this.authConfig.disallowUserPassword && this.userAvatar
+              this.authConfig.disallowUserPassword
                 ? html`
                   <!-- Avatar for SSH-only mode -->
                   <div class="ssh-key-item">
                     <div class="flex flex-col items-center mb-6">
-                      <img
-                        src="${this.userAvatar}"
-                        alt="User Avatar"
-                        class="w-20 h-20 rounded-full border-2 border-dark-border mb-3"
-                      />
+                      <div class="w-20 h-20 rounded-full mb-3 overflow-hidden border-2 border-dark-border">
+                        ${
+                          this.userAvatar
+                            ? html`
+                              <img
+                                src="${this.userAvatar}"
+                                alt="User Avatar"
+                                class="w-full h-full object-cover"
+                                width="80"
+                                height="80"
+                              />
+                            `
+                            : html`
+                              <div class="w-full h-full bg-dark-bg-secondary flex items-center justify-center">
+                                <svg class="w-10 h-10 text-dark-text-muted" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                                </svg>
+                              </div>
+                            `
+                        }
+                      </div>
                       <p class="text-dark-text text-sm">
                         ${
                           this.currentUserId
