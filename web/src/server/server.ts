@@ -554,6 +554,15 @@ export async function createApp(): Promise<AppInstance> {
 
     // Check authentication
     const isAuthenticated = await new Promise<boolean>((resolve) => {
+      // Track if promise has been resolved to prevent multiple resolutions
+      let resolved = false;
+      const safeResolve = (value: boolean) => {
+        if (!resolved) {
+          resolved = true;
+          resolve(value);
+        }
+      };
+
       // Convert URLSearchParams to plain object for query parameters
       const query: Record<string, string> = {};
       parsedUrl.searchParams.forEach((value, key) => {
@@ -587,7 +596,7 @@ export async function createApp(): Promise<AppInstance> {
           // Only consider it a failure if it's an error status code
           if (code >= 400) {
             authFailed = true;
-            resolve(false);
+            safeResolve(false);
           }
           return {
             json: () => {},
@@ -603,13 +612,13 @@ export async function createApp(): Promise<AppInstance> {
 
       const next = (error?: unknown) => {
         // Authentication succeeds if next() is called without error and no auth failure was recorded
-        resolve(!error && !authFailed);
+        safeResolve(!error && !authFailed);
       };
 
       // Add a timeout to prevent indefinite hanging
       const timeoutId = setTimeout(() => {
         logger.error('WebSocket auth timeout - auth middleware did not complete in time');
-        resolve(false);
+        safeResolve(false);
       }, 5000); // 5 second timeout
 
       // Call authMiddleware and handle potential async errors
@@ -620,7 +629,7 @@ export async function createApp(): Promise<AppInstance> {
         .catch((error) => {
           clearTimeout(timeoutId);
           logger.error('Auth middleware error:', error);
-          resolve(false);
+          safeResolve(false);
         });
     });
 
