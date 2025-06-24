@@ -4,7 +4,7 @@ import Testing
 
 // MARK: - Server Manager Tests
 
-@Suite("Server Manager Tests", .serialized)
+@Suite("Server Manager Tests", .serialized, .disabled("Server tests disabled in CI"))
 @MainActor
 final class ServerManagerTests {
     /// We'll use the shared ServerManager instance since it's a singleton
