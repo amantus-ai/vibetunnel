@@ -254,10 +254,9 @@ function patchNodePty() {
     }
   }
 
-  // Only patch if not already patched
+  // Always re-patch to ensure compatibility with current build
   if (alreadyPatched) {
-    console.log('✓ node-pty already patched for SEA, skipping patch step');
-    return;
+    console.log('⚠️  node-pty appears to be patched, but re-patching to ensure compatibility...');
   }
 
   console.log('Patching node-pty for SEA build...');
@@ -345,20 +344,42 @@ exports.default = pty;
   if (fs.existsSync(unixTerminalFile)) {
     let content = fs.readFileSync(unixTerminalFile, 'utf8');
     
-    // Check if already patched (contains our SEA comment)
+    // Always re-patch to ensure consistency
     if (content.includes('// For SEA, use spawn-helper from environment')) {
-      console.log('unixTerminal.js already patched, skipping...');
-    } else {
-      // Find where helperPath is defined
-      const helperPathMatch = content.match(/var helperPath[^;]*;/);
-      if (!helperPathMatch) {
-        console.log('Warning: Could not find helperPath declaration in unixTerminal.js');
-      } else {
-        // Find the position right after var helperPath;
-        const insertPosition = content.indexOf(helperPathMatch[0]) + helperPathMatch[0].length;
+      console.log('Re-patching unixTerminal.js for consistency...');
+      // Find where helperPath is originally declared
+      const helperPathDecl = content.match(/var helperPath[^;]*;/);
+      if (helperPathDecl) {
+        // Replace everything from the declaration to the next var/const/let/function
+        const startPos = content.indexOf(helperPathDecl[0]);
+        const afterDecl = startPos + helperPathDecl[0].length;
         
-        // Insert our patch
-        const helperPathPatch = `
+        // Find the next major declaration or class definition
+        const nextDeclMatch = content.substring(afterDecl).match(/^(var|const|let|function|class|\nvar|\nconst|\nlet|\nfunction|\nclass)/m);
+        let endPos;
+        if (nextDeclMatch) {
+          endPos = afterDecl + nextDeclMatch.index;
+        } else {
+          // Fallback: just remove up to DEFAULT_FILE declaration which we know exists
+          const defaultFilePos = content.indexOf('var DEFAULT_FILE');
+          endPos = defaultFilePos > startPos ? defaultFilePos : content.length;
+        }
+        
+        // Restore to just the original declaration
+        content = content.substring(0, afterDecl) + '\n' + content.substring(endPos);
+      }
+    }
+    
+    // Find where helperPath is defined
+    const helperPathMatch = content.match(/var helperPath[^;]*;/);
+    if (!helperPathMatch) {
+      console.log('Warning: Could not find helperPath declaration in unixTerminal.js');
+    } else {
+      // Find the position right after var helperPath;
+      const insertPosition = content.indexOf(helperPathMatch[0]) + helperPathMatch[0].length;
+      
+      // Insert our patch
+      const helperPathPatch = `
 // For SEA, use spawn-helper from environment or next to executable
 if (process.env.NODE_PTY_SPAWN_HELPER_PATH) {
   helperPath = process.env.NODE_PTY_SPAWN_HELPER_PATH;
@@ -376,12 +397,11 @@ if (process.env.NODE_PTY_SPAWN_HELPER_PATH) {
     helperPath = helperPath.replace('node_modules.asar', 'node_modules.asar.unpacked');
   }
 }`;
-        
-        // Insert the patch after the helperPath declaration
-        content = content.substring(0, insertPosition) + helperPathPatch + content.substring(insertPosition);
-        
-        fs.writeFileSync(unixTerminalFile, content);
-      }
+      
+      // Insert the patch after the helperPath declaration
+      content = content.substring(0, insertPosition) + helperPathPatch + content.substring(insertPosition);
+      
+      fs.writeFileSync(unixTerminalFile, content);
     }
   }
 

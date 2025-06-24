@@ -98,6 +98,12 @@ cd "${WEB_DIR}"
 echo "Cleaning build artifacts..."
 rm -rf dist public/bundle public/output.css native
 
+# Clean native modules to ensure fresh build
+echo "Cleaning native modules for fresh build..."
+rm -rf node_modules/@serialport
+rm -rf node_modules/node-pty
+rm -rf node_modules/authenticate-pam
+
 # Install dependencies
 echo "Installing dependencies..."
 # For Xcode builds, ensure C++20 standard for native modules
