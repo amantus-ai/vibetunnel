@@ -30,7 +30,7 @@ describe('SessionView', () => {
   beforeEach(async () => {
     // Reset factory counters for test isolation
     resetFactoryCounters();
-    
+
     // Reset viewport
     resetViewport();
 
@@ -64,7 +64,8 @@ describe('SessionView', () => {
       // Mock user agent for mobile detection
       const originalUserAgent = navigator.userAgent;
       Object.defineProperty(navigator, 'userAgent', {
-        value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+        value:
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
         configurable: true,
       });
 
@@ -76,7 +77,7 @@ describe('SessionView', () => {
 
       // Component detects mobile based on user agent
       expect((mobileElement as any).isMobile).toBe(true);
-      
+
       // Restore original user agent
       Object.defineProperty(navigator, 'userAgent', {
         value: originalUserAgent,
@@ -115,7 +116,7 @@ describe('SessionView', () => {
       // Set loading before session
       (element as any).loading = true;
       await element.updateComplete;
-      
+
       // Then set session
       element.session = mockSession;
       await element.updateComplete;
@@ -245,7 +246,7 @@ describe('SessionView', () => {
         terminal.dispatchEvent(resizeEvent);
 
         await waitForAsync();
-        
+
         // Component updates its state but doesn't send resize via input endpoint
         expect((element as any).terminalCols).toBe(100);
         expect((element as any).terminalRows).toBe(30);
@@ -324,17 +325,19 @@ describe('SessionView', () => {
         const terminal = element.querySelector('vibe-terminal');
         if (terminal) {
           // Dispatch session-exit from terminal with sessionId (required by handler)
-          terminal.dispatchEvent(new CustomEvent('session-exit', {
-            detail: { 
-              sessionId: mockSession.id,
-              status: 'exited', 
-              exitCode: 0 
-            },
-            bubbles: true
-          }));
+          terminal.dispatchEvent(
+            new CustomEvent('session-exit', {
+              detail: {
+                sessionId: mockSession.id,
+                status: 'exited',
+                exitCode: 0,
+              },
+              bubbles: true,
+            })
+          );
           await element.updateComplete;
         }
-        
+
         expect(element.session?.status).toBe('exited');
       }
     });
@@ -359,7 +362,7 @@ describe('SessionView', () => {
       const mobileOverlay = element.querySelector('[class*="mobile-overlay"]');
       const mobileForm = element.querySelector('form');
       const mobileTextarea = element.querySelector('textarea');
-      
+
       // At least one mobile input element should exist
       expect(mobileOverlay || mobileForm || mobileTextarea).toBeTruthy();
     });
@@ -434,7 +437,7 @@ describe('SessionView', () => {
         fileBrowser.dispatchEvent(fileEvent);
 
         await waitForAsync();
-        
+
         // Component sends the path as text
         expect(inputCapture).toHaveBeenCalledWith({ text: '/home/user/file.txt' });
         // Note: showFileBrowser is not automatically closed on insert-path
@@ -468,14 +471,14 @@ describe('SessionView', () => {
       // Look for fit button by checking all buttons
       const buttons = element.querySelectorAll('button');
       let fitButton = null;
-      
-      buttons.forEach(btn => {
+
+      buttons.forEach((btn) => {
         const title = btn.getAttribute('title') || '';
         if (title.toLowerCase().includes('fit') || btn.textContent?.includes('Fit')) {
           fitButton = btn;
         }
       });
-      
+
       if (fitButton) {
         (fitButton as HTMLElement).click();
         await element.updateComplete;

@@ -207,20 +207,21 @@ export function createMockSession(overrides: Partial<SessionData> = {}): Session
     startedAt: overrides.started_at,
   });
 
+  // Use base session values as defaults, then apply overrides
   return {
-    id: overrides.id || baseSession.id,
-    name: overrides.name || baseSession.name,
-    cmdline: overrides.cmdline || baseSession.command,
-    cwd: overrides.cwd || baseSession.workingDir,
-    pid: overrides.pid || baseSession.pid,
-    status: overrides.status || baseSession.status,
-    started_at: overrides.started_at || baseSession.startedAt,
-    exitCode: overrides.exitCode !== undefined ? overrides.exitCode : null,
-    term: overrides.term || 'xterm-256color',
-    spawn_type: overrides.spawn_type || 'pty',
-    cols: overrides.cols || 80,
-    rows: overrides.rows || 24,
-    ...overrides, // Allow any additional fields to be passed through
+    id: baseSession.id,
+    name: baseSession.name,
+    cmdline: baseSession.command,
+    cwd: baseSession.workingDir,
+    pid: baseSession.pid,
+    status: baseSession.status,
+    started_at: baseSession.startedAt,
+    exitCode: null,
+    term: 'xterm-256color',
+    spawn_type: 'pty',
+    cols: 80,
+    rows: 24,
+    ...overrides, // Override any fields provided
   };
 }
 

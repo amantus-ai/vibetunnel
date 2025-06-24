@@ -196,7 +196,7 @@ export class Terminal extends LitElement {
         void this.container.offsetHeight;
       }
 
-      this.terminal.resize(this.cols, this.rows);
+      this.terminal.resize(Math.floor(this.cols), Math.floor(this.rows));
       this.fitTerminal();
     }
   }
@@ -317,7 +317,7 @@ export class Terminal extends LitElement {
 
       // Resize the terminal to the new dimensions
       if (this.terminal) {
-        this.terminal.resize(this.cols, this.rows);
+        this.terminal.resize(Math.floor(this.cols), Math.floor(this.rows));
 
         // Dispatch resize event for backend synchronization
         this.dispatchEvent(
@@ -342,7 +342,7 @@ export class Terminal extends LitElement {
 
       // Resize the terminal to the new dimensions
       if (this.terminal) {
-        this.terminal.resize(this.cols, this.rows);
+        this.terminal.resize(Math.floor(this.cols), Math.floor(this.rows));
 
         // Dispatch resize event for backend synchronization
         this.dispatchEvent(

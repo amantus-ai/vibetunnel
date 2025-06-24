@@ -79,11 +79,9 @@ export class MockTerminal {
     element.appendChild(this.element);
   });
 
-  write = vi.fn((data: string | Uint8Array) => {
-    if (this._onDataCallback && typeof data === 'string') {
-      // Simulate echo for testing
-      setTimeout(() => this._onDataCallback?.(data), 0);
-    }
+  write = vi.fn((_data: string | Uint8Array) => {
+    // write() is for terminal output, should not trigger onData callback
+    // onData is only for user input
   });
 
   writeln = vi.fn((data: string) => {
@@ -99,6 +97,10 @@ export class MockTerminal {
   blur = vi.fn();
 
   resize = vi.fn((cols: number, rows: number) => {
+    // xterm.js requires integer values
+    if (!Number.isInteger(cols) || !Number.isInteger(rows)) {
+      throw new Error('This API only accepts integers');
+    }
     this.cols = cols;
     this.rows = rows;
     if (this._onResizeCallback) {
