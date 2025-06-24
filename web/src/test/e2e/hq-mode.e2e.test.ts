@@ -5,6 +5,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
+import { waitForServerPort } from '../utils/port-detection';
 
 describe('HQ Mode E2E Tests', () => {
   let hqProcess: ChildProcess | null = null;
@@ -60,46 +61,25 @@ describe('HQ Mode E2E Tests', () => {
       detached: false, // Ensure child dies with parent
     });
 
-    return new Promise((resolve, reject) => {
-      let port = 0;
-      let resolved = false;
-
-      let outputBuffer = '';
-      serverProcess.stdout?.on('data', (data) => {
-        const chunk = data.toString();
-        outputBuffer += chunk;
-        console.log(`[SERVER OUTPUT] ${chunk.trim()}`);
-
-        // Extract port from "VibeTunnel Server running on" message
-        const portMatch = outputBuffer.match(
-          /VibeTunnel Server running on http:\/\/localhost:(\d+)/
-        );
-        if (portMatch && !resolved) {
-          port = Number.parseInt(portMatch[1]);
-          resolved = true;
-          resolve({ process: serverProcess, port });
-        }
-      });
-
-      serverProcess.stderr?.on('data', (data) => {
-        console.error(`[SERVER ERROR] ${data.toString().trim()}`);
-      });
-
-      serverProcess.on('error', (err) => {
-        console.error(`[SERVER ERROR EVENT] ${err}`);
-        reject(err);
-      });
-
-      serverProcess.on('exit', (code, signal) => {
-        console.error(`[SERVER EXIT] code: ${code}, signal: ${signal}`);
-        if (!resolved) {
-          reject(new Error(`Server exited with code ${code}`));
-        }
-      });
-
-      // Timeout after 10 seconds
-      setTimeout(() => reject(new Error('Server failed to start within timeout')), 10000);
+    // Log server output for debugging
+    serverProcess.stdout?.on('data', (data) => {
+      console.log(`[SERVER OUTPUT] ${data.toString().trim()}`);
     });
+
+    serverProcess.stderr?.on('data', (data) => {
+      console.error(`[SERVER ERROR] ${data.toString().trim()}`);
+    });
+
+    serverProcess.on('error', (err) => {
+      console.error(`[SERVER ERROR EVENT] ${err}`);
+    });
+
+    serverProcess.on('exit', (code, signal) => {
+      console.error(`[SERVER EXIT] code: ${code}, signal: ${signal}`);
+    });
+
+    const port = await waitForServerPort(serverProcess);
+    return { process: serverProcess, port };
   }
 
   beforeAll(async () => {

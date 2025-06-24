@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { waitForServerPort } from '../utils/port-detection';
 
 describe('Server Smoke Test', () => {
   let serverProcess: ChildProcess | null = null;
@@ -27,57 +28,20 @@ describe('Server Smoke Test', () => {
       detached: false, // Ensure child dies with parent
     });
 
-    return new Promise((resolve, reject) => {
-      let outputBuffer = '';
-      let resolved = false;
+    // Log server output for debugging
+    if (serverProcess?.stdout) {
+      serverProcess.stdout.on('data', (data) => {
+        console.log(`[SERVER] ${data.toString().trim()}`);
+      });
+    }
 
-      const timeout = setTimeout(() => {
-        if (!resolved) {
-          reject(new Error('Server failed to start within timeout'));
-        }
-      }, 10000);
+    if (serverProcess?.stderr) {
+      serverProcess.stderr.on('data', (data) => {
+        console.error(`[SERVER ERROR] ${data.toString().trim()}`);
+      });
+    }
 
-      if (serverProcess?.stdout) {
-        serverProcess.stdout.on('data', (data) => {
-          const chunk = data.toString();
-          outputBuffer += chunk;
-          console.log(`[SERVER] ${chunk.trim()}`);
-
-          // Extract port from output
-          const portMatch = outputBuffer.match(
-            /VibeTunnel Server running on http:\/\/localhost:(\d+)/
-          );
-          if (portMatch && !resolved) {
-            resolved = true;
-            clearTimeout(timeout);
-            const port = Number.parseInt(portMatch[1]);
-            resolve(port);
-          }
-        });
-      }
-
-      if (serverProcess?.stderr) {
-        serverProcess.stderr.on('data', (data) => {
-          console.error(`[SERVER ERROR] ${data.toString().trim()}`);
-        });
-      }
-
-      if (serverProcess) {
-        serverProcess.on('error', (err) => {
-          if (!resolved) {
-            clearTimeout(timeout);
-            reject(err);
-          }
-        });
-
-        serverProcess.on('exit', (code, signal) => {
-          if (!resolved) {
-            clearTimeout(timeout);
-            reject(new Error(`Server exited with code ${code}, signal ${signal}`));
-          }
-        });
-      }
-    });
+    return waitForServerPort(serverProcess);
   }
 
   beforeAll(async () => {

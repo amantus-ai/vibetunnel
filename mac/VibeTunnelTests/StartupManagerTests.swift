@@ -63,8 +63,8 @@ struct StartupManagerTests {
         if let bundleId = bundleId {
             #expect(!bundleId.isEmpty)
             // In test environment, bundle ID can vary widely
-            // Just verify it's a valid identifier format
-            #expect(bundleId.contains(".") || bundleId.contains("com.apple") || !bundleId.isEmpty)
+            // Just verify it's a valid identifier format (contains a dot for reverse domain notation)
+            #expect(bundleId.contains("."))
         } else {
             // It's OK for bundle ID to be nil in test environment
             #expect(bundleId == nil)
