@@ -28,6 +28,7 @@ export class BufferSubscriptionService {
   private messageQueue: Array<{ type: string; sessionId?: string }> = [];
 
   private initialized = false;
+  private noAuthMode: boolean | null = null;
 
   // biome-ignore lint/complexity/noUselessConstructor: This constructor documents the intentional design decision to not auto-connect
   constructor() {
@@ -38,10 +39,34 @@ export class BufferSubscriptionService {
    * Initialize the buffer subscription service and connect to WebSocket
    * Should be called after authentication is complete
    */
-  initialize() {
+  async initialize() {
     if (this.initialized) return;
     this.initialized = true;
-    this.connect();
+
+    // Check no-auth mode
+    await this.checkNoAuthMode();
+
+    // Add a small delay to ensure auth token is fully loaded and verified
+    setTimeout(() => {
+      this.connect();
+    }, 100);
+  }
+
+  private async checkNoAuthMode(): Promise<void> {
+    try {
+      const response = await fetch('/api/auth/config');
+      if (response.ok) {
+        const config = await response.json();
+        this.noAuthMode = config.noAuth === true;
+      }
+    } catch (error) {
+      logger.warn('Failed to check auth config:', error);
+      this.noAuthMode = false;
+    }
+  }
+
+  private isNoAuthMode(): boolean {
+    return this.noAuthMode === true;
   }
 
   private connect() {
@@ -49,12 +74,24 @@ export class BufferSubscriptionService {
       return;
     }
 
-    this.isConnecting = true;
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-
     // Get auth token for WebSocket connection
     const currentUser = authClient.getCurrentUser();
     const token = currentUser?.token;
+
+    // Don't connect if we don't have a valid token (unless in no-auth mode)
+    if (!token && !this.isNoAuthMode()) {
+      logger.warn('No auth token available, postponing WebSocket connection');
+      // Retry connection after a delay
+      setTimeout(() => {
+        if (this.initialized && !this.ws) {
+          this.connect();
+        }
+      }, 1000);
+      return;
+    }
+
+    this.isConnecting = true;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
     // Build WebSocket URL with token as query parameter
     let wsUrl = `${protocol}//${window.location.host}/buffers`;

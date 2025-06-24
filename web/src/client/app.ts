@@ -206,7 +206,7 @@ export class VibeTunnelApp extends LitElement {
     console.log('🚀 Initializing services...');
     try {
       // Initialize buffer subscription service for WebSocket connections
-      bufferSubscriptionService.initialize();
+      await bufferSubscriptionService.initialize();
 
       // Initialize push notification service
       await pushNotificationService.initialize();
