@@ -227,13 +227,15 @@ export function getAttribute(
 }
 
 /**
- * Simulates form submission
+ * Simulates form submission (supports both shadow and light DOM)
  */
 export async function submitForm(
   element: HTMLElement,
   formSelector: string
 ): Promise<void> {
-  const form = element.shadowRoot!.querySelector(formSelector) as HTMLFormElement;
+  const form = (element.shadowRoot 
+    ? element.shadowRoot.querySelector(formSelector)
+    : element.querySelector(formSelector)) as HTMLFormElement;
   if (!form) throw new Error(`Form ${formSelector} not found`);
   
   const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
