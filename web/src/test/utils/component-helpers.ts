@@ -5,14 +5,16 @@ import { vi } from 'vitest';
 export { waitForElement } from '@/test/utils/lit-test-utils';
 
 /**
- * Types an input field with a given value and triggers input event
+ * Types an input field with a given value and triggers input event (supports both shadow and light DOM)
  */
 export async function typeInInput(
   element: HTMLElement,
   selector: string,
   text: string
 ): Promise<void> {
-  const input = element.shadowRoot!.querySelector(selector) as HTMLInputElement;
+  const input = (element.shadowRoot 
+    ? element.shadowRoot.querySelector(selector)
+    : element.querySelector(selector)) as HTMLInputElement;
   if (!input) throw new Error(`Input with selector ${selector} not found`);
   
   input.value = text;
@@ -24,13 +26,15 @@ export async function typeInInput(
 }
 
 /**
- * Clicks an element and waits for updates
+ * Clicks an element and waits for updates (supports both shadow and light DOM)
  */
 export async function clickElement(
   element: HTMLElement,
   selector: string
 ): Promise<void> {
-  const target = element.shadowRoot!.querySelector(selector) as HTMLElement;
+  const target = (element.shadowRoot 
+    ? element.shadowRoot.querySelector(selector) 
+    : element.querySelector(selector)) as HTMLElement;
   if (!target) throw new Error(`Element with selector ${selector} not found`);
   
   target.click();
@@ -41,24 +45,28 @@ export async function clickElement(
 }
 
 /**
- * Gets text content from an element in shadow DOM
+ * Gets text content from an element (supports both shadow and light DOM)
  */
 export function getTextContent(
   element: HTMLElement,
   selector: string
 ): string | null {
-  const target = element.shadowRoot!.querySelector(selector);
+  const target = element.shadowRoot 
+    ? element.shadowRoot.querySelector(selector)
+    : element.querySelector(selector);
   return target?.textContent?.trim() || null;
 }
 
 /**
- * Checks if an element exists in shadow DOM
+ * Checks if an element exists (supports both shadow and light DOM)
  */
 export function elementExists(
   element: HTMLElement,
   selector: string
 ): boolean {
-  return !!element.shadowRoot!.querySelector(selector);
+  return element.shadowRoot 
+    ? !!element.shadowRoot.querySelector(selector)
+    : !!element.querySelector(selector);
 }
 
 /**
@@ -147,13 +155,15 @@ export async function pressKey(
 }
 
 /**
- * Gets all elements matching a selector
+ * Gets all elements matching a selector (supports both shadow and light DOM)
  */
 export function getAllElements<T extends Element = Element>(
   element: HTMLElement,
   selector: string
 ): T[] {
-  return Array.from(element.shadowRoot!.querySelectorAll<T>(selector));
+  return element.shadowRoot
+    ? Array.from(element.shadowRoot.querySelectorAll<T>(selector))
+    : Array.from(element.querySelectorAll<T>(selector));
 }
 
 /**
