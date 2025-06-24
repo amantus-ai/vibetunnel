@@ -82,6 +82,11 @@ jobs:
         cd web
         pnpm install --frozen-lockfile
     
+    - name: Build web frontend
+      run: |
+        cd web
+        pnpm run build
+    
     - name: Resolve Dependencies (once)
       run: |
         echo "Resolving Swift package dependencies..."
