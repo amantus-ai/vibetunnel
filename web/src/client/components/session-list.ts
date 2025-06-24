@@ -377,6 +377,57 @@ export class SessionList extends LitElement {
           @error=${(e: CustomEvent) =>
             this.dispatchEvent(new CustomEvent('error', { detail: e.detail }))}
         ></session-create-form>
+
+        ${this.renderExitedControls()}
+      </div>
+    `;
+  }
+
+  private renderExitedControls() {
+    const exitedSessions = this.sessions.filter((session) => session.status === 'exited');
+
+    if (exitedSessions.length === 0) return '';
+
+    return html`
+      <div class="flex justify-center items-center gap-4 mt-8 pb-4">
+        <button
+          class="font-mono text-sm px-6 py-2 rounded-lg border transition-all duration-200 ${
+            this.hideExited
+              ? 'border-dark-border bg-dark-bg-secondary text-dark-text-muted hover:bg-dark-bg-tertiary hover:text-dark-text'
+              : 'border-dark-border bg-dark-bg-tertiary text-dark-text hover:bg-dark-bg-secondary'
+          }"
+          @click=${() => this.dispatchEvent(new CustomEvent('hide-exited-change', { detail: !this.hideExited }))}
+        >
+          <div class="flex items-center gap-3">
+            <span>${this.hideExited ? 'Show' : 'Hide'} Exited (${exitedSessions.length})</span>
+            <div
+              class="w-8 h-4 rounded-full transition-colors duration-200 ${
+                this.hideExited ? 'bg-dark-surface' : 'bg-dark-bg'
+              }"
+            >
+              <div
+                class="w-3 h-3 rounded-full transition-transform duration-200 mt-0.5 ${
+                  this.hideExited
+                    ? 'translate-x-0.5 bg-dark-text-muted'
+                    : 'translate-x-4 bg-accent-green'
+                }"
+              ></div>
+            </div>
+          </div>
+        </button>
+        ${
+          !this.hideExited && exitedSessions.length > 0
+            ? html`
+              <button
+                class="font-mono text-sm px-6 py-2 rounded-lg border transition-all duration-200 border-dark-border bg-dark-bg-secondary text-status-warning hover:bg-dark-bg-tertiary hover:border-status-warning"
+                @click=${this.handleCleanupExited}
+                ?disabled=${this.cleaningExited}
+              >
+                ${this.cleaningExited ? 'Cleaning...' : `Clean Exited (${exitedSessions.length})`}
+              </button>
+            `
+            : ''
+        }
       </div>
     `;
   }
