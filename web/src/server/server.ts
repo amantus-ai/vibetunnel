@@ -16,6 +16,7 @@ import { createLogRoutes } from './routes/logs.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createSessionRoutes } from './routes/sessions.js';
+import systemRoutes from './routes/system.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
 import { AuthService } from './services/auth-service.js';
 import { BellEventHandler } from './services/bell-event-handler.js';
@@ -526,6 +527,10 @@ export async function createApp(): Promise<AppInstance> {
   // Mount log routes
   app.use('/api', createLogRoutes());
   logger.debug('Mounted log routes');
+
+  // Mount system monitoring routes
+  app.use('/api/system', systemRoutes);
+  logger.debug('Mounted system monitoring routes');
 
   // Mount push notification routes
   if (vapidManager) {
