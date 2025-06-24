@@ -146,12 +146,12 @@ function patchNodePty() {
     console.log(`Custom Node.js: ${customVersion}`);
     console.log(`System Node.js: ${systemVersion}`);
 
-    // Rebuild node-pty with the custom Node using npm rebuild
-    console.log('Rebuilding @homebridge/node-pty-prebuilt-multiarch with custom Node.js...');
+    // Rebuild node-pty targeting the custom Node.js ABI (using system Node to run pnpm)
+    console.log('Rebuilding @homebridge/node-pty-prebuilt-multiarch for custom Node.js ABI...');
 
     try {
-      // Use the custom Node to rebuild native modules
-      execSync(`"${customNodePath}" "$(which pnpm)" rebuild @homebridge/node-pty-prebuilt-multiarch authenticate-pam`, {
+      // Use system Node to run pnpm, but target custom Node.js version for rebuild
+      execSync(`pnpm rebuild @homebridge/node-pty-prebuilt-multiarch authenticate-pam`, {
         stdio: 'inherit',
         env: {
           ...process.env,
@@ -173,7 +173,7 @@ function patchNodePty() {
       // Alternative: Force rebuild from source
       try {
         execSync(`rm -rf node_modules/@homebridge/node-pty-prebuilt-multiarch/build`, { stdio: 'inherit' });
-        execSync(`"${customNodePath}" "$(which pnpm)" install @homebridge/node-pty-prebuilt-multiarch`, {
+        execSync(`pnpm install @homebridge/node-pty-prebuilt-multiarch --force`, {
           stdio: 'inherit',
           env: {
             ...process.env,
@@ -182,6 +182,7 @@ function patchNodePty() {
             npm_config_arch: process.arch,
             npm_config_target_arch: process.arch,
             npm_config_disturl: 'https://nodejs.org/dist',
+            npm_config_build_from_source: 'true',
             CXXFLAGS: '-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0',
             MACOSX_DEPLOYMENT_TARGET: '14.0'
           }
