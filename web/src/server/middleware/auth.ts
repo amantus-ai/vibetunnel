@@ -96,7 +96,13 @@ export function createAuthMiddleware(config: AuthConfig) {
     if (authHeader?.startsWith('Basic ')) {
       const credentials = authHeader.substring(6);
       const decoded = Buffer.from(credentials, 'base64').toString('utf-8');
-      const [username, password] = decoded.split(':');
+      const colonIndex = decoded.indexOf(':');
+      if (colonIndex === -1) {
+        logger.error('Invalid Basic auth format: missing colon');
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      const username = decoded.substring(0, colonIndex);
+      const password = decoded.substring(colonIndex + 1);
 
       if (config.authService) {
         const result = await config.authService.authenticateWithPassword(username, password);
