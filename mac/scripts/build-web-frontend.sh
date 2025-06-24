@@ -98,20 +98,20 @@ cd "${WEB_DIR}"
 echo "Cleaning build artifacts..."
 rm -rf dist public/bundle public/output.css native
 
-# Clean native modules to ensure fresh build
-echo "Cleaning native modules for fresh build..."
-rm -rf node_modules/@serialport
-rm -rf node_modules/node-pty
-rm -rf node_modules/authenticate-pam
+# Force completely clean node modules to bypass pnpm cache issues
+echo "Force cleaning all node modules and pnpm cache..."
+rm -rf node_modules
+rm -rf .pnpm-store
+pnpm store prune
 
 # Install dependencies
-echo "Installing dependencies..."
+echo "Installing dependencies with fresh modules..."
 # For Xcode builds, ensure C++20 standard for native modules
 export MACOSX_DEPLOYMENT_TARGET="14.0"
 export CXXFLAGS="-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0"
 export CXX="${CXX:-clang++}"
 export CC="${CC:-clang}"
-pnpm install --frozen-lockfile
+pnpm install --frozen-lockfile --prefer-offline=false
 
 # Determine build configuration
 BUILD_CONFIG="${CONFIGURATION:-Debug}"
