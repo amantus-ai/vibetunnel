@@ -1,106 +1,39 @@
-import { type ChildProcess, spawn } from 'child_process';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { waitForServerPort } from '../utils/port-detection';
+import { type ServerInstance, startTestServer, stopServer } from '../utils/server-utils';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function waitForServer(port: number, maxRetries = 30): Promise<void> {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await fetch(`http://localhost:${port}/api/health`);
-      if (response.ok) {
-        return;
-      }
-    } catch (_e) {
-      // Server not ready yet
-    }
-    await sleep(100);
-  }
-  throw new Error(`Server on port ${port} did not start within ${maxRetries * 100}ms`);
-}
-
-async function startServer(
-  args: string[] = [],
-  env: Record<string, string> = {}
-): Promise<{ process: ChildProcess; port: number }> {
-  const cliPath = path.join(process.cwd(), 'src', 'cli.ts');
-
-  const serverProcess = spawn('pnpm', ['exec', 'tsx', cliPath, ...args], {
-    env: { ...process.env, ...env },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  try {
-    const port = await waitForServerPort(serverProcess);
-    return { process: serverProcess, port };
-  } catch (error) {
-    serverProcess.kill();
-    throw error;
-  }
-}
-
 describe('Logs API Tests', () => {
-  let serverProcess: ChildProcess;
-  let serverPort: number;
-  let testDir: string;
+  let server: ServerInstance | null = null;
   const username = 'testuser';
   const password = 'testpass';
   const authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
 
   beforeAll(async () => {
-    // Create temporary directory for test
-    testDir = path.join(os.tmpdir(), 'vibetunnel-logs-test', Date.now().toString());
-    fs.mkdirSync(testDir, { recursive: true });
-
     // Start server with debug logging enabled
-    const result = await startServer(['--port', '0'], {
-      VIBETUNNEL_CONTROL_DIR: testDir,
-      VIBETUNNEL_USERNAME: username,
-      VIBETUNNEL_PASSWORD: password,
-      VIBETUNNEL_DEBUG: '1',
+    server = await startTestServer({
+      args: ['--port', '0'],
+      env: {
+        VIBETUNNEL_USERNAME: username,
+        VIBETUNNEL_PASSWORD: password,
+        VIBETUNNEL_DEBUG: '1',
+      },
+      waitForHealth: true,
     });
-
-    serverProcess = result.process;
-    serverPort = result.port;
-
-    await waitForServer(serverPort);
 
     // Wait a bit for initial logs to be written
     await sleep(500);
   });
 
   afterAll(async () => {
-    // Kill server process
-    if (serverProcess) {
-      await new Promise<void>((resolve) => {
-        serverProcess.on('close', () => resolve());
-
-        // Try graceful shutdown first
-        serverProcess.kill('SIGTERM');
-
-        // Force kill after timeout
-        setTimeout(() => {
-          if (serverProcess.exitCode === null) {
-            serverProcess.kill('SIGKILL');
-          }
-        }, 5000);
-      });
-    }
-
-    // Clean up test directory
-    try {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    } catch (_e) {
-      console.error('Failed to clean test directory:', _e);
+    if (server) {
+      await stopServer(server);
     }
   });
 
   describe('POST /api/logs/client', () => {
     it('should accept client logs', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/logs/client`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/logs/client`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -120,7 +53,7 @@ describe('Logs API Tests', () => {
       const levels = ['log', 'warn', 'error', 'debug'];
 
       for (const level of levels) {
-        const response = await fetch(`http://localhost:${serverPort}/api/logs/client`, {
+        const response = await fetch(`http://localhost:${server?.port}/api/logs/client`, {
           method: 'POST',
           headers: {
             Authorization: authHeader,
@@ -138,7 +71,7 @@ describe('Logs API Tests', () => {
     });
 
     it('should require authentication', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/logs/client`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/logs/client`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -154,7 +87,7 @@ describe('Logs API Tests', () => {
     });
 
     it('should validate request body', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/logs/client`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/logs/client`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -172,7 +105,7 @@ describe('Logs API Tests', () => {
 
   describe('GET /api/logs/info', () => {
     it('should return log file information', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/logs/info`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/logs/info`, {
         headers: { Authorization: authHeader },
       });
 
@@ -190,7 +123,7 @@ describe('Logs API Tests', () => {
     });
 
     it('should require authentication', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/logs/info`);
+      const response = await fetch(`http://localhost:${server?.port}/api/logs/info`);
       expect(response.status).toBe(401);
     });
   });
@@ -198,7 +131,7 @@ describe('Logs API Tests', () => {
   describe('GET /api/logs/raw', () => {
     it('should stream log file content', async () => {
       // Add some client logs first
-      await fetch(`http://localhost:${serverPort}/api/logs/client`, {
+      await fetch(`http://localhost:${server?.port}/api/logs/client`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -214,7 +147,7 @@ describe('Logs API Tests', () => {
       // Wait for log to be written
       await sleep(100);
 
-      const response = await fetch(`http://localhost:${serverPort}/api/logs/raw`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/logs/raw`, {
         headers: { Authorization: authHeader },
       });
 
@@ -228,7 +161,7 @@ describe('Logs API Tests', () => {
     });
 
     it('should require authentication', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/logs/raw`);
+      const response = await fetch(`http://localhost:${server?.port}/api/logs/raw`);
       expect(response.status).toBe(401);
     });
   });
@@ -236,14 +169,14 @@ describe('Logs API Tests', () => {
   describe('DELETE /api/logs/clear', () => {
     it('should clear the log file', async () => {
       // First, verify log file has content
-      const infoResponse = await fetch(`http://localhost:${serverPort}/api/logs/info`, {
+      const infoResponse = await fetch(`http://localhost:${server?.port}/api/logs/info`, {
         headers: { Authorization: authHeader },
       });
       const infoBefore = await infoResponse.json();
       expect(infoBefore.size).toBeGreaterThan(0);
 
       // Clear logs
-      const clearResponse = await fetch(`http://localhost:${serverPort}/api/logs/clear`, {
+      const clearResponse = await fetch(`http://localhost:${server?.port}/api/logs/clear`, {
         method: 'DELETE',
         headers: { Authorization: authHeader },
       });
@@ -253,7 +186,7 @@ describe('Logs API Tests', () => {
       await sleep(100);
 
       // Verify log file is empty or very small (might have new startup logs)
-      const infoAfterResponse = await fetch(`http://localhost:${serverPort}/api/logs/info`, {
+      const infoAfterResponse = await fetch(`http://localhost:${server?.port}/api/logs/info`, {
         headers: { Authorization: authHeader },
       });
       const infoAfter = await infoAfterResponse.json();
@@ -263,7 +196,7 @@ describe('Logs API Tests', () => {
     });
 
     it('should require authentication', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/logs/clear`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/logs/clear`, {
         method: 'DELETE',
       });
       expect(response.status).toBe(401);
@@ -273,7 +206,7 @@ describe('Logs API Tests', () => {
   describe('Log file format', () => {
     it('should format logs correctly', async () => {
       // Submit a test log
-      await fetch(`http://localhost:${serverPort}/api/logs/client`, {
+      await fetch(`http://localhost:${server?.port}/api/logs/client`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -290,7 +223,7 @@ describe('Logs API Tests', () => {
       await sleep(200);
 
       // Read raw logs
-      const response = await fetch(`http://localhost:${serverPort}/api/logs/raw`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/logs/raw`, {
         headers: { Authorization: authHeader },
       });
       const logs = await response.text();

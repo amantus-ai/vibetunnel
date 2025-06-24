@@ -1,75 +1,29 @@
-import { type ChildProcess, spawn } from 'child_process';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
-import { waitForServerPort } from '../utils/port-detection';
+import { type ServerInstance, startTestServer, stopServer } from '../utils/server-utils';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function waitForServer(port: number, maxRetries = 30): Promise<void> {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await fetch(`http://localhost:${port}/api/health`);
-      if (response.ok) {
-        return;
-      }
-    } catch (_e) {
-      // Server not ready yet
-    }
-    await sleep(100);
-  }
-  throw new Error(`Server on port ${port} did not start within ${maxRetries * 100}ms`);
-}
-
-async function startServer(
-  args: string[] = [],
-  env: Record<string, string> = {}
-): Promise<{ process: ChildProcess; port: number }> {
-  const cliPath = path.join(process.cwd(), 'src', 'cli.ts');
-
-  const serverProcess = spawn('pnpm', ['exec', 'tsx', cliPath, ...args], {
-    env: { ...process.env, ...env },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  serverProcess.stderr?.on('data', (data) => {
-    console.error(`Server stderr: ${data}`);
-  });
-
-  const port = await waitForServerPort(serverProcess);
-  return { process: serverProcess, port };
-}
-
 describe('WebSocket Buffer Tests', () => {
-  let serverProcess: ChildProcess;
-  let serverPort: number;
-  let testDir: string;
+  let server: ServerInstance | null = null;
   let sessionId: string;
   const username = 'testuser';
   const password = 'testpass';
   const authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
 
   beforeAll(async () => {
-    // Create temporary directory for test
-    testDir = path.join(os.tmpdir(), 'vibetunnel-ws-test', Date.now().toString());
-    fs.mkdirSync(testDir, { recursive: true });
-
-    // Start server
-    const result = await startServer(['--port', '0'], {
-      VIBETUNNEL_CONTROL_DIR: testDir,
-      VIBETUNNEL_USERNAME: username,
-      VIBETUNNEL_PASSWORD: password,
+    // Start server with authentication
+    server = await startTestServer({
+      args: ['--port', '0'],
+      env: {
+        VIBETUNNEL_USERNAME: username,
+        VIBETUNNEL_PASSWORD: password,
+      },
+      waitForHealth: true,
     });
 
-    serverProcess = result.process;
-    serverPort = result.port;
-
-    await waitForServer(serverPort);
-
     // Create a test session
-    const createResponse = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+    const createResponse = await fetch(`http://localhost:${server.port}/api/sessions`, {
       method: 'POST',
       headers: {
         Authorization: authHeader,
@@ -77,7 +31,7 @@ describe('WebSocket Buffer Tests', () => {
       },
       body: JSON.stringify({
         command: ['bash', '-c', 'while true; do echo "test output $RANDOM"; sleep 1; done'],
-        workingDir: testDir,
+        workingDir: server.testDir,
         name: 'WebSocket Test Session',
       }),
     });
@@ -90,34 +44,14 @@ describe('WebSocket Buffer Tests', () => {
   });
 
   afterAll(async () => {
-    // Kill server process
-    if (serverProcess) {
-      await new Promise<void>((resolve) => {
-        serverProcess.on('close', () => resolve());
-
-        // Try graceful shutdown first
-        serverProcess.kill('SIGTERM');
-
-        // Force kill after timeout
-        setTimeout(() => {
-          if (serverProcess.exitCode === null) {
-            serverProcess.kill('SIGKILL');
-          }
-        }, 5000);
-      });
-    }
-
-    // Clean up test directory
-    try {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    } catch (_e) {
-      console.error('Failed to clean test directory:', _e);
+    if (server) {
+      await stopServer(server);
     }
   });
 
   describe('WebSocket Connection', () => {
     it('should connect to WebSocket endpoint', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -133,7 +67,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should reject unauthorized connections', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`);
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`);
 
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
@@ -161,7 +95,7 @@ describe('WebSocket Buffer Tests', () => {
 
   describe('Buffer Subscription', () => {
     it('should subscribe to session buffers', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -210,7 +144,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should unsubscribe from session', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -256,7 +190,7 @@ describe('WebSocket Buffer Tests', () => {
 
     it('should handle multiple subscriptions', async () => {
       // Create another session
-      const createResponse = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const createResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -264,14 +198,14 @@ describe('WebSocket Buffer Tests', () => {
         },
         body: JSON.stringify({
           command: ['bash', '-c', 'for i in {1..10}; do echo "session 2: $i"; sleep 0.5; done'],
-          workingDir: testDir,
+          workingDir: server?.testDir,
           name: 'Second Session',
         }),
       });
 
       const { sessionId: sessionId2 } = await createResponse.json();
 
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -322,7 +256,7 @@ describe('WebSocket Buffer Tests', () => {
 
   describe('Error Handling', () => {
     it('should handle invalid message format', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -341,7 +275,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle subscription to non-existent session', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -373,7 +307,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle missing sessionId in subscribe', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -399,7 +333,7 @@ describe('WebSocket Buffer Tests', () => {
   describe('Binary Protocol', () => {
     it('should encode terminal buffer correctly', async () => {
       // Send some input to generate specific output
-      await fetch(`http://localhost:${serverPort}/api/sessions/${sessionId}/input`, {
+      await fetch(`http://localhost:${server?.port}/api/sessions/${sessionId}/input`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -410,7 +344,7 @@ describe('WebSocket Buffer Tests', () => {
 
       await sleep(100);
 
-      await fetch(`http://localhost:${serverPort}/api/sessions/${sessionId}/input`, {
+      await fetch(`http://localhost:${server?.port}/api/sessions/${sessionId}/input`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -421,7 +355,7 @@ describe('WebSocket Buffer Tests', () => {
 
       await sleep(500);
 
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -476,7 +410,7 @@ describe('WebSocket Buffer Tests', () => {
 
   describe('Malformed Binary Data Edge Cases', () => {
     it('should handle raw binary data instead of JSON control messages', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -496,7 +430,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle truncated JSON messages', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -515,7 +449,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle oversized session ID in binary format', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -552,7 +486,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle empty binary messages', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -571,7 +505,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle messages with invalid UTF-8 in session ID', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -596,7 +530,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle extremely large control messages', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -621,7 +555,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle mixed text and binary frames', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -657,7 +591,7 @@ describe('WebSocket Buffer Tests', () => {
       });
 
       // Trigger an update
-      await fetch(`http://localhost:${serverPort}/api/sessions/${sessionId}/input`, {
+      await fetch(`http://localhost:${server?.port}/api/sessions/${sessionId}/input`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -673,7 +607,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle null bytes in JSON messages', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -693,7 +627,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle malformed terminal buffer in received data', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -727,7 +661,7 @@ describe('WebSocket Buffer Tests', () => {
         ws.on('message', messageHandler);
 
         // Trigger some output
-        fetch(`http://localhost:${serverPort}/api/sessions/${sessionId}/input`, {
+        fetch(`http://localhost:${server?.port}/api/sessions/${sessionId}/input`, {
           method: 'POST',
           headers: {
             Authorization: authHeader,
@@ -754,7 +688,7 @@ describe('WebSocket Buffer Tests', () => {
     });
 
     it('should handle rapid malformed message spam', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -805,7 +739,7 @@ describe('WebSocket Buffer Tests', () => {
 
   describe('Connection Lifecycle', () => {
     it('should handle client disconnect gracefully', async () => {
-      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
         headers: { Authorization: authHeader },
       });
 
@@ -826,13 +760,13 @@ describe('WebSocket Buffer Tests', () => {
 
       // Server should continue running
       await sleep(100);
-      const healthResponse = await fetch(`http://localhost:${serverPort}/api/health`);
+      const healthResponse = await fetch(`http://localhost:${server?.port}/api/health`);
       expect(healthResponse.ok).toBe(true);
     });
 
     it('should handle rapid connect/disconnect', async () => {
       for (let i = 0; i < 5; i++) {
-        const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`, {
           headers: { Authorization: authHeader },
         });
 
@@ -845,7 +779,7 @@ describe('WebSocket Buffer Tests', () => {
       }
 
       // Server should still be healthy
-      const healthResponse = await fetch(`http://localhost:${serverPort}/api/health`);
+      const healthResponse = await fetch(`http://localhost:${server?.port}/api/health`);
       expect(healthResponse.ok).toBe(true);
     });
   });
