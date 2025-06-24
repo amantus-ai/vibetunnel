@@ -53,7 +53,7 @@ describe('PtyManager', () => {
       // Read output from stdout file
       const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
       const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
-      
+
       expect(outputData).toContain('Hello, World!');
     });
 
@@ -76,7 +76,7 @@ describe('PtyManager', () => {
       // Read output from stdout file
       const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
       const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
-      
+
       expect(outputData.trim()).toContain('custom');
     });
 
@@ -100,7 +100,7 @@ describe('PtyManager', () => {
       // Read output from stdout file
       const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
       const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
-      
+
       expect(outputData).toContain('test_value_123');
     });
 
@@ -160,7 +160,7 @@ describe('PtyManager', () => {
       // Read output from stdout file
       const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
       const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
-      
+
       expect(outputData).toContain('test input');
 
       // Clean up - send EOF
@@ -181,8 +181,10 @@ describe('PtyManager', () => {
 
       // Read output from stdout file
       const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
-      const outputBuffer = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath) : Buffer.alloc(0);
-      
+      const outputBuffer = fs.existsSync(stdoutPath)
+        ? fs.readFileSync(stdoutPath)
+        : Buffer.alloc(0);
+
       // Check that binary data was echoed back
       expect(outputBuffer.length).toBeGreaterThan(0);
 
@@ -393,7 +395,7 @@ describe('PtyManager', () => {
       // Read output from stdout file
       const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
       const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
-      
+
       expect(outputData).toContain('test via stdin');
 
       // Clean up

@@ -575,6 +575,9 @@ export async function createApp(): Promise<AppInstance> {
       const res = {
         status: (_code: number) => {
           responseWritten = true;
+          // When auth fails, the middleware sends a response but doesn't call next()
+          // We need to resolve the promise immediately when a response is written
+          resolve(false);
           return { json: () => {} };
         },
         setHeader: () => {},
@@ -584,11 +587,22 @@ export async function createApp(): Promise<AppInstance> {
         resolve(!error && !responseWritten);
       };
 
-      // Call authMiddleware and handle potential async errors
-      Promise.resolve(authMiddleware(req, res, next)).catch((error) => {
-        logger.error('Auth middleware error:', error);
+      // Add a timeout to prevent indefinite hanging
+      const timeoutId = setTimeout(() => {
+        logger.error('WebSocket auth timeout - auth middleware did not complete in time');
         resolve(false);
-      });
+      }, 5000); // 5 second timeout
+
+      // Call authMiddleware and handle potential async errors
+      Promise.resolve(authMiddleware(req, res, next))
+        .then(() => {
+          clearTimeout(timeoutId);
+        })
+        .catch((error) => {
+          clearTimeout(timeoutId);
+          logger.error('Auth middleware error:', error);
+          resolve(false);
+        });
     });
 
     if (!isAuthenticated) {
