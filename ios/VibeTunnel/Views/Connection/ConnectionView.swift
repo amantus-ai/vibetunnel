@@ -65,7 +65,7 @@ struct ConnectionView: View {
                         name: $viewModel.name,
                         password: $viewModel.password,
                         isConnecting: viewModel.isConnecting,
-                        errorMessage: viewModel.errorMessage,
+                        errorMessage: nil,
                         onConnect: connectToServer
                     )
                     .opacity(contentOpacity)
@@ -96,7 +96,7 @@ struct ConnectionView: View {
 
     private func connectToServer() {
         guard networkMonitor.isConnected else {
-            viewModel.errorMessage = "No internet connection available"
+            ErrorPresenter.shared.showError("Connection Failed", message: "No internet connection available")
             return
         }
 
@@ -117,7 +117,6 @@ class ConnectionViewModel {
     var name: String = ""
     var password: String = ""
     var isConnecting: Bool = false
-    var errorMessage: String?
 
     func loadLastConnection() {
         if let config = UserDefaults.standard.data(forKey: "savedServerConfig"),
@@ -132,15 +131,13 @@ class ConnectionViewModel {
 
     @MainActor
     func testConnection(onSuccess: @escaping (ServerConfig) -> Void) async {
-        errorMessage = nil
-
         guard !host.isEmpty else {
-            errorMessage = "Please enter a server address"
+            ErrorPresenter.shared.showError("Invalid Input", message: "Please enter a server address")
             return
         }
 
         guard let portNumber = Int(port), portNumber > 0, portNumber <= 65_535 else {
-            errorMessage = "Please enter a valid port number"
+            ErrorPresenter.shared.showError("Invalid Input", message: "Please enter a valid port number")
             return
         }
 
@@ -167,10 +164,10 @@ class ConnectionViewModel {
             {
                 onSuccess(config)
             } else {
-                errorMessage = "Failed to connect to server"
+                ErrorPresenter.shared.showError("Connection Failed", message: "Failed to connect to server")
             }
         } catch {
-            errorMessage = "Connection failed: \(error.localizedDescription)"
+            ErrorPresenter.shared.showError("Connection Failed", message: "Connection failed: \(error.localizedDescription)", error: error)
         }
 
         isConnecting = false

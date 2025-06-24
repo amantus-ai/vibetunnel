@@ -38,6 +38,7 @@ struct ContentView: View {
             }
         }
         .animation(.default, value: connectionManager.isConnected)
+        .errorPresentation()
         .onAppear {
             validateRestoredConnection()
 

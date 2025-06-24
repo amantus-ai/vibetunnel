@@ -1,0 +1,34 @@
+// Shared Configuration
+// This file contains settings shared across all configurations
+
+// Include version configuration
+#include "version.xcconfig"
+
+// Include local development settings (if exists)
+// This file is ignored by git and contains personal development team settings
+#include? "Local.xcconfig"
+
+// Default values (can be overridden in Local.xcconfig)
+// These will be used if Local.xcconfig doesn't exist or doesn't define them
+DEVELOPMENT_TEAM = $(inherited)
+CODE_SIGN_STYLE = $(inherited)
+
+// Swift version and concurrency settings
+SWIFT_VERSION = 6.0
+SWIFT_STRICT_CONCURRENCY = complete
+
+// macOS deployment target
+MACOSX_DEPLOYMENT_TARGET = 15.0
+
+// Product name
+PRODUCT_NAME = VibeTunnel Frontend
+MODULE_NAME = VibeTunnelFrontend
+
+// Framework search paths
+FRAMEWORK_SEARCH_PATHS = $(inherited)
+
+// Swift language mode
+SWIFT_LANGUAGE_MODE = Swift6
+
+// Enable upcoming features
+OTHER_SWIFT_FLAGS = $(inherited) -enable-upcoming-feature StrictConcurrency

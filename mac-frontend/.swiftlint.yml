@@ -1,0 +1,81 @@
+disabled_rules:
+  - trailing_whitespace
+  - line_length
+  - type_body_length
+  - file_length
+  - function_body_length
+  - cyclomatic_complexity
+  - type_name
+  - identifier_name
+  - force_cast
+  - force_try
+
+opt_in_rules:
+  - empty_count
+  - closure_end_indentation
+  - literal_expression_end_indentation
+  - operator_usage_whitespace
+  - sorted_imports
+  - yoda_condition
+  - discouraged_optional_boolean
+  - empty_string
+  - attributes
+  - closure_spacing
+  - collection_alignment
+  - contains_over_first_not_nil
+  - empty_collection_literal
+  - fallthrough
+  - first_where
+  - indentation_width
+  - last_where
+  - modifier_order
+  - multiline_arguments
+  - multiline_function_chains
+  - multiline_literal_brackets
+  - multiline_parameters
+  - multiline_parameters_brackets
+  - prefer_self_type_over_type_of_self
+  - redundant_nil_coalescing
+  - toggle_bool
+  - trailing_closure
+  - unneeded_parentheses_in_closure_argument
+  - vertical_parameter_alignment_on_call
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+
+included:
+  - VibeTunnelFrontend
+
+excluded:
+  - .build
+
+custom_rules:
+  numbers_smell:
+    regex: '(^|\s)\d{2,}(\s|$)'
+    message: "Numbers should be defined as constants or variables"
+    severity: warning
+
+  print_statement:
+    regex: '\bprint\('
+    message: "Use proper logging instead of print statements"
+    severity: warning
+
+trailing_comma:
+  mandatory_comma: true
+
+indentation_width:
+  indentation_width: 4
+
+modifier_order:
+  preferred_modifier_order:
+    - acl
+    - setterACL
+    - override
+    - dynamic
+    - mutators
+    - lazy
+    - final
+    - required
+    - convenience
+    - typeMethods
+    - owned

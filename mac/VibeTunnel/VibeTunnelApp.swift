@@ -8,6 +8,7 @@ import UserNotifications
 struct VibeTunnelApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self)
     var appDelegate
+<<<<<<< Updated upstream
     @State var sessionMonitor = SessionMonitor.shared
     @State var serverManager = ServerManager.shared
     @State var ngrokService = NgrokService.shared
@@ -19,6 +20,21 @@ struct VibeTunnelApp: App {
         _appDelegate.wrappedValue.app = self
     }
 
+||||||| Stash base
+    @State private var sessionMonitor = SessionMonitor.shared
+    @State private var serverManager = ServerManager.shared
+    @State private var ngrokService = NgrokService.shared
+    @State private var permissionManager = SystemPermissionManager.shared
+    @State private var terminalLauncher = TerminalLauncher.shared
+    
+=======
+    @State private var sessionMonitor = SessionMonitor.shared
+    @State private var serverManager = ServerManager.shared
+    @State private var ngrokService = NgrokService.shared
+    @State private var permissionManager = SystemPermissionManager.shared
+    @State private var terminalLauncher = TerminalLauncher.shared
+
+>>>>>>> Stashed changes
     var body: some Scene {
         #if os(macOS)
             // Hidden WindowGroup to make Settings work in MenuBarExtra-only apps
@@ -316,18 +332,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         return dockMenu
     }
+<<<<<<< Updated upstream
 
     @objc
     private func openDashboard() {
         if let serverManager = app?.serverManager,
            let url = URL(string: "http://localhost:\(serverManager.port)")
         {
+||||||| Stash base
+    
+    @objc private func openDashboard() {
+        if let url = URL(string: "http://localhost:\(serverManager.port)") {
+=======
+
+    @objc private func openDashboard() {
+        if let url = URL(string: "http://localhost:\(serverManager.port)") {
+>>>>>>> Stashed changes
             NSWorkspace.shared.open(url)
         }
     }
+<<<<<<< Updated upstream
 
     @objc
     private func openSettings() {
+||||||| Stash base
+    
+    @objc private func openSettings() {
+=======
+
+    @objc private func openSettings() {
+>>>>>>> Stashed changes
         SettingsOpener.openSettings()
     }
 

@@ -1,7 +1,12 @@
 {
   "images" : [
     {
+<<<<<<< Updated upstream
       "filename" : "AppIcon.png",
+||||||| Stash base
+=======
+      "filename" : "icon_1024x1024.png",
+>>>>>>> Stashed changes
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

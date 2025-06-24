@@ -1,0 +1,14 @@
+// Local Development Configuration
+// Copy this file to Local.xcconfig and customize for your environment
+// Local.xcconfig is ignored by git
+
+// Your Apple Developer Team ID
+// Find it in Xcode: Preferences > Accounts > Team ID
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+
+// Code signing settings for development
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = Apple Development
+
+// Optional: Custom build settings for your environment
+// CUSTOM_BUILD_SETTING = value
