@@ -28,6 +28,8 @@ import './components/ssh-key-manager.js';
 
 import type { SessionCard } from './components/session-card.js';
 import { authClient } from './services/auth-client.js';
+import { bufferSubscriptionService } from './services/buffer-subscription-service.js';
+import { pushNotificationService } from './services/push-notification-service.js';
 
 const logger = createLogger('app');
 
@@ -155,6 +157,7 @@ export class VibeTunnelApp extends LitElement {
           console.log('🔓 No auth required, bypassing authentication');
           this.isAuthenticated = true;
           this.currentView = 'list';
+          await this.initializeServices(); // Initialize services after auth
           await this.loadSessions(); // Wait for sessions to load
           this.startAutoRefresh();
           return;
@@ -169,6 +172,7 @@ export class VibeTunnelApp extends LitElement {
 
     if (this.isAuthenticated) {
       this.currentView = 'list';
+      await this.initializeServices(); // Initialize services after auth
       await this.loadSessions(); // Wait for sessions to load
       this.startAutoRefresh();
     } else {
@@ -180,6 +184,7 @@ export class VibeTunnelApp extends LitElement {
     console.log('✅ Authentication successful');
     this.isAuthenticated = true;
     this.currentView = 'list';
+    await this.initializeServices(); // Initialize services after auth
     await this.loadSessions();
     this.startAutoRefresh();
 
@@ -194,6 +199,23 @@ export class VibeTunnelApp extends LitElement {
         this.selectedSessionId = sessionId;
         this.currentView = 'session';
       }
+    }
+  }
+
+  private async initializeServices() {
+    console.log('🚀 Initializing services...');
+    try {
+      // Initialize buffer subscription service for WebSocket connections
+      bufferSubscriptionService.initialize();
+
+      // Initialize push notification service
+      await pushNotificationService.initialize();
+
+      console.log('✅ Services initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize services:', error);
+      // Don't fail the whole app if services fail to initialize
+      // These are optional features
     }
   }
 
