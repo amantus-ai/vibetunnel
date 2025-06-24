@@ -35,6 +35,16 @@ jobs:
         xcodebuild -version
         swift --version
     
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+    
     - name: Cache Swift packages
       uses: useblacksmith/cache@v5
       with:
@@ -66,6 +76,11 @@ jobs:
         echo "go: $(which go || echo 'not found')"
         echo "bc: $(which bc || echo 'not found')"
         echo "jq: $(which jq || echo 'not found')"
+    
+    - name: Install web dependencies
+      run: |
+        cd web
+        pnpm install --frozen-lockfile
     
     - name: Resolve Dependencies (once)
       run: |
