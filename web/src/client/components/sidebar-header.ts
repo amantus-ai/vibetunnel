@@ -51,15 +51,18 @@ export class SidebarHeader extends HeaderBase {
             </button>
 
             <div class="flex flex-col gap-1 w-full max-w-[200px]">
-              <button
-                class="btn-ghost font-mono text-xs px-3 py-1.5 w-full"
-                @click=${this.handleOpenFileBrowser}
-                title="Browse files"
-              >
-                Browse Files
-              </button>
+              ${this.renderUtilityAndKillButtons(runningSessions)}
               ${this.renderExitedToggleButton(exitedSessions, true)}
-              ${this.renderActionButtons(exitedSessions, runningSessions, true)}
+              ${!this.hideExited && exitedSessions.length > 0
+                ? html`
+                    <button
+                      class="btn-ghost font-mono text-xs px-3 py-1.5 w-full text-status-warning"
+                      @click=${this.handleCleanExited}
+                    >
+                      Clean Exited (${exitedSessions.length})
+                    </button>
+                  `
+                : ''}
             </div>
           </div>
         </div>
@@ -113,30 +116,27 @@ export class SidebarHeader extends HeaderBase {
     `;
   }
 
-  private renderActionButtons(
-    exitedSessions: Session[],
-    runningSessions: Session[],
-    compact: boolean
-  ) {
-    const buttonClass = compact
-      ? 'btn-ghost font-mono text-xs px-3 py-1.5 w-full'
-      : 'btn-ghost font-mono text-xs px-4 py-2';
-
+  private renderUtilityAndKillButtons(runningSessions: Session[]) {
     return html`
-      ${!this.hideExited && exitedSessions.length > 0
-        ? html`
-            <button class="${buttonClass} text-status-warning" @click=${this.handleCleanExited}>
-              Clean Exited (${exitedSessions.length})
-            </button>
-          `
-        : ''}
-      ${runningSessions.length > 0 && !this.killingAll
-        ? html`
-            <button class="${buttonClass} text-status-error" @click=${this.handleKillAll}>
-              Kill (${runningSessions.length})
-            </button>
-          `
-        : ''}
+      <div class="flex gap-1 w-full">
+        <button
+          class="btn-ghost font-mono text-xs px-3 py-1.5 flex-1"
+          @click=${this.handleOpenFileBrowser}
+          title="Browse files"
+        >
+          Browse Files
+        </button>
+        ${runningSessions.length > 0 && !this.killingAll
+          ? html`
+              <button
+                class="btn-ghost font-mono text-xs px-3 py-1.5 flex-1 text-status-error"
+                @click=${this.handleKillAll}
+              >
+                Kill (${runningSessions.length})
+              </button>
+            `
+          : ''}
+      </div>
     `;
   }
 }

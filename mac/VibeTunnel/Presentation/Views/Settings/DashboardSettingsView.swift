@@ -434,6 +434,45 @@ private struct ServerConfigurationSection: View {
         } header: {
             Text("Server Configuration")
                 .font(.headline)
+        } footer: {
+            // Dashboard URL display
+            if accessMode == .localhost {
+                HStack(spacing: 5) {
+                    Text("Dashboard available at")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    if let url = URL(string: "http://127.0.0.1:\(serverPort)") {
+                        Link(url.absoluteString, destination: url)
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+            } else if accessMode == .network {
+                if let ip = localIPAddress {
+                    HStack(spacing: 5) {
+                        Text("Dashboard available at")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        if let url = URL(string: "http://\(ip):\(serverPort)") {
+                            Link(url.absoluteString, destination: url)
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+                } else {
+                    Text("Fetching local IP address...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                }
+            }
         }
     }
 }
@@ -646,6 +685,7 @@ private struct NgrokIntegrationSection: View {
         } footer: {
             Text("ngrok creates secure tunnels to your dashboard from anywhere.")
                 .font(.caption)
+                .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
         }
     }

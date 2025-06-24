@@ -24,6 +24,7 @@ import type { AuthClient } from '../services/auth-client.js';
 import './session-create-form.js';
 import './session-card.js';
 import { createLogger } from '../utils/logger.js';
+import { formatPathForDisplay } from '../utils/path-utils.js';
 
 const logger = createLogger('session-list');
 
@@ -281,22 +282,16 @@ export class SessionList extends LitElement {
                                 ${session.name || session.command}
                               </div>
                               <div class="text-xs text-dark-text-muted truncate">
-                                ${session.workingDir}
+                                ${formatPathForDisplay(session.workingDir)}
                               </div>
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">
-                              <span
-                                class="${session.status === 'running'
-                                  ? 'text-status-success'
-                                  : 'text-status-warning'} text-xs flex items-center gap-1"
-                              >
-                                <div
-                                  class="w-2 h-2 rounded-full ${session.status === 'running'
-                                    ? 'bg-status-success'
-                                    : 'bg-status-warning'}"
-                                ></div>
-                                ${session.status}
-                              </span>
+                              <div
+                                class="w-2 h-2 rounded-full ${session.status === 'running'
+                                  ? 'bg-status-success'
+                                  : 'bg-status-warning'}"
+                                title="${session.status}"
+                              ></div>
                               ${session.status === 'running' || session.status === 'exited'
                                 ? html`
                                     <button
