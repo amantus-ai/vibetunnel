@@ -146,13 +146,33 @@ jobs:
           echo "go is already installed at: $(which go)"
         fi
         
+        # Install bc for floating-point comparisons in coverage
+        if ! which bc >/dev/null 2>&1; then
+          echo "Installing bc..."
+          brew install bc || echo "Failed to install bc"
+        else
+          echo "bc is already installed at: $(which bc)"
+        fi
+        
+        # Install xcparse for coverage extraction
+        if ! which xcparse >/dev/null 2>&1; then
+          echo "Installing xcparse..."
+          brew install chargepoint/xcparse/xcparse || echo "Failed to install xcparse"
+        else
+          echo "xcparse is already installed at: $(which xcparse)"
+        fi
+        
         # Show final status
         echo "xcbeautify: $(which xcbeautify || echo 'not found')"
         echo "go: $(which go || echo 'not found')"
+        echo "bc: $(which bc || echo 'not found')"
+        echo "xcparse: $(which xcparse || echo 'not found')"
+        echo "jq: $(which jq || echo 'not found')"
         
     - name: Resolve Dependencies
       run: |
         echo "Resolving Swift package dependencies..."
+        cd mac
         # List available workspaces and schemes
         echo "Available workspaces:"
         find . -name "*.xcworkspace" -type d | grep -v node_modules | grep -v ".build"
@@ -164,6 +184,7 @@ jobs:
     - name: Build Debug (Native Architecture)
       timeout-minutes: 30
       run: |
+        cd mac
         set -o pipefail && xcodebuild build \
           -workspace VibeTunnel.xcworkspace \
           -scheme VibeTunnel-Mac \
@@ -181,6 +202,7 @@ jobs:
     - name: Build Release (Native Architecture)
       timeout-minutes: 30
       run: |
+        cd mac
         set -o pipefail && \
         xcodebuild build \
           -workspace VibeTunnel.xcworkspace \
@@ -200,6 +222,7 @@ jobs:
       id: test-coverage
       timeout-minutes: 20
       run: |
+        cd mac
         # Use xcodebuild test for workspace testing with coverage enabled
         set -o pipefail && \
         xcodebuild test \
@@ -218,22 +241,18 @@ jobs:
           exit 1
         }
         echo "result=0" >> $GITHUB_OUTPUT
-    
-    - name: Install xcresultparser
-      if: always()
-      run: |
-        # Install xcresultparser to extract coverage data
-        brew install chargepoint/xcparse/xcparse || echo "Failed to install xcparse"
         
     - name: Extract coverage data
       if: always()
       id: coverage
       run: |
+        cd mac
         if [ -f TestResults.xcresult ]; then
           # Extract code coverage report
           xcparse codecov TestResults.xcresult --json > coverage.json || {
-            echo "Failed to extract coverage data"
+            echo "::error::Failed to extract coverage data with xcparse"
             echo '{"error": "Failed to extract coverage data"}' > coverage-summary.json
+            echo "coverage_result=failure" >> $GITHUB_OUTPUT
             exit 0
           }
           
@@ -242,15 +261,13 @@ jobs:
             # Extract overall coverage percentage
             COVERAGE_PCT=$(cat coverage.json | jq -r '.lineCoverage // 0' | awk '{printf "%.1f", $1 * 100}')
             
-            # Create summary JSON
-            cat > coverage-summary.json << EOF
-        {
-          "coverage": $COVERAGE_PCT,
-          "lineCoverage": $(cat coverage.json | jq -r '.lineCoverage // 0'),
-          "executableLines": $(cat coverage.json | jq -r '.executableLines // 0'),
-          "coveredLines": $(cat coverage.json | jq -r '.coveredLines // 0')
-        }
-        EOF
+            # Create summary JSON safely
+            jq -n \
+              --arg coverage "$COVERAGE_PCT" \
+              --argjson lineCoverage "$(cat coverage.json | jq -r '.lineCoverage // 0')" \
+              --argjson executableLines "$(cat coverage.json | jq -r '.executableLines // 0')" \
+              --argjson coveredLines "$(cat coverage.json | jq -r '.coveredLines // 0')" \
+              '{coverage: $coverage, lineCoverage: $lineCoverage, executableLines: $executableLines, coveredLines: $coveredLines}' > coverage-summary.json
             
             echo "Coverage: ${COVERAGE_PCT}%"
             
@@ -276,8 +293,8 @@ jobs:
       with:
         name: mac-coverage
         path: |
-          coverage-summary.json
-          TestResults.xcresult
+          mac/coverage-summary.json
+          mac/TestResults.xcresult
           
     - name: Upload test logs on failure
       if: failure()
