@@ -43,6 +43,18 @@ jobs:
         version: 9
         dest: ~/pnpm-${{ github.run_id }}
     
+    - name: Cache Homebrew packages
+      uses: useblacksmith/cache@v5
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /opt/homebrew/Cellar/swiftlint
+          /opt/homebrew/Cellar/swiftformat
+          /opt/homebrew/Cellar/xcbeautify
+        key: ${{ runner.os }}-brew-${{ hashFiles('.github/workflows/mac.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-brew-
+    
     - name: Cache Swift packages
       uses: useblacksmith/cache@v5
       with:
@@ -62,8 +74,6 @@ jobs:
         brew "swiftlint"
         brew "swiftformat"
         brew "xcbeautify"
-        brew "go"
-        brew "bc"
         EOF
         brew bundle
         
@@ -71,8 +81,6 @@ jobs:
         echo "SwiftLint: $(which swiftlint || echo 'not found')"
         echo "SwiftFormat: $(which swiftformat || echo 'not found')"
         echo "xcbeautify: $(which xcbeautify || echo 'not found')"
-        echo "go: $(which go || echo 'not found')"
-        echo "bc: $(which bc || echo 'not found')"
         echo "jq: $(which jq || echo 'not found')"
     
     - name: Cache pnpm store
@@ -108,10 +116,11 @@ jobs:
           fi
         done
     
-    - name: Build web frontend
-      run: |
-        cd web
-        pnpm run build
+    - name: Download web build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: web-build-${{ github.sha }}
+        path: web/
     
     - name: Resolve Dependencies (once)
       run: |

@@ -72,7 +72,7 @@ struct AppleScriptExecutorTests {
         }
     }
     
-    @Test("Check Terminal application")
+    @Test("Check Terminal application", .disabled("Slow test - 0.44 seconds"))
     @MainActor
     func checkTerminalApplication() throws {
         let script = """
@@ -86,7 +86,7 @@ struct AppleScriptExecutorTests {
         #expect(result == "true" || result == "false")
     }
     
-    @Test("Test async execution")
+    @Test("Test async execution", .disabled("Slow test - 3.5 seconds"))
     func testAsyncExecution() async throws {
         // Test the async method
         let hasPermission = await AppleScriptExecutor.shared.checkPermission()

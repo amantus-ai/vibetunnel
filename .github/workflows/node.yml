@@ -154,6 +154,17 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libpam0g-dev
 
+    - name: Cache TypeScript build info
+      uses: useblacksmith/cache@v5
+      with:
+        path: |
+          web/dist/tsconfig.server.tsbuildinfo
+          web/public/tsconfig.client.tsbuildinfo
+          web/public/tsconfig.sw.tsbuildinfo
+        key: ${{ runner.os }}-tsbuild-${{ hashFiles('web/src/**/*.ts', 'web/tsconfig*.json') }}
+        restore-keys: |
+          ${{ runner.os }}-tsbuild-
+
     - name: Install dependencies
       working-directory: web
       run: pnpm install --frozen-lockfile
@@ -210,10 +221,11 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: node-build-artifacts
+        name: web-build-${{ github.sha }}
         path: |
           web/dist/
           web/public/bundle/
+        retention-days: 1
 
   type-check:
     name: TypeScript Type Checking

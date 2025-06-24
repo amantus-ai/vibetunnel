@@ -43,6 +43,18 @@ jobs:
         version: 9
         run_install: false
     
+    - name: Cache Homebrew packages
+      uses: useblacksmith/cache@v5
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /opt/homebrew/Cellar/swiftlint
+          /opt/homebrew/Cellar/swiftformat
+          /opt/homebrew/Cellar/xcbeautify
+        key: ${{ runner.os }}-brew-${{ hashFiles('.github/workflows/ios.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-brew-
+    
     - name: Cache Swift packages
       uses: useblacksmith/cache@v5
       with:
@@ -102,10 +114,11 @@ jobs:
           fi
         done
 
-    - name: Build web frontend
-      run: |
-        cd web
-        pnpm run build
+    - name: Download web build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: web-build-${{ github.sha }}
+        path: web/
     
     - name: Resolve Dependencies (once)
       run: |

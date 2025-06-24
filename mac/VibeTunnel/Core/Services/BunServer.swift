@@ -197,7 +197,12 @@ final class BunServer {
         logger.info("Binary location: \(resourcesPath)")
 
         // Set up environment - login shell will load the rest
-        let environment = ProcessInfo.processInfo.environment
+        var environment = ProcessInfo.processInfo.environment
+        
+        // Add Node.js V8 garbage collection optimization flags
+        // These help reduce GC pauses in long-running processes
+        environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128 --optimize-for-size"
+        
         process.environment = environment
 
         // Set up pipes for stdout and stderr

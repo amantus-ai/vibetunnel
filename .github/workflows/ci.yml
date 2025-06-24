@@ -13,14 +13,16 @@ permissions:
   issues: write
 
 jobs:
+  node:
+    name: Node.js CI
+    uses: ./.github/workflows/node.yml
+
   mac:
     name: Mac CI
+    needs: node
     uses: ./.github/workflows/mac.yml
     
   ios:
     name: iOS CI
+    needs: node
     uses: ./.github/workflows/ios.yml
-    
-  node:
-    name: Node.js CI
-    uses: ./.github/workflows/node.yml
