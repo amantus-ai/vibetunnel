@@ -601,7 +601,13 @@ final class TerminalLauncher {
             tell application "Terminal"
                 activate
                 set newTab to do script "\(config.appleScriptEscapedCommand)"
-                set windowID to id of window 1 of newTab
+                -- newTab is already a tab reference, get its window's ID
+                set tabWindows to windows whose tabs contains newTab
+                if (count of tabWindows) > 0 then
+                    set windowID to id of item 1 of tabWindows
+                else
+                    set windowID to id of front window
+                end if
                 set tabID to id of newTab
                 return (windowID as string) & "|" & (tabID as string)
             end tell
