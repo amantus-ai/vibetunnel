@@ -128,6 +128,7 @@ export class MockEventSource extends EventTarget {
   static CONNECTING = 0;
   static OPEN = 1;
   static CLOSED = 2;
+  static instances = new Set<MockEventSource>();
 
   url: string;
   readyState: number = MockEventSource.CONNECTING;
@@ -143,10 +144,12 @@ export class MockEventSource extends EventTarget {
     if (eventSourceInitDict?.withCredentials) {
       this.withCredentials = eventSourceInitDict.withCredentials;
     }
+    MockEventSource.instances.add(this);
   }
 
   close = vi.fn(() => {
     this.readyState = MockEventSource.CLOSED;
+    MockEventSource.instances.delete(this);
   });
 
   mockOpen(): void {
