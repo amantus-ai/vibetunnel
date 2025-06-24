@@ -89,13 +89,15 @@ jobs:
         # Set pnpm to use fewer workers to avoid crashes on self-hosted runners
         export NODE_OPTIONS="--max-old-space-size=4096"
         pnpm config set store-dir ~/.local/share/pnpm/store
-        pnpm config set package-import-method copy
-        pnpm config set node-linker hoisted
+        pnpm config set package-import-method hardlink
         # Install with retries
         for i in 1 2 3; do
           echo "Install attempt $i"
           if pnpm install --frozen-lockfile; then
             echo "pnpm install succeeded"
+            # Force rebuild of native modules
+            echo "Rebuilding native modules..."
+            pnpm rebuild || true
             break
           else
             echo "pnpm install failed, cleaning and retrying..."
