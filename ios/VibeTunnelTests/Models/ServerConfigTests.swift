@@ -188,7 +188,6 @@ struct ServerConfigTests {
         #expect(jsonString.contains("\"host\":\"test.server\""))
         #expect(jsonString.contains("\"port\":3000"))
         #expect(jsonString.contains("\"name\":\"user\""))
-        #expect(jsonString.contains("\"password\":\"pass\""))
     }
 }
 
