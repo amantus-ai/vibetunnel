@@ -56,22 +56,35 @@ jobs:
         EOF
         brew bundle
         
-        # Install build/test tools
-        gem install xcpretty
+        # Install build/test tools with proper PATH
+        export PATH="/usr/local/bin:$PATH"
+        gem install xcpretty --user-install || sudo gem install xcpretty || brew install xcpretty
+        
+        # Add gem bin to PATH
+        export PATH="$HOME/.gem/ruby/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
+        export PATH="/usr/local/lib/ruby/gems/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
         
         # Show final status
         echo "SwiftLint: $(which swiftlint || echo 'not found')"
         echo "SwiftFormat: $(which swiftformat || echo 'not found')"
         echo "xcpretty: $(which xcpretty || echo 'not found')"
+        echo "PATH: $PATH"
     
     - name: Resolve Dependencies (once)
       run: |
+        cd ios
         echo "Resolving iOS package dependencies..."
         xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
     
     # BUILD PHASE
     - name: Build iOS app
       run: |
+        cd ios
+        # Set up PATH for xcpretty
+        export PATH="$HOME/.gem/ruby/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
+        export PATH="/usr/local/lib/ruby/gems/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
+        export PATH="/usr/local/bin:$PATH"
+        
         set -o pipefail
         xcodebuild build \
           -workspace VibeTunnel.xcworkspace \
@@ -132,6 +145,12 @@ jobs:
     
     - name: Run iOS tests
       run: |
+        cd ios
+        # Set up PATH for xcpretty
+        export PATH="$HOME/.gem/ruby/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
+        export PATH="/usr/local/lib/ruby/gems/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
+        export PATH="/usr/local/bin:$PATH"
+        
         echo "Running iOS tests using Swift Testing framework..."
         set -o pipefail
         xcodebuild test \
