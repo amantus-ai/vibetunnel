@@ -5,14 +5,14 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['src/**/*.test.ts'],
-    environmentMatchGlobs: [
-      // Use happy-dom for client-side component tests
-      ['src/client/**/*.test.ts', 'happy-dom'],
-      // Use node for server-side and e2e tests
-      ['src/server/**/*.test.ts', 'node'],
-      ['src/test/e2e/**/*.test.ts', 'node'],
-    ],
     setupFiles: ['./src/test/setup.ts'],
+    // Set default environment
+    environment: 'node',
+    // Override environment for specific test files
+    environmentMatchGlobs: [
+      ['**/buffer-subscription-service.test.ts', 'happy-dom'],
+      ['src/client/**/*.test.ts', 'happy-dom'],
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

@@ -8,6 +8,8 @@
     "declaration": true,
     "types": ["node"],
     "composite": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/tsconfig.server.tsbuildinfo",
     "inlineSourceMap": true,
     "inlineSources": true
   },

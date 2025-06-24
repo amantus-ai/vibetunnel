@@ -8,7 +8,9 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "declaration": true,
-    "composite": true
+    "composite": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./public/tsconfig.client.tsbuildinfo"
   },
   "include": [
     "src/client/**/*",

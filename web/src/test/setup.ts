@@ -1,6 +1,23 @@
 // Global test setup for Vitest
 import { vi } from 'vitest';
 
+// Mock the native pty module before any imports
+vi.mock('@homebridge/node-pty-prebuilt-multiarch', () => ({
+  spawn: vi.fn(() => ({
+    pid: 12345,
+    cols: 80,
+    rows: 24,
+    process: 'mocked',
+    handleFlowControl: false,
+    on: vi.fn(),
+    resize: vi.fn(),
+    write: vi.fn(),
+    kill: vi.fn(),
+    onData: vi.fn(),
+    onExit: vi.fn(),
+  })),
+}));
+
 // Mock global objects that might not exist in test environments
 global.ResizeObserver = class ResizeObserver {
   observe() {}

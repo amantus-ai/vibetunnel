@@ -7,7 +7,10 @@
     "rootDir": "./src",
     "inlineSourceMap": true,
     "inlineSources": true,
-    "declaration": true
+    "declaration": true,
+    "composite": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./public/tsconfig.sw.tsbuildinfo"
   },
   "include": [
     "src/client/sw.ts",
