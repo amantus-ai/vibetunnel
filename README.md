@@ -240,6 +240,7 @@ Created with ❤️ by:
 - [@badlogic](https://mariozechner.at/) - Mario Zechner
 - [@mitsuhiko](https://lucumr.pocoo.org/) - Armin Ronacher  
 - [@steipete](https://steipete.com/) - Peter Steinberger
+- [@hjanuschka](https://x.com/hjanuschka) - Helmut Januschka
 
 ## License
 
