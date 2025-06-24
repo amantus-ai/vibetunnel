@@ -279,9 +279,21 @@ exports.default = pty;
   const unixTerminalFile = path.join(__dirname, 'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/unixTerminal.js');
   if (fs.existsSync(unixTerminalFile)) {
     let content = fs.readFileSync(unixTerminalFile, 'utf8');
-
-    // Replace the helperPath resolution logic
-    const helperPathPatch = `var helperPath;
+    
+    // Check if already patched (contains our SEA comment)
+    if (content.includes('// For SEA, use spawn-helper from environment')) {
+      console.log('unixTerminal.js already patched, skipping...');
+    } else {
+      // Find where helperPath is defined
+      const helperPathMatch = content.match(/var helperPath[^;]*;/);
+      if (!helperPathMatch) {
+        console.log('Warning: Could not find helperPath declaration in unixTerminal.js');
+      } else {
+        // Find the position right after var helperPath;
+        const insertPosition = content.indexOf(helperPathMatch[0]) + helperPathMatch[0].length;
+        
+        // Insert our patch
+        const helperPathPatch = `
 // For SEA, use spawn-helper from environment or next to executable
 if (process.env.NODE_PTY_SPAWN_HELPER_PATH) {
   helperPath = process.env.NODE_PTY_SPAWN_HELPER_PATH;
@@ -299,14 +311,13 @@ if (process.env.NODE_PTY_SPAWN_HELPER_PATH) {
     helperPath = helperPath.replace('node_modules.asar', 'node_modules.asar.unpacked');
   }
 }`;
-
-    // Find and replace the helperPath section
-    content = content.replace(
-      /var helperPath;[\s\S]*?helperPath = helperPath\.replace\('node_modules\.asar', 'node_modules\.asar\.unpacked'\);/m,
-      helperPathPatch
-    );
-
-    fs.writeFileSync(unixTerminalFile, content);
+        
+        // Insert the patch after the helperPath declaration
+        content = content.substring(0, insertPosition) + helperPathPatch + content.substring(insertPosition);
+        
+        fs.writeFileSync(unixTerminalFile, content);
+      }
+    }
   }
 
   console.log('Patched node-pty to use process.dlopen() instead of require().');
