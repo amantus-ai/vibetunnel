@@ -62,7 +62,7 @@ export class FullHeader extends HeaderBase {
                   this.dispatchEvent(new CustomEvent('open-notification-settings'))}
               ></notification-status>
               <button
-                class="btn-primary font-mono text-sm px-6 py-3 vt-create-button"
+                class="btn-primary font-mono text-sm px-6 py-2 vt-create-button"
                 @click=${this.handleCreateSession}
               >
                 Create Session
