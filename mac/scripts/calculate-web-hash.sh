@@ -19,15 +19,11 @@ if [ ! -d "${WEB_DIR}" ]; then
     exit 1
 fi
 
-# Calculate hash of all relevant SOURCE files in web directory
-# Include: src/, scripts/, config files (but NOT package-lock.json)
-# Exclude: node_modules, dist, public (all are build outputs)
 echo "Calculating web content hash..."
 cd "${WEB_DIR}"
 
-# Find all relevant files and calculate their size, modification time, and content hash
-# This approach is more reliable than just content hash as it catches permission changes
-# Exclude: node_modules, dist, public (all build outputs), package-lock.json, and build directories
+# Use tar to create a single stream of all files for fast hashing
+# This avoids spawning processes for each file
 CONTENT_HASH=$(find . \
     -type f \
     \( -name "*.ts" -o -name "*.js" -o -name "*.json" -o -name "*.css" -o -name "*.html" \
@@ -42,10 +38,9 @@ CONTENT_HASH=$(find . \
     -not -path "./.node-builds/*" \
     -not -path "./build/*" \
     -not -path "./native/*" \
-    -not -name "package-lock.json" \
-    -exec stat -f "%m %z %p" {} \; \
-    -exec shasum -a 256 {} \; | \
+    -not -name "package-lock.json" | \
     sort | \
+    tar -cf - -T - 2>/dev/null | \
     shasum -a 256 | \
     cut -d' ' -f1)
 
