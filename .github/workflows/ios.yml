@@ -8,11 +8,12 @@ permissions:
   pull-requests: write
   issues: write
 
-# All jobs run in parallel for faster CI execution
+# Single job for efficient execution on shared runner
 jobs:
-  lint:
-    name: Lint iOS Code
+  build-lint-test:
+    name: Build, Lint, and Test iOS
     runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 30
     
     steps:
     - name: Clean workspace
@@ -44,122 +45,31 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-spm-
     
-    - name: Install linting tools via Brewfile
+    - name: Install all tools
       continue-on-error: true
       shell: bash
       run: |
+        # Install linting tools
         cat > Brewfile <<EOF
         brew "swiftlint"
         brew "swiftformat"
         EOF
-        brew bundle --no-lock
+        brew bundle
+        
+        # Install build/test tools
+        gem install xcpretty
         
         # Show final status
         echo "SwiftLint: $(which swiftlint || echo 'not found')"
         echo "SwiftFormat: $(which swiftformat || echo 'not found')"
-        
-    - name: Run SwiftFormat (check mode)
-      id: swiftformat
-      continue-on-error: true
-      run: |
-        cd ios
-        swiftformat . --lint 2>&1 | tee ../swiftformat-output.txt
-        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-      
-    - name: Run SwiftLint
-      id: swiftlint
-      continue-on-error: true
-      run: |
-        cd ios
-        swiftlint 2>&1 | tee ../swiftlint-output.txt
-        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-        
-    - name: Read SwiftFormat Output
-      if: always()
-      id: swiftformat-output
-      run: |
-        if [ -f swiftformat-output.txt ]; then
-          echo 'content<<EOF' >> $GITHUB_OUTPUT
-          cat swiftformat-output.txt >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
-        else
-          echo "content=No output" >> $GITHUB_OUTPUT
-        fi
-        
-    - name: Read SwiftLint Output
-      if: always()
-      id: swiftlint-output
-      run: |
-        if [ -f swiftlint-output.txt ]; then
-          echo 'content<<EOF' >> $GITHUB_OUTPUT
-          cat swiftlint-output.txt >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
-        else
-          echo "content=No output" >> $GITHUB_OUTPUT
-        fi
-        
-    - name: Report SwiftFormat Results
-      if: always()
-      uses: ./.github/actions/lint-reporter
-      with:
-        title: 'iOS Formatting (SwiftFormat)'
-        lint-result: ${{ steps.swiftformat.outputs.result == '0' && 'success' || 'failure' }}
-        lint-output: ${{ steps.swiftformat-output.outputs.content }}
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: Report SwiftLint Results
-      if: always()
-      uses: ./.github/actions/lint-reporter
-      with:
-        title: 'iOS Linting (SwiftLint)'
-        lint-result: ${{ steps.swiftlint.outputs.result == '0' && 'success' || 'failure' }}
-        lint-output: ${{ steps.swiftlint-output.outputs.content }}
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-
-  build:
-    name: Build iOS App
-    runs-on: [self-hosted, macOS, ARM64]
-    # Run in parallel with lint
-    timeout-minutes: 30
+        echo "xcpretty: $(which xcpretty || echo 'not found')"
     
-    steps:
-    - name: Clean workspace
-      run: |
-        # Clean workspace for self-hosted runner
-        rm -rf * || true
-        rm -rf .* || true
-        
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Select Xcode 16.3
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: '16.3'
-    
-    - name: Cache Swift packages
-      uses: useblacksmith/cache@v5
-      with:
-        path: |
-          ~/Library/Developer/Xcode/DerivedData
-          ~/.swiftpm
-        key: ${{ runner.os }}-spm-${{ hashFiles('ios/VibeTunnel-iOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
-        restore-keys: |
-          ${{ runner.os }}-spm-
-        
-    - name: Install build tools
-      run: |
-        gem install xcpretty
-
-    - name: Resolve Dependencies
+    - name: Resolve Dependencies (once)
       run: |
         echo "Resolving iOS package dependencies..."
         xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
-        
-    - name: Show build settings
-      run: |
-        xcodebuild -showBuildSettings -workspace VibeTunnel.xcworkspace -scheme VibeTunnel-iOS -destination "generic/platform=iOS" || true
-        
+    
+    # BUILD PHASE
     - name: Build iOS app
       run: |
         set -o pipefail
@@ -179,78 +89,38 @@ jobs:
             tail -100 build.log
             exit 1
           }
-
+    
     - name: List build products
       if: always()
       run: |
         echo "Searching for iOS build products..."
         find ios/build -name "*.app" -type d 2>/dev/null || echo "No build products found"
         ls -la ios/build/DerivedData/Build/Products/ 2>/dev/null || echo "Build products directory not found"
-        # Also check workspace-level build directory
-        ls -la build/DerivedData/Build/Products/ 2>/dev/null || echo "Workspace build products directory not found"
-        
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      if: success()
-      with:
-        name: ios-build-artifacts
-        path: ios/build/DerivedData/Build/Products/Release-iphoneos/
-        retention-days: 7
-
-  test:
-    name: Test iOS App
-    runs-on: [self-hosted, macOS, ARM64]
-    # Run in parallel with lint and build
-    timeout-minutes: 15
     
-    steps:
-    - name: Clean workspace
+    # LINT PHASE
+    - name: Run SwiftFormat (check mode)
+      id: swiftformat
+      continue-on-error: true
       run: |
-        # Clean workspace for self-hosted runner
-        rm -rf * || true
-        rm -rf .* || true
-        
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Select Xcode 16.3
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: '16.3'
+        cd ios
+        swiftformat . --lint 2>&1 | tee ../swiftformat-output.txt
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
     
-    - name: Cache Swift packages
-      uses: useblacksmith/cache@v5
-      with:
-        path: |
-          ~/Library/Developer/Xcode/DerivedData
-          ~/.swiftpm
-        key: ${{ runner.os }}-spm-${{ hashFiles('ios/VibeTunnel-iOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
-        restore-keys: |
-          ${{ runner.os }}-spm-
-        
-    - name: Install test tools
+    - name: Run SwiftLint
+      id: swiftlint
+      continue-on-error: true
       run: |
-        gem install xcpretty
-
-    - name: Resolve Test Dependencies
-      run: |
-        echo "Resolving dependencies for tests..."
-        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
-        
+        cd ios
+        swiftlint 2>&1 | tee ../swiftlint-output.txt
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+    
+    # TEST PHASE
     - name: Create and boot simulator
       run: |
         echo "Creating iOS simulator for tests..."
-        # List available runtimes
-        echo "Available runtimes:"
-        xcrun simctl list runtimes
-        
         # Get the latest iOS runtime
         RUNTIME=$(xcrun simctl list runtimes | grep "iOS" | tail -1 | awk '{print $NF}')
         echo "Using runtime: $RUNTIME"
-        
-        # List available device types
-        echo "Available device types:"
-        xcrun simctl list devicetypes | grep iPhone
         
         # Create a new simulator
         SIMULATOR_ID=$(xcrun simctl create "Test iPhone" "iPhone 15" "$RUNTIME" || xcrun simctl create "Test iPhone" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "$RUNTIME")
@@ -259,7 +129,7 @@ jobs:
         # Boot the simulator
         xcrun simctl boot "$SIMULATOR_ID" || echo "Simulator already booted"
         echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
-        
+    
     - name: Run iOS tests
       run: |
         echo "Running iOS tests using Swift Testing framework..."
@@ -284,7 +154,8 @@ jobs:
         
         # Shutdown simulator
         xcrun simctl shutdown "$SIMULATOR_ID" || true
-        
+    
+    # COVERAGE EXTRACTION
     - name: Extract coverage summary
       if: always()
       id: coverage
@@ -315,7 +186,16 @@ jobs:
           echo '{"error": "No test results bundle found"}' > coverage-summary.json
           echo "coverage_result=failure" >> $GITHUB_OUTPUT
         fi
-        
+    
+    # ARTIFACT UPLOADS
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: ios-build-artifacts
+        path: ios/build/DerivedData/Build/Products/Release-iphoneos/
+        retention-days: 7
+    
     - name: Upload coverage artifacts
       if: always()
       uses: actions/upload-artifact@v4
@@ -325,17 +205,54 @@ jobs:
           ios/coverage-summary.json
           ios/TestResults.xcresult
         retention-days: 1
-        
-    - name: Upload test logs on failure
-      if: failure()
+    
+    # LINT REPORTING
+    - name: Read SwiftFormat Output
+      if: always()
+      id: swiftformat-output
       run: |
-        echo "Tests failed. Check the logs above for details."
-        # Swift Testing doesn't produce xcresult bundles with run-tests.sh
+        if [ -f swiftformat-output.txt ]; then
+          echo 'content<<EOF' >> $GITHUB_OUTPUT
+          cat swiftformat-output.txt >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+        else
+          echo "content=No output" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Read SwiftLint Output
+      if: always()
+      id: swiftlint-output
+      run: |
+        if [ -f swiftlint-output.txt ]; then
+          echo 'content<<EOF' >> $GITHUB_OUTPUT
+          cat swiftlint-output.txt >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+        else
+          echo "content=No output" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Report SwiftFormat Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'iOS Formatting (SwiftFormat)'
+        lint-result: ${{ steps.swiftformat.outputs.result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.swiftformat-output.outputs.content }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Report SwiftLint Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'iOS Linting (SwiftLint)'
+        lint-result: ${{ steps.swiftlint.outputs.result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.swiftlint-output.outputs.content }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
   report-coverage:
     name: Report iOS Coverage
-    runs-on: blacksmith-2vcpu-ubuntu-2204
-    needs: [test]
+    runs-on: blacksmith-8vcpu-ubuntu-2204
+    needs: [build-lint-test]
     if: always() && github.event_name == 'pull_request'
 
     steps:
