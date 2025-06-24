@@ -382,29 +382,56 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private async handleHideExitedChange(e: CustomEvent) {
-    const performChange = () => {
-      this.hideExited = e.detail;
-      this.saveHideExitedState(this.hideExited);
-
-      // Add animation class to session-list for CSS animations
-      requestAnimationFrame(() => {
-        const sessionList = this.renderRoot.querySelector('session-list');
-        if (sessionList) {
-          sessionList.classList.add('sessions-transitioning');
-
-          // Remove the class after animation completes
-          setTimeout(() => {
-            sessionList.classList.remove('sessions-transitioning');
-          }, 600); // Slightly longer than animation duration
-        }
-      });
-    };
+    console.log('handleHideExitedChange', {
+      currentHideExited: this.hideExited,
+      newHideExited: e.detail,
+      hasViewTransitions: 'startViewTransition' in document,
+    });
 
     // Use View Transitions API if available
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
-      await document.startViewTransition(performChange);
+      console.log('Using View Transitions API');
+      await document.startViewTransition(() => {
+        this.hideExited = e.detail;
+        this.saveHideExitedState(this.hideExited);
+      });
     } else {
-      performChange();
+      console.log('Using CSS animations fallback');
+      // For browsers without View Transitions, add a class before the change
+      const wasHidingExited = this.hideExited;
+
+      // Add pre-animation class
+      document.body.classList.add('sessions-animating');
+      console.log('Added sessions-animating class');
+
+      // Update state
+      this.hideExited = e.detail;
+      this.saveHideExitedState(this.hideExited);
+
+      // Wait for render and trigger animations
+      await this.updateComplete;
+      console.log('Update complete, scheduling animation');
+
+      requestAnimationFrame(() => {
+        // Add specific animation direction
+        const animationClass = wasHidingExited ? 'sessions-showing' : 'sessions-hiding';
+        document.body.classList.add(animationClass);
+        console.log('Added animation class:', animationClass);
+
+        // Check what elements will be animated
+        const cards = document.querySelectorAll('.session-flex-responsive > session-card');
+        console.log('Found session cards to animate:', cards.length);
+
+        // Clean up after animation
+        setTimeout(() => {
+          document.body.classList.remove(
+            'sessions-animating',
+            'sessions-showing',
+            'sessions-hiding'
+          );
+          console.log('Cleaned up animation classes');
+        }, 600);
+      });
     }
   }
 
