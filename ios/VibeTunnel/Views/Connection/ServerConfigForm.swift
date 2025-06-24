@@ -8,6 +8,7 @@ struct ServerConfigForm: View {
     @Binding var host: String
     @Binding var port: String
     @Binding var name: String
+    @Binding var password: String
     let isConnecting: Bool
     let errorMessage: String?
     let onConnect: () -> Void

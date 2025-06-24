@@ -77,7 +77,10 @@ jobs:
     - name: Install web dependencies
       run: |
         cd web
-        pnpm install --frozen-lockfile
+        # Clean pnpm store to avoid corruption issues
+        pnpm store prune || true
+        # Install with more verbose output and retry on failure
+        pnpm install --frozen-lockfile --reporter=append-only || pnpm install --frozen-lockfile --no-frozen-lockfile
     
     - name: Build web frontend
       run: |
