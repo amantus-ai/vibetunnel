@@ -87,7 +87,7 @@ jobs:
       run: |
         cd ios
         echo "Resolving iOS package dependencies..."
-        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
+        xcodebuild -resolvePackageDependencies -workspace ../VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
     
     # BUILD PHASE
     - name: Build iOS app
@@ -98,7 +98,7 @@ jobs:
         
         set -o pipefail
         xcodebuild build \
-          -workspace VibeTunnel.xcworkspace \
+          -workspace ../VibeTunnel.xcworkspace \
           -scheme VibeTunnel-iOS \
           -destination "generic/platform=iOS" \
           -configuration Release \
@@ -106,7 +106,7 @@ jobs:
           CODE_SIGNING_ALLOWED=NO \
           CODE_SIGNING_REQUIRED=NO \
           ONLY_ACTIVE_ARCH=NO \
-          -derivedDataPath ios/build/DerivedData \
+          -derivedDataPath build/DerivedData \
           COMPILER_INDEX_STORE_ENABLE=NO \
           2>&1 | tee build.log | xcbeautify || {
             echo "Build failed. Last 100 lines of output:"
@@ -163,10 +163,10 @@ jobs:
         echo "Running iOS tests using Swift Testing framework..."
         set -o pipefail
         xcodebuild test \
-          -workspace VibeTunnel.xcworkspace \
+          -workspace ../VibeTunnel.xcworkspace \
           -scheme VibeTunnel-iOS \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
-          -resultBundlePath ios/TestResults.xcresult \
+          -resultBundlePath TestResults.xcresult \
           -enableCodeCoverage YES \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
