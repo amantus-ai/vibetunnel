@@ -162,6 +162,26 @@ export class ProcessUtils {
   }
 
   /**
+   * Check if this is an interactive shell session
+   */
+  private static isInteractiveShellCommand(cmdName: string, args: string[]): boolean {
+    // Common shells
+    const shells = ['bash', 'zsh', 'sh', 'fish', 'dash', 'ksh', 'tcsh', 'csh'];
+    const isShell = shells.some((shell) => cmdName === shell || cmdName.endsWith(`/${shell}`));
+
+    if (!isShell) return false;
+
+    // Check for interactive flags
+    const interactiveFlags = ['-i', '--interactive', '-l', '--login'];
+
+    // If no args, it's interactive by default
+    if (args.length === 0) return true;
+
+    // Check if any args indicate interactive mode
+    return args.some((arg) => interactiveFlags.includes(arg));
+  }
+
+  /**
    * Determine how to spawn a command, checking if it exists in PATH or needs shell execution
    * Returns the actual command and args to use for spawning
    */
@@ -203,17 +223,31 @@ export class ProcessUtils {
     // Determine user's shell
     const userShell = ProcessUtils.getUserShell();
 
+    // Check if this is trying to execute a command (not an interactive shell session)
+    // If so, use non-interactive mode to ensure shell exits after execution
+    const isCommand = !ProcessUtils.isInteractiveShellCommand(cmdName, cmdArgs);
+
     // Use interactive shell to execute the command
     // This ensures aliases and shell functions are available
     if (process.platform === 'win32') {
       // Windows shells have different syntax
       if (userShell.includes('bash')) {
         // Git Bash on Windows: Use Unix-style syntax
-        return {
-          command: userShell,
-          args: ['-i', '-c', command.join(' ')],
-          useShell: true,
-        };
+        if (isCommand) {
+          // Non-interactive command execution
+          return {
+            command: userShell,
+            args: ['-c', command.join(' ')],
+            useShell: true,
+          };
+        } else {
+          // Interactive shell session
+          return {
+            command: userShell,
+            args: ['-i', '-c', command.join(' ')],
+            useShell: true,
+          };
+        }
       } else if (userShell.includes('pwsh') || userShell.includes('powershell')) {
         // PowerShell: Use -Command for execution
         // Note: PowerShell aliases work differently than Unix aliases
@@ -232,12 +266,22 @@ export class ProcessUtils {
         };
       }
     } else {
-      // Unix shells: Use -i -c for interactive execution
-      return {
-        command: userShell,
-        args: ['-i', '-c', command.join(' ')],
-        useShell: true,
-      };
+      // Unix shells: Choose execution mode based on command type
+      if (isCommand) {
+        // Non-interactive command execution: shell will exit after completion
+        return {
+          command: userShell,
+          args: ['-c', command.join(' ')],
+          useShell: true,
+        };
+      } else {
+        // Interactive shell session: use -i for alias support
+        return {
+          command: userShell,
+          args: ['-i', '-c', command.join(' ')],
+          useShell: true,
+        };
+      }
     }
   }
 

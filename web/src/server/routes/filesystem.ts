@@ -530,7 +530,10 @@ export function createFilesystemRoutes(): Router {
           logger.error(`Failed to get HEAD version of ./${relativePath}:`, error);
           // Check if it's a stderr message
           if (error instanceof Error && 'stderr' in error) {
-            logger.error(`Git stderr: ${(error as any).stderr}`);
+            const execError = error as Error & { stderr?: string };
+            if (execError.stderr) {
+              logger.error(`Git stderr: ${execError.stderr}`);
+            }
           }
           // For non-git repos, show no diff
           originalContent = currentContent;

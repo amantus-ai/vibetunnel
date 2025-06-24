@@ -6,7 +6,7 @@ import SwiftUI
 struct ErrorAlertModifier: ViewModifier {
     @Binding var error: Error?
     let onDismiss: (() -> Void)?
-    
+
     func body(content: Content) -> some View {
         content
             .alert(
@@ -29,7 +29,9 @@ extension View {
     func errorAlert(
         error: Binding<Error?>,
         onDismiss: (() -> Void)? = nil
-    ) -> some View {
+    )
+    -> some View
+    {
         modifier(ErrorAlertModifier(error: error, onDismiss: onDismiss))
     }
 }
@@ -70,22 +72,22 @@ extension APIError: RecoverableError {
     var recoverySuggestion: String? {
         switch self {
         case .noServerConfigured:
-            return "Please configure a server connection in Settings."
+            "Please configure a server connection in Settings."
         case .networkError:
-            return "Check your internet connection and try again."
+            "Check your internet connection and try again."
         case .serverError(let code, _):
             switch code {
             case 401:
-                return "Check your authentication credentials in Settings."
+                "Check your authentication credentials in Settings."
             case 500...599:
-                return "The server is experiencing issues. Please try again later."
+                "The server is experiencing issues. Please try again later."
             default:
-                return nil
+                nil
             }
         case .resizeDisabledByServer:
-            return "Terminal resizing is not supported by this server."
+            "Terminal resizing is not supported by this server."
         default:
-            return nil
+            nil
         }
     }
 }
@@ -97,7 +99,7 @@ struct ErrorBanner: View {
     let message: String
     let isOffline: Bool
     let onDismiss: (() -> Void)?
-    
+
     init(
         message: String,
         isOffline: Bool = false,
@@ -107,18 +109,18 @@ struct ErrorBanner: View {
         self.isOffline = isOffline
         self.onDismiss = onDismiss
     }
-    
+
     var body: some View {
         HStack(spacing: Theme.Spacing.small) {
             Image(systemName: isOffline ? "wifi.exclamationmark" : "exclamationmark.triangle.fill")
                 .font(.system(size: 14))
-            
+
             Text(message)
                 .font(Theme.Typography.terminalSystem(size: 13))
                 .fixedSize(horizontal: false, vertical: true)
-            
+
             Spacer()
-            
+
             if let onDismiss {
                 Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
@@ -151,7 +153,9 @@ extension Task where Failure == Error {
         priority: TaskPriority? = nil,
         errorHandler: @escaping @Sendable (Error) -> Void,
         operation: @escaping @Sendable () async throws -> T
-    ) -> Task<T, Error> {
+    )
+    -> Task<T, Error>
+    {
         Task<T, Error>(priority: priority) {
             do {
                 return try await operation()

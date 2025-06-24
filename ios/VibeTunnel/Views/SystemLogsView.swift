@@ -296,7 +296,8 @@ struct SystemLogsView: View {
         // Present it
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let window = windowScene.windows.first,
-           let rootVC = window.rootViewController {
+           let rootVC = window.rootViewController
+        {
             rootVC.present(activityVC, animated: true)
         }
     }

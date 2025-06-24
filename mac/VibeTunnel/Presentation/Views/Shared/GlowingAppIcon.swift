@@ -1,5 +1,5 @@
-import SwiftUI
 import os
+import SwiftUI
 
 /// Shared glowing app icon component with configurable animation and effects.
 ///
@@ -7,9 +7,9 @@ import os
 /// floating animation, and interactive behaviors. It can be used in both the Welcome
 /// and About views with different configurations.
 struct GlowingAppIcon: View {
-    // Configuration
+    /// Configuration
     let size: CGFloat
-    
+
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "GlowingAppIcon")
     let enableFloating: Bool
     let enableInteraction: Bool
@@ -171,7 +171,7 @@ struct GlowingAppIcon: View {
             enableInteraction: true,
             glowIntensity: 0.3
         ) {
-            print("Icon clicked!")
+            // Icon clicked - action handled here
         }
     }
     .padding()

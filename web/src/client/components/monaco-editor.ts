@@ -22,7 +22,7 @@ const logger = createLogger('monaco-editor');
 // Import Monaco Editor types
 declare global {
   interface Window {
-    monaco: any;
+    monaco: typeof import('monaco-editor');
   }
 }
 

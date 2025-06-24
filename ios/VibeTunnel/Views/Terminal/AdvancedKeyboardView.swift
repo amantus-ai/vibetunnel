@@ -233,7 +233,8 @@ struct CtrlKeyButton: View {
         Button(action: {
             // Calculate control character (Ctrl+A = 1, Ctrl+B = 2, etc.)
             if let scalar = char.unicodeScalars.first,
-               let ctrlScalar = UnicodeScalar(scalar.value - 64) {
+               let ctrlScalar = UnicodeScalar(scalar.value - 64)
+            {
                 let ctrlChar = Character(ctrlScalar)
                 onPress(String(ctrlChar))
             }

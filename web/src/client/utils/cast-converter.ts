@@ -335,6 +335,8 @@ export class CastConverter {
         clearTimeout(batchTimeout);
         flushOutputBuffer();
       }
+
+      // Force close the connection
       if (eventSource.readyState !== EventSource.CLOSED) {
         eventSource.close();
       }

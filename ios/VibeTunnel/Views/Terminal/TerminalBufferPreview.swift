@@ -7,14 +7,14 @@ import SwiftUI
 struct TerminalBufferPreview: View {
     let snapshot: BufferSnapshot
     let fontSize: CGFloat
-    
+
     init(snapshot: BufferSnapshot, fontSize: CGFloat = 10) {
         self.snapshot = snapshot
         self.fontSize = fontSize
     }
-    
+
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             ScrollViewReader { scrollProxy in
                 ScrollView([.horizontal, .vertical], showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
@@ -52,7 +52,7 @@ struct TerminalBufferPreview: View {
         .background(Theme.Colors.terminalBackground)
         .cornerRadius(Theme.CornerRadius.small)
     }
-    
+
     @ViewBuilder
     private func cellView(for cell: BufferCell) -> some View {
         Text(cell.char.isEmpty ? " " : cell.char)
@@ -61,14 +61,14 @@ struct TerminalBufferPreview: View {
             .background(backgroundColor(for: cell))
             .frame(width: fontSize * 0.6 * CGFloat(max(1, cell.width)))
     }
-    
+
     private func foregroundColor(for cell: BufferCell) -> Color {
         guard let fg = cell.fg else {
             return Theme.Colors.terminalForeground
         }
-        
+
         // Check if RGB color (has alpha channel flag)
-        if (fg & 0xFF000000) != 0 {
+        if (fg & 0xFF00_0000) != 0 {
             // RGB color
             let red = Double((fg >> 16) & 0xFF) / 255.0
             let green = Double((fg >> 8) & 0xFF) / 255.0
@@ -79,14 +79,14 @@ struct TerminalBufferPreview: View {
             return paletteColor(fg)
         }
     }
-    
+
     private func backgroundColor(for cell: BufferCell) -> Color {
         guard let bg = cell.bg else {
             return .clear
         }
-        
+
         // Check if RGB color (has alpha channel flag)
-        if (bg & 0xFF000000) != 0 {
+        if (bg & 0xFF00_0000) != 0 {
             // RGB color
             let red = Double((bg >> 16) & 0xFF) / 255.0
             let green = Double((bg >> 8) & 0xFF) / 255.0
@@ -97,7 +97,7 @@ struct TerminalBufferPreview: View {
             return paletteColor(bg)
         }
     }
-    
+
     private func paletteColor(_ index: Int) -> Color {
         // ANSI 256-color palette
         switch index {
@@ -133,17 +133,17 @@ struct TerminalBufferPreview: View {
 struct CompactTerminalPreview: View {
     let snapshot: BufferSnapshot
     let maxLines: Int
-    
+
     init(snapshot: BufferSnapshot, maxLines: Int = 6) {
         self.snapshot = snapshot
         self.maxLines = maxLines
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             // Get the last non-empty lines
             let visibleLines = getVisibleLines()
-            
+
             ForEach(Array(visibleLines.enumerated()), id: \.offset) { _, line in
                 Text(line)
                     .font(Theme.Typography.terminalSystem(size: 10))
@@ -151,25 +151,25 @@ struct CompactTerminalPreview: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
-            
+
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(8)
     }
-    
+
     private func getVisibleLines() -> [String] {
         var lines: [String] = []
-        
+
         // Start from the bottom and work up to find non-empty lines
         for row in (0..<snapshot.rows).reversed() {
             guard row < snapshot.cells.count else { continue }
-            
+
             let line = snapshot.cells[row]
                 .map { $0.char.isEmpty ? " " : $0.char }
                 .joined()
                 .trimmingCharacters(in: .whitespaces)
-            
+
             if !line.isEmpty {
                 lines.insert(line, at: 0)
                 if lines.count >= maxLines {
@@ -177,12 +177,12 @@ struct CompactTerminalPreview: View {
                 }
             }
         }
-        
+
         // If we have fewer lines than maxLines, add empty lines at the top
         while lines.count < min(maxLines, snapshot.rows) && lines.count < maxLines {
             lines.insert("", at: 0)
         }
-        
+
         return lines
     }
 }

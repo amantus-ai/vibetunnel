@@ -140,8 +140,9 @@ struct ServerConfigTests {
         )
 
         let url = config.baseURL
-        // Note: URL with IPv6 may have issues with the simple string concatenation
-        #expect(url.absoluteString.contains("8888"))
+        // IPv6 addresses need brackets in URLs
+        #expect(url.absoluteString == "http://[::1]:8888" || url.absoluteString == "http://::1:8888")
+        #expect(url.port == 8888)
     }
 
     @Test("Handles domain with subdomain")

@@ -31,7 +31,7 @@ We love your input! We want to make contributing to VibeTunnel as easy and trans
    # Install Node.js dependencies
    cd web
    npm install
-   
+
    # Start the development server (keep this running)
    npm run dev
    ```
@@ -165,10 +165,7 @@ We use Vitest for Node.js testing:
 
 ```bash
 cd web
-npm test          # Run tests in watch mode
-npm run test:ui   # Interactive test UI
-npm run test:run  # Single test run (CI)
-npm run test:e2e  # End-to-end tests
+npm run test
 ```
 
 ### Writing Tests
@@ -199,10 +196,10 @@ npm run test:e2e  # End-to-end tests
    ```bash
    # Web changes
    cd web && npm run lint:fix && npm run typecheck
-   
-   # Swift changes  
+
+   # Swift changes
    cd mac && swiftformat . && swiftlint
-   
+
    # Commit
    git add .
    git commit -m "feat: add amazing feature"

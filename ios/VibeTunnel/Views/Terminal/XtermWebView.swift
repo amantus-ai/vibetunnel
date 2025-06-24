@@ -251,7 +251,8 @@ struct XtermWebView: UIViewRepresentable {
             case "terminalResize":
                 if let dict = message.body as? [String: Any],
                    let cols = dict["cols"] as? Int,
-                   let rows = dict["rows"] as? Int {
+                   let rows = dict["rows"] as? Int
+                {
                     parent.onResize(cols, rows)
                 }
 

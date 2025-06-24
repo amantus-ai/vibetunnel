@@ -320,7 +320,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
     @objc
     private func openDashboard() {
         if let serverManager = app?.serverManager,
-           let url = URL(string: "http://localhost:\(serverManager.port)") {
+           let url = URL(string: "http://localhost:\(serverManager.port)")
+        {
             NSWorkspace.shared.open(url)
         }
     }

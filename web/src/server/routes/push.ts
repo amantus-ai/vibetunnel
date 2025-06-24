@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { VapidManager } from '../utils/vapid-manager.js';
 import { PushNotificationService } from '../services/push-notification-service.js';
+import { BellEventHandler } from '../services/bell-event-handler.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('push-routes');
@@ -8,24 +9,12 @@ const logger = createLogger('push-routes');
 export interface CreatePushRoutesOptions {
   vapidManager: VapidManager;
   pushNotificationService: PushNotificationService | null;
-  bellEventHandler?: any;
+  bellEventHandler?: BellEventHandler;
 }
 
 export function createPushRoutes(options: CreatePushRoutesOptions): Router {
   const { vapidManager, pushNotificationService } = options;
   const router = Router();
-
-  // Helper function to check if push service is available
-  const checkPushService = (res: Response): boolean => {
-    if (!pushNotificationService) {
-      res.status(503).json({
-        error: 'Push notifications not initialized',
-        message: 'Push notification service is not available',
-      });
-      return false;
-    }
-    return true;
-  };
 
   /**
    * Get VAPID public key for client registration
@@ -65,7 +54,12 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
    * Subscribe to push notifications
    */
   router.post('/push/subscribe', async (req: Request, res: Response) => {
-    if (!checkPushService(res)) return;
+    if (!pushNotificationService) {
+      return res.status(503).json({
+        error: 'Push notifications not initialized',
+        message: 'Push notification service is not available',
+      });
+    }
 
     try {
       const { endpoint, keys } = req.body;
@@ -77,7 +71,7 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
         });
       }
 
-      const subscriptionId = await pushNotificationService!.addSubscription(endpoint, keys);
+      const subscriptionId = await pushNotificationService.addSubscription(endpoint, keys);
 
       res.json({
         success: true,
@@ -99,7 +93,12 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
    * Unsubscribe from push notifications
    */
   router.post('/push/unsubscribe', async (req: Request, res: Response) => {
-    if (!checkPushService(res)) return;
+    if (!pushNotificationService) {
+      return res.status(503).json({
+        error: 'Push notifications not initialized',
+        message: 'Push notification service is not available',
+      });
+    }
 
     try {
       const { endpoint } = req.body;
@@ -112,11 +111,11 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
       }
 
       // For simplicity, we'll find and remove by endpoint
-      const subscriptions = pushNotificationService!.getSubscriptions();
+      const subscriptions = pushNotificationService.getSubscriptions();
       const subscription = subscriptions.find((sub) => sub.endpoint === endpoint);
 
       if (subscription) {
-        await pushNotificationService!.removeSubscription(subscription.id);
+        await pushNotificationService.removeSubscription(subscription.id);
         logger.log(`Push subscription removed: ${subscription.id}`);
       }
 
@@ -137,10 +136,15 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
    * Send test notification
    */
   router.post('/push/test', async (req: Request, res: Response) => {
-    if (!checkPushService(res)) return;
+    if (!pushNotificationService) {
+      return res.status(503).json({
+        error: 'Push notifications not initialized',
+        message: 'Push notification service is not available',
+      });
+    }
 
     try {
-      const result = await pushNotificationService!.sendNotification({
+      const result = await pushNotificationService.sendNotification({
         type: 'test',
         title: '🔔 Test Notification',
         body: 'This is a test notification from VibeTunnel',
@@ -178,10 +182,15 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
    * Get service status
    */
   router.get('/push/status', (req: Request, res: Response) => {
-    if (!checkPushService(res)) return;
+    if (!pushNotificationService) {
+      return res.status(503).json({
+        error: 'Push notifications not initialized',
+        message: 'Push notification service is not available',
+      });
+    }
 
     try {
-      const subscriptions = pushNotificationService!.getSubscriptions();
+      const subscriptions = pushNotificationService.getSubscriptions();
 
       res.json({
         enabled: vapidManager.isEnabled(),

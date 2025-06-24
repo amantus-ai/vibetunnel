@@ -100,6 +100,11 @@ rm -rf dist public/bundle public/output.css native
 
 # Install dependencies
 echo "Installing dependencies..."
+# For Xcode builds, ensure C++20 standard for native modules
+export MACOSX_DEPLOYMENT_TARGET="14.0"
+export CXXFLAGS="-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0"
+export CXX="${CXX:-clang++}"
+export CC="${CC:-clang}"
 npm install
 
 # Determine build configuration
@@ -217,6 +222,14 @@ if [ -f "${NATIVE_DIR}/spawn-helper" ]; then
 else
     echo "error: spawn-helper not found"
     exit 1
+fi
+
+# Copy authenticate_pam.node if it exists
+if [ -f "${NATIVE_DIR}/authenticate_pam.node" ]; then
+    echo "Copying authenticate_pam.node..."
+    cp "${NATIVE_DIR}/authenticate_pam.node" "${APP_RESOURCES}/"
+else
+    echo "Warning: authenticate_pam.node not found. PAM authentication may not work."
 fi
 
 echo "✓ Native executable and modules copied successfully"

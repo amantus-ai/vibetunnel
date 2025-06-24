@@ -7,7 +7,7 @@ struct ErrorAlertModifier: ViewModifier {
     @Binding var error: Error?
     let title: String
     let onDismiss: (() -> Void)?
-    
+
     func body(content: Content) -> some View {
         content
             .alert(
@@ -31,7 +31,9 @@ extension View {
         _ title: String = "Error",
         error: Binding<Error?>,
         onDismiss: (() -> Void)? = nil
-    ) -> some View {
+    )
+        -> some View
+    {
         modifier(ErrorAlertModifier(error: error, title: title, onDismiss: onDismiss))
     }
 }
@@ -46,7 +48,9 @@ extension Task where Failure == Error {
         priority: TaskPriority? = nil,
         errorBinding: Binding<Error?>,
         operation: @escaping () async throws -> T
-    ) -> Task<T, Error> {
+    )
+        -> Task<T, Error>
+    {
         Task<T, Error>(priority: priority) {
             do {
                 return try await operation()
@@ -77,26 +81,26 @@ struct ErrorRecoveryAction {
 struct ErrorToast: View {
     let error: Error
     let onDismiss: () -> Void
-    
+
     @State private var opacity: Double = 0
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundColor(.red)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text("Error")
                     .font(.headline)
-                
+
                 Text(error.localizedDescription)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
             }
-            
+
             Spacer()
-            
+
             Button(action: onDismiss) {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundColor(.secondary)
@@ -129,7 +133,7 @@ struct ErrorToast: View {
 struct AsyncErrorBoundary<Content: View>: View {
     @State private var error: Error?
     let content: () -> Content
-    
+
     var body: some View {
         content()
             .environment(\.asyncErrorHandler, AsyncErrorHandler { error in
@@ -142,7 +146,7 @@ struct AsyncErrorBoundary<Content: View>: View {
 // MARK: - Environment Values
 
 private struct AsyncErrorHandlerKey: EnvironmentKey {
-    nonisolated(unsafe) static let defaultValue = AsyncErrorHandler(handler: { _ in })
+    nonisolated(unsafe) static let defaultValue = AsyncErrorHandler { _ in }
 }
 
 extension EnvironmentValues {
@@ -154,7 +158,7 @@ extension EnvironmentValues {
 
 struct AsyncErrorHandler {
     let handler: (Error) -> Void
-    
+
     func handle(_ error: Error) {
         handler(error)
     }

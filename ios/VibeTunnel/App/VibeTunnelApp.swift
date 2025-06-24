@@ -28,10 +28,10 @@ struct VibeTunnelApp: App {
                 }
                 #if targetEnvironment(macCatalyst)
                 .macCatalystWindowStyle(getStoredWindowStyle())
-                #endif
+            #endif
         }
     }
-    
+
     #if targetEnvironment(macCatalyst)
     private func getStoredWindowStyle() -> MacWindowStyle {
         let styleRaw = UserDefaults.standard.string(forKey: "macWindowStyle") ?? "standard"
@@ -45,7 +45,8 @@ struct VibeTunnelApp: App {
 
         if url.host == "session",
            let sessionId = url.pathComponents.last,
-           !sessionId.isEmpty {
+           !sessionId.isEmpty
+        {
             navigationManager.navigateToSession(sessionId)
         }
     }
@@ -75,7 +76,8 @@ class ConnectionManager {
 
     private func loadSavedConnection() {
         if let data = UserDefaults.standard.data(forKey: "savedServerConfig"),
-           let config = try? JSONDecoder().decode(ServerConfig.self, from: data) {
+           let config = try? JSONDecoder().decode(ServerConfig.self, from: data)
+        {
             self.serverConfig = config
         }
     }

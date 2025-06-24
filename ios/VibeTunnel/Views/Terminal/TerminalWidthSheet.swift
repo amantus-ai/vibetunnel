@@ -142,8 +142,8 @@ struct TerminalWidthSheet: View {
                                 .background(
                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                                         .fill(selectedWidth == preset.columns
-                                            ? Theme.Colors.primaryAccent.opacity(0.1)
-                                            : Theme.Colors.cardBorder.opacity(0.1)
+                                                ? Theme.Colors.primaryAccent.opacity(0.1)
+                                                : Theme.Colors.cardBorder.opacity(0.1)
                                         )
                                 )
                                 .overlay(

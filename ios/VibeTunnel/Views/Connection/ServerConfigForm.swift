@@ -143,13 +143,13 @@ struct ServerConfigForm: View {
                 }
             })
             .foregroundColor(isConnecting || !networkMonitor.isConnected ? Theme.Colors.terminalForeground : Theme
-                .Colors.primaryAccent
+                                .Colors.primaryAccent
             )
             .padding(.vertical, Theme.Spacing.medium)
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                     .fill(isConnecting || !networkMonitor.isConnected ? Theme.Colors.cardBackground : Theme.Colors
-                        .terminalBackground
+                            .terminalBackground
                     )
             )
             .overlay(
@@ -218,7 +218,8 @@ struct ServerConfigForm: View {
     private func loadRecentServers() {
         // Load recent servers from UserDefaults
         if let data = UserDefaults.standard.data(forKey: "recentServers"),
-           let servers = try? JSONDecoder().decode([ServerConfig].self, from: data) {
+           let servers = try? JSONDecoder().decode([ServerConfig].self, from: data)
+        {
             recentServers = servers
         }
     }

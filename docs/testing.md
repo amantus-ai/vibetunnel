@@ -90,27 +90,11 @@ xcodebuild test -project mac/VibeTunnel.xcodeproj -scheme VibeTunnel -only-testi
 
 ```bash
 # Run all tests
-cd web && npm test
-
-# Run tests with UI
-cd web && npm run test:ui
-
-# Run tests once (CI mode)
-cd web && npm run test:run
-
-# Run with coverage
-cd web && npm run test:coverage
-
-# Run E2E tests only
-cd web && npm run test:e2e
+cd web && npm run test
 ```
 
 ### Test Scripts (web/package.json:28-33):
-- `npm test` - Run tests in watch mode
-- `npm run test:ui` - Interactive test UI
-- `npm run test:run` - Single test run
-- `npm run test:coverage` - Generate coverage report
-- `npm run test:e2e` - End-to-end tests only
+- npm run test
 
 ## Test Organization
 

@@ -94,10 +94,8 @@ struct VTCommandPageView: View {
 
 // MARK: - Preview
 
-struct VTCommandPageView_Previews: PreviewProvider {
-    static var previews: some View {
-        VTCommandPageView(cliInstaller: CLIInstaller())
-            .frame(width: 640, height: 480)
-            .background(Color(NSColor.windowBackgroundColor))
-    }
+#Preview("VT Command Page") {
+    VTCommandPageView(cliInstaller: CLIInstaller())
+        .frame(width: 640, height: 480)
+        .background(Color(NSColor.windowBackgroundColor))
 }

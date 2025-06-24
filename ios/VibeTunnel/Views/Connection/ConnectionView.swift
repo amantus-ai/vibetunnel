@@ -121,7 +121,8 @@ class ConnectionViewModel {
 
     func loadLastConnection() {
         if let config = UserDefaults.standard.data(forKey: "savedServerConfig"),
-           let serverConfig = try? JSONDecoder().decode(ServerConfig.self, from: config) {
+           let serverConfig = try? JSONDecoder().decode(ServerConfig.self, from: config)
+        {
             self.host = serverConfig.host
             self.port = String(serverConfig.port)
             self.name = serverConfig.name ?? ""
@@ -162,7 +163,8 @@ class ConnectionViewModel {
             let (_, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse,
-               httpResponse.statusCode == 200 {
+               httpResponse.statusCode == 200
+            {
                 onSuccess(config)
             } else {
                 errorMessage = "Failed to connect to server"

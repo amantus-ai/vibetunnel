@@ -383,7 +383,8 @@ struct TerminalHostingView: UIViewRepresentable {
             from oldSnapshot: BufferSnapshot,
             to newSnapshot: BufferSnapshot
         )
-            -> String {
+        -> String
+        {
             var output = ""
             var currentFg: Int?
             var currentBg: Int?

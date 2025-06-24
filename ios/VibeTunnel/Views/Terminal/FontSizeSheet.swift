@@ -81,14 +81,14 @@ struct FontSizeSheet: View {
                                 Text("\(Int(size))")
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(fontSize == size ? Theme.Colors.terminalBackground : Theme.Colors
-                                        .terminalForeground
+                                                        .terminalForeground
                                     )
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, Theme.Spacing.small)
                                     .background(
                                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                             .fill(fontSize == size ? Theme.Colors.primaryAccent : Theme.Colors
-                                                .cardBorder.opacity(0.3)
+                                                    .cardBorder.opacity(0.3)
                                             )
                                     )
                                     .overlay(

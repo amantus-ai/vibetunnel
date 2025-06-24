@@ -181,7 +181,8 @@ class CastRecorder {
             let eventArray: [Any] = [event.time, event.type, event.data]
 
             if let jsonData = try? JSONSerialization.data(withJSONObject: eventArray),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
+               let jsonString = String(data: jsonData, encoding: .utf8)
+            {
                 castContent += jsonString + "\n"
             }
         }
@@ -292,7 +293,7 @@ class CastPlayer {
             }
         }
     }
-    
+
     /// Modern async version of play that supports cancellation and error handling.
     ///
     /// - Parameter onEvent: Async closure called for each event during playback.
@@ -305,12 +306,12 @@ class CastPlayer {
         for event in events {
             // Check for cancellation
             try Task.checkCancellation()
-            
+
             // Wait for the appropriate time
             if event.time > 0 {
                 try await Task.sleep(nanoseconds: UInt64(event.time * 1_000_000_000))
             }
-            
+
             await onEvent(event)
         }
     }

@@ -255,7 +255,7 @@ struct SessionCreateDataTests {
         #expect(json?["name"] as? String == "Test Session")
         #expect(json?["cols"] as? Int == 80)
         #expect(json?["rows"] as? Int == 24)
-        #expect(json?["spawn_terminal"] as? Bool == false)
+        #expect(json?["spawn_terminal"] as? Bool == true) // Default is true, not false
     }
 
     @Test("Uses default terminal size")

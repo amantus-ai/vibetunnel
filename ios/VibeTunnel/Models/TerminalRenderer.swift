@@ -27,7 +27,8 @@ enum TerminalRenderer: String, CaseIterable, Codable {
     static var selected: Self {
         get {
             if let rawValue = UserDefaults.standard.string(forKey: "selectedTerminalRenderer"),
-               let renderer = Self(rawValue: rawValue) {
+               let renderer = Self(rawValue: rawValue)
+            {
                 return renderer
             }
             return .swiftTerm // Default

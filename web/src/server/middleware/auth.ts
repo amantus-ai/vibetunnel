@@ -1,67 +1,144 @@
 import { Request, Response, NextFunction } from 'express';
-import chalk from 'chalk';
+import { AuthService } from '../services/auth-service.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('auth');
 
 interface AuthConfig {
-  basicAuthUsername: string | null;
-  basicAuthPassword: string | null;
+  enableSSHKeys: boolean;
+  disallowUserPassword: boolean;
+  noAuth: boolean;
   isHQMode: boolean;
   bearerToken?: string; // Token that HQ must use to authenticate with this remote
+  authService?: AuthService; // Enhanced auth service for JWT tokens
+  allowLocalBypass?: boolean; // Allow localhost connections to bypass auth
+}
+
+interface AuthenticatedRequest extends Request {
+  userId?: string;
+  authMethod?: 'ssh-key' | 'password' | 'hq-bearer' | 'no-auth' | 'local-bypass';
+  isHQRequest?: boolean;
+}
+
+// Helper function to check if request is from localhost
+function isLocalRequest(req: Request): boolean {
+  // Get the real client IP
+  const clientIp = req.ip || req.socket.remoteAddress || '';
+
+  // Check for localhost IPs
+  const localIPs = ['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost'];
+  const ipIsLocal = localIPs.includes(clientIp);
+
+  // Additional security checks to prevent spoofing
+  const noForwardedFor = !req.headers['x-forwarded-for'];
+  const noRealIP = !req.headers['x-real-ip'];
+  const noForwardedHost = !req.headers['x-forwarded-host'];
+
+  // Check hostname
+  const hostIsLocal =
+    req.hostname === 'localhost' || req.hostname === '127.0.0.1' || req.hostname === '[::1]';
+
+  logger.debug(
+    `Local request check - IP: ${clientIp}, Host: ${req.hostname}, ` +
+      `Forwarded headers: ${!noForwardedFor || !noRealIP || !noForwardedHost}`
+  );
+
+  return ipIsLocal && noForwardedFor && noRealIP && noForwardedHost && hostIsLocal;
 }
 
 export function createAuthMiddleware(config: AuthConfig) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    // Skip auth for health check endpoint
-    if (req.path === '/api/health') {
-      logger.debug('bypassing auth for health check endpoint');
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    // Skip auth for health check endpoint, auth endpoints, client logging, and push notifications
+    if (
+      req.path === '/api/health' ||
+      req.path.startsWith('/api/auth') ||
+      req.path.startsWith('/api/logs') ||
+      req.path.startsWith('/api/push')
+    ) {
       return next();
     }
 
-    // If no auth configured, allow all requests
-    if (!config.basicAuthUsername || !config.basicAuthPassword) {
-      logger.debug('no auth configured, allowing request');
+    // If no auth is disabled, allow all requests
+    if (config.noAuth) {
+      req.authMethod = 'no-auth';
       return next();
     }
 
-    logger.debug(`auth check for ${req.method} ${req.path} from ${req.ip}`);
+    // Check for local bypass if enabled
+    if (config.allowLocalBypass && isLocalRequest(req)) {
+      logger.debug('Local request authenticated - bypassing auth');
+      req.authMethod = 'local-bypass';
+      req.userId = 'local-user';
+      return next();
+    }
 
-    // Check for Bearer token (for HQ to remote communication)
+    // Only log auth requests that might be problematic (no header or failures)
+    // Remove verbose logging for successful token auth to reduce spam
+
     const authHeader = req.headers.authorization;
+    const tokenQuery = req.query.token as string;
+
+    // Check for Bearer token
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      // In HQ mode, bearer tokens are not accepted (HQ uses basic auth)
-      if (config.isHQMode) {
-        logger.warn(`bearer token rejected in HQ mode from ${req.ip}`);
-        res.setHeader('WWW-Authenticate', 'Basic realm="VibeTunnel"');
-        return res.status(401).json({ error: 'Bearer token not accepted in HQ mode' });
-      } else if (config.bearerToken && token === config.bearerToken) {
-        // Token matches what this remote server expects from HQ
-        logger.log(chalk.green(`authenticated via bearer token from ${req.ip}`));
+
+      // In HQ mode, check if this is a valid HQ-to-remote bearer token
+      if (config.isHQMode && config.bearerToken && token === config.bearerToken) {
+        logger.debug('Valid HQ bearer token authentication');
+        req.isHQRequest = true;
+        req.authMethod = 'hq-bearer';
         return next();
-      } else if (config.bearerToken) {
-        // We have a bearer token configured but it doesn't match
-        logger.warn(`invalid bearer token from ${req.ip}`);
       }
+
+      // If we have enhanced auth service and SSH keys are enabled, try JWT token validation
+      if (config.authService && config.enableSSHKeys) {
+        const verification = config.authService.verifyToken(token);
+        if (verification.valid && verification.userId) {
+          req.userId = verification.userId;
+          req.authMethod = 'ssh-key'; // JWT tokens are issued for SSH key auth
+          return next();
+        } else {
+          logger.error('Invalid JWT token');
+        }
+      } else if (config.authService) {
+        const verification = config.authService.verifyToken(token);
+        if (verification.valid && verification.userId) {
+          req.userId = verification.userId;
+          req.authMethod = 'password'; // Password auth only
+          return next();
+        } else {
+          logger.error('Invalid JWT token');
+        }
+      }
+
+      // For non-HQ mode, check if bearer token matches remote expectation
+      if (!config.isHQMode && config.bearerToken && token === config.bearerToken) {
+        logger.debug('Valid remote bearer token authentication');
+        req.authMethod = 'hq-bearer';
+        return next();
+      }
+
+      logger.error(
+        `Bearer token rejected - HQ mode: ${config.isHQMode}, token matches: ${config.bearerToken === token}`
+      );
     }
 
-    // Check Basic auth
-    if (authHeader && authHeader.startsWith('Basic ')) {
-      const base64Credentials = authHeader.substring(6);
-      const credentials = Buffer.from(base64Credentials, 'base64').toString('utf8');
-      const [username, password] = credentials.split(':');
-
-      if (username === config.basicAuthUsername && password === config.basicAuthPassword) {
+    // Check for token in query parameter (for EventSource connections)
+    if (tokenQuery && config.authService) {
+      const verification = config.authService.verifyToken(tokenQuery);
+      if (verification.valid && verification.userId) {
+        logger.debug(`Valid query token for user: ${verification.userId}`);
+        req.userId = verification.userId;
+        req.authMethod = config.enableSSHKeys ? 'ssh-key' : 'password';
         return next();
       } else {
-        logger.warn(`failed basic auth attempt from ${req.ip} for user: ${username}`);
+        logger.error('Invalid query token');
       }
     }
 
     // No valid auth provided
-    logger.warn(`unauthorized request to ${req.method} ${req.path} from ${req.ip}`);
-    res.setHeader('WWW-Authenticate', 'Basic realm="VibeTunnel"');
+    logger.error(`Unauthorized request to ${req.method} ${req.path} from ${req.ip}`);
+    res.setHeader('WWW-Authenticate', 'Bearer realm="VibeTunnel"');
     res.status(401).json({ error: 'Authentication required' });
   };
 }

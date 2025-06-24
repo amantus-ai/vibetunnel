@@ -133,17 +133,29 @@ final class BunServer {
         // Build the vibetunnel command with all arguments
         var vibetunnelArgs = "--port \(port) --bind \(bindAddress)"
 
-        // Add password flag if password protection is enabled
-        if UserDefaults.standard.bool(forKey: "dashboardPasswordEnabled") && DashboardKeychain.shared.hasPassword() {
-            logger.info("Password protection enabled, retrieving from keychain")
-            if let password = DashboardKeychain.shared.getPassword() {
-                // Escape the password for shell
-                let escapedPassword = password.replacingOccurrences(of: "\"", with: "\\\"")
-                    .replacingOccurrences(of: "$", with: "\\$")
-                    .replacingOccurrences(of: "`", with: "\\`")
-                    .replacingOccurrences(of: "\\", with: "\\\\")
-                vibetunnelArgs += " --username admin --password \"\(escapedPassword)\""
-            }
+        // Add authentication flags based on configuration
+        let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
+        logger.info("Configuring authentication mode: \(authMode)")
+
+        switch authMode {
+        case "none":
+            vibetunnelArgs += " --no-auth"
+        case "ssh":
+            vibetunnelArgs += " --enable-ssh-keys --disallow-user-password"
+        case "both":
+            vibetunnelArgs += " --enable-ssh-keys"
+        case "os":
+            fallthrough
+        default:
+            // OS authentication is the default, no special flags needed
+            break
+        }
+        
+        // Add local bypass authentication for the Mac app
+        if authMode != "none" {
+            // Enable local bypass without requiring token for browser access
+            vibetunnelArgs += " --allow-local-bypass"
+            logger.info("Local authentication bypass enabled for localhost connections")
         }
 
         // Create wrapper to run vibetunnel with a parent death signal
@@ -229,15 +241,14 @@ final class BunServer {
             }
         } catch {
             // Log more detailed error information
-            let errorMessage: String
-            if let bunError = error as? BunServerError {
-                errorMessage = bunError.localizedDescription
+            let errorMessage: String = if let bunError = error as? BunServerError {
+                bunError.localizedDescription
             } else if let urlError = error as? URLError {
-                errorMessage = "Network error: \(urlError.localizedDescription) (Code: \(urlError.code.rawValue))"
+                "Network error: \(urlError.localizedDescription) (Code: \(urlError.code.rawValue))"
             } else if let posixError = error as? POSIXError {
-                errorMessage = "System error: \(posixError.localizedDescription) (Code: \(posixError.code.rawValue))"
+                "System error: \(posixError.localizedDescription) (Code: \(posixError.code.rawValue))"
             } else {
-                errorMessage = error.localizedDescription
+                error.localizedDescription
             }
 
             logger.error("Failed to start Bun server: \(errorMessage)")

@@ -84,7 +84,8 @@ class QuickLookManager: NSObject, ObservableObject {
 
         for file in files {
             if let creationDate = try? file.resourceValues(forKeys: [.creationDateKey]).creationDate,
-               creationDate < oneHourAgo {
+               creationDate < oneHourAgo
+            {
                 try? FileManager.default.removeItem(at: file)
             }
         }

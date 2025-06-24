@@ -187,7 +187,7 @@ struct SessionListView: View {
             .searchable(text: $searchText, prompt: "Search sessions")
             .task {
                 await viewModel.loadSessions()
-                
+
                 // Refresh every 3 seconds
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
@@ -200,7 +200,8 @@ struct SessionListView: View {
         .onChange(of: navigationManager.shouldNavigateToSession) { _, shouldNavigate in
             if shouldNavigate,
                let sessionId = navigationManager.selectedSessionId,
-               let session = viewModel.sessions.first(where: { $0.id == sessionId }) {
+               let session = viewModel.sessions.first(where: { $0.id == sessionId })
+            {
                 selectedSession = session
                 navigationManager.clearNavigation()
             }
@@ -388,7 +389,6 @@ struct SessionListView: View {
     }
 }
 
-
 /// View model for managing session list state and operations.
 @MainActor
 @Observable
@@ -463,8 +463,8 @@ struct SessionHeaderView: View {
     let onKillAll: () -> Void
     let onCleanupAll: () -> Void
 
-    private var runningCount: Int { sessions.count { $0.isRunning }}
-    private var exitedCount: Int { sessions.count { !$0.isRunning }}
+    private var runningCount: Int { sessions.count { $0.isRunning } }
+    private var exitedCount: Int { sessions.count { !$0.isRunning } }
 
     var body: some View {
         VStack(spacing: Theme.Spacing.medium) {

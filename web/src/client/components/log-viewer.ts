@@ -1,5 +1,6 @@
 import { LitElement, html, TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { AuthClient } from '../services/auth-client.js';
 
 interface LogEntry {
   timestamp: string;
@@ -28,6 +29,7 @@ export class LogViewer extends LitElement {
 
   private refreshInterval?: number;
   private isFirstLoad = true;
+  private authClient = new AuthClient();
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -46,14 +48,18 @@ export class LogViewer extends LitElement {
   private async loadLogs(): Promise<void> {
     try {
       // Get log info
-      const infoResponse = await fetch('/api/logs/info');
+      const infoResponse = await fetch('/api/logs/info', {
+        headers: { ...this.authClient.getAuthHeader() },
+      });
       if (infoResponse.ok) {
         const info = await infoResponse.json();
         this.logSize = info.sizeHuman || '';
       }
 
       // Get raw logs
-      const response = await fetch('/api/logs/raw');
+      const response = await fetch('/api/logs/raw', {
+        headers: { ...this.authClient.getAuthHeader() },
+      });
       if (!response.ok) {
         throw new Error('Failed to load logs');
       }
@@ -171,7 +177,10 @@ export class LogViewer extends LitElement {
     }
 
     try {
-      const response = await fetch('/api/logs/clear', { method: 'DELETE' });
+      const response = await fetch('/api/logs/clear', {
+        method: 'DELETE',
+        headers: { ...this.authClient.getAuthHeader() },
+      });
       if (!response.ok) {
         throw new Error('Failed to clear logs');
       }
@@ -184,7 +193,9 @@ export class LogViewer extends LitElement {
 
   private async downloadLogs(): Promise<void> {
     try {
-      const response = await fetch('/api/logs/raw');
+      const response = await fetch('/api/logs/raw', {
+        headers: { ...this.authClient.getAuthHeader() },
+      });
       if (!response.ok) {
         throw new Error('Failed to download logs');
       }
@@ -288,15 +299,31 @@ export class LogViewer extends LitElement {
       ${scrollbarStyles}
       <div class="flex flex-col h-full bg-dark-bg text-dark-text font-mono">
         <!-- Header -->
-        <div
-          class="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 bg-dark-bg-secondary border-b border-dark-border"
-        >
-          <h1 class="text-lg font-bold text-accent-green flex-1 flex items-center gap-2">
+        <div class="flex items-center gap-3 p-4 bg-dark-bg-secondary border-b border-dark-border">
+          <!-- Back button -->
+          <button
+            class="px-3 py-1.5 bg-dark-bg border border-dark-border rounded text-sm text-dark-text hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-2 flex-shrink-0"
+            @click=${() => (window.location.href = '/')}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Back
+          </button>
+
+          <h1 class="text-lg font-bold text-accent-green flex items-center gap-2 flex-shrink-0">
             <terminal-icon size="24"></terminal-icon>
             <span>System Logs</span>
           </h1>
 
-          <div class="flex flex-wrap gap-2 items-center w-full sm:w-auto">
+          <div class="flex-1 flex flex-wrap gap-2 items-center justify-end">
             <!-- Search input -->
             <input
               type="text"

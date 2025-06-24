@@ -1,10 +1,11 @@
-import { html, css } from 'lit';
+import { html, css, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { TauriBase } from './base/tauri-base';
-import { sharedStyles, animationStyles } from './shared/styles';
-import './shared/vt-stepper';
+import './glowing-app-icon';
 import './shared/vt-button';
-import './shared/vt-loading';
+import './shared/window-header';
+import './settings-checkbox';
+import './settings-select';
 
 interface Terminal {
   id: string;
@@ -13,517 +14,739 @@ interface Terminal {
   icon?: string;
 }
 
-interface PermissionStatus {
-  all_granted: boolean;
-  accessibility?: boolean;
-  automation?: boolean;
-  screen_recording?: boolean;
-}
-
-interface ServerStatus {
-  running: boolean;
-  url?: string;
-  port?: number;
-}
-
-interface Settings {
-  general?: {
-    default_terminal?: string;
-    show_welcome_on_startup?: boolean;
-  };
-}
-
 @customElement('welcome-app')
 export class WelcomeApp extends TauriBase {
-  static override styles = [
-    sharedStyles,
-    animationStyles,
-    css`
-      :host {
-        display: flex;
-        width: 100vw;
-        height: 100vh;
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        font-family: var(--font-sans);
-        overflow: hidden;
-      }
+  static override styles = css`
+    :host {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid var(--border-primary);
+    }
 
-      .welcome-step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        max-width: 600px;
-        margin: 0 auto;
-        animation: fadeIn var(--transition-slow);
-      }
+    .welcome-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+    }
 
-      .app-icon {
-        width: 156px;
-        height: 156px;
-        margin-bottom: 40px;
-        filter: drop-shadow(0 10px 20px var(--shadow-lg));
-        border-radius: 27.6%;
-        animation: float 3s ease-in-out infinite;
-      }
+    /* Header Section */
+    .header {
+      height: 200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
 
-      @keyframes float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
+    /* Content Section */
+    .content {
+      flex: 1;
+      height: 260px;
+      overflow: hidden;
+      position: relative;
+    }
 
-      h1 {
-        font-size: 36px;
-        font-weight: 600;
-        margin: 0 0 16px 0;
-        letter-spacing: -0.5px;
-        background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
+    .pages-container {
+      display: flex;
+      height: 100%;
+      transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
 
-      .subtitle {
-        font-size: 18px;
-        color: var(--text-secondary);
-        margin-bottom: 16px;
-        line-height: 1.5;
-      }
+    .page {
+      width: 640px;
+      flex-shrink: 0;
+      padding: 0 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
 
-      .description {
-        font-size: 14px;
-        color: var(--text-tertiary);
-        line-height: 1.6;
-        margin-bottom: 32px;
-      }
+    /* Navigation Section */
+    .navigation {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-top: 1px solid var(--border-primary);
+    }
 
-      .code-block {
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-primary);
-        border-radius: var(--radius-md);
-        padding: 16px 24px;
-        font-family: var(--font-mono);
-        font-size: 14px;
-        margin: 20px 0;
-        text-align: left;
-      }
+    .nav-button {
+      min-width: 80px;
+    }
 
-      .terminal-list {
-        display: grid;
-        gap: 12px;
-        width: 100%;
-        max-width: 400px;
-        margin: 20px auto;
-      }
+    .page-indicators {
+      display: flex;
+      gap: 8px;
+    }
 
-      .terminal-option {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 16px;
-        background: var(--bg-secondary);
-        border: 2px solid var(--border-primary);
-        border-radius: var(--radius-md);
-        cursor: pointer;
-        transition: all var(--transition-base);
-      }
+    .page-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--bg-hover);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+      padding: 0;
+    }
 
-      .terminal-option:hover {
-        border-color: var(--accent);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-      }
+    .page-dot:hover {
+      background: var(--bg-active);
+    }
 
-      .terminal-option.selected {
-        border-color: var(--accent);
-        background: var(--bg-active);
-      }
+    .page-dot.active {
+      background: var(--accent);
+    }
 
-      .terminal-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: var(--radius-sm);
-      }
+    /* Page Content Styles */
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
 
-      .terminal-info {
-        flex: 1;
-        text-align: left;
-      }
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 16px 0;
+    }
 
-      .terminal-name {
-        font-weight: 500;
-        color: var(--text-primary);
-      }
+    .tagline {
+      font-size: 18px;
+      color: var(--text-secondary);
+      margin: 0 0 24px 0;
+      line-height: 1.5;
+    }
 
-      .terminal-path {
-        font-size: 12px;
-        color: var(--text-tertiary);
-        font-family: var(--font-mono);
-      }
+    .description {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      max-width: 480px;
+      margin: 0 auto;
+    }
 
-      .feature-list {
-        display: grid;
-        gap: 16px;
-        max-width: 400px;
-        margin: 20px auto;
-        text-align: left;
-      }
+    .code-block {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
+      border-radius: 8px;
+      padding: 16px 24px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      margin: 24px 0;
+    }
 
-      .feature-item {
-        display: flex;
-        gap: 12px;
-        align-items: flex-start;
-      }
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 24px;
+      width: 100%;
+      max-width: 300px;
+    }
 
-      .feature-icon {
-        width: 24px;
-        height: 24px;
-        color: var(--success);
-        flex-shrink: 0;
-      }
+    .status-message {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      margin-top: 12px;
+    }
 
-      .button-group {
-        display: flex;
-        gap: 12px;
-        justify-content: center;
-        margin-top: 32px;
-      }
+    .status-message.success {
+      color: var(--success, #10b981);
+    }
 
-      .status-message {
-        margin-top: 16px;
-        padding: 12px 20px;
-        background: var(--bg-secondary);
-        border-radius: var(--radius-md);
-        font-size: 14px;
-      }
+    .status-message.error {
+      color: var(--error, #ef4444);
+    }
 
-      .status-message.success {
-        color: var(--success);
-        border: 1px solid var(--success);
-      }
+    .password-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 300px;
+      margin: 24px 0;
+    }
 
-      .status-message.error {
-        color: var(--danger);
-        border: 1px solid var(--danger);
-      }
+    .password-input {
+      padding: 10px 16px;
+      font-size: 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
+      border-radius: 8px;
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+    }
 
-      .credits {
-        margin-top: 32px;
-        padding-top: 32px;
-        border-top: 1px solid var(--border-primary);
-      }
+    .password-input:hover {
+      border-color: var(--border-secondary);
+      background: var(--bg-hover);
+    }
 
-      .credits p {
-        color: var(--text-tertiary);
-        margin: 8px 0;
-        font-size: 13px;
-      }
+    .password-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
 
-      .credit-link {
-        color: var(--accent);
-        text-decoration: none;
-        transition: all var(--transition-base);
-      }
+    .help-text {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 8px;
+    }
 
-      .credit-link:hover {
-        color: var(--accent-hover);
-        text-decoration: underline;
-      }
-    `
-  ];
+    .credits {
+      margin-top: 32px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .credit-links {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    .credit-links a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .credit-links a:hover {
+      text-decoration: underline;
+    }
+
+    .separator {
+      color: var(--text-tertiary);
+    }
+
+    /* Theme Variables */
+    :host {
+      --bg-primary: rgba(0, 0, 0, 0.85);
+      --bg-secondary: rgba(20, 20, 20, 0.95);
+      --bg-hover: rgba(255, 255, 255, 0.05);
+      --bg-active: rgba(16, 185, 129, 0.1);
+      
+      --text-primary: #fff;
+      --text-secondary: rgba(255, 255, 255, 0.6);
+      --text-tertiary: rgba(255, 255, 255, 0.4);
+      
+      --border-primary: rgba(255, 255, 255, 0.08);
+      --border-secondary: rgba(255, 255, 255, 0.12);
+      
+      --accent: #10b981;
+      --accent-hover: #0ea671;
+      --accent-glow: rgba(16, 185, 129, 0.5);
+      
+      --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'SF Mono', Consolas, 'Courier New', monospace;
+      
+      --success: #10b981;
+      --error: #ef4444;
+    }
+
+    /* Light theme */
+    :host-context(html.light) {
+      --bg-primary: rgba(255, 255, 255, 0.85);
+      --bg-secondary: rgba(249, 250, 251, 0.95);
+      --bg-hover: rgba(0, 0, 0, 0.05);
+      --bg-active: rgba(16, 185, 129, 0.1);
+      
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --text-tertiary: #9ca3af;
+      
+      --border-primary: rgba(0, 0, 0, 0.08);
+      --border-secondary: rgba(0, 0, 0, 0.12);
+    }
+  `;
 
   @state()
-  private currentStep = 0;
+  private currentPage = 0;
 
   @state()
-  private terminals: Terminal[] = [];
+  private vtInstalled = false;
+
+  @state()
+  private vtInstalling = false;
+
+  @state()
+  private vtError = '';
+
+  @state()
+  private automationGranted = false;
+
+  @state()
+  private accessibilityGranted = false;
 
   @state()
   private selectedTerminal = 'terminal';
 
   @state()
-  private cliInstallStatus = '';
+  private password = '';
 
   @state()
-  private permissionsGranted = false;
+  private confirmPassword = '';
 
-  override async connectedCallback(): Promise<void> {
+  @state()
+  private passwordError = '';
+
+  @state()
+  private passwordSaved = false;
+
+  private readonly totalPages = 6;
+
+  override async connectedCallback() {
     super.connectedCallback();
+    
     if (this.tauriAvailable) {
-      await this.loadTerminals();
+      // Check initial states
+      await this.checkVtInstallation();
       await this.checkPermissions();
     }
+
+    // Add keyboard navigation
+    this.addEventListener('keydown', this.handleKeyDown);
   }
 
-  private async loadTerminals(): Promise<void> {
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && this.currentPage < this.totalPages - 1) {
+      this.nextPage();
+    }
+  };
+
+  private async checkVtInstallation(): Promise<void> {
     try {
-      const detectedTerminals = await this.safeInvoke<Terminal[]>('detect_terminals');
-      this.terminals = detectedTerminals;
-      
-      // Get the current default terminal
-      const settings = await this.safeInvoke<Settings>('get_settings');
-      if (settings.general?.default_terminal) {
-        this.selectedTerminal = settings.general.default_terminal;
-      }
+      const result = await this.safeInvoke<{ installed: boolean }>('check_vt_installation');
+      this.vtInstalled = result.installed;
     } catch (error) {
-      console.error('Failed to load terminals:', error);
+      console.error('Failed to check VT installation:', error);
     }
   }
 
   private async checkPermissions(): Promise<void> {
     try {
-      const status = await this.safeInvoke<PermissionStatus>('check_permissions');
-      this.permissionsGranted = status.all_granted;
+      const permissions = await this.safeInvoke<{ automation: boolean; accessibility: boolean }>('check_permissions');
+      this.automationGranted = permissions.automation;
+      this.accessibilityGranted = permissions.accessibility;
     } catch (error) {
       console.error('Failed to check permissions:', error);
     }
   }
 
-  private async installCLI(): Promise<void> {
+  private async installVt(): Promise<void> {
+    if (this.vtInstalling || this.vtInstalled) return;
+
+    this.vtInstalling = true;
+    this.vtError = '';
+
     try {
-      this.cliInstallStatus = 'Installing...';
-      await this.safeInvoke('install_cli');
-      this.cliInstallStatus = 'CLI tool installed successfully!';
+      await this.safeInvoke('install_vt');
+      this.vtInstalled = true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      this.cliInstallStatus = `Installation failed: ${message}`;
+      this.vtError = error instanceof Error ? error.message : 'Installation failed';
+    } finally {
+      this.vtInstalling = false;
     }
   }
 
-  private async requestPermissions(): Promise<void> {
+  private async requestAutomation(): Promise<void> {
     try {
-      await this.safeInvoke('request_permissions');
-      await this.checkPermissions();
-      if (this.permissionsGranted) {
-        await this.showNotification('Success', 'All permissions granted!', 'success');
-      }
+      await this.safeInvoke('request_automation_permission');
+      // Re-check after a delay
+      setTimeout(() => this.checkPermissions(), 1000);
     } catch (error) {
-      await this.showNotification('Error', 'Failed to request permissions', 'error');
+      console.error('Failed to request automation permission:', error);
     }
   }
 
-  private async selectTerminal(terminal: string): Promise<void> {
-    this.selectedTerminal = terminal;
+  private async requestAccessibility(): Promise<void> {
     try {
-      const settings = await this.safeInvoke<Settings>('get_settings');
-      settings.general = settings.general || {};
-      settings.general.default_terminal = terminal;
-      await this.safeInvoke('save_settings', { settings });
+      await this.safeInvoke('request_accessibility_permission');
+      // Re-check after a delay
+      setTimeout(() => this.checkPermissions(), 1000);
     } catch (error) {
-      console.error('Failed to save terminal preference:', error);
+      console.error('Failed to request accessibility permission:', error);
     }
   }
 
   private async testTerminal(): Promise<void> {
     try {
-      await this.safeInvoke('test_terminal_integration', { terminal: this.selectedTerminal });
-      await this.showNotification('Success', 'Terminal opened successfully!', 'success');
+      await this.safeInvoke('test_terminal', { terminal: this.selectedTerminal });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      await this.showNotification('Error', `Failed to open terminal: ${message}`, 'error');
+      console.error('Failed to test terminal:', error);
+      // Show error dialog
+    }
+  }
+
+  private async savePassword(): Promise<void> {
+    this.passwordError = '';
+
+    if (!this.password) {
+      this.passwordError = 'Password cannot be empty';
+      return;
+    }
+
+    if (this.password !== this.confirmPassword) {
+      this.passwordError = 'Passwords do not match';
+      return;
+    }
+
+    if (this.password.length < 6) {
+      this.passwordError = 'Password must be at least 6 characters';
+      return;
+    }
+
+    try {
+      await this.safeInvoke('save_dashboard_password', { password: this.password });
+      this.passwordSaved = true;
+    } catch (error) {
+      this.passwordError = error instanceof Error ? error.message : 'Failed to save password';
     }
   }
 
   private async openDashboard(): Promise<void> {
     try {
-      const status = await this.safeInvoke<ServerStatus>('get_server_status');
-      if (status.running && status.url) {
-        await this.openExternal(status.url);
-      } else {
-        await this.showNotification('Server Not Running', 'Please start the server from the tray menu', 'warning');
-      }
+      await this.safeInvoke('open_dashboard');
     } catch (error) {
       console.error('Failed to open dashboard:', error);
     }
   }
 
-  private async skipPassword(): Promise<void> {
-    // Just move to next step
-    const stepper = this.shadowRoot?.querySelector('vt-stepper') as any;
-    if (stepper) {
-      stepper.nextStep();
+  private async finishWelcome(): Promise<void> {
+    try {
+      await this.safeInvoke('finish_welcome');
+      // Close window after saving state
+      window.close();
+    } catch (error) {
+      console.error('Failed to finish welcome:', error);
     }
   }
 
-  private async handleComplete(): Promise<void> {
-    // Save that welcome has been completed
-    try {
-      const settings = await this.safeInvoke<Settings>('get_settings');
-      settings.general = settings.general || {};
-      settings.general.show_welcome_on_startup = false;
-      await this.safeInvoke('save_settings', { settings });
-      
-      // Close the welcome window
-      if (this.window) {
-        await this.window.getCurrent().close();
-      }
-    } catch (error) {
-      console.error('Failed to complete welcome:', error);
+  private nextPage(): void {
+    if (this.currentPage < this.totalPages - 1) {
+      this.currentPage++;
+    } else {
+      this.finishWelcome();
     }
+  }
+
+  private previousPage(): void {
+    if (this.currentPage > 0) {
+      this.currentPage--;
+    }
+  }
+
+  private goToPage(page: number): void {
+    if (page >= 0 && page < this.totalPages) {
+      this.currentPage = page;
+    }
+  }
+
+  private renderPage(pageNumber: number) {
+    switch (pageNumber) {
+      case 0:
+        return this.renderWelcomePage();
+      case 1:
+        return this.renderVtCommandPage();
+      case 2:
+        return this.renderPermissionsPage();
+      case 3:
+        return this.renderTerminalPage();
+      case 4:
+        return this.renderPasswordPage();
+      case 5:
+        return this.renderAccessPage();
+      default:
+        return html``;
+    }
+  }
+
+  private renderWelcomePage() {
+    return html`
+      <div class="page">
+        <h1>Welcome to VibeTunnel</h1>
+        <p class="tagline">Turn any browser into your terminal. Command your agents on the go.</p>
+        <p class="description">
+          You'll be quickly guided through the basics of VibeTunnel. 
+          This screen can always be opened from the settings.
+        </p>
+      </div>
+    `;
+  }
+
+  private renderVtCommandPage() {
+    return html`
+      <div class="page">
+        <h2>Capturing Terminal Apps</h2>
+        <p class="description">
+          With the <strong>vt</strong> command, you can capture any terminal application.
+          For example, to capture Claude, run:
+        </p>
+        <div class="code-block">vt claude</div>
+        
+        <vt-button
+          .variant=${'primary'}
+          .size=${'large'}
+          @click=${this.installVt}
+          ?disabled=${this.vtInstalled || this.vtInstalling}
+        >
+          ${this.vtInstalled ? 'VT Command Installed' : 'Install VT Command Line Tool'}
+        </vt-button>
+        
+        ${this.vtInstalled ? html`
+          <div class="status-message success">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>VT command line tool installed successfully</span>
+          </div>
+        ` : ''}
+        
+        ${this.vtError ? html`
+          <div class="status-message error">
+            <span>${this.vtError}</span>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  private renderPermissionsPage() {
+    return html`
+      <div class="page">
+        <h2>Request Permissions</h2>
+        <p class="description">
+          VibeTunnel needs AppleScript to start new terminal sessions 
+          and accessibility to send commands.
+        </p>
+        
+        <div class="button-group">
+          <vt-button
+            .variant=${'primary'}
+            .size=${'large'}
+            @click=${this.requestAutomation}
+            ?disabled=${this.automationGranted}
+          >
+            ${this.automationGranted ? '✓ Automation Permission Granted' : 'Grant Automation Permission'}
+          </vt-button>
+          
+          <vt-button
+            .variant=${'secondary'}
+            .size=${'large'}
+            @click=${this.requestAccessibility}
+            ?disabled=${this.accessibilityGranted}
+          >
+            ${this.accessibilityGranted ? '✓ Accessibility Permission Granted' : 'Grant Accessibility Permission'}
+          </vt-button>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderTerminalPage() {
+    return html`
+      <div class="page">
+        <h2>Select Terminal</h2>
+        <p class="description">
+          VibeTunnel can spawn new sessions and open a terminal for you. 
+          Select your preferred Terminal and test permissions.
+        </p>
+        
+        <div class="button-group">
+          <settings-select
+            label=""
+            settingKey="terminal"
+            .value=${this.selectedTerminal}
+            .options=${[
+              { value: 'terminal', label: 'Terminal.app' },
+              { value: 'iterm2', label: 'iTerm2' },
+              { value: 'warp', label: 'Warp' }
+            ]}
+            @change=${(e: CustomEvent) => this.selectedTerminal = e.detail.value}
+          ></settings-select>
+          
+          <vt-button
+            .variant=${'secondary'}
+            .size=${'medium'}
+            @click=${this.testTerminal}
+          >
+            Test Terminal Permission
+          </vt-button>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderPasswordPage() {
+    return html`
+      <div class="page">
+        <h2>Protect Your Dashboard</h2>
+        <p class="description">
+          If you want to access your dashboard over the network, set a password now.
+          Otherwise, it will only be accessible via localhost.
+        </p>
+        
+        <div class="password-group">
+          <input
+            type="password"
+            class="password-input"
+            placeholder="Password"
+            .value=${this.password}
+            @input=${(e: Event) => this.password = (e.target as HTMLInputElement).value}
+            ?disabled=${this.passwordSaved}
+          />
+          <input
+            type="password"
+            class="password-input"
+            placeholder="Confirm Password"
+            .value=${this.confirmPassword}
+            @input=${(e: Event) => this.confirmPassword = (e.target as HTMLInputElement).value}
+            ?disabled=${this.passwordSaved}
+          />
+          
+          ${!this.passwordSaved ? html`
+            <vt-button
+              .variant=${'primary'}
+              .size=${'medium'}
+              @click=${this.savePassword}
+              ?disabled=${!this.password}
+            >
+              Set Password
+            </vt-button>
+          ` : html`
+            <div class="status-message success">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Password saved successfully</span>
+            </div>
+          `}
+        </div>
+        
+        ${this.passwordError ? html`
+          <div class="status-message error">
+            <span>${this.passwordError}</span>
+          </div>
+        ` : ''}
+        
+        <p class="help-text">Leave empty to skip password protection</p>
+      </div>
+    `;
+  }
+
+  private renderAccessPage() {
+    return html`
+      <div class="page">
+        <h2>Accessing Your Dashboard</h2>
+        <p class="description">
+          To access your terminals from any device, create a tunnel from your device.
+          This can be done via <strong>ngrok</strong> in settings or 
+          <strong>Tailscale</strong> (recommended).
+        </p>
+        
+        <vt-button
+          .variant=${'primary'}
+          .size=${'large'}
+          @click=${this.openDashboard}
+        >
+          Open Dashboard
+        </vt-button>
+        
+        <p class="help-text">
+          <a href="https://tailscale.com" target="_blank">Learn more about Tailscale</a>
+        </p>
+        
+        <div class="credits">
+          <p class="credits-label">Brought to you by</p>
+          <div class="credit-links">
+            <a href="https://mariozechner.at/" target="_blank">@badlogic</a>
+            <span class="separator">•</span>
+            <a href="https://lucumr.pocoo.org/" target="_blank">@mitsuhiko</a>
+            <span class="separator">•</span>
+            <a href="https://steipete.me" target="_blank">@steipete</a>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   override render() {
     return html`
-      <vt-stepper 
-        .currentStep=${this.currentStep}
-        @step-change=${(e: CustomEvent<{ step: number }>) => this.currentStep = e.detail.step}
-        @complete=${this.handleComplete}
-      >
-        <!-- Step 0: Welcome -->
-        <div slot="step-0" class="welcome-step">
-          <img src="./icon.png" alt="VibeTunnel" class="app-icon">
-          <h1>Welcome to VibeTunnel</h1>
-          <p class="subtitle">Turn any browser into your terminal. Command your agents on the go.</p>
-          <p class="description">
-            You'll be quickly guided through the basics of VibeTunnel.<br>
-            This screen can always be opened from the settings.
-          </p>
-        </div>
-
-        <!-- Step 1: Install CLI -->
-        <div slot="step-1" class="welcome-step">
-          <img src="./icon.png" alt="VibeTunnel" class="app-icon">
-          <h1>Install the VT Command</h1>
-          <p class="subtitle">The <code>vt</code> command lets you quickly create terminal sessions</p>
-          <div class="code-block">
-            $ vt<br>
-            # Creates a new terminal session in your browser
+      <window-header .showMaximize=${false}></window-header>
+      <div class="welcome-container">
+        <header class="header">
+          <glowing-app-icon
+            .size=${128}
+            .enableFloating=${true}
+            .enableInteraction=${false}
+            .glowIntensity=${0.3}
+          ></glowing-app-icon>
+        </header>
+        
+        <main class="content">
+          <div 
+            class="pages-container" 
+            style="transform: translateX(-${this.currentPage * 640}px)"
+          >
+            ${Array.from({ length: this.totalPages }, (_, i) => this.renderPage(i))}
           </div>
-          <div class="button-group">
-            <vt-button 
-              variant="secondary"
-              @click=${this.installCLI}
-              ?disabled=${this.cliInstallStatus.includes('successfully')}
+        </main>
+        
+        <nav class="navigation">
+          ${this.currentPage > 0 ? html`
+            <vt-button
+              .variant=${'secondary'}
+              .size=${'small'}
+              @click=${this.previousPage}
+              class="nav-button"
             >
-              Install CLI Tool
+              Back
             </vt-button>
-          </div>
-          ${this.cliInstallStatus ? html`
-            <div class="status-message ${this.cliInstallStatus.includes('failed') ? 'error' : 'success'}">
-              ${this.cliInstallStatus}
-            </div>
-          ` : ''}
-        </div>
-
-        <!-- Step 2: Permissions -->
-        <div slot="step-2" class="welcome-step">
-          <img src="./icon.png" alt="VibeTunnel" class="app-icon">
-          <h1>Grant Permissions</h1>
-          <p class="subtitle">VibeTunnel needs permissions to function properly</p>
-          <div class="feature-list">
-            <div class="feature-item">
-              <svg class="feature-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              <div>
-                <div class="font-medium">Accessibility</div>
-                <div class="text-sm text-tertiary">To integrate with terminal emulators</div>
-              </div>
-            </div>
-            <div class="feature-item">
-              <svg class="feature-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              <div>
-                <div class="font-medium">Automation</div>
-                <div class="text-sm text-tertiary">To control terminal windows</div>
-              </div>
-            </div>
-          </div>
-          <div class="button-group">
-            <vt-button 
-              variant="secondary"
-              @click=${this.requestPermissions}
-              ?disabled=${this.permissionsGranted}
-            >
-              ${this.permissionsGranted ? 'Permissions Granted' : 'Grant Permissions'}
-            </vt-button>
-          </div>
-        </div>
-
-        <!-- Step 3: Select Terminal -->
-        <div slot="step-3" class="welcome-step">
-          <img src="./icon.png" alt="VibeTunnel" class="app-icon">
-          <h1>Select Your Terminal</h1>
-          <p class="subtitle">Choose your preferred terminal emulator</p>
-          <div class="terminal-list">
-            ${this.terminals.map(terminal => html`
-              <div 
-                class="terminal-option ${this.selectedTerminal === terminal.id ? 'selected' : ''}"
-                @click=${() => this.selectTerminal(terminal.id)}
-              >
-                <div class="terminal-info">
-                  <div class="terminal-name">${terminal.name}</div>
-                  <div class="terminal-path">${terminal.path || 'Default'}</div>
-                </div>
-              </div>
+          ` : html`<div class="nav-button"></div>`}
+          
+          <div class="page-indicators">
+            ${Array.from({ length: this.totalPages }, (_, i) => html`
+              <button
+                class="page-dot ${i === this.currentPage ? 'active' : ''}"
+                @click=${() => this.goToPage(i)}
+                aria-label="Go to page ${i + 1}"
+              ></button>
             `)}
           </div>
-          <div class="button-group">
-            <vt-button variant="secondary" @click=${this.testTerminal}>
-              Test Terminal
-            </vt-button>
-          </div>
-        </div>
-
-        <!-- Step 4: Security -->
-        <div slot="step-4" class="welcome-step">
-          <img src="./icon.png" alt="VibeTunnel" class="app-icon">
-          <h1>Protect Your Dashboard</h1>
-          <p class="subtitle">Security is important when accessing terminals remotely</p>
-          <p class="description">
-            We recommend setting a password for your dashboard,<br>
-            especially if you plan to access it from outside your local network.
-          </p>
-          <div class="button-group">
-            <vt-button variant="secondary" @click=${() => this.openSettings('dashboard')}>
-              Set Password
-            </vt-button>
-            <vt-button variant="ghost" @click=${this.skipPassword}>
-              Skip for Now
-            </vt-button>
-          </div>
-        </div>
-
-        <!-- Step 5: Remote Access -->
-        <div slot="step-5" class="welcome-step">
-          <img src="./icon.png" alt="VibeTunnel" class="app-icon">
-          <h1>Access Your Dashboard</h1>
-          <p class="subtitle">
-            To access your terminals from any device, create a tunnel from your device.<br><br>
-            This can be done via <strong>ngrok</strong> in settings or <strong>Tailscale</strong> (recommended).
-          </p>
-          <div class="button-group">
-            <vt-button variant="secondary" @click=${this.openDashboard}>
-              Open Dashboard
-            </vt-button>
-            <vt-button variant="ghost" @click=${() => this.openSettings('dashboard')}>
-              Configure Access
-            </vt-button>
-          </div>
-          <div class="credits">
-            <p>Built by</p>
-            <p>
-              <a href="#" @click=${(e: Event) => { e.preventDefault(); this.openExternal('https://mariozechner.at/'); }} class="credit-link">@badlogic</a> • 
-              <a href="#" @click=${(e: Event) => { e.preventDefault(); this.openExternal('https://lucumr.pocoo.org/'); }} class="credit-link">@mitsuhiko</a> • 
-              <a href="#" @click=${(e: Event) => { e.preventDefault(); this.openExternal('https://steipete.me/'); }} class="credit-link">@steipete</a>
-            </p>
-          </div>
-        </div>
-
-        <!-- Step 6: Complete -->
-        <div slot="step-6" class="welcome-step">
-          <img src="./icon.png" alt="VibeTunnel" class="app-icon">
-          <h1>You're All Set!</h1>
-          <p class="subtitle">VibeTunnel is now running in your system tray</p>
-          <p class="description">
-            Click the VibeTunnel icon in your system tray to access settings,<br>
-            open the dashboard, or manage your terminal sessions.
-          </p>
-        </div>
-      </vt-stepper>
+          
+          <vt-button
+            .variant=${'primary'}
+            .size=${'small'}
+            @click=${this.nextPage}
+            class="nav-button"
+          >
+            ${this.currentPage === this.totalPages - 1 ? 'Finish' : 'Next'}
+          </vt-button>
+        </nav>
+      </div>
     `;
   }
 }

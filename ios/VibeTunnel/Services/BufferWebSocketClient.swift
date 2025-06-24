@@ -47,7 +47,7 @@ enum WebSocketError: Error {
 @Observable
 class BufferWebSocketClient: NSObject {
     static let shared = BufferWebSocketClient()
-    
+
     private let logger = Logger(category: "BufferWebSocket")
     /// Magic byte for binary messages
     private static let bufferMagicByte: UInt8 = 0xBF
@@ -114,7 +114,8 @@ class BufferWebSocketClient: NSObject {
         // Add authentication header if needed
         if let config = UserDefaults.standard.data(forKey: "savedServerConfig"),
            let serverConfig = try? JSONDecoder().decode(ServerConfig.self, from: config),
-           let authHeader = serverConfig.authorizationHeader {
+           let authHeader = serverConfig.authorizationHeader
+        {
             headers["Authorization"] = authHeader
         }
 
@@ -211,7 +212,8 @@ class BufferWebSocketClient: NSObject {
 
         // Decode terminal event
         if let event = decodeTerminalEvent(from: messageData),
-           let handler = subscriptions[sessionId] {
+           let handler = subscriptions[sessionId]
+        {
             logger.verbose("Dispatching event to handler")
             handler(event)
         } else {
@@ -598,14 +600,16 @@ class BufferWebSocketClient: NSObject {
             (0xFF00...0xFF60).contains(value) || // Fullwidth Forms
             (0xFFE0...0xFFE6).contains(value) || // Fullwidth Forms
             (0x20000...0x2FFFD).contains(value) || // CJK Extension B-F
-            (0x30000...0x3FFFD).contains(value) { // CJK Extension G
+            (0x30000...0x3FFFD).contains(value)
+        { // CJK Extension G
             return 2
         }
 
         // Zero-width characters
         if (0x200B...0x200F).contains(value) || // Zero-width spaces
             (0xFE00...0xFE0F).contains(value) || // Variation selectors
-            scalar.properties.isJoinControl {
+            scalar.properties.isJoinControl
+        {
             return 0
         }
 

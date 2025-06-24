@@ -1,43 +1,35 @@
 import SwiftUI
 
-/// Fourth page explaining dashboard security and access protection.
+/// Fourth page explaining dashboard security and authentication.
 ///
-/// This view allows users to set up password protection for their dashboard
-/// when accessing it over the network. It provides secure password entry
-/// with confirmation and validation.
+/// This view explains how the dashboard is protected using the system's
+/// built-in authentication. Users don't need to set up a password as
+/// authentication uses their macOS username and password by default.
 ///
 /// ## Topics
 ///
 /// ### Overview
 /// The dashboard protection page includes:
-/// - Password and confirmation fields
-/// - Password validation (minimum 6 characters)
-/// - Secure storage in keychain
-/// - Automatic network mode switching when password is set
-/// - Option to skip password protection
+/// - Explanation of OS-based authentication
+/// - Information about SSH key authentication option
+/// - Link to settings for authentication configuration
 ///
 /// ### Security
-/// - Passwords are stored securely in the system keychain
-/// - Network access is automatically enabled when a password is set
-/// - Dashboard remains localhost-only without password
+/// - Uses macOS system authentication (PAM) by default
+/// - SSH key authentication available as an alternative
+/// - No separate password setup required
 struct ProtectDashboardPageView: View {
-    @State private var password = ""
-    @State private var confirmPassword = ""
-    @State private var showError = false
-    @State private var errorMessage = ""
-    @State private var isPasswordSet = false
-
-    private let dashboardKeychain = DashboardKeychain.shared
+    @State private var showingSettings = false
 
     var body: some View {
         VStack(spacing: 30) {
             VStack(spacing: 16) {
-                Text("Protect Your Dashboard")
+                Text("Dashboard Security")
                     .font(.largeTitle)
                     .fontWeight(.semibold)
 
                 Text(
-                    "If you want to access your dashboard over the network, set a password now.\nOtherwise, it will only be accessible via localhost."
+                    "Your dashboard is protected using your macOS username and password.\nNo additional setup is required."
                 )
                 .font(.body)
                 .foregroundColor(.secondary)
@@ -45,51 +37,61 @@ struct ProtectDashboardPageView: View {
                 .frame(maxWidth: 480)
                 .fixedSize(horizontal: false, vertical: true)
 
-                // Password fields
-                VStack(spacing: 12) {
-                    SecureField("Password", text: $password)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 300)
-                        .onChange(of: password) { _, _ in
-                            // Reset password saved state when user starts typing
-                            if isPasswordSet {
-                                isPasswordSet = false
-                            }
-                        }
+                // Authentication info
+                VStack(spacing: 20) {
+                    // Security icon and explanation
+                    HStack(spacing: 12) {
+                        Image(systemName: "lock.shield.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(.accentColor)
+                            .symbolRenderingMode(.hierarchical)
 
-                    SecureField("Confirm Password", text: $confirmPassword)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 300)
-                        .onChange(of: confirmPassword) { _, _ in
-                            // Reset password saved state when user starts typing
-                            if isPasswordSet {
-                                isPasswordSet = false
-                            }
-                        }
-
-                    if showError {
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-
-                    if isPasswordSet {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text("Password saved securely")
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Secure by Default")
+                                .font(.headline)
+                            Text("Access requires your macOS credentials")
+                                .font(.body)
                                 .foregroundColor(.secondary)
                         }
-                        .font(.caption)
-                    } else {
-                        Button("Set Password") {
-                            setPassword()
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(password.isEmpty)
                     }
+                    .frame(maxWidth: 400)
 
-                    Text("Leave empty to skip password protection")
+                    // Authentication methods
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("macOS Authentication")
+                                    .font(.callout)
+                                    .fontWeight(.medium)
+                                Text("Uses your system username and password")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "person.badge.shield.checkmark.fill")
+                                .foregroundColor(.green)
+                        }
+
+                        Label {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("SSH Key Authentication")
+                                    .font(.callout)
+                                    .fontWeight(.medium)
+                                Text("Available as an alternative in Settings")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "key.fill")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    .padding()
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+                    .frame(maxWidth: 400)
+
+                    Text("You can configure authentication methods later in Settings")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -98,50 +100,12 @@ struct ProtectDashboardPageView: View {
         }
         .padding()
     }
-
-    private func setPassword() {
-        showError = false
-
-        guard !password.isEmpty else {
-            return
-        }
-
-        guard password == confirmPassword else {
-            errorMessage = "Passwords do not match"
-            showError = true
-            return
-        }
-
-        guard password.count >= 6 else {
-            errorMessage = "Password must be at least 6 characters"
-            showError = true
-            return
-        }
-
-        if dashboardKeychain.setPassword(password) {
-            isPasswordSet = true
-            UserDefaults.standard.set(true, forKey: "dashboardPasswordEnabled")
-
-            // When password is set for the first time, automatically switch to network mode
-            let currentMode = DashboardAccessMode(rawValue: UserDefaults.standard
-                .string(forKey: "dashboardAccessMode") ?? ""
-            ) ?? .localhost
-            if currentMode == .localhost {
-                UserDefaults.standard.set(DashboardAccessMode.network.rawValue, forKey: "dashboardAccessMode")
-            }
-        } else {
-            errorMessage = "Failed to save password to keychain"
-            showError = true
-        }
-    }
 }
 
 // MARK: - Preview
 
-struct ProtectDashboardPageView_Previews: PreviewProvider {
-    static var previews: some View {
-        ProtectDashboardPageView()
-            .frame(width: 640, height: 480)
-            .background(Color(NSColor.windowBackgroundColor))
-    }
+#Preview("Protect Dashboard Page") {
+    ProtectDashboardPageView()
+        .frame(width: 640, height: 480)
+        .background(Color(NSColor.windowBackgroundColor))
 }

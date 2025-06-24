@@ -37,20 +37,20 @@ struct ServerProfile: Identifiable, Codable, Equatable {
     /// Create a ServerConfig from this profile
     func toServerConfig(password: String? = nil) -> ServerConfig? {
         guard let urlComponents = URLComponents(string: url),
-              let host = urlComponents.host else {
+              let host = urlComponents.host
+        else {
             return nil
         }
-        
+
         // Determine default port based on scheme
-        let defaultPort: Int
-        if let scheme = urlComponents.scheme?.lowercased() {
-            defaultPort = scheme == "https" ? 443 : 80
+        let defaultPort: Int = if let scheme = urlComponents.scheme?.lowercased() {
+            scheme == "https" ? 443 : 80
         } else {
-            defaultPort = 80
+            80
         }
-        
+
         let port = urlComponents.port ?? defaultPort
-        
+
         return ServerConfig(
             host: host,
             port: port,
@@ -68,7 +68,8 @@ extension ServerProfile {
     /// Load all saved profiles from UserDefaults
     static func loadAll() -> [ServerProfile] {
         guard let data = UserDefaults.standard.data(forKey: storageKey),
-              let profiles = try? JSONDecoder().decode([ServerProfile].self, from: data) else {
+              let profiles = try? JSONDecoder().decode([ServerProfile].self, from: data)
+        else {
             return []
         }
         return profiles
@@ -117,7 +118,8 @@ extension ServerProfile {
 
     static func suggestedName(for url: String) -> String {
         if let urlComponents = URLComponents(string: url),
-           let host = urlComponents.host {
+           let host = urlComponents.host
+        {
             // Remove common suffixes
             let cleanHost = host
                 .replacingOccurrences(of: ".local", with: "")

@@ -119,10 +119,8 @@ struct TailscaleLink: View {
 
 // MARK: - Preview
 
-struct AccessDashboardPageView_Previews: PreviewProvider {
-    static var previews: some View {
-        AccessDashboardPageView()
-            .frame(width: 640, height: 480)
-            .background(Color(NSColor.windowBackgroundColor))
-    }
+#Preview("Access Dashboard Page") {
+    AccessDashboardPageView()
+        .frame(width: 640, height: 480)
+        .background(Color(NSColor.windowBackgroundColor))
 }

@@ -205,7 +205,7 @@ struct ServerStatusView: View {
                     .foregroundColor(.primary)
                     .lineLimit(1)
             }
-            
+
             if isRunning {
                 Text(accessText)
                     .font(.system(size: 11))
@@ -219,12 +219,12 @@ struct ServerStatusView: View {
 
     private var statusText: String {
         if isRunning {
-            return "Server running"
+            "Server running"
         } else {
-            return "Server stopped"
+            "Server stopped"
         }
     }
-    
+
     private var accessText: String {
         let bindAddress = serverManager.bindAddress
         if bindAddress == "127.0.0.1" {

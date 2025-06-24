@@ -122,10 +122,8 @@ struct RequestPermissionsPageView: View {
 
 // MARK: - Preview
 
-struct RequestPermissionsPageView_Previews: PreviewProvider {
-    static var previews: some View {
-        RequestPermissionsPageView()
-            .frame(width: 640, height: 480)
-            .background(Color(NSColor.windowBackgroundColor))
-    }
+#Preview("Request Permissions Page") {
+    RequestPermissionsPageView()
+        .frame(width: 640, height: 480)
+        .background(Color(NSColor.windowBackgroundColor))
 }

@@ -77,8 +77,9 @@ Before starting a release, ensure:
    - [ ] Ensure version follows semantic versioning
 
 2. **Code Quality**
-   - [ ] All tests pass: `npm test` (in web/) and Swift tests
-   - [ ] Linting passes: `./scripts/lint.sh`
+   - [ ] All tests pass: `npm run test` (in web/) and Swift tests
+   - [ ] Linting passes: `npm run lint`
+   - [ ] Typechecking passes: `npm run typecheck`
    - [ ] No uncommitted changes: `git status`
 
 3. **Documentation**
@@ -127,7 +128,7 @@ If you need to run steps manually:
    ```bash
    # For stable release
    ./scripts/build.sh --configuration Release
-   
+
    # For pre-release
    IS_PRERELEASE_BUILD=YES ./scripts/build.sh --configuration Release
    ```
@@ -152,7 +153,7 @@ If you need to run steps manually:
    # Create tag
    git tag -a "vX.Y.Z" -m "Release X.Y.Z"
    git push origin "vX.Y.Z"
-   
+
    # Create release
    gh release create "vX.Y.Z" \
      --title "VibeTunnel X.Y.Z" \
@@ -179,7 +180,7 @@ If you need to run steps manually:
    ```bash
    # Clean build artifacts (keeps DMG)
    ./scripts/clean.sh --keep-dmg
-   
+
    # Restore development version if needed
    git checkout -- VibeTunnel/version.xcconfig
    ```

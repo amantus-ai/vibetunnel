@@ -18,14 +18,15 @@ struct SessionCardView: View {
     @State private var scale: CGFloat = 1.0
     @State private var rotation: Double = 0
     @State private var brightness: Double = 1.0
-    
+
     @Environment(\.livePreviewSubscription) private var livePreview
 
     private var displayWorkingDir: String {
         // Convert absolute paths back to ~ notation for display
         let homePrefix = "/Users/"
         if session.workingDir.hasPrefix(homePrefix),
-           let userEndIndex = session.workingDir[homePrefix.endIndex...].firstIndex(of: "/") {
+           let userEndIndex = session.workingDir[homePrefix.endIndex...].firstIndex(of: "/")
+        {
             let restOfPath = String(session.workingDir[userEndIndex...])
             return "~\(restOfPath)"
         }
@@ -61,7 +62,7 @@ struct SessionCardView: View {
                             Image(systemName: session.isRunning ? "xmark.circle" : "trash.circle")
                                 .font(.system(size: 18))
                                 .foregroundColor(session.isRunning ? Theme.Colors.errorAccent : Theme.Colors
-                                    .terminalForeground.opacity(0.6)
+                                                    .terminalForeground.opacity(0.6)
                                 )
                         }
                     })
@@ -106,15 +107,15 @@ struct SessionCardView: View {
                     HStack(spacing: 4) {
                         Circle()
                             .fill(session.isRunning ? Theme.Colors.successAccent : Theme.Colors.terminalForeground
-                                .opacity(0.3)
+                                    .opacity(0.3)
                             )
                             .frame(width: 6, height: 6)
                         Text(session.isRunning ? "running" : "exited")
                             .font(Theme.Typography.terminalSystem(size: 10))
                             .foregroundColor(session.isRunning ? Theme.Colors.successAccent : Theme.Colors
-                                .terminalForeground.opacity(0.5)
+                                                .terminalForeground.opacity(0.5)
                             )
-                        
+
                         // Live preview indicator
                         if session.isRunning && livePreview?.latestSnapshot != nil {
                             HStack(spacing: 2) {
@@ -256,9 +257,9 @@ struct SessionCardView: View {
             opacity = 1.0
         }
     }
-    
+
     // MARK: - View Components
-    
+
     @ViewBuilder
     private var commandInfoView: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -294,7 +295,7 @@ struct SessionCardView: View {
         }
         .padding(Theme.Spacing.small)
     }
-    
+
     @ViewBuilder
     private func staticSnapshotView(_ snapshot: TerminalSnapshot) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -327,7 +328,7 @@ struct SessionCardView: View {
         }
         .padding(Theme.Spacing.small)
     }
-    
+
     @ViewBuilder
     private func exitedSessionView(_ snapshot: TerminalSnapshot) -> some View {
         ScrollView(.vertical, showsIndicators: false) {

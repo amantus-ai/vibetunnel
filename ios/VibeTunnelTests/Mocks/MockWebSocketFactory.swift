@@ -4,12 +4,21 @@ import Foundation
 /// Mock WebSocket factory for testing
 @MainActor
 class MockWebSocketFactory: WebSocketFactory {
-    var createdWebSockets: [MockWebSocket] = []
+    private(set) var createdWebSockets: [MockWebSocket] = []
 
-    override func createWebSocket() -> WebSocketProtocol {
+    func createWebSocket() -> WebSocketProtocol {
         let webSocket = MockWebSocket()
         createdWebSockets.append(webSocket)
         return webSocket
+    }
+    
+    var lastCreatedWebSocket: MockWebSocket? {
+        createdWebSockets.last
+    }
+    
+    func reset() {
+        createdWebSockets.forEach { $0.reset() }
+        createdWebSockets.removeAll()
     }
 }
 

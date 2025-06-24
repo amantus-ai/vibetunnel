@@ -1233,10 +1233,10 @@ export class Terminal extends LitElement {
           line-height: ${this.fontSize * 1.2}px;
         }
       </style>
-      <div style="position: relative; width: 100%; height: 100%;">
+      <div class="relative w-full h-full p-0 m-0">
         <div
           id="terminal-container"
-          class="terminal-container w-full h-full overflow-hidden"
+          class="terminal-container w-full h-full overflow-hidden p-0 m-0"
           tabindex="0"
           contenteditable="false"
           style="view-transition-name: session-${this.sessionId}"

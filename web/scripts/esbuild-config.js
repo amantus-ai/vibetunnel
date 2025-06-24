@@ -6,6 +6,7 @@ const { monacoPlugin } = require('./monaco-plugin.js');
 const commonOptions = {
   bundle: true,
   format: 'esm',
+  target: 'es2020',
   loader: {
     '.ts': 'ts',
     '.tsx': 'tsx',
@@ -23,6 +24,12 @@ const commonOptions = {
   plugins: [monacoPlugin],
   // Allow importing from node_modules without issues
   mainFields: ['module', 'main'],
+  tsconfigRaw: {
+    compilerOptions: {
+      experimentalDecorators: true,
+      useDefineForClassFields: false,
+    }
+  }
 };
 
 const devOptions = {

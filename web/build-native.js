@@ -140,7 +140,7 @@ function patchNodePty() {
 
     try {
       // Use the custom Node to rebuild native modules
-      execSync(`"${customNodePath}" "$(which npm)" rebuild @homebridge/node-pty-prebuilt-multiarch`, {
+      execSync(`"${customNodePath}" "$(which npm)" rebuild @homebridge/node-pty-prebuilt-multiarch authenticate-pam`, {
         stdio: 'inherit',
         env: {
           ...process.env,
@@ -149,10 +149,12 @@ function patchNodePty() {
           npm_config_arch: process.arch,
           npm_config_target_arch: process.arch,
           npm_config_disturl: 'https://nodejs.org/dist',
-          npm_config_build_from_source: 'true'
+          npm_config_build_from_source: 'true',
+          CXXFLAGS: '-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0',
+          MACOSX_DEPLOYMENT_TARGET: '14.0'
         }
       });
-      console.log('Native module rebuilt successfully with custom Node.js');
+      console.log('Native modules rebuilt successfully with custom Node.js');
     } catch (error) {
       console.error('Failed to rebuild native module:', error.message);
       console.error('Trying alternative rebuild method...');
@@ -168,7 +170,9 @@ function patchNodePty() {
             npm_config_target: customVersion.substring(1),
             npm_config_arch: process.arch,
             npm_config_target_arch: process.arch,
-            npm_config_disturl: 'https://nodejs.org/dist'
+            npm_config_disturl: 'https://nodejs.org/dist',
+            CXXFLAGS: '-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0',
+            MACOSX_DEPLOYMENT_TARGET: '14.0'
           }
         });
         console.log('Native module rebuilt from source successfully');
@@ -370,6 +374,7 @@ async function main() {
       --outfile=build/bundle.js \\
       --format=cjs \\
       --keep-names \\
+      --external:authenticate-pam \\
       --define:process.env.BUILD_DATE='"${buildDate}"' \\
       --define:process.env.BUILD_TIMESTAMP='"${buildTimestamp}"'`;
 
@@ -467,6 +472,15 @@ async function main() {
       fs.copyFileSync(spawnHelperPath, 'native/spawn-helper');
       fs.chmodSync('native/spawn-helper', 0o755);
       console.log('  - Copied spawn-helper');
+    }
+
+    // Copy authenticate_pam.node
+    const authPamPath = 'node_modules/authenticate-pam/build/Release/authenticate_pam.node';
+    if (fs.existsSync(authPamPath)) {
+      fs.copyFileSync(authPamPath, 'native/authenticate_pam.node');
+      console.log('  - Copied authenticate_pam.node');
+    } else {
+      console.warn('Warning: authenticate_pam.node not found. PAM authentication may not work.');
     }
 
     // 9. Restore original node-pty (AFTER copying the custom-built version)

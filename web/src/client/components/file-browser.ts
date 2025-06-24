@@ -12,6 +12,7 @@ import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 import type { Session } from './session-list.js';
+import { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
 import {
   getFileIcon,
@@ -20,6 +21,7 @@ import {
   UIIcons,
   type GitStatus as GitStatusType,
 } from '../utils/file-icons.js';
+import { copyToClipboard } from '../utils/path-utils.js';
 import './monaco-editor.js';
 
 const logger = createLogger('file-browser');
@@ -106,9 +108,15 @@ export class FileBrowser extends LitElement {
 
   private editorRef = createRef<HTMLElement>();
   private pathInputRef = createRef<HTMLInputElement>();
+  private authClient = new AuthClient();
+  private noAuthMode = false;
 
   async connectedCallback() {
     super.connectedCallback();
+
+    // Check auth configuration
+    await this.checkAuthConfig();
+
     if (this.visible) {
       this.currentPath = this.session?.workingDir || '.';
       await this.loadDirectory(this.currentPath);
@@ -143,7 +151,9 @@ export class FileBrowser extends LitElement {
       const url = `/api/fs/browse?${params}`;
       logger.debug(`loading directory: ${dirPath}`);
       logger.debug(`fetching URL: ${url}`);
-      const response = await fetch(url);
+
+      const headers = this.noAuthMode ? {} : { ...this.authClient.getAuthHeader() };
+      const response = await fetch(url, { headers });
       logger.debug(`response status: ${response.status}`);
 
       if (response.ok) {
@@ -187,7 +197,10 @@ export class FileBrowser extends LitElement {
       logger.debug(`loading preview for file: ${file.name}`);
       logger.debug(`file path: ${file.path}`);
 
-      const response = await fetch(`/api/fs/preview?path=${encodeURIComponent(file.path)}`);
+      const headers = this.noAuthMode ? {} : { ...this.authClient.getAuthHeader() };
+      const response = await fetch(`/api/fs/preview?path=${encodeURIComponent(file.path)}`, {
+        headers,
+      });
       if (response.ok) {
         this.preview = await response.json();
         this.requestUpdate(); // Trigger re-render to initialize Monaco if needed
@@ -209,9 +222,14 @@ export class FileBrowser extends LitElement {
 
     try {
       // Load both the unified diff and the full content for Monaco
+      const headers = this.noAuthMode ? {} : { ...this.authClient.getAuthHeader() };
       const [diffResponse, contentResponse] = await Promise.all([
-        fetch(`/api/fs/diff?path=${encodeURIComponent(file.path)}`),
-        fetch(`/api/fs/diff-content?path=${encodeURIComponent(file.path)}`),
+        fetch(`/api/fs/diff?path=${encodeURIComponent(file.path)}`, {
+          headers,
+        }),
+        fetch(`/api/fs/diff-content?path=${encodeURIComponent(file.path)}`, {
+          headers,
+        }),
       ]);
 
       if (diffResponse.ok) {
@@ -247,12 +265,12 @@ export class FileBrowser extends LitElement {
     }
   }
 
-  private async copyToClipboard(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
+  private async handleCopyToClipboard(text: string) {
+    const success = await copyToClipboard(text);
+    if (success) {
       logger.debug(`copied to clipboard: ${text}`);
-    } catch (err) {
-      logger.error('failed to copy to clipboard:', err);
+    } else {
+      logger.error('failed to copy to clipboard');
     }
   }
 
@@ -462,7 +480,8 @@ export class FileBrowser extends LitElement {
     }
 
     // Fallback to simple diff display
-    const lines = this.diff!.diff.split('\n');
+    if (!this.diff) return html``;
+    const lines = this.diff.diff.split('\n');
     return html`
       <div class="overflow-auto h-full p-4 font-mono text-xs">
         ${lines.map((line) => {
@@ -708,7 +727,8 @@ export class FileBrowser extends LitElement {
                               <button
                                 class="btn-secondary text-xs px-2 py-1 font-mono"
                                 @click=${() =>
-                                  this.selectedFile && this.copyToClipboard(this.selectedFile.path)}
+                                  this.selectedFile &&
+                                  this.handleCopyToClipboard(this.selectedFile.path)}
                                 title="Copy path to clipboard (⌘C)"
                               >
                                 Copy Path
@@ -774,6 +794,19 @@ export class FileBrowser extends LitElement {
     this.removeTouchHandlers();
   }
 
+  private async checkAuthConfig() {
+    try {
+      const response = await fetch('/api/auth/config');
+      if (response.ok) {
+        const config = await response.json();
+        this.noAuthMode = config.noAuth === true;
+        logger.debug('Auth config:', config);
+      }
+    } catch (error) {
+      logger.error('Failed to fetch auth config:', error);
+    }
+  }
+
   private handleKeyDown = (e: KeyboardEvent) => {
     if (!this.visible) return;
 
@@ -794,7 +827,7 @@ export class FileBrowser extends LitElement {
       this.insertPathIntoTerminal();
     } else if ((e.metaKey || e.ctrlKey) && e.key === 'c' && this.selectedFile) {
       e.preventDefault();
-      this.copyToClipboard(this.selectedFile.path);
+      this.handleCopyToClipboard(this.selectedFile.path);
     }
   };
 
@@ -839,11 +872,22 @@ export class FileBrowser extends LitElement {
     document.addEventListener('touchend', handleTouchEnd);
 
     // Store handlers for removal
-    (this as any)._touchHandlers = { handleTouchStart, handleTouchEnd };
+    interface TouchHandlers {
+      handleTouchStart: (e: TouchEvent) => void;
+      handleTouchEnd: (e: TouchEvent) => void;
+    }
+    (this as unknown as { _touchHandlers: TouchHandlers })._touchHandlers = {
+      handleTouchStart,
+      handleTouchEnd,
+    };
   }
 
   private removeTouchHandlers() {
-    const handlers = (this as any)._touchHandlers;
+    interface TouchHandlers {
+      handleTouchStart: (e: TouchEvent) => void;
+      handleTouchEnd: (e: TouchEvent) => void;
+    }
+    const handlers = (this as unknown as { _touchHandlers?: TouchHandlers })._touchHandlers;
     if (handlers) {
       document.removeEventListener('touchstart', handlers.handleTouchStart);
       document.removeEventListener('touchend', handlers.handleTouchEnd);

@@ -1,11 +1,22 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "types": ["vitest/globals"]
+    "module": "ES2020",
+    "lib": ["ES2020", "dom"],
+    "types": ["vitest/globals", "node"]
   },
   "include": [
     "src/**/*.test.ts",
     "src/**/*.spec.ts",
-    "src/test/**/*"
+    "src/test/**/*",
+    "src/server/**/*",
+    "src/client/**/*",
+    "src/shared/**/*",
+    "src/types/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "public"
   ]
 }

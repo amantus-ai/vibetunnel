@@ -47,6 +47,9 @@ if command -v xcpretty &> /dev/null; then
         -scheme VibeTunnel-iOS \
         -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
         -resultBundlePath TestResults.xcresult \
+        CODE_SIGN_IDENTITY="" \
+        CODE_SIGNING_REQUIRED=NO \
+        CODE_SIGNING_ALLOWED=NO \
         2>&1 | xcpretty || {
             EXIT_CODE=$?
             echo "Tests failed with exit code: $EXIT_CODE"
@@ -68,6 +71,9 @@ else
         -scheme VibeTunnel-iOS \
         -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
         -resultBundlePath TestResults.xcresult \
+        CODE_SIGN_IDENTITY="" \
+        CODE_SIGNING_REQUIRED=NO \
+        CODE_SIGNING_ALLOWED=NO \
         || {
             EXIT_CODE=$?
             echo "Tests failed with exit code: $EXIT_CODE"

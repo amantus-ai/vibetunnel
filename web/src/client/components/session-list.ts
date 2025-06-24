@@ -20,6 +20,7 @@ import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type { Session } from '../../shared/types.js';
+import type { AuthClient } from '../services/auth-client.js';
 import './session-create-form.js';
 import './session-card.js';
 import { createLogger } from '../utils/logger.js';
@@ -42,6 +43,7 @@ export class SessionList extends LitElement {
   @property({ type: Boolean }) showCreateModal = false;
   @property({ type: String }) selectedSessionId: string | null = null;
   @property({ type: Boolean }) compactMode = false;
+  @property({ type: Object }) authClient!: AuthClient;
 
   @state() private cleaningExited = false;
   private previousRunningCount = 0;
@@ -95,6 +97,9 @@ export class SessionList extends LitElement {
     try {
       const response = await fetch('/api/cleanup-exited', {
         method: 'POST',
+        headers: {
+          ...this.authClient.getAuthHeader(),
+        },
       });
 
       if (response.ok) {
@@ -156,7 +161,7 @@ export class SessionList extends LitElement {
       : this.sessions;
 
     return html`
-      <div class="font-mono text-sm p-4 bg-dark-bg">
+      <div class="font-mono text-sm p-4 bg-black">
         ${filteredSessions.length === 0
           ? html`
               <div class="text-dark-text-muted text-center py-8">
@@ -303,14 +308,31 @@ export class SessionList extends LitElement {
                                               : `/api/sessions/${session.id}`;
                                           const response = await fetch(endpoint, {
                                             method: 'DELETE',
+                                            headers: {
+                                              ...this.authClient.getAuthHeader(),
+                                            },
                                           });
                                           if (response.ok) {
                                             this.handleSessionKilled({
                                               detail: { sessionId: session.id },
                                             } as CustomEvent);
+                                          } else {
+                                            const errorText = await response.text();
+                                            throw new Error(
+                                              `Failed to ${session.status === 'exited' ? 'cleanup' : 'kill'} session: ${response.status} ${errorText}`
+                                            );
                                           }
                                         } catch (error) {
                                           logger.error('Failed to kill session', error);
+                                          this.handleSessionKillError({
+                                            detail: {
+                                              sessionId: session.id,
+                                              error:
+                                                error instanceof Error
+                                                  ? error.message
+                                                  : 'Unknown error',
+                                            },
+                                          } as CustomEvent);
                                         }
                                       }}
                                       title="${session.status === 'running'
@@ -340,6 +362,7 @@ export class SessionList extends LitElement {
                           <!-- Full session card for main view -->
                           <session-card
                             .session=${session}
+                            .authClient=${this.authClient}
                             @session-select=${this.handleSessionSelect}
                             @session-killed=${this.handleSessionKilled}
                             @session-kill-error=${this.handleSessionKillError}
@@ -353,6 +376,7 @@ export class SessionList extends LitElement {
 
         <session-create-form
           .visible=${this.showCreateModal}
+          .authClient=${this.authClient}
           @session-created=${(e: CustomEvent) =>
             this.dispatchEvent(new CustomEvent('session-created', { detail: e.detail }))}
           @cancel=${() => this.dispatchEvent(new CustomEvent('create-modal-close'))}

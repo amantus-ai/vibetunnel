@@ -16,6 +16,8 @@ import { createRemoteRoutes } from './routes/remotes.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
 import { createPushRoutes } from './routes/push.js';
+import { createAuthRoutes } from './routes/auth.js';
+import { AuthService } from './services/auth-service.js';
 import { ControlDirWatcher } from './services/control-dir-watcher.js';
 import { VapidManager } from './utils/vapid-manager.js';
 import { PushNotificationService } from './services/push-notification-service.js';
@@ -42,8 +44,9 @@ export function setShuttingDown(value: boolean): void {
 interface Config {
   port: number | null;
   bind: string | null;
-  basicAuthUsername: string | null;
-  basicAuthPassword: string | null;
+  enableSSHKeys: boolean;
+  disallowUserPassword: boolean;
+  noAuth: boolean;
   isHQMode: boolean;
   hqUrl: string | null;
   hqUsername: string | null;
@@ -58,6 +61,8 @@ interface Config {
   vapidEmail: string | null;
   generateVapidKeys: boolean;
   bellNotificationsEnabled: boolean;
+  // Local bypass configuration
+  allowLocalBypass: boolean;
 }
 
 // Show help message
@@ -72,8 +77,10 @@ Options:
   --version             Show version information
   --port <number>       Server port (default: 4020 or PORT env var)
   --bind <address>      Bind address (default: 0.0.0.0, all interfaces)
-  --username <string>   Basic auth username (or VIBETUNNEL_USERNAME env var)
-  --password <string>   Basic auth password (or VIBETUNNEL_PASSWORD env var)
+  --enable-ssh-keys     Enable SSH key authentication UI and functionality
+  --disallow-user-password  Disable password auth, SSH keys only (auto-enables --enable-ssh-keys)
+  --no-auth             Disable authentication (auto-login as current user)
+  --allow-local-bypass  Allow localhost connections to bypass authentication
   --debug               Enable debug logging
 
 Push Notification Options:
@@ -120,8 +127,9 @@ function parseArgs(): Config {
   const config = {
     port: null as number | null,
     bind: null as string | null,
-    basicAuthUsername: null as string | null,
-    basicAuthPassword: null as string | null,
+    enableSSHKeys: false,
+    disallowUserPassword: false,
+    noAuth: false,
     isHQMode: false,
     hqUrl: null as string | null,
     hqUsername: null as string | null,
@@ -136,6 +144,8 @@ function parseArgs(): Config {
     vapidEmail: null as string | null,
     generateVapidKeys: true, // Generate keys automatically
     bellNotificationsEnabled: true, // Enable bell notifications by default
+    // Local bypass configuration
+    allowLocalBypass: false,
   };
 
   // Check for help flag first
@@ -158,12 +168,13 @@ function parseArgs(): Config {
     } else if (args[i] === '--bind' && i + 1 < args.length) {
       config.bind = args[i + 1];
       i++; // Skip the bind value in next iteration
-    } else if (args[i] === '--username' && i + 1 < args.length) {
-      config.basicAuthUsername = args[i + 1];
-      i++; // Skip the username value in next iteration
-    } else if (args[i] === '--password' && i + 1 < args.length) {
-      config.basicAuthPassword = args[i + 1];
-      i++; // Skip the password value in next iteration
+    } else if (args[i] === '--enable-ssh-keys') {
+      config.enableSSHKeys = true;
+    } else if (args[i] === '--disallow-user-password') {
+      config.disallowUserPassword = true;
+      config.enableSSHKeys = true; // Auto-enable SSH keys
+    } else if (args[i] === '--no-auth') {
+      config.noAuth = true;
     } else if (args[i] === '--hq') {
       config.isHQMode = true;
     } else if (args[i] === '--hq-url' && i + 1 < args.length) {
@@ -191,20 +202,14 @@ function parseArgs(): Config {
       i++; // Skip the email value in next iteration
     } else if (args[i] === '--generate-vapid-keys') {
       config.generateVapidKeys = true;
+    } else if (args[i] === '--allow-local-bypass') {
+      config.allowLocalBypass = true;
     } else if (args[i].startsWith('--')) {
       // Unknown argument
       logger.error(`Unknown argument: ${args[i]}`);
       logger.error('Use --help to see available options');
       process.exit(1);
     }
-  }
-
-  // Check environment variables for local auth
-  if (!config.basicAuthUsername && process.env.VIBETUNNEL_USERNAME) {
-    config.basicAuthUsername = process.env.VIBETUNNEL_USERNAME;
-  }
-  if (!config.basicAuthPassword && process.env.VIBETUNNEL_PASSWORD) {
-    config.basicAuthPassword = process.env.VIBETUNNEL_PASSWORD;
   }
 
   // Check environment variables for push notifications
@@ -217,16 +222,16 @@ function parseArgs(): Config {
 
 // Validate configuration
 function validateConfig(config: ReturnType<typeof parseArgs>) {
-  // Validate local auth configuration
-  if (
-    (config.basicAuthUsername && !config.basicAuthPassword) ||
-    (!config.basicAuthUsername && config.basicAuthPassword)
-  ) {
-    logger.error('Both username and password must be provided for authentication');
-    logger.error(
-      'Use --username and --password, or set both VIBETUNNEL_USERNAME and VIBETUNNEL_PASSWORD'
+  // Validate auth configuration
+  if (config.noAuth && (config.enableSSHKeys || config.disallowUserPassword)) {
+    logger.warn(
+      '--no-auth overrides all other authentication settings (authentication is disabled)'
     );
-    process.exit(1);
+  }
+
+  if (config.disallowUserPassword && !config.enableSSHKeys) {
+    logger.warn('--disallow-user-password requires SSH keys, auto-enabling --enable-ssh-keys');
+    config.enableSSHKeys = true;
   }
 
   // Validate HQ registration configuration
@@ -264,14 +269,6 @@ function validateConfig(config: ReturnType<typeof parseArgs>) {
     logger.error('Cannot use --hq and --hq-url together');
     logger.error('Use --hq to run as HQ server, or --hq-url to register with an HQ');
     process.exit(1);
-  }
-
-  // If not HQ mode and no HQ URL, warn about authentication
-  if (!config.basicAuthUsername && !config.basicAuthPassword && !config.isHQMode && !config.hqUrl) {
-    logger.warn('No authentication configured');
-    logger.warn(
-      'Set VIBETUNNEL_USERNAME and VIBETUNNEL_PASSWORD or use --username and --password flags'
-    );
   }
 }
 
@@ -426,17 +423,20 @@ export async function createApp(): Promise<AppInstance> {
   });
   logger.debug('Initialized buffer aggregator');
 
+  // Initialize authentication service
+  const authService = new AuthService();
+  logger.debug('Initialized authentication service');
+
   // Set up authentication
   const authMiddleware = createAuthMiddleware({
-    basicAuthUsername: config.basicAuthUsername,
-    basicAuthPassword: config.basicAuthPassword,
+    enableSSHKeys: config.enableSSHKeys,
+    disallowUserPassword: config.disallowUserPassword,
+    noAuth: config.noAuth,
     isHQMode: config.isHQMode,
     bearerToken: remoteBearerToken || undefined, // Token that HQ must use to auth with us
+    authService, // Add enhanced auth service for JWT tokens
+    allowLocalBypass: config.allowLocalBypass,
   });
-
-  // Apply auth middleware to all API routes
-  app.use('/api', authMiddleware);
-  logger.debug('Applied authentication middleware to /api routes');
 
   // Serve static files with .html extension handling
   const publicPath = path.join(process.cwd(), 'public');
@@ -470,6 +470,23 @@ export async function createApp(): Promise<AppInstance> {
     });
     logger.debug('Connected bell event handler to PTY manager');
   }
+
+  // Mount authentication routes (no auth required)
+  app.use(
+    '/api/auth',
+    createAuthRoutes({
+      authService,
+      enableSSHKeys: config.enableSSHKeys,
+      disallowUserPassword: config.disallowUserPassword,
+      noAuth: config.noAuth,
+      allowLocalBypass: config.allowLocalBypass,
+    })
+  );
+  logger.debug('Mounted authentication routes');
+
+  // Apply auth middleware to all API routes (except auth routes which are handled above)
+  app.use('/api', authMiddleware);
+  logger.debug('Applied authentication middleware to /api routes');
 
   // Mount routes
   app.use(
@@ -509,7 +526,7 @@ export async function createApp(): Promise<AppInstance> {
       createPushRoutes({
         vapidManager,
         pushNotificationService,
-        bellEventHandler,
+        bellEventHandler: bellEventHandler ?? undefined,
       })
     );
     logger.debug('Mounted push notification routes');
@@ -576,15 +593,21 @@ export async function createApp(): Promise<AppInstance> {
         chalk.green(`VibeTunnel Server running on http://${displayAddress}:${actualPort}`)
       );
 
-      if (config.basicAuthUsername && config.basicAuthPassword) {
-        logger.log(chalk.green('Basic authentication: ENABLED'));
-        logger.log(`Username: ${config.basicAuthUsername}`);
-        logger.log(`Password: ${'*'.repeat(config.basicAuthPassword.length)}`);
+      if (config.noAuth) {
+        logger.warn(chalk.yellow('Authentication: DISABLED (--no-auth)'));
+        logger.warn('Anyone can access this server without authentication');
+      } else if (config.disallowUserPassword) {
+        logger.log(chalk.green('Authentication: SSH KEYS ONLY (--disallow-user-password)'));
+        logger.log(chalk.gray('Password authentication is disabled'));
       } else {
-        logger.warn('Server running without authentication');
-        logger.warn(
-          'Anyone can access this server. Use --username and --password or set VIBETUNNEL_USERNAME and VIBETUNNEL_PASSWORD'
-        );
+        logger.log(chalk.green('Authentication: SYSTEM USER PASSWORD'));
+        if (config.enableSSHKeys) {
+          logger.log(chalk.green('SSH Key Authentication: ENABLED'));
+        } else {
+          logger.log(
+            chalk.gray('SSH Key Authentication: DISABLED (use --enable-ssh-keys to enable)')
+          );
+        }
       }
 
       // Initialize HQ client now that we know the actual port
@@ -705,7 +728,7 @@ export async function startVibeTunnelServer() {
   if (appInstance.pushNotificationService) {
     _subscriptionCleanupInterval = setInterval(
       () => {
-        appInstance.pushNotificationService!.cleanupInactiveSubscriptions().catch((error) => {
+        appInstance.pushNotificationService?.cleanupInactiveSubscriptions().catch((error) => {
           logger.error('Failed to cleanup inactive subscriptions:', error);
         });
       },

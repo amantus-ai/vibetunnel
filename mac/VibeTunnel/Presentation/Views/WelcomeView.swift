@@ -183,8 +183,6 @@ struct WelcomeView: View {
 
 // MARK: - Preview
 
-struct WelcomeView_Previews: PreviewProvider {
-    static var previews: some View {
-        WelcomeView()
-    }
+#Preview("Welcome View") {
+    WelcomeView()
 }

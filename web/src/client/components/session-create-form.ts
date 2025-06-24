@@ -15,6 +15,7 @@ import { LitElement, html, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
 import type { Session } from './session-list.js';
+import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('session-create-form');
@@ -40,6 +41,7 @@ export class SessionCreateForm extends LitElement {
   @property({ type: String }) sessionName = '';
   @property({ type: Boolean }) disabled = false;
   @property({ type: Boolean }) visible = false;
+  @property({ type: Object }) authClient!: AuthClient;
 
   @state() private isCreating = false;
   @state() private showFileBrowser = false;
@@ -220,7 +222,10 @@ export class SessionCreateForm extends LitElement {
     try {
       const response = await fetch('/api/sessions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.authClient.getAuthHeader(),
+        },
         body: JSON.stringify(sessionData),
       });
 
@@ -388,7 +393,7 @@ export class SessionCreateForm extends LitElement {
 
             <!-- Quick Start Section -->
             <div class="mb-6">
-              <label class="form-label text-dark-text-secondary uppercase text-xs tracking-wider"
+              <label class="form-label text-dark-text-muted uppercase text-xs tracking-wider"
                 >Quick Start</label
               >
               <div class="grid grid-cols-2 gap-3 mt-3">

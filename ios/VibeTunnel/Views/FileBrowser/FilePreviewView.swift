@@ -88,7 +88,8 @@ struct FilePreviewView: View {
         case .image:
             if let content = preview.content,
                let data = Data(base64Encoded: content),
-               let uiImage = UIImage(data: data) {
+               let uiImage = UIImage(data: data)
+            {
                 Image(uiImage: uiImage)
                     .resizable()
                     .aspectRatio(contentMode: .fit)

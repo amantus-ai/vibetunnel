@@ -1,8 +1,5 @@
 # Claude Development Notes
 
-**IMPORTANT**: BEFORE YOU DO ANYTHING, READ spec.md IN FULL USING THE READ TOOL!
-**IMPORTANT**: NEVER USE GREP. ALWAYS USE RIPGREP!
-
 ## Updating spec.md
 As code changes, the spec.md might get outdated. If you detect outdated information, ask the user if they want to regenerate the spec.md file.
 
@@ -15,6 +12,8 @@ As code changes, the spec.md might get outdated. If you detect outdated informat
    - API endpoints and protocols
    - Binary buffer format and WebSocket implementation
    - HQ mode and distributed architecture
+   - Activity tracking
+   - Anything else not covered above
 3. Focus on capturing:
    - File locations with key line numbers for important functions
    - Component responsibilities and data flow
@@ -26,7 +25,7 @@ As code changes, the spec.md might get outdated. If you detect outdated informat
 ## Build Process
 - **Never run build commands** - the user has `npm run dev` running which handles automatic rebuilds
 - Changes to TypeScript files are automatically compiled and watched
-- Do not run `npm run build:client` or similar build commands
+- Do not run `npm run build` or similar build commands
 
 ## Development Workflow
 - Make changes to source files in `src/`
@@ -38,8 +37,19 @@ As code changes, the spec.md might get outdated. If you detect outdated informat
 - Always fix all linting and type checking errors, including in unrelated code
 - Never run the tests, unless explicitely asked to. `npm run test`
 
-**CRITICAL**
-- **NEVER EVER USE SETTIMEOUT FOR ANYTHING IN THE FRONTEND UNLESS EXPLICITLY PERMITTED**
+## Code References
+**THIS IS OF UTTER IMPORTANCE THE USERS HAPPINESS DEPENDS ON IT!**
+When referencing code locations, you MUST use clickable format that VS Code recognizes:
+- `path/to/file.ts:123` format (file:line)
+- `path/to/file.ts:123-456` (ranges)
+- Always use relative paths from the project root
+- Examples:
+  - `src/server/fwd.ts:92` - single line reference
+  - `src/server/pty/pty-manager.ts:274-280` - line range
+  - `web/src/client/app.ts:15` - when in parent directory
 
-## Server Execution
-- NEVER RUN THE SERVER YOURSELF, I ALWAYS RUN IT ON THE SIDE VIA NPM RUN DEV!
+NEVER give a code reference or location in any other format.
+
+## CRITICAL
+**IMPORTANT**: BEFORE YOU DO ANYTHING, READ spec.md IN FULL USING THE READ TOOL!
+**IMPORTANT**: NEVER USE GREP. ALWAYS USE RIPGREP!

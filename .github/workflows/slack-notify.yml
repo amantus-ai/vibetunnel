@@ -105,7 +105,11 @@ jobs:
             }]
           };
           
-          return JSON.stringify(message);
+          // Write message to file to avoid shell escaping issues
+          const fs = require('fs');
+          fs.writeFileSync('/tmp/slack-message.json', JSON.stringify(message));
+          
+          return message;
           
     - name: Send to Slack
       if: ${{ github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.event == 'pull_request' }}
@@ -114,5 +118,5 @@ jobs:
       run: |
         curl -X POST \
           -H 'Content-type: application/json' \
-          --data '${{ steps.slack-message.outputs.result }}' \
+          --data-binary @/tmp/slack-message.json \
           "$SLACK_WEBHOOK_URL"

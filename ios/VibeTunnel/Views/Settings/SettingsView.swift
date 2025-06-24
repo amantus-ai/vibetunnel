@@ -40,7 +40,7 @@ struct SettingsView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Theme.Spacing.medium)
                             .foregroundColor(selectedTab == tab ? Theme.Colors.primaryAccent : Theme.Colors
-                                .terminalForeground.opacity(0.5)
+                                                .terminalForeground.opacity(0.5)
                             )
                             .background(
                                 selectedTab == tab ? Theme.Colors.primaryAccent.opacity(0.1) : Color.clear
@@ -172,7 +172,7 @@ struct GeneralSettingsView: View {
                     .padding()
                     .background(Theme.Colors.cardBackground)
                     .cornerRadius(Theme.CornerRadius.card)
-                    
+
                     // Live Previews
                     Toggle(isOn: $enableLivePreviews) {
                         HStack {
@@ -207,12 +207,12 @@ struct AdvancedSettingsView: View {
     @AppStorage("debugModeEnabled")
     private var debugModeEnabled = false
     @State private var showingSystemLogs = false
-    
+
     #if targetEnvironment(macCatalyst)
     @AppStorage("macWindowStyle")
     private var macWindowStyleRaw = "standard"
     @StateObject private var windowManager = MacCatalystWindowManager.shared
-    
+
     private var macWindowStyle: MacWindowStyle {
         macWindowStyleRaw == "inline" ? .inline : .standard
     }
@@ -273,14 +273,14 @@ struct AdvancedSettingsView: View {
                 Text("Mac Catalyst")
                     .font(.headline)
                     .foregroundColor(Theme.Colors.terminalForeground)
-                
+
                 VStack(spacing: Theme.Spacing.medium) {
                     // Window Style Picker
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                         Text("Window Style")
                             .font(Theme.Typography.terminalSystem(size: 14))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
-                        
+
                         Picker("Window Style", selection: $macWindowStyleRaw) {
                             Label("Standard", systemImage: "macwindow")
                                 .tag("standard")
@@ -292,12 +292,13 @@ struct AdvancedSettingsView: View {
                             let style: MacWindowStyle = newValue == "inline" ? .inline : .standard
                             windowManager.setWindowStyle(style)
                         }
-                        
-                        Text(macWindowStyle == .inline ? 
-                             "Traffic light buttons appear inline with content" : 
-                             "Standard macOS title bar with traffic lights")
-                            .font(Theme.Typography.terminalSystem(size: 12))
-                            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
+
+                        Text(macWindowStyle == .inline ?
+                                "Traffic light buttons appear inline with content" :
+                                "Standard macOS title bar with traffic lights"
+                        )
+                        .font(Theme.Typography.terminalSystem(size: 12))
+                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
                     }
                     .padding()
                     .background(Theme.Colors.cardBackground)
@@ -350,11 +351,11 @@ struct AboutSettingsView: View {
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
     }
-    
+
     private var buildNumber: String {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
     }
-    
+
     var body: some View {
         VStack(spacing: Theme.Spacing.xlarge) {
             // App icon and info
@@ -364,19 +365,19 @@ struct AboutSettingsView: View {
                     .frame(width: 100, height: 100)
                     .cornerRadius(22)
                     .shadow(color: Theme.Colors.primaryAccent.opacity(0.3), radius: 10, y: 5)
-                
+
                 VStack(spacing: Theme.Spacing.small) {
                     Text("VibeTunnel")
                         .font(.largeTitle)
                         .fontWeight(.bold)
-                    
+
                     Text("Version \(appVersion) (\(buildNumber))")
                         .font(Theme.Typography.terminalSystem(size: 14))
                         .foregroundColor(Theme.Colors.secondaryText)
                 }
             }
             .padding(.top, Theme.Spacing.large)
-            
+
             // Links section
             VStack(spacing: Theme.Spacing.medium) {
                 LinkRow(
@@ -385,21 +386,21 @@ struct AboutSettingsView: View {
                     subtitle: "vibetunnel.sh",
                     url: URL(string: "https://vibetunnel.sh")
                 )
-                
+
                 LinkRow(
                     icon: "doc.text",
                     title: "Documentation",
                     subtitle: "Learn how to use VibeTunnel",
                     url: URL(string: "https://docs.vibetunnel.sh")
                 )
-                
+
                 LinkRow(
                     icon: "exclamationmark.bubble",
                     title: "Report an Issue",
                     subtitle: "Help us improve",
                     url: URL(string: "https://github.com/vibetunnel/vibetunnel/issues")
                 )
-                
+
                 LinkRow(
                     icon: "heart",
                     title: "Rate on App Store",
@@ -407,20 +408,20 @@ struct AboutSettingsView: View {
                     url: URL(string: "https://apps.apple.com/app/vibetunnel")
                 )
             }
-            
+
             // Credits
             VStack(spacing: Theme.Spacing.small) {
                 Text("Made with ❤️ by the VibeTunnel team")
                     .font(Theme.Typography.terminalSystem(size: 12))
                     .foregroundColor(Theme.Colors.secondaryText)
                     .multilineTextAlignment(.center)
-                
+
                 Text("© 2024 VibeTunnel. All rights reserved.")
                     .font(Theme.Typography.terminalSystem(size: 11))
                     .foregroundColor(Theme.Colors.secondaryText.opacity(0.7))
             }
             .padding(.top, Theme.Spacing.large)
-            
+
             Spacer()
         }
     }
@@ -431,10 +432,10 @@ struct LinkRow: View {
     let title: String
     let subtitle: String
     let url: URL?
-    
+
     var body: some View {
         Button(action: {
-            if let url = url {
+            if let url {
                 UIApplication.shared.open(url)
             }
         }) {
@@ -443,19 +444,19 @@ struct LinkRow: View {
                     .font(.system(size: 20))
                     .foregroundColor(Theme.Colors.primaryAccent)
                     .frame(width: 30)
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(Theme.Typography.terminalSystem(size: 14))
                         .foregroundColor(Theme.Colors.terminalForeground)
-                    
+
                     Text(subtitle)
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.secondaryText)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: "arrow.up.right.square")
                     .font(.system(size: 16))
                     .foregroundColor(Theme.Colors.secondaryText.opacity(0.5))

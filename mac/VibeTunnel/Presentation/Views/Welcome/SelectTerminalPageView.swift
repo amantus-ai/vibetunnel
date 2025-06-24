@@ -147,10 +147,8 @@ struct SelectTerminalPageView: View {
 
 // MARK: - Preview
 
-struct SelectTerminalPageView_Previews: PreviewProvider {
-    static var previews: some View {
-        SelectTerminalPageView()
-            .frame(width: 640, height: 480)
-            .background(Color(NSColor.windowBackgroundColor))
-    }
+#Preview("Select Terminal Page") {
+    SelectTerminalPageView()
+        .frame(width: 640, height: 480)
+        .background(Color(NSColor.windowBackgroundColor))
 }

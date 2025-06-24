@@ -205,8 +205,9 @@ export class OfflineNotificationManager {
       return [];
     }
 
+    const db = this.db;
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORE_NAME], 'readonly');
+      const transaction = db.transaction([STORE_NAME], 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const index = store.index('nextRetry');
 
@@ -229,8 +230,9 @@ export class OfflineNotificationManager {
       throw new Error('Database not initialized');
     }
 
+    const db = this.db;
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORE_NAME], 'readwrite');
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.add(notification);
 
@@ -244,8 +246,9 @@ export class OfflineNotificationManager {
       throw new Error('Database not initialized');
     }
 
+    const db = this.db;
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORE_NAME], 'readwrite');
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.put(notification);
 
@@ -259,8 +262,9 @@ export class OfflineNotificationManager {
       throw new Error('Database not initialized');
     }
 
+    const db = this.db;
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORE_NAME], 'readwrite');
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.delete(id);
 
@@ -277,8 +281,9 @@ export class OfflineNotificationManager {
       return { total: 0, pending: 0, failed: 0, lastProcessed: 0 };
     }
 
+    const db = this.db;
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORE_NAME], 'readonly');
+      const transaction = db.transaction([STORE_NAME], 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.getAll();
 
@@ -311,8 +316,9 @@ export class OfflineNotificationManager {
       return;
     }
 
+    const db = this.db;
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORE_NAME], 'readwrite');
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.clear();
 

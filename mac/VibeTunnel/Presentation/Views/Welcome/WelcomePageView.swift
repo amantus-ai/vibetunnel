@@ -50,10 +50,8 @@ struct WelcomePageView: View {
 
 // MARK: - Preview
 
-struct WelcomePageView_Previews: PreviewProvider {
-    static var previews: some View {
-        WelcomePageView()
-            .frame(width: 640, height: 480)
-            .background(Color(NSColor.windowBackgroundColor))
-    }
+#Preview("Welcome Page") {
+    WelcomePageView()
+        .frame(width: 640, height: 480)
+        .background(Color(NSColor.windowBackgroundColor))
 }

@@ -117,13 +117,15 @@ final class SSEClient: NSObject, @unchecked Sendable {
                     // Check for exit event
                     if let firstElement = array[0] as? String, firstElement == "exit",
                        let exitCode = array[1] as? Int,
-                       let sessionId = array[2] as? String {
+                       let sessionId = array[2] as? String
+                    {
                         delegate?.sseClient(self, didReceiveEvent: .exit(exitCode: exitCode, sessionId: sessionId))
                     }
                     // Regular terminal output
                     else if let timestamp = array[0] as? Double,
                             let type = array[1] as? String,
-                            let outputData = array[2] as? String {
+                            let outputData = array[2] as? String
+                    {
                         delegate?.sseClient(
                             self,
                             didReceiveEvent: .terminalOutput(timestamp: timestamp, type: type, data: outputData)

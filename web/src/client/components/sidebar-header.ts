@@ -86,18 +86,21 @@ export class SidebarHeader extends HeaderBase {
               ? html`<span class="text-xs opacity-75">(${exitedSessions.length})</span>`
               : ''}
             <div
-              class="w-${compact ? '8' : '6'} h-${compact
-                ? '4'
-                : '3'} rounded-full transition-colors duration-200 ${this.hideExited
+              class="${compact
+                ? 'w-8 h-4'
+                : 'w-6 h-3'} rounded-full transition-colors duration-200 ${this.hideExited
                 ? 'bg-dark-border'
                 : 'bg-dark-bg'}"
             >
               <div
-                class="w-${compact ? '3' : '2'} h-${compact
-                  ? '3'
-                  : '2'} rounded-full transition-transform duration-200 mt-0.5 ${this.hideExited
+                class="${compact
+                  ? 'w-3 h-3'
+                  : 'w-2 h-2'} rounded-full transition-transform duration-200 mt-0.5 ${this
+                  .hideExited
                   ? `translate-x-0.5 bg-dark-text-muted`
-                  : `translate-x-${compact ? '4' : '3'} bg-dark-bg`}"
+                  : compact
+                    ? 'translate-x-4 bg-dark-bg'
+                    : 'translate-x-3 bg-dark-bg'}"
               ></div>
             </div>
           </div>

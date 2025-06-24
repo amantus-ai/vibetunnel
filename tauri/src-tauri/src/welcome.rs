@@ -211,9 +211,10 @@ impl WelcomeManager {
                     tauri::WebviewUrl::App("welcome.html".into()),
                 )
                 .title("Welcome to VibeTunnel")
-                .inner_size(800.0, 600.0)
+                .inner_size(640.0, 560.0)
                 .center()
                 .resizable(false)
+                .decorations(false)
                 .build()
                 .map_err(|e| e.to_string())?;
             }

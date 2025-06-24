@@ -7,4 +7,7 @@
    <FileRef
       location = "group:ios/VibeTunnel-iOS.xcodeproj">
    </FileRef>
+   <FileRef
+      location = "group:mac/VibeTunnel/VibeTunnel-Mac.xctestplan">
+   </FileRef>
 </Workspace>

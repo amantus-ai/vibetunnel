@@ -14,7 +14,8 @@ describe('HQ Mode E2E Tests', () => {
   const hqUsername = 'hq-admin';
   const hqPassword = 'hq-pass123';
   const testDirs: string[] = [];
-  const baseDir = path.join(os.tmpdir(), 'vibetunnel-hq-e2e', uuidv4());
+  // Use shorter directory name to avoid exceeding Unix socket path limit (104 chars on macOS)
+  const baseDir = path.join(os.tmpdir(), 'vt-hq', uuidv4().substring(0, 8));
 
   async function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));

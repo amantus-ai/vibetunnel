@@ -9,7 +9,7 @@ struct FullscreenTextInput: View {
     @State private var text: String = ""
     @FocusState private var isFocused: Bool
     @State private var showingOptions = false
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -28,7 +28,7 @@ struct FullscreenTextInput: View {
                 .background(Theme.Colors.cardBackground)
                 .cornerRadius(Theme.CornerRadius.medium)
                 .padding()
-                
+
                 // Quick actions
                 HStack(spacing: Theme.Spacing.medium) {
                     // Template commands
@@ -36,25 +36,25 @@ struct FullscreenTextInput: View {
                         Button(action: { insertTemplate("ls -la") }, label: {
                             Label("List Files", systemImage: "folder")
                         })
-                        
+
                         Button(action: { insertTemplate("cd ") }, label: {
                             Label("Change Directory", systemImage: "arrow.right.square")
                         })
-                        
+
                         Button(action: { insertTemplate("git status") }, label: {
                             Label("Git Status", systemImage: "arrow.triangle.branch")
                         })
-                        
+
                         Button(action: { insertTemplate("sudo ") }, label: {
                             Label("Sudo Command", systemImage: "lock")
                         })
-                        
+
                         Divider()
-                        
+
                         Button(action: { insertTemplate("ssh ") }, label: {
                             Label("SSH Connect", systemImage: "network")
                         })
-                        
+
                         Button(action: { insertTemplate("docker ps") }, label: {
                             Label("Docker List", systemImage: "shippingbox")
                         })
@@ -63,14 +63,14 @@ struct FullscreenTextInput: View {
                             .font(Theme.Typography.terminalSystem(size: 14))
                     }
                     .buttonStyle(.bordered)
-                    
+
                     Spacer()
-                    
+
                     // Character count
                     Text("\(text.count) characters")
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.secondaryText)
-                    
+
                     // Clear button
                     if !text.isEmpty {
                         Button(action: {
@@ -84,10 +84,10 @@ struct FullscreenTextInput: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom, Theme.Spacing.small)
-                
+
                 Divider()
                     .background(Theme.Colors.cardBorder)
-                
+
                 // Input options
                 VStack(spacing: Theme.Spacing.small) {
                     // Common special characters
@@ -110,7 +110,7 @@ struct FullscreenTextInput: View {
                         }
                         .padding(.horizontal)
                     }
-                    
+
                     // Submit options
                     HStack(spacing: Theme.Spacing.medium) {
                         // Execute immediately
@@ -128,7 +128,7 @@ struct FullscreenTextInput: View {
                             .background(Theme.Colors.primaryAccent)
                             .cornerRadius(Theme.CornerRadius.medium)
                         })
-                        
+
                         // Insert without executing
                         Button(action: {
                             insertAndClose()
@@ -163,7 +163,7 @@ struct FullscreenTextInput: View {
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingOptions.toggle() }, label: {
                         Image(systemName: "ellipsis.circle")
@@ -177,17 +177,17 @@ struct FullscreenTextInput: View {
             isFocused = true
         }
     }
-    
+
     private func insertText(_ text: String) {
         self.text.append(text)
         HapticFeedback.impact(.light)
     }
-    
+
     private func insertTemplate(_ template: String) {
         self.text = template
         HapticFeedback.impact(.light)
     }
-    
+
     private func submitAndClose() {
         if !text.isEmpty {
             onSubmit(text + "\n") // Add newline to execute
@@ -195,7 +195,7 @@ struct FullscreenTextInput: View {
         }
         isPresented = false
     }
-    
+
     private func insertAndClose() {
         if !text.isEmpty {
             onSubmit(text) // Don't add newline, just insert

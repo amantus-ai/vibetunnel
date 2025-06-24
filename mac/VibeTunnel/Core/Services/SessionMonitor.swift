@@ -22,7 +22,7 @@ struct ServerSessionInfo: Codable {
 @Observable
 final class SessionMonitor {
     static let shared = SessionMonitor()
-    
+
     private(set) var sessions: [String: ServerSessionInfo] = [:]
     private(set) var lastError: Error?
 

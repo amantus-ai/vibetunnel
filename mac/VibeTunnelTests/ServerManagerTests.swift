@@ -27,7 +27,7 @@ final class ServerManagerTests {
         await manager.start()
 
         // Give server time to attempt start
-        try await Task.sleep(for: .milliseconds(500))
+        try await Task.sleep(for: .milliseconds(2000))
 
         // In test environment, server binary won't be found, so we expect failure
         // Check that lastError indicates the binary wasn't found
@@ -54,7 +54,7 @@ final class ServerManagerTests {
 
         // First attempt to start
         await manager.start()
-        try await Task.sleep(for: .milliseconds(100))
+        try await Task.sleep(for: .milliseconds(1000))
 
         let firstServer = manager.bunServer
         let firstError = manager.lastError

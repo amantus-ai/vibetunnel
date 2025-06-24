@@ -60,6 +60,8 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 - **🍎 Apple Silicon Native** - Optimized for M1/M2/M3 Macs with ARM64-only binaries
 - **🐚 Shell Alias Support** - Your custom aliases and shell functions work automatically
 
+> **Note**: The iOS app and Tauri-based components are still work in progress and not recommended for production use yet.
+
 ## Architecture
 
 VibeTunnel consists of three main components:

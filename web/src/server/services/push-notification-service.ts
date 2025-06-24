@@ -45,7 +45,7 @@ export interface NotificationPayload {
     action: string;
     title: string;
   }>;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 /**
@@ -195,13 +195,15 @@ export class PushNotificationService {
         const shouldRemove = this.shouldRemoveSubscription(error);
         if (shouldRemove) {
           this.subscriptions.delete(subscription.id);
+          const webPushError = error as Error & { statusCode?: number };
           logger.log(
-            `Removed expired subscription: ${subscription.id} (status: ${(error as any).statusCode})`
+            `Removed expired subscription: ${subscription.id} (status: ${webPushError.statusCode})`
           );
         } else {
           // Debug log for unhandled errors
+          const webPushError = error as Error & { statusCode?: number };
           logger.debug(
-            `Not removing subscription ${subscription.id}, error: ${error instanceof Error ? error.message : String(error)}, statusCode: ${(error as any).statusCode}`
+            `Not removing subscription ${subscription.id}, error: ${error instanceof Error ? error.message : String(error)}, statusCode: ${webPushError.statusCode}`
           );
         }
       }
@@ -254,7 +256,7 @@ export class PushNotificationService {
 
     // Check for HTTP 410 Gone status (subscription expired)
     // WebPushError has a statusCode property
-    const webPushError = error as any;
+    const webPushError = error as Error & { statusCode?: number };
     if (webPushError.statusCode === 410) {
       return true;
     }
@@ -315,7 +317,8 @@ export class PushNotificationService {
 
       logger.debug(`Loaded ${subscriptions.length} subscriptions`);
     } catch (error) {
-      if ((error as any).code === 'ENOENT') {
+      const fsError = error as NodeJS.ErrnoException;
+      if (fsError.code === 'ENOENT') {
         logger.debug('No existing subscriptions file found');
       } else {
         logger.error('Failed to load subscriptions:', error);

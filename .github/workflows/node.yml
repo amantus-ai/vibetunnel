@@ -12,22 +12,22 @@ jobs:
   lint:
     name: Lint TypeScript/JavaScript Code
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
         cache-dependency-path: web/package-lock.json
-        
+
     - name: Install dependencies
       working-directory: web
       run: npm ci
-      
+
     - name: Check formatting with Prettier
       id: prettier
       working-directory: web
@@ -35,7 +35,7 @@ jobs:
       run: |
         npm run format:check 2>&1 | tee prettier-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-      
+
     - name: Run ESLint
       id: eslint
       working-directory: web
@@ -43,7 +43,7 @@ jobs:
       run: |
         npm run lint 2>&1 | tee eslint-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-        
+
     - name: Read Prettier Output
       if: always()
       id: prettier-output
@@ -56,7 +56,7 @@ jobs:
         else
           echo "content=No output" >> $GITHUB_OUTPUT
         fi
-        
+
     - name: Read ESLint Output
       if: always()
       id: eslint-output
@@ -69,7 +69,7 @@ jobs:
         else
           echo "content=No output" >> $GITHUB_OUTPUT
         fi
-        
+
     - name: Report Prettier Results
       if: always()
       uses: ./.github/actions/lint-reporter
@@ -78,7 +78,7 @@ jobs:
         lint-result: ${{ steps.prettier.outputs.result == '0' && 'success' || 'failure' }}
         lint-output: ${{ steps.prettier-output.outputs.content }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        
+
     - name: Report ESLint Results
       if: always()
       uses: ./.github/actions/lint-reporter
@@ -91,32 +91,32 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
         cache-dependency-path: web/package-lock.json
-        
+
     - name: Install dependencies
       working-directory: web
       run: npm ci
-      
+
     - name: Build frontend and backend
       working-directory: web
       run: npm run build:ci
-      
+
     - name: Run tests
       working-directory: web
       run: npm run test:ci
       env:
         CI: true
-      
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -128,22 +128,22 @@ jobs:
   type-check:
     name: TypeScript Type Checking
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
         cache-dependency-path: web/package-lock.json
-        
+
     - name: Install dependencies
       working-directory: web
       run: npm ci
-      
+
     - name: Check TypeScript types
       working-directory: web
       run: npm run typecheck
@@ -151,18 +151,18 @@ jobs:
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
         cache-dependency-path: web/package-lock.json
-        
+
     - name: Run npm audit
       working-directory: web
       run: npm audit --audit-level=moderate || true

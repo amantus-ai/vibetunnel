@@ -112,7 +112,9 @@ struct TerminalView: View {
                 }
         )
         .task {
-            for await notification in NotificationCenter.default.notifications(named: UIResponder.keyboardWillShowNotification) {
+            for await notification in NotificationCenter.default
+                .notifications(named: UIResponder.keyboardWillShowNotification)
+            {
                 if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
                     withAnimation(Theme.Animation.standard) {
                         keyboardHeight = keyboardFrame.height
@@ -290,11 +292,11 @@ struct TerminalView: View {
         Button(action: { viewModel.clearTerminal() }, label: {
             Label("Clear", systemImage: "clear")
         })
-        
+
         Button(action: { showingFullscreenInput = true }, label: {
             Label("Compose Command", systemImage: "text.viewfinder")
         })
-        
+
         Button(action: { showingCtrlKeyGrid = true }, label: {
             Label("Ctrl Shortcuts", systemImage: "command.square")
         })
@@ -523,12 +525,11 @@ struct TerminalView: View {
             .focused($isInputFocused)
             .overlay(
                 ScrollToBottomButton(
-                    isVisible: showScrollToBottom,
-                    action: {
-                        viewModel.scrollToBottom()
-                        showScrollToBottom = false
-                    }
-                )
+                    isVisible: showScrollToBottom
+                ) {
+                    viewModel.scrollToBottom()
+                    showScrollToBottom = false
+                }
                 .padding(.bottom, Theme.Spacing.large)
                 .padding(.leading, Theme.Spacing.large),
                 alignment: .bottomLeading
@@ -699,7 +700,7 @@ class TerminalViewModel {
             logger.info("Terminal initialized: \(width)x\(height)")
             terminalCols = width
             terminalRows = height
-            // The terminal will be resized when created
+        // The terminal will be resized when created
 
         case .output(_, let data):
             // Feed output data directly to the terminal
@@ -724,7 +725,8 @@ class TerminalViewModel {
             let parts = dimensions.split(separator: "x")
             if parts.count == 2,
                let cols = Int(parts[0]),
-               let rows = Int(parts[1]) {
+               let rows = Int(parts[1])
+            {
                 // Update terminal dimensions
                 terminalCols = cols
                 terminalRows = rows

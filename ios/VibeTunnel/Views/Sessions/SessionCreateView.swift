@@ -116,11 +116,10 @@ struct SessionCreateView: View {
                             // Error Message
                             if presentedError != nil {
                                 ErrorBanner(
-                                    message: presentedError?.error.localizedDescription ?? "An error occurred",
-                                    onDismiss: {
-                                        presentedError = nil
-                                    }
-                                )
+                                    message: presentedError?.error.localizedDescription ?? "An error occurred"
+                                ) {
+                                    presentedError = nil
+                                }
                                 .overlay(
                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                         .stroke(Theme.Colors.errorAccent.opacity(0.3), lineWidth: 1)
@@ -157,14 +156,14 @@ struct SessionCreateView: View {
                                                         .font(Theme.Typography.terminalSystem(size: 13))
                                                 }
                                                 .foregroundColor(workingDirectory == dir ? Theme.Colors
-                                                    .terminalBackground : Theme.Colors.terminalForeground
+                                                                    .terminalBackground : Theme.Colors.terminalForeground
                                                 )
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 8)
                                                 .background(
                                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                                         .fill(workingDirectory == dir ? Theme.Colors
-                                                            .primaryAccent : Theme.Colors.cardBorder.opacity(0.1)
+                                                                .primaryAccent : Theme.Colors.cardBorder.opacity(0.1)
                                                         )
                                                 )
                                                 .overlay(
@@ -210,16 +209,16 @@ struct SessionCreateView: View {
                                             Spacer()
                                         }
                                         .foregroundColor(command == item.command ? Theme.Colors
-                                            .terminalBackground : Theme.Colors
-                                            .terminalForeground
+                                                            .terminalBackground : Theme.Colors
+                                                            .terminalForeground
                                         )
                                         .padding(.horizontal, Theme.Spacing.medium)
                                         .padding(.vertical, 14)
                                         .background(
                                             RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                                                 .fill(command == item.command ? Theme.Colors.primaryAccent : Theme
-                                                    .Colors
-                                                    .cardBackground
+                                                        .Colors
+                                                        .cardBackground
                                                 )
                                         )
                                         .overlay(
@@ -284,7 +283,7 @@ struct SessionCreateView: View {
                                 Text("Create")
                                     .font(.system(size: 17, weight: .semibold))
                                     .foregroundColor(command.isEmpty ? Theme.Colors.primaryAccent.opacity(0.5) : Theme
-                                        .Colors.primaryAccent
+                                                        .Colors.primaryAccent
                                     )
                             }
                         })

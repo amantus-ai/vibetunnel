@@ -8,6 +8,7 @@ module.exports = {
                 "dark-bg": "#0a0a0a",
                 "dark-bg-secondary": "#1a1a1a",
                 "dark-bg-tertiary": "#242424",
+                "dark-surface": "#1f1f1f",
                 "dark-border": "#2a2a2a",
                 "dark-border-light": "#3a3a3a",
                 

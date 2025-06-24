@@ -9,6 +9,7 @@
  * @fires kill-all-sessions - When kill all button is clicked
  * @fires clean-exited-sessions - When clean exited button is clicked
  * @fires open-file-browser - When browse button is clicked
+ * @fires logout - When logout is clicked
  */
 import { LitElement, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
@@ -27,6 +28,8 @@ export class AppHeader extends LitElement {
   @property({ type: Array }) sessions: Session[] = [];
   @property({ type: Boolean }) hideExited = true;
   @property({ type: Boolean }) showSplitView = false;
+  @property({ type: String }) currentUser: string | null = null;
+  @property({ type: String }) authMethod: string | null = null;
 
   private forwardEvent = (e: Event) => {
     // Forward events from child components to parent
@@ -60,10 +63,15 @@ export class AppHeader extends LitElement {
       <full-header
         .sessions=${this.sessions}
         .hideExited=${this.hideExited}
+        .currentUser=${this.currentUser}
+        .authMethod=${this.authMethod}
         @create-session=${this.forwardEvent}
         @hide-exited-change=${this.forwardEvent}
         @kill-all-sessions=${this.forwardEvent}
         @clean-exited-sessions=${this.forwardEvent}
+        @open-file-browser=${this.forwardEvent}
+        @open-notification-settings=${this.forwardEvent}
+        @logout=${this.forwardEvent}
       ></full-header>
     `;
   }

@@ -6,8 +6,8 @@ private let logger = Logger(category: "CtrlKeyGrid")
 struct CtrlKeyGrid: View {
     @Binding var isPresented: Bool
     let onKeyPress: (String) -> Void
-    
-    // Common Ctrl combinations organized by category
+
+    /// Common Ctrl combinations organized by category
     let navigationKeys = [
         ("A", "Beginning of line"),
         ("E", "End of line"),
@@ -16,7 +16,7 @@ struct CtrlKeyGrid: View {
         ("P", "Previous command"),
         ("N", "Next command")
     ]
-    
+
     let editingKeys = [
         ("D", "Delete character"),
         ("H", "Backspace"),
@@ -25,7 +25,7 @@ struct CtrlKeyGrid: View {
         ("K", "Delete to end"),
         ("Y", "Paste")
     ]
-    
+
     let processKeys = [
         ("C", "Interrupt (SIGINT)"),
         ("Z", "Suspend (SIGTSTP)"),
@@ -34,7 +34,7 @@ struct CtrlKeyGrid: View {
         ("Q", "Resume output"),
         ("L", "Clear screen")
     ]
-    
+
     let searchKeys = [
         ("R", "Search history"),
         ("T", "Transpose chars"),
@@ -43,9 +43,9 @@ struct CtrlKeyGrid: View {
         ("G", "Cancel command"),
         ("O", "Execute + new line")
     ]
-    
+
     @State private var selectedCategory = 0
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -58,7 +58,7 @@ struct CtrlKeyGrid: View {
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
-                
+
                 // Key grid
                 ScrollView {
                     LazyVGrid(columns: [
@@ -69,20 +69,19 @@ struct CtrlKeyGrid: View {
                         ForEach(currentKeys, id: \.0) { key, description in
                             CtrlGridKeyButton(
                                 key: key,
-                                description: description,
-                                onPress: { sendCtrlKey(key) }
-                            )
+                                description: description
+                            ) { sendCtrlKey(key) }
                         }
                     }
                     .padding()
                 }
-                
+
                 // Quick reference
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("Tip: Long press any key to see its function")
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.secondaryText)
-                    
+
                     Text("These shortcuts work in most terminal applications")
                         .font(Theme.Typography.terminalSystem(size: 11))
                         .foregroundColor(Theme.Colors.secondaryText.opacity(0.7))
@@ -104,17 +103,17 @@ struct CtrlKeyGrid: View {
         }
         .preferredColorScheme(.dark)
     }
-    
+
     private var currentKeys: [(String, String)] {
         switch selectedCategory {
-        case 0: return navigationKeys
-        case 1: return editingKeys
-        case 2: return processKeys
-        case 3: return searchKeys
-        default: return navigationKeys
+        case 0: navigationKeys
+        case 1: editingKeys
+        case 2: processKeys
+        case 3: searchKeys
+        default: navigationKeys
         }
     }
-    
+
     private func sendCtrlKey(_ key: String) {
         // Convert letter to control character
         if let charCode = key.first?.asciiValue {
@@ -124,7 +123,7 @@ struct CtrlKeyGrid: View {
                 Task { @MainActor in
                     HapticFeedback.impact(.medium)
                 }
-                
+
                 // Auto-dismiss for common keys
                 if ["C", "D", "Z"].contains(key) {
                     isPresented = false
@@ -139,17 +138,17 @@ struct CtrlGridKeyButton: View {
     let key: String
     let description: String
     let onPress: () -> Void
-    
+
     @State private var isPressed = false
     @State private var showingTooltip = false
-    
+
     var body: some View {
-        Button(action: onPress, label: {
+        Button(action: onPress) {
             VStack(spacing: 4) {
                 Text("^" + key)
                     .font(Theme.Typography.terminalSystem(size: 20, weight: .bold))
                     .foregroundColor(isPressed ? .white : Theme.Colors.primaryAccent)
-                
+
                 Text("Ctrl+" + key)
                     .font(Theme.Typography.terminalSystem(size: 10))
                     .foregroundColor(isPressed ? .white.opacity(0.8) : Theme.Colors.secondaryText)
@@ -171,7 +170,7 @@ struct CtrlGridKeyButton: View {
                 color: isPressed ? Theme.Colors.primaryAccent.opacity(0.3) : .clear,
                 radius: isPressed ? 8 : 0
             )
-        })
+        }
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isPressed ? 0.95 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
@@ -185,7 +184,7 @@ struct CtrlGridKeyButton: View {
             Task { @MainActor in
                 HapticFeedback.impact(.light)
             }
-            
+
             // Hide tooltip after 3 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 showingTooltip = false
@@ -196,7 +195,7 @@ struct CtrlGridKeyButton: View {
                 Text("Ctrl+" + key)
                     .font(Theme.Typography.terminalSystem(size: 14, weight: .bold))
                     .foregroundColor(Theme.Colors.primaryAccent)
-                
+
                 Text(description)
                     .font(Theme.Typography.terminalSystem(size: 12))
                     .foregroundColor(Theme.Colors.terminalForeground)

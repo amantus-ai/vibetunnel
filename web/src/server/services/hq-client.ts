@@ -56,7 +56,9 @@ export class HQClient {
       });
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({ error: response.statusText }));
+        const errorBody = (await response.json().catch(() => ({ error: response.statusText }))) as {
+          error: string;
+        };
         logger.debug(`registration failed with status ${response.status}`, errorBody);
         throw new Error(`Registration failed: ${errorBody.error || response.statusText}`);
       }

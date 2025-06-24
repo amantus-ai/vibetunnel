@@ -13,6 +13,7 @@ export class ResponsiveObserver {
   private callbacks = new Set<(state: MediaQueryState) => void>();
   private currentState: MediaQueryState;
   private resizeObserver: ResizeObserver | null = null;
+  private fallbackResizeHandler: (() => void) | null = null;
 
   constructor() {
     this.currentState = this.getMediaQueryState();
@@ -53,6 +54,7 @@ export class ResponsiveObserver {
       }, 100);
     };
 
+    this.fallbackResizeHandler = handleResize;
     window.addEventListener('resize', handleResize);
   }
 
@@ -95,6 +97,10 @@ export class ResponsiveObserver {
   destroy(): void {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
+    }
+    if (this.fallbackResizeHandler) {
+      window.removeEventListener('resize', this.fallbackResizeHandler);
+      this.fallbackResizeHandler = null;
     }
     this.callbacks.clear();
   }

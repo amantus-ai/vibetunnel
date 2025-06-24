@@ -8,7 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
 describe('Server Smoke Test', () => {
   let serverProcess: ChildProcess | null = null;
   let serverPort = 0;
-  const testDir = path.join(os.tmpdir(), 'vibetunnel-smoke-test', uuidv4());
+  // Use shorter directory name to avoid exceeding Unix socket path limit (104 chars on macOS)
+  const testDir = path.join(os.tmpdir(), 'vt-test', uuidv4().substring(0, 8));
 
   async function startServer(): Promise<number> {
     const cliPath = path.join(__dirname, '..', '..', 'cli.ts');

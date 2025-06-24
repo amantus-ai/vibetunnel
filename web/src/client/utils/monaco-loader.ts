@@ -11,8 +11,11 @@ const logger = createLogger('monaco-loader');
 // Declare monaco on window
 declare global {
   interface Window {
-    monaco: any;
-    require: any;
+    monaco: typeof import('monaco-editor');
+    require: {
+      (dependencies: string[], callback: (...args: unknown[]) => void): void;
+      config: (config: { paths: { [key: string]: string } }) => void;
+    };
   }
 }
 
@@ -42,8 +45,10 @@ async function loadMonacoEditor(): Promise<void> {
       // Disable workers - they interfere with diff computation
       // Monaco will fall back to synchronous mode which works fine
       window.MonacoEnvironment = {
-        getWorker: function (_workerId: string, _label: string) {
-          return null as any;
+        getWorker: function (_workerId: string, _label: string): Worker {
+          // Return a dummy worker that will never be used
+          // Monaco will fall back to synchronous mode
+          return new Worker('data:,');
         },
       };
 
@@ -150,7 +155,7 @@ export async function initializeMonaco(): Promise<void> {
 /**
  * Ensure Monaco is loaded and ready
  */
-export async function ensureMonacoLoaded(): Promise<any> {
+export async function ensureMonacoLoaded(): Promise<typeof import('monaco-editor')> {
   await initializeMonaco();
   return window.monaco;
 }

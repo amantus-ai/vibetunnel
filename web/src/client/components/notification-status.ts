@@ -44,6 +44,9 @@ export class NotificationStatus extends LitElement {
       return;
     }
 
+    // Wait for the push notification service to be fully initialized
+    await pushNotificationService.waitForInitialization();
+
     this.permission = pushNotificationService.getPermission();
     this.subscription = pushNotificationService.getSubscription();
 
@@ -64,13 +67,7 @@ export class NotificationStatus extends LitElement {
   }
 
   private getStatusConfig() {
-    if (!this.isSupported) {
-      return {
-        color: 'text-dark-text-secondary',
-        tooltip: 'Notifications not supported',
-      };
-    }
-
+    // Green when notifications are enabled (permission granted AND subscription active)
     if (this.permission === 'granted' && this.subscription) {
       return {
         color: 'text-status-success',
@@ -78,16 +75,19 @@ export class NotificationStatus extends LitElement {
       };
     }
 
-    if (this.permission === 'denied') {
-      return {
-        color: 'text-status-error',
-        tooltip: 'Notifications blocked',
-      };
+    // Red for all other cases (not supported, denied, or no subscription)
+    let tooltip = 'Notifications disabled';
+    if (!this.isSupported) {
+      tooltip = 'Notifications not supported';
+    } else if (this.permission === 'denied') {
+      tooltip = 'Notifications blocked';
+    } else if (!this.subscription) {
+      tooltip = 'Notifications not subscribed';
     }
 
     return {
-      color: 'text-status-warning',
-      tooltip: 'Notifications available',
+      color: 'text-status-error',
+      tooltip,
     };
   }
 

@@ -45,7 +45,8 @@ enum TerminalEvent {
            let exitString = array[0] as? String,
            exitString == "exit",
            let exitCode = array[1] as? Int,
-           let sessionId = array[2] as? String {
+           let sessionId = array[2] as? String
+        {
             self = .exit(code: exitCode, sessionId: sessionId)
             return
         }

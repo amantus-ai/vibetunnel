@@ -18,6 +18,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from './session-list.js';
 import './terminal.js';
 import './file-browser.js';
+import './clickable-path.js';
 import type { Terminal } from './terminal.js';
 import { CastConverter } from '../utils/cast-converter.js';
 import {
@@ -25,6 +26,7 @@ import {
   COMMON_TERMINAL_WIDTHS,
 } from '../utils/terminal-preferences.js';
 import { createLogger } from '../utils/logger.js';
+import { AuthClient } from '../services/auth-client.js';
 
 const logger = createLogger('session-view');
 
@@ -41,8 +43,11 @@ export class SessionView extends LitElement {
   @property({ type: Boolean }) sidebarCollapsed = false;
   @state() private connected = false;
   @state() private terminal: Terminal | null = null;
-  @state() private streamConnection: { eventSource: EventSource; disconnect: () => void } | null =
-    null;
+  @state() private streamConnection: {
+    eventSource: EventSource;
+    disconnect: () => void;
+    errorHandler?: EventListener;
+  } | null = null;
   @state() private showMobileInput = false;
   @state() private mobileInputText = '';
   @state() private isMobile = false;
@@ -61,6 +66,7 @@ export class SessionView extends LitElement {
   @state() private terminalFontSize = 14;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
+  private authClient = new AuthClient();
   @state() private reconnectCount = 0;
   @state() private ctrlSequence: string[] = [];
 
@@ -70,6 +76,7 @@ export class SessionView extends LitElement {
   private resizeTimeout: number | null = null;
   private lastResizeWidth = 0;
   private lastResizeHeight = 0;
+  private instanceId = `sv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   private keyboardHandler = (e: KeyboardEvent) => {
     // Check if we're typing in an input field
@@ -240,10 +247,7 @@ export class SessionView extends LitElement {
     this.stopLoading();
 
     // Cleanup stream connection if it exists
-    if (this.streamConnection) {
-      this.streamConnection.disconnect();
-      this.streamConnection = null;
-    }
+    this.cleanupStreamConnection();
 
     // Terminal cleanup is handled by the component itself
     this.terminal = null;
@@ -257,8 +261,25 @@ export class SessionView extends LitElement {
     }
   }
 
+  private cleanupStreamConnection(): void {
+    if (this.streamConnection) {
+      logger.log('Cleaning up stream connection');
+      this.streamConnection.disconnect();
+      this.streamConnection = null;
+    }
+  }
+
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
+
+    // If session changed, clean up old stream connection
+    if (changedProperties.has('session')) {
+      const oldSession = changedProperties.get('session') as Session | null;
+      if (oldSession && oldSession.id !== this.session?.id) {
+        logger.log('Session changed, cleaning up old stream connection');
+        this.cleanupStreamConnection();
+      }
+    }
 
     // Stop loading and create terminal when session becomes available
     if (changedProperties.has('session') && this.session && this.loading) {
@@ -267,7 +288,7 @@ export class SessionView extends LitElement {
     }
 
     // Initialize terminal after first render when terminal element exists
-    if (!this.terminal && this.session && !this.loading) {
+    if (!this.terminal && this.session && !this.loading && this.connected) {
       const terminalElement = this.querySelector('vibe-terminal') as Terminal;
       if (terminalElement) {
         this.initializeTerminal();
@@ -282,7 +303,10 @@ export class SessionView extends LitElement {
 
   private async initializeTerminal() {
     const terminalElement = this.querySelector('vibe-terminal') as Terminal;
-    if (!terminalElement || !this.session) return;
+    if (!terminalElement || !this.session) {
+      logger.warn(`[${this.instanceId}] Cannot initialize terminal - missing element or session`);
+      return;
+    }
 
     this.terminal = terminalElement;
 
@@ -312,19 +336,42 @@ export class SessionView extends LitElement {
     );
 
     // Connect to stream directly without artificial delays
-    this.connectToStream();
+    // Use setTimeout to ensure we're still connected after all synchronous updates
+    setTimeout(() => {
+      if (this.connected) {
+        this.connectToStream();
+      } else {
+        logger.warn(`[${this.instanceId}] Component disconnected before stream connection`);
+      }
+    }, 0);
   }
 
   private connectToStream() {
-    if (!this.terminal || !this.session) return;
-
-    // Clean up existing connection
-    if (this.streamConnection) {
-      this.streamConnection.disconnect();
-      this.streamConnection = null;
+    if (!this.terminal || !this.session) {
+      logger.warn(`[${this.instanceId}] Cannot connect to stream - missing terminal or session`);
+      return;
     }
 
-    const streamUrl = `/api/sessions/${this.session.id}/stream`;
+    // Don't connect if we're already disconnected
+    if (!this.connected) {
+      logger.warn(`[${this.instanceId}] Component already disconnected, not connecting to stream`);
+      return;
+    }
+
+    logger.log(`[${this.instanceId}] Connecting to stream for session ${this.session.id}`);
+
+    // Clean up existing connection
+    this.cleanupStreamConnection();
+
+    // Get auth client from the main app
+    const authClient = new AuthClient();
+    const user = authClient.getCurrentUser();
+
+    // Build stream URL with auth token as query parameter (EventSource doesn't support headers)
+    let streamUrl = `/api/sessions/${this.session.id}/stream`;
+    if (user?.token) {
+      streamUrl += `?token=${encodeURIComponent(user.token)}`;
+    }
 
     // Use CastConverter to connect terminal to stream with reconnection tracking
     const connection = CastConverter.connectToStream(this.terminal, streamUrl);
@@ -357,8 +404,7 @@ export class SessionView extends LitElement {
           this.requestUpdate();
 
           // Disconnect the stream and load final snapshot
-          connection.disconnect();
-          this.streamConnection = null;
+          this.cleanupStreamConnection();
 
           // Load final snapshot
           requestAnimationFrame(() => {
@@ -371,7 +417,11 @@ export class SessionView extends LitElement {
     // Override the error handler
     originalEventSource.addEventListener('error', handleError);
 
-    this.streamConnection = connection;
+    // Store the connection with error handler reference
+    this.streamConnection = {
+      ...connection,
+      errorHandler: handleError as EventListener,
+    };
   }
 
   private async handleKeyboardInput(e: KeyboardEvent) {
@@ -486,6 +536,7 @@ export class SessionView extends LitElement {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...this.authClient.getAuthHeader(),
         },
         body: JSON.stringify(body),
       });
@@ -537,10 +588,7 @@ export class SessionView extends LitElement {
       this.requestUpdate();
 
       // Switch to snapshot mode - disconnect stream and load final snapshot
-      if (this.streamConnection) {
-        this.streamConnection.disconnect();
-        this.streamConnection = null;
-      }
+      this.cleanupStreamConnection();
     }
   }
 
@@ -598,7 +646,10 @@ export class SessionView extends LitElement {
 
           const response = await fetch(`/api/sessions/${this.session.id}/resize`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...this.authClient.getAuthHeader(),
+            },
             body: JSON.stringify({ cols: cols, rows: rows }),
           });
 
@@ -962,6 +1013,7 @@ export class SessionView extends LitElement {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...this.authClient.getAuthHeader(),
         },
         body: JSON.stringify(body),
       });
@@ -1067,7 +1119,7 @@ export class SessionView extends LitElement {
         }
       </style>
       <div
-        class="flex flex-col bg-dark-bg font-mono relative"
+        class="flex flex-col bg-black font-mono relative"
         style="height: 100vh; height: 100dvh; outline: none !important; box-shadow: none !important;"
       >
         <!-- Compact Header -->
@@ -1115,9 +1167,18 @@ export class SessionView extends LitElement {
             <div class="text-dark-text min-w-0 flex-1 overflow-hidden max-w-[50vw] sm:max-w-none">
               <div
                 class="text-accent-green text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"
-                title="${this.session.name || this.session.command}"
+                title="${this.session.name ||
+                (Array.isArray(this.session.command)
+                  ? this.session.command.join(' ')
+                  : this.session.command)}"
               >
-                ${this.session.name || this.session.command}
+                ${this.session.name ||
+                (Array.isArray(this.session.command)
+                  ? this.session.command.join(' ')
+                  : this.session.command)}
+              </div>
+              <div class="text-xs opacity-75 mt-0.5">
+                <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
               </div>
             </div>
           </div>
@@ -1242,12 +1303,11 @@ export class SessionView extends LitElement {
 
         <!-- Terminal Container -->
         <div
-          class="flex-1 bg-dark-bg overflow-hidden min-h-0 relative ${this.session?.status ===
+          class="flex-1 bg-black overflow-hidden min-h-0 relative ${this.session?.status ===
           'exited'
             ? 'session-exited'
             : ''}"
           id="terminal-container"
-          style="max-width: 100vw; height: 100%;"
         >
           ${this.loading
             ? html`
@@ -1271,7 +1331,7 @@ export class SessionView extends LitElement {
             .fontSize=${this.terminalFontSize}
             .fitHorizontally=${false}
             .maxCols=${this.terminalMaxCols}
-            class="w-full h-full"
+            class="w-full h-full p-0 m-0"
           ></vibe-terminal>
         </div>
 

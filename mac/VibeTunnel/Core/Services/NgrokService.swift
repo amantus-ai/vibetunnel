@@ -69,7 +69,7 @@ protocol NgrokTunnelProtocol {
 @MainActor
 final class NgrokService: NgrokTunnelProtocol {
     static let shared = NgrokService()
-    
+
     /// Current tunnel status
     private(set) var tunnelStatus: NgrokTunnelStatus?
 

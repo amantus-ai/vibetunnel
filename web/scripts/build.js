@@ -37,6 +37,14 @@ async function build() {
       outfile: 'public/bundle/test.js',
     });
 
+    // Build service worker
+    await esbuild.build({
+      ...prodOptions,
+      entryPoints: ['src/client/sw.ts'],
+      outfile: 'public/sw.js',
+      format: 'iife', // Service workers need IIFE format
+    });
+
     console.log('Client bundles built successfully');
   } catch (error) {
     console.error('Build failed:', error);

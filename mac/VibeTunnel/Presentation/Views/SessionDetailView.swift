@@ -1,11 +1,11 @@
-import SwiftUI
 import os
+import SwiftUI
 
 /// View displaying detailed information about a specific terminal session
 struct SessionDetailView: View {
     let session: ServerSessionInfo
     @State private var windowTitle = ""
-    
+
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionDetailView")
 
     var body: some View {

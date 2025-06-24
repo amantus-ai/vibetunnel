@@ -1,8 +1,8 @@
 import AppKit
 import Foundation
+import Observation
 import os.log
 import SwiftUI
-import Observation
 
 /// Terminal launch result with window/tab information
 struct TerminalLaunchResult {
@@ -689,7 +689,7 @@ final class TerminalLauncher {
         let fullCommand: String
         // Check if we have a Bun executable (it would be bundled as vibetunnel)
         let bunServerActive = Bundle.main.path(forResource: "vibetunnel", ofType: nil) != nil &&
-                              !command.contains("TTY_SESSION_ID=") // If command already has session ID, it's from Go server
+            !command.contains("TTY_SESSION_ID=") // If command already has session ID, it's from Go server
         if bunServerActive {
             // For Bun server, use fwd command
             logger.info("Using Bun server session creation via fwd")

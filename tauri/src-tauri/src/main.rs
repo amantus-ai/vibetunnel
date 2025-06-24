@@ -215,6 +215,7 @@ fn main() {
             stop_server,
             get_server_status,
             get_app_version,
+            get_os,
             restart_server,
             show_server_console,
             show_welcome_screen,
@@ -324,6 +325,8 @@ fn main() {
             run_benchmarks,
             generate_diagnostic_report,
             clear_debug_data,
+            clear_debug_logs,
+            clear_network_requests,
             set_debug_mode,
             get_debug_stats,
             get_api_test_config,
@@ -394,6 +397,14 @@ fn main() {
             // Welcome flow commands
             request_all_permissions,
             test_terminal,
+            check_vt_installation,
+            install_vt,
+            check_permissions,
+            request_automation_permission,
+            request_accessibility_permission,
+            save_dashboard_password,
+            open_dashboard,
+            finish_welcome,
         ])
         .setup(|app| {
             // Set app handle in managers

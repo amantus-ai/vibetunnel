@@ -5,11 +5,15 @@ import { customElement, property } from 'lit/decorators.js';
 export class SettingsCheckbox extends LitElement {
   static override styles = css`
     :host {
+      display: block;
+      padding: 8px 0;
+    }
+
+    label {
       display: flex;
       align-items: flex-start;
       cursor: pointer;
-      padding: 8px 0;
-      position: relative;
+      width: 100%;
     }
 
     input[type="checkbox"] {
@@ -20,15 +24,15 @@ export class SettingsCheckbox extends LitElement {
     }
 
     .checkbox-indicator {
-      width: 20px;
-      height: 20px;
+      width: 14px;
+      height: 14px;
       background: var(--bg-hover, rgba(255, 255, 255, 0.05));
-      border: 2px solid var(--border-secondary, rgba(255, 255, 255, 0.12));
-      border-radius: 6px;
+      border: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.12));
+      border-radius: 3px;
       transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       position: relative;
       flex-shrink: 0;
-      margin-right: 12px;
+      margin-right: 8px;
       margin-top: 2px;
     }
 
@@ -42,15 +46,19 @@ export class SettingsCheckbox extends LitElement {
       border-color: var(--accent, #10b981);
     }
 
-    input[type="checkbox"]:checked + .checkbox-indicator::after {
-      content: '✓';
+    .checkbox-indicator svg {
       position: absolute;
-      color: var(--text-primary, #fff);
-      font-size: 14px;
-      font-weight: bold;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      width: 8px;
+      height: 8px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    input[type="checkbox"]:checked + .checkbox-indicator svg {
+      opacity: 1;
     }
 
     .setting-info {
@@ -104,7 +112,11 @@ export class SettingsCheckbox extends LitElement {
           .checked=${this.checked}
           @change=${this._handleChange}
         >
-        <span class="checkbox-indicator"></span>
+        <span class="checkbox-indicator">
+          <svg viewBox="0 0 12 12" fill="none">
+            <path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
         <div class="setting-info">
           <span class="label">${this.label}</span>
           ${this.help ? html`<span class="help">${this.help}</span>` : ''}
