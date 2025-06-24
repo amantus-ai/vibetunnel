@@ -13,7 +13,7 @@ async function waitForServer(port: number, maxRetries = 30): Promise<void> {
       if (response.ok) {
         return;
       }
-    } catch (e) {
+    } catch (_e) {
       // Server not ready yet
     }
     await sleep(100);
@@ -110,8 +110,8 @@ describe('Logs API Tests', () => {
     // Clean up test directory
     try {
       fs.rmSync(testDir, { recursive: true, force: true });
-    } catch (e) {
-      console.error('Failed to clean test directory:', e);
+    } catch (_e) {
+      console.error('Failed to clean test directory:', _e);
     }
   });
 
@@ -290,7 +290,6 @@ describe('Logs API Tests', () => {
   describe('Log file format', () => {
     it('should format logs correctly', async () => {
       // Submit a test log
-      const testTimestamp = new Date().toISOString();
       await fetch(`http://localhost:${serverPort}/api/logs/client`, {
         method: 'POST',
         headers: {

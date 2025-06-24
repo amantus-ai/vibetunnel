@@ -1,5 +1,6 @@
 import { LitElement, TemplateResult } from 'lit';
-import { fixture, html } from '@testing-library/lit';
+import { fixture } from '@open-wc/testing';
+import type { SessionData, ActivityStatus } from '../types/test-types';
 
 /**
  * Creates a test fixture for a LitElement component
@@ -25,7 +26,7 @@ export async function waitForElement(element: LitElement): Promise<void> {
 export async function triggerEvent(
   element: HTMLElement,
   eventName: string,
-  detail?: any
+  detail?: unknown
 ): Promise<void> {
   const event = new CustomEvent(eventName, {
     detail,
@@ -43,7 +44,7 @@ export async function triggerEvent(
  * Mocks a fetch response
  */
 export function mockFetch(
-  response: any,
+  response: unknown,
   options: {
     status?: number;
     headers?: Record<string, string>;
@@ -52,7 +53,7 @@ export function mockFetch(
 ): void {
   const { status = 200, headers = { 'Content-Type': 'application/json' }, ok = true } = options;
 
-  (global.fetch as any).mockResolvedValueOnce({
+  (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
     ok,
     status,
     headers: new Headers(headers),
@@ -99,7 +100,7 @@ export class MockWebSocket extends EventTarget {
     this.onopen?.(event);
   }
 
-  mockMessage(data: any): void {
+  mockMessage(data: unknown): void {
     const event = new MessageEvent('message', { data });
     this.dispatchEvent(event);
     this.onmessage?.(event);
@@ -190,7 +191,7 @@ export async function waitFor(
 /**
  * Creates mock session data for testing
  */
-export function createMockSession(overrides: Partial<any> = {}): any {
+export function createMockSession(overrides: Partial<SessionData> = {}): SessionData {
   return {
     id: 'test-session-123',
     cmdline: ['bash', '-l'],
@@ -211,7 +212,7 @@ export function createMockSession(overrides: Partial<any> = {}): any {
 /**
  * Creates mock activity status for testing
  */
-export function createMockActivityStatus(overrides: Partial<any> = {}): any {
+export function createMockActivityStatus(overrides: Partial<ActivityStatus> = {}): ActivityStatus {
   return {
     isActive: false,
     timestamp: new Date().toISOString(),

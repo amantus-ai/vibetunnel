@@ -14,7 +14,7 @@ async function waitForServer(port: number, maxRetries = 30): Promise<void> {
       if (response.ok) {
         return;
       }
-    } catch (e) {
+    } catch (_e) {
       // Server not ready yet
     }
     await sleep(100);
@@ -94,9 +94,8 @@ describe('WebSocket Buffer Tests', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        command: 'bash',
-        args: ['-c', 'while true; do echo "test output $RANDOM"; sleep 1; done'],
-        cwd: testDir,
+        command: ['bash', '-c', 'while true; do echo "test output $RANDOM"; sleep 1; done'],
+        workingDir: testDir,
         name: 'WebSocket Test Session',
       }),
     });
@@ -129,8 +128,8 @@ describe('WebSocket Buffer Tests', () => {
     // Clean up test directory
     try {
       fs.rmSync(testDir, { recursive: true, force: true });
-    } catch (e) {
-      console.error('Failed to clean test directory:', e);
+    } catch (_e) {
+      console.error('Failed to clean test directory:', _e);
     }
   });
 
@@ -186,7 +185,7 @@ describe('WebSocket Buffer Tests', () => {
       );
 
       // Wait for buffer message
-      const bufferMessage = await new Promise<any>((resolve) => {
+      const bufferMessage = await new Promise<Buffer>((resolve) => {
         ws.on('message', (data) => {
           resolve(data);
         });
@@ -196,20 +195,23 @@ describe('WebSocket Buffer Tests', () => {
 
       // Verify binary format header
       const buffer = bufferMessage as Buffer;
-      const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-
-      // Check session ID length and magic bytes
-      const sessionIdLength = view.getUint8(0);
+      
+      // Check magic byte
+      expect(buffer.readUInt8(0)).toBe(0xbf);
+      
+      // Read session ID length (4 bytes, little endian)
+      const sessionIdLength = buffer.readUInt32LE(1);
       expect(sessionIdLength).toBe(sessionId.length);
 
       // Extract session ID
-      const extractedSessionId = new TextDecoder().decode(buffer.slice(1, 1 + sessionIdLength));
+      const extractedSessionId = buffer.slice(5, 5 + sessionIdLength).toString('utf8');
       expect(extractedSessionId).toBe(sessionId);
 
-      // Check buffer magic bytes after session ID
-      const magicOffset = 1 + sessionIdLength;
-      expect(view.getUint16(magicOffset)).toBe(0x5654); // "VT"
-      expect(view.getUint8(magicOffset + 2)).toBe(1); // Version
+      // Check terminal buffer format after session ID
+      const terminalBufferStart = 5 + sessionIdLength;
+      const terminalView = new DataView(buffer.buffer, buffer.byteOffset + terminalBufferStart);
+      expect(terminalView.getUint16(0)).toBe(0x5654); // "VT"
+      expect(terminalView.getUint8(2)).toBe(1); // Version
 
       ws.close();
     });
@@ -265,9 +267,8 @@ describe('WebSocket Buffer Tests', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          command: 'bash',
-          args: ['-c', 'for i in {1..10}; do echo "session 2: $i"; sleep 0.5; done'],
-          cwd: testDir,
+          command: ['bash', '-c', 'for i in {1..10}; do echo "session 2: $i"; sleep 0.5; done'],
+          workingDir: testDir,
           name: 'Second Session',
         }),
       });
@@ -301,8 +302,11 @@ describe('WebSocket Buffer Tests', () => {
       const receivedSessions = new Set<string>();
       const messagePromise = new Promise<void>((resolve) => {
         ws.on('message', (data: Buffer) => {
-          const sessionIdLength = data.readUInt8(0);
-          const extractedSessionId = data.slice(1, 1 + sessionIdLength).toString();
+          // Skip if not a binary message
+          if (data.readUInt8(0) !== 0xbf) return;
+          
+          const sessionIdLength = data.readUInt32LE(1);
+          const extractedSessionId = data.slice(5, 5 + sessionIdLength).toString('utf8');
           receivedSessions.add(extractedSessionId);
 
           if (receivedSessions.size === 2) {

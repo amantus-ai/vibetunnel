@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { BufferSubscriptionService } from '../../client/services/buffer-subscription-service';
+import type { MockWebSocketConstructor } from '../types/test-types';
 
 // Mock WebSocket
 class MockWebSocket {
@@ -26,7 +27,7 @@ class MockWebSocket {
     }, 0);
   }
 
-  send(data: string | ArrayBuffer) {
+  send(_data: string | ArrayBuffer) {
     if (this.readyState !== MockWebSocket.OPEN) {
       throw new Error('WebSocket is not open');
     }
@@ -41,7 +42,7 @@ class MockWebSocket {
 // Mock dynamic import of terminal-renderer
 vi.mock('../../client/utils/terminal-renderer.js', () => ({
   TerminalRenderer: {
-    decodeBinaryBuffer: (data: ArrayBuffer) => ({
+    decodeBinaryBuffer: (_data: ArrayBuffer) => ({
       cols: 80,
       rows: 24,
       viewportY: 0,
@@ -75,7 +76,7 @@ describe('BufferSubscriptionService', () => {
       };
 
       return mockWebSocket;
-    }) as any;
+    }) as unknown as MockWebSocketConstructor;
 
     // Mock window.location
     Object.defineProperty(window, 'location', {
@@ -120,7 +121,7 @@ describe('BufferSubscriptionService', () => {
       // Make WebSocket constructor throw
       global.WebSocket = vi.fn().mockImplementation(() => {
         throw new Error('Connection failed');
-      }) as any;
+      }) as unknown as typeof WebSocket;
 
       // Should not throw
       expect(() => {

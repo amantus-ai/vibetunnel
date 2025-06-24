@@ -12,13 +12,13 @@
     "dev:client": "node scripts/dev.js --client-only",
     "build": "node scripts/build.js",
     "build:ci": "node scripts/build-ci.js",
-    "lint": "eslint 'src/**/*.{ts,tsx}'",
-    "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
+    "lint": "biome check src",
+    "lint:fix": "biome check src --apply",
     "typecheck": "tsc --noEmit --project tsconfig.server.json && tsc --noEmit --project tsconfig.client.json && tsc --noEmit --project tsconfig.sw.json",
     "test": "vitest",
     "test:ci": "vitest run --reporter=verbose",
-    "format": "prettier --write 'src/**/*.{ts,tsx,js,jsx,json,css,md}'",
-    "format:check": "prettier --check 'src/**/*.{ts,tsx,js,jsx,json,css,md}'"
+    "format": "biome format src --write",
+    "format:check": "biome format src"
   },
   "dependencies": {
     "@codemirror/commands": "^6.6.2",
@@ -46,7 +46,9 @@
     "ws": "^8.18.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.0.5",
     "@eslint/js": "^9.29.0",
+    "@open-wc/testing": "^4.0.0",
     "@testing-library/dom": "^10.4.0",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.10",

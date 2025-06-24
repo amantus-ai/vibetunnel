@@ -55,7 +55,7 @@ global.WebSocket = class WebSocket extends EventTarget {
   close() {
     this.readyState = WebSocket.CLOSED;
   }
-} as any;
+} as unknown as typeof WebSocket;
 
 // Mock EventSource for SSE tests
 global.EventSource = class EventSource extends EventTarget {
@@ -78,7 +78,7 @@ global.EventSource = class EventSource extends EventTarget {
   close() {
     this.readyState = EventSource.CLOSED;
   }
-} as any;
+} as unknown as typeof EventSource;
 
 // Set up fetch mock (only for non-e2e tests)
 if (typeof window !== 'undefined') {
@@ -91,7 +91,7 @@ const originalWarn = console.warn;
 
 beforeAll(() => {
   // Suppress specific console errors/warnings during tests
-  console.error = (...args: any[]) => {
+  console.error = (...args: unknown[]) => {
     if (
       typeof args[0] === 'string' &&
       (args[0].includes('Not implemented') || args[0].includes('Failed to fetch'))
@@ -101,7 +101,7 @@ beforeAll(() => {
     originalError.call(console, ...args);
   };
 
-  console.warn = (...args: any[]) => {
+  console.warn = (...args: unknown[]) => {
     if (typeof args[0] === 'string' && args[0].includes('LitElement')) {
       return;
     }

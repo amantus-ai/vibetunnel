@@ -198,21 +198,29 @@ export class BufferSubscriptionService {
       const bufferData = data.slice(offset);
 
       // Import TerminalRenderer dynamically to avoid circular dependencies
-      import('../utils/terminal-renderer.js').then(({ TerminalRenderer }) => {
-        const snapshot = TerminalRenderer.decodeBinaryBuffer(bufferData);
+      import('../utils/terminal-renderer.js')
+        .then(({ TerminalRenderer }) => {
+          try {
+            const snapshot = TerminalRenderer.decodeBinaryBuffer(bufferData);
 
-        // Notify all handlers for this session
-        const handlers = this.subscriptions.get(sessionId);
-        if (handlers) {
-          handlers.forEach((handler) => {
-            try {
-              handler(snapshot);
-            } catch (error) {
-              logger.error('error in update handler', error);
+            // Notify all handlers for this session
+            const handlers = this.subscriptions.get(sessionId);
+            if (handlers) {
+              handlers.forEach((handler) => {
+                try {
+                  handler(snapshot);
+                } catch (error) {
+                  logger.error('error in update handler', error);
+                }
+              });
             }
-          });
-        }
-      });
+          } catch (error) {
+            logger.error('failed to decode binary buffer', error);
+          }
+        })
+        .catch((error) => {
+          logger.error('failed to import terminal renderer', error);
+        });
     } catch (error) {
       logger.error('failed to parse binary message', error);
     }

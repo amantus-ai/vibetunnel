@@ -15,7 +15,7 @@ interface AuthConfig {
   localAuthToken?: string; // Token for localhost authentication
 }
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   userId?: string;
   authMethod?: 'ssh-key' | 'password' | 'hq-bearer' | 'no-auth' | 'local-bypass' | 'basic';
   isHQRequest?: boolean;
@@ -49,11 +49,10 @@ function isLocalRequest(req: Request): boolean {
 
 export function createAuthMiddleware(config: AuthConfig) {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    // Skip auth for health check endpoint, auth endpoints, client logging, and push notifications
+    // Skip auth for health check endpoint, auth endpoints, and push notifications
     if (
       req.path === '/api/health' ||
       req.path.startsWith('/api/auth') ||
-      req.path.startsWith('/api/logs') ||
       req.path.startsWith('/api/push')
     ) {
       return next();

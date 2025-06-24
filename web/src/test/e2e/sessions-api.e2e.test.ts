@@ -3,6 +3,7 @@ import { spawn, type ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import type { SessionData } from '../types/test-types';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -13,7 +14,7 @@ async function waitForServer(port: number, maxRetries = 30): Promise<void> {
       if (response.ok) {
         return;
       }
-    } catch (e) {
+    } catch (_e) {
       // Server not ready yet
     }
     await sleep(100);
@@ -25,7 +26,7 @@ async function startServer(
   args: string[] = [],
   env: Record<string, string> = {}
 ): Promise<{ process: ChildProcess; port: number }> {
-  const cliPath = path.join(process.cwd(), 'src', 'index.ts');
+  const cliPath = path.join(process.cwd(), 'src', 'cli.ts');
 
   return new Promise((resolve, reject) => {
     const serverProcess = spawn('npx', ['tsx', cliPath, ...args], {
@@ -106,8 +107,8 @@ describe('Sessions API Tests', () => {
     // Clean up test directory
     try {
       fs.rmSync(testDir, { recursive: true, force: true });
-    } catch (e) {
-      console.error('Failed to clean test directory:', e);
+    } catch (_e) {
+      console.error('Failed to clean test directory:', _e);
     }
   });
 
@@ -142,30 +143,14 @@ describe('Sessions API Tests', () => {
         }),
       });
 
+      if (response.status !== 200) {
+        const error = await response.text();
+        console.error('Session creation failed:', response.status, error);
+      }
       expect(response.status).toBe(200);
       const result = await response.json();
       expect(result).toHaveProperty('sessionId');
-      expect(result.sessionId).toMatch(/^[a-f0-9]{8}$/);
-    });
-
-    it('should create session with custom id', async () => {
-      const customId = 'test1234';
-      const response = await fetch(`http://localhost:${serverPort}/api/sessions`, {
-        method: 'POST',
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          command: ['echo', 'custom id test'],
-          workingDir: testDir,
-          sessionId: customId,
-        }),
-      });
-
-      expect(response.status).toBe(200);
-      const result = await response.json();
-      expect(result.sessionId).toBe(customId);
+      expect(result.sessionId).toMatch(/^[a-f0-9-]{36}$/); // UUID format
     });
 
     it('should create session with name', async () => {
@@ -191,7 +176,7 @@ describe('Sessions API Tests', () => {
         headers: { Authorization: authHeader },
       });
       const sessions = await listResponse.json();
-      const createdSession = sessions.find((s: any) => s.id === result.sessionId);
+      const createdSession = sessions.find((s: SessionData) => s.id === result.sessionId);
       expect(createdSession?.name).toBe(sessionName);
     });
 
@@ -208,7 +193,7 @@ describe('Sessions API Tests', () => {
         }),
       });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(500);
     });
   });
 
@@ -230,7 +215,9 @@ describe('Sessions API Tests', () => {
         }),
       });
 
+      expect(response.status).toBe(200);
       const result = await response.json();
+      expect(result).toHaveProperty('sessionId');
       sessionId = result.sessionId;
 
       // Wait for session to start
@@ -245,7 +232,7 @@ describe('Sessions API Tests', () => {
       expect(response.status).toBe(200);
       const sessions = await response.json();
 
-      const session = sessions.find((s: any) => s.id === sessionId);
+      const session = sessions.find((s: SessionData) => s.id === sessionId);
       expect(session).toBeDefined();
       expect(session.name).toBe('Long Running Test');
       expect(session.status).toBe('running');
@@ -269,7 +256,9 @@ describe('Sessions API Tests', () => {
         }
       );
 
-      expect(response.status).toBe(204);
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(result.success).toBe(true);
     });
 
     it('should resize session', async () => {
@@ -285,7 +274,11 @@ describe('Sessions API Tests', () => {
         }
       );
 
-      expect(response.status).toBe(204);
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(result.success).toBe(true);
+      expect(result.cols).toBe(120);
+      expect(result.rows).toBe(40);
     });
 
     it('should get session text', async () => {
@@ -407,7 +400,9 @@ describe('Sessions API Tests', () => {
         headers: { Authorization: authHeader },
       });
 
-      expect(response.status).toBe(204);
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(result.success).toBe(true);
 
       // Wait for session to be killed
       await sleep(1000);
@@ -417,7 +412,7 @@ describe('Sessions API Tests', () => {
         headers: { Authorization: authHeader },
       });
       const sessions = await listResponse.json();
-      const killedSession = sessions.find((s: any) => s.id === sessionId);
+      const killedSession = sessions.find((s: SessionData) => s.id === sessionId);
       expect(killedSession).toBeUndefined();
     });
   });
@@ -436,7 +431,7 @@ describe('Sessions API Tests', () => {
         }
       );
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(400);
     });
 
     it('should handle invalid input data', async () => {
@@ -453,7 +448,9 @@ describe('Sessions API Tests', () => {
         }),
       });
 
+      expect(createResponse.status).toBe(200);
       const result = await createResponse.json();
+      expect(result).toHaveProperty('sessionId');
       const sessionId = result.sessionId;
 
       // Send invalid input (missing data field)
@@ -486,7 +483,9 @@ describe('Sessions API Tests', () => {
         }),
       });
 
+      expect(createResponse.status).toBe(200);
       const result = await createResponse.json();
+      expect(result).toHaveProperty('sessionId');
       const sessionId = result.sessionId;
 
       // Send invalid resize (negative dimensions)

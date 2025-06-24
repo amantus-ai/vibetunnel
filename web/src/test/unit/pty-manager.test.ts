@@ -37,25 +37,14 @@ describe('PtyManager', () => {
 
   describe('Session Creation', () => {
     it('should create a simple echo session', async () => {
-      const sessionId = randomBytes(4).toString('hex');
-      let exitCode: number | null = null;
-      let outputData = '';
-
-      const success = await ptyManager.createSession({
-        sessionId,
-        command: 'echo',
-        args: ['Hello, World!'],
-        cwd: testDir,
+      const result = await ptyManager.createSession(['echo', 'Hello, World!'], {
+        workingDir: testDir,
         name: 'Test Echo',
-        onData: (data) => {
-          outputData += data;
-        },
-        onExit: (code) => {
-          exitCode = code;
-        },
       });
 
-      expect(success).toBe(true);
+      expect(result).toBeDefined();
+      expect(result.sessionId).toBeDefined();
+      expect(result.sessionInfo).toBeDefined();
 
       // Wait for process to complete
       await sleep(500);
@@ -69,20 +58,16 @@ describe('PtyManager', () => {
       const customDir = path.join(testDir, 'custom');
       fs.mkdirSync(customDir, { recursive: true });
 
-      let outputData = '';
+      const outputData = '';
 
-      const success = await ptyManager.createSession({
+      const result = await ptyManager.createSession(['pwd'], {
         sessionId,
-        command: 'pwd',
-        args: [],
-        cwd: customDir,
+        workingDir: customDir,
         name: 'PWD Test',
-        onData: (data) => {
-          outputData += data;
-        },
       });
 
-      expect(success).toBe(true);
+      expect(result).toBeDefined();
+      expect(result.sessionId).toBe(sessionId);
 
       // Wait for output
       await sleep(500);
@@ -91,19 +76,21 @@ describe('PtyManager', () => {
     });
 
     it('should handle session with environment variables', async () => {
-      const sessionId = randomBytes(4).toString('hex');
+      const _sessionId = randomBytes(4).toString('hex');
       let outputData = '';
 
-      const success = await ptyManager.createSession({
-        sessionId,
-        command: process.platform === 'win32' ? 'cmd' : 'sh',
-        args: process.platform === 'win32' ? ['/c', 'echo %TEST_VAR%'] : ['-c', 'echo $TEST_VAR'],
-        cwd: testDir,
-        env: { TEST_VAR: 'test_value_123' },
-        onData: (data) => {
-          outputData += data;
-        },
-      });
+      const _result = await ptyManager.createSession(
+        process.platform === 'win32'
+          ? ['cmd', '/c', 'echo %TEST_VAR%']
+          : ['sh', '-c', 'echo $TEST_VAR'],
+        {
+          cwd: testDir,
+          env: { TEST_VAR: 'test_value_123' },
+          onData: (data) => {
+            outputData += data;
+          },
+        }
+      );
 
       expect(success).toBe(true);
 
@@ -189,15 +176,14 @@ describe('PtyManager', () => {
 
     it('should handle binary data in input', async () => {
       const sessionId = randomBytes(4).toString('hex');
-      let outputData = '';
 
       await ptyManager.createSession({
         sessionId,
         command: 'cat',
         args: [],
         cwd: testDir,
-        onData: (data) => {
-          outputData += data;
+        onData: (_data) => {
+          // Not used in this test
         },
       });
 

@@ -3,20 +3,32 @@ import { BufferSubscriptionService } from './buffer-subscription-service';
 import { MockWebSocket } from '../../test/utils/lit-test-utils';
 import { mockBinaryBuffer } from '../../test/fixtures/test-data';
 import type { BufferSnapshot } from '../utils/terminal-renderer';
+import type { MockWebSocketConstructor } from '../../test/types/test-types';
 
 // Mock the terminal renderer module
 vi.mock('../utils/terminal-renderer.js', () => ({
   TerminalRenderer: {
-    decodeBinaryBuffer: vi.fn(
-      (data: ArrayBuffer): BufferSnapshot => ({
+    decodeBinaryBuffer: vi.fn((data: ArrayBuffer): BufferSnapshot => {
+      // Check magic bytes
+      const view = new DataView(data);
+      if (view.byteLength < 2) {
+        throw new Error('Invalid buffer format');
+      }
+      const magic = view.getUint16(0, false);
+      if (magic !== 0x5654) {
+        // "VT"
+        throw new Error('Invalid buffer format');
+      }
+
+      return {
         cols: 80,
         rows: 24,
         viewportY: 0,
         cursorX: 2,
         cursorY: 0,
         cells: [],
-      })
-    ),
+      };
+    }),
   },
 }));
 
@@ -37,18 +49,30 @@ describe('BufferSubscriptionService', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.spyOn(global, 'setTimeout');
+    vi.spyOn(global, 'clearTimeout');
+    vi.spyOn(global, 'setInterval');
+    vi.spyOn(global, 'clearInterval');
+
+    // Mock window.location.host
+    Object.defineProperty(window, 'location', {
+      value: { host: 'localhost' },
+      writable: true,
+    });
 
     // Create a mock WebSocket instance
     mockWebSocketInstance = new MockWebSocket('ws://localhost/buffers');
 
     // Mock WebSocket constructor
-    mockWebSocketConstructor = vi.fn(() => mockWebSocketInstance) as any;
+    mockWebSocketConstructor = vi.fn(
+      () => mockWebSocketInstance
+    ) as unknown as MockWebSocketConstructor;
     mockWebSocketConstructor.CONNECTING = 0;
     mockWebSocketConstructor.OPEN = 1;
     mockWebSocketConstructor.CLOSING = 2;
     mockWebSocketConstructor.CLOSED = 3;
 
-    global.WebSocket = mockWebSocketConstructor as any;
+    global.WebSocket = mockWebSocketConstructor as unknown as typeof WebSocket;
   });
 
   afterEach(() => {
@@ -79,8 +103,9 @@ describe('BufferSubscriptionService', () => {
     it('should handle connection errors', () => {
       service = new BufferSubscriptionService();
 
-      // Simulate connection error
+      // Simulate connection error followed by close
       mockWebSocketInstance.mockError();
+      mockWebSocketInstance.mockClose();
 
       // Should schedule reconnect
       expect(setTimeout).toHaveBeenCalled();
@@ -170,8 +195,12 @@ describe('BufferSubscriptionService', () => {
 
     it('should queue subscribe messages when disconnected', () => {
       const handler = vi.fn();
+      service = new BufferSubscriptionService();
 
-      // Close connection
+      // First, connect successfully
+      mockWebSocketInstance.mockOpen();
+
+      // Then close connection
       mockWebSocketInstance.mockClose();
 
       // Try to subscribe while disconnected
@@ -180,14 +209,18 @@ describe('BufferSubscriptionService', () => {
       // Should not send message immediately
       expect(mockWebSocketInstance.send).not.toHaveBeenCalled();
 
-      // Reconnect
-      vi.advanceTimersByTime(1000);
-      mockWebSocketInstance = new MockWebSocket('ws://localhost/buffers');
-      (global.WebSocket as any).mockReturnValue(mockWebSocketInstance);
-      mockWebSocketInstance.mockOpen();
+      // Create new mock instance for reconnection
+      const newMockInstance = new MockWebSocket('ws://localhost/buffers');
+      mockWebSocketConstructor.mockReturnValue(newMockInstance);
 
-      // Should send queued subscribe message
-      expect(mockWebSocketInstance.send).toHaveBeenCalledWith(
+      // Advance time to trigger reconnect
+      vi.advanceTimersByTime(1000);
+
+      // Simulate successful reconnection
+      newMockInstance.mockOpen();
+
+      // Should send queued subscribe message on the new connection
+      expect(newMockInstance.send).toHaveBeenCalledWith(
         JSON.stringify({ type: 'subscribe', sessionId: 'session-123' })
       );
     });
@@ -270,7 +303,7 @@ describe('BufferSubscriptionService', () => {
       });
     });
 
-    it('should ignore binary messages with invalid magic byte', async () => {
+    it('should ignore binary messages with invalid magic byte', () => {
       const handler = vi.fn();
       service.subscribe('session-123', handler);
 
@@ -281,9 +314,7 @@ describe('BufferSubscriptionService', () => {
 
       mockWebSocketInstance.mockMessage(message);
 
-      // Give time for any async operations
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
+      // Don't run timers - the message should be ignored immediately
       // Handler should not be called
       expect(handler).not.toHaveBeenCalled();
     });
@@ -300,7 +331,8 @@ describe('BufferSubscriptionService', () => {
       service.dispose();
 
       expect(mockWebSocketInstance.close).toHaveBeenCalled();
-      expect(clearTimeout).toHaveBeenCalled();
+      // Should clear interval for ping/pong
+      expect(clearInterval).toHaveBeenCalled();
     });
 
     it('should clear all subscriptions on dispose', () => {

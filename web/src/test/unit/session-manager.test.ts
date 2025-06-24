@@ -5,8 +5,6 @@ import * as os from 'os';
 import { SessionManager } from '../../server/pty/session-manager';
 import type { SessionInfo } from '../../server/types';
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 describe('SessionManager', () => {
   let sessionManager: SessionManager;
   let testDir: string;

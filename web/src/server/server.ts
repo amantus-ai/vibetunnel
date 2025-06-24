@@ -1,5 +1,5 @@
 import express from 'express';
-import { createServer } from 'http';
+import { createServer, IncomingMessage } from 'http';
 import { WebSocketServer } from 'ws';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -11,6 +11,7 @@ import { StreamWatcher } from './services/stream-watcher.js';
 import { RemoteRegistry } from './services/remote-registry.js';
 import { HQClient } from './services/hq-client.js';
 import { createAuthMiddleware } from './middleware/auth.js';
+import type { AuthenticatedRequest } from './middleware/auth.js';
 import { createSessionRoutes } from './routes/sessions.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
@@ -27,6 +28,7 @@ import { ActivityMonitor } from './services/activity-monitor.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getVersionInfo, printVersionBanner } from './version.js';
 import { createLogger, initLogger, closeLogger, setDebugMode } from './utils/logger.js';
+import type { Response as ExpressResponse } from 'express';
 
 const logger = createLogger('server');
 
@@ -332,7 +334,7 @@ export async function createApp(): Promise<AppInstance> {
   logger.log('Initializing VibeTunnel server components');
   const app = express();
   const server = createServer(app);
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ noServer: true });
 
   // Add JSON body parser middleware
   app.use(express.json());
@@ -537,6 +539,62 @@ export async function createApp(): Promise<AppInstance> {
     );
     logger.debug('Mounted push notification routes');
   }
+
+  // Handle WebSocket upgrade with authentication
+  server.on('upgrade', async (request, socket, head) => {
+    // Only handle /buffers path
+    if (request.url !== '/buffers') {
+      socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    // Check authentication
+    const isAuthenticated = await new Promise<boolean>((resolve) => {
+      // Create a mock Express request/response to use auth middleware
+      const req = {
+        ...request,
+        path: '/buffers',
+        userId: undefined as string | undefined,
+        authMethod: undefined as string | undefined,
+        query: {}, // Add empty query object
+        headers: request.headers,
+        ip: (request.socket as unknown as { remoteAddress?: string }).remoteAddress || '',
+        socket: request.socket,
+        hostname: request.headers.host?.split(':')[0] || 'localhost',
+        // Add minimal Express-like methods needed by auth middleware
+        get: (header: string) => request.headers[header.toLowerCase()],
+        header: (header: string) => request.headers[header.toLowerCase()],
+        accepts: () => false,
+        acceptsCharsets: () => false,
+        acceptsEncodings: () => false,
+        acceptsLanguages: () => false,
+      } as unknown as AuthenticatedRequest;
+
+      const res = {
+        status: () => ({ json: () => {} }),
+        setHeader: () => {},
+      } as unknown as ExpressResponse;
+
+      const next = (error?: unknown) => {
+        resolve(!error);
+      };
+
+      authMiddleware(req, res, next);
+    });
+
+    if (!isAuthenticated) {
+      logger.debug('WebSocket connection rejected: unauthorized');
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    // Handle the upgrade
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  });
 
   // WebSocket endpoint for buffer updates
   wss.on('connection', (ws, _req) => {
