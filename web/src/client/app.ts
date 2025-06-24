@@ -59,6 +59,7 @@ export class VibeTunnelApp extends LitElement {
   @state() private isAuthenticated = false;
   @state() private sidebarCollapsed = this.loadSidebarState();
   @state() private sidebarWidth = this.loadSidebarWidth();
+  @state() private userInitiatedSessionChange = false;
   @state() private isResizing = false;
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   private initialLoadComplete = false;
@@ -190,6 +191,7 @@ export class VibeTunnelApp extends LitElement {
       // Try to find the session and navigate to it
       const session = this.sessions.find((s) => s.id === sessionId);
       if (session) {
+        this.userInitiatedSessionChange = false;
         this.selectedSessionId = sessionId;
         this.currentView = 'session';
       }
@@ -411,6 +413,8 @@ export class VibeTunnelApp extends LitElement {
       currentSidebarCollapsed: this.sidebarCollapsed,
       mediaStateIsMobile: this.mediaState.isMobile,
     });
+
+    this.userInitiatedSessionChange = true;
 
     // Check if View Transitions API is supported
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
@@ -827,7 +831,12 @@ export class VibeTunnelApp extends LitElement {
 
     const baseClasses = 'bg-dark-bg-secondary border-r border-dark-border flex flex-col';
     const isMobile = this.mediaState.isMobile;
-    const transitionClass = this.initialRenderComplete && !isMobile ? 'sidebar-transition' : '';
+    const transitionClass =
+      this.initialRenderComplete && !isMobile
+        ? this.userInitiatedSessionChange
+          ? 'sidebar-transition'
+          : ''
+        : '';
     const mobileClasses = isMobile ? 'absolute left-0 top-0 bottom-0 z-30 flex' : transitionClass;
 
     const collapsedClasses = this.sidebarCollapsed
