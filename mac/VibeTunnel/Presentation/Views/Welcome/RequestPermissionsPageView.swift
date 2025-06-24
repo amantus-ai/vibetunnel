@@ -126,4 +126,5 @@ struct RequestPermissionsPageView: View {
     RequestPermissionsPageView()
         .frame(width: 640, height: 480)
         .background(Color(NSColor.windowBackgroundColor))
+        .environment(SystemPermissionManager.shared)
 }

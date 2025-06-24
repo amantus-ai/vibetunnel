@@ -185,4 +185,5 @@ struct WelcomeView: View {
 
 #Preview("Welcome View") {
     WelcomeView()
+        .environment(SystemPermissionManager.shared)
 }

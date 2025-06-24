@@ -787,4 +787,5 @@ private struct ErrorView: View {
 #Preview("Dashboard Settings") {
     DashboardSettingsView()
         .frame(width: 500, height: 800)
+        .environment(SystemPermissionManager.shared)
 }
