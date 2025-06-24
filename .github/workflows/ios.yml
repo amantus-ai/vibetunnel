@@ -38,7 +38,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
     
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
@@ -59,25 +59,18 @@ jobs:
       continue-on-error: true
       shell: bash
       run: |
-        # Install linting tools
+        # Install linting and build tools
         cat > Brewfile <<EOF
         brew "swiftlint"
         brew "swiftformat"
+        brew "xcbeautify"
         EOF
         brew bundle
-        
-        # Install build/test tools with proper PATH
-        export PATH="/usr/local/bin:$PATH"
-        gem install xcpretty --user-install || sudo gem install xcpretty || brew install xcpretty
-        
-        # Add gem bin to PATH
-        export PATH="$HOME/.gem/ruby/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
-        export PATH="/usr/local/lib/ruby/gems/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
         
         # Show final status
         echo "SwiftLint: $(which swiftlint || echo 'not found')"
         echo "SwiftFormat: $(which swiftformat || echo 'not found')"
-        echo "xcpretty: $(which xcpretty || echo 'not found')"
+        echo "xcbeautify: $(which xcbeautify || echo 'not found')"
         echo "PATH: $PATH"
     
     - name: Install web dependencies
@@ -95,10 +88,8 @@ jobs:
     - name: Build iOS app
       run: |
         cd ios
-        # Set up PATH for xcpretty
-        export PATH="$HOME/.gem/ruby/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
-        export PATH="/usr/local/lib/ruby/gems/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
-        export PATH="/usr/local/bin:$PATH"
+        # Ensure xcbeautify is in PATH
+        export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
         
         set -o pipefail
         xcodebuild build \
@@ -112,7 +103,7 @@ jobs:
           ONLY_ACTIVE_ARCH=NO \
           -derivedDataPath ios/build/DerivedData \
           COMPILER_INDEX_STORE_ENABLE=NO \
-          2>&1 | tee build.log | xcpretty || {
+          2>&1 | tee build.log | xcbeautify || {
             echo "Build failed. Last 100 lines of output:"
             tail -100 build.log
             exit 1
@@ -161,10 +152,8 @@ jobs:
     - name: Run iOS tests
       run: |
         cd ios
-        # Set up PATH for xcpretty
-        export PATH="$HOME/.gem/ruby/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
-        export PATH="/usr/local/lib/ruby/gems/$(ruby -e 'puts Gem.ruby_api_version')/bin:$PATH"
-        export PATH="/usr/local/bin:$PATH"
+        # Ensure xcbeautify is in PATH
+        export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
         
         echo "Running iOS tests using Swift Testing framework..."
         set -o pipefail
@@ -179,7 +168,7 @@ jobs:
           CODE_SIGNING_ALLOWED=NO \
           COMPILER_INDEX_STORE_ENABLE=NO \
           -quiet \
-          2>&1 | xcpretty || {
+          2>&1 | xcbeautify || {
             echo "::error::iOS tests failed"
             # Shutdown simulator
             xcrun simctl shutdown "$SIMULATOR_ID" || true
