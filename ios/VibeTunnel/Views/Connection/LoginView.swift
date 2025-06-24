@@ -217,9 +217,8 @@ struct LoginView_Previews: PreviewProvider {
             authenticationService: AuthenticationService(
                 apiClient: APIClient.shared,
                 serverConfig: ServerConfig(host: "localhost", port: 3000)
-            ),
-            onSuccess: {}
-        )
+            )
+        )            {}
     }
 }
 #endif

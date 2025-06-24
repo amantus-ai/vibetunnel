@@ -98,12 +98,11 @@ struct ConnectionView: View {
                 LoginView(
                     isPresented: $viewModel.showLoginView,
                     serverConfig: config,
-                    authenticationService: authService,
-                    onSuccess: {
+                    authenticationService: authService
+                )                    {
                         // Authentication successful, mark as connected
                         connectionManager.isConnected = true
                     }
-                )
             }
         }
     }

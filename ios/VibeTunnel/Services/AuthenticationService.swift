@@ -192,7 +192,7 @@ final class AuthenticationService: ObservableObject {
     
     /// Get token for query parameters (used for SSE)
     func getTokenForQuery() -> String? {
-        return authToken
+        authToken
     }
     
     // MARK: - Private Methods
@@ -203,7 +203,6 @@ final class AuthenticationService: ObservableObject {
            let userDataJson = try? KeychainService.loadPassword(for: userDataKey),
            let userDataData = userDataJson.data(using: .utf8),
            let userData = try? JSONDecoder().decode(UserData.self, from: userDataData) {
-            
             // Check if token is less than 24 hours old
             let tokenAge = Date().timeIntervalSince(userData.loginTime)
             if tokenAge < 24 * 60 * 60 { // 24 hours
@@ -231,10 +230,10 @@ final class AuthenticationService: ObservableObject {
 
 extension APIError {
     static func authenticationFailed(_ message: String) -> APIError {
-        return APIError.serverError(500, message)
+        APIError.serverError(500, message)
     }
     
     static var dataEncodingFailed: APIError {
-        return APIError.serverError(500, "Failed to encode authentication data")
+        APIError.serverError(500, "Failed to encode authentication data")
     }
 }
