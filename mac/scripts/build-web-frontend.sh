@@ -102,7 +102,17 @@ rm -rf dist public/bundle public/output.css native
 echo "Force cleaning all node modules and pnpm cache..."
 rm -rf node_modules
 rm -rf .pnpm-store
-pnpm store prune
+
+# Clear ALL pnpm caches to force fresh downloads
+echo "Clearing all pnpm caches..."
+pnpm store prune --force
+rm -rf ~/.pnpm-store
+rm -rf ~/Library/Caches/pnpm
+rm -rf ~/.cache/pnpm
+
+# Clear pnpm's integrity cache
+rm -rf node_modules/.pnpm/lock.yaml
+rm -rf node_modules/.modules.yaml
 
 # Install dependencies
 echo "Installing dependencies with fresh modules..."

@@ -254,9 +254,10 @@ function patchNodePty() {
     }
   }
 
-  // Always re-patch to ensure compatibility with current build
+  // Only patch if not already patched - re-patching is causing corruption
   if (alreadyPatched) {
-    console.log('⚠️  node-pty appears to be patched, but re-patching to ensure compatibility...');
+    console.log('✓ node-pty already patched for SEA, skipping patch step');
+    return;
   }
 
   console.log('Patching node-pty for SEA build...');
