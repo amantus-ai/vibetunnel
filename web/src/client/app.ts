@@ -381,9 +381,31 @@ export class VibeTunnelApp extends LitElement {
     this.showError(e.detail);
   }
 
-  private handleHideExitedChange(e: CustomEvent) {
-    this.hideExited = e.detail;
-    this.saveHideExitedState(this.hideExited);
+  private async handleHideExitedChange(e: CustomEvent) {
+    const performChange = () => {
+      this.hideExited = e.detail;
+      this.saveHideExitedState(this.hideExited);
+
+      // Add animation class to session-list for CSS animations
+      requestAnimationFrame(() => {
+        const sessionList = this.renderRoot.querySelector('session-list');
+        if (sessionList) {
+          sessionList.classList.add('sessions-transitioning');
+
+          // Remove the class after animation completes
+          setTimeout(() => {
+            sessionList.classList.remove('sessions-transitioning');
+          }, 600); // Slightly longer than animation duration
+        }
+      });
+    };
+
+    // Use View Transitions API if available
+    if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
+      await document.startViewTransition(performChange);
+    } else {
+      performChange();
+    }
   }
 
   private handleCreateSession() {

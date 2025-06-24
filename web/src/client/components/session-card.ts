@@ -227,7 +227,8 @@ export class SessionCard extends LitElement {
             ? 'shadow-[0_0_0_2px_#00ff88] shadow-glow-green-sm'
             : ''
         }"
-        style="view-transition-name: session-${this.session.id}"
+        style="view-transition-name: session-${this.session.id}; --session-id: session-${this.session.id}"
+        data-session-id="${this.session.id}"
         @click=${this.handleCardClick}
       >
         <!-- Compact Header -->

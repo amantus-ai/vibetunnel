@@ -141,6 +141,8 @@
     grid-auto-rows: 380px;
     gap: 1rem;
     padding: 0 0.5rem;
+    /* Enable smooth grid transitions */
+    transition: grid-template-columns 0.3s ease-out;
   }
 
   .session-flex-responsive > * {
@@ -318,6 +320,53 @@ body {
 /* Session cards - prevent pull-to-refresh */
 .session-card {
   overscroll-behavior: none;
+}
+
+/* Session grid flow animations */
+.sessions-transitioning .session-flex-responsive > *,
+.sessions-transitioning .space-y-2 > * {
+  animation: sessionFlow 0.4s ease-out backwards;
+}
+
+/* Stagger animation for each card */
+.sessions-transitioning .session-flex-responsive > *:nth-child(1),
+.sessions-transitioning .space-y-2 > *:nth-child(1) { animation-delay: 0s; }
+.sessions-transitioning .session-flex-responsive > *:nth-child(2),
+.sessions-transitioning .space-y-2 > *:nth-child(2) { animation-delay: 0.05s; }
+.sessions-transitioning .session-flex-responsive > *:nth-child(3),
+.sessions-transitioning .space-y-2 > *:nth-child(3) { animation-delay: 0.1s; }
+.sessions-transitioning .session-flex-responsive > *:nth-child(4),
+.sessions-transitioning .space-y-2 > *:nth-child(4) { animation-delay: 0.15s; }
+.sessions-transitioning .session-flex-responsive > *:nth-child(5),
+.sessions-transitioning .space-y-2 > *:nth-child(5) { animation-delay: 0.2s; }
+.sessions-transitioning .session-flex-responsive > *:nth-child(6),
+.sessions-transitioning .space-y-2 > *:nth-child(6) { animation-delay: 0.25s; }
+.sessions-transitioning .session-flex-responsive > *:nth-child(7),
+.sessions-transitioning .space-y-2 > *:nth-child(7) { animation-delay: 0.3s; }
+.sessions-transitioning .session-flex-responsive > *:nth-child(8),
+.sessions-transitioning .space-y-2 > *:nth-child(8) { animation-delay: 0.35s; }
+.sessions-transitioning .session-flex-responsive > *:nth-child(n+9),
+.sessions-transitioning .space-y-2 > *:nth-child(n+9) { animation-delay: 0.4s; }
+
+@keyframes sessionFlow {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* View transition names for smoother morphing */
+.session-card {
+  view-transition-name: session-card;
+}
+
+/* Ensure unique view-transition-names */
+.session-card[data-session-id] {
+  view-transition-name: var(--session-id);
 }
 
 /* App header - prevent pull-to-refresh when scrolling starts from header */
