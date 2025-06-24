@@ -320,6 +320,7 @@ export function resolveCommand(command: string[]): {
         command: userShell,
         args: ['-NoLogo', '-Command', command.join(' ')],
         useShell: true,
+        resolvedFrom: 'shell',
       };
     } else {
       // cmd.exe: Use /C to execute and exit
@@ -328,6 +329,7 @@ export function resolveCommand(command: string[]): {
         command: userShell,
         args: ['/C', command.join(' ')],
         useShell: true,
+        resolvedFrom: 'shell',
       };
     }
   } else {
@@ -344,6 +346,7 @@ export function resolveCommand(command: string[]): {
         command: userShell,
         args: ['-c', commandStr],
         useShell: true,
+        resolvedFrom: 'shell',
       };
     } else {
       // Interactive shell session: use -i for alias support
@@ -351,6 +354,8 @@ export function resolveCommand(command: string[]): {
         command: userShell,
         args: ['-i', '-c', command.join(' ')],
         useShell: true,
+        resolvedFrom: 'shell',
+        isInteractive: true,
       };
     }
   }
