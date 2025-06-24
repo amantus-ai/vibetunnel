@@ -136,7 +136,7 @@ export function createAuthMiddleware(config: AuthConfig) {
           req.authMethod = 'ssh-key'; // JWT tokens are issued for SSH key auth
           return next();
         } else {
-          logger.error('Invalid JWT token');
+          logger.error(`Invalid JWT token - HQ mode: ${config.isHQMode}, has bearer: ${!!config.bearerToken}, token: ${token.substring(0, 8)}...`);
         }
       } else if (config.authService) {
         const verification = config.authService.verifyToken(token);
@@ -145,7 +145,7 @@ export function createAuthMiddleware(config: AuthConfig) {
           req.authMethod = 'password'; // Password auth only
           return next();
         } else {
-          logger.error('Invalid JWT token');
+          logger.error(`Invalid JWT token - HQ mode: ${config.isHQMode}, has bearer: ${!!config.bearerToken}, token: ${token.substring(0, 8)}...`);
         }
       }
 

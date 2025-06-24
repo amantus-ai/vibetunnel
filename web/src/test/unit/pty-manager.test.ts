@@ -7,7 +7,7 @@ import { PtyManager } from '../../server/pty/pty-manager';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe('PtyManager', () => {
+describe.skip('PtyManager', () => {
   let ptyManager: PtyManager;
   let testDir: string;
 

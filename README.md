@@ -162,6 +162,28 @@ For development setup and contribution guidelines, see [CONTRIBUTING.md](docs/CO
 - **Web UI**: `web/src/client/` (Lit/TypeScript)
 - **iOS App**: `ios/VibeTunnel/`
 
+### Testing & Code Coverage
+
+VibeTunnel has comprehensive test suites with code coverage enabled for all projects:
+
+```bash
+# Run all tests with coverage
+./scripts/test-all-coverage.sh
+
+# macOS tests with coverage (Swift Testing)
+cd mac && swift test --enable-code-coverage
+
+# iOS tests with coverage (using xcodebuild)
+cd ios && ./scripts/test-with-coverage.sh
+
+# Web tests with coverage (Vitest)
+cd web && ./scripts/coverage-report.sh
+```
+
+**Coverage Requirements**:
+- macOS/iOS: 75% minimum (enforced in CI)
+- Web: 80% minimum for lines, functions, branches, and statements
+
 ### Debug Logging
 
 Enable debug logging for troubleshooting:
