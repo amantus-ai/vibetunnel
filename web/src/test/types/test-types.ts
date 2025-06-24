@@ -8,7 +8,7 @@ export interface SessionData {
   pid?: number;
   status?: string;
   started_at?: string;
-  exit_code?: number | null;
+  exitCode?: number | null;
   term?: string;
   spawn_type?: string;
   cols?: number;

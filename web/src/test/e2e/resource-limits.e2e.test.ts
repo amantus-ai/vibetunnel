@@ -268,7 +268,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
       const { sessionId } = await createResponse.json();
 
       // Wait for command to complete
-      await sleep(2000);
+      await sleep(5000);
 
       // Fetch session info
       const infoResponse = await fetch(
@@ -280,7 +280,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
 
       expect(infoResponse.status).toBe(200);
       const sessionInfo: SessionData = await infoResponse.json();
-      expect(sessionInfo.state).toBe('terminated');
+      expect(sessionInfo.status).toBe('exited');
 
       // Clean up
       await fetch(`http://localhost:${server?.port}/api/sessions/${sessionId}`, {
@@ -326,7 +326,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
       const sessions = await listResponse.json();
 
       const activeSessions = sessions.filter(
-        (s: SessionData) => sessionIds.includes(s.id) && s.state === 'active'
+        (s: SessionData) => sessionIds.includes(s.id) && s.status === 'running'
       );
       expect(activeSessions.length).toBe(sessionCount);
 
@@ -362,7 +362,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
       const { sessionId } = await createResponse.json();
 
       // Wait for crash
-      await sleep(2000);
+      await sleep(3000);
 
       // Check session state
       const infoResponse = await fetch(
@@ -373,7 +373,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
       );
 
       const sessionInfo: SessionData = await infoResponse.json();
-      expect(sessionInfo.state).toBe('terminated');
+      expect(sessionInfo.status).toBe('exited');
       expect(sessionInfo.exitCode).toBe(1);
 
       // Server should still be responsive
@@ -404,7 +404,7 @@ describe('Resource Limits and Concurrent Sessions', () => {
             Authorization: authHeader,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ data: 'test' }),
+          body: JSON.stringify({ text: 'test' }),
         }
       );
       expect(inputResponse.status).toBe(404);

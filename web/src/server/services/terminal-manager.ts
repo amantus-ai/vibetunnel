@@ -330,7 +330,7 @@ export class TerminalManager {
 
     return {
       cols: terminal.cols,
-      rows: trimmedCells.length,
+      rows: terminal.rows,
       viewportY: startLine,
       cursorX,
       cursorY,
@@ -375,23 +375,23 @@ export class TerminalManager {
     let offset = 0;
 
     // Write header (32 bytes)
-    buffer.writeUInt16LE(0x5654, offset);
+    buffer.writeUInt16BE(0x5654, offset);
     offset += 2; // Magic "VT"
     buffer.writeUInt8(0x01, offset); // Version 1 - our only format
     offset += 1; // Version
     buffer.writeUInt8(0x00, offset);
     offset += 1; // Flags
-    buffer.writeUInt32LE(cols, offset);
+    buffer.writeUInt32BE(cols, offset);
     offset += 4; // Cols (32-bit)
-    buffer.writeUInt32LE(rows, offset);
+    buffer.writeUInt32BE(rows, offset);
     offset += 4; // Rows (32-bit)
-    buffer.writeInt32LE(viewportY, offset); // Signed for large buffers
+    buffer.writeInt32BE(viewportY, offset); // Signed for large buffers
     offset += 4; // ViewportY (32-bit signed)
-    buffer.writeInt32LE(cursorX, offset); // Signed for consistency
+    buffer.writeInt32BE(cursorX, offset); // Signed for consistency
     offset += 4; // CursorX (32-bit signed)
-    buffer.writeInt32LE(cursorY, offset); // Signed for relative positions
+    buffer.writeInt32BE(cursorY, offset); // Signed for relative positions
     offset += 4; // CursorY (32-bit signed)
-    buffer.writeUInt32LE(0, offset);
+    buffer.writeUInt32BE(0, offset);
     offset += 4; // Reserved
 
     // Write cells with new optimized format
@@ -413,7 +413,7 @@ export class TerminalManager {
       } else {
         // Row with content
         buffer.writeUInt8(0xfd, offset++); // Row marker
-        buffer.writeUInt16LE(rowCells.length, offset); // Number of cells in row
+        buffer.writeUInt16BE(rowCells.length, offset); // Number of cells in row
         offset += 2;
 
         // Write each cell

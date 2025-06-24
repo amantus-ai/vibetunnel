@@ -109,7 +109,7 @@ jobs:
       run: |
         cd ios
         echo "Resolving iOS package dependencies..."
-        xcodebuild -resolvePackageDependencies -workspace ../VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
+        xcodebuild -resolvePackageDependencies -workspace ../VibeTunnel.xcworkspace || echo "Dependency resolution completed"
     
     # BUILD PHASE
     - name: Build iOS app
