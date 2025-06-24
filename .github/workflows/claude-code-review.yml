@@ -29,87 +29,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0  # Full history for better context
 
-      - name: Find existing Claude review comment
-        uses: peter-evans/find-comment@v3
-        id: fc
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: '<!-- claude-code-review -->'
-
-      - name: Create or update comment with review in progress
-        uses: peter-evans/create-or-update-comment@v4
-        id: comment
-        with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ## 🤖 Claude Code Review
-            <!-- claude-code-review -->
-            
-            🔄 **Review in progress...** Claude is analyzing your pull request.
-            
-            <details>
-            <summary>Review Details</summary>
-            
-            - **Triggered by**: ${{ github.event_name }} event
-            - **Commit**: ${{ github.event.pull_request.head.sha }}
-            - **Started at**: ${{ github.event.pull_request.updated_at }}
-            
-            </details>
-          edit-mode: replace
-
-      - name: Run Claude Code Review
-        id: claude-review
-        uses: anthropics/claude-code-action@beta
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          
-          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
-          # model: "claude-opus-4-20250514"
-          
-          # Direct prompt for automated review (no @claude mention needed)
-          direct_prompt: |
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
-            
-            Be constructive and helpful in your feedback.
-          
-          # Optional: Customize review based on file types
-          # direct_prompt: |
-          #   Review this PR focusing on:
-          #   - For TypeScript files: Type safety and proper interface usage
-          #   - For API endpoints: Security, input validation, and error handling
-          #   - For React components: Performance, accessibility, and best practices
-          #   - For tests: Coverage, edge cases, and test quality
-          
-          # Optional: Different prompts for different authors
-          # direct_prompt: |
-          #   ${{ github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR' && 
-          #   'Welcome! Please review this PR from a first-time contributor. Be encouraging and provide detailed explanations for any suggestions.' ||
-          #   'Please provide a thorough code review focusing on our coding standards and best practices.' }}
-          
-          # Optional: Add specific tools for running tests or linting
-          allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run test),Bash(npm run test:*),Bash(npm run lint),Bash(npm run lint:*),Bash(npm run typecheck),Bash(npm run format)"
-          
-          # Optional: Skip review for certain conditions
-          # if: |
-          #   !contains(github.event.pull_request.title, '[skip-review]') &&
-          #   !contains(github.event.pull_request.title, '[WIP]')
-
-      - name: Extract Claude's review from PR comments
-        if: always()
-        id: extract-review
+      - name: Check if already reviewed
+        id: check-review
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            // Check if Claude has already reviewed this commit
+            const currentSha = context.payload.pull_request.head.sha;
+            
             // Get all comments on the PR
             const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -118,40 +48,133 @@ jobs:
               per_page: 100
             });
             
-            // Find the most recent comment by claude[bot]
-            const claudeComment = comments.data
-              .filter(comment => comment.user.login === 'claude[bot]')
-              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+            // Check if Claude has already reviewed this specific commit
+            const alreadyReviewed = comments.data.some(comment => 
+              comment.user.login === 'claude[bot]' && 
+              comment.body.includes(currentSha)
+            );
             
-            if (claudeComment) {
-              // Extract the review content
-              const reviewContent = claudeComment.body;
-              core.setOutput('review_found', 'true');
-              core.setOutput('review_content', reviewContent);
-              
-              // Delete Claude's original comment to avoid duplication
-              await github.rest.issues.deleteComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: claudeComment.id
-              });
+            if (alreadyReviewed) {
+              core.info(`Claude has already reviewed commit ${currentSha}`);
+              core.setOutput('skip', 'true');
             } else {
-              core.setOutput('review_found', 'false');
-              core.setOutput('review_content', 'No review was generated.');
+              core.info(`No Claude review found for commit ${currentSha}`);
+              core.setOutput('skip', 'false');
             }
 
-      - name: Update comment with Claude's review
-        if: always()
-        uses: peter-evans/create-or-update-comment@v4
+      - name: Run Claude Code Review
+        if: steps.check-review.outputs.skip != 'true'
+        id: claude-review
+        uses: anthropics/claude-code-action@beta
         with:
-          comment-id: ${{ steps.comment.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ## 🤖 Claude Code Review
-            <!-- claude-code-review -->
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          
+          # Use Claude Opus 4 for more thorough reviews
+          model: "claude-opus-4-20250514"
+          
+          # Direct prompt for automated review with detailed instructions
+          direct_prompt: |
+            Please provide a comprehensive code review for this pull request. Structure your review as follows:
             
-            ${{ steps.extract-review.outputs.review_found == 'true' && steps.extract-review.outputs.review_content || '❌ **Review failed** - Claude was unable to complete the review.' }}
+            ## 📋 Summary
+            Brief overview of the changes and their purpose.
+            
+            ## ✅ Positive Aspects
+            What's done well in this PR.
+            
+            ## 🔍 Areas for Improvement
+            
+            ### Code Quality
+            - Naming conventions, code organization, readability
+            - Adherence to project patterns and best practices
+            - DRY principle violations or code duplication
+            
+            ### Potential Issues
+            - Bugs or logic errors
+            - Edge cases not handled
+            - Error handling gaps
+            
+            ### Performance
+            - Inefficient algorithms or data structures
+            - Unnecessary re-renders (for UI components)
+            - Resource leaks or memory issues
+            
+            ### Security
+            - Input validation issues
+            - Authentication/authorization concerns
+            - Potential vulnerabilities
+            
+            ### Testing
+            - Missing test coverage
+            - Test quality and completeness
+            - Edge cases that should be tested
+            
+            ## 💡 Suggestions
+            Specific, actionable improvements with code examples where helpful.
+            
+            ## 🎯 Priority Items
+            List the most important items that should be addressed before merging.
             
             ---
-            <sub>Review completed for commit ${{ github.event.pull_request.head.sha }}</sub>
-          edit-mode: replace
+            *Reviewed commit: ${{ github.event.pull_request.head.sha }}*
+            *Files changed: ${{ github.event.pull_request.changed_files }}*
+          
+          # Enhanced tool access for better analysis
+          allowed_tools: |
+            Bash(npm install)
+            Bash(npm run build)
+            Bash(npm run test)
+            Bash(npm run test:*)
+            Bash(npm run lint)
+            Bash(npm run lint:*)
+            Bash(npm run typecheck)
+            Bash(npm run format)
+            Bash(npm run format:check)
+            Glob
+            Grep
+            Read
+            
+          # Environment variables for Claude's context
+          claude_env: |
+            PR_NUMBER: ${{ github.event.pull_request.number }}
+            PR_TITLE: ${{ github.event.pull_request.title }}
+            PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+            BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+            HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+            CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+            ADDITIONS: ${{ github.event.pull_request.additions }}
+            DELETIONS: ${{ github.event.pull_request.deletions }}
+
+      # Optional: Post a summary comment if Claude's review is very long
+      - name: Create summary if needed
+        if: steps.check-review.outputs.skip != 'true' && always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Wait a bit for Claude's comment to appear
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            
+            // Find Claude's latest comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 10,
+              sort: 'created',
+              direction: 'desc'
+            });
+            
+            const claudeComment = comments.data.find(c => c.user.login === 'claude[bot]');
+            
+            if (claudeComment && claudeComment.body.length > 10000) {
+              // If the review is very long, add a summary at the top
+              const summary = `## 📊 Review Summary\n\n**Review length**: ${claudeComment.body.length} characters\n**Commit**: ${context.payload.pull_request.head.sha.substring(0, 7)}\n\n> 💡 Tip: Use the table of contents below to navigate this review.\n\n---\n\n`;
+              
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: claudeComment.id,
+                body: summary + claudeComment.body
+              });
+            }
