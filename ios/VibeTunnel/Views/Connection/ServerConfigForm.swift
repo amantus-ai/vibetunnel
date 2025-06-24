@@ -165,7 +165,6 @@ struct ServerConfigForm: View {
                                     host = server.host
                                     port = String(server.port)
                                     name = server.name ?? ""
-                                    password = server.password ?? ""
                                     HapticFeedback.selection()
                                 }, label: {
                                     VStack(alignment: .leading, spacing: 4) {

@@ -35,16 +35,6 @@ jobs:
         xcodebuild -version
         swift --version
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-    
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9
-        dest: ~/pnpm-${{ github.run_id }}
     
     - name: Cache Swift packages
       uses: useblacksmith/cache@v5
@@ -74,18 +64,6 @@ jobs:
         echo "xcbeautify: $(which xcbeautify || echo 'not found')"
         echo "PATH: $PATH"
     
-    - name: Install web dependencies
-      run: |
-        cd web
-        # Clean pnpm store to avoid corruption issues
-        pnpm store prune || true
-        # Install with more verbose output and retry on failure
-        pnpm install --frozen-lockfile --reporter=append-only || pnpm install --frozen-lockfile --no-frozen-lockfile
-    
-    - name: Build web frontend
-      run: |
-        cd web
-        pnpm run build
     
     - name: Resolve Dependencies (once)
       run: |

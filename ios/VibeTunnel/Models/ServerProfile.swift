@@ -54,8 +54,7 @@ struct ServerProfile: Identifiable, Codable, Equatable {
         return ServerConfig(
             host: host,
             port: port,
-            name: name,
-            password: requiresAuth ? password : nil
+            name: name
         )
     }
 }

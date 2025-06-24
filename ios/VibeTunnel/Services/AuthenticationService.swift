@@ -42,7 +42,7 @@ final class AuthenticationService: ObservableObject {
     
     // MARK: - Properties
     
-    private let keychain = KeychainService.shared
+    private let keychain = KeychainService.self
     private let apiClient: APIClient
     private let serverConfig: ServerConfig
     
@@ -119,7 +119,9 @@ final class AuthenticationService: ObservableObject {
                 loginTime: Date()
             )
             let userDataJson = try JSONEncoder().encode(userData)
-            try keychain.savePassword(String(data: userDataJson, encoding: .utf8)!, for: userDataKey)
+            if let userDataString = String(data: userDataJson, encoding: .utf8) {
+                try keychain.savePassword(userDataString, for: userDataKey)
+            }
             
             // Update state
             self.authToken = token
