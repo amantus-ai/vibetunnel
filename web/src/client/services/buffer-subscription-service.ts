@@ -1,5 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 import type { BufferCell } from '../utils/terminal-renderer.js';
+import { authClient } from './auth-client.js';
 
 const logger = createLogger('buffer-subscription-service');
 
@@ -37,7 +38,16 @@ export class BufferSubscriptionService {
 
     this.isConnecting = true;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/buffers`;
+
+    // Get auth token for WebSocket connection
+    const currentUser = authClient.getCurrentUser();
+    const token = currentUser?.token;
+
+    // Build WebSocket URL with token as query parameter
+    let wsUrl = `${protocol}//${window.location.host}/buffers`;
+    if (token) {
+      wsUrl += `?token=${encodeURIComponent(token)}`;
+    }
 
     logger.log(`connecting to ${wsUrl}`);
 

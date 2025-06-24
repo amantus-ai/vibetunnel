@@ -27,7 +27,7 @@ import './components/auth-login.js';
 import './components/ssh-key-manager.js';
 
 import type { SessionCard } from './components/session-card.js';
-import { AuthClient } from './services/auth-client.js';
+import { authClient } from './services/auth-client.js';
 
 const logger = createLogger('app');
 
@@ -63,7 +63,6 @@ export class VibeTunnelApp extends LitElement {
   @state() private isResizing = false;
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   private initialLoadComplete = false;
-  private authClient = new AuthClient();
   private responsiveObserverInitialized = false;
   private initialRenderComplete = false;
 
@@ -165,7 +164,7 @@ export class VibeTunnelApp extends LitElement {
       console.warn('⚠️ Could not fetch auth config:', error);
     }
 
-    this.isAuthenticated = this.authClient.isAuthenticated();
+    this.isAuthenticated = authClient.isAuthenticated();
     console.log('🔐 Authentication status:', this.isAuthenticated);
 
     if (this.isAuthenticated) {
@@ -200,7 +199,7 @@ export class VibeTunnelApp extends LitElement {
 
   private async handleLogout() {
     console.log('👋 Logging out');
-    await this.authClient.logout();
+    await authClient.logout();
     this.isAuthenticated = false;
     this.currentView = 'auth';
     this.sessions = [];
@@ -266,7 +265,7 @@ export class VibeTunnelApp extends LitElement {
       this.loading = true;
     }
     try {
-      const headers = this.authClient.getAuthHeader();
+      const headers = authClient.getAuthHeader();
       const response = await fetch('/api/sessions', { headers });
       if (response.ok) {
         this.sessions = (await response.json()) as Session[];
@@ -711,18 +710,18 @@ export class VibeTunnelApp extends LitElement {
         const authConfig = await configResponse.json();
         if (authConfig.noAuth) {
           // Skip auth check for no-auth mode
-        } else if (!this.authClient.isAuthenticated()) {
+        } else if (!authClient.isAuthenticated()) {
           this.currentView = 'auth';
           this.selectedSessionId = null;
           return;
         }
-      } else if (!this.authClient.isAuthenticated()) {
+      } else if (!authClient.isAuthenticated()) {
         this.currentView = 'auth';
         this.selectedSessionId = null;
         return;
       }
     } catch (_error) {
-      if (!this.authClient.isAuthenticated()) {
+      if (!authClient.isAuthenticated()) {
         this.currentView = 'auth';
         this.selectedSessionId = null;
         return;
@@ -949,7 +948,7 @@ export class VibeTunnelApp extends LitElement {
         this.currentView === 'auth'
           ? html`
             <auth-login
-              .authClient=${this.authClient}
+              .authClient=${authClient}
               @auth-success=${this.handleAuthSuccess}
               @show-ssh-key-manager=${this.handleShowSSHKeyManager}
             ></auth-login>
@@ -983,8 +982,8 @@ export class VibeTunnelApp extends LitElement {
             .sessions=${this.sessions}
             .hideExited=${this.hideExited}
             .showSplitView=${showSplitView}
-            .currentUser=${this.authClient.getCurrentUser()?.userId || null}
-            .authMethod=${this.authClient.getCurrentUser()?.authMethod || null}
+            .currentUser=${authClient.getCurrentUser()?.userId || null}
+            .authMethod=${authClient.getCurrentUser()?.authMethod || null}
             @create-session=${this.handleCreateSession}
             @hide-exited-change=${this.handleHideExitedChange}
             @kill-all-sessions=${this.handleKillAll}
@@ -1001,7 +1000,7 @@ export class VibeTunnelApp extends LitElement {
               .showCreateModal=${this.showCreateModal}
               .selectedSessionId=${this.selectedSessionId}
               .compactMode=${showSplitView}
-              .authClient=${this.authClient}
+              .authClient=${authClient}
               @session-killed=${this.handleSessionKilled}
               @session-created=${this.handleSessionCreated}
               @create-modal-close=${this.handleCreateModalClose}
@@ -1082,7 +1081,7 @@ export class VibeTunnelApp extends LitElement {
       <!-- SSH Key Manager Modal -->
       <ssh-key-manager
         .visible=${this.showSSHKeyManager}
-        .sshAgent=${this.authClient.getSSHAgent()}
+        .sshAgent=${authClient.getSSHAgent()}
         @close=${this.handleCloseSSHKeyManager}
       ></ssh-key-manager>
 

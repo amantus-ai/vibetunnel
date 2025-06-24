@@ -1,6 +1,6 @@
 import { html, LitElement, type TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { AuthClient } from '../services/auth-client.js';
+import { authClient } from '../services/auth-client.js';
 
 interface LogEntry {
   timestamp: string;
@@ -29,7 +29,6 @@ export class LogViewer extends LitElement {
 
   private refreshInterval?: number;
   private isFirstLoad = true;
-  private authClient = new AuthClient();
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -49,7 +48,7 @@ export class LogViewer extends LitElement {
     try {
       // Get log info
       const infoResponse = await fetch('/api/logs/info', {
-        headers: { ...this.authClient.getAuthHeader() },
+        headers: { ...authClient.getAuthHeader() },
       });
       if (infoResponse.ok) {
         const info = await infoResponse.json();
@@ -58,7 +57,7 @@ export class LogViewer extends LitElement {
 
       // Get raw logs
       const response = await fetch('/api/logs/raw', {
-        headers: { ...this.authClient.getAuthHeader() },
+        headers: { ...authClient.getAuthHeader() },
       });
       if (!response.ok) {
         throw new Error('Failed to load logs');
@@ -179,7 +178,7 @@ export class LogViewer extends LitElement {
     try {
       const response = await fetch('/api/logs/clear', {
         method: 'DELETE',
-        headers: { ...this.authClient.getAuthHeader() },
+        headers: { ...authClient.getAuthHeader() },
       });
       if (!response.ok) {
         throw new Error('Failed to clear logs');
@@ -194,7 +193,7 @@ export class LogViewer extends LitElement {
   private async downloadLogs(): Promise<void> {
     try {
       const response = await fetch('/api/logs/raw', {
-        headers: { ...this.authClient.getAuthHeader() },
+        headers: { ...authClient.getAuthHeader() },
       });
       if (!response.ok) {
         throw new Error('Failed to download logs');

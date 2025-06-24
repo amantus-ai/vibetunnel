@@ -45,9 +45,8 @@ function formatArgs(args: unknown[]): unknown[] {
  */
 async function sendToServer(level: keyof LogLevel, module: string, args: unknown[]): Promise<void> {
   try {
-    // Import AuthClient dynamically to avoid circular dependencies
-    const { AuthClient } = await import('../services/auth-client.js');
-    const authClient = new AuthClient();
+    // Import authClient singleton dynamically to avoid circular dependencies
+    const { authClient } = await import('../services/auth-client.js');
 
     await fetch('/api/logs/client', {
       method: 'POST',

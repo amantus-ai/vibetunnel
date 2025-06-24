@@ -19,7 +19,7 @@ import type { Session } from './session-list.js';
 import './terminal.js';
 import './file-browser.js';
 import './clickable-path.js';
-import { AuthClient } from '../services/auth-client.js';
+import { authClient } from '../services/auth-client.js';
 import { CastConverter } from '../utils/cast-converter.js';
 import { createLogger } from '../utils/logger.js';
 import {
@@ -66,7 +66,6 @@ export class SessionView extends LitElement {
   @state() private terminalFontSize = 14;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
-  private authClient = new AuthClient();
   @state() private reconnectCount = 0;
   @state() private ctrlSequence: string[] = [];
 
@@ -375,7 +374,6 @@ export class SessionView extends LitElement {
     this.cleanupStreamConnection();
 
     // Get auth client from the main app
-    const authClient = new AuthClient();
     const user = authClient.getCurrentUser();
 
     // Build stream URL with auth token as query parameter (EventSource doesn't support headers)
@@ -547,7 +545,7 @@ export class SessionView extends LitElement {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...this.authClient.getAuthHeader(),
+          ...authClient.getAuthHeader(),
         },
         body: JSON.stringify(body),
       });
@@ -659,7 +657,7 @@ export class SessionView extends LitElement {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              ...this.authClient.getAuthHeader(),
+              ...authClient.getAuthHeader(),
             },
             body: JSON.stringify({ cols: cols, rows: rows }),
           });
@@ -1024,7 +1022,7 @@ export class SessionView extends LitElement {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...this.authClient.getAuthHeader(),
+          ...authClient.getAuthHeader(),
         },
         body: JSON.stringify(body),
       });
@@ -1050,7 +1048,7 @@ export class SessionView extends LitElement {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...this.authClient.getAuthHeader(),
+          ...authClient.getAuthHeader(),
         },
       });
 

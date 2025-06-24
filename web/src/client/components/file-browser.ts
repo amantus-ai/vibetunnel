@@ -11,7 +11,7 @@
 import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
-import { AuthClient } from '../services/auth-client.js';
+import { authClient } from '../services/auth-client.js';
 import {
   type GitStatus as GitStatusType,
   getFileIcon,
@@ -108,7 +108,6 @@ export class FileBrowser extends LitElement {
 
   private editorRef = createRef<HTMLElement>();
   private pathInputRef = createRef<HTMLInputElement>();
-  private authClient = new AuthClient();
   private noAuthMode = false;
 
   async connectedCallback() {
@@ -152,7 +151,7 @@ export class FileBrowser extends LitElement {
       logger.debug(`loading directory: ${dirPath}`);
       logger.debug(`fetching URL: ${url}`);
 
-      const headers = this.noAuthMode ? {} : { ...this.authClient.getAuthHeader() };
+      const headers = this.noAuthMode ? {} : { ...authClient.getAuthHeader() };
       const response = await fetch(url, { headers });
       logger.debug(`response status: ${response.status}`);
 
@@ -197,7 +196,7 @@ export class FileBrowser extends LitElement {
       logger.debug(`loading preview for file: ${file.name}`);
       logger.debug(`file path: ${file.path}`);
 
-      const headers = this.noAuthMode ? {} : { ...this.authClient.getAuthHeader() };
+      const headers = this.noAuthMode ? {} : { ...authClient.getAuthHeader() };
       const response = await fetch(`/api/fs/preview?path=${encodeURIComponent(file.path)}`, {
         headers,
       });
@@ -222,7 +221,7 @@ export class FileBrowser extends LitElement {
 
     try {
       // Load both the unified diff and the full content for Monaco
-      const headers = this.noAuthMode ? {} : { ...this.authClient.getAuthHeader() };
+      const headers = this.noAuthMode ? {} : { ...authClient.getAuthHeader() };
       const [diffResponse, contentResponse] = await Promise.all([
         fetch(`/api/fs/diff?path=${encodeURIComponent(file.path)}`, {
           headers,

@@ -382,3 +382,6 @@ export class AuthClient {
     return tokenAge < maxAge;
   }
 }
+
+// Export singleton instance
+export const authClient = new AuthClient();
