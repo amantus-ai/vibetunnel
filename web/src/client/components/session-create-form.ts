@@ -314,7 +314,7 @@ export class SessionCreateForm extends LitElement {
     return html`
       <div class="modal-backdrop flex items-center justify-center">
         <div
-          class="modal-content font-mono text-sm w-96 lg:w-[576px] max-w-full mx-4"
+          class="modal-content font-mono text-sm w-96 lg:w-[576px] max-w-full mx-2 sm:mx-4"
           style="view-transition-name: create-session-modal"
         >
           <div class="pb-6 mb-6 border-b border-dark-border relative">
@@ -342,7 +342,7 @@ export class SessionCreateForm extends LitElement {
             </button>
           </div>
 
-          <div class="p-4 lg:p-8">
+          <div class="p-3 sm:p-4 lg:p-8">
             <!-- Session Name -->
             <div class="mb-6">
               <label class="form-label">Session Name (Optional):</label>

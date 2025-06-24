@@ -821,7 +821,7 @@ export class VibeTunnelApp extends LitElement {
       return 'w-full min-h-screen flex flex-col';
     }
 
-    const baseClasses = 'bg-dark-bg border-r border-dark-border flex flex-col';
+    const baseClasses = 'bg-dark-bg-secondary border-r border-dark-border flex flex-col';
     const isMobile = this.mediaState.isMobile;
     const mobileClasses = isMobile
       ? 'absolute left-0 top-0 bottom-0 z-30 flex'
@@ -970,7 +970,7 @@ export class VibeTunnelApp extends LitElement {
             @open-notification-settings=${this.handleShowNotificationSettings}
             @logout=${this.handleLogout}
           ></app-header>
-          <div class="${this.showSplitView ? 'flex-1 overflow-y-auto' : 'flex-1'} bg-dark-bg">
+          <div class="${this.showSplitView ? 'flex-1 overflow-y-auto' : 'flex-1'} bg-dark-bg-secondary">
             <session-list
               .sessions=${this.sessions}
               .loading=${this.loading}
