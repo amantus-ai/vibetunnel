@@ -49,8 +49,8 @@ export class VibeTunnelApp extends LitElement {
   @state() private successMessage = '';
   @state() private sessions: Session[] = [];
   @state() private loading = false;
-  @state() private currentView: 'list' | 'session' | 'auth' = this.getInitialView();
-  @state() private selectedSessionId: string | null = this.getInitialSessionId();
+  @state() private currentView: 'list' | 'session' | 'auth' = 'auth';
+  @state() private selectedSessionId: string | null = null;
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
   @state() private showFileBrowser = false;
@@ -154,13 +154,9 @@ export class VibeTunnelApp extends LitElement {
         if (authConfig.noAuth) {
           console.log('🔓 No auth required, bypassing authentication');
           this.isAuthenticated = true;
-          // Only set to 'list' if we don't already have a session view from URL
-          if (this.currentView === 'auth') {
-            this.currentView = 'list';
-          }
+          this.currentView = 'list';
           await this.loadSessions(); // Wait for sessions to load
           this.startAutoRefresh();
-
           return;
         }
       }
@@ -172,10 +168,7 @@ export class VibeTunnelApp extends LitElement {
     console.log('🔐 Authentication status:', this.isAuthenticated);
 
     if (this.isAuthenticated) {
-      // Only set to 'list' if we don't already have a session view from URL
-      if (this.currentView === 'auth') {
-        this.currentView = 'list';
-      }
+      this.currentView = 'list';
       await this.loadSessions(); // Wait for sessions to load
       this.startAutoRefresh();
     } else {
@@ -186,10 +179,7 @@ export class VibeTunnelApp extends LitElement {
   private async handleAuthSuccess() {
     console.log('✅ Authentication successful');
     this.isAuthenticated = true;
-    // Only set to 'list' if we don't already have a session view from URL
-    if (this.currentView === 'auth') {
-      this.currentView = 'list';
-    }
+    this.currentView = 'list';
     await this.loadSessions();
     this.startAutoRefresh();
 
@@ -558,27 +548,6 @@ export class VibeTunnelApp extends LitElement {
   }
 
   // State persistence methods
-  private getInitialView(): 'list' | 'session' | 'auth' {
-    // Check if there's a session in the URL
-    try {
-      const url = new URL(window.location.href);
-      const sessionId = url.searchParams.get('session');
-      return sessionId ? 'session' : 'auth';
-    } catch {
-      return 'auth';
-    }
-  }
-
-  private getInitialSessionId(): string | null {
-    // Get session ID from URL if present
-    try {
-      const url = new URL(window.location.href);
-      return url.searchParams.get('session');
-    } catch {
-      return null;
-    }
-  }
-
   private loadHideExitedState(): boolean {
     try {
       const saved = localStorage.getItem('hideExitedSessions');
@@ -1060,23 +1029,19 @@ export class VibeTunnelApp extends LitElement {
           showSplitView
             ? html`
               <div class="flex-1 relative sm:static transition-none">
-                ${
-                  selectedSession
-                    ? keyed(
-                        selectedSession.id,
-                        html`
-                        <session-view
-                          .session=${selectedSession}
-                          .showBackButton=${false}
-                          .showSidebarToggle=${true}
-                          .sidebarCollapsed=${this.sidebarCollapsed}
-                          @navigate-to-list=${this.handleNavigateToList}
-                          @toggle-sidebar=${this.handleToggleSidebar}
-                        ></session-view>
-                      `
-                      )
-                    : ''
-                }
+                ${keyed(
+                  this.selectedSessionId,
+                  html`
+                    <session-view
+                      .session=${selectedSession}
+                      .showBackButton=${false}
+                      .showSidebarToggle=${true}
+                      .sidebarCollapsed=${this.sidebarCollapsed}
+                      @navigate-to-list=${this.handleNavigateToList}
+                      @toggle-sidebar=${this.handleToggleSidebar}
+                    ></session-view>
+                  `
+                )}
               </div>
             `
             : ''
