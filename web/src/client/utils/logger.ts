@@ -48,6 +48,13 @@ async function sendToServer(level: keyof LogLevel, module: string, args: unknown
     // Import authClient singleton dynamically to avoid circular dependencies
     const { authClient } = await import('../services/auth-client.js');
 
+    // Check if we have authentication before sending logs
+    const authHeader = authClient.getAuthHeader();
+    if (!authHeader.Authorization) {
+      // Skip sending logs if not authenticated
+      return;
+    }
+
     await fetch('/api/logs/client', {
       method: 'POST',
       headers: {

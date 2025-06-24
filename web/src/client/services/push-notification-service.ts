@@ -1,5 +1,6 @@
 import { PushNotificationPreferences, PushSubscription } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
+import { authClient } from './auth-client.js';
 
 // Re-export types for components
 export { PushSubscription, PushNotificationPreferences };
@@ -23,14 +24,30 @@ export class PushNotificationService {
   private pushNotificationsAvailable = false;
   private initializationPromise: Promise<void> | null = null;
 
+  // biome-ignore lint/complexity/noUselessConstructor: This constructor documents the intentional design decision to not auto-initialize
   constructor() {
-    this.initializationPromise = this.initialize().catch((error) => {
-      logger.error('failed to initialize push notification service:', error);
-      throw error;
-    });
+    // Do not initialize automatically - wait for explicit initialization
   }
 
-  private async initialize(): Promise<void> {
+  /**
+   * Initialize the push notification service
+   * Should be called after authentication is complete
+   */
+  async initialize(): Promise<void> {
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    this.initializationPromise = this._initialize().catch((error) => {
+      logger.error('failed to initialize push notification service:', error);
+      // Don't throw here - just log the error
+      // Push notifications are optional functionality
+    });
+
+    return this.initializationPromise;
+  }
+
+  private async _initialize(): Promise<void> {
     if (this.initialized) return;
 
     try {
@@ -468,7 +485,9 @@ export class PushNotificationService {
    */
   private async fetchVapidPublicKey(): Promise<void> {
     try {
-      const response = await fetch('/api/push/vapid-public-key');
+      const response = await fetch('/api/push/vapid-public-key', {
+        headers: authClient.getAuthHeader(),
+      });
 
       if (!response.ok) {
         if (response.status === 503) {

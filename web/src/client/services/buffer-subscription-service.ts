@@ -27,7 +27,20 @@ export class BufferSubscriptionService {
   private isConnecting = false;
   private messageQueue: Array<{ type: string; sessionId?: string }> = [];
 
+  private initialized = false;
+
+  // biome-ignore lint/complexity/noUselessConstructor: This constructor documents the intentional design decision to not auto-connect
   constructor() {
+    // Do not connect automatically - wait for initialize() to be called
+  }
+
+  /**
+   * Initialize the buffer subscription service and connect to WebSocket
+   * Should be called after authentication is complete
+   */
+  initialize() {
+    if (this.initialized) return;
+    this.initialized = true;
     this.connect();
   }
 
@@ -241,6 +254,11 @@ export class BufferSubscriptionService {
    * Returns an unsubscribe function
    */
   subscribe(sessionId: string, handler: BufferUpdateHandler): () => void {
+    // Ensure service is initialized when first subscription happens
+    if (!this.initialized) {
+      this.initialize();
+    }
+
     // Add handler to subscriptions
     if (!this.subscriptions.has(sessionId)) {
       this.subscriptions.set(sessionId, new Set());
