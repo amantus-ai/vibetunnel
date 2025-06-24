@@ -128,7 +128,7 @@ final class BunServer {
 
         // Create the process using login shell
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: binaryPath)
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
 
         // Get the Resources directory path
         let resourcesPath = Bundle.main.resourcePath ?? Bundle.main.bundlePath
@@ -175,14 +175,30 @@ final class BunServer {
             logger.info("Local authentication bypass enabled for Mac app")
         }
 
-        process.arguments = vibetunnelArgs
+        // Create wrapper to run vibetunnel with parent death monitoring
+        let parentPid = ProcessInfo.processInfo.processIdentifier
+        let vibetunnelCommand = """
+            # Start vibetunnel in background
+            \(binaryPath) \(vibetunnelArgs.joined(separator: " ")) &
+            VIBETUNNEL_PID=$!
+            
+            # Monitor parent process
+            while kill -0 \(parentPid) 2>/dev/null; do
+                sleep 1
+            done
+            
+            # Parent died, kill vibetunnel
+            kill -TERM $VIBETUNNEL_PID 2>/dev/null
+            wait $VIBETUNNEL_PID
+            """
+        process.arguments = ["-l", "-c", vibetunnelCommand]
 
         // Set up a termination handler for logging
         process.terminationHandler = { [weak self] process in
             self?.logger.info("vibetunnel process terminated with status: \(process.terminationStatus)")
         }
 
-        logger.info("Executing command: \(binaryPath) \(vibetunnelArgs.joined(separator: " "))")
+        logger.info("Executing command: /bin/zsh -l -c \"\(vibetunnelCommand)\"")
         logger.info("Binary location: \(resourcesPath)")
 
         // Set up a minimal environment for the SEA binary
@@ -240,12 +256,12 @@ final class BunServer {
                 var errorDetails = "Exit code: \(exitCode)"
                 if let stderrPipe = self.stderrPipe {
                     do {
-                        let errorData = try stderrPipe.fileHandleForReading.readDataToEndOfFile()
-                        if !errorData.isEmpty, let errorOutput = String(data: errorData, encoding: .utf8) {
+                        if let errorData = try stderrPipe.fileHandleForReading.readToEnd(),
+                           !errorData.isEmpty,
+                           let errorOutput = String(data: errorData, encoding: .utf8) {
                             errorDetails += "\nError: \(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
                         }
                     } catch {
-                        // File handle might be invalid if process exited immediately
                         logger.debug("Could not read stderr: \(error.localizedDescription)")
                     }
                 }
@@ -594,67 +610,6 @@ enum BunServerError: LocalizedError {
     }
 }
 
-// MARK: - Process Extensions
-
-extension Process {
-    /// Run the process asynchronously
-    func runAsync() async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    try self.run()
-                    continuation.resume()
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    /// Wait for the process to exit asynchronously
-    func waitUntilExitAsync() async {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                self.waitUntilExit()
-                continuation.resume()
-            }
-        }
-    }
-
-    /// Terminate the process asynchronously
-    func terminateAsync() async {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                if self.isRunning {
-                    self.terminate()
-                }
-                continuation.resume()
-            }
-        }
-    }
-
-    /// Wait for exit with timeout
-    func waitUntilExitWithTimeout(seconds: TimeInterval) async -> Bool {
-        await withTaskGroup(of: Bool.self) { group in
-            group.addTask {
-                await self.waitUntilExitAsync()
-                return true
-            }
-
-            group.addTask {
-                try? await Task.sleep(for: .seconds(seconds))
-                return false
-            }
-
-            for await result in group {
-                group.cancelAll()
-                return result
-            }
-
-            return false
-        }
-    }
-}
 
 // MARK: - LogHandler
 
