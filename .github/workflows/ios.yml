@@ -162,19 +162,82 @@ jobs:
     
     # TEST PHASE
     - name: Create and boot simulator
+      id: simulator
       run: |
         echo "Creating iOS simulator for tests..."
+        
+        # Generate unique simulator name to avoid conflicts
+        SIMULATOR_NAME="VibeTunnel-iOS-${GITHUB_RUN_ID}-${GITHUB_JOB}-${RANDOM}"
+        echo "Simulator name: $SIMULATOR_NAME"
+        
+        # Cleanup function
+        cleanup_simulator() {
+          local sim_id="$1"
+          if [ -n "$sim_id" ]; then
+            echo "Cleaning up simulator $sim_id..."
+            xcrun simctl shutdown "$sim_id" 2>/dev/null || true
+            xcrun simctl delete "$sim_id" 2>/dev/null || true
+          fi
+        }
+        
+        # Pre-cleanup: Remove old VibeTunnel test simulators from previous runs
+        echo "Cleaning up old test simulators..."
+        xcrun simctl list devices | grep "VibeTunnel-iOS-" | grep -E "\(.*\)" | \
+          sed -n 's/.*(\(.*\)).*/\1/p' | while read -r old_sim_id; do
+          cleanup_simulator "$old_sim_id"
+        done
+        
         # Get the latest iOS runtime
         RUNTIME=$(xcrun simctl list runtimes | grep "iOS" | tail -1 | awk '{print $NF}')
         echo "Using runtime: $RUNTIME"
         
-        # Create a new simulator
-        SIMULATOR_ID=$(xcrun simctl create "Test iPhone" "iPhone 15" "$RUNTIME" || xcrun simctl create "Test iPhone" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "$RUNTIME")
-        echo "Created simulator: $SIMULATOR_ID"
+        # Create a new simulator with retry logic
+        SIMULATOR_ID=""
+        for attempt in 1 2 3; do
+          echo "Creating simulator (attempt $attempt)..."
+          SIMULATOR_ID=$(xcrun simctl create "$SIMULATOR_NAME" "iPhone 15" "$RUNTIME" 2>/dev/null || \
+                        xcrun simctl create "$SIMULATOR_NAME" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "$RUNTIME" 2>/dev/null) && break
+          
+          echo "Creation failed, waiting before retry..."
+          sleep $((attempt * 2))
+        done
         
-        # Boot the simulator
-        xcrun simctl boot "$SIMULATOR_ID" || echo "Simulator already booted"
+        if [ -z "$SIMULATOR_ID" ]; then
+          echo "::error::Failed to create simulator after 3 attempts"
+          exit 1
+        fi
+        
+        echo "Created simulator: $SIMULATOR_ID"
         echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
+        echo "simulator_id=$SIMULATOR_ID" >> $GITHUB_OUTPUT
+        
+        # Boot the simulator with retry logic
+        echo "Booting simulator..."
+        for attempt in 1 2 3; do
+          if xcrun simctl boot "$SIMULATOR_ID" 2>/dev/null; then
+            echo "Simulator booted successfully"
+            break
+          fi
+          
+          # Check if already booted
+          if xcrun simctl list devices | grep "$SIMULATOR_ID" | grep -q "Booted"; then
+            echo "Simulator already booted"
+            break
+          fi
+          
+          echo "Boot attempt $attempt failed, waiting..."
+          sleep $((attempt * 3))
+        done
+        
+        # Wait for simulator to be ready
+        echo "Waiting for simulator to be ready..."
+        for i in {1..30}; do
+          if xcrun simctl list devices | grep "$SIMULATOR_ID" | grep -q "Booted"; then
+            echo "Simulator is ready"
+            break
+          fi
+          sleep 1
+        done
     
     - name: Run iOS tests
       run: |
@@ -182,7 +245,39 @@ jobs:
         # Ensure xcbeautify is in PATH
         export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
         
+        # Set up cleanup trap
+        cleanup_and_exit() {
+          local exit_code=$?
+          echo "Test execution finished with exit code: $exit_code"
+          
+          # Attempt to shutdown simulator gracefully
+          if [ -n "$SIMULATOR_ID" ]; then
+            echo "Shutting down simulator..."
+            xcrun simctl shutdown "$SIMULATOR_ID" 2>/dev/null || true
+            
+            # Give it a moment to shutdown
+            sleep 2
+            
+            # Force terminate if still running
+            if xcrun simctl list devices | grep "$SIMULATOR_ID" | grep -q "Booted"; then
+              echo "Force terminating simulator..."
+              xcrun simctl terminate "$SIMULATOR_ID" com.apple.springboard 2>/dev/null || true
+            fi
+          fi
+          
+          exit $exit_code
+        }
+        trap cleanup_and_exit EXIT
+        
         echo "Running iOS tests using Swift Testing framework..."
+        echo "Simulator ID: $SIMULATOR_ID"
+        
+        # Verify simulator is still booted
+        if ! xcrun simctl list devices | grep "$SIMULATOR_ID" | grep -q "Booted"; then
+          echo "::error::Simulator is not in booted state"
+          exit 1
+        fi
+        
         set -o pipefail
         xcodebuild test \
           -workspace ../VibeTunnel.xcworkspace \
@@ -197,13 +292,28 @@ jobs:
           -quiet \
           2>&1 || {
             echo "::error::iOS tests failed"
-            # Shutdown simulator
-            xcrun simctl shutdown "$SIMULATOR_ID" || true
             exit 1
           }
         
+        echo "Tests completed successfully"
+
+    # Add cleanup step that always runs
+    - name: Cleanup simulator
+      if: always() && steps.simulator.outputs.simulator_id != ''
+      run: |
+        SIMULATOR_ID="${{ steps.simulator.outputs.simulator_id }}"
+        echo "Cleaning up simulator $SIMULATOR_ID..."
+        
         # Shutdown simulator
-        xcrun simctl shutdown "$SIMULATOR_ID" || true
+        xcrun simctl shutdown "$SIMULATOR_ID" 2>/dev/null || true
+        
+        # Wait a bit for shutdown
+        sleep 2
+        
+        # Delete simulator
+        xcrun simctl delete "$SIMULATOR_ID" 2>/dev/null || true
+        
+        echo "Simulator cleanup completed"
     
     # COVERAGE EXTRACTION
     - name: Extract coverage summary

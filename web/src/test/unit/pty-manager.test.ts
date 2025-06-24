@@ -257,11 +257,13 @@ describe('PtyManager', () => {
       await sleep(500);
 
       // Check session status from session.json
-      const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
-      if (fs.existsSync(sessionJsonPath)) {
-        const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
-        expect(sessionInfo.status).toBe('exited');
-        expect(sessionInfo.exitCode).toBeDefined();
+      {
+        const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
+        if (fs.existsSync(sessionJsonPath)) {
+          const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
+          expect(sessionInfo.status).toBe('exited');
+          expect(sessionInfo.exitCode).toBeDefined();
+        }
       }
     });
 
@@ -283,11 +285,13 @@ describe('PtyManager', () => {
       await sleep(1000);
 
       // Check session status from session.json
-      const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
-      if (fs.existsSync(sessionJsonPath)) {
-        const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
-        expect(sessionInfo.status).toBe('exited');
-        expect(sessionInfo.exitCode).toBeDefined();
+      {
+        const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
+        if (fs.existsSync(sessionJsonPath)) {
+          const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
+          expect(sessionInfo.status).toBe('exited');
+          expect(sessionInfo.exitCode).toBeDefined();
+        }
       }
     });
 
@@ -401,10 +405,11 @@ describe('PtyManager', () => {
       await sleep(500);
 
       // Read output from stdout file
-      const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
-      const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
-
-      expect(outputData).toContain('test via stdin');
+      {
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
+        expect(outputData).toContain('test via stdin');
+      }
 
       // Clean up
       fs.appendFileSync(stdinPath, '\x04');
