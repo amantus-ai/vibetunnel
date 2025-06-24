@@ -147,6 +147,7 @@ final class BunServer {
         }
 
         // Build the vibetunnel command arguments as an array
+        // Add Node.js V8 memory options first
         var vibetunnelArgs = ["--port", String(port), "--bind", bindAddress]
 
         // Add authentication flags based on configuration
@@ -180,17 +181,26 @@ final class BunServer {
         process.terminationHandler = { [weak self] process in
             self?.logger.info("vibetunnel process terminated with status: \(process.terminationStatus)")
         }
-        
+
         logger.info("Executing command: \(binaryPath) \(vibetunnelArgs.joined(separator: " "))")
         logger.info("Binary location: \(resourcesPath)")
 
-        // Set up environment - login shell will load the rest
-        var environment = ProcessInfo.processInfo.environment
-        
-        // Add Node.js V8 garbage collection optimization flags
-        // These help reduce GC pauses in long-running processes
-        environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128 --optimize-for-size"
-        
+        // Set up a minimal environment for the SEA binary
+        // SEA binaries can be sensitive to certain environment variables
+        var environment = [String: String]()
+        environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128"
+
+        // Copy only essential environment variables
+        let essentialVars = ["PATH", "HOME", "USER", "SHELL", "LANG", "LC_ALL", "LC_CTYPE"]
+        for key in essentialVars {
+            if let value = ProcessInfo.processInfo.environment[key] {
+                environment[key] = value
+            }
+        }
+
+        // Add Node.js memory settings as command line arguments instead of NODE_OPTIONS
+        // NODE_OPTIONS can interfere with SEA binaries
+
         process.environment = environment
 
         // Set up pipes for stdout and stderr
