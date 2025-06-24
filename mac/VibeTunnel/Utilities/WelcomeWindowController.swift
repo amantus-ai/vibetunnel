@@ -14,6 +14,11 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
 
     private init() {
         let welcomeView = WelcomeView()
+            .environment(SessionMonitor.shared)
+            .environment(ServerManager.shared)
+            .environment(NgrokService.shared)
+            .environment(SystemPermissionManager.shared)
+            .environment(TerminalLauncher.shared)
         let hostingController = NSHostingController(rootView: welcomeView)
 
         let window = NSWindow(contentViewController: hostingController)
