@@ -1,8 +1,91 @@
-import { LitElement, type TemplateResult } from 'lit';
-import { fixture, html, oneEvent } from '@open-wc/testing';
+import { oneEvent } from '@open-wc/testing';
+import { LitElement } from 'lit';
 import { vi } from 'vitest';
 
 export { waitForElement } from '@/test/utils/lit-test-utils';
+
+/**
+ * Wait for a condition to be met with configurable polling
+ */
+export async function waitForCondition(
+  condition: () => boolean | Promise<boolean>,
+  options: {
+    timeout?: number;
+    interval?: number;
+    message?: string;
+  } = {}
+): Promise<void> {
+  const { timeout = 5000, interval = 50, message = 'Condition not met' } = options;
+  const startTime = Date.now();
+
+  while (!(await condition())) {
+    if (Date.now() - startTime > timeout) {
+      throw new Error(`Timeout: ${message}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+}
+
+/**
+ * Wait for the next animation frame
+ */
+export async function waitForAnimationFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+/**
+ * Wait for all pending promises to resolve
+ */
+export async function waitForMicrotasks(): Promise<void> {
+  return new Promise((resolve) => queueMicrotask(resolve));
+}
+
+/**
+ * Wait for a specific event to be fired on an element with timeout
+ */
+export async function waitForEventWithTimeout(
+  element: EventTarget,
+  eventName: string,
+  options: {
+    timeout?: number;
+    predicate?: (event: Event) => boolean;
+  } = {}
+): Promise<Event> {
+  const { timeout = 5000, predicate } = options;
+
+  return new Promise((resolve, reject) => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const handler = (event: Event) => {
+      if (!predicate || predicate(event)) {
+        clearTimeout(timeoutId);
+        element.removeEventListener(eventName, handler);
+        resolve(event);
+      }
+    };
+
+    timeoutId = setTimeout(() => {
+      element.removeEventListener(eventName, handler);
+      reject(new Error(`Timeout waiting for event: ${eventName}`));
+    }, timeout);
+
+    element.addEventListener(eventName, handler);
+  });
+}
+
+/**
+ * Wait for async operations to complete (replaces hardcoded delays)
+ */
+export async function waitForAsync(delay: number = 0): Promise<void> {
+  // First wait for microtasks
+  await waitForMicrotasks();
+
+  // Then wait for any pending updates in LitElement components
+  await new Promise((resolve) => setTimeout(resolve, delay));
+
+  // Finally wait for another round of microtasks
+  await waitForMicrotasks();
+}
 
 /**
  * Types an input field with a given value and triggers input event (supports both shadow and light DOM)
@@ -12,14 +95,16 @@ export async function typeInInput(
   selector: string,
   text: string
 ): Promise<void> {
-  const input = (element.shadowRoot 
-    ? element.shadowRoot.querySelector(selector)
-    : element.querySelector(selector)) as HTMLInputElement;
+  const input = (
+    element.shadowRoot
+      ? element.shadowRoot.querySelector(selector)
+      : element.querySelector(selector)
+  ) as HTMLInputElement;
   if (!input) throw new Error(`Input with selector ${selector} not found`);
-  
+
   input.value = text;
   input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-  
+
   if (element instanceof LitElement) {
     await element.updateComplete;
   }
@@ -28,17 +113,16 @@ export async function typeInInput(
 /**
  * Clicks an element and waits for updates (supports both shadow and light DOM)
  */
-export async function clickElement(
-  element: HTMLElement,
-  selector: string
-): Promise<void> {
-  const target = (element.shadowRoot 
-    ? element.shadowRoot.querySelector(selector) 
-    : element.querySelector(selector)) as HTMLElement;
+export async function clickElement(element: HTMLElement, selector: string): Promise<void> {
+  const target = (
+    element.shadowRoot
+      ? element.shadowRoot.querySelector(selector)
+      : element.querySelector(selector)
+  ) as HTMLElement;
   if (!target) throw new Error(`Element with selector ${selector} not found`);
-  
+
   target.click();
-  
+
   if (element instanceof LitElement) {
     await element.updateComplete;
   }
@@ -47,11 +131,8 @@ export async function clickElement(
 /**
  * Gets text content from an element (supports both shadow and light DOM)
  */
-export function getTextContent(
-  element: HTMLElement,
-  selector: string
-): string | null {
-  const target = element.shadowRoot 
+export function getTextContent(element: HTMLElement, selector: string): string | null {
+  const target = element.shadowRoot
     ? element.shadowRoot.querySelector(selector)
     : element.querySelector(selector);
   return target?.textContent?.trim() || null;
@@ -60,11 +141,8 @@ export function getTextContent(
 /**
  * Checks if an element exists (supports both shadow and light DOM)
  */
-export function elementExists(
-  element: HTMLElement,
-  selector: string
-): boolean {
-  return element.shadowRoot 
+export function elementExists(element: HTMLElement, selector: string): boolean {
+  return element.shadowRoot
     ? !!element.shadowRoot.querySelector(selector)
     : !!element.querySelector(selector);
 }
@@ -91,12 +169,71 @@ export function mockAuthHeader(): string {
 }
 
 /**
+ * Mock localStorage with isolation between tests
+ */
+export class LocalStorageMock implements Storage {
+  private store: Record<string, string> = {};
+
+  get length(): number {
+    return Object.keys(this.store).length;
+  }
+
+  key(index: number): string | null {
+    const keys = Object.keys(this.store);
+    return keys[index] || null;
+  }
+
+  getItem(key: string): string | null {
+    return this.store[key] || null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.store[key] = value;
+  }
+
+  removeItem(key: string): void {
+    delete this.store[key];
+  }
+
+  clear(): void {
+    this.store = {};
+  }
+}
+
+/**
+ * Setup isolated localStorage mock for tests
+ */
+export function setupLocalStorageMock(): LocalStorageMock {
+  const mock = new LocalStorageMock();
+  Object.defineProperty(global, 'localStorage', {
+    value: mock,
+    writable: true,
+    configurable: true,
+  });
+  return mock;
+}
+
+/**
+ * Restore original localStorage
+ */
+export function restoreLocalStorage(): void {
+  // In Node.js test environment, localStorage doesn't exist by default
+  // So we just need to delete our mock
+  if ('localStorage' in global) {
+    delete (global as any).localStorage;
+  }
+}
+
+/**
  * Mocks fetch with common response patterns
  */
 export function setupFetchMock() {
-  const responses = new Map<string, { data: any; status?: number; headers?: Record<string, string> }>();
-  
-  const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+  const responses = new Map<
+    string,
+    { data: any; status?: number; headers?: Record<string, string> }
+  >();
+
+  const fetchMock = vi.fn(async (url: string, _options?: RequestInit) => {
     const response = responses.get(url);
     if (!response) {
       return {
@@ -107,7 +244,7 @@ export function setupFetchMock() {
         text: async () => 'Not found',
       };
     }
-    
+
     const { data, status = 200, headers = {} } = response;
     return {
       ok: status >= 200 && status < 300,
@@ -117,11 +254,15 @@ export function setupFetchMock() {
       text: async () => JSON.stringify(data),
     };
   });
-  
+
   global.fetch = fetchMock as any;
-  
+
   return {
-    mockResponse(url: string, data: any, options?: { status?: number; headers?: Record<string, string> }) {
+    mockResponse(
+      url: string,
+      data: any,
+      options?: { status?: number; headers?: Record<string, string> }
+    ) {
       responses.set(url, { data, ...options });
     },
     clear() {
@@ -129,7 +270,7 @@ export function setupFetchMock() {
     },
     getCalls() {
       return fetchMock.mock.calls;
-    }
+    },
   };
 }
 
@@ -145,10 +286,10 @@ export async function pressKey(
     key,
     bubbles: true,
     composed: true,
-    ...options
+    ...options,
   });
   element.dispatchEvent(event);
-  
+
   if (element instanceof LitElement) {
     await element.updateComplete;
   }
@@ -175,17 +316,17 @@ export async function waitForElementToAppear(
   timeout: number = 5000
 ): Promise<Element> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeout) {
-    const target = element.shadowRoot!.querySelector(selector);
+    const target = element.shadowRoot?.querySelector(selector);
     if (target) return target;
-    
-    await new Promise(resolve => setTimeout(resolve, 50));
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
     if (element instanceof LitElement) {
       await element.updateComplete;
     }
   }
-  
+
   throw new Error(`Element ${selector} did not appear within ${timeout}ms`);
 }
 
@@ -196,21 +337,17 @@ export function getComputedStyles(
   element: HTMLElement,
   selector: string
 ): CSSStyleDeclaration | null {
-  const target = element.shadowRoot!.querySelector(selector) as HTMLElement;
+  const target = element.shadowRoot?.querySelector(selector) as HTMLElement;
   if (!target) return null;
-  
+
   return window.getComputedStyle(target);
 }
 
 /**
  * Checks if element has a specific class
  */
-export function hasClass(
-  element: HTMLElement,
-  selector: string,
-  className: string
-): boolean {
-  const target = element.shadowRoot!.querySelector(selector);
+export function hasClass(element: HTMLElement, selector: string, className: string): boolean {
+  const target = element.shadowRoot?.querySelector(selector);
   return target?.classList.contains(className) || false;
 }
 
@@ -222,25 +359,24 @@ export function getAttribute(
   selector: string,
   attribute: string
 ): string | null {
-  const target = element.shadowRoot!.querySelector(selector);
+  const target = element.shadowRoot?.querySelector(selector);
   return target?.getAttribute(attribute) || null;
 }
 
 /**
  * Simulates form submission (supports both shadow and light DOM)
  */
-export async function submitForm(
-  element: HTMLElement,
-  formSelector: string
-): Promise<void> {
-  const form = (element.shadowRoot 
-    ? element.shadowRoot.querySelector(formSelector)
-    : element.querySelector(formSelector)) as HTMLFormElement;
+export async function submitForm(element: HTMLElement, formSelector: string): Promise<void> {
+  const form = (
+    element.shadowRoot
+      ? element.shadowRoot.querySelector(formSelector)
+      : element.querySelector(formSelector)
+  ) as HTMLFormElement;
   if (!form) throw new Error(`Form ${formSelector} not found`);
-  
+
   const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
   form.dispatchEvent(submitEvent);
-  
+
   if (element instanceof LitElement) {
     await element.updateComplete;
   }
@@ -253,14 +389,14 @@ export function setViewport(width: number, height: number) {
   Object.defineProperty(window, 'innerWidth', {
     writable: true,
     configurable: true,
-    value: width
+    value: width,
   });
   Object.defineProperty(window, 'innerHeight', {
     writable: true,
     configurable: true,
-    value: height
+    value: height,
   });
-  
+
   window.dispatchEvent(new Event('resize'));
 }
 

@@ -152,13 +152,14 @@ export class AuthLogin extends LitElement {
           ${
             this.error
               ? html`
-                <div class="bg-status-error text-dark-bg px-4 py-2 rounded mb-4 font-mono text-sm">
+                <div class="bg-status-error text-dark-bg px-4 py-2 rounded mb-4 font-mono text-sm" data-testid="error-message">
                   ${this.error}
                   <button
                     @click=${() => {
                       this.error = '';
                     }}
                     class="ml-2 text-dark-bg hover:text-dark-text"
+                    data-testid="error-close"
                   >
                     ✕
                   </button>
@@ -217,6 +218,7 @@ export class AuthLogin extends LitElement {
                         <input
                           type="password"
                           class="input-field"
+                          data-testid="password-input"
                           placeholder="Enter your system password"
                           .value=${this.loginPassword}
                           @input=${(e: Event) => {
@@ -229,6 +231,7 @@ export class AuthLogin extends LitElement {
                       <button
                         type="submit"
                         class="btn-primary w-full py-4 mt-2"
+                        data-testid="password-submit"
                         ?disabled=${this.loading || !this.loginPassword}
                       >
                         ${this.loading ? 'Authenticating...' : 'Login with Password'}
@@ -285,7 +288,7 @@ export class AuthLogin extends LitElement {
                         <div class="w-2 h-2 rounded-full bg-accent-green"></div>
                         <span class="font-mono text-sm">SSH Key Management</span>
                       </div>
-                      <button class="btn-ghost text-xs" @click=${this.handleShowSSHKeyManager}>
+                      <button class="btn-ghost text-xs" data-testid="manage-keys" @click=${this.handleShowSSHKeyManager}>
                         Manage Keys
                       </button>
                     </div>
@@ -302,6 +305,7 @@ export class AuthLogin extends LitElement {
 
                       <button
                         class="btn-secondary w-full"
+                        data-testid="ssh-login"
                         @click=${this.handleSSHKeyAuth}
                         ?disabled=${this.loading}
                       >

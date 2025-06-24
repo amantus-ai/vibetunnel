@@ -13,10 +13,10 @@ export class MockTerminal {
       cursorX: 0,
       length: 0,
       viewportY: 0,
-      getLine: vi.fn((y: number) => ({
-        translateToString: vi.fn(() => `Line ${y}`),
+      getLine: vi.fn(() => ({
+        translateToString: vi.fn(() => 'Line'),
         length: 80,
-        getCell: vi.fn((x: number) => null),
+        getCell: vi.fn(() => null),
       })),
       getNullCell: vi.fn(() => ({
         getChars: () => '',
@@ -43,61 +43,61 @@ export class MockTerminal {
     normal: {
       scrollTop: 0,
       scrollBottom: 23,
-    }
+    },
   };
-  
+
   onData = vi.fn((callback: (data: string) => void) => {
     this._onDataCallback = callback;
     return { dispose: vi.fn() };
   });
-  
+
   onResize = vi.fn((callback: (size: { cols: number; rows: number }) => void) => {
     this._onResizeCallback = callback;
     return { dispose: vi.fn() };
   });
-  
+
   onTitleChange = vi.fn((callback: (title: string) => void) => {
     this._onTitleChangeCallback = callback;
     return { dispose: vi.fn() };
   });
-  
+
   onKey = vi.fn((callback: (event: { key: string; domEvent: KeyboardEvent }) => void) => {
     this._onKeyCallback = callback;
     return { dispose: vi.fn() };
   });
-  
+
   private _onDataCallback?: (data: string) => void;
   private _onResizeCallback?: (size: { cols: number; rows: number }) => void;
   private _onTitleChangeCallback?: (title: string) => void;
   private _onKeyCallback?: (event: { key: string; domEvent: KeyboardEvent }) => void;
-  
+
   constructor() {
     this.element = document.createElement('div');
   }
-  
+
   open = vi.fn((element: HTMLElement) => {
     element.appendChild(this.element);
   });
-  
+
   write = vi.fn((data: string | Uint8Array) => {
     if (this._onDataCallback && typeof data === 'string') {
       // Simulate echo for testing
-      setTimeout(() => this._onDataCallback!(data), 0);
+      setTimeout(() => this._onDataCallback?.(data), 0);
     }
   });
-  
+
   writeln = vi.fn((data: string) => {
-    this.write(data + '\r\n');
+    this.write(`${data}\r\n`);
   });
-  
+
   clear = vi.fn();
-  
+
   reset = vi.fn();
-  
+
   focus = vi.fn();
-  
+
   blur = vi.fn();
-  
+
   resize = vi.fn((cols: number, rows: number) => {
     this.cols = cols;
     this.rows = rows;
@@ -105,45 +105,45 @@ export class MockTerminal {
       this._onResizeCallback({ cols, rows });
     }
   });
-  
+
   dispose = vi.fn();
-  
+
   scrollToBottom = vi.fn();
-  
+
   scrollToTop = vi.fn();
-  
+
   select = vi.fn();
-  
+
   selectAll = vi.fn();
-  
+
   clearSelection = vi.fn();
-  
+
   getSelection = vi.fn(() => '');
-  
+
   hasSelection = vi.fn(() => false);
-  
+
   paste = vi.fn((data: string) => {
     if (this._onDataCallback) {
       this._onDataCallback(data);
     }
   });
-  
+
   refresh = vi.fn();
-  
+
   // Simulate user typing
   simulateTyping(text: string) {
     if (this._onDataCallback) {
       this._onDataCallback(text);
     }
   }
-  
+
   // Simulate terminal output
   simulateOutput(text: string) {
     // This would normally update the terminal buffer
     // For testing, we just track that write was called
     this.write(text);
   }
-  
+
   // Simulate resize event
   simulateResize(cols: number, rows: number) {
     this.resize(cols, rows);
@@ -188,29 +188,29 @@ export function createTerminalWebSocket() {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
-    
+
     // Helper methods for testing
     mockOpen() {
       this.readyState = WebSocket.OPEN;
       const event = new Event('open');
       this.dispatchEvent(event);
     },
-    
-    mockMessage(data: any) {
+
+    mockMessage(data: unknown) {
       const event = new MessageEvent('message', { data });
       this.dispatchEvent(event);
     },
-    
+
     mockClose(code = 1000, reason = 'Normal closure') {
       this.readyState = WebSocket.CLOSED;
       const event = new CloseEvent('close', { code, reason });
       this.dispatchEvent(event);
     },
-    
+
     mockError(error: Error) {
       const event = new ErrorEvent('error', { error });
       this.dispatchEvent(event);
-    }
+    },
   };
 }
 
@@ -220,23 +220,23 @@ export function createTerminalWebSocket() {
 export class MockResizeObserver {
   callback: ResizeObserverCallback;
   observedElements = new Set<Element>();
-  
+
   constructor(callback: ResizeObserverCallback) {
     this.callback = callback;
   }
-  
+
   observe = vi.fn((element: Element) => {
     this.observedElements.add(element);
   });
-  
+
   unobserve = vi.fn((element: Element) => {
     this.observedElements.delete(element);
   });
-  
+
   disconnect = vi.fn(() => {
     this.observedElements.clear();
   });
-  
+
   // Simulate resize
   simulateResize(element: Element, contentRect: Partial<DOMRectReadOnly>) {
     if (this.observedElements.has(element)) {
@@ -257,7 +257,7 @@ export class MockResizeObserver {
         contentBoxSize: [],
         devicePixelContentBoxSize: [],
       };
-      this.callback([entry as ResizeObserverEntry], this as any);
+      this.callback([entry as ResizeObserverEntry], this as ResizeObserver);
     }
   }
 }
@@ -269,38 +269,38 @@ export function createMockBufferData(cols: number, rows: number): ArrayBuffer {
   // Create a simple buffer with some test data
   const buffer = new ArrayBuffer(cols * rows * 12); // 12 bytes per cell
   const view = new DataView(buffer);
-  
+
   // Fill with some test pattern
   for (let i = 0; i < cols * rows; i++) {
     const offset = i * 12;
     view.setUint32(offset, 0x41 + (i % 26), true); // Character 'A' + offset
-    view.setUint32(offset + 4, 0xFFFFFF, true); // White foreground
+    view.setUint32(offset + 4, 0xffffff, true); // White foreground
     view.setUint32(offset + 8, 0x000000, true); // Black background
   }
-  
+
   return buffer;
 }
 
 /**
  * Mock for terminal binary protocol
  */
-export function createMockBinaryMessage(type: string, data: any): ArrayBuffer {
+export function createMockBinaryMessage(type: string, data: unknown): ArrayBuffer {
   const encoder = new TextEncoder();
   const typeBytes = encoder.encode(type);
   const dataStr = JSON.stringify(data);
   const dataBytes = encoder.encode(dataStr);
-  
+
   const buffer = new ArrayBuffer(4 + typeBytes.length + dataBytes.length);
   const view = new DataView(buffer);
-  
+
   // Type length
   view.setUint32(0, typeBytes.length, true);
-  
+
   // Type string
   new Uint8Array(buffer, 4, typeBytes.length).set(typeBytes);
-  
+
   // Data
   new Uint8Array(buffer, 4 + typeBytes.length).set(dataBytes);
-  
+
   return buffer;
 }

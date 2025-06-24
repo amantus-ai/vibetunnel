@@ -1,18 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getAllElements, setupFetchMock } from '@/test/utils/component-helpers';
 import { createMockSession } from '@/test/utils/lit-test-utils';
-import {
-  clickElement,
-  waitForElement,
-  waitForEvent,
-  getTextContent,
-  elementExists,
-  getAllElements,
-  setupFetchMock,
-  typeInInput,
-  submitForm,
-} from '@/test/utils/component-helpers';
-import { AuthClient } from '../services/auth-client';
+import type { AuthClient } from '../services/auth-client';
 
 // Mock AuthClient
 vi.mock('../services/auth-client');
@@ -35,17 +25,17 @@ describe('SessionList', () => {
   beforeEach(async () => {
     // Setup fetch mock
     fetchMock = setupFetchMock();
-    
+
     // Create mock auth client
     mockAuthClient = {
       getAuthHeader: vi.fn(() => ({ Authorization: 'Bearer test-token' })),
-    } as any;
-    
+    } as unknown as AuthClient;
+
     // Create component
     element = await fixture<SessionList>(html`
       <session-list .authClient=${mockAuthClient}></session-list>
     `);
-    
+
     await element.updateComplete;
   });
 
@@ -70,10 +60,10 @@ describe('SessionList', () => {
         createMockSession({ id: 'session-1', name: 'Session 1', status: 'running' }),
         createMockSession({ id: 'session-2', name: 'Session 2', status: 'running' }),
       ];
-      
+
       element.sessions = mockSessions;
       await element.updateComplete;
-      
+
       const sessionCards = getAllElements(element, 'session-card');
       expect(sessionCards).toHaveLength(2);
     });
@@ -84,11 +74,11 @@ describe('SessionList', () => {
         createMockSession({ id: 'session-2', status: 'exited' }),
         createMockSession({ id: 'session-3', status: 'running' }),
       ];
-      
+
       element.sessions = mockSessions;
       element.hideExited = true;
       await element.updateComplete;
-      
+
       const sessionCards = getAllElements(element, 'session-card');
       expect(sessionCards).toHaveLength(2);
     });
@@ -98,11 +88,11 @@ describe('SessionList', () => {
         createMockSession({ id: 'session-1', status: 'running' }),
         createMockSession({ id: 'session-2', status: 'exited' }),
       ];
-      
+
       element.sessions = mockSessions;
       element.hideExited = false;
       await element.updateComplete;
-      
+
       const sessionCards = getAllElements(element, 'session-card');
       expect(sessionCards).toHaveLength(2);
     });
@@ -110,7 +100,7 @@ describe('SessionList', () => {
     it('should show empty state when no sessions', async () => {
       element.sessions = [];
       await element.updateComplete;
-      
+
       // Look for any element that might contain the empty state text
       const bodyText = element.textContent;
       // The actual empty state message is "No terminal sessions yet!"
@@ -120,7 +110,7 @@ describe('SessionList', () => {
     it('should show loading state', async () => {
       element.loading = true;
       await element.updateComplete;
-      
+
       // Check that loading state is set
       expect(element.loading).toBe(true);
     });
@@ -130,22 +120,24 @@ describe('SessionList', () => {
     it('should emit navigate event when session is clicked', async () => {
       const navigateHandler = vi.fn();
       element.addEventListener('navigate-to-session', navigateHandler);
-      
+
       const mockSession = createMockSession({ id: 'test-session' });
       element.sessions = [mockSession];
       await element.updateComplete;
-      
+
       const sessionCard = element.querySelector('session-card');
       if (sessionCard) {
         // Dispatch select event from session card
-        sessionCard.dispatchEvent(new CustomEvent('session-select', {
-          detail: mockSession,
-          bubbles: true
-        }));
-        
+        sessionCard.dispatchEvent(
+          new CustomEvent('session-select', {
+            detail: mockSession,
+            bubbles: true,
+          })
+        );
+
         expect(navigateHandler).toHaveBeenCalledWith(
           expect.objectContaining({
-            detail: { sessionId: 'test-session' }
+            detail: { sessionId: 'test-session' },
           })
         );
       }
@@ -155,14 +147,15 @@ describe('SessionList', () => {
   describe('session creation', () => {
     it('should show create modal when button is clicked', async () => {
       // Click create button
-      const createButton = element.querySelector('[data-testid="create-session-btn"]') || 
-                          element.querySelector('button');
+      const createButton =
+        element.querySelector('[data-testid="create-session-btn"]') ||
+        element.querySelector('button');
       if (createButton) {
         (createButton as HTMLElement).click();
         await element.updateComplete;
-        
+
         expect(element.showCreateModal).toBe(true);
-        
+
         const modal = element.querySelector('session-create-form');
         expect(modal).toBeTruthy();
       }
@@ -171,16 +164,16 @@ describe('SessionList', () => {
     it('should close modal on cancel', async () => {
       element.showCreateModal = true;
       await element.updateComplete;
-      
+
       const closeHandler = vi.fn();
       element.addEventListener('create-modal-close', closeHandler);
-      
+
       const createForm = element.querySelector('session-create-form');
       if (createForm) {
         // Dispatch cancel event which triggers create-modal-close event
         createForm.dispatchEvent(new CustomEvent('cancel', { bubbles: true }));
         await element.updateComplete;
-        
+
         // The component fires a create-modal-close event but doesn't handle it internally
         expect(closeHandler).toHaveBeenCalled();
       }
@@ -189,24 +182,26 @@ describe('SessionList', () => {
     it('should handle session creation', async () => {
       const createdHandler = vi.fn();
       element.addEventListener('session-created', createdHandler);
-      
+
       element.showCreateModal = true;
       await element.updateComplete;
-      
+
       const createForm = element.querySelector('session-create-form');
       if (createForm) {
         // Dispatch session created event
-        createForm.dispatchEvent(new CustomEvent('session-created', {
-          detail: { sessionId: 'new-session', message: 'Session created' },
-          bubbles: true
-        }));
-        
+        createForm.dispatchEvent(
+          new CustomEvent('session-created', {
+            detail: { sessionId: 'new-session', message: 'Session created' },
+            bubbles: true,
+          })
+        );
+
         await element.updateComplete;
-        
+
         // Modal might close asynchronously
         expect(createdHandler).toHaveBeenCalledWith(
           expect.objectContaining({
-            detail: { sessionId: 'new-session', message: 'Session created' }
+            detail: { sessionId: 'new-session', message: 'Session created' },
           })
         );
       }
@@ -217,26 +212,28 @@ describe('SessionList', () => {
     it('should handle session kill', async () => {
       const refreshHandler = vi.fn();
       element.addEventListener('refresh', refreshHandler);
-      
+
       const mockSessions = [
         createMockSession({ id: 'session-1' }),
         createMockSession({ id: 'session-2' }),
       ];
       element.sessions = mockSessions;
       await element.updateComplete;
-      
+
       // Dispatch kill event from session card
       const sessionCard = element.querySelector('session-card');
       if (sessionCard) {
-        sessionCard.dispatchEvent(new CustomEvent('session-killed', {
-          detail: { sessionId: 'session-1' },
-          bubbles: true
-        }));
-        
+        sessionCard.dispatchEvent(
+          new CustomEvent('session-killed', {
+            detail: { sessionId: 'session-1' },
+            bubbles: true,
+          })
+        );
+
         // Session should be removed from list
         expect(element.sessions).toHaveLength(1);
         expect(element.sessions[0].id).toBe('session-2');
-        
+
         // Should trigger refresh
         expect(refreshHandler).toHaveBeenCalled();
       }
@@ -245,22 +242,24 @@ describe('SessionList', () => {
     it('should handle session kill error', async () => {
       const errorHandler = vi.fn();
       element.addEventListener('error', errorHandler);
-      
+
       const mockSession = createMockSession();
       element.sessions = [mockSession];
       await element.updateComplete;
-      
+
       // Dispatch kill error
       const sessionCard = element.querySelector('session-card');
       if (sessionCard) {
-        sessionCard.dispatchEvent(new CustomEvent('session-kill-error', {
-          detail: { sessionId: mockSession.id, error: 'Permission denied' },
-          bubbles: true
-        }));
-        
+        sessionCard.dispatchEvent(
+          new CustomEvent('session-kill-error', {
+            detail: { sessionId: mockSession.id, error: 'Permission denied' },
+            bubbles: true,
+          })
+        );
+
         expect(errorHandler).toHaveBeenCalledWith(
           expect.objectContaining({
-            detail: expect.stringContaining('Failed to kill session')
+            detail: expect.stringContaining('Failed to kill session'),
           })
         );
       }
@@ -269,12 +268,12 @@ describe('SessionList', () => {
     it('should handle cleanup of exited sessions', async () => {
       // Mock successful cleanup
       fetchMock.mockResponse('/api/cleanup-exited', { removed: 2 });
-      
+
       const refreshHandler = vi.fn();
       element.addEventListener('refresh', refreshHandler);
-      
+
       await element.handleCleanupExited();
-      
+
       // Should trigger refresh after cleanup
       expect(refreshHandler).toHaveBeenCalled();
       expect(mockAuthClient.getAuthHeader).toHaveBeenCalled();
@@ -282,19 +281,16 @@ describe('SessionList', () => {
 
     it('should handle cleanup error', async () => {
       // Mock cleanup error
-      fetchMock.mockResponse('/api/cleanup-exited', 
-        { error: 'Cleanup failed' }, 
-        { status: 500 }
-      );
-      
+      fetchMock.mockResponse('/api/cleanup-exited', { error: 'Cleanup failed' }, { status: 500 });
+
       const errorHandler = vi.fn();
       element.addEventListener('error', errorHandler);
-      
+
       await element.handleCleanupExited();
-      
+
       expect(errorHandler).toHaveBeenCalledWith(
         expect.objectContaining({
-          detail: expect.stringContaining('Failed to clean')
+          detail: expect.stringContaining('Failed to clean'),
         })
       );
     });
@@ -310,25 +306,26 @@ describe('SessionList', () => {
     it('should toggle hide exited state', async () => {
       const changeHandler = vi.fn();
       element.addEventListener('hide-exited-change', changeHandler);
-      
+
       // Create some sessions
       element.sessions = [
         createMockSession({ status: 'running' }),
         createMockSession({ status: 'exited' }),
       ];
       await element.updateComplete;
-      
+
       // Find toggle button
-      const toggleButton = element.querySelector('[title*="Hide exited"]') ||
-                          element.querySelector('[title*="Show exited"]');
-      
+      const toggleButton =
+        element.querySelector('[title*="Hide exited"]') ||
+        element.querySelector('[title*="Show exited"]');
+
       if (toggleButton) {
         (toggleButton as HTMLElement).click();
-        
+
         expect(element.hideExited).toBe(false);
         expect(changeHandler).toHaveBeenCalledWith(
           expect.objectContaining({
-            detail: false
+            detail: false,
           })
         );
       }
@@ -339,11 +336,11 @@ describe('SessionList', () => {
     it('should emit refresh event when refresh button is clicked', async () => {
       const refreshHandler = vi.fn();
       element.addEventListener('refresh', refreshHandler);
-      
+
       const refreshButton = element.querySelector('[title="Refresh"]');
       if (refreshButton) {
         (refreshButton as HTMLElement).click();
-        
+
         expect(refreshHandler).toHaveBeenCalled();
       }
     });
@@ -366,7 +363,7 @@ describe('SessionList', () => {
       ];
       element.hideExited = true;
       await element.updateComplete;
-      
+
       // Look for the count in the rendered content
       const content = element.textContent;
       expect(content).toContain('2'); // Only running sessions shown
@@ -379,7 +376,7 @@ describe('SessionList', () => {
       ];
       element.hideExited = false;
       await element.updateComplete;
-      
+
       const cleanupButton = element.querySelector('[title*="Clean"]');
       expect(cleanupButton).toBeTruthy();
     });

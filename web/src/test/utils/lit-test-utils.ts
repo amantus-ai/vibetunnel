@@ -2,6 +2,7 @@ import { fixture } from '@open-wc/testing';
 import { LitElement, type TemplateResult } from 'lit';
 import { vi } from 'vitest';
 import type { ActivityStatus, SessionData } from '../types/test-types';
+import { createTestSession } from './test-factories';
 
 /**
  * Creates a test fixture for a LitElement component
@@ -194,22 +195,32 @@ export async function waitFor(
 
 /**
  * Creates mock session data for testing
+ * Uses factory function to ensure consistent test data
  */
 export function createMockSession(overrides: Partial<SessionData> = {}): SessionData {
+  const baseSession = createTestSession({
+    name: overrides.name,
+    command: overrides.cmdline,
+    workingDir: overrides.cwd,
+    pid: overrides.pid,
+    status: overrides.status as any,
+    startedAt: overrides.started_at,
+  });
+
   return {
-    id: 'test-session-123',
-    cmdline: ['bash', '-l'],
-    name: 'Test Session',
-    cwd: '/home/user',
-    pid: 12345,
-    status: 'running',
-    started_at: new Date().toISOString(),
-    exit_code: null,
-    term: 'xterm-256color',
-    spawn_type: 'pty',
-    cols: 80,
-    rows: 24,
-    ...overrides,
+    id: overrides.id || baseSession.id,
+    name: overrides.name || baseSession.name,
+    cmdline: overrides.cmdline || baseSession.command,
+    cwd: overrides.cwd || baseSession.workingDir,
+    pid: overrides.pid || baseSession.pid,
+    status: overrides.status || baseSession.status,
+    started_at: overrides.started_at || baseSession.startedAt,
+    exitCode: overrides.exitCode !== undefined ? overrides.exitCode : null,
+    term: overrides.term || 'xterm-256color',
+    spawn_type: overrides.spawn_type || 'pty',
+    cols: overrides.cols || 80,
+    rows: overrides.rows || 24,
+    ...overrides, // Allow any additional fields to be passed through
   };
 }
 
