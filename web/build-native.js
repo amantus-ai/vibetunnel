@@ -116,69 +116,128 @@ if (nodeVersion < 20) {
   process.exit(1);
 }
 
+// Helper function to check if modules need rebuild
+function getNodeABI(nodePath) {
+  try {
+    const version = execSync(`"${nodePath}" --version`, { encoding: 'utf8' }).trim();
+    // Extract major version for ABI compatibility check
+    const major = parseInt(version.split('.')[0].substring(1));
+    return { version, major };
+  } catch (e) {
+    return null;
+  }
+}
+
+function checkNativeModulesExist() {
+  // Check multiple possible locations for native modules
+  const ptyLocations = [
+    'node_modules/@homebridge/node-pty-prebuilt-multiarch/build/Release/pty.node',
+    `node_modules/@homebridge/node-pty-prebuilt-multiarch/prebuilds/${process.platform}-${process.arch}/pty.node`,
+    `node_modules/@homebridge/node-pty-prebuilt-multiarch/prebuilds/${process.platform}-${process.arch}/node-pty.node`
+  ];
+  
+  const spawnHelperLocations = [
+    'node_modules/@homebridge/node-pty-prebuilt-multiarch/build/Release/spawn-helper',
+    'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/binding/Release/spawn-helper',
+    'node_modules/@homebridge/node-pty-prebuilt-multiarch/spawn-helper'
+  ];
+  
+  const pamLocations = [
+    'node_modules/authenticate-pam/build/Release/authenticate_pam.node',
+    'node_modules/authenticate-pam/lib/binding/Release/authenticate_pam.node',
+    `node_modules/authenticate-pam/prebuilds/${process.platform}-${process.arch}/authenticate_pam.node`
+  ];
+  
+  const ptyExists = ptyLocations.some(loc => fs.existsSync(path.join(__dirname, loc)));
+  const spawnHelperExists = process.platform === 'win32' || spawnHelperLocations.some(loc => fs.existsSync(path.join(__dirname, loc)));
+  const pamExists = pamLocations.some(loc => fs.existsSync(path.join(__dirname, loc)));
+  
+  if (!ptyExists) console.log('Missing native module: pty.node');
+  if (!spawnHelperExists) console.log('Missing native module: spawn-helper');
+  if (!pamExists) console.log('Missing native module: authenticate_pam.node');
+  
+  return ptyExists && spawnHelperExists && pamExists;
+}
+
+function isNodePtyPatched() {
+  const loaderPath = path.join(__dirname, 'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/prebuild-loader.js');
+  if (!fs.existsSync(loaderPath)) return false;
+  
+  const content = fs.readFileSync(loaderPath, 'utf8');
+  return content.includes('Custom loader for SEA');
+}
+
 function patchNodePty() {
   console.log('Preparing node-pty for SEA build...');
 
-  // Always reinstall to ensure clean state
-  console.log('Reinstalling node-pty to ensure clean state...');
-  execSync('rm -rf node_modules/@homebridge/node-pty-prebuilt-multiarch', { stdio: 'inherit' });
+  const needsRebuild = customNodePath !== null;
+  const modulesExist = checkNativeModulesExist();
+  const alreadyPatched = isNodePtyPatched();
   
-  // In CI, we might need to force the build
-  const installEnv = {
-    ...process.env,
-    npm_config_build_from_source: 'false', // Try to use prebuilts first
-    FORCE_COLOR: '0'
-  };
-  
-  execSync('pnpm install @homebridge/node-pty-prebuilt-multiarch --silent', { 
-    stdio: 'inherit',
-    env: installEnv
-  });
+  // Determine if we need to do anything
+  if (!needsRebuild && modulesExist && alreadyPatched) {
+    console.log('✓ Native modules exist and are already patched for SEA, skipping preparation');
+    return;
+  }
 
-  // If using custom Node.js, rebuild native modules
+  // Check ABI compatibility if using custom Node.js
+  let abiMismatch = false;
   if (customNodePath) {
-    console.log('Custom Node.js detected - rebuilding native modules...');
+    const customABI = getNodeABI(customNodePath);
+    const systemABI = getNodeABI(process.execPath);
+    
+    if (customABI && systemABI) {
+      abiMismatch = customABI.major !== systemABI.major;
+      console.log(`Custom Node.js: ${customABI.version} (ABI v${customABI.major})`);
+      console.log(`System Node.js: ${systemABI.version} (ABI v${systemABI.major})`);
+      
+      if (!abiMismatch) {
+        console.log('✓ ABI versions match, rebuild may not be necessary');
+      } else {
+        console.log('⚠️  ABI versions differ, rebuild required');
+      }
+    }
+  }
 
-    // Get versions
-    const customVersion = execSync(`"${customNodePath}" --version`, { encoding: 'utf8' }).trim();
-    const systemVersion = process.version;
-
-    console.log(`Custom Node.js: ${customVersion}`);
-    console.log(`System Node.js: ${systemVersion}`);
-
-    // Rebuild node-pty targeting the custom Node.js ABI (using system Node to run pnpm)
-    console.log('Rebuilding @homebridge/node-pty-prebuilt-multiarch for custom Node.js ABI...');
-
-    try {
-      // Use system Node to run pnpm, but target custom Node.js version for rebuild
-      execSync(`pnpm rebuild @homebridge/node-pty-prebuilt-multiarch authenticate-pam`, {
-        stdio: 'inherit',
-        env: {
-          ...process.env,
-          npm_config_runtime: 'node',
-          npm_config_target: customVersion.substring(1), // Remove 'v' prefix
-          npm_config_arch: process.arch,
-          npm_config_target_arch: process.arch,
-          npm_config_disturl: 'https://nodejs.org/dist',
-          npm_config_build_from_source: 'true',
-          CXXFLAGS: '-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0',
-          MACOSX_DEPLOYMENT_TARGET: '14.0'
-        }
-      });
-      console.log('Native modules rebuilt successfully with custom Node.js');
-    } catch (error) {
-      console.error('Failed to rebuild native module:', error.message);
-      console.error('Trying alternative rebuild method...');
-
-      // Alternative: Force rebuild from source
+  // Only reinstall/rebuild if necessary
+  if (!modulesExist || (customNodePath && abiMismatch)) {
+    if (!modulesExist) {
+      console.log('Native modules missing, installing...');
+      
+      // Ensure node_modules exists and has proper modules
+      if (!fs.existsSync('node_modules/@homebridge/node-pty-prebuilt-multiarch') || 
+          !fs.existsSync('node_modules/authenticate-pam')) {
+        console.log('Installing missing native modules...');
+        execSync('pnpm install --silent', { stdio: 'inherit' });
+      }
+      
+      // After install, check if native modules were built
+      if (!checkNativeModulesExist()) {
+        console.log('Native modules need to be built...');
+        // Force rebuild
+        execSync('pnpm rebuild @homebridge/node-pty-prebuilt-multiarch authenticate-pam', {
+          stdio: 'inherit',
+          env: {
+            ...process.env,
+            npm_config_build_from_source: 'true'
+          }
+        });
+      }
+    }
+    
+    if (customNodePath && abiMismatch) {
+      console.log('Rebuilding native modules for custom Node.js ABI...');
+      
+      const customVersion = getNodeABI(customNodePath).version;
+      
       try {
-        execSync(`rm -rf node_modules/@homebridge/node-pty-prebuilt-multiarch/build`, { stdio: 'inherit' });
-        execSync(`pnpm install @homebridge/node-pty-prebuilt-multiarch --force`, {
+        // Rebuild both modules for the custom Node.js version
+        execSync(`pnpm rebuild @homebridge/node-pty-prebuilt-multiarch authenticate-pam`, {
           stdio: 'inherit',
           env: {
             ...process.env,
             npm_config_runtime: 'node',
-            npm_config_target: customVersion.substring(1),
+            npm_config_target: customVersion.substring(1), // Remove 'v' prefix
             npm_config_arch: process.arch,
             npm_config_target_arch: process.arch,
             npm_config_disturl: 'https://nodejs.org/dist',
@@ -187,12 +246,18 @@ function patchNodePty() {
             MACOSX_DEPLOYMENT_TARGET: '14.0'
           }
         });
-        console.log('Native module rebuilt from source successfully');
-      } catch (error2) {
-        console.error('Alternative rebuild also failed:', error2.message);
+        console.log('✓ Native modules rebuilt successfully');
+      } catch (error) {
+        console.error('Failed to rebuild native modules:', error.message);
         process.exit(1);
       }
     }
+  }
+
+  // Only patch if not already patched
+  if (alreadyPatched) {
+    console.log('✓ node-pty already patched for SEA, skipping patch step');
+    return;
   }
 
   console.log('Patching node-pty for SEA build...');
@@ -608,38 +673,13 @@ async function main() {
     }
     
     if (!pamFound) {
-      console.error('Error: authenticate_pam.node not found. Native module build failed.');
+      console.error('Error: authenticate_pam.node not found.');
       console.error('Searched locations:', authPamPaths);
-      
-      // Try to rebuild authenticate-pam
-      console.log('Attempting to rebuild authenticate-pam...');
-      try {
-        execSync('rm -rf node_modules/authenticate-pam', { stdio: 'inherit' });
-        execSync('pnpm install authenticate-pam --force', { stdio: 'inherit' });
-        
-        // Check again
-        for (const authPamPath of authPamPaths) {
-          if (fs.existsSync(authPamPath)) {
-            fs.copyFileSync(authPamPath, 'native/authenticate_pam.node');
-            console.log(`  - Copied authenticate_pam.node after rebuild from: ${authPamPath}`);
-            pamFound = true;
-            break;
-          }
-        }
-        
-        if (!pamFound) {
-          throw new Error('authenticate_pam.node still not found after rebuild');
-        }
-      } catch (e) {
-        console.error('Failed to rebuild authenticate-pam:', e.message);
-        process.exit(1);
-      }
+      console.error('This should have been built by patchNodePty() function.');
+      process.exit(1);
     }
 
-    // 9. Restore original node-pty (AFTER copying the custom-built version)
-    console.log('\nRestoring original node-pty for development...');
-    execSync('rm -rf node_modules/@homebridge/node-pty-prebuilt-multiarch', { stdio: 'inherit' });
-    execSync('pnpm install @homebridge/node-pty-prebuilt-multiarch --silent', { stdio: 'inherit' });
+    // No need to restore - the patched version works fine for development too
 
     console.log('\n✅ Build complete!');
     console.log(`\nPortable executable created in native/ directory:`);

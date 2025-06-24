@@ -21,6 +21,14 @@
     "format": "biome format src --write",
     "format:check": "biome format src"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@homebridge/node-pty-prebuilt-multiarch",
+      "authenticate-pam",
+      "esbuild",
+      "puppeteer"
+    ]
+  },
   "dependencies": {
     "@codemirror/commands": "^6.6.2",
     "@codemirror/lang-css": "^6.2.1",
