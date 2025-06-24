@@ -799,7 +799,22 @@ export class PtyManager extends EventEmitter {
       if (memorySession?.ptyProcess) {
         // If signal is already SIGKILL, send it immediately and wait briefly
         if (signal === 'SIGKILL' || signal === 9) {
+          const pid = memorySession.ptyProcess.pid;
           memorySession.ptyProcess.kill('SIGKILL');
+
+          // Also kill the entire process group if on Unix
+          if (process.platform !== 'win32' && pid) {
+            try {
+              process.kill(-pid, 'SIGKILL');
+              logger.debug(`Sent SIGKILL to process group -${pid} for session ${sessionId}`);
+            } catch (groupKillError) {
+              logger.debug(
+                `Failed to SIGKILL process group for session ${sessionId}:`,
+                groupKillError
+              );
+            }
+          }
+
           this.sessions.delete(sessionId);
           // Wait a bit for SIGKILL to take effect
           await new Promise((resolve) => setTimeout(resolve, 100));
@@ -834,12 +849,45 @@ export class PtyManager extends EventEmitter {
 
           if (signal === 'SIGKILL' || signal === 9) {
             process.kill(diskSession.pid, 'SIGKILL');
+
+            // Also kill the entire process group if on Unix
+            if (process.platform !== 'win32') {
+              try {
+                process.kill(-diskSession.pid, 'SIGKILL');
+                logger.debug(
+                  `Sent SIGKILL to process group -${diskSession.pid} for external session ${sessionId}`
+                );
+              } catch (groupKillError) {
+                logger.debug(
+                  `Failed to SIGKILL process group for external session ${sessionId}:`,
+                  groupKillError
+                );
+              }
+            }
+
             await new Promise((resolve) => setTimeout(resolve, 100));
             return;
           }
 
           // Send SIGTERM first
           process.kill(diskSession.pid, 'SIGTERM');
+
+          // Also try to kill the entire process group if on Unix
+          if (process.platform !== 'win32') {
+            try {
+              // Kill the process group by using negative PID
+              process.kill(-diskSession.pid, 'SIGTERM');
+              logger.debug(
+                `Sent SIGTERM to process group -${diskSession.pid} for external session ${sessionId}`
+              );
+            } catch (groupKillError) {
+              // Process group might not exist or we might not have permission
+              logger.debug(
+                `Failed to kill process group for external session ${sessionId}:`,
+                groupKillError
+              );
+            }
+          }
 
           // Wait up to 3 seconds for graceful termination
           const maxWaitTime = 3000;
@@ -858,6 +906,23 @@ export class PtyManager extends EventEmitter {
           // Process didn't terminate gracefully, force kill
           logger.log(chalk.yellow(`External session ${sessionId} requires SIGKILL`));
           process.kill(diskSession.pid, 'SIGKILL');
+
+          // Also force kill the entire process group if on Unix
+          if (process.platform !== 'win32') {
+            try {
+              // Kill the process group with SIGKILL
+              process.kill(-diskSession.pid, 'SIGKILL');
+              logger.debug(
+                `Sent SIGKILL to process group -${diskSession.pid} for external session ${sessionId}`
+              );
+            } catch (groupKillError) {
+              logger.debug(
+                `Failed to SIGKILL process group for external session ${sessionId}:`,
+                groupKillError
+              );
+            }
+          }
+
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
@@ -886,6 +951,18 @@ export class PtyManager extends EventEmitter {
       // Send SIGTERM first
       session.ptyProcess.kill('SIGTERM');
 
+      // Also try to kill the entire process group if on Unix
+      if (process.platform !== 'win32' && pid) {
+        try {
+          // Kill the process group by using negative PID
+          process.kill(-pid, 'SIGTERM');
+          logger.debug(`Sent SIGTERM to process group -${pid} for session ${sessionId}`);
+        } catch (groupKillError) {
+          // Process group might not exist or we might not have permission
+          logger.debug(`Failed to kill process group for session ${sessionId}:`, groupKillError);
+        }
+      }
+
       // Wait up to 3 seconds for graceful termination (check every 500ms)
       const maxWaitTime = 3000;
       const checkInterval = 500;
@@ -911,6 +988,21 @@ export class PtyManager extends EventEmitter {
       logger.log(chalk.yellow(`Session ${sessionId} requires SIGKILL`));
       try {
         session.ptyProcess.kill('SIGKILL');
+
+        // Also force kill the entire process group if on Unix
+        if (process.platform !== 'win32' && pid) {
+          try {
+            // Kill the process group with SIGKILL
+            process.kill(-pid, 'SIGKILL');
+            logger.debug(`Sent SIGKILL to process group -${pid} for session ${sessionId}`);
+          } catch (groupKillError) {
+            logger.debug(
+              `Failed to SIGKILL process group for session ${sessionId}:`,
+              groupKillError
+            );
+          }
+        }
+
         // Wait a bit more for SIGKILL to take effect
         await new Promise((resolve) => setTimeout(resolve, 100));
       } catch (_killError) {
@@ -1095,7 +1187,19 @@ export class PtyManager extends EventEmitter {
     for (const [sessionId, session] of Array.from(this.sessions.entries())) {
       try {
         if (session.ptyProcess) {
+          const pid = session.ptyProcess.pid;
           session.ptyProcess.kill();
+
+          // Also kill the entire process group if on Unix
+          if (process.platform !== 'win32' && pid) {
+            try {
+              process.kill(-pid, 'SIGTERM');
+              logger.debug(`Sent SIGTERM to process group -${pid} during shutdown`);
+            } catch (groupKillError) {
+              // Process group might not exist
+              logger.debug(`Failed to kill process group during shutdown:`, groupKillError);
+            }
+          }
         }
         if (session.asciinemaWriter?.isOpen()) {
           await session.asciinemaWriter.close();
