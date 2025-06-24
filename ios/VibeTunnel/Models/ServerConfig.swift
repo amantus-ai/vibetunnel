@@ -9,18 +9,15 @@ struct ServerConfig: Codable, Equatable {
     let host: String
     let port: Int
     let name: String?
-    let secretToken: String?
 
     init(
         host: String,
         port: Int,
-        name: String? = nil,
-        secretToken: String? = nil
+        name: String? = nil
     ) {
         self.host = host
         self.port = port
         self.name = name
-        self.secretToken = secretToken
     }
 
     /// Constructs the base URL for API requests.
@@ -46,21 +43,18 @@ struct ServerConfig: Codable, Equatable {
         name ?? "\(host):\(port)"
     }
 
-    /// Indicates whether the server requires authentication.
+    /// Creates a URL for an API endpoint path.
     ///
-    /// - Returns: true if a secret token is configured, false otherwise.
-    var requiresAuthentication: Bool {
-        if let token = secretToken {
-            return !token.isEmpty
-        }
-        return false
+    /// - Parameter path: The API path (e.g., "/api/sessions")
+    /// - Returns: A complete URL for the API endpoint
+    func apiURL(path: String) -> URL {
+        baseURL.appendingPathComponent(path)
     }
-
-    /// Generates the Authorization header value if a secret token is configured.
+    
+    /// Unique identifier for this server configuration.
     ///
-    /// - Returns: A Bearer token header string, or nil if no token is configured.
-    var authorizationHeader: String? {
-        guard let token = secretToken, !token.isEmpty else { return nil }
-        return "Bearer \(token)"
+    /// Used for keychain storage and identifying server instances.
+    var id: String {
+        "\(host):\(port)"
     }
 }

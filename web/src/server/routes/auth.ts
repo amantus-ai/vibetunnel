@@ -1,9 +1,6 @@
-import { exec } from 'child_process';
 import { Router } from 'express';
 import { promisify } from 'util';
 import type { AuthService } from '../services/auth-service.js';
-
-const execAsync = promisify(exec);
 
 interface AuthRoutesConfig {
   authService: AuthService;
@@ -193,6 +190,17 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
     try {
       const { userId } = req.params;
 
+      // Validate userId to prevent command injection
+      // Only allow alphanumeric characters, dots, hyphens, and underscores
+      if (!userId || !/^[a-zA-Z0-9._-]+$/.test(userId)) {
+        return res.status(400).json({ error: 'Invalid user ID format' });
+      }
+
+      // Additional length check
+      if (userId.length > 255) {
+        return res.status(400).json({ error: 'User ID too long' });
+      }
+
       // Check if we're on macOS
       if (process.platform !== 'darwin') {
         return res.json({ avatar: null, platform: process.platform });
@@ -200,7 +208,15 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
 
       // Try to get user's JPEGPhoto from Directory Services
       try {
-        const { stdout } = await execAsync(`dscl . -read /Users/${userId} JPEGPhoto`);
+        // Use execFile with explicit arguments to prevent command injection
+        const { execFile } = await import('child_process');
+        const execFileAsync = promisify(execFile);
+        const { stdout } = await execFileAsync('dscl', [
+          '.',
+          '-read',
+          `/Users/${userId}`,
+          'JPEGPhoto',
+        ]);
 
         // Check if JPEGPhoto exists and extract the hex data
         if (stdout.includes('JPEGPhoto:')) {
@@ -230,7 +246,14 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
 
       // Fallback: try Picture attribute (file path)
       try {
-        const { stdout } = await execAsync(`dscl . -read /Users/${userId} Picture`);
+        const { execFile } = await import('child_process');
+        const execFileAsync = promisify(execFile);
+        const { stdout } = await execFileAsync('dscl', [
+          '.',
+          '-read',
+          `/Users/${userId}`,
+          'Picture',
+        ]);
         if (stdout.includes('Picture:')) {
           const picturePath = stdout.split('Picture:')[1].trim();
           if (picturePath && picturePath !== 'Picture:') {

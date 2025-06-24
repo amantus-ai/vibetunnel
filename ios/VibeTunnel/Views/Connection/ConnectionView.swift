@@ -63,7 +63,6 @@ struct ConnectionView: View {
                         host: $viewModel.host,
                         port: $viewModel.port,
                         name: $viewModel.name,
-                        secretToken: $viewModel.secretToken,
                         isConnecting: viewModel.isConnecting,
                         errorMessage: viewModel.errorMessage,
                         onConnect: connectToServer
@@ -92,6 +91,20 @@ struct ConnectionView: View {
         .onAppear {
             viewModel.loadLastConnection()
         }
+        .sheet(isPresented: $viewModel.showLoginView) {
+            if let config = viewModel.pendingServerConfig,
+               let authService = connectionManager.authenticationService {
+                LoginView(
+                    isPresented: $viewModel.showLoginView,
+                    serverConfig: config,
+                    authenticationService: authService,
+                    onSuccess: {
+                        // Authentication successful, mark as connected
+                        connectionManager.isConnected = true
+                    }
+                )
+            }
+        }
     }
 
     private func connectToServer() {
@@ -103,7 +116,8 @@ struct ConnectionView: View {
         Task {
             await viewModel.testConnection { config in
                 connectionManager.saveConnection(config)
-                connectionManager.isConnected = true
+                // Show login view to authenticate
+                viewModel.showLoginView = true
             }
         }
     }
@@ -115,9 +129,10 @@ class ConnectionViewModel {
     var host: String = "127.0.0.1"
     var port: String = "4020"
     var name: String = ""
-    var secretToken: String = ""
     var isConnecting: Bool = false
     var errorMessage: String?
+    var showLoginView: Bool = false
+    var pendingServerConfig: ServerConfig?
 
     func loadLastConnection() {
         if let config = UserDefaults.standard.data(forKey: "savedServerConfig"),
@@ -126,7 +141,6 @@ class ConnectionViewModel {
             self.host = serverConfig.host
             self.port = String(serverConfig.port)
             self.name = serverConfig.name ?? ""
-            self.secretToken = serverConfig.secretToken ?? ""
         }
     }
 
@@ -149,23 +163,20 @@ class ConnectionViewModel {
         let config = ServerConfig(
             host: host,
             port: portNumber,
-            name: name.isEmpty ? nil : name,
-            secretToken: secretToken.isEmpty ? nil : secretToken
+            name: name.isEmpty ? nil : name
         )
 
         do {
-            // Test connection by fetching sessions (requires auth if token provided)
-            let url = config.baseURL.appendingPathComponent("api/sessions")
-            var request = URLRequest(url: url)
-            if let authHeader = config.authorizationHeader {
-                request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-            }
+            // Test basic connectivity by checking health endpoint
+            let url = config.baseURL.appendingPathComponent("api/health")
+            let request = URLRequest(url: url)
             let (_, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse,
                httpResponse.statusCode == 200
             {
-                // Connection successful
+                // Connection successful, save config and trigger authentication
+                pendingServerConfig = config
                 onSuccess(config)
             } else {
                 errorMessage = "Failed to connect to server"

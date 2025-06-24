@@ -2,13 +2,12 @@ import SwiftUI
 
 /// Form component for entering server connection details.
 ///
-/// Provides input fields for host, port, name, and secret token
+/// Provides input fields for host, port, and name
 /// with validation and recent servers functionality.
 struct ServerConfigForm: View {
     @Binding var host: String
     @Binding var port: String
     @Binding var name: String
-    @Binding var secretToken: String
     let isConnecting: Bool
     let errorMessage: String?
     let onConnect: () -> Void
@@ -21,7 +20,6 @@ struct ServerConfigForm: View {
         case host
         case port
         case name
-        case secretToken
     }
 
     var body: some View {
@@ -70,21 +68,6 @@ struct ServerConfigForm: View {
                     TextField("My Mac", text: $name)
                         .textFieldStyle(TerminalTextFieldStyle())
                         .focused($focusedField, equals: .name)
-                        .submitLabel(.next)
-                        .onSubmit {
-                            focusedField = .secretToken
-                        }
-                }
-
-                // Secret Token Field (optional)
-                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    Label("Secret Token (optional)", systemImage: "key.horizontal")
-                        .font(Theme.Typography.terminalSystem(size: 12))
-                        .foregroundColor(Theme.Colors.primaryAccent)
-
-                    SecureField("Enter secret token", text: $secretToken)
-                        .textFieldStyle(TerminalTextFieldStyle())
-                        .focused($focusedField, equals: .secretToken)
                         .submitLabel(.done)
                         .onSubmit {
                             focusedField = nil

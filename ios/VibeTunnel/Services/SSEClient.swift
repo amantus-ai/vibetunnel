@@ -13,6 +13,7 @@ final class SSEClient: NSObject, @unchecked Sendable {
     private let url: URL
     private var buffer = Data()
     weak var delegate: SSEClientDelegate?
+    private weak var authenticationService: AuthenticationService?
 
     /// Events received from the SSE stream
     enum SSEEvent {
@@ -21,8 +22,9 @@ final class SSEClient: NSObject, @unchecked Sendable {
         case error(String)
     }
 
-    init(url: URL) {
+    init(url: URL, authenticationService: AuthenticationService? = nil) {
         self.url = url
+        self.authenticationService = authenticationService
         super.init()
 
         let configuration = URLSessionConfiguration.default
@@ -35,14 +37,21 @@ final class SSEClient: NSObject, @unchecked Sendable {
 
     @MainActor
     func start() {
-        var request = URLRequest(url: url)
+        // Append token to URL for SSE authentication
+        var requestURL = url
+        if let token = authenticationService?.getTokenForQuery() {
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            var queryItems = components?.queryItems ?? []
+            queryItems.append(URLQueryItem(name: "token", value: token))
+            components?.queryItems = queryItems
+            if let urlWithToken = components?.url {
+                requestURL = urlWithToken
+            }
+        }
+        
+        var request = URLRequest(url: requestURL)
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
-
-        // Add authentication if needed
-        if let authHeader = ConnectionManager.shared.currentServerConfig?.authorizationHeader {
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-        }
 
         task = session.dataTask(with: request)
         task?.resume()

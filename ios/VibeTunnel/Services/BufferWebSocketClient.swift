@@ -59,6 +59,7 @@ class BufferWebSocketClient: NSObject {
     private var reconnectAttempts = 0
     private var isConnecting = false
     private var pingTask: Task<Void, Never>?
+    private(set) var authenticationService: AuthenticationService?
 
     // Observable properties
     private(set) var isConnected = false
@@ -78,6 +79,11 @@ class BufferWebSocketClient: NSObject {
         super.init()
     }
 
+    /// Set the authentication service for WebSocket connections
+    func setAuthenticationService(_ authService: AuthenticationService) {
+        self.authenticationService = authService
+    }
+    
     func connect() {
         guard !isConnecting else { return }
         guard let baseURL else {
@@ -111,12 +117,9 @@ class BufferWebSocketClient: NSObject {
         // Build headers
         var headers: [String: String] = [:]
 
-        // Add authentication header if needed
-        if let config = UserDefaults.standard.data(forKey: "savedServerConfig"),
-           let serverConfig = try? JSONDecoder().decode(ServerConfig.self, from: config),
-           let authHeader = serverConfig.authorizationHeader
-        {
-            headers["Authorization"] = authHeader
+        // Add authentication header from authentication service
+        if let authHeaders = authenticationService?.getAuthHeader() {
+            headers.merge(authHeaders) { _, new in new }
         }
 
         // Connect

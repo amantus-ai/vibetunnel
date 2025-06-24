@@ -96,6 +96,7 @@ class APIClient: APIClientProtocol {
     private let session = URLSession.shared
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
+    private(set) var authenticationService: AuthenticationService?
 
     private var baseURL: URL? {
         guard let config = UserDefaults.standard.data(forKey: "savedServerConfig"),
@@ -467,10 +468,17 @@ class APIClient: APIClientProtocol {
         }
     }
 
+    /// Set the authentication service for this API client
+    func setAuthenticationService(_ authService: AuthenticationService) {
+        self.authenticationService = authService
+    }
+    
     private func addAuthenticationIfNeeded(_ request: inout URLRequest) {
-        // Add authorization header from server config
-        if let authHeader = ConnectionManager.shared.currentServerConfig?.authorizationHeader {
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
+        // Add authorization header from authentication service
+        if let authHeaders = authenticationService?.getAuthHeader() {
+            for (key, value) in authHeaders {
+                request.setValue(value, forHTTPHeaderField: key)
+            }
         }
     }
 
