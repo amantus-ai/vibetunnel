@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { waitForServerPort } from '../utils/port-detection';
 
+// HQ Mode tests for distributed terminal management
 describe('HQ Mode E2E Tests', () => {
   let hqProcess: ChildProcess | null = null;
   const remoteProcesses: ChildProcess[] = [];
