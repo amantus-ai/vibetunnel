@@ -111,11 +111,50 @@ jobs:
       working-directory: web
       run: npm run build:ci
 
-    - name: Run tests
+    - name: Run tests with coverage
+      id: test-coverage
       working-directory: web
-      run: npm run test:ci
+      run: |
+        npm run test:coverage 2>&1 | tee test-output.txt
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
       env:
         CI: true
+
+    - name: Generate coverage summary
+      if: always()
+      working-directory: web
+      run: |
+        if [ -f coverage/coverage-summary.json ]; then
+          # Extract coverage percentages from the summary
+          node -e "
+            const coverage = require('./coverage/coverage-summary.json');
+            const total = coverage.total;
+            const summary = {
+              lines: { pct: total.lines.pct, covered: total.lines.covered, total: total.lines.total },
+              statements: { pct: total.statements.pct, covered: total.statements.covered, total: total.statements.total },
+              functions: { pct: total.functions.pct, covered: total.functions.covered, total: total.functions.total },
+              branches: { pct: total.branches.pct, covered: total.branches.covered, total: total.branches.total }
+            };
+            console.log(JSON.stringify(summary, null, 2));
+          " > coverage-summary-formatted.json
+          
+          # Also save the test output for the coverage report
+          if [ -f test-output.txt ]; then
+            tail -n 50 test-output.txt > coverage-output.txt
+          fi
+        else
+          echo '{"error": "No coverage data found"}' > coverage-summary-formatted.json
+        fi
+
+    - name: Upload coverage artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: node-coverage
+        path: |
+          web/coverage-summary-formatted.json
+          web/coverage-output.txt
+          web/coverage/lcov.info
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -167,3 +206,114 @@ jobs:
       working-directory: web
       run: npm audit --audit-level=moderate || true
       # || true to not fail the build on vulnerabilities, but still report them
+
+  report-coverage:
+    name: Report Coverage Results
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    if: always() && github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download coverage artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: node-coverage
+        path: web/coverage-artifacts
+
+    - name: Read coverage summary
+      id: coverage
+      working-directory: web
+      run: |
+        if [ -f coverage-artifacts/coverage-summary-formatted.json ]; then
+          # Read the coverage summary
+          COVERAGE_JSON=$(cat coverage-artifacts/coverage-summary-formatted.json)
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$COVERAGE_JSON" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Check if coverage meets thresholds (80% for all metrics)
+          THRESHOLD=80
+          LINES_PCT=$(echo "$COVERAGE_JSON" | jq -r '.lines.pct // 0')
+          FUNCTIONS_PCT=$(echo "$COVERAGE_JSON" | jq -r '.functions.pct // 0')
+          BRANCHES_PCT=$(echo "$COVERAGE_JSON" | jq -r '.branches.pct // 0')
+          STATEMENTS_PCT=$(echo "$COVERAGE_JSON" | jq -r '.statements.pct // 0')
+          
+          # Check if all metrics meet threshold
+          if (( $(echo "$LINES_PCT >= $THRESHOLD" | bc -l) )) && \
+             (( $(echo "$FUNCTIONS_PCT >= $THRESHOLD" | bc -l) )) && \
+             (( $(echo "$BRANCHES_PCT >= $THRESHOLD" | bc -l) )) && \
+             (( $(echo "$STATEMENTS_PCT >= $THRESHOLD" | bc -l) )); then
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "result=failure" >> $GITHUB_OUTPUT
+          fi
+          
+          # Read coverage output if available
+          if [ -f coverage-artifacts/coverage-output.txt ]; then
+            echo 'output<<EOF' >> $GITHUB_OUTPUT
+            cat coverage-artifacts/coverage-output.txt >> $GITHUB_OUTPUT
+            echo 'EOF' >> $GITHUB_OUTPUT
+          else
+            echo "output=No coverage output available" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "summary={\"error\": \"No coverage data found\"}" >> $GITHUB_OUTPUT
+          echo "result=failure" >> $GITHUB_OUTPUT
+          echo "output=Coverage data not found" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Format coverage output
+      id: format-coverage
+      if: always()
+      run: |
+        SUMMARY='${{ steps.coverage.outputs.summary }}'
+        if echo "$SUMMARY" | jq -e '.error' >/dev/null 2>&1; then
+          ERROR=$(echo "$SUMMARY" | jq -r '.error')
+          echo "output=$ERROR" >> $GITHUB_OUTPUT
+        else
+          LINES=$(echo "$SUMMARY" | jq -r '.lines.pct')
+          FUNCTIONS=$(echo "$SUMMARY" | jq -r '.functions.pct')
+          BRANCHES=$(echo "$SUMMARY" | jq -r '.branches.pct')
+          STATEMENTS=$(echo "$SUMMARY" | jq -r '.statements.pct')
+          
+          # Format with warning indicators for below-threshold metrics
+          OUTPUT=""
+          if (( $(echo "$LINES < 80" | bc -l) )); then
+            OUTPUT="${OUTPUT}• Lines: ${LINES}% ⚠️ (threshold: 80%)\n"
+          else
+            OUTPUT="${OUTPUT}• Lines: ${LINES}% (threshold: 80%)\n"
+          fi
+          
+          if (( $(echo "$FUNCTIONS < 80" | bc -l) )); then
+            OUTPUT="${OUTPUT}• Functions: ${FUNCTIONS}% ⚠️ (threshold: 80%)\n"
+          else
+            OUTPUT="${OUTPUT}• Functions: ${FUNCTIONS}% (threshold: 80%)\n"
+          fi
+          
+          if (( $(echo "$BRANCHES < 80" | bc -l) )); then
+            OUTPUT="${OUTPUT}• Branches: ${BRANCHES}% ⚠️ (threshold: 80%)\n"
+          else
+            OUTPUT="${OUTPUT}• Branches: ${BRANCHES}% (threshold: 80%)\n"
+          fi
+          
+          if (( $(echo "$STATEMENTS < 80" | bc -l) )); then
+            OUTPUT="${OUTPUT}• Statements: ${STATEMENTS}% ⚠️ (threshold: 80%)"
+          else
+            OUTPUT="${OUTPUT}• Statements: ${STATEMENTS}% (threshold: 80%)"
+          fi
+          
+          echo "output<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Report Coverage Results
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'Node.js Test Coverage'
+        lint-result: ${{ steps.coverage.outputs.result }}
+        lint-output: ${{ steps.format-coverage.outputs.output }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}

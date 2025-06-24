@@ -196,23 +196,88 @@ jobs:
           DEVELOPMENT_TEAM="" \
           | xcbeautify
           
-    - name: Run tests
+    - name: Run tests with coverage
+      id: test-coverage
       timeout-minutes: 20
       run: |
-        # Use xcodebuild test for workspace testing
+        # Use xcodebuild test for workspace testing with coverage enabled
         set -o pipefail && \
         xcodebuild test \
           -workspace VibeTunnel.xcworkspace \
           -scheme VibeTunnel-Mac \
           -configuration Debug \
           -destination "platform=macOS" \
+          -enableCodeCoverage YES \
+          -resultBundlePath TestResults.xcresult \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
           | xcbeautify || {
           echo "::error::Tests failed"
+          echo "result=1" >> $GITHUB_OUTPUT
           exit 1
         }
+        echo "result=0" >> $GITHUB_OUTPUT
+    
+    - name: Install xcresultparser
+      if: always()
+      run: |
+        # Install xcresultparser to extract coverage data
+        brew install chargepoint/xcparse/xcparse || echo "Failed to install xcparse"
+        
+    - name: Extract coverage data
+      if: always()
+      id: coverage
+      run: |
+        if [ -f TestResults.xcresult ]; then
+          # Extract code coverage report
+          xcparse codecov TestResults.xcresult --json > coverage.json || {
+            echo "Failed to extract coverage data"
+            echo '{"error": "Failed to extract coverage data"}' > coverage-summary.json
+            exit 0
+          }
+          
+          # Parse coverage percentage from the JSON
+          if [ -f coverage.json ]; then
+            # Extract overall coverage percentage
+            COVERAGE_PCT=$(cat coverage.json | jq -r '.lineCoverage // 0' | awk '{printf "%.1f", $1 * 100}')
+            
+            # Create summary JSON
+            cat > coverage-summary.json << EOF
+        {
+          "coverage": $COVERAGE_PCT,
+          "lineCoverage": $(cat coverage.json | jq -r '.lineCoverage // 0'),
+          "executableLines": $(cat coverage.json | jq -r '.executableLines // 0'),
+          "coveredLines": $(cat coverage.json | jq -r '.coveredLines // 0')
+        }
+        EOF
+            
+            echo "Coverage: ${COVERAGE_PCT}%"
+            
+            # Check if coverage meets threshold (75% for Swift projects)
+            THRESHOLD=75
+            if (( $(echo "$COVERAGE_PCT >= $THRESHOLD" | bc -l) )); then
+              echo "coverage_result=success" >> $GITHUB_OUTPUT
+            else
+              echo "coverage_result=failure" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo '{"error": "No coverage data in JSON"}' > coverage-summary.json
+            echo "coverage_result=failure" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo '{"error": "No test results bundle found"}' > coverage-summary.json
+          echo "coverage_result=failure" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Upload coverage artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: mac-coverage
+        path: |
+          coverage-summary.json
+          TestResults.xcresult
           
     - name: Upload test logs on failure
       if: failure()
@@ -233,3 +298,60 @@ jobs:
         path: |
           ~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/VibeTunnel.app
           ~/Library/Developer/Xcode/DerivedData/*/Build/Products/Release/VibeTunnel.app
+
+  report-coverage:
+    name: Report Coverage Results
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    if: always() && github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download coverage artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: mac-coverage
+        path: mac-coverage-artifacts
+
+    - name: Read coverage summary
+      id: coverage
+      run: |
+        if [ -f mac-coverage-artifacts/coverage-summary.json ]; then
+          # Read the coverage summary
+          COVERAGE_JSON=$(cat mac-coverage-artifacts/coverage-summary.json)
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$COVERAGE_JSON" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Extract coverage percentage
+          COVERAGE_PCT=$(echo "$COVERAGE_JSON" | jq -r '.coverage // 0')
+          
+          # Check if coverage meets threshold (75% for Swift)
+          THRESHOLD=75
+          if (( $(echo "$COVERAGE_PCT >= $THRESHOLD" | bc -l) )); then
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "result=failure" >> $GITHUB_OUTPUT
+          fi
+          
+          # Format output with warning indicator if below threshold
+          if (( $(echo "$COVERAGE_PCT < $THRESHOLD" | bc -l) )); then
+            echo "output=• Coverage: ${COVERAGE_PCT}% ⚠️ (threshold: ${THRESHOLD}%)" >> $GITHUB_OUTPUT
+          else
+            echo "output=• Coverage: ${COVERAGE_PCT}% (threshold: ${THRESHOLD}%)" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "summary={\"error\": \"No coverage data found\"}" >> $GITHUB_OUTPUT
+          echo "result=failure" >> $GITHUB_OUTPUT
+          echo "output=Coverage data not found" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Report Coverage Results
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'macOS Test Coverage'
+        lint-result: ${{ steps.coverage.outputs.result }}
+        lint-output: ${{ steps.coverage.outputs.output }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}

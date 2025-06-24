@@ -44,8 +44,19 @@ runs:
           // Create section content
           let sectionContent = `### ${title}\n${icon} **Status**: ${status}\n`;
           
-          if (result !== 'success' && output && output !== 'No output') {
-            sectionContent += `\n<details>\n<summary>Click to see details</summary>\n\n\`\`\`\n${output}\n\`\`\`\n\n</details>\n`;
+          // Special formatting for coverage reports
+          if (title.includes('Coverage')) {
+            if (result === 'success' || (output && output.includes('%'))) {
+              // Show coverage metrics directly (not in details)
+              sectionContent += `\n${output}\n`;
+            } else if (output && output !== 'No output') {
+              sectionContent += `\n<details>\n<summary>Click to see details</summary>\n\n\`\`\`\n${output}\n\`\`\`\n\n</details>\n`;
+            }
+          } else {
+            // Regular lint output
+            if (result !== 'success' && output && output !== 'No output') {
+              sectionContent += `\n<details>\n<summary>Click to see details</summary>\n\n\`\`\`\n${output}\n\`\`\`\n\n</details>\n`;
+            }
           }
           
           let body;
