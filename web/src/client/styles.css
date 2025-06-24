@@ -125,7 +125,7 @@
 
   /* Modal content */
   .modal-content {
-    @apply bg-dark-bg-secondary border border-dark-border rounded-xl p-8;
+    @apply bg-dark-bg-secondary border border-dark-border rounded-xl;
     @apply shadow-2xl shadow-black/50;
   }
 
