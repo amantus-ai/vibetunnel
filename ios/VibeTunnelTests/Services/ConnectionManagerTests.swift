@@ -41,9 +41,12 @@ struct ConnectionManagerTests {
 
     @Test("Tracks connection state in UserDefaults")
     func connectionStateTracking() {
-        // Arrange
-        let manager = ConnectionManager()
+        // Arrange - Clear all related state BEFORE creating manager
         UserDefaults.standard.removeObject(forKey: "connectionState")
+        UserDefaults.standard.removeObject(forKey: "lastConnectionTime")
+        UserDefaults.standard.removeObject(forKey: "savedServerConfig")
+        
+        let manager = ConnectionManager()
 
         // Act & Assert - Initial state
         #expect(manager.isConnected == false)
