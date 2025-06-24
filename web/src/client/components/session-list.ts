@@ -281,9 +281,9 @@ export class SessionList extends LitElement {
                             <div class="flex-1 min-w-0">
                               <div
                                 class="text-sm font-mono text-accent-green truncate"
-                                title="${session.name || session.command}"
+                                title="${session.name || (Array.isArray(session.command) ? session.command.join(' ') : session.command)}"
                               >
-                                ${session.name || session.command}
+                                ${session.name || (Array.isArray(session.command) ? session.command.join(' ') : session.command)}
                               </div>
                               <div class="text-xs text-dark-text-muted truncate">
                                 ${formatPathForDisplay(session.workingDir)}
