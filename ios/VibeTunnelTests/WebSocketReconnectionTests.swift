@@ -154,8 +154,7 @@ struct WebSocketReconnectionTests {
 
     @Test("Immediate reconnection on clean disconnect")
     func cleanDisconnectReconnection() {
-        let wasCleanDisconnect = true
-        let reconnectDelay: TimeInterval = wasCleanDisconnect ? 0.1 : 1.0
+        let reconnectDelay: TimeInterval = 0.1
 
         #expect(reconnectDelay == 0.1)
     }
