@@ -42,7 +42,6 @@ final class AuthenticationService: ObservableObject {
     
     // MARK: - Properties
     
-    private let keychain = KeychainService.self
     private let apiClient: APIClient
     private let serverConfig: ServerConfig
     
@@ -111,7 +110,7 @@ final class AuthenticationService: ObservableObject {
         
         if httpResponse.statusCode == 200, authResponse.success, let token = authResponse.token {
             // Store token and user data
-            try keychain.savePassword(token, for: tokenKey)
+            try KeychainService.savePassword(token, for: tokenKey)
             
             let userData = UserData(
                 userId: username,
@@ -119,9 +118,11 @@ final class AuthenticationService: ObservableObject {
                 loginTime: Date()
             )
             let userDataJson = try JSONEncoder().encode(userData)
-            if let userDataString = String(data: userDataJson, encoding: .utf8) {
-                try keychain.savePassword(userDataString, for: userDataKey)
+            guard let userDataString = String(data: userDataJson, encoding: .utf8) else {
+                logger.error("Failed to convert user data to UTF-8 string")
+                throw APIError.dataEncodingFailed
             }
+            try KeychainService.savePassword(userDataString, for: userDataKey)
             
             // Update state
             self.authToken = token
@@ -173,8 +174,8 @@ final class AuthenticationService: ObservableObject {
         }
         
         // Clear stored credentials
-        try? keychain.deletePassword(for: tokenKey)
-        try? keychain.deletePassword(for: userDataKey)
+        try? KeychainService.deletePassword(for: tokenKey)
+        try? KeychainService.deletePassword(for: userDataKey)
         
         // Clear state
         authToken = nil
@@ -198,8 +199,8 @@ final class AuthenticationService: ObservableObject {
     
     private func checkExistingAuth() async {
         // Try to load existing token
-        if let token = try? keychain.loadPassword(for: tokenKey),
-           let userDataJson = try? keychain.loadPassword(for: userDataKey),
+        if let token = try? KeychainService.loadPassword(for: tokenKey),
+           let userDataJson = try? KeychainService.loadPassword(for: userDataKey),
            let userDataData = userDataJson.data(using: .utf8),
            let userData = try? JSONDecoder().decode(UserData.self, from: userDataData) {
             
@@ -231,5 +232,9 @@ final class AuthenticationService: ObservableObject {
 extension APIError {
     static func authenticationFailed(_ message: String) -> APIError {
         return APIError.serverError(500, message)
+    }
+    
+    static var dataEncodingFailed: APIError {
+        return APIError.serverError(500, "Failed to encode authentication data")
     }
 }

@@ -14,7 +14,7 @@ struct EnhancedConnectionView: View {
     @State private var showingProfileEditor = false
 
     #if targetEnvironment(macCatalyst)
-        @StateObject private var windowManager = MacCatalystWindowManager.shared
+        @State private var windowManager = MacCatalystWindowManager.shared
     #endif
 
     var body: some View {

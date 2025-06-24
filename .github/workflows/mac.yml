@@ -78,13 +78,36 @@ jobs:
         echo "bc: $(which bc || echo 'not found')"
         echo "jq: $(which jq || echo 'not found')"
     
+    - name: Cache pnpm store
+      uses: useblacksmith/cache@v5
+      with:
+        path: ~/.local/share/pnpm/store
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
     - name: Install web dependencies
       run: |
         cd web
-        # Clean pnpm store to avoid corruption issues
-        pnpm store prune || true
-        # Install with more verbose output and retry on failure
-        pnpm install --frozen-lockfile --reporter=append-only || pnpm install --frozen-lockfile --no-frozen-lockfile
+        # Clean any stale lock files
+        rm -f .pnpm-store.lock .pnpm-debug.log || true
+        # Set pnpm to use fewer workers to avoid crashes on self-hosted runners
+        export NODE_OPTIONS="--max-old-space-size=4096"
+        pnpm config set store-dir ~/.local/share/pnpm/store
+        pnpm config set package-import-method copy
+        pnpm config set node-linker hoisted
+        # Install with retries
+        for i in 1 2 3; do
+          echo "Install attempt $i"
+          if pnpm install --frozen-lockfile; then
+            echo "pnpm install succeeded"
+            break
+          else
+            echo "pnpm install failed, cleaning and retrying..."
+            rm -rf node_modules .pnpm-store.lock || true
+            sleep 5
+          fi
+        done
     
     - name: Build web frontend
       run: |

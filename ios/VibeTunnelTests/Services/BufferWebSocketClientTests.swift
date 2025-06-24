@@ -134,8 +134,7 @@ final class BufferWebSocketClientTests {
         TestFixtures.saveServerConfig(.init(
             host: "localhost",
             port: 8888,
-            name: nil,
-            password: nil
+            name: nil
         ))
     }
     

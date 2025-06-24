@@ -11,7 +11,6 @@ struct ServerConfigTests {
             host: "localhost",
             port: 8_888,
             name: nil,
-            password: nil
         )
 
         // Act
@@ -31,7 +30,6 @@ struct ServerConfigTests {
             host: "example.com",
             port: 443,
             name: "user",
-            password: "pass"
         )
 
         // Act
@@ -50,7 +48,6 @@ struct ServerConfigTests {
             host: "localhost",
             port: 8888,
             name: "My Server",
-            password: nil
         )
         #expect(config.displayName == "My Server")
     }
@@ -79,7 +76,6 @@ struct ServerConfigTests {
             host: "test.local",
             port: 9_999,
             name: "testuser",
-            password: "testpass"
         )
 
         // Act
@@ -93,7 +89,6 @@ struct ServerConfigTests {
         #expect(decodedConfig.host == originalConfig.host)
         #expect(decodedConfig.port == originalConfig.port)
         #expect(decodedConfig.name == originalConfig.name)
-        #expect(decodedConfig.password == originalConfig.password)
     }
 
     @Test("Optional credentials encoding")
@@ -108,7 +103,6 @@ struct ServerConfigTests {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 
         #expect(json?["name"] == nil)
-        #expect(json?["password"] == nil)
     }
 
     @Test("Equality comparison")
@@ -182,7 +176,6 @@ struct ServerConfigTests {
             host: "test.server",
             port: 3_000,
             name: "user",
-            password: "pass"
         )
 
         // Act

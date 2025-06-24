@@ -5,15 +5,13 @@ enum TestFixtures {
     static let validServerConfig = ServerConfig(
         host: "localhost",
         port: 8_888,
-        name: nil,
-        password: nil
+        name: nil
     )
 
     static let sslServerConfig = ServerConfig(
         host: "example.com",
         port: 443,
-        name: "Test Server",
-        password: "testpass"
+        name: "Test Server"
     )
 
     static let validSession = Session(
