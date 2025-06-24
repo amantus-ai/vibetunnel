@@ -4,9 +4,9 @@ import path from 'path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import {
-  type ServerInstance,
   cleanupTestDirectories,
   createTestDirectory,
+  type ServerInstance,
   sleep,
   startTestServer,
   stopServer,
@@ -83,7 +83,11 @@ describe('HQ Mode E2E Tests', () => {
 
     // Wait for all remote servers to be ready
     for (let i = 0; i < remoteServers.length; i++) {
-      const remoteReady = await waitForServerHealth(remoteServers[i].port, `remote${i}`, `remotepass${i}`);
+      const remoteReady = await waitForServerHealth(
+        remoteServers[i].port,
+        `remote${i}`,
+        `remotepass${i}`
+      );
       expect(remoteReady).toBe(true);
     }
 
@@ -105,7 +109,7 @@ describe('HQ Mode E2E Tests', () => {
   }, 30000); // 30 second timeout for cleanup
 
   it('should list all registered remotes', async () => {
-    const response = await fetch(`http://localhost:${hqServer!.port}/api/remotes`, {
+    const response = await fetch(`http://localhost:${hqServer?.port}/api/remotes`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
       },
@@ -126,7 +130,7 @@ describe('HQ Mode E2E Tests', () => {
     const sessionIds: string[] = [];
 
     // Get remotes
-    const remotesResponse = await fetch(`http://localhost:${hqServer!.port}/api/remotes`, {
+    const remotesResponse = await fetch(`http://localhost:${hqServer?.port}/api/remotes`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
       },
@@ -135,7 +139,7 @@ describe('HQ Mode E2E Tests', () => {
 
     // Create session on each remote
     for (const remote of remotes) {
-      const response = await fetch(`http://localhost:${hqServer!.port}/api/sessions`, {
+      const response = await fetch(`http://localhost:${hqServer?.port}/api/sessions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -159,7 +163,7 @@ describe('HQ Mode E2E Tests', () => {
     await sleep(1000);
 
     // Get all sessions and verify aggregation
-    const allSessionsResponse = await fetch(`http://localhost:${hqServer!.port}/api/sessions`, {
+    const allSessionsResponse = await fetch(`http://localhost:${hqServer?.port}/api/sessions`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
       },
@@ -173,7 +177,7 @@ describe('HQ Mode E2E Tests', () => {
 
   it('should proxy session operations to remote servers', async () => {
     // Get a fresh list of remotes to ensure we have current data
-    const remotesResponse = await fetch(`http://localhost:${hqServer!.port}/api/remotes`, {
+    const remotesResponse = await fetch(`http://localhost:${hqServer?.port}/api/remotes`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
       },
@@ -182,7 +186,7 @@ describe('HQ Mode E2E Tests', () => {
     const remote = remotes[0];
 
     // Create session on remote
-    const createResponse = await fetch(`http://localhost:${hqServer!.port}/api/sessions`, {
+    const createResponse = await fetch(`http://localhost:${hqServer?.port}/api/sessions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -203,11 +207,14 @@ describe('HQ Mode E2E Tests', () => {
     await sleep(1000);
 
     // Get session info through HQ (should proxy to remote)
-    const infoResponse = await fetch(`http://localhost:${hqServer!.port}/api/sessions/${sessionId}`, {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
-      },
-    });
+    const infoResponse = await fetch(
+      `http://localhost:${hqServer?.port}/api/sessions/${sessionId}`,
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
+        },
+      }
+    );
 
     expect(infoResponse.ok).toBe(true);
     const sessionInfo = await infoResponse.json();
@@ -216,7 +223,7 @@ describe('HQ Mode E2E Tests', () => {
 
     // Send input through HQ
     const inputResponse = await fetch(
-      `http://localhost:${hqServer!.port}/api/sessions/${sessionId}/input`,
+      `http://localhost:${hqServer?.port}/api/sessions/${sessionId}/input`,
       {
         method: 'POST',
         headers: {
@@ -229,12 +236,15 @@ describe('HQ Mode E2E Tests', () => {
     expect(inputResponse.ok).toBe(true);
 
     // Kill session through HQ
-    const killResponse = await fetch(`http://localhost:${hqServer!.port}/api/sessions/${sessionId}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
-      },
-    });
+    const killResponse = await fetch(
+      `http://localhost:${hqServer?.port}/api/sessions/${sessionId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
+        },
+      }
+    );
     expect(killResponse.ok).toBe(true);
   });
 
@@ -242,7 +252,7 @@ describe('HQ Mode E2E Tests', () => {
     const sessionIds: string[] = [];
 
     // Create sessions for WebSocket test
-    const remotesResponse = await fetch(`http://localhost:${hqServer!.port}/api/remotes`, {
+    const remotesResponse = await fetch(`http://localhost:${hqServer?.port}/api/remotes`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
       },
@@ -250,7 +260,7 @@ describe('HQ Mode E2E Tests', () => {
     const remotes = await remotesResponse.json();
 
     for (const remote of remotes) {
-      const response = await fetch(`http://localhost:${hqServer!.port}/api/sessions`, {
+      const response = await fetch(`http://localhost:${hqServer?.port}/api/sessions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -272,7 +282,7 @@ describe('HQ Mode E2E Tests', () => {
     }
 
     // Connect to WebSocket
-    const ws = new WebSocket(`ws://localhost:${hqServer!.port}/buffers`, {
+    const ws = new WebSocket(`ws://localhost:${hqServer?.port}/buffers`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
       },
@@ -324,7 +334,7 @@ describe('HQ Mode E2E Tests', () => {
 
   it('should cleanup exited sessions across all servers', async () => {
     // Create sessions that will exit immediately
-    const remotesResponse = await fetch(`http://localhost:${hqServer!.port}/api/remotes`, {
+    const remotesResponse = await fetch(`http://localhost:${hqServer?.port}/api/remotes`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,
       },
@@ -332,7 +342,7 @@ describe('HQ Mode E2E Tests', () => {
     const remotes = await remotesResponse.json();
 
     for (const remote of remotes) {
-      await fetch(`http://localhost:${hqServer!.port}/api/sessions`, {
+      await fetch(`http://localhost:${hqServer?.port}/api/sessions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -350,7 +360,7 @@ describe('HQ Mode E2E Tests', () => {
     await sleep(2000);
 
     // Run cleanup
-    const cleanupResponse = await fetch(`http://localhost:${hqServer!.port}/api/cleanup-exited`, {
+    const cleanupResponse = await fetch(`http://localhost:${hqServer?.port}/api/cleanup-exited`, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${Buffer.from(`${hqUsername}:${hqPassword}`).toString('base64')}`,

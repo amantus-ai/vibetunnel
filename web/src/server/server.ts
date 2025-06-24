@@ -542,8 +542,11 @@ export async function createApp(): Promise<AppInstance> {
 
   // Handle WebSocket upgrade with authentication
   server.on('upgrade', async (request, socket, head) => {
+    // Parse the URL to extract path and query parameters
+    const parsedUrl = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
+
     // Only handle /buffers path
-    if (request.url !== '/buffers') {
+    if (parsedUrl.pathname !== '/buffers') {
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
       socket.destroy();
       return;
@@ -551,13 +554,20 @@ export async function createApp(): Promise<AppInstance> {
 
     // Check authentication
     const isAuthenticated = await new Promise<boolean>((resolve) => {
+      // Convert URLSearchParams to plain object for query parameters
+      const query: Record<string, string> = {};
+      parsedUrl.searchParams.forEach((value, key) => {
+        query[key] = value;
+      });
+
       // Create a mock Express request/response to use auth middleware
       const req = {
         ...request,
-        path: '/buffers',
+        url: request.url,
+        path: parsedUrl.pathname,
         userId: undefined as string | undefined,
         authMethod: undefined as string | undefined,
-        query: {}, // Add empty query object
+        query, // Include parsed query parameters for token-based auth
         headers: request.headers,
         ip: (request.socket as unknown as { remoteAddress?: string }).remoteAddress || '',
         socket: request.socket,
@@ -571,20 +581,29 @@ export async function createApp(): Promise<AppInstance> {
         acceptsLanguages: () => false,
       } as unknown as AuthenticatedRequest;
 
-      let responseWritten = false;
+      let authFailed = false;
       const res = {
-        status: (_code: number) => {
-          responseWritten = true;
-          // When auth fails, the middleware sends a response but doesn't call next()
-          // We need to resolve the promise immediately when a response is written
-          resolve(false);
-          return { json: () => {} };
+        status: (code: number) => {
+          // Only consider it a failure if it's an error status code
+          if (code >= 400) {
+            authFailed = true;
+            resolve(false);
+          }
+          return {
+            json: () => {},
+            send: () => {},
+            end: () => {},
+          };
         },
         setHeader: () => {},
+        send: () => {},
+        json: () => {},
+        end: () => {},
       } as unknown as ExpressResponse;
 
       const next = (error?: unknown) => {
-        resolve(!error && !responseWritten);
+        // Authentication succeeds if next() is called without error and no auth failure was recorded
+        resolve(!error && !authFailed);
       };
 
       // Add a timeout to prevent indefinite hanging

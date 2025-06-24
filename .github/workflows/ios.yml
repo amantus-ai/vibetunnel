@@ -40,6 +40,11 @@ jobs:
       with:
         node-version: '24'
     
+    - name: Clean pnpm directory
+      run: |
+        # Clean pnpm setup directory to prevent ENOTEMPTY error on self-hosted runners
+        rm -rf /Users/administrator/setup-pnpm || true
+    
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
       with:
