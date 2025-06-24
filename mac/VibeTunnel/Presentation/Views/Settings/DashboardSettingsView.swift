@@ -65,43 +65,6 @@ struct DashboardSettingsView: View {
                     serverManager: serverManager
                 )
 
-                // Dashboard URL display
-                VStack(spacing: 4) {
-                    if accessMode == .localhost {
-                        HStack(spacing: 5) {
-                            Text("Dashboard available at")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-
-                            if let url = URL(string: "http://127.0.0.1:\(serverPort)") {
-                                Link(url.absoluteString, destination: url)
-                                    .font(.caption)
-                                    .foregroundStyle(.blue)
-                            }
-                        }
-                    } else if accessMode == .network {
-                        if let ip = localIPAddress {
-                            HStack(spacing: 5) {
-                                Text("Dashboard available at")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                if let url = URL(string: "http://\(ip):\(serverPort)") {
-                                    Link(url.absoluteString, destination: url)
-                                        .font(.caption)
-                                        .foregroundStyle(.blue)
-                                }
-                            }
-                        } else {
-                            Text("Fetching local IP address...")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-
                 NgrokIntegrationSection(
                     ngrokEnabled: $ngrokEnabled,
                     ngrokAuthToken: $ngrokAuthToken,
