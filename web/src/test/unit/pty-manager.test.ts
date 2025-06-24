@@ -51,10 +51,11 @@ describe('PtyManager', () => {
       await sleep(500);
 
       // Read output from stdout file
-      const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
-      const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
-
-      expect(outputData).toContain('Hello, World!');
+      {
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
+        expect(outputData).toContain('Hello, World!');
+      }
     });
 
     it('should create session with custom working directory', async () => {
@@ -74,10 +75,11 @@ describe('PtyManager', () => {
       await sleep(500);
 
       // Read output from stdout file
-      const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
-      const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
-
-      expect(outputData.trim()).toContain('custom');
+      {
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
+        expect(outputData.trim()).toContain('custom');
+      }
     });
 
     it('should handle session with environment variables', async () => {
@@ -98,10 +100,11 @@ describe('PtyManager', () => {
       await sleep(500);
 
       // Read output from stdout file
-      const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
-      const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
-
-      expect(outputData).toContain('test_value_123');
+      {
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
+        expect(outputData).toContain('test_value_123');
+      }
     });
 
     it('should reject duplicate session IDs', async () => {
@@ -136,11 +139,13 @@ describe('PtyManager', () => {
       await sleep(1000);
 
       // Check session status from session.json
-      const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
-      if (fs.existsSync(sessionJsonPath)) {
-        const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
-        expect(sessionInfo.status).toBe('exited');
-        expect(sessionInfo.exitCode).not.toBe(0);
+      {
+        const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
+        if (fs.existsSync(sessionJsonPath)) {
+          const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
+          expect(sessionInfo.status).toBe('exited');
+          expect(sessionInfo.exitCode).not.toBe(0);
+        }
       }
     });
   });
@@ -158,10 +163,11 @@ describe('PtyManager', () => {
       await sleep(200);
 
       // Read output from stdout file
-      const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
-      const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
-
-      expect(outputData).toContain('test input');
+      {
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
+        expect(outputData).toContain('test input');
+      }
 
       // Clean up - send EOF
       ptyManager.sendInput(result.sessionId, { text: '\x04' });
@@ -180,13 +186,15 @@ describe('PtyManager', () => {
       await sleep(200);
 
       // Read output from stdout file
-      const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
-      const outputBuffer = fs.existsSync(stdoutPath)
-        ? fs.readFileSync(stdoutPath)
-        : Buffer.alloc(0);
+      {
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputBuffer = fs.existsSync(stdoutPath)
+          ? fs.readFileSync(stdoutPath)
+          : Buffer.alloc(0);
 
-      // Check that binary data was echoed back
-      expect(outputBuffer.length).toBeGreaterThan(0);
+        // Check that binary data was echoed back
+        expect(outputBuffer.length).toBeGreaterThan(0);
+      }
 
       // Clean up
       ptyManager.sendInput(result.sessionId, { text: '\x04' });

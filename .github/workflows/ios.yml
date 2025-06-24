@@ -130,7 +130,7 @@ jobs:
           ONLY_ACTIVE_ARCH=NO \
           -derivedDataPath build/DerivedData \
           COMPILER_INDEX_STORE_ENABLE=NO \
-          2>&1 | tee build.log | xcbeautify || {
+          2>&1 | tee build.log || {
             echo "Build failed. Last 100 lines of output:"
             tail -100 build.log
             exit 1
@@ -195,7 +195,7 @@ jobs:
           CODE_SIGNING_ALLOWED=NO \
           COMPILER_INDEX_STORE_ENABLE=NO \
           -quiet \
-          2>&1 | xcbeautify || {
+          2>&1 || {
             echo "::error::iOS tests failed"
             # Shutdown simulator
             xcrun simctl shutdown "$SIMULATOR_ID" || true
