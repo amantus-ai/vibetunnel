@@ -189,13 +189,17 @@ macOS is finicky when it comes to permissions. The system will only remember the
 
 Important: You need to set your Developer ID in Local.xcconfig. If apps are signed Ad-Hoc, each new signing will count as a new app for macOS and the permissions have to be (deleted and) requested again.
 
+**Debug vs Release Bundle IDs**: The Debug configuration uses a different bundle identifier (`sh.vibetunnel.vibetunnel.debug`) than Release (`sh.vibetunnel.vibetunnel`). This allows you to have both versions installed simultaneously, but macOS treats them as separate apps for permissions. You'll need to grant permissions separately for each version.
+
 If that fails, use the terminal to reset:
 
 ```
 # This removes Accessibility permission for a specific bundle ID:
 sudo tccutil reset Accessibility sh.vibetunnel.vibetunnel
+sudo tccutil reset Accessibility sh.vibetunnel.vibetunnel.debug  # For debug builds
 
 sudo tccutil reset ScreenCapture sh.vibetunnel.vibetunnel
+sudo tccutil reset ScreenCapture sh.vibetunnel.vibetunnel.debug  # For debug builds
 
 # This removes all Automation permissions system-wide (cannot target specific apps):
 sudo tccutil reset AppleEvents
