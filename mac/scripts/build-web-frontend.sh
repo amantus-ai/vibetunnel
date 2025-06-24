@@ -164,7 +164,7 @@ if [ "$BUILD_CONFIG" = "Release" ]; then
         echo "  Version: $CUSTOM_NODE_VERSION"
         echo "  Size: $CUSTOM_NODE_SIZE (vs ~110MB for standard Node.js)"
         echo "  Path: $CUSTOM_NODE_PATH"
-        ppnpm run build -- --custom-node
+        pnpm run build -- --custom-node
     else
         echo "WARNING: Custom Node.js build failed, using system Node.js"
         echo "The app will be larger than optimal."
