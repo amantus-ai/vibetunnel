@@ -218,7 +218,7 @@ struct ConnectionManagerTests {
     @Test("Thread safety of shared instance")
     func sharedInstanceThreadSafety() async throws {
         // Test that the shared instance is properly MainActor-isolated
-        let shared = await ConnectionManager.shared
+        let shared = ConnectionManager.shared
 
         // This should be the same instance when accessed from main actor
         await MainActor.run {

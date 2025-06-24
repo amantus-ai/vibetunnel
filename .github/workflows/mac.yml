@@ -35,7 +35,7 @@ jobs:
         swift --version
     
     - name: Cache Swift packages
-      uses: actions/cache@v4
+      uses: useblacksmith/cache@v5
       with:
         path: |
           ~/Library/Developer/Xcode/DerivedData
@@ -142,7 +142,7 @@ jobs:
         swift --version
         
     - name: Cache Swift packages
-      uses: actions/cache@v4
+      uses: useblacksmith/cache@v5
       with:
         path: |
           ~/Library/Developer/Xcode/DerivedData
@@ -314,7 +314,7 @@ jobs:
 
   report-coverage:
     name: Report Coverage Results
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     needs: [build-and-test]
     if: always() && github.event_name == 'pull_request'
 

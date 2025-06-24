@@ -6,11 +6,65 @@
 
 import chalk from 'chalk';
 import { spawnSync } from 'child_process';
+import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('process-utils');
+
+/**
+ * Get the appropriate shell configuration file for a given shell
+ * @param shellPath The path to the shell executable
+ * @returns The path to the shell config file, or null if none found
+ */
+function getShellConfigFile(shellPath: string): string | null {
+  const homeDir = os.homedir();
+  const shellName = path.basename(shellPath);
+
+  // Map of shell names to their config files (in order of preference)
+  const shellConfigs: Record<string, string[]> = {
+    zsh: ['.zshrc', '.zshenv'],
+    bash: ['.bashrc', '.bash_profile', '.profile'],
+    sh: ['.profile'],
+    ksh: ['.kshrc', '.profile'],
+    fish: ['.config/fish/config.fish'],
+    tcsh: ['.tcshrc', '.cshrc'],
+    csh: ['.cshrc'],
+    dash: ['.profile'],
+  };
+
+  // Get config files for this shell
+  const configFiles = shellConfigs[shellName] || [];
+
+  // Check each config file in order of preference
+  for (const configFile of configFiles) {
+    const fullPath = path.join(homeDir, configFile);
+    if (existsSync(fullPath)) {
+      return fullPath;
+    }
+  }
+
+  // Fallback to .profile for unknown shells
+  const profilePath = path.join(homeDir, '.profile');
+  if (existsSync(profilePath)) {
+    return profilePath;
+  }
+
+  return null;
+}
+
+/**
+ * Safe file existence check
+ */
+function existsSync(filePath: string): boolean {
+  try {
+    fs.accessSync(filePath, fs.constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Check if a process is currently running by PID
@@ -273,8 +327,10 @@ export function resolveCommand(command: string[]): {
     if (isCommand) {
       // Non-interactive command execution: shell will exit after completion
       // Source shell config to ensure aliases and functions are available
-      const shellConfig = userShell.includes('zsh') ? '~/.zshrc' : '~/.bashrc';
-      const commandStr = `source ${shellConfig} 2>/dev/null || true; ${command.join(' ')}`;
+      const shellConfig = getShellConfigFile(userShell);
+      const commandStr = shellConfig
+        ? `source ${shellConfig} 2>/dev/null || true; ${command.join(' ')}`
+        : command.join(' ');
 
       return {
         command: userShell,

@@ -169,8 +169,23 @@ struct PerformanceTests {
         let iterations = 100
         let group = DispatchGroup()
 
-        var results = [Int](repeating: 0, count: iterations)
-        let resultsQueue = DispatchQueue(label: "results.serial")
+        actor ResultsActor {
+            private var results: [Int]
+            
+            init(count: Int) {
+                self.results = [Int](repeating: 0, count: count)
+            }
+            
+            func set(_ value: Int, at index: Int) {
+                results[index] = value
+            }
+            
+            func getResults() -> [Int] {
+                results
+            }
+        }
+        
+        let resultsActor = ResultsActor(count: iterations)
 
         // Perform concurrent operations
         for i in 0..<iterations {
@@ -180,46 +195,62 @@ struct PerformanceTests {
                 let value = i * i
 
                 // Thread-safe write
-                resultsQueue.sync {
-                    results[i] = value
+                Task {
+                    await resultsActor.set(value, at: i)
+                    group.leave()
                 }
-
-                group.leave()
             }
         }
 
         group.wait()
 
         // Verify all operations completed
-        for i in 0..<iterations {
-            #expect(results[i] == i * i)
+        Task { @MainActor in
+            let results = await resultsActor.getResults()
+            for i in 0..<iterations {
+                #expect(results[i] == i * i)
+            }
         }
     }
 
     @Test("Lock contention stress test")
     func lockContention() {
-        let lock = NSLock()
-        var sharedCounter = 0
+        actor SharedCounter {
+            private var value = 0
+            
+            func increment() {
+                value += 1
+            }
+            
+            func getValue() -> Int {
+                value
+            }
+        }
+        
+        let sharedCounter = SharedCounter()
         let iterations = 1_000
         let queues = 4
         let group = DispatchGroup()
 
         // Create contention with multiple queues
-        for q in 0..<queues {
+        for _ in 0..<queues {
             group.enter()
             DispatchQueue.global().async {
-                for _ in 0..<iterations {
-                    lock.lock()
-                    sharedCounter += 1
-                    lock.unlock()
+                Task {
+                    for _ in 0..<iterations {
+                        await sharedCounter.increment()
+                    }
+                    group.leave()
                 }
-                group.leave()
             }
         }
 
         group.wait()
 
-        #expect(sharedCounter == iterations * queues)
+        Task { @MainActor in
+            let finalValue = await sharedCounter.getValue()
+            #expect(finalValue == iterations * queues)
+        }
     }
 
     // MARK: - I/O Performance
@@ -266,8 +297,20 @@ struct PerformanceTests {
         let session = URLSession(configuration: .ephemeral)
         let iterations = 10
         let group = DispatchGroup()
-        var successCount = 0
-        let countQueue = DispatchQueue(label: "count.serial")
+        
+        actor SuccessCounter {
+            private var count = 0
+            
+            func increment() {
+                count += 1
+            }
+            
+            func getCount() -> Int {
+                count
+            }
+        }
+        
+        let successCounter = SuccessCounter()
 
         for i in 0..<iterations {
             group.enter()
@@ -275,9 +318,9 @@ struct PerformanceTests {
             // Create a data task with invalid URL to test error handling
             let url = URL(string: "https://invalid-domain-\(i).test")!
             let task = session.dataTask(with: url) { _, _, error in
-                countQueue.sync {
-                    if error != nil {
-                        successCount += 1 // We expect errors for invalid domains
+                if error != nil {
+                    Task {
+                        await successCounter.increment() // We expect errors for invalid domains
                     }
                 }
                 group.leave()
@@ -288,7 +331,10 @@ struct PerformanceTests {
 
         group.wait()
 
-        #expect(successCount == iterations) // All should fail with invalid domains
+        Task { @MainActor in
+            let finalCount = await successCounter.getCount()
+            #expect(finalCount == iterations) // All should fail with invalid domains
+        }
     }
 
     // MARK: - Algorithm Performance

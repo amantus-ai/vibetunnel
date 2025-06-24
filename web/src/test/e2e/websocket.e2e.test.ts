@@ -769,7 +769,7 @@ describe('WebSocket Buffer Tests', () => {
         } else if (i % 4 === 1) {
           ws.send(Buffer.from([0xff, 0xfe, i]));
         } else if (i % 4 === 2) {
-          ws.send('{"type": "unknown_' + i + '"}');
+          ws.send(`{"type": "unknown_${i}"}`);
         } else {
           ws.send(Buffer.alloc(0));
         }

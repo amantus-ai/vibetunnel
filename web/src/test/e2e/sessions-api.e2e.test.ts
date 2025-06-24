@@ -1,121 +1,37 @@
-import { type ChildProcess, spawn } from 'child_process';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { SessionData } from '../types/test-types';
+import { type ServerInstance, startTestServer, stopServer } from '../utils/server-utils';
 import { testLogger } from '../utils/test-logger';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function waitForServer(port: number, maxRetries = 30): Promise<void> {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await fetch(`http://localhost:${port}/api/health`);
-      if (response.ok) {
-        return;
-      }
-    } catch (_e) {
-      // Server not ready yet
-    }
-    await sleep(100);
-  }
-  throw new Error(`Server on port ${port} did not start within ${maxRetries * 100}ms`);
-}
-
-async function startServer(
-  args: string[] = [],
-  env: Record<string, string> = {}
-): Promise<{ process: ChildProcess; port: number }> {
-  const cliPath = path.join(process.cwd(), 'src', 'cli.ts');
-
-  return new Promise((resolve, reject) => {
-    const serverProcess = spawn('pnpm', ['exec', 'tsx', cliPath, ...args], {
-      env: { ...process.env, ...env },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let port = 0;
-    const portListener = (data: Buffer) => {
-      const output = data.toString();
-      const portMatch = output.match(/Server listening on port (\d+)/);
-      if (portMatch) {
-        port = Number.parseInt(portMatch[1], 10);
-        serverProcess.stdout?.off('data', portListener);
-        resolve({ process: serverProcess, port });
-      }
-    };
-
-    serverProcess.stdout?.on('data', portListener);
-    serverProcess.stderr?.on('data', (data) => {
-      testLogger.error('Server stderr', data.toString());
-    });
-
-    serverProcess.on('error', reject);
-
-    setTimeout(() => {
-      if (port === 0) {
-        reject(new Error('Server did not report port within timeout'));
-      }
-    }, 5000);
-  });
-}
-
 describe('Sessions API Tests', () => {
-  let serverProcess: ChildProcess;
-  let serverPort: number;
-  let testDir: string;
+  let server: ServerInstance | null = null;
   const username = 'testuser';
   const password = 'testpass';
   const authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
 
   beforeAll(async () => {
-    // Create temporary directory for test
-    testDir = path.join(os.tmpdir(), 'vibetunnel-sessions-test', Date.now().toString());
-    fs.mkdirSync(testDir, { recursive: true });
-
-    // Start server
-    const result = await startServer(['--port', '0'], {
-      VIBETUNNEL_CONTROL_DIR: testDir,
-      VIBETUNNEL_USERNAME: username,
-      VIBETUNNEL_PASSWORD: password,
+    // Start server with authentication
+    server = await startTestServer({
+      args: ['--port', '0'],
+      env: {
+        VIBETUNNEL_USERNAME: username,
+        VIBETUNNEL_PASSWORD: password,
+      },
+      waitForHealth: true,
     });
-
-    serverProcess = result.process;
-    serverPort = result.port;
-
-    await waitForServer(serverPort);
   });
 
   afterAll(async () => {
-    // Kill server process
-    if (serverProcess) {
-      await new Promise<void>((resolve) => {
-        serverProcess.on('close', () => resolve());
-
-        // Try graceful shutdown first
-        serverProcess.kill('SIGTERM');
-
-        // Force kill after timeout
-        setTimeout(() => {
-          if (serverProcess.exitCode === null) {
-            serverProcess.kill('SIGKILL');
-          }
-        }, 5000);
-      });
-    }
-
-    // Clean up test directory
-    try {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    } catch (_e) {
-      testLogger.error('Test cleanup', 'Failed to clean test directory:', _e);
+    if (server) {
+      await stopServer(server);
     }
   });
 
   describe('GET /api/sessions', () => {
     it('should return empty array when no sessions exist', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         headers: { Authorization: authHeader },
       });
 
@@ -125,14 +41,14 @@ describe('Sessions API Tests', () => {
     });
 
     it('should require authentication', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/sessions`);
+      const response = await fetch(`http://localhost:${server?.port}/api/sessions`);
       expect(response.status).toBe(401);
     });
   });
 
   describe('POST /api/sessions', () => {
     it('should create a new session', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -140,7 +56,7 @@ describe('Sessions API Tests', () => {
         },
         body: JSON.stringify({
           command: ['echo', 'hello world'],
-          workingDir: testDir,
+          workingDir: server?.testDir,
         }),
       });
 
@@ -155,7 +71,7 @@ describe('Sessions API Tests', () => {
 
     it('should create session with name', async () => {
       const sessionName = 'Test Session';
-      const response = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -163,7 +79,7 @@ describe('Sessions API Tests', () => {
         },
         body: JSON.stringify({
           command: ['echo', 'named session'],
-          workingDir: testDir,
+          workingDir: server?.testDir,
           name: sessionName,
         }),
       });
@@ -172,7 +88,7 @@ describe('Sessions API Tests', () => {
       const result = await response.json();
 
       // Verify session was created with the name
-      const listResponse = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const listResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         headers: { Authorization: authHeader },
       });
       const sessions = await listResponse.json();
@@ -181,7 +97,7 @@ describe('Sessions API Tests', () => {
     });
 
     it('should reject invalid working directory', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -202,7 +118,7 @@ describe('Sessions API Tests', () => {
 
     beforeAll(async () => {
       // Create a long-running session
-      const response = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -210,7 +126,7 @@ describe('Sessions API Tests', () => {
         },
         body: JSON.stringify({
           command: ['bash', '-c', 'while true; do echo "running"; sleep 1; done'],
-          workingDir: testDir,
+          workingDir: server?.testDir,
           name: 'Long Running Test',
         }),
       });
@@ -225,7 +141,7 @@ describe('Sessions API Tests', () => {
     });
 
     it('should list the created session', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         headers: { Authorization: authHeader },
       });
 
@@ -245,7 +161,7 @@ describe('Sessions API Tests', () => {
 
     it('should send input to session', async () => {
       const response = await fetch(
-        `http://localhost:${serverPort}/api/sessions/${sessionId}/input`,
+        `http://localhost:${server?.port}/api/sessions/${sessionId}/input`,
         {
           method: 'POST',
           headers: {
@@ -263,7 +179,7 @@ describe('Sessions API Tests', () => {
 
     it('should resize session', async () => {
       const response = await fetch(
-        `http://localhost:${serverPort}/api/sessions/${sessionId}/resize`,
+        `http://localhost:${server?.port}/api/sessions/${sessionId}/resize`,
         {
           method: 'POST',
           headers: {
@@ -283,7 +199,7 @@ describe('Sessions API Tests', () => {
 
     it('should get session text', async () => {
       const response = await fetch(
-        `http://localhost:${serverPort}/api/sessions/${sessionId}/text`,
+        `http://localhost:${server?.port}/api/sessions/${sessionId}/text`,
         {
           headers: { Authorization: authHeader },
         }
@@ -296,7 +212,7 @@ describe('Sessions API Tests', () => {
 
     it('should get session text with styles', async () => {
       const response = await fetch(
-        `http://localhost:${serverPort}/api/sessions/${sessionId}/text?styles=true`,
+        `http://localhost:${server?.port}/api/sessions/${sessionId}/text?styles=true`,
         {
           headers: { Authorization: authHeader },
         }
@@ -310,7 +226,7 @@ describe('Sessions API Tests', () => {
 
     it('should get session buffer', async () => {
       const response = await fetch(
-        `http://localhost:${serverPort}/api/sessions/${sessionId}/buffer`,
+        `http://localhost:${server?.port}/api/sessions/${sessionId}/buffer`,
         {
           headers: { Authorization: authHeader },
         }
@@ -327,7 +243,7 @@ describe('Sessions API Tests', () => {
 
     it('should get session activity', async () => {
       const response = await fetch(
-        `http://localhost:${serverPort}/api/sessions/${sessionId}/activity`,
+        `http://localhost:${server?.port}/api/sessions/${sessionId}/activity`,
         {
           headers: { Authorization: authHeader },
         }
@@ -347,7 +263,7 @@ describe('Sessions API Tests', () => {
     });
 
     it('should get all sessions activity', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/sessions/activity`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/sessions/activity`, {
         headers: { Authorization: authHeader },
       });
 
@@ -361,7 +277,7 @@ describe('Sessions API Tests', () => {
 
     it('should handle SSE stream', async () => {
       const response = await fetch(
-        `http://localhost:${serverPort}/api/sessions/${sessionId}/stream`,
+        `http://localhost:${server?.port}/api/sessions/${sessionId}/stream`,
         {
           headers: {
             Authorization: authHeader,
@@ -395,7 +311,7 @@ describe('Sessions API Tests', () => {
     });
 
     it('should kill session', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/api/sessions/${sessionId}`, {
+      const response = await fetch(`http://localhost:${server?.port}/api/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: { Authorization: authHeader },
       });
@@ -408,7 +324,7 @@ describe('Sessions API Tests', () => {
       await sleep(1000);
 
       // Verify session is gone
-      const listResponse = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const listResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         headers: { Authorization: authHeader },
       });
       const sessions = await listResponse.json();
@@ -420,7 +336,7 @@ describe('Sessions API Tests', () => {
   describe('Error handling', () => {
     it('should return 404 for non-existent session', async () => {
       const response = await fetch(
-        `http://localhost:${serverPort}/api/sessions/nonexistent/input`,
+        `http://localhost:${server?.port}/api/sessions/nonexistent/input`,
         {
           method: 'POST',
           headers: {
@@ -436,7 +352,7 @@ describe('Sessions API Tests', () => {
 
     it('should handle invalid input data', async () => {
       // Create a session first
-      const createResponse = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const createResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -444,7 +360,7 @@ describe('Sessions API Tests', () => {
         },
         body: JSON.stringify({
           command: ['cat'],
-          workingDir: testDir,
+          workingDir: server?.testDir,
         }),
       });
 
@@ -455,7 +371,7 @@ describe('Sessions API Tests', () => {
 
       // Send invalid input (missing data field)
       const response = await fetch(
-        `http://localhost:${serverPort}/api/sessions/${sessionId}/input`,
+        `http://localhost:${server?.port}/api/sessions/${sessionId}/input`,
         {
           method: 'POST',
           headers: {
@@ -471,7 +387,7 @@ describe('Sessions API Tests', () => {
 
     it('should handle invalid resize dimensions', async () => {
       // Create a session first
-      const createResponse = await fetch(`http://localhost:${serverPort}/api/sessions`, {
+      const createResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
         headers: {
           Authorization: authHeader,
@@ -479,7 +395,7 @@ describe('Sessions API Tests', () => {
         },
         body: JSON.stringify({
           command: ['cat'],
-          workingDir: testDir,
+          workingDir: server?.testDir,
         }),
       });
 
@@ -490,7 +406,7 @@ describe('Sessions API Tests', () => {
 
       // Send invalid resize (negative dimensions)
       const response = await fetch(
-        `http://localhost:${serverPort}/api/sessions/${sessionId}/resize`,
+        `http://localhost:${server?.port}/api/sessions/${sessionId}/resize`,
         {
           method: 'POST',
           headers: {

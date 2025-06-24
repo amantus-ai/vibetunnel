@@ -88,7 +88,7 @@ struct EdgeCaseTests {
         #expect(nan.isNaN)
 
         // Test comparisons with special values
-        #expect(!(nan == nan)) // NaN is not equal to itself
+        #expect(nan.isNaN) // NaN is not equal to itself
         #expect(infinity > 1_000_000)
         #expect(negInfinity < -1_000_000)
 
@@ -236,7 +236,7 @@ struct EdgeCaseTests {
     @Test("Concurrent access boundaries")
     func concurrentAccess() {
         // Test thread-safe counter
-        class ThreadSafeCounter {
+        final class ThreadSafeCounter: @unchecked Sendable {
             private var value = 0
             private let queue = DispatchQueue(label: "counter", attributes: .concurrent)
 

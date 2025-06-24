@@ -1,108 +1,30 @@
-import { type ChildProcess, spawn } from 'child_process';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { waitForServerPort } from '../utils/port-detection';
+import { type ServerInstance, startTestServer, stopServer } from '../utils/server-utils';
 
 describe('Server Smoke Test', () => {
-  let serverProcess: ChildProcess | null = null;
-  let serverPort = 0;
-  // Use shorter directory name to avoid exceeding Unix socket path limit (104 chars on macOS)
-  const testDir = path.join(os.tmpdir(), 'vt-test', uuidv4().substring(0, 8));
-
-  async function startServer(): Promise<number> {
-    const cliPath = path.join(__dirname, '..', '..', 'cli.ts');
-
-    serverProcess = spawn('tsx', [cliPath, '--port', '0', '--no-auth'], {
-      env: {
-        ...process.env,
-        VIBETUNNEL_CONTROL_DIR: testDir,
-        VIBETUNNEL_USERNAME: undefined,
-        VIBETUNNEL_PASSWORD: undefined,
-        NODE_ENV: 'production',
-        FORCE_COLOR: '0',
-      },
-      stdio: 'pipe',
-      detached: false, // Ensure child dies with parent
-    });
-
-    // Log server output for debugging
-    if (serverProcess?.stdout) {
-      serverProcess.stdout.on('data', (data) => {
-        console.log(`[SERVER] ${data.toString().trim()}`);
-      });
-    }
-
-    if (serverProcess?.stderr) {
-      serverProcess.stderr.on('data', (data) => {
-        console.error(`[SERVER ERROR] ${data.toString().trim()}`);
-      });
-    }
-
-    return waitForServerPort(serverProcess);
-  }
+  let server: ServerInstance | null = null;
 
   beforeAll(async () => {
-    // Create test directory
-    fs.mkdirSync(testDir, { recursive: true });
-
-    // Start server
-    serverPort = await startServer();
-    console.log(`Server started on port ${serverPort}`);
+    // Start server with no authentication
+    server = await startTestServer({
+      args: ['--no-auth'],
+      env: {
+        NODE_ENV: 'production',
+      },
+    });
   });
 
   afterAll(async () => {
-    // Kill server
-    if (serverProcess) {
-      // First try SIGTERM
-      serverProcess.kill('SIGTERM');
-
-      // Wait for process to exit
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => {
-          console.log('[TEST] Force killing server process');
-          try {
-            if (serverProcess) {
-              serverProcess.kill('SIGKILL');
-            }
-          } catch (_e) {
-            // Process may already be dead
-          }
-          resolve();
-        }, 5000);
-
-        const checkExit = () => {
-          if (serverProcess && (serverProcess.killed || serverProcess.exitCode !== null)) {
-            clearTimeout(timeout);
-            resolve();
-          }
-        };
-
-        // Check if already exited
-        checkExit();
-
-        // Set up exit listener
-        if (serverProcess) {
-          serverProcess.once('exit', () => {
-            clearTimeout(timeout);
-            resolve();
-          });
-        }
-      });
-    }
-
-    // Clean up test directory
-    try {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    } catch (e) {
-      console.error('Failed to clean up test directory:', e);
+    if (server) {
+      await stopServer(server);
     }
   });
 
   it('should perform basic operations', async () => {
-    const baseUrl = `http://localhost:${serverPort}`;
+    expect(server).toBeDefined();
+    if (!server) return;
+
+    const baseUrl = `http://localhost:${server.port}`;
 
     // 1. Health check
     console.log('1. Testing health check...');

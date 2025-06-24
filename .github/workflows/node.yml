@@ -14,7 +14,7 @@ permissions:
 jobs:
   lint:
     name: Lint TypeScript/JavaScript Code
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2204
 
     steps:
     - name: Checkout code
@@ -28,7 +28,7 @@ jobs:
     - name: Setup pnpm
       uses: pnpm/action-setup@v2
       with:
-        version: 8
+        version: 9
         run_install: false
 
     - name: Get pnpm store directory
@@ -37,7 +37,7 @@ jobs:
         echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
     - name: Setup pnpm cache
-      uses: actions/cache@v4
+      uses: useblacksmith/cache@v5
       with:
         path: ${{ env.STORE_PATH }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
@@ -115,7 +115,7 @@ jobs:
 
   build-and-test:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2204
 
     steps:
     - name: Checkout code
@@ -129,7 +129,7 @@ jobs:
     - name: Setup pnpm
       uses: pnpm/action-setup@v2
       with:
-        version: 8
+        version: 9
         run_install: false
 
     - name: Get pnpm store directory
@@ -138,7 +138,7 @@ jobs:
         echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
     - name: Setup pnpm cache
-      uses: actions/cache@v4
+      uses: useblacksmith/cache@v5
       with:
         path: ${{ env.STORE_PATH }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
@@ -213,7 +213,7 @@ jobs:
 
   type-check:
     name: TypeScript Type Checking
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2204
 
     steps:
     - name: Checkout code
@@ -227,7 +227,7 @@ jobs:
     - name: Setup pnpm
       uses: pnpm/action-setup@v2
       with:
-        version: 8
+        version: 9
         run_install: false
 
     - name: Get pnpm store directory
@@ -236,7 +236,7 @@ jobs:
         echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
     - name: Setup pnpm cache
-      uses: actions/cache@v4
+      uses: useblacksmith/cache@v5
       with:
         path: ${{ env.STORE_PATH }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
@@ -258,7 +258,7 @@ jobs:
 
   audit:
     name: Security Audit
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2204
 
     steps:
     - name: Checkout code
@@ -272,7 +272,7 @@ jobs:
     - name: Setup pnpm
       uses: pnpm/action-setup@v2
       with:
-        version: 8
+        version: 9
         run_install: false
 
     - name: Run pnpm audit
@@ -282,7 +282,7 @@ jobs:
 
   report-coverage:
     name: Report Coverage Results
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2204
     needs: [build-and-test]
     if: always() && github.event_name == 'pull_request'
 

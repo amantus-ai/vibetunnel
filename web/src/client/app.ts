@@ -606,6 +606,10 @@ export class VibeTunnelApp extends LitElement {
     this.showNotificationSettings = false;
   };
 
+  private handleOpenFileBrowser = () => {
+    this.showFileBrowser = true;
+  };
+
   private handleNotificationEnabled = (e: CustomEvent) => {
     const { success, reason } = e.detail;
     if (success) {
@@ -700,9 +704,7 @@ export class VibeTunnelApp extends LitElement {
                   @hide-exited-change=${this.handleHideExitedChange}
                   @kill-all-sessions=${this.handleKillAll}
                   @clean-exited-sessions=${this.handleCleanExited}
-                  @open-file-browser=${() => {
-                    this.showFileBrowser = true;
-                  }}
+                  @open-file-browser=${this.handleOpenFileBrowser}
                   @open-notification-settings=${this.handleShowNotificationSettings}
                   @logout=${this.handleLogout}
                 ></app-header>

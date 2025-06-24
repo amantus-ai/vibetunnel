@@ -199,7 +199,7 @@ struct APIClientTests {
     func handle404Error() async throws {
         // Arrange
         MockURLProtocol.requestHandler = { request in
-            let errorData = TestFixtures.errorResponseJSON.data(using: .utf8)!
+            _ = TestFixtures.errorResponseJSON.data(using: .utf8)!
             return MockURLProtocol.errorResponse(
                 for: request.url!,
                 statusCode: 404,
