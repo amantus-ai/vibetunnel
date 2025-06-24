@@ -462,7 +462,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = sh.vibetunnel.vibetunnel;
+				PRODUCT_BUNDLE_IDENTIFIER = sh.vibetunnel.vibetunnel.debug;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				VIBETUNNEL_USE_CUSTOM_NODE = YES;
@@ -518,7 +518,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = sh.vibetunnel.vibetunnelTests;
+				PRODUCT_BUNDLE_IDENTIFIER = sh.vibetunnel.vibetunnelTests.debug;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VibeTunnel.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/VibeTunnel";
