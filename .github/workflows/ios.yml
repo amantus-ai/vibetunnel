@@ -8,6 +8,7 @@ permissions:
   pull-requests: write
   issues: write
 
+# All jobs run in parallel for faster CI execution
 jobs:
   lint:
     name: Lint iOS Code
@@ -111,7 +112,7 @@ jobs:
   build:
     name: Build iOS App
     runs-on: macos-15
-    needs: lint
+    # Run in parallel with lint
     timeout-minutes: 30
     
     steps:
@@ -175,8 +176,8 @@ jobs:
   test:
     name: Test iOS App
     runs-on: macos-15
-    needs: lint
-    timeout-minutes: 30
+    # Run in parallel with lint and build
+    timeout-minutes: 15
     
     steps:
     - name: Checkout code
@@ -196,16 +197,51 @@ jobs:
         echo "Resolving dependencies for tests..."
         xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace || echo "Dependency resolution completed"
         
+    - name: Create and boot simulator
+      run: |
+        echo "Creating iOS simulator for tests..."
+        # List available runtimes
+        echo "Available runtimes:"
+        xcrun simctl list runtimes
+        
+        # Get the latest iOS runtime
+        RUNTIME=$(xcrun simctl list runtimes | grep "iOS" | tail -1 | awk '{print $NF}')
+        echo "Using runtime: $RUNTIME"
+        
+        # List available device types
+        echo "Available device types:"
+        xcrun simctl list devicetypes | grep iPhone
+        
+        # Create a new simulator
+        SIMULATOR_ID=$(xcrun simctl create "Test iPhone" "iPhone 15" "$RUNTIME" || xcrun simctl create "Test iPhone" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "$RUNTIME")
+        echo "Created simulator: $SIMULATOR_ID"
+        
+        # Boot the simulator
+        xcrun simctl boot "$SIMULATOR_ID" || echo "Simulator already booted"
+        echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
+        
     - name: Run iOS tests
       run: |
-        cd ios
         echo "Running iOS tests using Swift Testing framework..."
-        # Use the provided test script which handles Swift Testing properly
-        chmod +x run-tests.sh
-        ./run-tests.sh || {
-          echo "::error::iOS tests failed"
-          exit 1
-        }
+        set -o pipefail
+        xcodebuild test \
+          -workspace VibeTunnel.xcworkspace \
+          -scheme VibeTunnel-iOS \
+          -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+          -resultBundlePath ios/TestResults.xcresult \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          -quiet \
+          2>&1 | xcpretty || {
+            echo "::error::iOS tests failed"
+            # Shutdown simulator
+            xcrun simctl shutdown "$SIMULATOR_ID" || true
+            exit 1
+          }
+        
+        # Shutdown simulator
+        xcrun simctl shutdown "$SIMULATOR_ID" || true
         
     - name: Upload test logs on failure
       if: failure()

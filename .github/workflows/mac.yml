@@ -8,6 +8,7 @@ permissions:
   pull-requests: write
   issues: write
 
+# All jobs run in parallel for faster CI execution
 jobs:
   lint:
     name: Lint Mac Code
@@ -26,6 +27,16 @@ jobs:
       run: |
         xcodebuild -version
         swift --version
+    
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData
+          ~/.swiftpm
+        key: ${{ runner.os }}-spm-${{ hashFiles('mac/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
     
     - name: Install linting tools
       continue-on-error: true
@@ -111,6 +122,7 @@ jobs:
   build-and-test:
     name: Build and Test macOS App
     runs-on: macos-15
+    # Run in parallel with lint
     
     steps:
     - name: Checkout code
@@ -125,6 +137,16 @@ jobs:
       run: |
         xcodebuild -version
         swift --version
+        
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData
+          ~/.swiftpm
+        key: ${{ runner.os }}-spm-${{ hashFiles('mac/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
         
     - name: Install build tools
       continue-on-error: true
