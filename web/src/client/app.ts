@@ -64,6 +64,7 @@ export class VibeTunnelApp extends LitElement {
   private initialLoadComplete = false;
   private authClient = new AuthClient();
   private responsiveObserverInitialized = false;
+  private initialRenderComplete = false;
 
   private hotReloadWs: WebSocket | null = null;
   private errorTimeoutId: number | null = null;
@@ -80,6 +81,13 @@ export class VibeTunnelApp extends LitElement {
     this.setupResponsiveObserver();
     // Initialize authentication and routing together
     this.initializeApp();
+  }
+
+  firstUpdated() {
+    // Mark initial render as complete after a microtask to ensure DOM is settled
+    Promise.resolve().then(() => {
+      this.initialRenderComplete = true;
+    });
   }
 
   disconnectedCallback() {
@@ -648,15 +656,15 @@ export class VibeTunnelApp extends LitElement {
       const oldState = this.mediaState;
       this.mediaState = state;
 
-      // Only trigger state changes after initial setup, not on first callback
+      // Only trigger state changes after initial setup and render
       // This prevents the sidebar from flickering on page load
-      if (this.responsiveObserverInitialized) {
+      if (this.responsiveObserverInitialized && this.initialRenderComplete) {
         // Auto-collapse sidebar when switching to mobile
         if (!oldState.isMobile && state.isMobile && !this.sidebarCollapsed) {
           this.sidebarCollapsed = true;
           this.saveSidebarState(true);
         }
-      } else {
+      } else if (!this.responsiveObserverInitialized) {
         // Mark as initialized after first callback
         this.responsiveObserverInitialized = true;
       }
@@ -850,9 +858,8 @@ export class VibeTunnelApp extends LitElement {
 
     const baseClasses = 'bg-dark-bg-secondary border-r border-dark-border flex flex-col';
     const isMobile = this.mediaState.isMobile;
-    const mobileClasses = isMobile
-      ? 'absolute left-0 top-0 bottom-0 z-30 flex'
-      : 'sidebar-transition';
+    const transitionClass = this.initialRenderComplete && !isMobile ? 'sidebar-transition' : '';
+    const mobileClasses = isMobile ? 'absolute left-0 top-0 bottom-0 z-30 flex' : transitionClass;
 
     const collapsedClasses = this.sidebarCollapsed
       ? isMobile
