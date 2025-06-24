@@ -15,7 +15,7 @@ interface AuthConfig {
   localAuthToken?: string; // Token for localhost authentication
 }
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   userId?: string;
   authMethod?: 'ssh-key' | 'password' | 'hq-bearer' | 'no-auth' | 'local-bypass';
   isHQRequest?: boolean;

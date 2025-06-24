@@ -242,6 +242,9 @@ export function resolveCommand(command: string[]): {
   command: string;
   args: string[];
   useShell: boolean;
+  isInteractive?: boolean;
+  resolvedFrom?: 'path' | 'alias' | 'builtin' | 'shell';
+  originalCommand?: string;
 } {
   if (command.length === 0) {
     throw new Error('No command provided');
@@ -267,6 +270,8 @@ export function resolveCommand(command: string[]): {
         command: cmdName,
         args: cmdArgs,
         useShell: false,
+        resolvedFrom: 'path',
+        originalCommand: cmdName,
       };
     }
   } catch (error) {
@@ -296,6 +301,7 @@ export function resolveCommand(command: string[]): {
           command: userShell,
           args: ['-c', command.join(' ')],
           useShell: true,
+          resolvedFrom: 'shell',
         };
       } else {
         // Interactive shell session
@@ -303,6 +309,8 @@ export function resolveCommand(command: string[]): {
           command: userShell,
           args: ['-i', '-c', command.join(' ')],
           useShell: true,
+          resolvedFrom: 'shell',
+          isInteractive: true,
         };
       }
     } else if (userShell.includes('pwsh') || userShell.includes('powershell')) {
