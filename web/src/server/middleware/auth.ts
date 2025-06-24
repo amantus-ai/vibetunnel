@@ -120,9 +120,9 @@ export function createAuthMiddleware(config: AuthConfig) {
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
 
-      // In HQ mode, check if this is a valid HQ-to-remote bearer token
-      if (config.isHQMode && config.bearerToken && token === config.bearerToken) {
-        logger.debug('Valid HQ bearer token authentication');
+      // If this server has a bearer token (i.e., it's a remote server), check if the incoming token matches
+      if (!config.isHQMode && config.bearerToken && token === config.bearerToken) {
+        logger.debug('Valid bearer token authentication from HQ');
         req.isHQRequest = true;
         req.authMethod = 'hq-bearer';
         return next();
@@ -149,12 +149,6 @@ export function createAuthMiddleware(config: AuthConfig) {
         }
       }
 
-      // For non-HQ mode, check if bearer token matches remote expectation
-      if (!config.isHQMode && config.bearerToken && token === config.bearerToken) {
-        logger.debug('Valid remote bearer token authentication');
-        req.authMethod = 'hq-bearer';
-        return next();
-      }
 
       logger.error(
         `Bearer token rejected - HQ mode: ${config.isHQMode}, token matches: ${config.bearerToken === token}`
