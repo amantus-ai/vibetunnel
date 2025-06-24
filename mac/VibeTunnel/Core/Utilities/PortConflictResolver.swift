@@ -159,8 +159,17 @@ final class PortConflictResolver {
                         try process.run()
                         process.waitUntilExit()
 
-                        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                        let output = String(data: data, encoding: .utf8) ?? ""
+                        let output: String
+                        do {
+                            if let data = try pipe.fileHandleForReading.readToEnd() {
+                                output = String(data: data, encoding: .utf8) ?? ""
+                            } else {
+                                output = ""
+                            }
+                        } catch {
+                            self.logger.debug("Could not read lsof output: \(error.localizedDescription)")
+                            output = ""
+                        }
 
                         continuation.resume(returning: (process.terminationStatus, output))
                     } catch {
@@ -374,8 +383,17 @@ final class PortConflictResolver {
                         try process.run()
                         process.waitUntilExit()
 
-                        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                        let output = String(data: data, encoding: .utf8) ?? ""
+                        let output: String
+                        do {
+                            if let data = try pipe.fileHandleForReading.readToEnd() {
+                                output = String(data: data, encoding: .utf8) ?? ""
+                            } else {
+                                output = ""
+                            }
+                        } catch {
+                            self.logger.debug("Could not read pipe output: \(error.localizedDescription)")
+                            output = ""
+                        }
                         continuation.resume(returning: output)
                     } catch {
                         continuation.resume(throwing: error)
@@ -408,8 +426,17 @@ final class PortConflictResolver {
                         try process.run()
                         process.waitUntilExit()
 
-                        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                        let output = String(data: data, encoding: .utf8) ?? ""
+                        let output: String
+                        do {
+                            if let data = try pipe.fileHandleForReading.readToEnd() {
+                                output = String(data: data, encoding: .utf8) ?? ""
+                            } else {
+                                output = ""
+                            }
+                        } catch {
+                            self.logger.debug("Could not read pipe output: \(error.localizedDescription)")
+                            output = ""
+                        }
                         continuation.resume(returning: output)
                     } catch {
                         continuation.resume(throwing: error)
@@ -471,8 +498,17 @@ final class PortConflictResolver {
                         try process.run()
                         process.waitUntilExit()
 
-                        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                        let output = String(data: data, encoding: .utf8) ?? ""
+                        let output: String
+                        do {
+                            if let data = try pipe.fileHandleForReading.readToEnd() {
+                                output = String(data: data, encoding: .utf8) ?? ""
+                            } else {
+                                output = ""
+                            }
+                        } catch {
+                            self.logger.debug("Could not read pipe output: \(error.localizedDescription)")
+                            output = ""
+                        }
                         continuation.resume(returning: output)
                     } catch {
                         continuation.resume(throwing: error)

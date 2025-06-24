@@ -190,8 +190,17 @@ final class CLIInstaller {
                 // Refresh installation status
                 checkInstallationStatus()
             } else {
-                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-                let errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+                let errorString: String
+                do {
+                    if let errorData = try errorPipe.fileHandleForReading.readToEnd() {
+                        errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+                    } else {
+                        errorString = "Unknown error"
+                    }
+                } catch {
+                    logger.debug("Could not read error output: \(error.localizedDescription)")
+                    errorString = "Unknown error (could not read stderr)"
+                }
                 logger.error("CLIInstaller: Installation failed with status \(task.terminationStatus): \(errorString)")
                 lastError = "Installation failed: \(errorString)"
                 isInstalling = false

@@ -178,8 +178,17 @@ final class NgrokService: NgrokTunnelProtocol {
             try checkProcess.run()
             checkProcess.waitUntilExit()
 
-            let data = checkPipe.fileHandleForReading.readDataToEndOfFile()
-            let ngrokPath = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let ngrokPath: String?
+            do {
+                if let data = try checkPipe.fileHandleForReading.readToEnd() {
+                    ngrokPath = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                } else {
+                    ngrokPath = nil
+                }
+            } catch {
+                logger.debug("Could not read ngrok path: \(error.localizedDescription)")
+                ngrokPath = nil
+            }
 
             guard let ngrokPath, !ngrokPath.isEmpty else {
                 throw NgrokError.notInstalled

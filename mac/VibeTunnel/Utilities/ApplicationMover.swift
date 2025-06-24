@@ -168,7 +168,13 @@ final class ApplicationMover {
                 return nil
             }
 
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let data: Data
+            do {
+                data = try pipe.fileHandleForReading.readToEnd() ?? Data()
+            } catch {
+                logger.debug("ApplicationMover: Could not read hdiutil output: \(error.localizedDescription)")
+                return nil
+            }
             logger.debug("ApplicationMover: hdiutil returned \(data.count) bytes")
 
             guard let plist = try PropertyListSerialization
