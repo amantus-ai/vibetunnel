@@ -404,7 +404,7 @@ private struct ServerConfigurationSection: View {
                     Text("Dashboard available at")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    
+
                     if let url = URL(string: "http://127.0.0.1:\(serverPort)") {
                         Link(url.absoluteString, destination: url)
                             .font(.caption)
@@ -419,7 +419,7 @@ private struct ServerConfigurationSection: View {
                         Text("Dashboard available at")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        
+
                         if let url = URL(string: "http://\(ip):\(serverPort)") {
                             Link(url.absoluteString, destination: url)
                                 .font(.caption)
