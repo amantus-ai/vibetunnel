@@ -313,7 +313,8 @@ try {
 exports.default = pty;
 //# sourceMappingURL=prebuild-loader.js.map`;
 
-  fs.writeFileSync(prebuildLoaderFile, prebuildLoaderContent);
+  // Ensure proper newline at end of file
+  fs.writeFileSync(prebuildLoaderFile, prebuildLoaderContent.trimEnd() + '\n');
 
   // Also patch windowsPtyAgent.js if it exists
   const windowsPtyAgentFile = path.join(__dirname, 'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/windowsPtyAgent.js');
@@ -324,7 +325,7 @@ exports.default = pty;
       /require\(['"]\.\.\/build\/Release\/pty\.node['"]\)/g,
       "require('./prebuild-loader').default"
     );
-    fs.writeFileSync(windowsPtyAgentFile, content);
+    fs.writeFileSync(windowsPtyAgentFile, content.trimEnd() + '\n');
   }
 
   // Patch index.js exports.native line
@@ -336,7 +337,7 @@ exports.default = pty;
       /exports\.native = \(process\.platform !== 'win32' \? require\(prebuild_file_path_1\.ptyPath \|\| '\.\.\/build\/Release\/pty\.node'\) : null\);/,
       "exports.native = (process.platform !== 'win32' ? require('./prebuild-loader').default : null);"
     );
-    fs.writeFileSync(indexFile, content);
+    fs.writeFileSync(indexFile, content.trimEnd() + '\n');
   }
 
   // Patch unixTerminal.js to fix spawn-helper path resolution
@@ -401,7 +402,7 @@ if (process.env.NODE_PTY_SPAWN_HELPER_PATH) {
       // Insert the patch after the helperPath declaration
       content = content.substring(0, insertPosition) + helperPathPatch + content.substring(insertPosition);
       
-      fs.writeFileSync(unixTerminalFile, content);
+      fs.writeFileSync(unixTerminalFile, content.trimEnd() + '\n');
     }
   }
 
