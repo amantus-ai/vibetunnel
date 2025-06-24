@@ -29,6 +29,7 @@ import {
   type KillControlMessage,
   PtyError,
   type PtySession,
+  type ResetSizeControlMessage,
   type ResizeControlMessage,
   type SessionCreationResult,
 } from './types.js';

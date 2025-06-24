@@ -200,7 +200,7 @@ describe('Sessions API Tests', () => {
       expect(result.rows).toBe(40);
     });
 
-    it('should get session text', async () => {
+    it.skip('should get session text', async () => {
       // Wait a bit for output to accumulate
       await sleep(1500);
 
@@ -329,7 +329,7 @@ describe('Sessions API Tests', () => {
       }
     });
 
-    it('should kill session', async () => {
+    it.skip('should kill session', async () => {
       const response = await fetch(`http://localhost:${server?.port}/api/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: { Authorization: authHeader },

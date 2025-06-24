@@ -57,9 +57,10 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
     try {
       const logPath = path.join(os.homedir(), '.vibetunnel', 'log.txt');
 
-      // Check if log file exists
+      // Check if log file exists - if not, return empty content
       if (!fs.existsSync(logPath)) {
-        return res.status(404).json({ error: 'Log file not found' });
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        return res.send('');
       }
 
       // Stream the log file

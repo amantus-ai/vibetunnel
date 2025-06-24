@@ -30,8 +30,13 @@ export function initLogger(debug: boolean = false): void {
     }
 
     // Delete old log file if it exists
-    if (fs.existsSync(LOG_FILE)) {
-      fs.unlinkSync(LOG_FILE);
+    try {
+      if (fs.existsSync(LOG_FILE)) {
+        fs.unlinkSync(LOG_FILE);
+      }
+    } catch (unlinkError) {
+      // Ignore unlink errors - file might not exist or be locked
+      console.debug('Could not delete old log file:', unlinkError);
     }
 
     // Create new log file write stream

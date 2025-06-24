@@ -10,7 +10,7 @@ import * as path from 'path';
 import { createLogger } from '../utils/logger.js';
 import { type AsciinemaEvent, type AsciinemaHeader, PtyError } from './types.js';
 
-const logger = createLogger('AsciinemaWriter');
+const _logger = createLogger('AsciinemaWriter');
 
 export class AsciinemaWriter {
   private writeStream: fs.WriteStream;

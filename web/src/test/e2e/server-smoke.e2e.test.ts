@@ -11,6 +11,7 @@ describe('Server Smoke Test', () => {
       env: {
         NODE_ENV: 'production',
       },
+      usePnpm: true, // Use pnpm to avoid pty.node loading issues
     });
   });
 

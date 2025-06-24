@@ -143,8 +143,12 @@ export async function startTestServer(config: ServerConfig = {}): Promise<Server
 
   // Build spawn command - use built binary if available for better compatibility
   const useBuiltBinary = fs.existsSync(BUILT_CLI_PATH);
-  const command = useBuiltBinary ? BUILT_CLI_PATH : (usePnpm ? 'pnpm' : 'tsx');
-  const spawnArgs = useBuiltBinary ? args : (usePnpm ? ['exec', 'tsx', CLI_PATH, ...args] : [CLI_PATH, ...args]);
+  const command = useBuiltBinary ? BUILT_CLI_PATH : usePnpm ? 'pnpm' : 'tsx';
+  const spawnArgs = useBuiltBinary
+    ? args
+    : usePnpm
+      ? ['exec', 'tsx', CLI_PATH, ...args]
+      : [CLI_PATH, ...args];
 
   // Merge environment variables
   const processEnv = {

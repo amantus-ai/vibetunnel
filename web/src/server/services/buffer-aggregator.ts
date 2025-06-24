@@ -280,8 +280,8 @@ export class BufferAggregator {
     }
 
     try {
-      // Convert HTTP URL to WebSocket URL
-      const wsUrl = remote.url.replace(/^http/, 'ws');
+      // Convert HTTP URL to WebSocket URL and add /buffers path
+      const wsUrl = `${remote.url.replace(/^http/, 'ws')}/buffers`;
       const ws = new WebSocket(wsUrl, {
         headers: {
           Authorization: `Bearer ${remote.token}`,
