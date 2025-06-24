@@ -9,7 +9,7 @@ permissions:
   issues: write
 
 # All jobs run in parallel for faster CI execution
-# Using npm ci --prefer-offline to skip network checks for cached packages
+# Using pnpm install --frozen-lockfile for reproducible installs
 # Build already uses esbuild for fast TypeScript compilation
 jobs:
   lint:
@@ -24,16 +24,25 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: web/package-lock.json
 
-    - name: Cache npm dependencies
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        run_install: false
+
+    - name: Get pnpm store directory
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+    - name: Setup pnpm cache
       uses: actions/cache@v4
       with:
-        path: ~/.npm
-        key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+        path: ${{ env.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
         restore-keys: |
-          ${{ runner.os }}-npm-
+          ${{ runner.os }}-pnpm-store-
 
     - name: Install system dependencies
       run: |
@@ -42,14 +51,14 @@ jobs:
 
     - name: Install dependencies
       working-directory: web
-      run: npm ci --prefer-offline
+      run: pnpm install --frozen-lockfile
 
     - name: Check formatting with Biome
       id: biome-format
       working-directory: web
       continue-on-error: true
       run: |
-        npm run format:check 2>&1 | tee biome-format-output.txt
+        pnpm run format:check 2>&1 | tee biome-format-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
 
     - name: Run Biome linting
@@ -57,7 +66,7 @@ jobs:
       working-directory: web
       continue-on-error: true
       run: |
-        npm run lint 2>&1 | tee biome-lint-output.txt
+        pnpm run lint 2>&1 | tee biome-lint-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
 
     - name: Read Biome Format Output
@@ -116,16 +125,25 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: web/package-lock.json
 
-    - name: Cache npm dependencies
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        run_install: false
+
+    - name: Get pnpm store directory
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+    - name: Setup pnpm cache
       uses: actions/cache@v4
       with:
-        path: ~/.npm
-        key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+        path: ${{ env.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
         restore-keys: |
-          ${{ runner.os }}-npm-
+          ${{ runner.os }}-pnpm-store-
 
     - name: Install system dependencies
       run: |
@@ -134,17 +152,17 @@ jobs:
 
     - name: Install dependencies
       working-directory: web
-      run: npm ci --prefer-offline
+      run: pnpm install --frozen-lockfile
 
     - name: Build frontend and backend
       working-directory: web
-      run: npm run build:ci
+      run: pnpm run build:ci
 
     - name: Run tests with coverage
       id: test-coverage
       working-directory: web
       run: |
-        npm run test:coverage 2>&1 | tee test-output.txt
+        pnpm run test:coverage 2>&1 | tee test-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
       env:
         CI: true
@@ -205,16 +223,25 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: web/package-lock.json
 
-    - name: Cache npm dependencies
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        run_install: false
+
+    - name: Get pnpm store directory
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+    - name: Setup pnpm cache
       uses: actions/cache@v4
       with:
-        path: ~/.npm
-        key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+        path: ${{ env.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
         restore-keys: |
-          ${{ runner.os }}-npm-
+          ${{ runner.os }}-pnpm-store-
 
     - name: Install system dependencies
       run: |
@@ -223,11 +250,11 @@ jobs:
 
     - name: Install dependencies
       working-directory: web
-      run: npm ci --prefer-offline
+      run: pnpm install --frozen-lockfile
 
     - name: Check TypeScript types
       working-directory: web
-      run: npm run typecheck
+      run: pnpm run typecheck
 
   audit:
     name: Security Audit
@@ -241,12 +268,16 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: web/package-lock.json
 
-    - name: Run npm audit
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        run_install: false
+
+    - name: Run pnpm audit
       working-directory: web
-      run: npm audit --audit-level=moderate || true
+      run: pnpm audit --audit-level=moderate || true
       # || true to not fail the build on vulnerabilities, but still report them
 
   report-coverage:

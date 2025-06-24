@@ -30,6 +30,9 @@ jspm_packages/
 # Optional npm cache directory
 .npm
 
+# npm lock file (using pnpm instead)
+package-lock.json
+
 # Optional eslint cache
 .eslintcache
 

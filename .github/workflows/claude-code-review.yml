@@ -121,15 +121,15 @@ jobs:
           
           # Enhanced tool access for better analysis
           allowed_tools: |
-            Bash(npm install)
-            Bash(npm run build)
-            Bash(npm run test)
-            Bash(npm run test:*)
-            Bash(npm run lint)
-            Bash(npm run lint:*)
-            Bash(npm run typecheck)
-            Bash(npm run format)
-            Bash(npm run format:check)
+            Bash(pnpm install)
+            Bash(pnpm run build)
+            Bash(pnpm run test)
+            Bash(pnpm run test:*)
+            Bash(pnpm run lint)
+            Bash(pnpm run lint:*)
+            Bash(pnpm run typecheck)
+            Bash(pnpm run format)
+            Bash(pnpm run format:check)
             Glob
             Grep
             Read
