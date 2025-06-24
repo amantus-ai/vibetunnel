@@ -175,7 +175,7 @@ export async function startTestServer(config: ServerConfig = {}): Promise<Server
     const dataListener = (data: Buffer) => {
       const output = data.toString();
       outputBuffer += output;
-      
+
       if (logOutput) {
         console.log(`[${serverType}] ${output.trim()}`);
       }
@@ -192,7 +192,7 @@ export async function startTestServer(config: ServerConfig = {}): Promise<Server
 
     // Set up listeners
     serverProcess.stdout?.on('data', dataListener);
-    
+
     if (logOutput || serverProcess.stderr) {
       serverProcess.stderr?.on('data', (data) => {
         const output = data.toString();
