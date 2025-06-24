@@ -51,6 +51,13 @@ export class SidebarHeader extends HeaderBase {
             </button>
 
             <div class="flex flex-col gap-1 w-full max-w-[200px]">
+              <button
+                class="btn-ghost font-mono text-xs px-3 py-1.5 w-full"
+                @click=${this.handleOpenFileBrowser}
+                title="Browse files"
+              >
+                Browse Files
+              </button>
               ${this.renderExitedToggleButton(exitedSessions, true)}
               ${this.renderActionButtons(exitedSessions, runningSessions, true)}
             </div>

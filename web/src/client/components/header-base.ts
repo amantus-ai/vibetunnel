@@ -66,6 +66,14 @@ export abstract class HeaderBase extends LitElement {
     );
   }
 
+  protected handleOpenFileBrowser() {
+    this.dispatchEvent(new CustomEvent('open-file-browser'));
+  }
+
+  protected handleOpenNotificationSettings() {
+    this.dispatchEvent(new CustomEvent('open-notification-settings'));
+  }
+
   protected handleLogout() {
     this.showUserMenu = false;
     this.dispatchEvent(new CustomEvent('logout'));
