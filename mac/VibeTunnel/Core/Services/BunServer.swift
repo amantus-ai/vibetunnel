@@ -229,9 +229,14 @@ final class BunServer {
                 // Try to read any error output
                 var errorDetails = "Exit code: \(exitCode)"
                 if let stderrPipe = self.stderrPipe {
-                    let errorData = stderrPipe.fileHandleForReading.availableData
-                    if !errorData.isEmpty, let errorOutput = String(data: errorData, encoding: .utf8) {
-                        errorDetails += "\nError: \(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
+                    do {
+                        let errorData = try stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                        if !errorData.isEmpty, let errorOutput = String(data: errorData, encoding: .utf8) {
+                            errorDetails += "\nError: \(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
+                        }
+                    } catch {
+                        // File handle might be invalid if process exited immediately
+                        logger.debug("Could not read stderr: \(error.localizedDescription)")
                     }
                 }
 
