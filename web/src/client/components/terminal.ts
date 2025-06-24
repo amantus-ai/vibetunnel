@@ -196,7 +196,10 @@ export class Terminal extends LitElement {
         void this.container.offsetHeight;
       }
 
-      this.terminal.resize(Math.floor(this.cols), Math.floor(this.rows));
+      // Ensure cols and rows are valid numbers before resizing
+      const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
+      const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
+      this.terminal.resize(safeCols, safeRows);
       this.fitTerminal();
     }
   }
@@ -279,7 +282,8 @@ export class Terminal extends LitElement {
     const actualCharWidth = measureRect.width / this.cols;
     this.container.removeChild(measureEl);
 
-    return actualCharWidth;
+    // Ensure we return a valid number
+    return Number.isFinite(actualCharWidth) && actualCharWidth > 0 ? actualCharWidth : 8;
   }
 
   private fitTerminal() {
@@ -317,7 +321,10 @@ export class Terminal extends LitElement {
 
       // Resize the terminal to the new dimensions
       if (this.terminal) {
-        this.terminal.resize(Math.floor(this.cols), Math.floor(this.rows));
+        // Ensure cols and rows are valid numbers before resizing
+        const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
+        const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
+        this.terminal.resize(safeCols, safeRows);
 
         // Dispatch resize event for backend synchronization
         this.dispatchEvent(
@@ -329,12 +336,14 @@ export class Terminal extends LitElement {
       }
     } else {
       // Normal mode: calculate both cols and rows based on container size
-      const containerWidth = this.container.clientWidth;
-      const containerHeight = this.container.clientHeight;
+      const containerWidth = this.container.clientWidth || 800; // Default width if container not ready
+      const containerHeight = this.container.clientHeight || 600; // Default height if container not ready
       const lineHeight = this.fontSize * 1.2;
       const charWidth = this.measureCharacterWidth();
 
-      const calculatedCols = Math.max(20, Math.floor(containerWidth / charWidth)) - 1; // This -1 should not be needed, but it is...
+      // Ensure charWidth is valid before division
+      const safeCharWidth = Number.isFinite(charWidth) && charWidth > 0 ? charWidth : 8; // Default char width
+      const calculatedCols = Math.max(20, Math.floor(containerWidth / safeCharWidth)) - 1; // This -1 should not be needed, but it is...
       // Apply maxCols constraint if set (0 means no limit)
       this.cols = this.maxCols > 0 ? Math.min(calculatedCols, this.maxCols) : calculatedCols;
       this.rows = Math.max(6, Math.floor(containerHeight / lineHeight));
@@ -342,7 +351,10 @@ export class Terminal extends LitElement {
 
       // Resize the terminal to the new dimensions
       if (this.terminal) {
-        this.terminal.resize(Math.floor(this.cols), Math.floor(this.rows));
+        // Ensure cols and rows are valid numbers before resizing
+        const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
+        const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
+        this.terminal.resize(safeCols, safeRows);
 
         // Dispatch resize event for backend synchronization
         this.dispatchEvent(
