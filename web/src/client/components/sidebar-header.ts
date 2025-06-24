@@ -53,8 +53,9 @@ export class SidebarHeader extends HeaderBase {
             <div class="flex flex-col gap-1 w-full max-w-[200px]">
               ${this.renderUtilityAndKillButtons(runningSessions)}
               ${this.renderExitedToggleButton(exitedSessions, true)}
-              ${!this.hideExited && exitedSessions.length > 0
-                ? html`
+              ${
+                !this.hideExited && exitedSessions.length > 0
+                  ? html`
                     <button
                       class="btn-ghost font-mono text-xs px-3 py-1.5 w-full text-status-warning"
                       @click=${this.handleCleanExited}
@@ -62,7 +63,8 @@ export class SidebarHeader extends HeaderBase {
                       Clean Exited (${exitedSessions.length})
                     </button>
                   `
-                : ''}
+                  : ''
+              }
             </div>
           </div>
         </div>
@@ -85,29 +87,35 @@ export class SidebarHeader extends HeaderBase {
       <button
         class="${buttonClass} ${stateClass}"
         @click=${this.handleHideExitedToggle}
-        title="${this.hideExited
-          ? `Show ${exitedSessions.length} exited sessions`
-          : `Hide ${exitedSessions.length} exited sessions`}"
+        title="${
+          this.hideExited
+            ? `Show ${exitedSessions.length} exited sessions`
+            : `Hide ${exitedSessions.length} exited sessions`
+        }"
       >
         <div class="flex items-center ${compact ? 'justify-between' : 'gap-2'}">
           <span>${compact ? 'Show Exited' : `Show Exited (${exitedSessions.length})`}</span>
           <div class="flex items-center gap-2">
-            ${compact
-              ? html`<span class="text-xs opacity-75">(${exitedSessions.length})</span>`
-              : ''}
+            ${
+              compact
+                ? html`<span class="text-xs opacity-75">(${exitedSessions.length})</span>`
+                : ''
+            }
             <div
-              class="w-${compact ? '8' : '6'} h-${compact
-                ? '4'
-                : '3'} rounded-full transition-colors duration-200 ${this.hideExited
-                ? 'bg-dark-border'
-                : 'bg-dark-bg'}"
+              class="w-${compact ? '8' : '6'} h-${
+                compact ? '4' : '3'
+              } rounded-full transition-colors duration-200 ${
+                this.hideExited ? 'bg-dark-border' : 'bg-dark-bg'
+              }"
             >
               <div
-                class="w-${compact ? '3' : '2'} h-${compact
-                  ? '3'
-                  : '2'} rounded-full transition-transform duration-200 mt-0.5 ${this.hideExited
-                  ? `translate-x-0.5 bg-dark-text-muted`
-                  : `translate-x-${compact ? '4' : '3'} bg-dark-bg`}"
+                class="w-${compact ? '3' : '2'} h-${
+                  compact ? '3' : '2'
+                } rounded-full transition-transform duration-200 mt-0.5 ${
+                  this.hideExited
+                    ? `translate-x-0.5 bg-dark-text-muted`
+                    : `translate-x-${compact ? '4' : '3'} bg-dark-bg`
+                }"
               ></div>
             </div>
           </div>
@@ -126,8 +134,9 @@ export class SidebarHeader extends HeaderBase {
         >
           Browse Files
         </button>
-        ${runningSessions.length > 0 && !this.killingAll
-          ? html`
+        ${
+          runningSessions.length > 0 && !this.killingAll
+            ? html`
               <button
                 class="btn-ghost font-mono text-xs px-3 py-1.5 flex-1 text-status-error"
                 @click=${this.handleKillAll}
@@ -135,7 +144,8 @@ export class SidebarHeader extends HeaderBase {
                 Kill (${runningSessions.length})
               </button>
             `
-          : ''}
+            : ''
+        }
       </div>
     `;
   }

@@ -4,17 +4,14 @@ import { keyed } from 'lit/directives/keyed.js';
 
 // Import shared types
 import type { Session } from '../shared/types.js';
-
+// Import utilities
+import { BREAKPOINTS, SIDEBAR, TIMING, TRANSITIONS } from './utils/constants.js';
 // Import logger
 import { createLogger } from './utils/logger.js';
-
+import { type MediaQueryState, responsiveObserver } from './utils/responsive-utils.js';
+import { triggerTerminalResize } from './utils/terminal-utils.js';
 // Import version
 import { VERSION } from './version.js';
-
-// Import utilities
-import { BREAKPOINTS, SIDEBAR, TRANSITIONS, TIMING } from './utils/constants.js';
-import { triggerTerminalResize } from './utils/terminal-utils.js';
-import { responsiveObserver, type MediaQueryState } from './utils/responsive-utils.js';
 
 // Import components
 import './components/app-header.js';
@@ -113,7 +110,6 @@ export class VibeTunnelApp extends LitElement {
       e.preventDefault();
       this.showFileBrowser = true;
     }
-
 
     // Handle Escape to close the session and return to list view
     if (
@@ -599,7 +595,7 @@ export class VibeTunnelApp extends LitElement {
   private loadSidebarWidth(): number {
     try {
       const saved = localStorage.getItem('sidebarWidth');
-      const width = saved !== null ? parseInt(saved, 10) : SIDEBAR.DEFAULT_WIDTH;
+      const width = saved !== null ? Number.parseInt(saved, 10) : SIDEBAR.DEFAULT_WIDTH;
       // Validate width is within bounds
       return Math.max(SIDEBAR.MIN_WIDTH, Math.min(SIDEBAR.MAX_WIDTH, width));
     } catch (error) {
@@ -937,8 +933,9 @@ export class VibeTunnelApp extends LitElement {
       <!-- Main content with split view support -->
       <div class="${this.mainContainerClasses}">
         <!-- Mobile overlay when sidebar is open -->
-        ${this.shouldShowMobileOverlay
-          ? html`
+        ${
+          this.shouldShowMobileOverlay
+            ? html`
               <!-- Translucent overlay over session content -->
               <div
                 class="absolute inset-0 bg-black bg-opacity-10 sm:hidden transition-opacity"
@@ -952,7 +949,8 @@ export class VibeTunnelApp extends LitElement {
                 @click=${this.handleToggleSidebar}
               ></div>
             `
-          : ''}
+            : ''
+        }
 
         <!-- Sidebar with session list - always visible on desktop -->
         <div class="${this.sidebarClasses}" style="${this.sidebarStyles}">
@@ -987,29 +985,33 @@ export class VibeTunnelApp extends LitElement {
               @hide-exited-change=${this.handleHideExitedChange}
               @kill-all-sessions=${this.handleKillAll}
               @navigate-to-session=${this.handleNavigateToSession}
-              @open-file-browser=${() => (this.showFileBrowser = true)}
+              @open-file-browser=${() => {
+                this.showFileBrowser = true;
+              }}
             ></session-list>
           </div>
         </div>
 
         <!-- Resize handle for sidebar -->
-        ${this.shouldShowResizeHandle
-          ? html`
+        ${
+          this.shouldShowResizeHandle
+            ? html`
               <div
-                class="w-1 bg-dark-border hover:bg-accent-green cursor-ew-resize transition-colors ${this
-                  .isResizing
-                  ? 'bg-accent-green'
-                  : ''}"
+                class="w-1 bg-dark-border hover:bg-accent-green cursor-ew-resize transition-colors ${
+                  this.isResizing ? 'bg-accent-green' : ''
+                }"
                 style="transition-duration: ${TRANSITIONS.RESIZE_HANDLE}ms;"
                 @mousedown=${this.handleResizeStart}
                 title="Drag to resize sidebar"
               ></div>
             `
-          : ''}
+            : ''
+        }
 
         <!-- Main content area -->
-        ${showSplitView
-          ? html`
+        ${
+          showSplitView
+            ? html`
               <div class="flex-1 relative sm:static transition-none">
                 ${keyed(
                   this.selectedSessionId,
@@ -1026,9 +1028,11 @@ export class VibeTunnelApp extends LitElement {
                 )}
               </div>
             `
-          : ''}
+            : ''
+        }
       </div>
-      `}
+      `
+      }
 
       <!-- File Browser Modal -->
       <file-browser

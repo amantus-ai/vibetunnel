@@ -237,10 +237,11 @@ export class SessionList extends LitElement {
                 }
               </div>
             `
-          : html`
+            : html`
               <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'}">
-                ${this.compactMode
-                  ? html`
+                ${
+                  this.compactMode
+                    ? html`
                       <!-- Browse Files button as special tab -->
                       <div
                         class="flex items-center gap-2 p-3 rounded-md cursor-pointer transition-all hover:bg-dark-bg-tertiary border border-dark-border bg-dark-bg-secondary"
@@ -258,19 +259,22 @@ export class SessionList extends LitElement {
                         </div>
                       </div>
                     `
-                  : ''}
+                    : ''
+                }
                 ${repeat(
                   filteredSessions,
                   (session) => session.id,
                   (session) => html`
-                    ${this.compactMode
-                      ? html`
+                    ${
+                      this.compactMode
+                        ? html`
                           <!-- Compact list item for sidebar -->
                           <div
-                            class="flex items-center gap-2 p-3 rounded-md cursor-pointer transition-all hover:bg-dark-bg-tertiary ${session.id ===
-                            this.selectedSessionId
-                              ? 'bg-dark-bg-tertiary border border-accent-green shadow-sm'
-                              : 'border border-transparent'}"
+                            class="flex items-center gap-2 p-3 rounded-md cursor-pointer transition-all hover:bg-dark-bg-tertiary ${
+                              session.id === this.selectedSessionId
+                                ? 'bg-dark-bg-tertiary border border-accent-green shadow-sm'
+                                : 'border border-transparent'
+                            }"
                             @click=${() =>
                               this.handleSessionSelect({ detail: session } as CustomEvent)}
                           >
@@ -287,13 +291,16 @@ export class SessionList extends LitElement {
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">
                               <div
-                                class="w-2 h-2 rounded-full ${session.status === 'running'
-                                  ? 'bg-status-success'
-                                  : 'bg-status-warning'}"
+                                class="w-2 h-2 rounded-full ${
+                                  session.status === 'running'
+                                    ? 'bg-status-success'
+                                    : 'bg-status-warning'
+                                }"
                                 title="${session.status}"
                               ></div>
-                              ${session.status === 'running' || session.status === 'exited'
-                                ? html`
+                              ${
+                                session.status === 'running' || session.status === 'exited'
+                                  ? html`
                                     <button
                                       class="btn-ghost text-status-error p-1 rounded hover:bg-dark-bg"
                                       @click=${async (e: Event) => {
@@ -317,9 +324,11 @@ export class SessionList extends LitElement {
                                           logger.error('Failed to kill session', error);
                                         }
                                       }}
-                                      title="${session.status === 'running'
-                                        ? 'Kill session'
-                                        : 'Clean up session'}"
+                                      title="${
+                                        session.status === 'running'
+                                          ? 'Kill session'
+                                          : 'Clean up session'
+                                      }"
                                     >
                                       <svg
                                         class="w-4 h-4"
@@ -336,11 +345,12 @@ export class SessionList extends LitElement {
                                       </svg>
                                     </button>
                                   `
-                                : ''}
+                                  : ''
+                              }
                             </div>
                           </div>
                         `
-                      : html`
+                        : html`
                           <!-- Full session card for main view -->
                           <session-card
                             .session=${session}
@@ -350,7 +360,8 @@ export class SessionList extends LitElement {
                             @session-kill-error=${this.handleSessionKillError}
                           >
                           </session-card>
-                        `}
+                        `
+                    }
                   `
                 )}
               </div>

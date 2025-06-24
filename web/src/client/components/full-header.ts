@@ -85,23 +85,24 @@ export class FullHeader extends HeaderBase {
 
     return html`
       <button
-        class="relative font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 ${this
-          .hideExited
-          ? 'border-dark-border bg-dark-bg-tertiary text-dark-text hover:border-accent-green-darker'
-          : 'border-accent-green bg-accent-green text-dark-bg hover:bg-accent-green-darker'}"
+        class="relative font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 ${
+          this.hideExited
+            ? 'border-dark-border bg-dark-bg-tertiary text-dark-text hover:border-accent-green-darker'
+            : 'border-accent-green bg-accent-green text-dark-bg hover:bg-accent-green-darker'
+        }"
         @click=${this.handleHideExitedToggle}
       >
         <div class="flex items-center gap-3">
           <span>Show Exited (${exitedSessions.length})</span>
           <div
-            class="w-8 h-4 rounded-full transition-colors duration-200 ${this.hideExited
-              ? 'bg-dark-border'
-              : 'bg-dark-bg'}"
+            class="w-8 h-4 rounded-full transition-colors duration-200 ${
+              this.hideExited ? 'bg-dark-border' : 'bg-dark-bg'
+            }"
           >
             <div
-              class="w-3 h-3 rounded-full transition-transform duration-200 mt-0.5 ${this.hideExited
-                ? 'translate-x-0.5 bg-dark-text-muted'
-                : 'translate-x-4 bg-dark-bg'}"
+              class="w-3 h-3 rounded-full transition-transform duration-200 mt-0.5 ${
+                this.hideExited ? 'translate-x-0.5 bg-dark-text-muted' : 'translate-x-4 bg-dark-bg'
+              }"
             ></div>
           </div>
         </div>
@@ -111,8 +112,9 @@ export class FullHeader extends HeaderBase {
 
   private renderActionButtons(exitedSessions: Session[], runningSessions: Session[]) {
     return html`
-      ${!this.hideExited && exitedSessions.length > 0
-        ? html`
+      ${
+        !this.hideExited && exitedSessions.length > 0
+          ? html`
             <button
               class="btn-ghost font-mono text-xs px-4 py-2 text-status-warning"
               @click=${this.handleCleanExited}
@@ -120,9 +122,11 @@ export class FullHeader extends HeaderBase {
               Clean Exited (${exitedSessions.length})
             </button>
           `
-        : ''}
-      ${runningSessions.length > 0 && !this.killingAll
-        ? html`
+          : ''
+      }
+      ${
+        runningSessions.length > 0 && !this.killingAll
+          ? html`
             <button
               class="btn-ghost font-mono text-xs px-4 py-2 text-status-error"
               @click=${this.handleKillAll}
@@ -130,9 +134,11 @@ export class FullHeader extends HeaderBase {
               Kill All (${runningSessions.length})
             </button>
           `
-        : ''}
-      ${this.killingAll
-        ? html`
+          : ''
+      }
+      ${
+        this.killingAll
+          ? html`
             <div class="flex items-center gap-2 px-4 py-2">
               <div
                 class="w-4 h-4 border-2 border-status-error border-t-transparent rounded-full animate-spin"
@@ -140,7 +146,8 @@ export class FullHeader extends HeaderBase {
               <span class="text-status-error font-mono text-xs">Killing...</span>
             </div>
           `
-        : ''}
+          : ''
+      }
     `;
   }
 
@@ -165,8 +172,9 @@ export class FullHeader extends HeaderBase {
             <path d="M5 7L1 3h8z" />
           </svg>
         </button>
-        ${this.showUserMenu
-          ? html`
+        ${
+          this.showUserMenu
+            ? html`
               <div
                 class="absolute right-0 top-full mt-1 bg-dark-surface border border-dark-border rounded shadow-lg py-1 z-50 min-w-32"
               >
@@ -183,7 +191,8 @@ export class FullHeader extends HeaderBase {
                 </button>
               </div>
             `
-          : ''}
+            : ''
+        }
       </div>
     `;
   }

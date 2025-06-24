@@ -1173,8 +1173,9 @@ export class SessionView extends LitElement {
         >
           <div class="flex items-center gap-3 min-w-0 flex-1">
             <!-- Mobile Hamburger Menu Button (only on phones, only when session is shown) -->
-            ${this.showSidebarToggle && this.sidebarCollapsed
-              ? html`
+            ${
+              this.showSidebarToggle && this.sidebarCollapsed
+                ? html`
                   <button
                     class="sm:hidden bg-dark-bg-tertiary border border-dark-border rounded-lg p-1 font-mono text-accent-green transition-all duration-300 hover:bg-dark-bg hover:border-accent-green flex-shrink-0"
                     @click=${this.handleSidebarToggle}
@@ -1197,9 +1198,11 @@ export class SessionView extends LitElement {
                     </svg>
                   </button>
                 `
-              : ''}
-            ${this.showBackButton
-              ? html`
+                : ''
+            }
+            ${
+              this.showBackButton
+                ? html`
                   <button
                     class="btn-secondary font-mono text-xs px-3 py-1 flex-shrink-0"
                     @click=${this.handleBack}
@@ -1207,7 +1210,8 @@ export class SessionView extends LitElement {
                     Back
                   </button>
                 `
-              : ''}
+                : ''
+            }
             <div class="text-dark-text min-w-0 flex-1 overflow-hidden max-w-[50vw] sm:max-w-none">
               <div
                 class="text-accent-green text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"

@@ -11,7 +11,7 @@
  * @fires open-file-browser - When browse button is clicked
  * @fires logout - When logout is clicked
  */
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import type { Session } from './session-list.js';
 import './terminal-icon.js';
