@@ -1,28 +1,21 @@
-import type { ChildProcess } from 'child_process';
-
 /**
- * Extracts the server port from stdout output
- * @param output - The stdout output string
- * @returns The port number if found, null otherwise
+ * @deprecated This file is deprecated. Import from './server-utils' instead.
+ * 
+ * This file is kept for backward compatibility and re-exports the functions
+ * from the new unified server-utils module.
  */
-export function extractPortFromOutput(output: string): number | null {
-  // Try multiple patterns that the server might use
-  const patterns = [
-    /VibeTunnel Server running on http:\/\/localhost:(\d+)/,
-    /Server listening on port (\d+)/,
-  ];
 
-  for (const pattern of patterns) {
-    const match = output.match(pattern);
-    if (match) {
-      return Number.parseInt(match[1], 10);
-    }
-  }
-
-  return null;
-}
+import type { ChildProcess } from 'child_process';
+import { extractPortFromOutput as _extractPortFromOutput, startTestServer } from './server-utils';
 
 /**
+ * @deprecated Use extractPortFromOutput from './server-utils' instead
+ */
+export const extractPortFromOutput = _extractPortFromOutput;
+
+/**
+ * @deprecated Use startTestServer from './server-utils' instead
+ * 
  * Waits for the server to start and returns the port it's listening on
  * @param serverProcess - The server process to monitor
  * @param timeout - Maximum time to wait in milliseconds

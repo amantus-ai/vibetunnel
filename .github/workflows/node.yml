@@ -8,6 +8,9 @@ permissions:
   pull-requests: write
   issues: write
 
+# All jobs run in parallel for faster CI execution
+# Using npm ci --prefer-offline to skip network checks for cached packages
+# Build already uses esbuild for fast TypeScript compilation
 jobs:
   lint:
     name: Lint TypeScript/JavaScript Code
@@ -24,6 +27,14 @@ jobs:
         cache: 'npm'
         cache-dependency-path: web/package-lock.json
 
+    - name: Cache npm dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-npm-
+
     - name: Install system dependencies
       run: |
         sudo apt-get update
@@ -31,7 +42,7 @@ jobs:
 
     - name: Install dependencies
       working-directory: web
-      run: npm ci
+      run: npm ci --prefer-offline
 
     - name: Check formatting with Biome
       id: biome-format
@@ -108,6 +119,14 @@ jobs:
         cache: 'npm'
         cache-dependency-path: web/package-lock.json
 
+    - name: Cache npm dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-npm-
+
     - name: Install system dependencies
       run: |
         sudo apt-get update
@@ -115,7 +134,7 @@ jobs:
 
     - name: Install dependencies
       working-directory: web
-      run: npm ci
+      run: npm ci --prefer-offline
 
     - name: Build frontend and backend
       working-directory: web
@@ -189,6 +208,14 @@ jobs:
         cache: 'npm'
         cache-dependency-path: web/package-lock.json
 
+    - name: Cache npm dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-npm-
+
     - name: Install system dependencies
       run: |
         sudo apt-get update
@@ -196,7 +223,7 @@ jobs:
 
     - name: Install dependencies
       working-directory: web
-      run: npm ci
+      run: npm ci --prefer-offline
 
     - name: Check TypeScript types
       working-directory: web

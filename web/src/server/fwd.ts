@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx --no-deprecation
+#!/usr/bin/env pnpm exec tsx --no-deprecation
 
 /**
  * VibeTunnel Forward (fwd.ts)
@@ -7,8 +7,8 @@
  * using the VibeTunnel PTY infrastructure.
  *
  * Usage:
- *   npx tsx src/fwd.ts <command> [args...]
- *   npx tsx src/fwd.ts claude --resume
+ *   pnpm exec tsx src/fwd.ts <command> [args...]
+ *   pnpm exec tsx src/fwd.ts claude --resume
  */
 
 import chalk from 'chalk';
@@ -25,16 +25,16 @@ function showUsage() {
   console.log(chalk.blue(`VibeTunnel Forward v${VERSION}`) + chalk.gray(` (${BUILD_DATE})`));
   console.log('');
   console.log('Usage:');
-  console.log('  npx tsx src/fwd.ts [--session-id <id>] <command> [args...]');
+  console.log('  pnpm exec tsx src/fwd.ts [--session-id <id>] <command> [args...]');
   console.log('');
   console.log('Options:');
   console.log('  --session-id <id>   Use a pre-generated session ID');
   console.log('');
   console.log('Examples:');
-  console.log('  npx tsx src/fwd.ts claude --resume');
-  console.log('  npx tsx src/fwd.ts bash -l');
-  console.log('  npx tsx src/fwd.ts python3 -i');
-  console.log('  npx tsx src/fwd.ts --session-id abc123 claude');
+  console.log('  pnpm exec tsx src/fwd.ts claude --resume');
+  console.log('  pnpm exec tsx src/fwd.ts bash -l');
+  console.log('  pnpm exec tsx src/fwd.ts python3 -i');
+  console.log('  pnpm exec tsx src/fwd.ts --session-id abc123 claude');
   console.log('');
   console.log('The command will be spawned in the current working directory');
   console.log('and managed through the VibeTunnel PTY infrastructure.');

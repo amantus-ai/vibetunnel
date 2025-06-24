@@ -98,7 +98,7 @@ export async function initializeMonaco(): Promise<void> {
           [/^#.*$/, 'comment'],
           [/\$\w+/, 'variable'],
           [
-            /\b(echo|cd|ls|grep|find|chmod|mkdir|rm|cp|mv|touch|cat|sed|awk|curl|wget|git|npm|yarn|docker|kubectl)\b/,
+            /\b(echo|cd|ls|grep|find|chmod|mkdir|rm|cp|mv|touch|cat|sed|awk|curl|wget|git|pnpm|npm|yarn|docker|kubectl)\b/,
             'keyword',
           ],
           [/"([^"\\]|\\.)*"/, 'string'],

@@ -10,12 +10,12 @@ cd ../web
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then
     echo "Installing web dependencies..."
-    npm install
+    pnpm install
 fi
 
 # Build the web project (creates vibetunnel executable)
 echo "Building vibetunnel executable..."
-npm run build
+pnpm run build
 
 # Check that required files exist
 if [ ! -f "native/vibetunnel" ]; then

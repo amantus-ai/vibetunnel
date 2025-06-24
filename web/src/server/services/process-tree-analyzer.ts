@@ -389,7 +389,7 @@ export class ProcessTreeAnalyzer {
    */
   private isShellProcess(command: string): boolean {
     const shellIndicators = ['bash', 'zsh', 'sh', 'fish', 'csh', 'tcsh', 'ksh'];
-    const processName = this.extractProcessName(command);
+    const processName = ProcessTreeAnalyzer.extractProcessName(command);
     return shellIndicators.includes(processName.toLowerCase());
   }
 
@@ -438,13 +438,6 @@ export class ProcessTreeAnalyzer {
     }
 
     return false;
-  }
-
-  /**
-   * Extract process name from command (non-static version)
-   */
-  private extractProcessName(command: string): string {
-    return ProcessTreeAnalyzer.extractProcessName(command);
   }
 
   /**

@@ -31,7 +31,7 @@ echo -e "${GREEN}Copying executable and native modules...${NC}"
 # Check if native directory exists
 if [ ! -d "$NATIVE_DIR" ]; then
     echo -e "${YELLOW}Warning: Native directory not found at $NATIVE_DIR${NC}"
-    echo -e "${YELLOW}Run 'npm run build:native' in the web directory first${NC}"
+    echo -e "${YELLOW}Run 'pnpm run build:native' in the web directory first${NC}"
     exit 0
 fi
 

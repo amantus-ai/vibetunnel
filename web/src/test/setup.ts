@@ -1,4 +1,5 @@
 // Global test setup for Vitest
+import { vi } from 'vitest';
 
 // Mock global objects that might not exist in test environments
 global.ResizeObserver = class ResizeObserver {

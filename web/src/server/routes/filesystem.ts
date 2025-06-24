@@ -143,7 +143,7 @@ export function createFilesystemRoutes(): Router {
       const fullPath = path.resolve(requestedPath);
 
       // Check if path exists and is a directory
-      let stats;
+      let stats: Awaited<ReturnType<typeof fs.stat>>;
       try {
         stats = await fs.stat(fullPath);
       } catch (error) {
@@ -196,14 +196,14 @@ export function createFilesystemRoutes(): Router {
             const absolutePath = path.join(gitRepoRoot, changedFile.path);
 
             // Check if file exists (it might be deleted)
-            let fileStats;
+            let fileStats: Awaited<ReturnType<typeof fs.stat>> | null = null;
             let fileType: 'file' | 'directory' = 'file';
             try {
               fileStats = await fs.stat(absolutePath);
               fileType = fileStats.isDirectory() ? 'directory' : 'file';
             } catch {
               // File might be deleted
-              fileStats = { size: 0, mtime: new Date() };
+              fileStats = null;
             }
 
             // Get relative display name (relative to current directory)
@@ -213,9 +213,9 @@ export function createFilesystemRoutes(): Router {
               name: relativeToCurrentDir,
               path: path.relative(process.cwd(), absolutePath),
               type: fileType,
-              size: fileStats.size,
-              modified: fileStats.mtime.toISOString(),
-              permissions: fileStats.mode?.toString(8).slice(-3) || '000',
+              size: fileStats?.size || 0,
+              modified: fileStats?.mtime.toISOString() || new Date().toISOString(),
+              permissions: fileStats?.mode?.toString(8).slice(-3) || '000',
               isGitTracked: true,
               gitStatus: changedFile.status,
             };

@@ -23,19 +23,19 @@ As code changes, the spec.md might get outdated. If you detect outdated informat
 5. Include a "Key Files Quick Reference" section for fast lookup
 
 ## Build Process
-- **Never run build commands** - the user has `npm run dev` running which handles automatic rebuilds
+- **Never run build commands** - the user has `pnpm run dev` running which handles automatic rebuilds
 - Changes to TypeScript files are automatically compiled and watched
-- Do not run `npm run build` or similar build commands
+- Do not run `pnpm run build` or similar build commands
 
 ## Development Workflow
 - Make changes to source files in `src/`
 - Format, lint and typecheck after you made changes
-    - `npm run format`
-    - `npm run lint`
-    - `npm run lint:fix`
-    - `npm run typecheck`
+    - `pnpm run format`
+    - `pnpm run lint`
+    - `pnpm run lint:fix`
+    - `pnpm run typecheck`
 - Always fix all linting and type checking errors, including in unrelated code
-- Never run the tests, unless explicitely asked to. `npm run test`
+- Never run the tests, unless explicitely asked to. `pnpm run test`
 
 ## Code References
 **THIS IS OF UTTER IMPORTANCE THE USERS HAPPINESS DEPENDS ON IT!**

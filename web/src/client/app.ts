@@ -700,7 +700,9 @@ export class VibeTunnelApp extends LitElement {
                   @hide-exited-change=${this.handleHideExitedChange}
                   @kill-all-sessions=${this.handleKillAll}
                   @clean-exited-sessions=${this.handleCleanExited}
-                  @open-file-browser=${() => (this.showFileBrowser = true)}
+                  @open-file-browser=${() => {
+                    this.showFileBrowser = true;
+                  }}
                   @open-notification-settings=${this.handleShowNotificationSettings}
                   @logout=${this.handleLogout}
                 ></app-header>
@@ -728,7 +730,9 @@ export class VibeTunnelApp extends LitElement {
         .visible=${this.showFileBrowser}
         .mode=${'browse'}
         .session=${null}
-        @browser-cancel=${() => (this.showFileBrowser = false)}
+        @browser-cancel=${() => {
+          this.showFileBrowser = false;
+        }}
       ></file-browser>
 
       <!-- Notification Settings Modal -->

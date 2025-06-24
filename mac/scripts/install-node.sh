@@ -51,12 +51,15 @@ if command -v node &> /dev/null; then
         echo "Warning: Node.js v20+ is recommended (found v$NODE_VERSION)"
     fi
     
-    # Check if npm is available
-    if command -v npm &> /dev/null; then
-        echo "✓ npm found: $(which npm)"
-        echo "  Version: $(npm --version)"
+    # Check if pnpm is available
+    if command -v pnpm &> /dev/null; then
+        echo "✓ pnpm found: $(which pnpm)"
+        echo "  Version: $(pnpm --version)"
     else
-        echo "Error: npm not found. Please ensure Node.js is properly installed."
+        echo "Error: pnpm not found. Please install pnpm."
+        echo "  - Install via npm: npm install -g pnpm"
+        echo "  - Install via Homebrew: brew install pnpm"
+        echo "  - Install via standalone script: curl -fsSL https://get.pnpm.io/install.sh | sh -"
         exit 1
     fi
     

@@ -6,8 +6,7 @@ import { createLogger, logFromModule } from '../utils/logger.js';
 
 const logger = createLogger('logs');
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-type LogRoutesConfig = {};
+type LogRoutesConfig = Record<string, never>;
 
 interface ClientLogRequest {
   level: 'log' | 'warn' | 'error' | 'debug';

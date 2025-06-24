@@ -76,13 +76,13 @@ export PATH="$HOME/.volta/bin:$PATH"
 # Export CI to prevent interactive prompts
 export CI=true
 
-# Check if npm is available
-if ! command -v npm &> /dev/null; then
-    echo "error: npm not found. Please install Node.js"
+# Check if pnpm is available
+if ! command -v pnpm &> /dev/null; then
+    echo "error: pnpm not found. Please install pnpm"
     exit 1
 fi
 
-echo "Using npm version: $(npm --version)"
+echo "Using pnpm version: $(pnpm --version)"
 echo "Using Node.js version: $(node --version)"
 
 # Check if web directory exists
@@ -105,7 +105,7 @@ export MACOSX_DEPLOYMENT_TARGET="14.0"
 export CXXFLAGS="-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0"
 export CXX="${CXX:-clang++}"
 export CC="${CC:-clang}"
-npm install
+pnpm install --frozen-lockfile
 
 # Determine build configuration
 BUILD_CONFIG="${CONFIGURATION:-Debug}"
@@ -148,7 +148,7 @@ if [ "$BUILD_CONFIG" = "Release" ]; then
     if [ "${CI:-false}" = "true" ]; then
         echo "CI environment detected - skipping custom Node.js build to avoid timeout"
         echo "The app will be larger than optimal but will build within CI time limits."
-        npm run build
+        pnpm run build
     elif [ ! -f "$CUSTOM_NODE_PATH" ]; then
         echo "Custom Node.js not found, building it for optimal size..."
         echo "This will take 10-20 minutes on first run but will be cached."
@@ -164,23 +164,23 @@ if [ "$BUILD_CONFIG" = "Release" ]; then
         echo "  Version: $CUSTOM_NODE_VERSION"
         echo "  Size: $CUSTOM_NODE_SIZE (vs ~110MB for standard Node.js)"
         echo "  Path: $CUSTOM_NODE_PATH"
-        npm run build -- --custom-node
+        ppnpm run build -- --custom-node
     else
         echo "WARNING: Custom Node.js build failed, using system Node.js"
         echo "The app will be larger than optimal."
-        npm run build
+        pnpm run build
     fi
 else
     # Debug build
     if [ -f "$CUSTOM_NODE_PATH" ]; then
         CUSTOM_NODE_VERSION=$("$CUSTOM_NODE_PATH" --version 2>/dev/null || echo "unknown")
         echo "Debug build - found existing custom Node.js $CUSTOM_NODE_VERSION, using it for consistency"
-        npm run build -- --custom-node
+        ppnpm run build -- --custom-node
     else
         echo "Debug build - using system Node.js for faster builds"
         echo "System Node.js: $(node --version)"
         echo "To use custom Node.js in debug builds, run: cd web && node build-custom-node.js --latest"
-        npm run build
+        pnpm run build
     fi
 fi
 

@@ -14,7 +14,7 @@
     "build:ci": "node scripts/build-ci.js",
     "lint": "biome check src",
     "lint:fix": "biome check src --apply",
-    "typecheck": "tsc --noEmit --project tsconfig.server.json && tsc --noEmit --project tsconfig.client.json && tsc --noEmit --project tsconfig.sw.json",
+    "typecheck": "concurrently -n server,client,sw \"tsc --noEmit --project tsconfig.server.json\" \"tsc --noEmit --project tsconfig.client.json\" \"tsc --noEmit --project tsconfig.sw.json\"",
     "test": "vitest",
     "test:ci": "vitest run --reporter=verbose",
     "test:coverage": "vitest run --coverage",

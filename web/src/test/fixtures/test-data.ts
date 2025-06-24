@@ -21,7 +21,7 @@ export const mockSessions: SessionWithId[] = [
   },
   {
     id: 'session-2',
-    cmdline: ['npm', 'run', 'dev'],
+    cmdline: ['pnpm', 'run', 'dev'],
     name: 'Development Server',
     cwd: '/home/user/projects/app',
     pid: 12346,

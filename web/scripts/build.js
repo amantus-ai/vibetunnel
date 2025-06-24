@@ -17,7 +17,7 @@ async function build() {
 
   // Build CSS
   console.log('Building CSS...');
-  execSync('npx tailwindcss -i ./src/client/styles.css -o ./public/bundle/styles.css --minify', { stdio: 'inherit' });
+  execSync('pnpm exec tailwindcss -i ./src/client/styles.css -o ./public/bundle/styles.css --minify', { stdio: 'inherit' });
 
   // Bundle client JavaScript
   console.log('Bundling client JavaScript...');

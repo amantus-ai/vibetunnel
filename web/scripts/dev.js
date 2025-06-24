@@ -12,19 +12,19 @@ const watchServer = !process.argv.includes('--client-only');
 console.log('Initial build...');
 require('child_process').execSync('node scripts/ensure-dirs.js', { stdio: 'inherit' });
 require('child_process').execSync('node scripts/copy-assets.js', { stdio: 'inherit' });
-require('child_process').execSync('npx tailwindcss -i ./src/client/styles.css -o ./public/bundle/styles.css', { stdio: 'inherit' });
+require('child_process').execSync('pnpm exec tailwindcss -i ./src/client/styles.css -o ./public/bundle/styles.css', { stdio: 'inherit' });
 
 // Build the command parts
 const commands = [
   // Watch CSS
-  ['npx', ['tailwindcss', '-i', './src/client/styles.css', '-o', './public/bundle/styles.css', '--watch']],
+  ['pnpm', ['exec', 'tailwindcss', '-i', './src/client/styles.css', '-o', './public/bundle/styles.css', '--watch']],
   // Watch assets
-  ['npx', ['chokidar', 'src/client/assets/**/*', '-c', 'node scripts/copy-assets.js']],
+  ['pnpm', ['exec', 'chokidar', 'src/client/assets/**/*', '-c', 'node scripts/copy-assets.js']],
 ];
 
 // Add server watching if not client-only
 if (watchServer) {
-  commands.push(['npx', ['tsx', 'watch', 'src/cli.ts', '--no-auth']]);
+  commands.push(['pnpm', ['exec', 'tsx', 'watch', 'src/cli.ts', '--no-auth']]);
 }
 
 // Set up esbuild contexts for watching

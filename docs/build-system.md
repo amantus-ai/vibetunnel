@@ -1,7 +1,7 @@
 <!-- Generated: 2025-06-21 16:24:00 UTC -->
 # Build System
 
-VibeTunnel uses platform-specific build systems for each component: Xcode for macOS and iOS applications, npm for the web frontend, and Bun for creating standalone executables. The build system supports both development and release builds with comprehensive automation scripts for code signing, notarization, and distribution.
+VibeTunnel uses platform-specific build systems for each component: Xcode for macOS and iOS applications, pnpm for the web frontend, and Bun for creating standalone executables. The build system supports both development and release builds with comprehensive automation scripts for code signing, notarization, and distribution.
 
 The main build orchestration happens through shell scripts in `mac/scripts/` that coordinate building native applications, bundling the web frontend, and packaging everything together. Release builds include code signing, notarization, DMG creation, and automated GitHub releases with Sparkle update support.
 
@@ -32,13 +32,13 @@ cd mac
 **Development Mode** - Watch mode with hot reload:
 ```bash
 cd web
-npm run dev
+pnpm run dev
 ```
 
 **Production Build** - Optimized bundles:
 ```bash
 cd web
-npm run build
+pnpm run build
 ```
 
 **Bun Executable** - Standalone binary with native modules:
@@ -86,7 +86,7 @@ cd mac
 
 **Development Tools**:
 - Xcode 16.0+ with command line tools
-- Node.js 20+ and npm
+- Node.js 20+ and pnpm
 - Bun runtime (installed via npm)
 - xcbeautify (optional, for cleaner output)
 

@@ -218,7 +218,9 @@ async def main():
               <input
                 type="checkbox"
                 .checked=${this.readOnly}
-                @change=${(e: Event) => (this.readOnly = (e.target as HTMLInputElement).checked)}
+                @change=${(e: Event) => {
+                  this.readOnly = (e.target as HTMLInputElement).checked;
+                }}
                 class="w-4 h-4 rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-400 focus:ring-offset-0"
               />
               <span>Read Only</span>
@@ -231,8 +233,9 @@ async def main():
                     <input
                       type="checkbox"
                       .checked=${this.showModeToggle}
-                      @change=${(e: Event) =>
-                        (this.showModeToggle = (e.target as HTMLInputElement).checked)}
+                      @change=${(e: Event) => {
+                        this.showModeToggle = (e.target as HTMLInputElement).checked;
+                      }}
                       class="w-4 h-4 rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-400 focus:ring-offset-0"
                     />
                     <span>Show Mode Toggle</span>

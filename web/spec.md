@@ -486,17 +486,17 @@ Each session has a directory in `~/.vibetunnel/control/[sessionId]/` containing:
   - Auto `.html` extension resolution for static files
 
 ### Build System
-- `npm run dev`: Auto-rebuilds TypeScript
-- `npm run build`: Full build including Node.js SEA executable
+- `pnpm run dev`: Auto-rebuilds TypeScript
+- `pnpm run build`: Full build including Node.js SEA executable
 - ESBuild: Fast bundling
 - Node.js SEA: Creates standalone executable (Node.js 20+ required)
 - Vitest: Testing framework
 - Assets: Copied from `src/client/assets/` to `public/` during build
 
 ### Testing
-- Unit tests: `npm test`
-- E2E tests: `npm run test:e2e`
-- Integration: `npm run test:integration`
+- Unit tests: `pnpm test`
+- E2E tests: `pnpm run test:e2e`
+- Integration: `pnpm run test:integration`
 
 ### Key Dependencies
 - node-pty: Cross-platform PTY

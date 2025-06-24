@@ -9,9 +9,9 @@ Production users: Use the pre-built VibeTunnel executable from the main app.
 ## Development
 
 ```bash
-npm install
-npm run dev        # Watch mode: server + client
-npm run dev:client # Watch mode: client only (for debugging server)
+pnpm install
+pnpm run dev        # Watch mode: server + client
+pnpm run dev:client # Watch mode: client only (for debugging server)
 ```
 
 Open http://localhost:3000
@@ -19,19 +19,19 @@ Open http://localhost:3000
 ### Build Commands
 
 ```bash
-npm run clean      # Remove build artifacts
-npm run build      # Build everything (including native executable)
-npm run lint       # Check code style
-npm run lint:fix   # Fix code style
-npm run typecheck  # Type checking
-npm run test       # Run all tests (unit + e2e)
-npm run format     # Format code
+pnpm run clean      # Remove build artifacts
+pnpm run build      # Build everything (including native executable)
+pnpm run lint       # Check code style
+pnpm run lint:fix   # Fix code style
+pnpm run typecheck  # Type checking
+pnpm run test       # Run all tests (unit + e2e)
+pnpm run format     # Format code
 ```
 
 ## Production Build
 
 ```bash
-npm run build          # Creates Node.js SEA executable
+pnpm run build          # Creates Node.js SEA executable
 ./native/vibetunnel    # Run standalone executable (no Node.js required)
 ```
 

@@ -200,7 +200,7 @@ export class PtyManager extends EventEmitter {
       );
 
       // Create PTY process
-      let ptyProcess;
+      let ptyProcess: IPty;
       try {
         // Set up environment like Linux implementation
         const ptyEnv = {
@@ -325,12 +325,12 @@ export class PtyManager extends EventEmitter {
           logger.debug(`Bell data in session ${session.id}: ${JSON.stringify(data)}`);
 
           // Count total bells and OSC-terminated bells
-          // eslint-disable-next-line no-control-regex
+          // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
           const totalBells = (data.match(/\x07/g) || []).length;
 
           // Count OSC sequences terminated with bell: \x1b]...\x07
-          // eslint-disable-next-line no-control-regex
-          const oscMatches = data.match(/\x1b]([^\x07\x1b]|\x1b[^]])*\x07/g) || [];
+          // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
+          const oscMatches = data.match(/\x1b\]([^\x07\x1b]|\x1b[^\]])*\x07/g) || [];
           const oscTerminatedBells = oscMatches.length;
 
           // If there are more bells than OSC terminators, we have real bells

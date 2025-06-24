@@ -122,7 +122,7 @@ function patchNodePty() {
   // Always reinstall to ensure clean state
   console.log('Reinstalling node-pty to ensure clean state...');
   execSync('rm -rf node_modules/@homebridge/node-pty-prebuilt-multiarch', { stdio: 'inherit' });
-  execSync('npm install @homebridge/node-pty-prebuilt-multiarch --silent --no-fund --no-audit', { stdio: 'inherit' });
+  execSync('pnpm install @homebridge/node-pty-prebuilt-multiarch --silent', { stdio: 'inherit' });
 
   // If using custom Node.js, rebuild native modules
   if (customNodePath) {
@@ -140,7 +140,7 @@ function patchNodePty() {
 
     try {
       // Use the custom Node to rebuild native modules
-      execSync(`"${customNodePath}" "$(which npm)" rebuild @homebridge/node-pty-prebuilt-multiarch authenticate-pam`, {
+      execSync(`"${customNodePath}" "$(which pnpm)" rebuild @homebridge/node-pty-prebuilt-multiarch authenticate-pam`, {
         stdio: 'inherit',
         env: {
           ...process.env,
@@ -162,7 +162,7 @@ function patchNodePty() {
       // Alternative: Force rebuild from source
       try {
         execSync(`rm -rf node_modules/@homebridge/node-pty-prebuilt-multiarch/build`, { stdio: 'inherit' });
-        execSync(`"${customNodePath}" "$(which npm)" install @homebridge/node-pty-prebuilt-multiarch --build-from-source`, {
+        execSync(`"${customNodePath}" "$(which pnpm)" install @homebridge/node-pty-prebuilt-multiarch`, {
           stdio: 'inherit',
           env: {
             ...process.env,
@@ -486,7 +486,7 @@ async function main() {
     // 9. Restore original node-pty (AFTER copying the custom-built version)
     console.log('\nRestoring original node-pty for development...');
     execSync('rm -rf node_modules/@homebridge/node-pty-prebuilt-multiarch', { stdio: 'inherit' });
-    execSync('npm install @homebridge/node-pty-prebuilt-multiarch --silent --no-fund --no-audit', { stdio: 'inherit' });
+    execSync('pnpm install @homebridge/node-pty-prebuilt-multiarch --silent', { stdio: 'inherit' });
 
     console.log('\n✅ Build complete!');
     console.log(`\nPortable executable created in native/ directory:`);

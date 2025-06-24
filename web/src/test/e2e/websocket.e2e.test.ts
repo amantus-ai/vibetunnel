@@ -29,7 +29,7 @@ async function startServer(
 ): Promise<{ process: ChildProcess; port: number }> {
   const cliPath = path.join(process.cwd(), 'src', 'cli.ts');
 
-  const serverProcess = spawn('npx', ['tsx', cliPath, ...args], {
+  const serverProcess = spawn('pnpm', ['exec', 'tsx', cliPath, ...args], {
     env: { ...process.env, ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -469,6 +469,335 @@ describe('WebSocket Buffer Tests', () => {
       const cursorY = view.getUint32(16);
       expect(cursorX).toBeGreaterThanOrEqual(0);
       expect(cursorY).toBeGreaterThanOrEqual(0);
+
+      ws.close();
+    });
+  });
+
+  describe('Malformed Binary Data Edge Cases', () => {
+    it('should handle raw binary data instead of JSON control messages', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        headers: { Authorization: authHeader },
+      });
+
+      await new Promise<void>((resolve) => {
+        ws.on('open', resolve);
+      });
+
+      // Send raw binary data that's not a valid control message
+      const malformedBuffer = Buffer.from([0xff, 0xfe, 0xfd, 0xfc]);
+      ws.send(malformedBuffer);
+
+      // Connection should remain open
+      await sleep(100);
+      expect(ws.readyState).toBe(WebSocket.OPEN);
+
+      ws.close();
+    });
+
+    it('should handle truncated JSON messages', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        headers: { Authorization: authHeader },
+      });
+
+      await new Promise<void>((resolve) => {
+        ws.on('open', resolve);
+      });
+
+      // Send truncated JSON
+      ws.send('{"type": "subscribe", "sess');
+
+      // Connection should remain open
+      await sleep(100);
+      expect(ws.readyState).toBe(WebSocket.OPEN);
+
+      ws.close();
+    });
+
+    it('should handle oversized session ID in binary format', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        headers: { Authorization: authHeader },
+      });
+
+      await new Promise<void>((resolve) => {
+        ws.on('open', resolve);
+      });
+
+      // Subscribe to valid session first
+      ws.send(
+        JSON.stringify({
+          type: 'subscribe',
+          sessionId: sessionId,
+        })
+      );
+
+      // Wait for initial message
+      await new Promise((resolve) => {
+        ws.once('message', resolve);
+      });
+
+      // Send malformed binary data with invalid session ID length
+      const malformedBuffer = Buffer.alloc(10);
+      malformedBuffer.writeUInt8(0xbf, 0); // Magic byte
+      malformedBuffer.writeUInt32LE(0xffffffff, 1); // Huge session ID length
+
+      // This should not crash the server
+      ws.send(malformedBuffer);
+
+      // Connection should remain open
+      await sleep(100);
+      expect(ws.readyState).toBe(WebSocket.OPEN);
+
+      ws.close();
+    });
+
+    it('should handle empty binary messages', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        headers: { Authorization: authHeader },
+      });
+
+      await new Promise<void>((resolve) => {
+        ws.on('open', resolve);
+      });
+
+      // Send empty buffer
+      ws.send(Buffer.alloc(0));
+
+      // Connection should remain open
+      await sleep(100);
+      expect(ws.readyState).toBe(WebSocket.OPEN);
+
+      ws.close();
+    });
+
+    it('should handle messages with invalid UTF-8 in session ID', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        headers: { Authorization: authHeader },
+      });
+
+      await new Promise<void>((resolve) => {
+        ws.on('open', resolve);
+      });
+
+      // Send subscribe with invalid UTF-8 sequences
+      const invalidUtf8 = Buffer.from([0xff, 0xfe, 0xfd]);
+      ws.send(
+        JSON.stringify({
+          type: 'subscribe',
+          sessionId: invalidUtf8.toString('latin1'),
+        })
+      );
+
+      // Connection should remain open
+      await sleep(100);
+      expect(ws.readyState).toBe(WebSocket.OPEN);
+
+      ws.close();
+    });
+
+    it('should handle extremely large control messages', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        headers: { Authorization: authHeader },
+      });
+
+      await new Promise<void>((resolve) => {
+        ws.on('open', resolve);
+      });
+
+      // Create a very large session ID (1MB)
+      const largeSessionId = 'x'.repeat(1024 * 1024);
+      ws.send(
+        JSON.stringify({
+          type: 'subscribe',
+          sessionId: largeSessionId,
+        })
+      );
+
+      // Connection should remain open (though subscription won't work)
+      await sleep(100);
+      expect(ws.readyState).toBe(WebSocket.OPEN);
+
+      ws.close();
+    });
+
+    it('should handle mixed text and binary frames', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        headers: { Authorization: authHeader },
+      });
+
+      await new Promise<void>((resolve) => {
+        ws.on('open', resolve);
+      });
+
+      // Subscribe normally
+      ws.send(
+        JSON.stringify({
+          type: 'subscribe',
+          sessionId: sessionId,
+        })
+      );
+
+      // Wait for initial buffer
+      await new Promise((resolve) => {
+        ws.once('message', resolve);
+      });
+
+      // Send binary data that looks like a control message
+      const fakeBinaryControl = Buffer.from(
+        JSON.stringify({ type: 'unsubscribe', sessionId: sessionId })
+      );
+      ws.send(fakeBinaryControl, { binary: true });
+
+      // Should still receive updates
+      let receivedUpdate = false;
+      ws.on('message', (data: Buffer) => {
+        if (data.length > 0 && data.readUInt8(0) === 0xbf) {
+          receivedUpdate = true;
+        }
+      });
+
+      // Trigger an update
+      await fetch(`http://localhost:${serverPort}/api/sessions/${sessionId}/input`, {
+        method: 'POST',
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data: 'test\n' }),
+      });
+
+      await sleep(500);
+      expect(receivedUpdate).toBe(true);
+
+      ws.close();
+    });
+
+    it('should handle null bytes in JSON messages', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        headers: { Authorization: authHeader },
+      });
+
+      await new Promise<void>((resolve) => {
+        ws.on('open', resolve);
+      });
+
+      // Send JSON with null bytes
+      const messageWithNull = `{"type": "subscribe", "sessionId": "test\x00session"}`;
+      ws.send(messageWithNull);
+
+      // Connection should remain open
+      await sleep(100);
+      expect(ws.readyState).toBe(WebSocket.OPEN);
+
+      ws.close();
+    });
+
+    it('should handle malformed terminal buffer in received data', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        headers: { Authorization: authHeader },
+      });
+
+      await new Promise<void>((resolve) => {
+        ws.on('open', resolve);
+      });
+
+      let errorOccurred = false;
+      ws.on('error', () => {
+        errorOccurred = true;
+      });
+
+      // Subscribe to session
+      ws.send(
+        JSON.stringify({
+          type: 'subscribe',
+          sessionId: sessionId,
+        })
+      );
+
+      // Wait for buffer messages and ensure they're valid
+      const messages: Buffer[] = [];
+      await new Promise<void>((resolve) => {
+        const messageHandler = (data: Buffer) => {
+          messages.push(data);
+          if (messages.length >= 2) {
+            ws.off('message', messageHandler);
+            resolve();
+          }
+        };
+        ws.on('message', messageHandler);
+
+        // Trigger some output
+        fetch(`http://localhost:${serverPort}/api/sessions/${sessionId}/input`, {
+          method: 'POST',
+          headers: {
+            Authorization: authHeader,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ data: 'echo "test1"\necho "test2"\n' }),
+        });
+      });
+
+      // Verify all received messages are properly formatted
+      for (const msg of messages) {
+        if (msg.length > 0 && msg.readUInt8(0) === 0xbf) {
+          // It's a binary buffer message
+          expect(msg.length).toBeGreaterThan(5); // At least magic + length + some data
+          const sessionIdLength = msg.readUInt32LE(1);
+          expect(sessionIdLength).toBeGreaterThan(0);
+          expect(sessionIdLength).toBeLessThan(1000); // Reasonable limit
+          expect(msg.length).toBeGreaterThan(5 + sessionIdLength); // Has terminal data
+        }
+      }
+
+      expect(errorOccurred).toBe(false);
+      ws.close();
+    });
+
+    it('should handle rapid malformed message spam', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}/buffers`, {
+        headers: { Authorization: authHeader },
+      });
+
+      await new Promise<void>((resolve) => {
+        ws.on('open', resolve);
+      });
+
+      // Spam various malformed messages
+      for (let i = 0; i < 100; i++) {
+        if (i % 4 === 0) {
+          ws.send('invalid json');
+        } else if (i % 4 === 1) {
+          ws.send(Buffer.from([0xff, 0xfe, i]));
+        } else if (i % 4 === 2) {
+          ws.send('{"type": "unknown_' + i + '"}');
+        } else {
+          ws.send(Buffer.alloc(0));
+        }
+      }
+
+      // Connection should remain open
+      await sleep(200);
+      expect(ws.readyState).toBe(WebSocket.OPEN);
+
+      // Should still be able to subscribe normally
+      ws.send(
+        JSON.stringify({
+          type: 'subscribe',
+          sessionId: sessionId,
+        })
+      );
+
+      // Should receive a buffer message
+      const bufferMessage = await new Promise<Buffer>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Timeout')), 2000);
+        ws.once('message', (data: Buffer) => {
+          clearTimeout(timeout);
+          resolve(data);
+        });
+      });
+
+      expect(bufferMessage).toBeInstanceOf(Buffer);
+      expect(bufferMessage.readUInt8(0)).toBe(0xbf);
 
       ws.close();
     });

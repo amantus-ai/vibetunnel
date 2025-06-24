@@ -185,7 +185,9 @@ export class TerminalTest extends LitElement {
               placeholder="Type custom text to send..."
               class="flex-1 px-3 py-2 bg-black/80 text-foreground border border-gray-800 rounded font-mono text-sm placeholder-gray-600 focus:outline-none focus:border-emerald-400"
               .value=${this.inputText}
-              @input=${(e: Event) => (this.inputText = (e.target as HTMLInputElement).value)}
+              @input=${(e: Event) => {
+                this.inputText = (e.target as HTMLInputElement).value;
+              }}
               @keydown=${(e: KeyboardEvent) => {
                 if (e.key === 'Enter') {
                   this.sendCustomInput();

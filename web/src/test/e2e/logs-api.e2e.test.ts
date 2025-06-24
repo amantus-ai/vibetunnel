@@ -28,7 +28,7 @@ async function startServer(
 ): Promise<{ process: ChildProcess; port: number }> {
   const cliPath = path.join(process.cwd(), 'src', 'cli.ts');
 
-  const serverProcess = spawn('npx', ['tsx', cliPath, ...args], {
+  const serverProcess = spawn('pnpm', ['exec', 'tsx', cliPath, ...args], {
     env: { ...process.env, ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

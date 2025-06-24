@@ -155,7 +155,9 @@ export class AuthLogin extends LitElement {
                 <div class="bg-status-error text-dark-bg px-4 py-2 rounded mb-4 font-mono text-sm">
                   ${this.error}
                   <button
-                    @click=${() => (this.error = '')}
+                    @click=${() => {
+                      this.error = '';
+                    }}
                     class="ml-2 text-dark-bg hover:text-dark-text"
                   >
                     ✕
@@ -172,7 +174,9 @@ export class AuthLogin extends LitElement {
                 >
                   ${this.success}
                   <button
-                    @click=${() => (this.success = '')}
+                    @click=${() => {
+                      this.success = '';
+                    }}
                     class="ml-2 text-dark-bg hover:text-dark-text"
                   >
                     ✕
@@ -215,8 +219,9 @@ export class AuthLogin extends LitElement {
                           class="input-field"
                           placeholder="Enter your system password"
                           .value=${this.loginPassword}
-                          @input=${(e: Event) =>
-                            (this.loginPassword = (e.target as HTMLInputElement).value)}
+                          @input=${(e: Event) => {
+                            this.loginPassword = (e.target as HTMLInputElement).value;
+                          }}
                           ?disabled=${this.loading}
                           required
                         />

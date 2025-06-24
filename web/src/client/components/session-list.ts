@@ -186,7 +186,7 @@ export class SessionList extends LitElement {
                             <div
                               class="bg-dark-bg-secondary p-4 rounded-lg font-mono text-xs space-y-2"
                             >
-                              <div class="text-green-400">vt npm run dev</div>
+                              <div class="text-green-400">vt pnpm run dev</div>
                               <div class="text-dark-text-muted pl-4"># Monitor your dev server</div>
 
                               <div class="text-green-400">vt claude --dangerously...</div>

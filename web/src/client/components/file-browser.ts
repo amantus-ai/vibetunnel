@@ -700,7 +700,9 @@ export class FileBrowser extends LitElement {
                           this.isMobile
                             ? html`
                               <button
-                                @click=${() => (this.mobileView = 'list')}
+                                @click=${() => {
+                                  this.mobileView = 'list';
+                                }}
                                 class="text-dark-text-muted hover:text-dark-text transition-colors flex-shrink-0"
                                 title="Back to files"
                               >

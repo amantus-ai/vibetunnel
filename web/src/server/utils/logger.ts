@@ -14,7 +14,7 @@ let debugMode = false;
 let logFileHandle: fs.WriteStream | null = null;
 
 // ANSI color codes for stripping from file output
-// eslint-disable-next-line no-control-regex
+// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
 const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
 
 /**

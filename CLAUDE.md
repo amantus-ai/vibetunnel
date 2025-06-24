@@ -16,24 +16,24 @@ VibeTunnel is a macOS application that allows users to access their terminal ses
 
 ## Web Development Commands
 
-**IMPORTANT**: The user has `npm run dev` running - DO NOT manually build the web project!
+**IMPORTANT**: The user has `pnpm run dev` running - DO NOT manually build the web project!
 
 In the `web/` directory:
 
 ```bash
 # Development (user already has this running)
-npm run dev
+pnpm run dev
 
 # Code quality (MUST run before commit)
-npm run lint          # Check for linting errors
-npm run lint:fix      # Auto-fix linting errors
-npm run format        # Format with Prettier
-npm run typecheck     # Check TypeScript types
+pnpm run lint          # Check for linting errors
+pnpm run lint:fix      # Auto-fix linting errors
+pnpm run format        # Format with Prettier
+pnpm run typecheck     # Check TypeScript types
 
 # Testing (only when requested)
-npm run test
-npm run test:coverage
-npm run test:e2e
+pnpm run test
+pnpm run test:coverage
+pnpm run test:e2e
 ```
 
 ## macOS Development Commands

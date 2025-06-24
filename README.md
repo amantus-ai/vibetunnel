@@ -32,7 +32,7 @@ VibeTunnel lives in your menu bar. Click the icon to start the server.
 
 ```bash
 # Run any command in the browser
-vt npm run dev
+vt pnpm run dev
 
 # Monitor AI agents
 vt claude --dangerously-skip-permissions
@@ -122,13 +122,13 @@ EOF
 
 # Build the web server
 cd web
-npm install
-npm run build
+pnpm install
+pnpm run build
 
 # Optional: Build with custom Node.js for smaller binary (46% size reduction)
 # export VIBETUNNEL_USE_CUSTOM_NODE=YES
 # node build-custom-node.js  # Build optimized Node.js (one-time, ~20 min)
-# npm run build              # Will use custom Node.js automatically
+# pnpm run build              # Will use custom Node.js automatically
 
 # Build the macOS app
 cd ../mac

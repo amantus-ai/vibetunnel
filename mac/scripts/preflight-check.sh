@@ -26,7 +26,7 @@
 # DEPENDENCIES:
 #   - git (repository management)
 #   - cargo/rustup (Rust toolchain)
-#   - node/npm (web frontend build)
+#   - node/pnpm (web frontend build)
 #   - gh (GitHub CLI)
 #   - sign_update (Sparkle EdDSA signing)
 #   - xcbeautify (optional, build output formatting)

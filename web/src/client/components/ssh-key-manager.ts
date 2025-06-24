@@ -159,7 +159,9 @@ export class SSHKeyManager extends LitElement {
                 <div class="bg-status-error text-dark-bg px-4 py-2 rounded mb-4 font-mono text-sm">
                   ${this.error}
                   <button
-                    @click=${() => (this.error = '')}
+                    @click=${() => {
+                      this.error = '';
+                    }}
                     class="ml-2 text-dark-bg hover:text-dark-text"
                   >
                     ✕
@@ -176,7 +178,9 @@ export class SSHKeyManager extends LitElement {
                 >
                   ${this.success}
                   <button
-                    @click=${() => (this.success = '')}
+                    @click=${() => {
+                      this.success = '';
+                    }}
                     class="ml-2 text-dark-bg hover:text-dark-text"
                   >
                     ✕
@@ -190,7 +194,9 @@ export class SSHKeyManager extends LitElement {
             <div class="flex items-center justify-between mb-4">
               <h3 class="font-mono text-lg text-dark-text">SSH Keys</h3>
               <button
-                @click=${() => (this.showAddForm = !this.showAddForm)}
+                @click=${() => {
+                  this.showAddForm = !this.showAddForm;
+                }}
                 class="btn-primary"
                 ?disabled=${this.loading}
               >
@@ -218,8 +224,9 @@ export class SSHKeyManager extends LitElement {
                             class="input-field"
                             placeholder="Enter name for new key"
                             .value=${this.newKeyName}
-                            @input=${(e: Event) =>
-                              (this.newKeyName = (e.target as HTMLInputElement).value)}
+                            @input=${(e: Event) => {
+                              this.newKeyName = (e.target as HTMLInputElement).value;
+                            }}
                             ?disabled=${this.loading}
                           />
                         </div>
@@ -240,8 +247,9 @@ export class SSHKeyManager extends LitElement {
                           class="input-field"
                           placeholder="Enter password to encrypt private key (optional)"
                           .value=${this.newKeyPassword}
-                          @input=${(e: Event) =>
-                            (this.newKeyPassword = (e.target as HTMLInputElement).value)}
+                          @input=${(e: Event) => {
+                            this.newKeyPassword = (e.target as HTMLInputElement).value;
+                          }}
                           ?disabled=${this.loading}
                         />
                         <p class="text-dark-text-muted text-xs mt-1">
@@ -273,8 +281,9 @@ export class SSHKeyManager extends LitElement {
                           class="input-field"
                           placeholder="Enter name for imported key"
                           .value=${this.importKeyName}
-                          @input=${(e: Event) =>
-                            (this.importKeyName = (e.target as HTMLInputElement).value)}
+                          @input=${(e: Event) => {
+                            this.importKeyName = (e.target as HTMLInputElement).value;
+                          }}
                           ?disabled=${this.loading}
                         />
                       </div>
@@ -288,8 +297,9 @@ export class SSHKeyManager extends LitElement {
                           rows="6"
                           placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
                           .value=${this.importKeyContent}
-                          @input=${(e: Event) =>
-                            (this.importKeyContent = (e.target as HTMLTextAreaElement).value)}
+                          @input=${(e: Event) => {
+                            this.importKeyContent = (e.target as HTMLTextAreaElement).value;
+                          }}
                           ?disabled=${this.loading}
                         ></textarea>
                         <p class="text-dark-text-muted text-xs mt-1">
@@ -324,7 +334,9 @@ export class SSHKeyManager extends LitElement {
                   <div class="flex items-center justify-between mb-4">
                     <h4 class="text-dark-text font-mono text-lg">Setup Instructions</h4>
                     <button
-                      @click=${() => (this.showInstructions = false)}
+                      @click=${() => {
+                        this.showInstructions = false;
+                      }}
                       class="text-dark-text-muted hover:text-dark-text"
                     >
                       ✕

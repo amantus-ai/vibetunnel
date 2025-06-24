@@ -62,7 +62,7 @@ describe('BufferSubscriptionService', () => {
         clearTimeout: global.clearTimeout,
         setInterval: global.setInterval,
         clearInterval: global.clearInterval,
-      } as any;
+      } as unknown as Window & typeof globalThis;
     } else {
       // Mock window.location.host
       Object.defineProperty(window, 'location', {
@@ -94,7 +94,7 @@ describe('BufferSubscriptionService', () => {
     }
     // Clean up global window mock
     if (typeof window === 'undefined' && global.window) {
-      delete (global as any).window;
+      delete (global as { window?: unknown }).window;
     }
   });
 

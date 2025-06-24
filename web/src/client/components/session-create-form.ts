@@ -53,7 +53,7 @@ export class SessionCreateForm extends LitElement {
     { label: 'bash', command: 'bash' },
     { label: 'python3', command: 'python3' },
     { label: 'node', command: 'node' },
-    { label: 'npm run dev', command: 'npm run dev' },
+    { label: 'pnpm run dev', command: 'pnpm run dev' },
   ];
 
   private readonly STORAGE_KEY_WORKING_DIR = 'vibetunnel_last_working_dir';
@@ -410,7 +410,7 @@ export class SessionCreateForm extends LitElement {
                       ?disabled=${this.disabled || this.isCreating}
                     >
                       ${label === 'claude' ? '✨ ' : ''}${
-                        label === 'npm run dev' ? '▶️ ' : ''
+                        label === 'pnpm run dev' ? '▶️ ' : ''
                       }${label}
                     </button>
                   `

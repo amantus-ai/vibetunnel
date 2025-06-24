@@ -1491,7 +1491,9 @@ export class SessionView extends LitElement {
                   <div class="p-4 flex gap-2" style="border-top: 1px solid #444;">
                     <button
                       class="font-mono px-3 py-2 text-xs transition-colors btn-ghost"
-                      @click=${() => (this.showMobileInput = false)}
+                      @click=${() => {
+                        this.showMobileInput = false;
+                      }}
                     >
                       CANCEL
                     </button>
@@ -1601,7 +1603,9 @@ export class SessionView extends LitElement {
                   <div class="flex gap-2 justify-center">
                     <button
                       class="font-mono px-4 py-2 text-sm transition-all cursor-pointer btn-ghost"
-                      @click=${() => (this.showCtrlAlpha = false)}
+                      @click=${() => {
+                        this.showCtrlAlpha = false;
+                      }}
                     >
                       CANCEL
                     </button>

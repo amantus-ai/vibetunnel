@@ -1,5 +1,6 @@
 import { fixture } from '@open-wc/testing';
 import { LitElement, type TemplateResult } from 'lit';
+import { vi } from 'vitest';
 import type { ActivityStatus, SessionData } from '../types/test-types';
 
 /**

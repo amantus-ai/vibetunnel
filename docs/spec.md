@@ -325,28 +325,22 @@ The iOS app implements the same binary buffer protocol as the web client:
 
 ### Authentication
 
-**Basic Authentication**:
-- Optional username/password protection
-- Credentials stored in macOS Keychain
-- Passed to server via command-line arguments
-- HTTP Basic Auth for all API endpoints
+**Authentication Modes**:
+- System user password authentication (default)
+- Optional SSH key authentication (`--enable-ssh-keys`)
+- No authentication mode (`--no-auth`)
+- Local bypass authentication (`--allow-local-bypass`)
+
+**Local Bypass Security**:
+- Allows localhost connections to bypass authentication
+- Optional token authentication via `--local-auth-token`
+- Implements anti-spoofing checks (IP, headers, hostname)
+- See `web/SECURITY.md` for detailed security implications
 
 **Implementation**:
-```typescript
-// web/src/server/middleware/auth.ts
-export function createAuthMiddleware(password?: string): RequestHandler {
-  if (!password) return (req, res, next) => next();
-  
-  return (req, res, next) => {
-    const auth = req.headers.authorization;
-    if (!auth || !validateBasicAuth(auth, password)) {
-      res.status(401).send('Authentication required');
-      return;
-    }
-    next();
-  };
-}
-```
+- Main auth middleware: `web/src/server/middleware/auth.ts`
+- Local bypass logic: `web/src/server/middleware/auth.ts:24-87`
+- Security checks: `web/src/server/middleware/auth.ts:25-48`
 
 ### Network Security
 
