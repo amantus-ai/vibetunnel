@@ -1,5 +1,5 @@
-import type { NextFunction, Request, Response } from 'express';
-import type { AuthService } from '../services/auth-service.js';
+import { Request, Response, NextFunction } from 'express';
+import { AuthService } from '../services/auth-service.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('auth');
@@ -15,9 +15,9 @@ interface AuthConfig {
   localAuthToken?: string; // Token for localhost authentication
 }
 
-export interface AuthenticatedRequest extends Request {
+interface AuthenticatedRequest extends Request {
   userId?: string;
-  authMethod?: 'ssh-key' | 'password' | 'hq-bearer' | 'no-auth' | 'local-bypass' | 'basic';
+  authMethod?: 'ssh-key' | 'password' | 'hq-bearer' | 'no-auth' | 'local-bypass';
   isHQRequest?: boolean;
 }
 
@@ -48,11 +48,12 @@ function isLocalRequest(req: Request): boolean {
 }
 
 export function createAuthMiddleware(config: AuthConfig) {
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    // Skip auth for health check endpoint, auth endpoints, and push notifications
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    // Skip auth for health check endpoint, auth endpoints, client logging, and push notifications
     if (
       req.path === '/api/health' ||
       req.path.startsWith('/api/auth') ||
+      req.path.startsWith('/api/logs') ||
       req.path.startsWith('/api/push')
     ) {
       return next();
@@ -92,37 +93,13 @@ export function createAuthMiddleware(config: AuthConfig) {
     const authHeader = req.headers.authorization;
     const tokenQuery = req.query.token as string;
 
-    // Check for Basic auth (username:password)
-    if (authHeader?.startsWith('Basic ')) {
-      const credentials = authHeader.substring(6);
-      const decoded = Buffer.from(credentials, 'base64').toString('utf-8');
-      const colonIndex = decoded.indexOf(':');
-      if (colonIndex === -1) {
-        logger.error('Invalid Basic auth format: missing colon');
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-      const username = decoded.substring(0, colonIndex);
-      const password = decoded.substring(colonIndex + 1);
-
-      if (config.authService) {
-        const result = await config.authService.authenticateWithPassword(username, password);
-        if (result.success) {
-          req.userId = result.userId;
-          req.authMethod = 'basic';
-          return next();
-        } else {
-          logger.error('Invalid Basic auth credentials');
-        }
-      }
-    }
-
     // Check for Bearer token
-    if (authHeader?.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
 
-      // If this server has a bearer token (i.e., it's a remote server), check if the incoming token matches
-      if (!config.isHQMode && config.bearerToken && token === config.bearerToken) {
-        logger.debug('Valid bearer token authentication from HQ');
+      // In HQ mode, check if this is a valid HQ-to-remote bearer token
+      if (config.isHQMode && config.bearerToken && token === config.bearerToken) {
+        logger.debug('Valid HQ bearer token authentication');
         req.isHQRequest = true;
         req.authMethod = 'hq-bearer';
         return next();
@@ -136,7 +113,7 @@ export function createAuthMiddleware(config: AuthConfig) {
           req.authMethod = 'ssh-key'; // JWT tokens are issued for SSH key auth
           return next();
         } else {
-          logger.error(`Invalid JWT token - HQ mode: ${config.isHQMode}, has bearer: ${!!config.bearerToken}, token: ${token.substring(0, 8)}...`);
+          logger.error('Invalid JWT token');
         }
       } else if (config.authService) {
         const verification = config.authService.verifyToken(token);
@@ -145,10 +122,16 @@ export function createAuthMiddleware(config: AuthConfig) {
           req.authMethod = 'password'; // Password auth only
           return next();
         } else {
-          logger.error(`Invalid JWT token - HQ mode: ${config.isHQMode}, has bearer: ${!!config.bearerToken}, token: ${token.substring(0, 8)}...`);
+          logger.error('Invalid JWT token');
         }
       }
 
+      // For non-HQ mode, check if bearer token matches remote expectation
+      if (!config.isHQMode && config.bearerToken && token === config.bearerToken) {
+        logger.debug('Valid remote bearer token authentication');
+        req.authMethod = 'hq-bearer';
+        return next();
+      }
 
       logger.error(
         `Bearer token rejected - HQ mode: ${config.isHQMode}, token matches: ${config.bearerToken === token}`
@@ -170,16 +153,6 @@ export function createAuthMiddleware(config: AuthConfig) {
 
     // No valid auth provided
     logger.error(`Unauthorized request to ${req.method} ${req.path} from ${req.ip}`);
-    logger.debug('Auth debug:', {
-      hasAuthHeader: !!authHeader,
-      authHeaderPrefix: authHeader ? `${authHeader.substring(0, 20)}...` : 'none',
-      hasTokenQuery: !!tokenQuery,
-      config: {
-        noAuth: config.noAuth,
-        isHQMode: config.isHQMode,
-        hasAuthService: !!config.authService,
-      },
-    });
     res.setHeader('WWW-Authenticate', 'Bearer realm="VibeTunnel"');
     res.status(401).json({ error: 'Authentication required' });
   };
