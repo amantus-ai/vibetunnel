@@ -12,7 +12,7 @@ permissions:
 jobs:
   lint:
     name: Lint Mac Code
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64]
     
     steps:
     - name: Checkout code
@@ -38,24 +38,15 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-spm-
     
-    - name: Install linting tools
+    - name: Install linting tools via Brewfile
       continue-on-error: true
       shell: bash
       run: |
-        # Check if tools are already installed, install if not
-        if ! which swiftlint >/dev/null 2>&1; then
-          echo "Installing swiftlint..."
-          brew install swiftlint || echo "Failed to install swiftlint"
-        else
-          echo "swiftlint is already installed at: $(which swiftlint)"
-        fi
-        
-        if ! which swiftformat >/dev/null 2>&1; then
-          echo "Installing swiftformat..."
-          brew install swiftformat || echo "Failed to install swiftformat"
-        else
-          echo "swiftformat is already installed at: $(which swiftformat)"
-        fi
+        cat > Brewfile <<EOF
+        brew "swiftlint"
+        brew "swiftformat"
+        EOF
+        brew bundle --no-lock
         
         # Show final status
         echo "SwiftLint: $(which swiftlint || echo 'not found')"
@@ -121,7 +112,7 @@ jobs:
 
   build-and-test:
     name: Build and Test macOS App
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64]
     # Run in parallel with lint
     
     steps:
@@ -148,41 +139,17 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-spm-
         
-    - name: Install build tools
+    - name: Install build tools via Brewfile
       continue-on-error: true
       shell: bash
       run: |
-        # Check if xcbeautify is already installed, install if not
-        if ! which xcbeautify >/dev/null 2>&1; then
-          echo "Installing xcbeautify..."
-          brew install xcbeautify || echo "Failed to install xcbeautify"
-        else
-          echo "xcbeautify is already installed at: $(which xcbeautify)"
-        fi
-        
-        # Check if go is already installed, install if not
-        if ! which go >/dev/null 2>&1; then
-          echo "Installing go..."
-          brew install go || echo "Failed to install go"
-        else
-          echo "go is already installed at: $(which go)"
-        fi
-        
-        # Install bc for floating-point comparisons in coverage
-        if ! which bc >/dev/null 2>&1; then
-          echo "Installing bc..."
-          brew install bc || echo "Failed to install bc"
-        else
-          echo "bc is already installed at: $(which bc)"
-        fi
-        
-        # Install xcparse for coverage extraction
-        if ! which xcparse >/dev/null 2>&1; then
-          echo "Installing xcparse..."
-          brew install chargepoint/xcparse/xcparse || echo "Failed to install xcparse"
-        else
-          echo "xcparse is already installed at: $(which xcparse)"
-        fi
+        cat > Brewfile <<EOF
+        brew "xcbeautify"
+        brew "go"
+        brew "bc"
+        # xcparse removed - using built-in xccov instead
+        EOF
+        brew bundle --no-lock
         
         # Show final status
         echo "xcbeautify: $(which xcbeautify || echo 'not found')"
@@ -201,7 +168,7 @@ jobs:
         echo "Schemes in workspace:"
         xcodebuild -workspace VibeTunnel.xcworkspace -list || echo "Failed to list workspace schemes"
         # Resolve dependencies
-        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace || echo "Dependency resolution completed"
+        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
         
     - name: Build Debug (Native Architecture)
       timeout-minutes: 30
@@ -212,6 +179,7 @@ jobs:
           -scheme VibeTunnel-Mac \
           -configuration Debug \
           -destination "platform=macOS" \
+          -showBuildTimingSummary \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
@@ -219,6 +187,7 @@ jobs:
           ENABLE_HARDENED_RUNTIME=NO \
           PROVISIONING_PROFILE_SPECIFIER="" \
           DEVELOPMENT_TEAM="" \
+          COMPILER_INDEX_STORE_ENABLE=NO \
           | xcbeautify
           
     - name: Build Release (Native Architecture)
@@ -231,6 +200,7 @@ jobs:
           -scheme VibeTunnel-Mac \
           -configuration Release \
           -destination "platform=macOS" \
+          -showBuildTimingSummary \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
@@ -238,6 +208,7 @@ jobs:
           ENABLE_HARDENED_RUNTIME=NO \
           PROVISIONING_PROFILE_SPECIFIER="" \
           DEVELOPMENT_TEAM="" \
+          COMPILER_INDEX_STORE_ENABLE=NO \
           | xcbeautify
           
     - name: Run tests with coverage
@@ -257,6 +228,7 @@ jobs:
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
+          COMPILER_INDEX_STORE_ENABLE=NO \
           | xcbeautify || {
           echo "::error::Tests failed"
           echo "result=1" >> $GITHUB_OUTPUT
@@ -264,44 +236,34 @@ jobs:
         }
         echo "result=0" >> $GITHUB_OUTPUT
         
-    - name: Extract coverage data
+    - name: Extract coverage summary
       if: always()
       id: coverage
       run: |
         cd mac
         if [ -f TestResults.xcresult ]; then
-          # Extract code coverage report
-          xcparse codecov TestResults.xcresult --json > coverage.json || {
-            echo "::error::Failed to extract coverage data with xcparse"
-            echo '{"error": "Failed to extract coverage data"}' > coverage-summary.json
-            echo "coverage_result=failure" >> $GITHUB_OUTPUT
-            exit 0
+          # Use faster xcrun command to extract coverage percentage
+          COVERAGE_PCT=$(xcrun xccov view --report --json TestResults.xcresult 2>/dev/null | jq -r '.lineCoverage // 0' | awk '{printf "%.1f", $1 * 100}') || {
+            echo "::warning::Failed to extract coverage with xccov, trying xcparse as fallback"
+            # Fallback to xcparse if xccov fails
+            xcparse codecov TestResults.xcresult --json > coverage.json 2>/dev/null || {
+              echo '{"error": "Failed to extract coverage data"}' > coverage-summary.json
+              echo "coverage_result=failure" >> $GITHUB_OUTPUT
+              exit 0
+            }
+            COVERAGE_PCT=$(cat coverage.json | jq -r '.lineCoverage // 0' | awk '{printf "%.1f", $1 * 100}')
           }
           
-          # Parse coverage percentage from the JSON
-          if [ -f coverage.json ]; then
-            # Extract overall coverage percentage
-            COVERAGE_PCT=$(cat coverage.json | jq -r '.lineCoverage // 0' | awk '{printf "%.1f", $1 * 100}')
-            
-            # Create summary JSON safely
-            jq -n \
-              --arg coverage "$COVERAGE_PCT" \
-              --argjson lineCoverage "$(cat coverage.json | jq -r '.lineCoverage // 0')" \
-              --argjson executableLines "$(cat coverage.json | jq -r '.executableLines // 0')" \
-              --argjson coveredLines "$(cat coverage.json | jq -r '.coveredLines // 0')" \
-              '{coverage: $coverage, lineCoverage: $lineCoverage, executableLines: $executableLines, coveredLines: $coveredLines}' > coverage-summary.json
-            
-            echo "Coverage: ${COVERAGE_PCT}%"
-            
-            # Check if coverage meets threshold (75% for Swift projects)
-            THRESHOLD=75
-            if (( $(echo "$COVERAGE_PCT >= $THRESHOLD" | bc -l) )); then
-              echo "coverage_result=success" >> $GITHUB_OUTPUT
-            else
-              echo "coverage_result=failure" >> $GITHUB_OUTPUT
-            fi
+          # Create minimal summary JSON
+          echo "{\"coverage\": \"$COVERAGE_PCT\"}" > coverage-summary.json
+          
+          echo "Coverage: ${COVERAGE_PCT}%"
+          
+          # Check if coverage meets threshold (75% for Swift projects)
+          THRESHOLD=75
+          if (( $(echo "$COVERAGE_PCT >= $THRESHOLD" | bc -l) )); then
+            echo "coverage_result=success" >> $GITHUB_OUTPUT
           else
-            echo '{"error": "No coverage data in JSON"}' > coverage-summary.json
             echo "coverage_result=failure" >> $GITHUB_OUTPUT
           fi
         else

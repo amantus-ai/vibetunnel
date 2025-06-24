@@ -28,24 +28,25 @@ jobs:
         xcodebuild -version
         swift --version
     
-    - name: Install linting tools
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData
+          ~/.swiftpm
+        key: ${{ runner.os }}-spm-${{ hashFiles('ios/VibeTunnel-iOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
+    
+    - name: Install linting tools via Brewfile
       continue-on-error: true
       shell: bash
       run: |
-        # Check if tools are already installed, install if not
-        if ! which swiftlint >/dev/null 2>&1; then
-          echo "Installing swiftlint..."
-          brew install swiftlint || echo "Failed to install swiftlint"
-        else
-          echo "swiftlint is already installed at: $(which swiftlint)"
-        fi
-        
-        if ! which swiftformat >/dev/null 2>&1; then
-          echo "Installing swiftformat..."
-          brew install swiftformat || echo "Failed to install swiftformat"
-        else
-          echo "swiftformat is already installed at: $(which swiftformat)"
-        fi
+        cat > Brewfile <<EOF
+        brew "swiftlint"
+        brew "swiftformat"
+        EOF
+        brew bundle --no-lock
         
         # Show final status
         echo "SwiftLint: $(which swiftlint || echo 'not found')"
@@ -123,6 +124,16 @@ jobs:
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: '16.3'
+    
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData
+          ~/.swiftpm
+        key: ${{ runner.os }}-spm-${{ hashFiles('ios/VibeTunnel-iOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
         
     - name: Install build tools
       run: |
@@ -131,7 +142,7 @@ jobs:
     - name: Resolve Dependencies
       run: |
         echo "Resolving iOS package dependencies..."
-        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace || echo "Dependency resolution completed"
+        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
         
     - name: Show build settings
       run: |
@@ -145,6 +156,7 @@ jobs:
           -scheme VibeTunnel-iOS \
           -destination "generic/platform=iOS" \
           -configuration Release \
+          -showBuildTimingSummary \
           CODE_SIGNING_ALLOWED=NO \
           CODE_SIGNING_REQUIRED=NO \
           ONLY_ACTIVE_ARCH=NO \
@@ -187,6 +199,16 @@ jobs:
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: '16.3'
+    
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData
+          ~/.swiftpm
+        key: ${{ runner.os }}-spm-${{ hashFiles('ios/VibeTunnel-iOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
         
     - name: Install test tools
       run: |
@@ -195,7 +217,7 @@ jobs:
     - name: Resolve Test Dependencies
       run: |
         echo "Resolving dependencies for tests..."
-        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace || echo "Dependency resolution completed"
+        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
         
     - name: Create and boot simulator
       run: |
@@ -229,9 +251,11 @@ jobs:
           -scheme VibeTunnel-iOS \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
           -resultBundlePath ios/TestResults.xcresult \
+          -enableCodeCoverage YES \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
+          COMPILER_INDEX_STORE_ENABLE=NO \
           -quiet \
           2>&1 | xcpretty || {
             echo "::error::iOS tests failed"
@@ -243,8 +267,106 @@ jobs:
         # Shutdown simulator
         xcrun simctl shutdown "$SIMULATOR_ID" || true
         
+    - name: Extract coverage summary
+      if: always()
+      id: coverage
+      run: |
+        cd ios
+        if [ -f TestResults.xcresult ]; then
+          # Use faster xcrun command to extract coverage percentage
+          COVERAGE_PCT=$(xcrun xccov view --report --json TestResults.xcresult 2>/dev/null | jq -r '.lineCoverage // 0' | awk '{printf "%.1f", $1 * 100}') || {
+            echo "::warning::Failed to extract coverage with xccov"
+            echo '{"error": "Failed to extract coverage data"}' > coverage-summary.json
+            echo "coverage_result=failure" >> $GITHUB_OUTPUT
+            exit 0
+          }
+          
+          # Create minimal summary JSON
+          echo "{\"coverage\": \"$COVERAGE_PCT\"}" > coverage-summary.json
+          
+          echo "Coverage: ${COVERAGE_PCT}%"
+          
+          # Check if coverage meets threshold (75% for Swift projects)
+          THRESHOLD=75
+          if (( $(echo "$COVERAGE_PCT >= $THRESHOLD" | bc -l) )); then
+            echo "coverage_result=success" >> $GITHUB_OUTPUT
+          else
+            echo "coverage_result=failure" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo '{"error": "No test results bundle found"}' > coverage-summary.json
+          echo "coverage_result=failure" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Upload coverage artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-coverage
+        path: |
+          ios/coverage-summary.json
+          ios/TestResults.xcresult
+        retention-days: 1
+        
     - name: Upload test logs on failure
       if: failure()
       run: |
         echo "Tests failed. Check the logs above for details."
         # Swift Testing doesn't produce xcresult bundles with run-tests.sh
+
+  report-coverage:
+    name: Report iOS Coverage
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: always() && github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download coverage artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: ios-coverage
+        path: ios-coverage-artifacts
+
+    - name: Read coverage summary
+      id: coverage
+      run: |
+        if [ -f ios-coverage-artifacts/coverage-summary.json ]; then
+          # Read the coverage summary
+          COVERAGE_JSON=$(cat ios-coverage-artifacts/coverage-summary.json)
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$COVERAGE_JSON" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Extract coverage percentage
+          COVERAGE_PCT=$(echo "$COVERAGE_JSON" | jq -r '.coverage // 0')
+          
+          # Check if coverage meets threshold (75% for Swift)
+          THRESHOLD=75
+          if (( $(echo "$COVERAGE_PCT >= $THRESHOLD" | bc -l) )); then
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "result=failure" >> $GITHUB_OUTPUT
+          fi
+          
+          # Format output with warning indicator if below threshold
+          if (( $(echo "$COVERAGE_PCT < $THRESHOLD" | bc -l) )); then
+            echo "output=• Coverage: ${COVERAGE_PCT}% ⚠️ (threshold: ${THRESHOLD}%)" >> $GITHUB_OUTPUT
+          else
+            echo "output=• Coverage: ${COVERAGE_PCT}% (threshold: ${THRESHOLD}%)" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "summary={\"error\": \"No coverage data found\"}" >> $GITHUB_OUTPUT
+          echo "result=failure" >> $GITHUB_OUTPUT
+          echo "output=Coverage data not found" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Report Coverage Results
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'iOS Test Coverage'
+        lint-result: ${{ steps.coverage.outputs.result }}
+        lint-output: ${{ steps.coverage.outputs.output }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
