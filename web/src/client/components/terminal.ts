@@ -47,6 +47,14 @@ export class Terminal extends LitElement {
   private totalRenderTime = 0;
   private lastRenderTime = 0;
 
+  // Smart gesture detection for mobile
+  private touchStartTime = 0;
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private touchHasMoved = false;
+  private readonly TAP_THRESHOLD_MS = 200;
+  private readonly TAP_MOVEMENT_THRESHOLD_PX = 10;
+
   get viewportY() {
     return this._viewportY;
   }
@@ -562,6 +570,57 @@ export class Terminal extends LitElement {
     this.container.addEventListener('pointermove', handlePointerMove);
     this.container.addEventListener('pointerup', handlePointerUp);
     this.container.addEventListener('pointercancel', handlePointerCancel);
+
+    // Add smart gesture detection for tap vs scroll
+    this.setupSmartGestureDetection();
+  }
+
+  private setupSmartGestureDetection() {
+    if (!this.container) return;
+
+    // Track touch events for tap detection
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return; // Only handle single touch
+
+      this.touchStartTime = Date.now();
+      this.touchStartX = e.touches[0].clientX;
+      this.touchStartY = e.touches[0].clientY;
+      this.touchHasMoved = false;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+
+      const moveX = Math.abs(e.touches[0].clientX - this.touchStartX);
+      const moveY = Math.abs(e.touches[0].clientY - this.touchStartY);
+
+      if (moveX > this.TAP_MOVEMENT_THRESHOLD_PX || moveY > this.TAP_MOVEMENT_THRESHOLD_PX) {
+        this.touchHasMoved = true;
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const duration = Date.now() - this.touchStartTime;
+
+      // Check if it's a tap (short duration, minimal movement)
+      if (!this.touchHasMoved && duration < this.TAP_THRESHOLD_MS) {
+        // It's a tap! Check if we're on mobile and should open keyboard
+        const sessionView = this.closest('session-view') as any;
+        if (sessionView && sessionView.isMobile && sessionView.useDirectKeyboard) {
+          // Call the method directly to maintain the user interaction context
+          sessionView.openMobileKeyboardDirect(e);
+        }
+
+        // Prevent default to avoid any side effects
+        e.preventDefault();
+      }
+      // Otherwise, it was a scroll gesture - let it proceed normally
+    };
+
+    // Add the touch event listeners
+    this.container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    this.container.addEventListener('touchmove', handleTouchMove, { passive: true });
+    this.container.addEventListener('touchend', handleTouchEnd, { passive: false });
   }
 
   private scrollViewport(deltaLines: number) {
@@ -1227,16 +1286,23 @@ export class Terminal extends LitElement {
   };
 
   private handleClick = () => {
-    // Don't handle clicks if disabled (e.g., for mobile direct keyboard mode)
+    // Don't handle clicks if disabled
     if (this.disableClick) {
       return;
     }
 
-    // Focus the terminal container so it can receive paste events
-    if (this.container) {
+    // On desktop, focus the terminal container so it can receive paste events
+    // On mobile, the smart gesture detection handles tap vs scroll
+    if (this.container && !this.isMobileDevice()) {
       this.container.focus();
     }
   };
+
+  private isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+  }
 
   render() {
     return html`
@@ -1245,7 +1311,7 @@ export class Terminal extends LitElement {
         .terminal-container {
           font-size: ${this.fontSize}px;
           line-height: ${this.fontSize * 1.2}px;
-          touch-action: none !important;
+          touch-action: pan-y !important;
         }
 
         .terminal-line {

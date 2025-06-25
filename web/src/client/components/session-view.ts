@@ -78,7 +78,8 @@ export class SessionView extends LitElement {
   private loadingInterval: number | null = null;
   private keyboardListenerAdded = false;
   private touchListenersAdded = false;
-  private hiddenInput: HTMLInputElement | null = null;
+  private hiddenInput: HTMLInputElement | null = null; // Will be removed after smart gesture implementation
+  private tempInput: HTMLInputElement | null = null;
   private resizeTimeout: number | null = null;
   private lastResizeWidth = 0;
   private lastResizeHeight = 0;
@@ -348,6 +349,12 @@ export class SessionView extends LitElement {
     if (this.hiddenInput) {
       this.hiddenInput.remove();
       this.hiddenInput = null;
+    }
+
+    // Remove temporary input if it exists
+    if (this.tempInput) {
+      this.tempInput.remove();
+      this.tempInput = null;
     }
 
     // Stop loading animation
@@ -1270,51 +1277,220 @@ export class SessionView extends LitElement {
   }
 
   private handleTerminalClick(e: Event) {
-    if (this.isMobile && this.useDirectKeyboard) {
-      // Prevent the event from bubbling and default action
-      e.stopPropagation();
-      e.preventDefault();
-
-      // Don't do anything - the hidden input should handle all interactions
-      // The click on the terminal is actually a click on the hidden input overlay
-      return;
-    }
+    // This method is now handled by the terminal component's smart gesture detection
   }
 
-  private ensureHiddenInputVisible() {
-    if (!this.hiddenInput) {
-      this.createHiddenInput();
-    }
+  openMobileKeyboard() {
+    if (!this.isMobile || !this.useDirectKeyboard) return;
 
     // Show quick keys
     this.showQuickKeys = true;
 
-    // The input should already be covering the terminal and be focusable
-    // The user's tap on the terminal is actually a tap on the input
+    // Create a temporary visible input specifically for iOS keyboard opening
+    this.createTemporaryInput();
+  }
+
+  openMobileKeyboardDirect(touchEvent: TouchEvent) {
+    if (!this.isMobile || !this.useDirectKeyboard) return;
+
+    // Show quick keys
+    this.showQuickKeys = true;
+
+    // Create and focus input within the same user interaction context
+    this.createTemporaryInputDirect(touchEvent);
+  }
+
+  private createTemporaryInput() {
+    // Remove any existing temporary input
+    const existingTemp = document.getElementById('temp-ios-input');
+    if (existingTemp) {
+      existingTemp.remove();
+    }
+
+    // Create a temporary input that's clearly visible for iOS
+    const tempInput = document.createElement('input');
+    tempInput.id = 'temp-ios-input';
+    tempInput.type = 'text';
+    tempInput.autocapitalize = 'off';
+    tempInput.autocomplete = 'off';
+    tempInput.setAttribute('autocorrect', 'off');
+    tempInput.setAttribute('spellcheck', 'false');
+
+    // Style it to be offscreen but still focusable
+    tempInput.style.position = 'fixed';
+    tempInput.style.top = '-1000px'; // Moved offscreen
+    tempInput.style.left = '-1000px';
+    tempInput.style.width = '1px';
+    tempInput.style.height = '1px';
+    tempInput.style.fontSize = '16px'; // Prevent zoom
+    tempInput.style.padding = '0';
+    tempInput.style.border = 'none';
+    tempInput.style.background = 'transparent';
+    tempInput.style.color = 'transparent';
+    tempInput.style.zIndex = '10000';
+    tempInput.style.opacity = '0';
+    tempInput.placeholder = '';
+
+    // Add input handling
+    tempInput.addEventListener('input', (e) => {
+      const input = e.target as HTMLInputElement;
+      if (input.value) {
+        // Send input to terminal
+        this.sendInputText(input.value);
+        input.value = ''; // Clear immediately
+      }
+    });
+
+    tempInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.sendInputText('enter');
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        this.sendInputText('backspace');
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        this.sendInputText('tab');
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.hideTempInput();
+      }
+    });
+
+    // Hide when losing focus
+    tempInput.addEventListener('blur', () => {
+      setTimeout(() => {
+        this.hideTempInput();
+      }, 100);
+    });
+
+    // Add to body and focus
+    document.body.appendChild(tempInput);
+
+    // Focus with multiple attempts for iOS
+    setTimeout(() => {
+      tempInput.focus();
+      tempInput.click();
+    }, 50);
+
+    // Store reference for cleanup
+    this.tempInput = tempInput;
+  }
+
+  private createTemporaryInputDirect(touchEvent: TouchEvent) {
+    // Remove any existing temporary input
+    const existingTemp = document.getElementById('temp-ios-input');
+    if (existingTemp) {
+      existingTemp.remove();
+    }
+
+    // Create a temporary input that's clearly visible for iOS
+    const tempInput = document.createElement('input');
+    tempInput.id = 'temp-ios-input';
+    tempInput.type = 'text';
+    tempInput.autocapitalize = 'off';
+    tempInput.autocomplete = 'off';
+    tempInput.setAttribute('autocorrect', 'off');
+    tempInput.setAttribute('spellcheck', 'false');
+
+    // Style it to be offscreen but still focusable
+    tempInput.style.position = 'fixed';
+    tempInput.style.top = '-1000px'; // Moved offscreen
+    tempInput.style.left = '-1000px';
+    tempInput.style.width = '1px';
+    tempInput.style.height = '1px';
+    tempInput.style.fontSize = '16px'; // Prevent zoom
+    tempInput.style.padding = '0';
+    tempInput.style.border = 'none';
+    tempInput.style.background = 'transparent';
+    tempInput.style.color = 'transparent';
+    tempInput.style.zIndex = '10000';
+    tempInput.style.opacity = '0';
+    tempInput.placeholder = '';
+
+    // Add input handling
+    tempInput.addEventListener('input', (e) => {
+      const input = e.target as HTMLInputElement;
+      if (input.value) {
+        // Send input to terminal
+        this.sendInputText(input.value);
+        input.value = ''; // Clear immediately
+      }
+    });
+
+    tempInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.sendInputText('enter');
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        this.sendInputText('backspace');
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        this.sendInputText('tab');
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.hideTempInput();
+      }
+    });
+
+    // Hide when losing focus
+    tempInput.addEventListener('blur', () => {
+      setTimeout(() => {
+        this.hideTempInput();
+      }, 100);
+    });
+
+    // Add to body immediately
+    document.body.appendChild(tempInput);
+
+    // Focus immediately within the touch event context - this is crucial for iOS
+    tempInput.focus();
+
+    // Store reference for cleanup
+    this.tempInput = tempInput;
+  }
+
+  private hideTempInput() {
+    if (this.tempInput) {
+      this.tempInput.remove();
+      this.tempInput = null;
+    }
+
+    // Create the hidden input for ongoing keyboard functionality
+    if (!this.hiddenInput) {
+      this.createHiddenInput();
+    }
+  }
+
+  private ensureHiddenInputVisible() {
+    // Redirect to new method
+    this.openMobileKeyboard();
   }
 
   private createHiddenInput() {
     this.hiddenInput = document.createElement('input');
     this.hiddenInput.type = 'text';
-    this.hiddenInput.style.position = 'absolute';
-    this.hiddenInput.style.top = '0';
+    this.hiddenInput.style.position = 'fixed';
+    this.hiddenInput.style.bottom = '0';
     this.hiddenInput.style.left = '0';
-    this.hiddenInput.style.width = '100%';
-    this.hiddenInput.style.height = '100%';
-    this.hiddenInput.style.opacity = '0'; // Completely transparent
+    this.hiddenInput.style.width = '1px';
+    this.hiddenInput.style.height = '1px';
+    this.hiddenInput.style.opacity = '0';
     this.hiddenInput.style.fontSize = '16px'; // Prevent zoom on iOS
-    this.hiddenInput.style.zIndex = '10'; // Above terminal content
+    this.hiddenInput.style.zIndex = '9999'; // Above everything to be focusable
     this.hiddenInput.style.border = 'none';
     this.hiddenInput.style.outline = 'none';
     this.hiddenInput.style.background = 'transparent';
     this.hiddenInput.style.color = 'transparent';
-    this.hiddenInput.style.caretColor = 'transparent'; // Hide the cursor
-    this.hiddenInput.style.cursor = 'default'; // Normal cursor
+    this.hiddenInput.style.caretColor = 'transparent';
+    this.hiddenInput.style.cursor = 'default';
+    this.hiddenInput.style.pointerEvents = 'none'; // Don't intercept touches
     this.hiddenInput.autocapitalize = 'off';
     this.hiddenInput.autocomplete = 'off';
     this.hiddenInput.setAttribute('autocorrect', 'off');
     this.hiddenInput.setAttribute('spellcheck', 'false');
-    this.hiddenInput.setAttribute('aria-hidden', 'true');
+    this.hiddenInput.setAttribute('inputmode', 'none'); // Helps with iOS keyboard
 
     // Make it visible for debugging (comment out in production)
     // this.hiddenInput.style.opacity = '0.1';
@@ -1326,8 +1502,10 @@ export class SessionView extends LitElement {
       e.preventDefault();
     });
 
-    // Also handle touchstart to ensure mobile taps don't propagate
+    // Handle touchstart but allow scrolling in the main terminal area
     this.hiddenInput.addEventListener('touchstart', (e) => {
+      // Only stop propagation for taps in our tappable area (bottom 80px)
+      // This allows scrolling to work in the rest of the terminal
       e.stopPropagation();
     });
 
@@ -1957,7 +2135,7 @@ export class SessionView extends LitElement {
             .fontSize=${this.terminalFontSize}
             .fitHorizontally=${false}
             .maxCols=${this.terminalMaxCols}
-            .disableClick=${this.isMobile && this.useDirectKeyboard}
+            .disableClick=${false}
             class="w-full h-full p-0 m-0"
             @click=${this.handleTerminalClick}
           ></vibe-terminal>
