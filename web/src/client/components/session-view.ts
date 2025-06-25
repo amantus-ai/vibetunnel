@@ -20,14 +20,51 @@ import './terminal.js';
 import './file-browser.js';
 import './clickable-path.js';
 import './terminal-quick-keys.js';
-import { authClient } from '../services/auth-client.js';
-import { CastConverter } from '../utils/cast-converter.js';
 import { createLogger } from '../utils/logger.js';
 import {
   COMMON_TERMINAL_WIDTHS,
   TerminalPreferencesManager,
 } from '../utils/terminal-preferences.js';
 import { type AppPreferences, AppSettings } from './app-settings.js';
+import {
+  createKeyboardHandler,
+  createTouchHandlers,
+  handleKeyboardInput,
+  handleQuickKeyPress,
+  sendInputText,
+} from './session-view-input-handlers.js';
+import {
+  adjustTextareaForKeyboard,
+  cleanupVisualViewportHandler,
+  createHiddenInput,
+  focusMobileTextarea,
+  setupVisualViewportHandler,
+  startFocusRetention,
+} from './session-view-mobile-input.js';
+// TODO: Use these for rendering overlays in the future
+// import {
+//   renderCtrlAlphaOverlay,
+//   renderMobileInputOverlay,
+//   renderWidthSelector,
+// } from './session-view-overlays.js';
+import {
+  connectToStream,
+  initializeTerminal,
+  loadSessionSnapshot,
+  refreshTerminalAfterMobileInput,
+  resetTerminalSize,
+  type StreamConnection,
+  sendResizeRequest,
+} from './session-view-terminal-manager.js';
+// Extracted modules
+import {
+  getCurrentWidthLabel,
+  getLoadingText,
+  getStatusColor,
+  getStatusDotColor,
+  getStatusText,
+  startLoadingAnimation,
+} from './session-view-ui-utils.js';
 import type { Terminal } from './terminal.js';
 
 const logger = createLogger('session-view');
@@ -46,16 +83,10 @@ export class SessionView extends LitElement {
   @property({ type: Boolean }) disableFocusManagement = false;
   @state() private connected = false;
   @state() private terminal: Terminal | null = null;
-  @state() private streamConnection: {
-    eventSource: EventSource;
-    disconnect: () => void;
-    errorHandler?: EventListener;
-  } | null = null;
+  @state() private streamConnection: StreamConnection | null = null;
   @state() private showMobileInput = false;
   @state() private mobileInputText = '';
   @state() private isMobile = false;
-  @state() private touchStartX = 0;
-  @state() private touchStartY = 0;
   @state() private loading = false;
   @state() private loadingFrame = 0;
   @state() private terminalCols = 0;
@@ -86,6 +117,18 @@ export class SessionView extends LitElement {
   private focusRetentionInterval: number | null = null;
   private visualViewportHandler: (() => void) | null = null;
 
+  constructor() {
+    super();
+
+    // Initialize placeholder handlers - will be properly set up in connectedCallback
+    this.keyboardHandler = (_e: KeyboardEvent) => {};
+    this.touchHandlers = {
+      touchStartHandler: (_e: TouchEvent) => {},
+      touchEndHandler: (_e: TouchEvent) => {},
+      touchState: { touchStartX: 0, touchStartY: 0 },
+    };
+  }
+
   private handlePreferencesChanged = (e: Event) => {
     const event = e as CustomEvent;
     const preferences = event.detail as AppPreferences;
@@ -106,99 +149,8 @@ export class SessionView extends LitElement {
     }
   };
 
-  private keyboardHandler = (e: KeyboardEvent) => {
-    // Check if we're typing in an input field
-    const target = e.target as HTMLElement;
-    if (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.tagName === 'SELECT'
-    ) {
-      // Allow normal input in form fields
-      return;
-    }
-
-    // Handle Cmd+O / Ctrl+O to open file browser
-    if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
-      e.preventDefault();
-      this.showFileBrowser = true;
-      return;
-    }
-    if (!this.session) return;
-
-    // Allow important browser shortcuts to pass through
-    const isMacOS = navigator.platform.toLowerCase().includes('mac');
-
-    // Allow F12 and Ctrl+Shift+I (DevTools)
-    if (
-      e.key === 'F12' ||
-      (!isMacOS && e.ctrlKey && e.shiftKey && e.key === 'I') ||
-      (isMacOS && e.metaKey && e.altKey && e.key === 'I')
-    ) {
-      return;
-    }
-
-    // Allow Ctrl+A (select all), Ctrl+F (find), Ctrl+R (refresh), Ctrl+C/V (copy/paste), etc.
-    if (
-      !isMacOS &&
-      e.ctrlKey &&
-      !e.shiftKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
-    ) {
-      return;
-    }
-
-    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), etc. on macOS
-    if (
-      isMacOS &&
-      e.metaKey &&
-      !e.shiftKey &&
-      !e.altKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
-    ) {
-      return;
-    }
-
-    // Allow Alt+Tab, Cmd+Tab (window switching)
-    if ((e.altKey || e.metaKey) && e.key === 'Tab') {
-      return;
-    }
-
-    // Only prevent default for keys we're actually going to handle
-    e.preventDefault();
-    e.stopPropagation();
-
-    this.handleKeyboardInput(e);
-  };
-
-  private touchStartHandler = (e: TouchEvent) => {
-    if (!this.isMobile) return;
-
-    const touch = e.touches[0];
-    this.touchStartX = touch.clientX;
-    this.touchStartY = touch.clientY;
-  };
-
-  private touchEndHandler = (e: TouchEvent) => {
-    if (!this.isMobile) return;
-
-    const touch = e.changedTouches[0];
-    const touchEndX = touch.clientX;
-    const touchEndY = touch.clientY;
-
-    const deltaX = touchEndX - this.touchStartX;
-    const deltaY = touchEndY - this.touchStartY;
-
-    // Check for horizontal swipe from left edge (back gesture)
-    const isSwipeRight = deltaX > 100;
-    const isVerticallyStable = Math.abs(deltaY) < 100;
-    const startedFromLeftEdge = this.touchStartX < 50;
-
-    if (isSwipeRight && isVerticallyStable && startedFromLeftEdge) {
-      // Trigger back navigation
-      this.handleBack();
-    }
-  };
+  private keyboardHandler: (e: KeyboardEvent) => void;
+  private touchHandlers: ReturnType<typeof createTouchHandlers>;
 
   private handleClickOutside = (e: Event) => {
     if (this.showWidthSelector) {
@@ -216,6 +168,17 @@ export class SessionView extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.connected = true;
+
+    // Initialize handlers with actual callbacks
+    this.keyboardHandler = createKeyboardHandler(
+      this.session,
+      () => {
+        this.showFileBrowser = true;
+      },
+      (e) => this.handleKeyboardInput(e)
+    );
+
+    this.touchHandlers = createTouchHandlers(() => this.handleBack());
 
     // Load terminal preferences
     this.terminalMaxCols = this.preferencesManager.getMaxCols();
@@ -267,11 +230,7 @@ export class SessionView extends LitElement {
 
     // Set up Visual Viewport API for Safari keyboard detection
     if (this.isMobile && window.visualViewport) {
-      this.visualViewportHandler = () => {
-        const viewport = window.visualViewport;
-        if (!viewport) return;
-        const keyboardHeight = window.innerHeight - viewport.height;
-
+      this.visualViewportHandler = setupVisualViewportHandler((keyboardHeight) => {
         // Store keyboard height in state
         this.keyboardHeight = keyboardHeight;
 
@@ -284,10 +243,7 @@ export class SessionView extends LitElement {
         }
 
         logger.log(`Visual Viewport keyboard height: ${keyboardHeight}px`);
-      };
-
-      window.visualViewport.addEventListener('resize', this.visualViewportHandler);
-      window.visualViewport.addEventListener('scroll', this.visualViewportHandler);
+      });
     }
 
     // Only add listeners if not already added
@@ -296,8 +252,10 @@ export class SessionView extends LitElement {
       this.keyboardListenerAdded = true;
     } else if (this.isMobile && !this.touchListenersAdded) {
       // Add touch event listeners for mobile swipe gestures
-      document.addEventListener('touchstart', this.touchStartHandler, { passive: true });
-      document.addEventListener('touchend', this.touchEndHandler, { passive: true });
+      document.addEventListener('touchstart', this.touchHandlers.touchStartHandler, {
+        passive: true,
+      });
+      document.addEventListener('touchend', this.touchHandlers.touchEndHandler, { passive: true });
       this.touchListenersAdded = true;
     }
   }
@@ -329,8 +287,8 @@ export class SessionView extends LitElement {
       this.keyboardListenerAdded = false;
     } else if (this.isMobile && this.touchListenersAdded) {
       // Remove touch event listeners
-      document.removeEventListener('touchstart', this.touchStartHandler);
-      document.removeEventListener('touchend', this.touchEndHandler);
+      document.removeEventListener('touchstart', this.touchHandlers.touchStartHandler);
+      document.removeEventListener('touchend', this.touchHandlers.touchEndHandler);
       this.touchListenersAdded = false;
     }
 
@@ -341,11 +299,8 @@ export class SessionView extends LitElement {
     }
 
     // Clean up Visual Viewport listener
-    if (this.visualViewportHandler && window.visualViewport) {
-      window.visualViewport.removeEventListener('resize', this.visualViewportHandler);
-      window.visualViewport.removeEventListener('scroll', this.visualViewportHandler);
-      this.visualViewportHandler = null;
-    }
+    cleanupVisualViewportHandler(this.visualViewportHandler);
+    this.visualViewportHandler = null;
 
     // Remove preference change listener
     window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
@@ -439,29 +394,15 @@ export class SessionView extends LitElement {
 
     this.terminal = terminalElement;
 
-    // Configure terminal for interactive session
-    this.terminal.cols = 80;
-    this.terminal.rows = 24;
-    this.terminal.fontSize = this.terminalFontSize; // Apply saved font size preference
-    this.terminal.fitHorizontally = false; // Allow natural terminal sizing
-    this.terminal.maxCols = this.terminalMaxCols; // Apply saved max width preference
-
-    // Listen for session exit events
-    this.terminal.addEventListener(
-      'session-exit',
-      this.handleSessionExit.bind(this) as EventListener
-    );
-
-    // Listen for terminal resize events to capture dimensions
-    this.terminal.addEventListener(
-      'terminal-resize',
-      this.handleTerminalResize.bind(this) as unknown as EventListener
-    );
-
-    // Listen for paste events from terminal
-    this.terminal.addEventListener(
-      'terminal-paste',
-      this.handleTerminalPaste.bind(this) as EventListener
+    // Initialize terminal with configuration
+    await initializeTerminal(
+      this.terminal,
+      this.session,
+      this.terminalFontSize,
+      this.terminalMaxCols,
+      this.handleSessionExit.bind(this),
+      this.handleTerminalResize.bind(this),
+      this.handleTerminalPaste.bind(this)
     );
 
     // Connect to stream directly without artificial delays
@@ -492,200 +433,39 @@ export class SessionView extends LitElement {
     // Clean up existing connection
     this.cleanupStreamConnection();
 
-    // Get auth client from the main app
-    const user = authClient.getCurrentUser();
+    // Connect to stream with reconnection handling
+    this.streamConnection = connectToStream(this.terminal, this.session, () => {
+      // onReconnectLimitReached callback
+      if (this.session && this.session.status !== 'exited') {
+        this.session = { ...this.session, status: 'exited' };
+        this.requestUpdate();
 
-    // Build stream URL with auth token as query parameter (EventSource doesn't support headers)
-    let streamUrl = `/api/sessions/${this.session.id}/stream`;
-    if (user?.token) {
-      streamUrl += `?token=${encodeURIComponent(user.token)}`;
-    }
+        // Disconnect the stream and load final snapshot
+        this.cleanupStreamConnection();
 
-    // Use CastConverter to connect terminal to stream with reconnection tracking
-    const connection = CastConverter.connectToStream(this.terminal, streamUrl);
-
-    // Wrap the connection to track reconnections
-    const originalEventSource = connection.eventSource;
-    let lastErrorTime = 0;
-    const reconnectThreshold = 3; // Max reconnects before giving up
-    const reconnectWindow = 5000; // 5 second window
-
-    const handleError = () => {
-      const now = Date.now();
-
-      // Reset counter if enough time has passed since last error
-      if (now - lastErrorTime > reconnectWindow) {
-        this.reconnectCount = 0;
+        // Load final snapshot
+        requestAnimationFrame(() => {
+          this.loadSessionSnapshot();
+        });
       }
-
-      this.reconnectCount++;
-      lastErrorTime = now;
-
-      logger.log(`stream error #${this.reconnectCount} for session ${this.session?.id}`);
-
-      // If we've had too many reconnects, mark session as exited
-      if (this.reconnectCount >= reconnectThreshold) {
-        logger.warn(`session ${this.session?.id} marked as exited due to excessive reconnections`);
-
-        if (this.session && this.session.status !== 'exited') {
-          this.session = { ...this.session, status: 'exited' };
-          this.requestUpdate();
-
-          // Disconnect the stream and load final snapshot
-          this.cleanupStreamConnection();
-
-          // Load final snapshot
-          requestAnimationFrame(() => {
-            this.loadSessionSnapshot();
-          });
-        }
-      }
-    };
-
-    // Override the error handler
-    originalEventSource.addEventListener('error', handleError);
-
-    // Store the connection with error handler reference
-    this.streamConnection = {
-      ...connection,
-      errorHandler: handleError as EventListener,
-    };
+    });
   }
 
   private async handleKeyboardInput(e: KeyboardEvent) {
     if (!this.session) return;
 
-    // Handle Escape key specially for exited sessions
-    if (e.key === 'Escape' && this.session.status === 'exited') {
-      this.handleBack();
-      return;
-    }
-
-    // Don't send input to exited sessions
-    if (this.session.status === 'exited') {
-      logger.log('ignoring keyboard input - session has exited');
-      return;
-    }
-
-    // Allow standard browser copy/paste shortcuts
-    const isMacOS = navigator.platform.toLowerCase().includes('mac');
-    const isStandardPaste =
-      (isMacOS && e.metaKey && e.key === 'v' && !e.ctrlKey && !e.shiftKey) ||
-      (!isMacOS && e.ctrlKey && e.key === 'v' && !e.shiftKey);
-    const isStandardCopy =
-      (isMacOS && e.metaKey && e.key === 'c' && !e.ctrlKey && !e.shiftKey) ||
-      (!isMacOS && e.ctrlKey && e.key === 'c' && !e.shiftKey);
-
-    if (isStandardPaste || isStandardCopy) {
-      // Allow standard browser copy/paste to work
-      return;
-    }
-
-    let inputText = '';
-
-    // Handle special keys
-    switch (e.key) {
-      case 'Enter':
-        if (e.ctrlKey) {
-          // Ctrl+Enter - send to tty-fwd for proper handling
-          inputText = 'ctrl_enter';
-        } else if (e.shiftKey) {
-          // Shift+Enter - send to tty-fwd for proper handling
-          inputText = 'shift_enter';
-        } else {
-          // Regular Enter
-          inputText = 'enter';
-        }
-        break;
-      case 'Escape':
-        inputText = 'escape';
-        break;
-      case 'ArrowUp':
-        inputText = 'arrow_up';
-        break;
-      case 'ArrowDown':
-        inputText = 'arrow_down';
-        break;
-      case 'ArrowLeft':
-        inputText = 'arrow_left';
-        break;
-      case 'ArrowRight':
-        inputText = 'arrow_right';
-        break;
-      case 'Tab':
-        inputText = '\t';
-        break;
-      case 'Backspace':
-        inputText = '\b';
-        break;
-      case 'Delete':
-        inputText = '\x7f';
-        break;
-      case ' ':
-        inputText = ' ';
-        break;
-      default:
-        // Handle regular printable characters
-        if (e.key.length === 1) {
-          inputText = e.key;
-        } else {
-          // Ignore other special keys
-          return;
-        }
-        break;
-    }
-
-    // Handle Ctrl combinations (but not if we already handled Ctrl+Enter above)
-    if (e.ctrlKey && e.key.length === 1 && e.key !== 'Enter') {
-      const charCode = e.key.toLowerCase().charCodeAt(0);
-      if (charCode >= 97 && charCode <= 122) {
-        // a-z
-        inputText = String.fromCharCode(charCode - 96); // Ctrl+A = \x01, etc.
-      }
-    }
-
-    // Send the input to the session
-    try {
-      // Determine if we should send as key or text
-      const body = [
-        'enter',
-        'escape',
-        'arrow_up',
-        'arrow_down',
-        'arrow_left',
-        'arrow_right',
-        'ctrl_enter',
-        'shift_enter',
-        'backspace',
-        'tab',
-      ].includes(inputText)
-        ? { key: inputText }
-        : { text: inputText };
-
-      const response = await fetch(`/api/sessions/${this.session.id}/input`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authClient.getAuthHeader(),
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        if (response.status === 400) {
-          logger.log('session no longer accepting input (likely exited)');
-          // Update session status to exited if we get 400 error
-          if (this.session && (this.session.status as string) !== 'exited') {
-            this.session = { ...this.session, status: 'exited' };
-            this.requestUpdate();
-          }
-        } else {
-          logger.error('failed to send input to session', { status: response.status });
+    await handleKeyboardInput(
+      e,
+      this.session,
+      () => this.handleBack(),
+      () => {
+        // onSessionExited callback
+        if (this.session && this.session.status !== 'exited') {
+          this.session = { ...this.session, status: 'exited' };
+          this.requestUpdate();
         }
       }
-    } catch (error) {
-      logger.error('error sending input', error);
-    }
+    );
   }
 
   private handleBack() {
@@ -724,27 +504,7 @@ export class SessionView extends LitElement {
 
   private async loadSessionSnapshot() {
     if (!this.terminal || !this.session) return;
-
-    try {
-      const url = `/api/sessions/${this.session.id}/snapshot`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Failed to fetch snapshot: ${response.status}`);
-
-      const castContent = await response.text();
-
-      // Clear terminal and load snapshot
-      this.terminal.clear();
-      await CastConverter.dumpToTerminal(this.terminal, castContent);
-
-      // Scroll to bottom after loading
-      this.terminal.queueCallback(() => {
-        if (this.terminal) {
-          this.terminal.scrollToBottom();
-        }
-      });
-    } catch (error) {
-      logger.error('failed to load session snapshot', error);
-    }
+    await loadSessionSnapshot(this.terminal, this.session);
   }
 
   private async handleTerminalResize(event: Event) {
@@ -769,29 +529,11 @@ export class SessionView extends LitElement {
 
       // Send resize request to backend if session is active
       if (this.session && this.session.status !== 'exited') {
-        try {
-          logger.debug(
-            `sending resize request: ${cols}x${rows} (was ${this.lastResizeWidth}x${this.lastResizeHeight})`
-          );
-
-          const response = await fetch(`/api/sessions/${this.session.id}/resize`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authClient.getAuthHeader(),
-            },
-            body: JSON.stringify({ cols: cols, rows: rows }),
-          });
-
-          if (response.ok) {
-            // Cache the successfully sent dimensions
-            this.lastResizeWidth = cols;
-            this.lastResizeHeight = rows;
-          } else {
-            logger.warn(`failed to resize session: ${response.status}`);
-          }
-        } catch (error) {
-          logger.warn('failed to send resize request', error);
+        const success = await sendResizeRequest(this.session, cols, rows);
+        if (success) {
+          // Cache the successfully sent dimensions
+          this.lastResizeWidth = cols;
+          this.lastResizeHeight = rows;
         }
       }
     }, 250) as unknown as number; // 250ms debounce delay
@@ -846,85 +588,14 @@ export class SessionView extends LitElement {
   }
 
   private adjustTextareaForKeyboard() {
-    // Adjust the layout when virtual keyboard appears
     const textarea = this.querySelector('#mobile-input-textarea') as HTMLTextAreaElement;
     const controls = this.querySelector('#mobile-controls') as HTMLElement;
     if (!textarea || !controls) return;
 
-    const adjustLayout = () => {
-      const viewportHeight = window.visualViewport?.height || window.innerHeight;
-      const windowHeight = window.innerHeight;
-      const keyboardHeight = windowHeight - viewportHeight;
-
-      // If keyboard is visible (viewport height is significantly smaller)
-      if (keyboardHeight > 100) {
-        // Move controls above the keyboard
-        controls.style.transform = `translateY(-${keyboardHeight}px)`;
-        controls.style.transition = 'transform 0.3s ease';
-
-        // Calculate available space to match closed keyboard layout
-        const header = this.querySelector(
-          '.flex.items-center.justify-between.p-4.border-b'
-        ) as HTMLElement;
-        const headerHeight = header?.offsetHeight || 60;
-        const controlsHeight = controls?.offsetHeight || 120;
-
-        // Calculate exact space to maintain same gap as when keyboard is closed
-        const availableHeight = viewportHeight - headerHeight - controlsHeight;
-        const inputArea = textarea.parentElement as HTMLElement;
-
-        if (inputArea && availableHeight > 0) {
-          // Set the input area to exactly fill the space, maintaining natural flex behavior
-          inputArea.style.height = `${availableHeight}px`;
-          inputArea.style.maxHeight = `${availableHeight}px`;
-          inputArea.style.overflow = 'hidden';
-          inputArea.style.display = 'flex';
-          inputArea.style.flexDirection = 'column';
-          inputArea.style.paddingBottom = '0px'; // Remove any extra padding
-
-          // Let textarea use flex-1 behavior but constrain the container
-          textarea.style.height = 'auto'; // Let it grow naturally
-          textarea.style.maxHeight = 'none'; // Remove height constraints
-          textarea.style.marginBottom = '8px'; // Keep consistent margin
-          textarea.style.flex = '1'; // Fill available space
-        }
-      } else {
-        // Reset position when keyboard is hidden
-        controls.style.transform = 'translateY(0px)';
-        controls.style.transition = 'transform 0.3s ease';
-
-        // Reset textarea height and constraints to original flex behavior
-        const inputArea = textarea.parentElement as HTMLElement;
-        if (inputArea) {
-          inputArea.style.height = '';
-          inputArea.style.maxHeight = '';
-          inputArea.style.overflow = '';
-          inputArea.style.display = '';
-          inputArea.style.flexDirection = '';
-          inputArea.style.paddingBottom = '';
-          textarea.style.height = '';
-          textarea.style.maxHeight = '';
-          textarea.style.flex = '';
-        }
-      }
-    };
-
-    // Listen for viewport changes (keyboard show/hide)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', adjustLayout);
-      // Clean up listener when overlay is closed
-      const cleanup = () => {
-        if (window.visualViewport) {
-          window.visualViewport.removeEventListener('resize', adjustLayout);
-        }
-      };
-      // Store cleanup function for later use
-      (textarea as HTMLTextAreaElement & { _viewportCleanup?: () => void })._viewportCleanup =
-        cleanup;
-    }
-
-    // Initial adjustment
-    requestAnimationFrame(adjustLayout);
+    const cleanup = adjustTextareaForKeyboard(textarea, controls);
+    // Store cleanup function for later use
+    (textarea as HTMLTextAreaElement & { _viewportCleanup?: () => void })._viewportCleanup =
+      cleanup;
   }
 
   private handleMobileInputChange(e: Event) {
@@ -937,19 +608,7 @@ export class SessionView extends LitElement {
   private focusMobileTextarea() {
     const textarea = this.querySelector('#mobile-input-textarea') as HTMLTextAreaElement;
     if (!textarea) return;
-
-    // Multiple attempts to ensure focus on mobile
-    textarea.focus();
-
-    // iOS hack to show keyboard
-    textarea.setAttribute('readonly', 'readonly');
-    textarea.focus();
-    setTimeout(() => {
-      textarea.removeAttribute('readonly');
-      textarea.focus();
-      // Ensure cursor is at end
-      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-    }, 100);
+    focusMobileTextarea(textarea);
   }
 
   private async handleMobileInputSendOnly() {
@@ -1143,9 +802,7 @@ export class SessionView extends LitElement {
   }
 
   private getCurrentWidthLabel(): string {
-    if (this.terminalMaxCols === 0) return '∞';
-    const commonWidth = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
-    return commonWidth ? commonWidth.label : this.terminalMaxCols.toString();
+    return getCurrentWidthLabel(this.terminalMaxCols);
   }
 
   private handleFontSizeChange(newSize: number) {
@@ -1184,57 +841,7 @@ export class SessionView extends LitElement {
   }
 
   private async sendInputText(text: string) {
-    if (!this.session) return;
-
-    try {
-      // Determine if we should send as key or text
-      const body = [
-        'enter',
-        'escape',
-        'backspace',
-        'tab',
-        'arrow_up',
-        'arrow_down',
-        'arrow_left',
-        'arrow_right',
-        'ctrl_enter',
-        'shift_enter',
-        'page_up',
-        'page_down',
-        'home',
-        'end',
-        'delete',
-        'f1',
-        'f2',
-        'f3',
-        'f4',
-        'f5',
-        'f6',
-        'f7',
-        'f8',
-        'f9',
-        'f10',
-        'f11',
-        'f12',
-      ].includes(text)
-        ? { key: text }
-        : { text };
-
-      const response = await fetch(`/api/sessions/${this.session.id}/input`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authClient.getAuthHeader(),
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        logger.error('failed to send input to session', { status: response.status });
-      }
-    } catch (error) {
-      logger.error('error sending input', error);
-    }
+    await sendInputText(this.session, text);
   }
 
   private async resetTerminalSize() {
@@ -1242,32 +849,7 @@ export class SessionView extends LitElement {
       logger.warn('resetTerminalSize called but no session available');
       return;
     }
-
-    logger.log('Sending reset-size request for session', this.session.id);
-
-    try {
-      const response = await fetch(`/api/sessions/${this.session.id}/reset-size`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authClient.getAuthHeader(),
-        },
-      });
-
-      if (!response.ok) {
-        logger.error('failed to reset terminal size', {
-          status: response.status,
-          sessionId: this.session.id,
-        });
-      } else {
-        logger.log('terminal size reset successfully for session', this.session.id);
-      }
-    } catch (error) {
-      logger.error('error resetting terminal size', {
-        error,
-        sessionId: this.session.id,
-      });
-    }
+    await resetTerminalSize(this.session);
   }
 
   private focusHiddenInput() {
@@ -1300,152 +882,78 @@ export class SessionView extends LitElement {
   }
 
   private createHiddenInput() {
-    this.hiddenInput = document.createElement('input');
-    this.hiddenInput.type = 'text';
-    this.hiddenInput.style.position = 'absolute';
-    this.hiddenInput.style.top = '0';
-    this.hiddenInput.style.left = '0';
-    this.hiddenInput.style.width = '100%';
-    this.hiddenInput.style.height = '100%';
-    this.hiddenInput.style.opacity = '0'; // Completely transparent
-    this.hiddenInput.style.fontSize = '16px'; // Prevent zoom on iOS
-    this.hiddenInput.style.zIndex = '10'; // Above terminal content
-    this.hiddenInput.style.border = 'none';
-    this.hiddenInput.style.outline = 'none';
-    this.hiddenInput.style.background = 'transparent';
-    this.hiddenInput.style.color = 'transparent';
-    this.hiddenInput.style.caretColor = 'transparent'; // Hide the cursor
-    this.hiddenInput.style.cursor = 'default'; // Normal cursor
-    this.hiddenInput.autocapitalize = 'off';
-    this.hiddenInput.autocomplete = 'off';
-    this.hiddenInput.setAttribute('autocorrect', 'off');
-    this.hiddenInput.setAttribute('spellcheck', 'false');
-    this.hiddenInput.setAttribute('aria-hidden', 'true');
+    this.hiddenInput = createHiddenInput(
+      (text) => this.sendInputText(text),
+      this.showMobileInput,
+      this.showCtrlAlpha,
+      () => {
+        // onFocus
+        this.showQuickKeys = true;
+        logger.log('Hidden input focused, showing quick keys');
 
-    // Make it visible for debugging (comment out in production)
-    // this.hiddenInput.style.opacity = '0.1';
-    // this.hiddenInput.style.background = 'rgba(255,0,0,0.1)';
-
-    // Prevent click events from propagating to terminal
-    this.hiddenInput.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-    });
-
-    // Also handle touchstart to ensure mobile taps don't propagate
-    this.hiddenInput.addEventListener('touchstart', (e) => {
-      e.stopPropagation();
-    });
-
-    // Handle input events
-    this.hiddenInput.addEventListener('input', (e) => {
-      const input = e.target as HTMLInputElement;
-      if (input.value) {
-        // Don't send input to terminal if mobile input overlay or Ctrl overlay is visible
-        if (!this.showMobileInput && !this.showCtrlAlpha) {
-          // Send each character to terminal
-          this.sendInputText(input.value);
+        // Trigger initial keyboard height calculation
+        if (this.visualViewportHandler) {
+          this.visualViewportHandler();
         }
-        // Always clear the input to prevent buffer buildup
-        input.value = '';
-      }
-    });
 
-    // Handle special keys
-    this.hiddenInput.addEventListener('keydown', (e) => {
-      // Don't process special keys if mobile input overlay or Ctrl overlay is visible
-      if (this.showMobileInput || this.showCtrlAlpha) {
-        return;
-      }
-
-      // Prevent default for all keys to stop browser shortcuts
-      if (['Enter', 'Backspace', 'Tab', 'Escape'].includes(e.key)) {
-        e.preventDefault();
-      }
-
-      if (e.key === 'Enter') {
-        this.sendInputText('enter');
-      } else if (e.key === 'Backspace') {
-        // Always send backspace to terminal
-        this.sendInputText('backspace');
-      } else if (e.key === 'Tab') {
-        this.sendInputText('tab');
-      } else if (e.key === 'Escape') {
-        this.sendInputText('escape');
-      }
-    });
-
-    // Handle focus/blur for quick keys visibility
-    this.hiddenInput.addEventListener('focus', () => {
-      this.showQuickKeys = true;
-      logger.log('Hidden input focused, showing quick keys');
-
-      // Trigger initial keyboard height calculation
-      if (this.visualViewportHandler) {
-        this.visualViewportHandler();
-      }
-
-      // Start focus retention
-      if (this.focusRetentionInterval) {
-        clearInterval(this.focusRetentionInterval);
-      }
-
-      this.focusRetentionInterval = setInterval(() => {
-        if (
-          !this.disableFocusManagement &&
-          this.showQuickKeys &&
-          this.hiddenInput &&
-          document.activeElement !== this.hiddenInput &&
-          !this.showMobileInput &&
-          !this.showCtrlAlpha
-        ) {
-          logger.log('Refocusing hidden input to maintain keyboard');
-          this.hiddenInput.focus();
+        // Start focus retention
+        if (this.focusRetentionInterval) {
+          clearInterval(this.focusRetentionInterval);
         }
-      }, 300) as unknown as number;
-    });
 
-    this.hiddenInput.addEventListener('blur', (e) => {
-      const _event = e as FocusEvent;
+        if (this.hiddenInput) {
+          this.focusRetentionInterval = startFocusRetention(
+            this.hiddenInput,
+            this.showQuickKeys,
+            this.showMobileInput,
+            this.showCtrlAlpha,
+            this.disableFocusManagement
+          );
+        }
+      },
+      (e: FocusEvent) => {
+        // onBlur
+        const _event = e as FocusEvent;
 
-      // Immediately try to recapture focus
-      if (!this.disableFocusManagement && this.showQuickKeys && this.hiddenInput) {
-        // Use a very short timeout to allow any legitimate focus changes to complete
-        setTimeout(() => {
-          if (
-            !this.disableFocusManagement &&
-            this.showQuickKeys &&
-            this.hiddenInput &&
-            document.activeElement !== this.hiddenInput
-          ) {
-            // Check if focus went to a quick key or somewhere else in our component
-            const activeElement = document.activeElement;
-            const isWithinComponent = this.contains(activeElement);
+        // Immediately try to recapture focus
+        if (!this.disableFocusManagement && this.showQuickKeys && this.hiddenInput) {
+          // Use a very short timeout to allow any legitimate focus changes to complete
+          setTimeout(() => {
+            if (
+              !this.disableFocusManagement &&
+              this.showQuickKeys &&
+              this.hiddenInput &&
+              document.activeElement !== this.hiddenInput
+            ) {
+              // Check if focus went to a quick key or somewhere else in our component
+              const activeElement = document.activeElement;
+              const isWithinComponent = this.contains(activeElement);
 
-            if (isWithinComponent || !activeElement || activeElement === document.body) {
-              // Focus was lost to nowhere specific or within our component - recapture it
-              logger.log('Recapturing focus on hidden input');
-              this.hiddenInput.focus();
-            } else {
-              // Focus went somewhere legitimate outside our component
-              // Wait a bit longer before hiding quick keys
-              setTimeout(() => {
-                if (document.activeElement !== this.hiddenInput) {
-                  this.showQuickKeys = false;
-                  logger.log('Hidden input blurred, hiding quick keys');
+              if (isWithinComponent || !activeElement || activeElement === document.body) {
+                // Focus was lost to nowhere specific or within our component - recapture it
+                logger.log('Recapturing focus on hidden input');
+                this.hiddenInput.focus();
+              } else {
+                // Focus went somewhere legitimate outside our component
+                // Wait a bit longer before hiding quick keys
+                setTimeout(() => {
+                  if (document.activeElement !== this.hiddenInput) {
+                    this.showQuickKeys = false;
+                    logger.log('Hidden input blurred, hiding quick keys');
 
-                  // Clear focus retention interval
-                  if (this.focusRetentionInterval) {
-                    clearInterval(this.focusRetentionInterval);
-                    this.focusRetentionInterval = null;
+                    // Clear focus retention interval
+                    if (this.focusRetentionInterval) {
+                      clearInterval(this.focusRetentionInterval);
+                      this.focusRetentionInterval = null;
+                    }
                   }
-                }
-              }, 500);
+                }, 500);
+              }
             }
-          }
-        }, 10);
+          }, 10);
+        }
       }
-    });
+    );
 
     // Add to the terminal container to overlay it
     const terminalContainer = this.querySelector('#terminal-container');
@@ -1455,182 +963,96 @@ export class SessionView extends LitElement {
   }
 
   private handleQuickKeyPress = (key: string, isModifier?: boolean, isSpecial?: boolean) => {
-    if (isSpecial && key === 'ABC') {
-      // Toggle the mobile input overlay
-      this.showMobileInput = !this.showMobileInput;
+    handleQuickKeyPress(
+      key,
+      isModifier,
+      isSpecial,
+      (text) => this.sendInputText(text),
+      () => {
+        // onToggleMobileInput
+        this.showMobileInput = !this.showMobileInput;
 
-      if (this.showMobileInput) {
-        // Stop focus retention when showing mobile input
-        if (this.focusRetentionInterval) {
-          clearInterval(this.focusRetentionInterval);
-          this.focusRetentionInterval = null;
+        if (this.showMobileInput) {
+          // Stop focus retention when showing mobile input
+          if (this.focusRetentionInterval) {
+            clearInterval(this.focusRetentionInterval);
+            this.focusRetentionInterval = null;
+          }
+
+          // Blur the hidden input to prevent it from capturing input
+          if (this.hiddenInput) {
+            this.hiddenInput.blur();
+          }
+
+          // Force update to render the textarea
+          this.requestUpdate();
+
+          // Focus the textarea after render completes
+          this.updateComplete.then(() => {
+            setTimeout(() => {
+              this.focusMobileTextarea();
+            }, 100);
+          });
+        } else {
+          // Clear the text when closing
+          this.mobileInputText = '';
+
+          // Restart focus retention when closing mobile input
+          if (!this.disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
+            this.focusRetentionInterval = startFocusRetention(
+              this.hiddenInput,
+              this.showQuickKeys,
+              this.showMobileInput,
+              this.showCtrlAlpha,
+              this.disableFocusManagement
+            );
+
+            setTimeout(() => {
+              if (!this.disableFocusManagement && this.hiddenInput) {
+                this.hiddenInput.focus();
+              }
+            }, 100);
+          }
         }
+      },
+      () => {
+        // onToggleCtrlAlpha
+        this.showCtrlAlpha = !this.showCtrlAlpha;
 
-        // Blur the hidden input to prevent it from capturing input
-        if (this.hiddenInput) {
-          this.hiddenInput.blur();
-        }
+        if (this.showCtrlAlpha) {
+          // Stop focus retention when showing Ctrl overlay
+          if (this.focusRetentionInterval) {
+            clearInterval(this.focusRetentionInterval);
+            this.focusRetentionInterval = null;
+          }
 
-        // Force update to render the textarea
-        this.requestUpdate();
+          // Blur the hidden input to prevent it from capturing input
+          if (this.hiddenInput) {
+            this.hiddenInput.blur();
+          }
+        } else {
+          // Clear the Ctrl sequence when closing
+          this.ctrlSequence = [];
 
-        // Focus the textarea after render completes
-        this.updateComplete.then(() => {
-          setTimeout(() => {
-            this.focusMobileTextarea();
-          }, 100);
-        });
-      } else {
-        // Clear the text when closing
-        this.mobileInputText = '';
+          // Restart focus retention when closing Ctrl overlay
+          if (!this.disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
+            this.focusRetentionInterval = startFocusRetention(
+              this.hiddenInput,
+              this.showQuickKeys,
+              this.showMobileInput,
+              this.showCtrlAlpha,
+              this.disableFocusManagement
+            );
 
-        // Restart focus retention when closing mobile input
-        if (!this.disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
-          // Restart focus retention
-          this.focusRetentionInterval = setInterval(() => {
-            if (
-              !this.disableFocusManagement &&
-              this.showQuickKeys &&
-              this.hiddenInput &&
-              document.activeElement !== this.hiddenInput &&
-              !this.showMobileInput &&
-              !this.showCtrlAlpha
-            ) {
-              logger.log('Refocusing hidden input to maintain keyboard');
-              this.hiddenInput.focus();
-            }
-          }, 300) as unknown as number;
-
-          setTimeout(() => {
-            if (!this.disableFocusManagement && this.hiddenInput) {
-              this.hiddenInput.focus();
-            }
-          }, 100);
-        }
-      }
-      return;
-    } else if (isModifier && key === 'Control') {
-      // Just send Ctrl modifier - don't show the overlay
-      // This allows using Ctrl as a modifier with physical keyboard
-      return;
-    } else if (key === 'CtrlFull') {
-      // Toggle the full Ctrl+Alpha overlay
-      this.showCtrlAlpha = !this.showCtrlAlpha;
-
-      if (this.showCtrlAlpha) {
-        // Stop focus retention when showing Ctrl overlay
-        if (this.focusRetentionInterval) {
-          clearInterval(this.focusRetentionInterval);
-          this.focusRetentionInterval = null;
-        }
-
-        // Blur the hidden input to prevent it from capturing input
-        if (this.hiddenInput) {
-          this.hiddenInput.blur();
-        }
-      } else {
-        // Clear the Ctrl sequence when closing
-        this.ctrlSequence = [];
-
-        // Restart focus retention when closing Ctrl overlay
-        if (!this.disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
-          // Restart focus retention
-          this.focusRetentionInterval = setInterval(() => {
-            if (
-              !this.disableFocusManagement &&
-              this.showQuickKeys &&
-              this.hiddenInput &&
-              document.activeElement !== this.hiddenInput &&
-              !this.showMobileInput &&
-              !this.showCtrlAlpha
-            ) {
-              logger.log('Refocusing hidden input to maintain keyboard');
-              this.hiddenInput.focus();
-            }
-          }, 300) as unknown as number;
-
-          setTimeout(() => {
-            if (!this.disableFocusManagement && this.hiddenInput) {
-              this.hiddenInput.focus();
-            }
-          }, 100);
+            setTimeout(() => {
+              if (!this.disableFocusManagement && this.hiddenInput) {
+                this.hiddenInput.focus();
+              }
+            }, 100);
+          }
         }
       }
-      return;
-    } else if (key === 'Ctrl+A') {
-      // Send Ctrl+A (start of line)
-      this.sendInputText('\x01');
-    } else if (key === 'Ctrl+C') {
-      // Send Ctrl+C (interrupt signal)
-      this.sendInputText('\x03');
-    } else if (key === 'Ctrl+D') {
-      // Send Ctrl+D (EOF)
-      this.sendInputText('\x04');
-    } else if (key === 'Ctrl+E') {
-      // Send Ctrl+E (end of line)
-      this.sendInputText('\x05');
-    } else if (key === 'Ctrl+K') {
-      // Send Ctrl+K (kill to end of line)
-      this.sendInputText('\x0b');
-    } else if (key === 'Ctrl+L') {
-      // Send Ctrl+L (clear screen)
-      this.sendInputText('\x0c');
-    } else if (key === 'Ctrl+R') {
-      // Send Ctrl+R (reverse search)
-      this.sendInputText('\x12');
-    } else if (key === 'Ctrl+U') {
-      // Send Ctrl+U (clear line)
-      this.sendInputText('\x15');
-    } else if (key === 'Ctrl+W') {
-      // Send Ctrl+W (delete word)
-      this.sendInputText('\x17');
-    } else if (key === 'Ctrl+Z') {
-      // Send Ctrl+Z (suspend signal)
-      this.sendInputText('\x1a');
-    } else if (key === 'Option') {
-      // Send ESC prefix for Option/Alt key
-      this.sendInputText('\x1b');
-    } else if (key === 'Command') {
-      // Command key doesn't have a direct terminal equivalent
-      // Could potentially show a message or ignore
-      return;
-    } else if (key === 'Delete') {
-      // Send delete key
-      this.sendInputText('delete');
-    } else if (key.startsWith('F')) {
-      // Handle function keys F1-F12
-      const fNum = Number.parseInt(key.substring(1));
-      if (fNum >= 1 && fNum <= 12) {
-        this.sendInputText(`f${fNum}`);
-      }
-    } else {
-      // Map key names to proper values
-      let keyToSend = key;
-      if (key === 'Tab') {
-        keyToSend = 'tab';
-      } else if (key === 'Escape') {
-        keyToSend = 'escape';
-      } else if (key === 'ArrowUp') {
-        keyToSend = 'arrow_up';
-      } else if (key === 'ArrowDown') {
-        keyToSend = 'arrow_down';
-      } else if (key === 'ArrowLeft') {
-        keyToSend = 'arrow_left';
-      } else if (key === 'ArrowRight') {
-        keyToSend = 'arrow_right';
-      } else if (key === 'PageUp') {
-        keyToSend = 'page_up';
-      } else if (key === 'PageDown') {
-        keyToSend = 'page_down';
-      } else if (key === 'Home') {
-        keyToSend = 'home';
-      } else if (key === 'End') {
-        keyToSend = 'end';
-      }
-
-      // Send the key to terminal
-      this.sendInputText(keyToSend.toLowerCase());
-    }
+    );
 
     // Always keep focus on hidden input after any key press (except Done)
     // Use requestAnimationFrame to ensure DOM has updated
@@ -1642,33 +1064,16 @@ export class SessionView extends LitElement {
   };
 
   private refreshTerminalAfterMobileInput() {
-    // After closing mobile input, the viewport changes and the terminal
-    // needs to recalculate its scroll position to avoid getting stuck
-    if (!this.terminal) return;
-
-    // Give the viewport time to settle after keyboard disappears
-    setTimeout(() => {
-      if (this.terminal) {
-        // Force the terminal to recalculate its viewport dimensions and scroll boundaries
-        // This fixes the issue where maxScrollPixels becomes incorrect after keyboard changes
-        const terminalElement = this.terminal as unknown as { fitTerminal?: () => void };
-        if (typeof terminalElement.fitTerminal === 'function') {
-          terminalElement.fitTerminal();
-        }
-
-        // Then scroll to bottom to fix the position
-        this.terminal.scrollToBottom();
-      }
-    }, 300); // Wait for viewport to settle
+    refreshTerminalAfterMobileInput(this.terminal);
   }
 
   private startLoading() {
     this.loading = true;
     this.loadingFrame = 0;
-    this.loadingInterval = window.setInterval(() => {
-      this.loadingFrame = (this.loadingFrame + 1) % 4;
+    this.loadingInterval = startLoadingAnimation((frame) => {
+      this.loadingFrame = frame;
       this.requestUpdate();
-    }, 200) as unknown as number; // Update every 200ms for smooth animation
+    });
   }
 
   private stopLoading() {
@@ -1679,41 +1084,12 @@ export class SessionView extends LitElement {
     }
   }
 
-  private getLoadingText(): string {
-    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-    return frames[this.loadingFrame % frames.length];
-  }
-
-  private getStatusText(): string {
-    if (!this.session) return '';
-    if ('active' in this.session && this.session.active === false) {
-      return 'waiting';
-    }
-    return this.session.status;
-  }
-
-  private getStatusColor(): string {
-    if (!this.session) return 'text-dark-text-muted';
-    if ('active' in this.session && this.session.active === false) {
-      return 'text-dark-text-muted';
-    }
-    return this.session.status === 'running' ? 'text-status-success' : 'text-status-warning';
-  }
-
-  private getStatusDotColor(): string {
-    if (!this.session) return 'bg-dark-text-muted';
-    if ('active' in this.session && this.session.active === false) {
-      return 'bg-dark-text-muted';
-    }
-    return this.session.status === 'running' ? 'bg-status-success' : 'bg-status-warning';
-  }
-
   render() {
     if (!this.session) {
       return html`
         <div class="fixed inset-0 bg-dark-bg flex items-center justify-center">
           <div class="text-dark-text font-mono text-center">
-            <div class="text-2xl mb-2">${this.getLoadingText()}</div>
+            <div class="text-2xl mb-2">${getLoadingText(this.loadingFrame)}</div>
             <div class="text-sm text-dark-text-muted">Waiting for session...</div>
           </div>
         </div>
@@ -1912,9 +1288,9 @@ export class SessionView extends LitElement {
                 : ''
             }
             <div class="flex flex-col items-end gap-0">
-              <span class="${this.getStatusColor()} text-xs flex items-center gap-1">
-                <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
-                ${this.getStatusText().toUpperCase()}
+              <span class="${getStatusColor(this.session)} text-xs flex items-center gap-1">
+                <div class="w-2 h-2 rounded-full ${getStatusDotColor(this.session)}"></div>
+                ${getStatusText(this.session).toUpperCase()}
               </span>
               ${
                 this.terminalCols > 0 && this.terminalRows > 0
@@ -1947,7 +1323,7 @@ export class SessionView extends LitElement {
                   class="absolute inset-0 bg-dark-bg bg-opacity-80 flex items-center justify-center z-10"
                 >
                   <div class="text-dark-text font-mono text-center">
-                    <div class="text-2xl mb-2">${this.getLoadingText()}</div>
+                    <div class="text-2xl mb-2">${getLoadingText(this.loadingFrame)}</div>
                     <div class="text-sm text-dark-text-muted">Connecting to session...</div>
                   </div>
                 </div>
@@ -1977,7 +1353,7 @@ export class SessionView extends LitElement {
                 class="fixed inset-0 flex items-center justify-center pointer-events-none z-[25]"
               >
                 <div
-                  class="bg-dark-bg-secondary border border-dark-border ${this.getStatusColor()} font-medium text-sm tracking-wide px-4 py-2 rounded-lg shadow-lg"
+                  class="bg-dark-bg-secondary border border-dark-border ${getStatusColor(this.session)} font-medium text-sm tracking-wide px-4 py-2 rounded-lg shadow-lg"
                 >
                   SESSION EXITED
                 </div>
@@ -2077,8 +1453,8 @@ export class SessionView extends LitElement {
                     }
                   }
                 }}
-                @touchstart=${this.touchStartHandler}
-                @touchend=${this.touchEndHandler}
+                @touchstart=${this.touchHandlers.touchStartHandler}
+                @touchend=${this.touchHandlers.touchEndHandler}
               >
                 <!-- Spacer to push content up above keyboard -->
                 <div class="flex-1"></div>
