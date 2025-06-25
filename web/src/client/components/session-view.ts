@@ -38,6 +38,8 @@ export class SessionView extends LitElement {
   }
 
   @property({ type: Object }) session: Session | null = null;
+  @property({ type: Boolean }) isMultiplexerPane = false;
+  @property({ type: Boolean }) focused = false;
   @state() private connected = false;
   @state() private terminal: Terminal | null = null;
   @state() private streamConnection: {
@@ -76,6 +78,11 @@ export class SessionView extends LitElement {
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
 
   private keyboardHandler = (e: KeyboardEvent) => {
+    // In multiplexer mode, only handle keyboard when focused
+    if (this.isMultiplexerPane && !this.focused) {
+      return;
+    }
+
     // Check if we're typing in an input field
     const target = e.target as HTMLElement;
     if (
@@ -87,8 +94,8 @@ export class SessionView extends LitElement {
       return;
     }
 
-    // Handle Cmd+O / Ctrl+O to open file browser
-    if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+    // Handle Cmd+O / Ctrl+O to open file browser (not in multiplexer mode)
+    if ((e.metaKey || e.ctrlKey) && e.key === 'o' && !this.isMultiplexerPane) {
       e.preventDefault();
       this.showFileBrowser = true;
       return;
@@ -662,7 +669,7 @@ export class SessionView extends LitElement {
           logger.warn('failed to send resize request', error);
         }
       }
-    }, 250) as unknown as number; // 250ms debounce delay
+    }, 2000) as unknown as number; // 2s delay to match layout-manager timing
   }
 
   private handleTerminalPaste(e: Event) {
@@ -1153,7 +1160,11 @@ export class SessionView extends LitElement {
         class="flex flex-col bg-black font-mono"
         style="height: 100vh; height: 100dvh; outline: none !important; box-shadow: none !important;"
       >
-        <!-- Compact Header -->
+        <!-- Compact Header (hidden in multiplexer mode) -->
+        ${
+          this.isMultiplexerPane
+            ? ''
+            : html`
         <div
           class="flex items-center justify-between px-3 py-2 border-b border-dark-border text-sm min-w-0 bg-dark-bg-secondary"
           style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(0.75rem, env(safe-area-inset-left)); padding-right: max(0.75rem, env(safe-area-inset-right));"
@@ -1313,6 +1324,8 @@ export class SessionView extends LitElement {
             </div>
           </div>
         </div>
+        `
+        }
 
         <!-- Terminal Container -->
         <div

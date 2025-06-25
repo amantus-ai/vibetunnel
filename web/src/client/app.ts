@@ -23,6 +23,7 @@ import './components/notification-settings.js';
 import './components/notification-status.js';
 import './components/auth-login.js';
 import './components/ssh-key-manager.js';
+import './components/layout-manager.js';
 
 import type { SessionCard } from './components/session-card.js';
 import { AuthClient } from './services/auth-client.js';
@@ -47,7 +48,7 @@ export class VibeTunnelApp extends LitElement {
   @state() private successMessage = '';
   @state() private sessions: Session[] = [];
   @state() private loading = false;
-  @state() private currentView: 'list' | 'session' | 'auth' = 'auth';
+  @state() private currentView: 'list' | 'session' | 'auth' | 'layout' = 'auth';
   @state() private selectedSessionId: string | null = null;
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
@@ -507,6 +508,7 @@ export class VibeTunnelApp extends LitElement {
   private async parseUrlAndSetState() {
     const url = new URL(window.location.href);
     const sessionId = url.searchParams.get('session');
+    const isLayoutView = url.searchParams.get('layout') === 'true';
 
     // Check authentication status first (unless no-auth is enabled)
     try {
@@ -555,19 +557,31 @@ export class VibeTunnelApp extends LitElement {
         newUrl.searchParams.delete('session');
         window.history.replaceState({}, '', newUrl.toString());
       }
+    } else if (isLayoutView) {
+      // Load sessions if needed for layout view
+      if (this.sessions.length === 0 && this.isAuthenticated) {
+        await this.loadSessions();
+      }
+      this.selectedSessionId = null;
+      this.currentView = 'layout';
     } else {
       this.selectedSessionId = null;
       this.currentView = 'list';
     }
   }
 
-  private updateUrl(sessionId?: string) {
+  private updateUrl(sessionId?: string, view?: string) {
     const url = new URL(window.location.href);
 
     if (sessionId) {
       url.searchParams.set('session', sessionId);
+      url.searchParams.delete('layout');
+    } else if (view === 'layout') {
+      url.searchParams.set('layout', 'true');
+      url.searchParams.delete('session');
     } else {
       url.searchParams.delete('session');
+      url.searchParams.delete('layout');
     }
 
     // Update browser URL without triggering page reload
@@ -608,6 +622,11 @@ export class VibeTunnelApp extends LitElement {
 
   private handleOpenFileBrowser = () => {
     this.showFileBrowser = true;
+  };
+
+  private handleOpenLayoutManager = () => {
+    this.currentView = 'layout';
+    this.updateUrl(undefined, 'layout');
   };
 
   private handleNotificationEnabled = (e: CustomEvent) => {
@@ -693,7 +712,17 @@ export class VibeTunnelApp extends LitElement {
                 ></session-view>
               `
               )
-            : html`
+            : this.currentView === 'layout'
+              ? html`
+                <layout-manager
+                  .sessions=${this.sessions}
+                  .authClient=${this.authClient}
+                  @navigate-to-list=${this.handleNavigateToList}
+                  @refresh-sessions=${this.handleRefresh}
+                  @error=${this.handleError}
+                ></layout-manager>
+              `
+              : html`
               <div>
                 <app-header
                   .sessions=${this.sessions}
@@ -705,6 +734,7 @@ export class VibeTunnelApp extends LitElement {
                   @kill-all-sessions=${this.handleKillAll}
                   @clean-exited-sessions=${this.handleCleanExited}
                   @open-file-browser=${this.handleOpenFileBrowser}
+                  @open-layout-manager=${this.handleOpenLayoutManager}
                   @open-notification-settings=${this.handleShowNotificationSettings}
                   @logout=${this.handleLogout}
                 ></app-header>
