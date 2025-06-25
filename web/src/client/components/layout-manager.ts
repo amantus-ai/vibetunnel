@@ -13,11 +13,15 @@ const logger = createLogger('layout-manager');
 interface LayoutPane {
   id: string;
   sessionId?: string;
+  x: number; // Grid position (0-based)
+  y: number; // Grid position (0-based)
+  width: number; // Span in grid units
+  height: number; // Span in grid units
 }
 
 interface Layout {
-  cols: number;
-  rows: number;
+  gridCols: number; // Total grid columns (can be fine-grained)
+  gridRows: number; // Total grid rows (can be fine-grained)
   panes: LayoutPane[];
 }
 
@@ -38,6 +42,8 @@ export class LayoutManager extends LitElement {
       gap: 1px;
       background: #2a2a2a;
       position: relative;
+      grid-template-columns: repeat(12, 1fr);
+      grid-template-rows: repeat(12, 1fr);
     }
 
     .pane {
@@ -77,6 +83,7 @@ export class LayoutManager extends LitElement {
       flex: 1;
       overflow: hidden;
       position: relative;
+      min-height: 0;
     }
 
     .empty-pane {
@@ -305,12 +312,24 @@ export class LayoutManager extends LitElement {
   @state() private showCreateModal = false;
   @state() private pendingPaneId: string | null = null;
   @state() private prefixMode = false;
+  @state() private resizing = false;
+  @state() private resizeStartPos = { x: 0, y: 0 };
+  @state() private resizeTarget: { paneId: string; direction: 'horizontal' | 'vertical' } | null =
+    null;
 
   private createDefaultLayout(): Layout {
     return {
-      cols: 1,
-      rows: 1,
-      panes: [{ id: '1' }],
+      gridCols: 12, // Use 12-column grid for flexibility
+      gridRows: 12, // Use 12-row grid for flexibility
+      panes: [
+        {
+          id: '1',
+          x: 0,
+          y: 0,
+          width: 12,
+          height: 12,
+        },
+      ],
     };
   }
 
@@ -327,6 +346,10 @@ export class LayoutManager extends LitElement {
 
     // Add window resize listener
     window.addEventListener('resize', this.handleWindowResize);
+
+    // Add mouse event listeners for resize handles
+    document.addEventListener('mousemove', this.handleMouseMove);
+    document.addEventListener('mouseup', this.handleMouseUp);
   }
 
   disconnectedCallback() {
@@ -335,6 +358,9 @@ export class LayoutManager extends LitElement {
     document.removeEventListener('keydown', this.handleGlobalKeyDown);
     // Remove window resize listener
     window.removeEventListener('resize', this.handleWindowResize);
+    // Remove mouse event listeners
+    document.removeEventListener('mousemove', this.handleMouseMove);
+    document.removeEventListener('mouseup', this.handleMouseUp);
     // Clear timeouts
     if (this.resizeTimeout) {
       clearTimeout(this.resizeTimeout);
@@ -357,6 +383,94 @@ export class LayoutManager extends LitElement {
 
   private resizeTimeout: number | null = null;
   private prefixTimeout: number | null = null;
+
+  private handleResizeStart = (
+    e: MouseEvent,
+    paneId: string,
+    direction: 'horizontal' | 'vertical'
+  ) => {
+    e.preventDefault();
+    this.resizing = true;
+    this.resizeStartPos = { x: e.clientX, y: e.clientY };
+    this.resizeTarget = { paneId, direction };
+    document.body.style.cursor = direction === 'horizontal' ? 'row-resize' : 'col-resize';
+    console.log(`Started resizing pane ${paneId} in ${direction} direction`);
+  };
+
+  private handleMouseMove = (e: MouseEvent) => {
+    if (!this.resizing || !this.resizeTarget) return;
+
+    e.preventDefault();
+
+    const pane = this.layout.panes.find(p => p.id === this.resizeTarget.paneId);
+    if (!pane) return;
+
+    const dx = e.clientX - this.resizeStartPos.x;
+    const dy = e.clientY - this.resizeStartPos.y;
+
+    const containerRect = this.shadowRoot.querySelector('.layout-container').getBoundingClientRect();
+    const gridCellWidth = containerRect.width / this.layout.gridCols;
+    const gridCellHeight = containerRect.height / this.layout.gridRows;
+
+    if (this.resizeTarget.direction === 'vertical') {
+      const widthChange = Math.round(dx / gridCellWidth);
+      if (widthChange !== 0) {
+        this.resizePane(pane, 'width', widthChange);
+        this.resizeStartPos.x = e.clientX;
+      }
+    } else {
+      const heightChange = Math.round(dy / gridCellHeight);
+      if (heightChange !== 0) {
+        this.resizePane(pane, 'height', heightChange);
+        this.resizeStartPos.y = e.clientY;
+      }
+    }
+  };
+
+  private resizePane(pane: LayoutPane, dimension: 'width' | 'height', delta: number) {
+    if (dimension === 'width') {
+      const newWidth = pane.width + delta;
+      if (newWidth < 1) return;
+
+      // Find neighbor to the right
+      const neighbor = this.layout.panes.find(p => p.x === pane.x + pane.width && p.y === pane.y);
+      if (neighbor) {
+        const newNeighborWidth = neighbor.width - delta;
+        if (newNeighborWidth < 1) return;
+        neighbor.width = newNeighborWidth;
+        neighbor.x = neighbor.x + delta;
+      }
+      pane.width = newWidth;
+
+    } else {
+      const newHeight = pane.height + delta;
+      if (newHeight < 1) return;
+
+      // Find neighbor below
+      const neighbor = this.layout.panes.find(p => p.y === pane.y + pane.height && p.x === pane.x);
+      if (neighbor) {
+        const newNeighborHeight = neighbor.height - delta;
+        if (newNeighborHeight < 1) return;
+        neighbor.height = newNeighborHeight;
+        neighbor.y = neighbor.y + delta;
+      }
+      pane.height = newHeight;
+    }
+
+    this.saveLayout();
+    this.requestUpdate();
+    this.resizeAllSessions();
+  }
+
+  private handleMouseUp = (e: MouseEvent) => {
+    if (!this.resizing) return;
+
+    this.resizing = false;
+    this.resizeTarget = null;
+    document.body.style.cursor = '';
+    console.log('Resize ended');
+    this.resizeAllSessions();
+  };
 
   private handleGlobalKeyDown = (e: KeyboardEvent) => {
     // Check if we're in a form field or modal is open
@@ -458,7 +572,10 @@ export class LayoutManager extends LitElement {
         case 'r':
           // Reset to 1x1 layout
           console.log('Reset layout');
-          this.updateGrid(1, 1);
+          this.layout = this.createDefaultLayout();
+          this.focusedPaneId = this.layout.panes[0]?.id || null;
+          this.saveLayout();
+          this.requestUpdate();
           break;
         case 'Escape':
           // Exit prefix mode without doing anything
@@ -476,119 +593,128 @@ export class LayoutManager extends LitElement {
   private moveFocus(direction: 'left' | 'right' | 'up' | 'down') {
     if (!this.focusedPaneId) return;
 
-    const currentPaneIndex = this.layout.panes.findIndex((p) => p.id === this.focusedPaneId);
-    if (currentPaneIndex === -1) return;
+    const currentPane = this.layout.panes.find(p => p.id === this.focusedPaneId);
+    if (!currentPane) return;
 
-    // Calculate current row and column
-    const currentRow = Math.floor(currentPaneIndex / this.layout.cols);
-    const currentCol = currentPaneIndex % this.layout.cols;
-
-    let newRow = currentRow;
-    let newCol = currentCol;
-
+    // Find the pane in the specified direction
+    let targetPane: LayoutPane | undefined;
+    
     switch (direction) {
       case 'left':
-        newCol = Math.max(0, currentCol - 1);
+        // Find pane with rightmost edge touching current pane's left edge
+        targetPane = this.layout.panes
+          .filter(p => p.id !== this.focusedPaneId && 
+                      p.x + p.width === currentPane.x &&
+                      p.y < currentPane.y + currentPane.height &&
+                      p.y + p.height > currentPane.y)
+          .sort((a, b) => Math.abs(a.y - currentPane.y) - Math.abs(b.y - currentPane.y))[0];
         break;
       case 'right':
-        newCol = Math.min(this.layout.cols - 1, currentCol + 1);
+        // Find pane with leftmost edge touching current pane's right edge  
+        targetPane = this.layout.panes
+          .filter(p => p.id !== this.focusedPaneId &&
+                      p.x === currentPane.x + currentPane.width &&
+                      p.y < currentPane.y + currentPane.height &&
+                      p.y + p.height > currentPane.y)
+          .sort((a, b) => Math.abs(a.y - currentPane.y) - Math.abs(b.y - currentPane.y))[0];
         break;
       case 'up':
-        newRow = Math.max(0, currentRow - 1);
+        // Find pane with bottom edge touching current pane's top edge
+        targetPane = this.layout.panes
+          .filter(p => p.id !== this.focusedPaneId &&
+                      p.y + p.height === currentPane.y &&
+                      p.x < currentPane.x + currentPane.width &&
+                      p.x + p.width > currentPane.x)
+          .sort((a, b) => Math.abs(a.x - currentPane.x) - Math.abs(b.x - currentPane.x))[0];
         break;
       case 'down':
-        newRow = Math.min(this.layout.rows - 1, currentRow + 1);
+        // Find pane with top edge touching current pane's bottom edge
+        targetPane = this.layout.panes
+          .filter(p => p.id !== this.focusedPaneId &&
+                      p.y === currentPane.y + currentPane.height &&
+                      p.x < currentPane.x + currentPane.width &&
+                      p.x + p.width > currentPane.x)
+          .sort((a, b) => Math.abs(a.x - currentPane.x) - Math.abs(b.x - currentPane.x))[0];
         break;
     }
 
-    const newPaneIndex = newRow * this.layout.cols + newCol;
-    if (newPaneIndex < this.layout.panes.length && newPaneIndex >= 0) {
-      this.focusedPaneId = this.layout.panes[newPaneIndex].id;
+    if (targetPane) {
+      this.focusedPaneId = targetPane.id;
     }
   }
 
   private createSmartSplit(direction: 'vertical' | 'horizontal') {
-    const currentPaneCount = this.layout.panes.length;
+    if (!this.focusedPaneId) {
+      console.log('No focused pane to split');
+      return;
+    }
 
-    console.log(`Creating ${direction} split with ${currentPaneCount} panes`);
+    const focusedPane = this.layout.panes.find((p) => p.id === this.focusedPaneId);
+    if (!focusedPane) {
+      console.log('Focused pane not found');
+      return;
+    }
 
-    // Tmux-like progression:
-    // 1 pane: vertical split = [1][2], horizontal split = [1] over [2]
-    // 2 panes horizontal [1][2]: horizontal split = [1][2] over [3] (3 spans full width)
-    // 2 panes vertical [1]/[2]: vertical split = [1][3] over [2]
-    // 3 panes: fill to 2x2 grid = [1][2] over [3][4]
+    console.log(`Splitting pane ${this.focusedPaneId} ${direction}ly`);
 
-    if (currentPaneCount === 1) {
-      if (direction === 'vertical') {
-        // [1] -> [1][2]
-        this.updateGrid(2, 1);
-      } else {
-        // [1] -> [1] over [2]
-        this.updateGrid(1, 2);
-      }
-    } else if (currentPaneCount === 2) {
-      if (this.layout.cols === 2 && this.layout.rows === 1) {
-        // Current: [1][2] -> add horizontal split below
-        // Result: [1][2] over [3] (3 spans full width)
-        // We need special CSS for this, but for now use 2x2 with 3 panes
-        console.log('2 horizontal panes -> adding pane below');
-        this.updateGrid(2, 2, 3);
-      } else if (this.layout.cols === 1 && this.layout.rows === 2) {
-        // Current: [1] over [2] -> add vertical split
-        // Result: [1][3] over [2]
-        console.log('2 vertical panes -> adding pane to side');
-        this.updateGrid(2, 2, 3);
-      } else {
-        // Fallback: add pane
-        this.updateGrid(2, 2, 3);
-      }
-    } else if (currentPaneCount === 3) {
-      // 3 panes -> 4 panes (complete 2x2 grid)
-      console.log('3 panes -> completing 2x2 grid');
-      this.updateGrid(2, 2, 4);
+    // Generate new pane ID
+    const newPaneId = String(Math.max(...this.layout.panes.map((p) => Number.parseInt(p.id))) + 1);
+
+    if (direction === 'vertical') {
+      // Split the focused pane vertically (left/right)
+      // Original pane takes left half, new pane takes right half
+      const originalWidth = focusedPane.width;
+      const newWidth = Math.floor(originalWidth / 2);
+      const remainingWidth = originalWidth - newWidth;
+
+      // Update focused pane to left half
+      focusedPane.width = newWidth;
+
+      // Create new pane for right half
+      const newPane: LayoutPane = {
+        id: newPaneId,
+        x: focusedPane.x + newWidth,
+        y: focusedPane.y,
+        width: remainingWidth,
+        height: focusedPane.height,
+      };
+
+      this.layout.panes.push(newPane);
     } else {
-      // For 4+ panes, expand grid
-      if (direction === 'vertical' && this.layout.cols < 4) {
-        console.log('Expanding columns');
-        this.updateGrid(this.layout.cols + 1, this.layout.rows);
-      } else if (direction === 'horizontal' && this.layout.rows < 4) {
-        console.log('Expanding rows');
-        this.updateGrid(this.layout.cols, this.layout.rows + 1);
-      } else {
-        console.log('Grid at max size, no more splits');
-      }
-    }
-  }
+      // Split the focused pane horizontally (top/bottom)
+      // Original pane takes top half, new pane takes bottom half
+      const originalHeight = focusedPane.height;
+      const newHeight = Math.floor(originalHeight / 2);
+      const remainingHeight = originalHeight - newHeight;
 
-  private updateGrid(cols: number, rows: number, paneCount?: number) {
-    // If paneCount is specified, only create that many panes (for special layouts)
-    const totalPanes = paneCount || cols * rows;
-    const newPanes: LayoutPane[] = [];
+      // Update focused pane to top half
+      focusedPane.height = newHeight;
 
-    // Keep existing panes and their sessions
-    for (let i = 0; i < totalPanes; i++) {
-      const existingPane = this.layout.panes[i];
-      newPanes.push({
-        id: `${i + 1}`,
-        sessionId: existingPane?.sessionId,
-      });
+      // Create new pane for bottom half
+      const newPane: LayoutPane = {
+        id: newPaneId,
+        x: focusedPane.x,
+        y: focusedPane.y + newHeight,
+        width: focusedPane.width,
+        height: remainingHeight,
+      };
+
+      this.layout.panes.push(newPane);
     }
 
-    this.layout = {
-      cols,
-      rows,
-      panes: newPanes,
-    };
+    // Focus the new pane
+    this.focusedPaneId = newPaneId;
 
-    // Save layout after changes
+    // Save layout and trigger resize
     this.saveLayout();
+    this.requestUpdate();
 
-    // Resize all sessions to fit new layout after DOM updates
     setTimeout(() => {
-      console.log('Delayed resize after layout change (2s delay)');
+      console.log('Delayed resize after split (2s delay)');
       this.resizeAllSessions();
     }, 2000);
   }
+
 
   private handlePaneClick(paneId: string) {
     this.focusedPaneId = paneId;
@@ -607,7 +733,7 @@ export class LayoutManager extends LitElement {
     if (sessionId) {
       setTimeout(() => {
         console.log('Delayed resize for session assignment (2s delay)');
-        this.resizeSessionToPane(paneId);
+        this.resizeAllSessions();
       }, 2000);
     }
 
@@ -615,144 +741,23 @@ export class LayoutManager extends LitElement {
     this.saveLayout();
   }
 
-  private getCharacterDimensions(): { width: number; height: number } {
-    // Create a temporary element to measure character dimensions
-    const testElement = document.createElement('div');
-    testElement.style.position = 'absolute';
-    testElement.style.visibility = 'hidden';
-    testElement.style.fontFamily =
-      "'Hack Nerd Font Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace";
-    testElement.style.fontSize = '14px';
-    testElement.style.lineHeight = '1.2';
-    testElement.style.whiteSpace = 'pre';
-    testElement.textContent = 'M'; // Use 'M' as it's typically the widest character
+  
 
-    document.body.appendChild(testElement);
-    const rect = testElement.getBoundingClientRect();
-    const charWidth = rect.width;
-    const charHeight = rect.height;
-    document.body.removeChild(testElement);
+  
 
-    console.log(`Measured character dimensions: ${charWidth}x${charHeight}`);
-    return { width: charWidth, height: charHeight };
-  }
+  
 
-  private async resizeSessionToPane(paneId: string) {
-    const pane = this.layout.panes.find((p) => p.id === paneId);
-    if (!pane?.sessionId) return;
-
-    // Wait for DOM to be fully rendered and elements to be properly sized
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const paneElement = this.querySelector(`[data-pane-id="${paneId}"]`) as HTMLElement;
-    if (!paneElement) {
-      console.log(`Pane element not found for ${paneId}`);
-      return;
-    }
-
-    // Wait for session-view to be fully loaded and sized
-    const sessionView = paneElement.querySelector('session-view') as HTMLElement;
-    if (!sessionView) {
-      console.log(`Session-view not found in pane ${paneId}`);
-      return;
-    }
-
-    // Wait for session-view to have non-zero dimensions
-    let attempts = 0;
-    while (attempts < 10) {
-      const sessionRect = sessionView.getBoundingClientRect();
-      if (sessionRect.height > 100) {
-        // Wait for reasonable height
-        console.log(`Session-view has good size: ${sessionRect.width}x${sessionRect.height}`);
-        break;
-      }
-      console.log(
-        `Waiting for session-view to size properly (attempt ${attempts + 1}): ${sessionRect.width}x${sessionRect.height}`
-      );
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      attempts++;
-    }
-
-    // Get accurate character dimensions by measuring
-    const charDims = this.getCharacterDimensions();
-    const paneRect = paneElement.getBoundingClientRect();
-
-    // Find terminal container specifically - this is what we need to size to
-    const terminalContainer = sessionView.querySelector('#terminal-container') as HTMLElement;
-    const terminalContainerRect = terminalContainer?.getBoundingClientRect();
-
-    console.log('=== RESIZE DEBUGGING ===');
-    console.log(`Pane element: ${paneRect.width}x${paneRect.height}`);
-    console.log(
-      `Session-view element: ${sessionView.getBoundingClientRect().width}x${sessionView.getBoundingClientRect().height}`
-    );
-    console.log(
-      `Terminal container: ${terminalContainerRect?.width}x${terminalContainerRect?.height}`
-    );
-    console.log(`Character dimensions: ${charDims.width}x${charDims.height}`);
-
-    // Use the terminal container dimensions - this is the actual space available
-    let targetWidth = sessionView.getBoundingClientRect().width;
-    let targetHeight = sessionView.getBoundingClientRect().height;
-
-    if (
-      terminalContainerRect &&
-      terminalContainerRect.width > 0 &&
-      terminalContainerRect.height > 0
-    ) {
-      targetWidth = terminalContainerRect.width;
-      targetHeight = terminalContainerRect.height;
-      console.log('Using terminal-container dimensions (most accurate)');
-    } else {
-      console.log('Using session-view dimensions (fallback)');
-    }
-
-    // Minimal padding since we're using the actual terminal container
-    const paddingWidth = 8;
-    const paddingHeight = 8;
-
-    const availableWidth = Math.max(0, targetWidth - paddingWidth);
-    const availableHeight = Math.max(0, targetHeight - paddingHeight);
-
-    const cols = Math.floor(availableWidth / charDims.width);
-    const rows = Math.floor(availableHeight / charDims.height);
-
-    console.log(
-      `Final calc: ${targetWidth}x${targetHeight} - ${paddingWidth}x${paddingHeight} = ${availableWidth}x${availableHeight} → ${cols}x${rows}`
-    );
-    console.log('========================');
-
-    this.sendResizeToSession(pane.sessionId, Math.max(20, cols), Math.max(5, rows));
-  }
-
-  private async sendResizeToSession(sessionId: string, cols: number, rows: number) {
-    try {
-      const headers = this.authClient.getAuthHeader();
-      console.log(`Resizing session ${sessionId} to ${cols}x${rows}`);
-      await fetch(`/api/sessions/${sessionId}/resize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers,
-        },
-        body: JSON.stringify({ cols, rows }),
-      });
-    } catch (error) {
-      logger.error('Failed to resize session:', error);
-    }
-  }
-
-  private async resizeAllSessions() {
-    // Resize all sessions in the layout to fit their panes with delay
-    console.log('resizeAllSessions: Starting with additional 2s delay per pane');
-    for (const pane of this.layout.panes) {
+  private resizeAllSessions() {
+    this.layout.panes.forEach((pane) => {
       if (pane.sessionId) {
-        setTimeout(() => {
-          console.log(`resizeAllSessions: Delayed resize for pane ${pane.id}`);
-          this.resizeSessionToPane(pane.id);
-        }, 2000);
+        const sessionView = this.shadowRoot?.querySelector(
+          `[data-pane-id='${pane.id}'] session-view`
+        ) as import('./session-view.js').SessionView;
+        if (sessionView) {
+          sessionView.resize();
+        }
       }
-    }
+    });
   }
 
   private handleOpenCreateModal(paneId: string) {
@@ -811,7 +816,7 @@ export class LayoutManager extends LitElement {
       setTimeout(() => {
         if (this.pendingPaneId) {
           console.log('Delayed resize for newly created session (2s delay)');
-          this.resizeSessionToPane(this.pendingPaneId);
+          this.resizeAllSessions();
         }
       }, 2000);
 
@@ -836,17 +841,21 @@ export class LayoutManager extends LitElement {
     const availableSessions = this.getAvailableSessions();
     const isFocused = this.focusedPaneId === pane.id;
 
-    // Calculate if this pane should have resize handles
-    const paneIndex = this.layout.panes.findIndex((p) => p.id === pane.id);
-    const row = Math.floor(paneIndex / this.layout.cols);
-    const col = paneIndex % this.layout.cols;
-    const showVerticalHandle = col < this.layout.cols - 1;
-    const showHorizontalHandle = row < this.layout.rows - 1;
+    // Check if pane can be resized (not at edges)
+    const canResizeRight = pane.x + pane.width < this.layout.gridCols;
+    const canResizeBottom = pane.y + pane.height < this.layout.gridRows;
+
+    // CSS Grid positioning
+    const gridStyle = `
+      grid-column: ${pane.x + 1} / ${pane.x + pane.width + 1};
+      grid-row: ${pane.y + 1} / ${pane.y + pane.height + 1};
+    `;
 
     return html`
       <div 
         class="pane ${session ? 'has-session' : 'empty'} ${isFocused ? 'focused' : ''}"
         data-pane-id="${pane.id}"
+        style="${gridStyle}"
         @click=${() => this.handlePaneClick(pane.id)}
       >
         <div class="pane-header">
@@ -915,16 +924,22 @@ export class LayoutManager extends LitElement {
 
         <!-- Resize handles -->
         ${
-          showVerticalHandle
+          canResizeRight
             ? html`
-            <div class="resize-handle vertical"></div>
+            <div 
+              class="resize-handle vertical"
+              @mousedown=${(e: MouseEvent) => this.handleResizeStart(e, pane.id, 'vertical')}
+            ></div>
           `
             : ''
         }
         ${
-          showHorizontalHandle
+          canResizeBottom
             ? html`
-            <div class="resize-handle horizontal"></div>
+            <div 
+              class="resize-handle horizontal"
+              @mousedown=${(e: MouseEvent) => this.handleResizeStart(e, pane.id, 'horizontal')}
+            ></div>
           `
             : ''
         }
@@ -934,11 +949,8 @@ export class LayoutManager extends LitElement {
 
   render() {
     // Use special 3-pane layout when we have 3 panes in a 2x2 grid
-    const useSpecial3Pane =
-      this.layout.panes.length === 3 && this.layout.cols === 2 && this.layout.rows === 2;
-    const gridClass = useSpecial3Pane
-      ? 'grid-3pane-special'
-      : `grid-${this.layout.cols}x${this.layout.rows}`;
+    const useSpecial3Pane = false; // Disable special 3-pane layout for now
+    const gridClass = useSpecial3Pane ? 'grid-3pane-special' : '';
 
     return html`
       <div class="layout-container ${gridClass}">

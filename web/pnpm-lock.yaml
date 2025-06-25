@@ -41,6 +41,9 @@ importers:
       '@homebridge/node-pty-prebuilt-multiarch':
         specifier: ^0.12.0
         version: 0.12.0
+      '@xterm/addon-fit':
+        specifier: ^0.9.0
+        version: 0.9.0(@xterm/xterm@5.5.0)
       '@xterm/headless':
         specifier: ^5.5.0
         version: 5.5.0
@@ -884,8 +887,16 @@ packages:
     resolution: {integrity: sha512-84E1025aUSjvZU1j17eCTwV7m5Zg3cZHErV3+CaJM9JPCesZwLraIa0ONIQ9w4KLgcDgJFw9UnJ0LbFf42h6tg==}
     engines: {node: '>=18.0.0'}
 
+  '@xterm/addon-fit@0.9.0':
+    resolution: {integrity: sha512-hDlPPbTVPYyvwXu/asW8HbJkI/2RMi0cMaJnBZYVeJB0SWP2NeESMCNr+I7CvBlyI0sAxpxOg8Wk4OMkxBz9WA==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+
   '@xterm/headless@5.5.0':
     resolution: {integrity: sha512-5xXB7kdQlFBP82ViMJTwwEc3gKCLGKR/eoxQm4zge7GPBl86tCdI0IdPJjoKd8mUSFXz5V7i/25sfsEkP4j46g==}
+
+  '@xterm/xterm@5.5.0':
+    resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
 
   accepts@1.3.8:
     resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
@@ -3715,7 +3726,13 @@ snapshots:
       - supports-color
       - utf-8-validate
 
+  '@xterm/addon-fit@0.9.0(@xterm/xterm@5.5.0)':
+    dependencies:
+      '@xterm/xterm': 5.5.0
+
   '@xterm/headless@5.5.0': {}
+
+  '@xterm/xterm@5.5.0': {}
 
   accepts@1.3.8:
     dependencies:

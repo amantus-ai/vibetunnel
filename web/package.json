@@ -43,6 +43,7 @@
     "@codemirror/view": "^6.28.0",
     "@homebridge/node-pty-prebuilt-multiarch": "^0.12.0",
     "@xterm/headless": "^5.5.0",
+    "@xterm/addon-fit": "^0.9.0",
     "authenticate-pam": "^1.0.5",
     "chalk": "^4.1.2",
     "express": "^4.19.2",

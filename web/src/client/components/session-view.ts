@@ -1102,6 +1102,15 @@ export class SessionView extends LitElement {
     }
   }
 
+  public resize() {
+    if (this.terminal) {
+      const terminalComponent = this.terminal as any;
+      if (terminalComponent.fitAddon) {
+        terminalComponent.fitAddon.fit();
+      }
+    }
+  }
+
   private getLoadingText(): string {
     const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
     return frames[this.loadingFrame % frames.length];
@@ -1157,8 +1166,8 @@ export class SessionView extends LitElement {
         }
       </style>
       <div
-        class="flex flex-col bg-black font-mono"
-        style="height: 100vh; height: 100dvh; outline: none !important; box-shadow: none !important;"
+        class="flex flex-col bg-black font-mono h-full"
+        style="outline: none !important; box-shadow: none !important;"
       >
         <!-- Compact Header (hidden in multiplexer mode) -->
         ${
@@ -1353,8 +1362,6 @@ export class SessionView extends LitElement {
           <vibe-terminal
             .sessionId=${this.session?.id || ''}
             .sessionStatus=${this.session?.status || 'running'}
-            .cols=${80}
-            .rows=${24}
             .fontSize=${this.terminalFontSize}
             .fitHorizontally=${false}
             .maxCols=${this.terminalMaxCols}
