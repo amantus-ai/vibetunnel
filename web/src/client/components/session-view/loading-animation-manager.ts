@@ -29,6 +29,20 @@ export class LoadingAnimationManager {
   }
 
   /**
+   * Start loading animation with callback for updates
+   */
+  startLoading(onUpdate?: () => void): void {
+    this.loading = true;
+    this.loadingFrame = 0;
+    this.loadingInterval = window.setInterval(() => {
+      this.loadingFrame = (this.loadingFrame + 1) % 4;
+      if (onUpdate) {
+        onUpdate();
+      }
+    }, 200) as unknown as number; // Update every 200ms for smooth animation
+  }
+
+  /**
    * Clean up any active intervals
    */
   cleanup(): void {
