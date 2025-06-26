@@ -106,9 +106,7 @@ async function buildCustomNode() {
   const arch = process.arch;
   
   console.log(`Building custom Node.js ${nodeSourceVersion} for ${platform}-${arch}...`);
-  if (!isCI) {
-    console.log('This will take 10-20 minutes on first run, but will be cached for future builds.');
-  }
+  console.log('This will take 10-20 minutes on first run, but will be cached for future builds.');
   
   const nodeSourceUrl = `https://nodejs.org/dist/v${nodeSourceVersion}/node-v${nodeSourceVersion}.tar.gz`;
   const majorVersion = nodeSourceVersion.split('.')[0];
@@ -187,30 +185,17 @@ async function buildCustomNode() {
       configureArgs.push('--ninja');
       console.log('Using Ninja for faster builds...');
     } catch {
-      if (!isCI && platform === 'darwin') {
-        console.log('Ninja not found, installing via Homebrew...');
-        try {
-          execSync('brew install ninja', { stdio: 'inherit' });
-          configureArgs.push('--ninja');
-          console.log('Ninja installed successfully');
-        } catch (brewError) {
-          console.log('Failed to install ninja, falling back to Make...');
-        }
-      } else {
-        console.log('Ninja not found, using Make...');
-      }
+      console.log('Ninja not found, using Make...');
     }
     
-    // Enable ccache if available in CI
-    if (isCI) {
-      try {
-        execSync('which ccache', { stdio: 'ignore' });
-        process.env.CC = 'ccache gcc';
-        process.env.CXX = 'ccache g++';
-        console.log('Using ccache for faster rebuilds...');
-      } catch {
-        console.log('ccache not found, proceeding without it...');
-      }
+    // Enable ccache if available
+    try {
+      execSync('which ccache', { stdio: 'ignore' });
+      process.env.CC = 'ccache gcc';
+      process.env.CXX = 'ccache g++';
+      console.log('Using ccache for faster rebuilds...');
+    } catch {
+      console.log('ccache not found, proceeding without it...');
     }
     
     // Use -Os optimization which is proven to be safe

@@ -41,9 +41,20 @@ jobs:
           # Ensure Xcode is selected
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           
-          # Install ninja if not present
+          # Install build prerequisites if not present
+          MISSING_TOOLS=()
+          
           if ! command -v ninja &> /dev/null; then
-            brew install ninja
+            MISSING_TOOLS+=(ninja)
+          fi
+          
+          if ! command -v ccache &> /dev/null; then
+            MISSING_TOOLS+=(ccache)
+          fi
+          
+          if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
+            echo "Installing missing tools: ${MISSING_TOOLS[*]}"
+            brew install "${MISSING_TOOLS[@]}"
           fi
 
       - name: Cache custom Node.js build

@@ -31,6 +31,19 @@ By building a custom Node.js without these features, we achieve a significantly 
 - Uses the custom Node.js to create a smaller executable
 - Build output shows version and size comparison
 
+## Prerequisites
+
+### Required Build Tools
+For optimal build performance, the following tools are required:
+- **Ninja**: Build system for faster compilation (significantly faster than Make)
+- **ccache**: Compiler cache to speed up rebuilds
+
+#### Installation
+- **macOS**: `brew install ninja ccache`
+- **Linux**: `apt-get install ninja-build ccache` (or equivalent for your distribution)
+
+The build script will automatically use these tools if available, falling back to Make if Ninja is not found.
+
 ## Build Automation
 
 ### Release Builds
