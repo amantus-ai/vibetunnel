@@ -80,6 +80,7 @@ export class SessionView extends LitElement {
   @state() private ctrlSequence: string[] = [];
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
+  @state() private hiddenInputFocused = false;
   @state() private keyboardHeight = 0;
 
   private loadingInterval: number | null = null;
@@ -302,6 +303,12 @@ export class SessionView extends LitElement {
         // Store keyboard height in state
         this.keyboardHeight = keyboardHeight;
 
+        // Control showQuickKeys based on actual keyboard visibility
+        // Only show quick keys when both keyboard is visible AND input is focused
+        if (this.useDirectKeyboard && this.hiddenInputFocused) {
+          this.showQuickKeys = keyboardHeight > 50; // Use threshold to avoid false positives
+        }
+
         // Update quick keys component if it exists
         const quickKeys = this.querySelector('terminal-quick-keys') as HTMLElement & {
           keyboardHeight: number;
@@ -310,7 +317,9 @@ export class SessionView extends LitElement {
           quickKeys.keyboardHeight = keyboardHeight;
         }
 
-        logger.log(`Visual Viewport keyboard height: ${keyboardHeight}px`);
+        logger.log(
+          `Visual Viewport keyboard height: ${keyboardHeight}px, showQuickKeys: ${this.showQuickKeys}`
+        );
       };
 
       window.visualViewport.addEventListener('resize', this.visualViewportHandler);
@@ -757,8 +766,8 @@ export class SessionView extends LitElement {
       this.createHiddenInput();
     }
 
-    // Show quick keys
-    this.showQuickKeys = true;
+    // Don't automatically show quick keys - wait for keyboard to actually appear
+    // The keyboard visibility will be detected by the visual viewport handler
 
     // The input should already be covering the terminal and be focusable
     // The user's tap on the terminal is actually a tap on the input
@@ -842,8 +851,14 @@ export class SessionView extends LitElement {
 
     // Handle focus/blur for quick keys visibility
     this.hiddenInput.addEventListener('focus', () => {
-      this.showQuickKeys = true;
-      logger.log('Hidden input focused, showing quick keys');
+      this.hiddenInputFocused = true;
+      // Only show quick keys if keyboard is actually visible
+      if (this.keyboardHeight > 50) {
+        this.showQuickKeys = true;
+      }
+      logger.log(
+        `Hidden input focused, keyboard height: ${this.keyboardHeight}, showQuickKeys: ${this.showQuickKeys}`
+      );
 
       // Trigger initial keyboard height calculation
       if (this.visualViewportHandler) {
@@ -896,6 +911,7 @@ export class SessionView extends LitElement {
               // Wait a bit longer before hiding quick keys
               setTimeout(() => {
                 if (document.activeElement !== this.hiddenInput) {
+                  this.hiddenInputFocused = false;
                   this.showQuickKeys = false;
                   logger.log('Hidden input blurred, hiding quick keys');
 

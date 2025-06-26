@@ -14,6 +14,7 @@ export interface DirectKeyboardCallbacks {
   getShowCtrlAlpha(): boolean;
   getDisableFocusManagement(): boolean;
   getVisualViewportHandler(): (() => void) | null;
+  getKeyboardHeight(): number;
   updateShowQuickKeys(value: boolean): void;
   toggleMobileInput(): void;
   clearMobileInputText(): void;
@@ -29,6 +30,7 @@ export class DirectKeyboardManager {
   private sessionViewElement: HTMLElement | null = null;
   private callbacks: DirectKeyboardCallbacks | null = null;
   private showQuickKeys = false;
+  private hiddenInputFocused = false;
 
   constructor(instanceId: string) {
     this.instanceId = instanceId;
@@ -60,10 +62,14 @@ export class DirectKeyboardManager {
       this.createHiddenInput();
     }
 
-    // Show quick keys
-    this.showQuickKeys = true;
-    if (this.callbacks) {
-      this.callbacks.updateShowQuickKeys(true);
+    // Don't automatically show quick keys - wait for keyboard to actually appear
+    // The keyboard visibility will be detected by the visual viewport handler
+    const keyboardHeight = this.callbacks?.getKeyboardHeight() ?? 0;
+    if (keyboardHeight > 50 && this.hiddenInputFocused) {
+      this.showQuickKeys = true;
+      if (this.callbacks) {
+        this.callbacks.updateShowQuickKeys(true);
+      }
     }
 
     // The input should already be covering the terminal and be focusable
@@ -152,11 +158,18 @@ export class DirectKeyboardManager {
 
     // Handle focus/blur for quick keys visibility
     this.hiddenInput.addEventListener('focus', () => {
-      this.showQuickKeys = true;
-      if (this.callbacks) {
-        this.callbacks.updateShowQuickKeys(true);
+      this.hiddenInputFocused = true;
+      // Only show quick keys if keyboard is actually visible
+      const keyboardHeight = this.callbacks?.getKeyboardHeight() ?? 0;
+      if (keyboardHeight > 50) {
+        this.showQuickKeys = true;
+        if (this.callbacks) {
+          this.callbacks.updateShowQuickKeys(true);
+        }
       }
-      logger.log('Hidden input focused, showing quick keys');
+      logger.log(
+        `Hidden input focused, keyboard height: ${keyboardHeight}, showQuickKeys: ${this.showQuickKeys}`
+      );
 
       // Trigger initial keyboard height calculation
       const visualViewportHandler = this.callbacks?.getVisualViewportHandler();
@@ -214,6 +227,7 @@ export class DirectKeyboardManager {
               // Wait a bit longer before hiding quick keys
               setTimeout(() => {
                 if (document.activeElement !== this.hiddenInput) {
+                  this.hiddenInputFocused = false;
                   this.showQuickKeys = false;
                   if (this.callbacks) {
                     this.callbacks.updateShowQuickKeys(false);
@@ -420,6 +434,28 @@ export class DirectKeyboardManager {
         this.hiddenInput.focus();
       }
     }, 100);
+  }
+
+  shouldRefocusHiddenInput(): boolean {
+    const disableFocusManagement = this.callbacks?.getDisableFocusManagement() ?? false;
+    return !disableFocusManagement && !!this.hiddenInput && this.showQuickKeys;
+  }
+
+  refocusHiddenInput(): void {
+    setTimeout(() => {
+      const disableFocusManagement = this.callbacks?.getDisableFocusManagement() ?? false;
+      if (!disableFocusManagement && this.hiddenInput) {
+        this.hiddenInput.focus();
+      }
+    }, 100);
+  }
+
+  startFocusRetentionPublic(): void {
+    this.startFocusRetention();
+  }
+
+  delayedRefocusHiddenInputPublic(): void {
+    this.delayedRefocusHiddenInput();
   }
 
   cleanup(): void {
