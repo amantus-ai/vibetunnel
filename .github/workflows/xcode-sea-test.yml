@@ -119,7 +119,7 @@ jobs:
       - name: Build SEA executable with custom Node.js
         working-directory: web
         run: |
-          CUSTOM_NODE="${{ needs.build-custom-node-mac.outputs.node-path }}"
+          CUSTOM_NODE="$(pwd)/.node-builds/node-v${{ env.NODE_VERSION }}-minimal/out/Release/node"
           echo "Building SEA with custom Node.js at: ${CUSTOM_NODE}"
           ${CUSTOM_NODE} --version
           
