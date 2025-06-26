@@ -20,6 +20,7 @@ import './terminal.js';
 import './file-browser.js';
 import './clickable-path.js';
 import './terminal-quick-keys.js';
+import './session-view/mobile-input-overlay.js';
 import { authClient } from '../services/auth-client.js';
 import { CastConverter } from '../utils/cast-converter.js';
 import { createLogger } from '../utils/logger.js';
@@ -814,142 +815,10 @@ export class SessionView extends LitElement {
     }
 
     this.showMobileInput = !this.showMobileInput;
-    if (this.showMobileInput) {
-      // Focus the textarea after ensuring it's rendered and visible
-      setTimeout(() => {
-        const textarea = this.querySelector('#mobile-input-textarea') as HTMLTextAreaElement;
-        if (textarea) {
-          // Ensure textarea is visible and focusable
-          textarea.style.visibility = 'visible';
-          textarea.removeAttribute('readonly');
-          textarea.focus();
-          // Trigger click to ensure keyboard shows
-          textarea.click();
-          this.adjustTextareaForKeyboard();
-        }
-      }, 100);
-    } else {
-      // Clean up viewport listener when closing overlay
-      const textarea = this.querySelector('#mobile-input-textarea') as HTMLTextAreaElement;
-      if (textarea) {
-        const textareaWithCleanup = textarea as HTMLTextAreaElement & {
-          _viewportCleanup?: () => void;
-        };
-        if (textareaWithCleanup._viewportCleanup) {
-          textareaWithCleanup._viewportCleanup();
-        }
-      }
-
+    if (!this.showMobileInput) {
       // Refresh terminal scroll position after closing mobile input
       this.refreshTerminalAfterMobileInput();
     }
-  }
-
-  private adjustTextareaForKeyboard() {
-    // Adjust the layout when virtual keyboard appears
-    const textarea = this.querySelector('#mobile-input-textarea') as HTMLTextAreaElement;
-    const controls = this.querySelector('#mobile-controls') as HTMLElement;
-    if (!textarea || !controls) return;
-
-    const adjustLayout = () => {
-      const viewportHeight = window.visualViewport?.height || window.innerHeight;
-      const windowHeight = window.innerHeight;
-      const keyboardHeight = windowHeight - viewportHeight;
-
-      // If keyboard is visible (viewport height is significantly smaller)
-      if (keyboardHeight > 100) {
-        // Move controls above the keyboard
-        controls.style.transform = `translateY(-${keyboardHeight}px)`;
-        controls.style.transition = 'transform 0.3s ease';
-
-        // Calculate available space to match closed keyboard layout
-        const header = this.querySelector(
-          '.flex.items-center.justify-between.p-4.border-b'
-        ) as HTMLElement;
-        const headerHeight = header?.offsetHeight || 60;
-        const controlsHeight = controls?.offsetHeight || 120;
-
-        // Calculate exact space to maintain same gap as when keyboard is closed
-        const availableHeight = viewportHeight - headerHeight - controlsHeight;
-        const inputArea = textarea.parentElement as HTMLElement;
-
-        if (inputArea && availableHeight > 0) {
-          // Set the input area to exactly fill the space, maintaining natural flex behavior
-          inputArea.style.height = `${availableHeight}px`;
-          inputArea.style.maxHeight = `${availableHeight}px`;
-          inputArea.style.overflow = 'hidden';
-          inputArea.style.display = 'flex';
-          inputArea.style.flexDirection = 'column';
-          inputArea.style.paddingBottom = '0px'; // Remove any extra padding
-
-          // Let textarea use flex-1 behavior but constrain the container
-          textarea.style.height = 'auto'; // Let it grow naturally
-          textarea.style.maxHeight = 'none'; // Remove height constraints
-          textarea.style.marginBottom = '8px'; // Keep consistent margin
-          textarea.style.flex = '1'; // Fill available space
-        }
-      } else {
-        // Reset position when keyboard is hidden
-        controls.style.transform = 'translateY(0px)';
-        controls.style.transition = 'transform 0.3s ease';
-
-        // Reset textarea height and constraints to original flex behavior
-        const inputArea = textarea.parentElement as HTMLElement;
-        if (inputArea) {
-          inputArea.style.height = '';
-          inputArea.style.maxHeight = '';
-          inputArea.style.overflow = '';
-          inputArea.style.display = '';
-          inputArea.style.flexDirection = '';
-          inputArea.style.paddingBottom = '';
-          textarea.style.height = '';
-          textarea.style.maxHeight = '';
-          textarea.style.flex = '';
-        }
-      }
-    };
-
-    // Listen for viewport changes (keyboard show/hide)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', adjustLayout);
-      // Clean up listener when overlay is closed
-      const cleanup = () => {
-        if (window.visualViewport) {
-          window.visualViewport.removeEventListener('resize', adjustLayout);
-        }
-      };
-      // Store cleanup function for later use
-      (textarea as HTMLTextAreaElement & { _viewportCleanup?: () => void })._viewportCleanup =
-        cleanup;
-    }
-
-    // Initial adjustment
-    requestAnimationFrame(adjustLayout);
-  }
-
-  private handleMobileInputChange(e: Event) {
-    const textarea = e.target as HTMLTextAreaElement;
-    this.mobileInputText = textarea.value;
-    // Force update to ensure button states update
-    this.requestUpdate();
-  }
-
-  private focusMobileTextarea() {
-    const textarea = this.querySelector('#mobile-input-textarea') as HTMLTextAreaElement;
-    if (!textarea) return;
-
-    // Multiple attempts to ensure focus on mobile
-    textarea.focus();
-
-    // iOS hack to show keyboard
-    textarea.setAttribute('readonly', 'readonly');
-    textarea.focus();
-    setTimeout(() => {
-      textarea.removeAttribute('readonly');
-      textarea.focus();
-      // Ensure cursor is at end
-      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-    }, 100);
   }
 
   private async handleMobileInputSendOnly() {
@@ -1030,6 +899,34 @@ export class SessionView extends LitElement {
     } catch (error) {
       logger.error('error sending mobile input', error);
       // Don't hide the overlay if there was an error
+    }
+  }
+
+  private handleMobileInputCancel() {
+    this.showMobileInput = false;
+    // Clear the text
+    this.mobileInputText = '';
+    // Restart focus retention
+    if (!this.disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
+      this.focusRetentionInterval = setInterval(() => {
+        if (
+          !this.disableFocusManagement &&
+          this.showQuickKeys &&
+          this.hiddenInput &&
+          document.activeElement !== this.hiddenInput &&
+          !this.showMobileInput &&
+          !this.showCtrlAlpha
+        ) {
+          logger.log('Refocusing hidden input to maintain keyboard');
+          this.hiddenInput.focus();
+        }
+      }, 300) as unknown as number;
+
+      setTimeout(() => {
+        if (!this.disableFocusManagement && this.hiddenInput) {
+          this.hiddenInput.focus();
+        }
+      }, 100);
     }
   }
 
@@ -1470,16 +1367,6 @@ export class SessionView extends LitElement {
         if (this.hiddenInput) {
           this.hiddenInput.blur();
         }
-
-        // Force update to render the textarea
-        this.requestUpdate();
-
-        // Focus the textarea after render completes
-        this.updateComplete.then(() => {
-          setTimeout(() => {
-            this.focusMobileTextarea();
-          }, 100);
-        });
       } else {
         // Clear the text when closing
         this.mobileInputText = '';
@@ -2057,160 +1944,21 @@ export class SessionView extends LitElement {
             : ''
         }
 
-        <!-- Full-Screen Input Overlay (only when opened) -->
-        ${
-          this.isMobile && this.showMobileInput
-            ? html`
-              <div
-                class="fixed inset-0 z-40 flex flex-col"
-                style="background: rgba(0, 0, 0, 0.8);"
-                @click=${(e: Event) => {
-                  if (e.target === e.currentTarget) {
-                    this.showMobileInput = false;
-                    // Refocus the hidden input
-                    if (!this.disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
-                      setTimeout(() => {
-                        if (!this.disableFocusManagement && this.hiddenInput) {
-                          this.hiddenInput.focus();
-                        }
-                      }, 100);
-                    }
-                  }
-                }}
-                @touchstart=${this.touchStartHandler}
-                @touchend=${this.touchEndHandler}
-              >
-                <!-- Spacer to push content up above keyboard -->
-                <div class="flex-1"></div>
-
-                <div
-                  class="mobile-input-container font-mono text-sm mx-4 flex flex-col"
-                  style="background: black; border: 1px solid #569cd6; border-radius: 8px; margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
-                  @click=${(e: Event) => {
-                    e.stopPropagation();
-                    // Focus textarea when clicking anywhere in the container
-                    this.focusMobileTextarea();
-                  }}
-                >
-                  <!-- Input Area -->
-                  <div class="p-4 flex flex-col">
-                    <textarea
-                      id="mobile-input-textarea"
-                      class="w-full font-mono text-sm resize-none outline-none"
-                      placeholder="Type your command here..."
-                      .value=${this.mobileInputText}
-                      @input=${this.handleMobileInputChange}
-                      @focus=${(e: FocusEvent) => {
-                        e.stopPropagation();
-                        logger.log('Mobile input textarea focused');
-                      }}
-                      @blur=${(e: FocusEvent) => {
-                        e.stopPropagation();
-                        logger.log('Mobile input textarea blurred');
-                      }}
-                      @keydown=${(e: KeyboardEvent) => {
-                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                          e.preventDefault();
-                          this.handleMobileInputSend();
-                        } else if (e.key === 'Escape') {
-                          e.preventDefault();
-                          this.showMobileInput = false;
-                          // Clear the text
-                          this.mobileInputText = '';
-                          // Restart focus retention
-                          if (
-                            !this.disableFocusManagement &&
-                            this.hiddenInput &&
-                            this.showQuickKeys
-                          ) {
-                            this.focusRetentionInterval = setInterval(() => {
-                              if (
-                                !this.disableFocusManagement &&
-                                this.showQuickKeys &&
-                                this.hiddenInput &&
-                                document.activeElement !== this.hiddenInput &&
-                                !this.showMobileInput &&
-                                !this.showCtrlAlpha
-                              ) {
-                                logger.log('Refocusing hidden input to maintain keyboard');
-                                this.hiddenInput.focus();
-                              }
-                            }, 300) as unknown as number;
-
-                            setTimeout(() => {
-                              if (!this.disableFocusManagement && this.hiddenInput) {
-                                this.hiddenInput.focus();
-                              }
-                            }, 100);
-                          }
-                        }
-                      }}
-                      style="height: 120px; background: black; color: #d4d4d4; border: none; padding: 12px;"
-                      autocomplete="off"
-                      autocorrect="off"
-                      autocapitalize="off"
-                      spellcheck="false"
-                    ></textarea>
-                  </div>
-
-                  <!-- Controls -->
-                  <div class="p-4 flex gap-2" style="border-top: 1px solid #444;">
-                    <button
-                      class="font-mono px-3 py-2 text-xs transition-colors btn-ghost"
-                      @click=${() => {
-                        this.showMobileInput = false;
-                        // Clear the text
-                        this.mobileInputText = '';
-                        // Restart focus retention
-                        if (
-                          !this.disableFocusManagement &&
-                          this.hiddenInput &&
-                          this.showQuickKeys
-                        ) {
-                          this.focusRetentionInterval = setInterval(() => {
-                            if (
-                              !this.disableFocusManagement &&
-                              this.showQuickKeys &&
-                              this.hiddenInput &&
-                              document.activeElement !== this.hiddenInput &&
-                              !this.showMobileInput &&
-                              !this.showCtrlAlpha
-                            ) {
-                              logger.log('Refocusing hidden input to maintain keyboard');
-                              this.hiddenInput.focus();
-                            }
-                          }, 300) as unknown as number;
-
-                          setTimeout(() => {
-                            if (!this.disableFocusManagement && this.hiddenInput) {
-                              this.hiddenInput.focus();
-                            }
-                          }, 100);
-                        }
-                      }}
-                    >
-                      CANCEL
-                    </button>
-                    <button
-                      class="flex-1 font-mono px-3 py-2 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed btn-ghost"
-                      @click=${this.handleMobileInputSendOnly}
-                      ?disabled=${!this.mobileInputText.trim()}
-                    >
-                      SEND
-                    </button>
-                    <button
-                      class="flex-1 font-mono px-3 py-2 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed btn-secondary"
-                      @click=${this.handleMobileInputSend}
-                      ?disabled=${!this.mobileInputText.trim()}
-                    >
-                      SEND + ⏎
-                    </button>
-                  </div>
-                </div>
-              </div>
-            `
-            : ''
-        }
+        <!-- Mobile Input Overlay -->
+        <mobile-input-overlay
+          .visible=${this.isMobile && this.showMobileInput}
+          .mobileInputText=${this.mobileInputText}
+          .keyboardHeight=${this.keyboardHeight}
+          .touchStartX=${this.touchStartX}
+          .touchStartY=${this.touchStartY}
+          .onSend=${(_text: string) => this.handleMobileInputSendOnly()}
+          .onSendWithEnter=${(_text: string) => this.handleMobileInputSend()}
+          .onCancel=${() => this.handleMobileInputCancel()}
+          .onTextChange=${(text: string) => {
+            this.mobileInputText = text;
+          }}
+          .handleBack=${this.handleBack.bind(this)}
+        ></mobile-input-overlay>
 
         <!-- Ctrl+Alpha Overlay -->
         ${
