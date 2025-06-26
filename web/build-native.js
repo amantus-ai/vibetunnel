@@ -110,7 +110,8 @@ function getPtyPath() {
 try {
   const ptyPath = getPtyPath();
 
-  // Set spawn-helper path for macOS (Linux doesn't use spawn-helper)
+  // Set spawn-helper path for macOS only
+  // Linux uses forkpty() directly and doesn't need spawn-helper
   if (process.platform === 'darwin') {
     const execDir = path.dirname(process.execPath);
     const spawnHelperPath = path.join(execDir, 'spawn-helper');
@@ -160,13 +161,15 @@ var helperPath;
 // For SEA, check environment variables
 if (process.env.VIBETUNNEL_SEA) {
     pty = require('./sea-loader').default;
-    // In SEA context, look for spawn-helper next to executable
-    const execDir = path.dirname(process.execPath);
-    const spawnHelperPath = path.join(execDir, 'spawn-helper');
-    if (require('fs').existsSync(spawnHelperPath)) {
-        helperPath = spawnHelperPath;
-    } else if (process.env.NODE_PTY_SPAWN_HELPER_PATH) {
-        helperPath = process.env.NODE_PTY_SPAWN_HELPER_PATH;
+    // In SEA context, look for spawn-helper on macOS only (Linux doesn't use it)
+    if (process.platform === 'darwin') {
+        const execDir = path.dirname(process.execPath);
+        const spawnHelperPath = path.join(execDir, 'spawn-helper');
+        if (require('fs').existsSync(spawnHelperPath)) {
+            helperPath = spawnHelperPath;
+        } else if (process.env.NODE_PTY_SPAWN_HELPER_PATH) {
+            helperPath = process.env.NODE_PTY_SPAWN_HELPER_PATH;
+        }
     }
 } else {
     // Original loading logic
@@ -377,7 +380,9 @@ async function main() {
     fs.copyFileSync(ptyNodePath, 'native/pty.node');
     console.log('  - Copied pty.node');
 
-    // Copy spawn-helper (macOS only - node-pty only builds it on macOS)
+    // Copy spawn-helper (macOS only)
+    // Note: spawn-helper is only built and required on macOS where it's used for pty_posix_spawn()
+    // On Linux, node-pty uses forkpty() directly and doesn't need spawn-helper
     if (process.platform === 'darwin') {
       const spawnHelperPath = path.join(nativeModulesDir, 'spawn-helper');
       if (!fs.existsSync(spawnHelperPath)) {
