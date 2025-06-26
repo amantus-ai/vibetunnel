@@ -22,6 +22,7 @@ import './clickable-path.js';
 import './terminal-quick-keys.js';
 import './session-view/mobile-input-overlay.js';
 import './session-view/ctrl-alpha-overlay.js';
+import './session-view/width-selector.js';
 import { authClient } from '../services/auth-client.js';
 import { CastConverter } from '../utils/cast-converter.js';
 import { createLogger } from '../utils/logger.js';
@@ -1016,28 +1017,6 @@ export class SessionView extends LitElement {
     }
   }
 
-  private handleCustomWidthInput(e: Event) {
-    const input = e.target as HTMLInputElement;
-    this.customWidth = input.value;
-  }
-
-  private handleCustomWidthSubmit() {
-    const width = Number.parseInt(this.customWidth, 10);
-    if (!Number.isNaN(width) && width >= 20 && width <= 500) {
-      this.handleWidthSelect(width);
-      this.customWidth = '';
-    }
-  }
-
-  private handleCustomWidthKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
-      this.handleCustomWidthSubmit();
-    } else if (e.key === 'Escape') {
-      this.customWidth = '';
-      this.showWidthSelector = false;
-    }
-  }
-
   private getCurrentWidthLabel(): string {
     if (this.terminalMaxCols === 0) return '∞';
     const commonWidth = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
@@ -1712,91 +1691,18 @@ export class SessionView extends LitElement {
             >
               ${this.getCurrentWidthLabel()}
             </button>
-            ${
-              this.showWidthSelector
-                ? html`
-                  <div
-                    class="width-selector-container absolute top-8 right-0 bg-dark-bg-secondary border border-dark-border rounded-md shadow-lg z-50 min-w-48"
-                  >
-                    <div class="p-2">
-                      <div class="text-xs text-dark-text-muted mb-2 px-2">Terminal Width</div>
-                      ${COMMON_TERMINAL_WIDTHS.map(
-                        (width) => html`
-                          <button
-                            class="w-full text-left px-2 py-1 text-xs hover:bg-dark-border rounded-sm flex justify-between items-center
-                              ${
-                                this.terminalMaxCols === width.value
-                                  ? 'bg-dark-border text-accent-green'
-                                  : 'text-dark-text'
-                              }"
-                            @click=${() => this.handleWidthSelect(width.value)}
-                          >
-                            <span class="font-mono">${width.label}</span>
-                            <span class="text-dark-text-muted text-xs">${width.description}</span>
-                          </button>
-                        `
-                      )}
-                      <div class="border-t border-dark-border mt-2 pt-2">
-                        <div class="text-xs text-dark-text-muted mb-1 px-2">Custom (20-500)</div>
-                        <div class="flex gap-1">
-                          <input
-                            type="number"
-                            min="20"
-                            max="500"
-                            placeholder="80"
-                            .value=${this.customWidth}
-                            @input=${this.handleCustomWidthInput}
-                            @keydown=${this.handleCustomWidthKeydown}
-                            @click=${(e: Event) => e.stopPropagation()}
-                            class="flex-1 bg-dark-bg border border-dark-border rounded px-2 py-1 text-xs font-mono text-dark-text"
-                          />
-                          <button
-                            class="btn-secondary text-xs px-2 py-1"
-                            @click=${this.handleCustomWidthSubmit}
-                            ?disabled=${
-                              !this.customWidth ||
-                              Number.parseInt(this.customWidth) < 20 ||
-                              Number.parseInt(this.customWidth) > 500
-                            }
-                          >
-                            Set
-                          </button>
-                        </div>
-                      </div>
-                      <div class="border-t border-dark-border mt-2 pt-2">
-                        <div class="text-xs text-dark-text-muted mb-2 px-2">Font Size</div>
-                        <div class="flex items-center gap-2 px-2">
-                          <button
-                            class="btn-secondary text-xs px-2 py-1"
-                            @click=${() => this.handleFontSizeChange(this.terminalFontSize - 1)}
-                            ?disabled=${this.terminalFontSize <= 8}
-                          >
-                            −
-                          </button>
-                          <span class="font-mono text-xs text-dark-text min-w-8 text-center">
-                            ${this.terminalFontSize}px
-                          </span>
-                          <button
-                            class="btn-secondary text-xs px-2 py-1"
-                            @click=${() => this.handleFontSizeChange(this.terminalFontSize + 1)}
-                            ?disabled=${this.terminalFontSize >= 32}
-                          >
-                            +
-                          </button>
-                          <button
-                            class="btn-ghost text-xs px-2 py-1 ml-auto"
-                            @click=${() => this.handleFontSizeChange(14)}
-                            ?disabled=${this.terminalFontSize === 14}
-                          >
-                            Reset
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                `
-                : ''
-            }
+            <width-selector
+              .visible=${this.showWidthSelector}
+              .terminalMaxCols=${this.terminalMaxCols}
+              .terminalFontSize=${this.terminalFontSize}
+              .customWidth=${this.customWidth}
+              .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
+              .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
+              .onClose=${() => {
+                this.showWidthSelector = false;
+                this.customWidth = '';
+              }}
+            ></width-selector>
             <div class="flex flex-col items-end gap-0">
               <span class="${this.getStatusColor()} text-xs flex items-center gap-1">
                 <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
