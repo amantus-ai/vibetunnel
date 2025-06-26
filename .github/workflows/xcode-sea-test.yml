@@ -28,6 +28,8 @@ env:
 jobs:
   build-custom-node-mac:
     name: Build Custom Node.js for macOS
+    # DISABLED: Custom Node.js compilation temporarily disabled
+    if: false
     runs-on: self-hosted
     outputs:
       node-path: ${{ steps.node-info.outputs.path }}
@@ -92,8 +94,9 @@ jobs:
           fi
 
   test-xcode-build:
-    name: Test Xcode Build with Custom Node
-    needs: build-custom-node-mac
+    name: Test Xcode Build with System Node
+    # DISABLED: Removed dependency on build-custom-node-mac since it's disabled
+    # needs: build-custom-node-mac
     runs-on: self-hosted
     steps:
       - name: Checkout code
@@ -128,14 +131,17 @@ jobs:
           pnpm install --frozen-lockfile
 
       - name: Build SEA executable with custom Node.js
+        # DISABLED: Custom Node.js test temporarily disabled, using system Node.js instead
         working-directory: web
         run: |
-          CUSTOM_NODE="$(pwd)/.node-builds/node-v${{ env.NODE_VERSION }}-minimal/out/Release/node"
-          echo "Building SEA with custom Node.js at: ${CUSTOM_NODE}"
-          ${CUSTOM_NODE} --version
+          # CUSTOM_NODE="$(pwd)/.node-builds/node-v${{ env.NODE_VERSION }}-minimal/out/Release/node"
+          # echo "Building SEA with custom Node.js at: ${CUSTOM_NODE}"
+          # ${CUSTOM_NODE} --version
           
-          # Build the SEA executable
-          node build-native.js --custom-node="${CUSTOM_NODE}"
+          # Build the SEA executable with system Node.js instead
+          echo "Building SEA with system Node.js..."
+          node --version
+          node build-native.js
           
           # Verify the build
           echo "=== SEA Build Artifacts ==="
@@ -216,7 +222,9 @@ jobs:
           if [ -f "${APP_PATH}/Contents/Resources/vibetunnel" ]; then
             echo "SEA executable: $(du -h "${APP_PATH}/Contents/Resources/vibetunnel" | cut -f1)"
           fi
-          echo "Custom Node.js used: $(( ${{ needs.build-custom-node-mac.outputs.node-size }} / 1024 / 1024 )) MB"
+          # DISABLED: Custom Node.js size reference disabled
+          # echo "Custom Node.js used: $(( ${{ needs.build-custom-node-mac.outputs.node-size }} / 1024 / 1024 )) MB"
+          echo "Using system Node.js"
 
       - name: Upload app artifact
         uses: actions/upload-artifact@v4

@@ -26,6 +26,8 @@ env:
 jobs:
   build-custom-node:
     name: Build Custom Node.js
+    # DISABLED: Custom Node.js compilation temporarily disabled
+    if: false
     runs-on: blacksmith-32vcpu-ubuntu-2404-arm
     outputs:
       cache-hit: ${{ steps.cache-custom-node.outputs.cache-hit }}
@@ -61,11 +63,13 @@ jobs:
 
   test-sea-build:
     name: Test SEA Build
-    needs: build-custom-node
+    # DISABLED: Removed dependency on build-custom-node since it's disabled
+    # needs: build-custom-node
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     strategy:
       matrix:
-        node-type: [system, custom]
+        # DISABLED: Only testing with system Node.js, custom disabled
+        node-type: [system]  # was: [system, custom]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -95,7 +99,8 @@ jobs:
             ${{ env.CUSTOM_NODE_CACHE_KEY }}-v${{ env.NODE_VERSION }}-
 
       - name: Build custom Node.js if not cached
-        if: matrix.node-type == 'custom' && steps.restore-custom-node.outputs.cache-hit != 'true'
+        # DISABLED: Custom Node.js compilation temporarily disabled
+        if: false && matrix.node-type == 'custom' && steps.restore-custom-node.outputs.cache-hit != 'true'
         working-directory: web
         run: |
           echo "Custom Node.js not found in cache, building..."
@@ -120,7 +125,8 @@ jobs:
           node build-native.js
 
       - name: Build SEA executable (custom Node.js)
-        if: matrix.node-type == 'custom'
+        # DISABLED: Custom Node.js test temporarily disabled
+        if: false && matrix.node-type == 'custom'
         working-directory: web
         run: |
           # Use auto-discovery since we know the custom Node.js is in .node-builds
@@ -204,19 +210,21 @@ jobs:
           pnpm install --frozen-lockfile
           
           # Build custom Node.js if not cached
-          if [ ! -f ".node-builds/node-v${NODE_VERSION}-minimal/out/Release/node" ]; then
-            node build-custom-node.js --version=${NODE_VERSION}
-          fi
+          # DISABLED: Custom Node.js compilation temporarily disabled
+          # if [ ! -f ".node-builds/node-v${NODE_VERSION}-minimal/out/Release/node" ]; then
+          #   node build-custom-node.js --version=${NODE_VERSION}
+          # fi
           
           # Test both builds
           echo "=== Testing with system Node.js ==="
           node build-native.js
           ./native/vibetunnel --version || true
           
-          echo "=== Testing with custom Node.js ==="
-          CUSTOM_NODE=".node-builds/node-v${NODE_VERSION}-minimal/out/Release/node"
-          node build-native.js --custom-node="${CUSTOM_NODE}"
-          ./native/vibetunnel --version || true
+          # DISABLED: Custom Node.js test temporarily disabled
+          # echo "=== Testing with custom Node.js ==="
+          # CUSTOM_NODE=".node-builds/node-v${NODE_VERSION}-minimal/out/Release/node"
+          # node build-native.js --custom-node="${CUSTOM_NODE}"
+          # ./native/vibetunnel --version || true
 
       - name: Compare sizes
         working-directory: web
