@@ -25,13 +25,13 @@ import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
 import { authClient } from '../services/auth-client.js';
-import { CastConverter } from '../utils/cast-converter.js';
 import { createLogger } from '../utils/logger.js';
 import {
   COMMON_TERMINAL_WIDTHS,
   TerminalPreferencesManager,
 } from '../utils/terminal-preferences.js';
 import { type AppPreferences, AppSettings } from './app-settings.js';
+import { ConnectionManager } from './session-view/connection-manager.js';
 import type { Terminal } from './terminal.js';
 
 const logger = createLogger('session-view');
@@ -50,11 +50,6 @@ export class SessionView extends LitElement {
   @property({ type: Boolean }) disableFocusManagement = false;
   @state() private connected = false;
   @state() private terminal: Terminal | null = null;
-  @state() private streamConnection: {
-    eventSource: EventSource;
-    disconnect: () => void;
-    errorHandler?: EventListener;
-  } | null = null;
   @state() private showMobileInput = false;
   @state() private mobileInputText = '';
   @state() private isMobile = false;
@@ -73,7 +68,7 @@ export class SessionView extends LitElement {
   @state() private terminalFontSize = 14;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
-  @state() private reconnectCount = 0;
+  private connectionManager!: ConnectionManager;
   @state() private ctrlSequence: string[] = [];
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
@@ -221,6 +216,23 @@ export class SessionView extends LitElement {
     super.connectedCallback();
     this.connected = true;
 
+    // Initialize connection manager
+    this.connectionManager = new ConnectionManager(
+      (sessionId: string) => {
+        // Handle session exit
+        if (this.session && sessionId === this.session.id) {
+          this.session = { ...this.session, status: 'exited' };
+          this.requestUpdate();
+        }
+      },
+      (session: Session) => {
+        // Handle session update
+        this.session = session;
+        this.requestUpdate();
+      }
+    );
+    this.connectionManager.setConnected(true);
+
     // Load terminal preferences
     this.terminalMaxCols = this.preferencesManager.getMaxCols();
     this.terminalFontSize = this.preferencesManager.getFontSize();
@@ -321,6 +333,11 @@ export class SessionView extends LitElement {
       this.resetTerminalSize();
     }
 
+    // Update connection manager
+    if (this.connectionManager) {
+      this.connectionManager.setConnected(false);
+    }
+
     // Remove click outside handler
     document.removeEventListener('click', this.handleClickOutside);
 
@@ -364,7 +381,9 @@ export class SessionView extends LitElement {
     this.stopLoading();
 
     // Cleanup stream connection if it exists
-    this.cleanupStreamConnection();
+    if (this.connectionManager) {
+      this.connectionManager.cleanupStreamConnection();
+    }
 
     // Terminal cleanup is handled by the component itself
     this.terminal = null;
@@ -378,14 +397,6 @@ export class SessionView extends LitElement {
     }
   }
 
-  private cleanupStreamConnection(): void {
-    if (this.streamConnection) {
-      logger.log('Cleaning up stream connection');
-      this.streamConnection.disconnect();
-      this.streamConnection = null;
-    }
-  }
-
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
 
@@ -394,7 +405,9 @@ export class SessionView extends LitElement {
       const oldSession = changedProperties.get('session') as Session | null;
       if (oldSession && oldSession.id !== this.session?.id) {
         logger.log('Session changed, cleaning up old stream connection');
-        this.cleanupStreamConnection();
+        if (this.connectionManager) {
+          this.connectionManager.cleanupStreamConnection();
+        }
       }
     }
 
@@ -443,6 +456,12 @@ export class SessionView extends LitElement {
 
     this.terminal = terminalElement;
 
+    // Update connection manager with terminal reference
+    if (this.connectionManager) {
+      this.connectionManager.setTerminal(this.terminal);
+      this.connectionManager.setSession(this.session);
+    }
+
     // Configure terminal for interactive session
     this.terminal.cols = 80;
     this.terminal.rows = 24;
@@ -471,89 +490,12 @@ export class SessionView extends LitElement {
     // Connect to stream directly without artificial delays
     // Use setTimeout to ensure we're still connected after all synchronous updates
     setTimeout(() => {
-      if (this.connected) {
-        this.connectToStream();
+      if (this.connected && this.connectionManager) {
+        this.connectionManager.connectToStream();
       } else {
         logger.warn(`Component disconnected before stream connection`);
       }
     }, 0);
-  }
-
-  private connectToStream() {
-    if (!this.terminal || !this.session) {
-      logger.warn(`Cannot connect to stream - missing terminal or session`);
-      return;
-    }
-
-    // Don't connect if we're already disconnected
-    if (!this.connected) {
-      logger.warn(`Component already disconnected, not connecting to stream`);
-      return;
-    }
-
-    logger.log(`Connecting to stream for session ${this.session.id}`);
-
-    // Clean up existing connection
-    this.cleanupStreamConnection();
-
-    // Get auth client from the main app
-    const user = authClient.getCurrentUser();
-
-    // Build stream URL with auth token as query parameter (EventSource doesn't support headers)
-    let streamUrl = `/api/sessions/${this.session.id}/stream`;
-    if (user?.token) {
-      streamUrl += `?token=${encodeURIComponent(user.token)}`;
-    }
-
-    // Use CastConverter to connect terminal to stream with reconnection tracking
-    const connection = CastConverter.connectToStream(this.terminal, streamUrl);
-
-    // Wrap the connection to track reconnections
-    const originalEventSource = connection.eventSource;
-    let lastErrorTime = 0;
-    const reconnectThreshold = 3; // Max reconnects before giving up
-    const reconnectWindow = 5000; // 5 second window
-
-    const handleError = () => {
-      const now = Date.now();
-
-      // Reset counter if enough time has passed since last error
-      if (now - lastErrorTime > reconnectWindow) {
-        this.reconnectCount = 0;
-      }
-
-      this.reconnectCount++;
-      lastErrorTime = now;
-
-      logger.log(`stream error #${this.reconnectCount} for session ${this.session?.id}`);
-
-      // If we've had too many reconnects, mark session as exited
-      if (this.reconnectCount >= reconnectThreshold) {
-        logger.warn(`session ${this.session?.id} marked as exited due to excessive reconnections`);
-
-        if (this.session && this.session.status !== 'exited') {
-          this.session = { ...this.session, status: 'exited' };
-          this.requestUpdate();
-
-          // Disconnect the stream and load final snapshot
-          this.cleanupStreamConnection();
-
-          // Load final snapshot
-          requestAnimationFrame(() => {
-            this.loadSessionSnapshot();
-          });
-        }
-      }
-    };
-
-    // Override the error handler
-    originalEventSource.addEventListener('error', handleError);
-
-    // Store the connection with error handler reference
-    this.streamConnection = {
-      ...connection,
-      errorHandler: handleError as EventListener,
-    };
   }
 
   private async handleKeyboardInput(e: KeyboardEvent) {
@@ -722,32 +664,9 @@ export class SessionView extends LitElement {
       this.requestUpdate();
 
       // Switch to snapshot mode - disconnect stream and load final snapshot
-      this.cleanupStreamConnection();
-    }
-  }
-
-  private async loadSessionSnapshot() {
-    if (!this.terminal || !this.session) return;
-
-    try {
-      const url = `/api/sessions/${this.session.id}/snapshot`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Failed to fetch snapshot: ${response.status}`);
-
-      const castContent = await response.text();
-
-      // Clear terminal and load snapshot
-      this.terminal.clear();
-      await CastConverter.dumpToTerminal(this.terminal, castContent);
-
-      // Scroll to bottom after loading
-      this.terminal.queueCallback(() => {
-        if (this.terminal) {
-          this.terminal.scrollToBottom();
-        }
-      });
-    } catch (error) {
-      logger.error('failed to load session snapshot', error);
+      if (this.connectionManager) {
+        this.connectionManager.cleanupStreamConnection();
+      }
     }
   }
 
