@@ -208,6 +208,18 @@ async function main() {
     // Apply minimal patches to node-pty
     applyMinimalPatches();
     
+    // Ensure native modules are built (in case postinstall didn't run)
+    const nativePtyDir = 'node_modules/node-pty/build/Release';
+    const nativeAuthDir = 'node_modules/authenticate-pam/build/Release';
+    
+    if (!fs.existsSync(nativePtyDir) || !fs.existsSync(nativeAuthDir)) {
+      console.log('Building native modules...');
+      execSync('npm rebuild node-pty authenticate-pam', { 
+        stdio: 'inherit',
+        cwd: __dirname
+      });
+    }
+    
     // Create build directory
     if (!fs.existsSync('build')) {
       fs.mkdirSync('build');
