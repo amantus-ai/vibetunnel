@@ -137,6 +137,71 @@ class LinkProcessor {
     return /^(https?:\/\/|file:\/\/)/.test(combined);
   }
 
+  private isValidUrlContinuation(currentUrl: string, nextLineText: string): boolean {
+    const trimmedNext = nextLineText.trimStart();
+
+    // Empty line or only whitespace - URL ended
+    if (!trimmedNext) {
+      return false;
+    }
+
+    // If we're still building the protocol part, check if continuation makes sense
+    if (!currentUrl.includes('://')) {
+      // Check if the combination would form a valid protocol
+      const combined = currentUrl + trimmedNext;
+      return /^(https?:|file:|https?:\/|file:\/|https?:\/\/|file:\/\/)/.test(combined);
+    }
+
+    // If the current URL ends with a protocol, next should be domain-like
+    if (currentUrl.match(/(https?:|file:)\/\/$/)) {
+      return DOMAIN_START_PATTERN.test(trimmedNext);
+    }
+
+    // For established URLs, check if the next line could plausibly continue the URL
+    // This is more permissive to handle various splitting scenarios
+
+    // Common cases where URLs definitely don't continue:
+    // - Line starts with common non-URL words
+    if (
+      /^(and|or|but|the|is|are|was|were|been|have|has|had|will|would|could|should|may|might)\b/i.test(
+        trimmedNext
+      )
+    ) {
+      return false;
+    }
+
+    // Line starts with sentence-ending punctuation (but not domain dots)
+    if (/^[!?;]/.test(trimmedNext)) {
+      return false;
+    }
+
+    // Special check for dots - only reject if followed by space or end of line
+    if (/^\.(\s|$)/.test(trimmedNext)) {
+      return false;
+    }
+
+    // For more accurate detection, check if the line starts with something that looks like
+    // it could be part of a URL vs regular text
+    const firstWord = trimmedNext.split(/\s/)[0];
+
+    // If the first word contains URL-like patterns, it might continue
+    if (/[/:._-]/.test(firstWord)) {
+      return true;
+    }
+
+    // If it's all alphanumeric with no URL-like characters, and it's a common word,
+    // it's probably not a URL continuation
+    if (/^[a-zA-Z]+$/.test(firstWord) && firstWord.length > 2) {
+      // More extensive list of common English words that shouldn't start a URL continuation
+      const commonWords =
+        /^(next|line|with|text|this|that|then|when|where|which|while|after|before|during|since|until|above|below|between|into|through|under|over|about|against|among|around|behind|beside|beyond|inside|outside|toward|within|without|according|although|because|however|therefore|moreover|nevertheless|furthermore|otherwise|meanwhile|indeed|instead|likewise|similarly|specifically|subsequently|ultimately|additionally|consequently|eventually|finally|initially|particularly|previously|recently|suddenly|usually)/i;
+      return !commonWords.test(firstWord);
+    }
+
+    // Otherwise, if it starts with URL-safe characters, it might be a continuation
+    return /^[a-zA-Z0-9._~:/?#[\]@!$&'()*+,;=%-]/.test(trimmedNext);
+  }
+
   private findUrlsInLine(lineIndex: number): void {
     const lineText = this.getLineText(lineIndex);
 
@@ -179,12 +244,22 @@ class LinkProcessor {
       if (i === startLine) {
         remainingText = lineText.substring(startCol);
       } else {
-        // Check if line starts with whitespace (URL ended)
-        if (/^\s/.test(lineText)) {
+        // Only continue if this looks like a valid URL continuation
+        const currentUrl = url;
+        const shouldContinue = this.isValidUrlContinuation(currentUrl, lineText);
+        if (!shouldContinue) {
           endLine = i - 1;
           break;
         }
-        remainingText = lineText;
+
+        // For continuation lines, skip leading whitespace
+        remainingText = lineText.trimStart();
+
+        // If the line was only whitespace, stop here
+        if (!remainingText) {
+          endLine = i - 1;
+          break;
+        }
       }
 
       // Find where the URL ends in this line

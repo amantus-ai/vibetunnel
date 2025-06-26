@@ -287,6 +287,54 @@ describe('UrlHighlighter', () => {
       expect(secondLineLink.textContent).toBe('long-domain.com/path');
     });
 
+    it('should correctly handle URLs ending at line boundaries', () => {
+      // URL ends exactly at the line boundary with no trailing characters
+      createLines(['Visit https://example.com', 'Next line with text']);
+      UrlHighlighter.processLinks(container);
+
+      const links = container.querySelectorAll('.terminal-link');
+      expect(links).toHaveLength(1);
+      expect(links[0].textContent).toBe('https://example.com');
+
+      // Verify the link doesn't extend into the next line
+      const nextLineText = container.querySelectorAll('.terminal-line')[1].textContent;
+      expect(nextLineText).toBe('Next line with text');
+    });
+
+    it('should handle URLs with leading spaces correctly', () => {
+      // Test with multi-line URL split at protocol boundary
+      createLines(['Check out https://', '    example.com/path/to/resource']);
+      UrlHighlighter.processLinks(container);
+
+      const urls = getUniqueUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0]).toBe('https://example.com/path/to/resource');
+
+      // Verify second line link starts after the spaces
+      const links = container.querySelectorAll('.terminal-link');
+      expect(links).toHaveLength(2);
+      expect(links[0].textContent).toBe('https://');
+      expect(links[1].textContent).toBe('example.com/path/to/resource');
+    });
+
+    it('should not over-mark ranges when URL is cleaned', () => {
+      // Test URL with punctuation that gets cleaned
+      createLines(['Check (https://example.com/test) out']);
+      UrlHighlighter.processLinks(container);
+
+      const links = container.querySelectorAll('.terminal-link');
+      expect(links).toHaveLength(1);
+      // The actual highlighted text should be the full URL before cleaning
+      expect(links[0].textContent).toBe('https://example.com/test');
+
+      // Verify parentheses are not included
+      const lineElement = container.querySelector('.terminal-line');
+      expect(lineElement).toBeTruthy();
+      const lineText = lineElement?.textContent || '';
+      expect(lineText).toContain('(');
+      expect(lineText).toContain(')');
+    });
+
     it('should handle URLs with cleaned endings', () => {
       // Test that the cleaned URL length doesn't under-mark the range
       createLines(['Visit https://example.com/test) here']);
