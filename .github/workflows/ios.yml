@@ -68,13 +68,46 @@ jobs:
     - name: Install all tools
       shell: bash
       run: |
-        # Update Homebrew
-        brew update
+        # Function to run brew commands with retry logic
+        brew_with_retry() {
+          local cmd="$1"
+          local max_attempts=5
+          local wait_time=5
+          
+          for attempt in $(seq 1 $max_attempts); do
+            echo "Attempting: brew $cmd (attempt $attempt/$max_attempts)"
+            
+            # Check if another brew process is running
+            if pgrep -x "brew" > /dev/null; then
+              echo "Another brew process is running, waiting ${wait_time}s..."
+              sleep $wait_time
+              wait_time=$((wait_time * 2))  # Exponential backoff
+              continue
+            fi
+            
+            # Try to run the brew command
+            if brew $cmd; then
+              echo "Successfully executed: brew $cmd"
+              return 0
+            else
+              if [ $attempt -eq $max_attempts ]; then
+                echo "Failed to execute: brew $cmd after $max_attempts attempts"
+                return 1
+              fi
+              echo "Command failed, waiting ${wait_time}s before retry..."
+              sleep $wait_time
+              wait_time=$((wait_time * 2))  # Exponential backoff
+            fi
+          done
+        }
+        
+        # Update Homebrew with retry
+        brew_with_retry "update"
         
         # Install or upgrade linting and build tools
-        brew install swiftlint || brew upgrade swiftlint || true
-        brew install swiftformat || brew upgrade swiftformat || true
-        brew install xcbeautify || brew upgrade xcbeautify || true
+        brew_with_retry "install swiftlint" || brew_with_retry "upgrade swiftlint" || true
+        brew_with_retry "install swiftformat" || brew_with_retry "upgrade swiftformat" || true
+        brew_with_retry "install xcbeautify" || brew_with_retry "upgrade xcbeautify" || true
         
         # Show versions
         echo "SwiftLint: $(swiftlint --version || echo 'not found')"
