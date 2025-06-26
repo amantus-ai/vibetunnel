@@ -275,7 +275,10 @@ async function main() {
           npm_config_arch: process.arch,
           npm_config_target_arch: process.arch,
           npm_config_disturl: 'https://nodejs.org/dist',
-          npm_config_build_from_source: 'true'
+          npm_config_build_from_source: 'true',
+          // Node.js 24 requires C++20
+          CXXFLAGS: '-std=c++20',
+          npm_config_cxxflags: '-std=c++20'
         }
       });
     }
