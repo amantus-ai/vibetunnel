@@ -116,6 +116,7 @@ export class SessionView extends LitElement {
       },
       getDirectKeyboardManager: () => ({
         getShowQuickKeys: () => this.directKeyboardManager.getShowQuickKeys(),
+        setShowQuickKeys: (value: boolean) => this.directKeyboardManager.setShowQuickKeys(value),
         ensureHiddenInputVisible: () => this.directKeyboardManager.ensureHiddenInputVisible(),
         cleanup: () => this.directKeyboardManager.cleanup(),
       }),

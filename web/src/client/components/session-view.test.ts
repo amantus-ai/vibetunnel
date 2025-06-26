@@ -21,7 +21,11 @@ import type { Terminal } from './terminal';
 // Test interface for SessionView private properties
 interface SessionViewTestInterface extends SessionView {
   connected: boolean;
-  loadingAnimationManager: { isLoading: () => boolean; startLoading: () => void; stopLoading: () => void };
+  loadingAnimationManager: {
+    isLoading: () => boolean;
+    startLoading: () => void;
+    stopLoading: () => void;
+  };
   isMobile: boolean;
   terminalCols: number;
   terminalRows: number;

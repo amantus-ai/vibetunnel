@@ -52,6 +52,27 @@ export class DirectKeyboardManager {
     return this.showQuickKeys;
   }
 
+  setShowQuickKeys(value: boolean): void {
+    this.showQuickKeys = value;
+    if (!value) {
+      // When hiding quick keys, also clear focus states
+      this.hiddenInputFocused = false;
+
+      // Clear focus retention interval
+      if (this.focusRetentionInterval) {
+        clearInterval(this.focusRetentionInterval);
+        this.focusRetentionInterval = null;
+      }
+
+      // Blur the hidden input
+      if (this.hiddenInput) {
+        this.hiddenInput.blur();
+      }
+
+      logger.log('Quick keys force hidden by external trigger');
+    }
+  }
+
   focusHiddenInput(): void {
     // Just delegate to the new method
     this.ensureHiddenInputVisible();

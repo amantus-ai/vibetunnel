@@ -20,6 +20,7 @@ export interface LifecycleEventManagerCallbacks {
   setUseDirectKeyboard(value: boolean): void;
   getDirectKeyboardManager(): {
     getShowQuickKeys(): boolean;
+    setShowQuickKeys?(value: boolean): void;
     ensureHiddenInputVisible(): void;
     cleanup(): void;
   };
@@ -239,6 +240,8 @@ export class LifecycleEventManager {
 
     // Set up Visual Viewport API for Safari keyboard detection
     if (isMobile && window.visualViewport) {
+      let previousKeyboardHeight = 0;
+
       this.visualViewportHandler = () => {
         const viewport = window.visualViewport;
         if (!viewport || !this.callbacks) return;
@@ -256,6 +259,33 @@ export class LifecycleEventManager {
         }
 
         logger.log(`Visual Viewport keyboard height: ${keyboardHeight}px`);
+
+        // Detect keyboard dismissal (height drops to 0 or near 0)
+        if (previousKeyboardHeight > 50 && keyboardHeight < 50) {
+          logger.log('Keyboard dismissed detected via viewport change');
+
+          // Check if we're using direct keyboard mode
+          const useDirectKeyboard = this.callbacks.getUseDirectKeyboard();
+          const directKeyboardManager = this.callbacks.getDirectKeyboardManager();
+
+          if (
+            useDirectKeyboard &&
+            directKeyboardManager &&
+            directKeyboardManager.getShowQuickKeys()
+          ) {
+            // Force hide quick keys when keyboard dismisses
+            this.callbacks.setShowQuickKeys(false);
+
+            // Also update the direct keyboard manager's internal state
+            if (directKeyboardManager.setShowQuickKeys) {
+              directKeyboardManager.setShowQuickKeys(false);
+            }
+
+            logger.log('Force hiding quick keys after keyboard dismissal');
+          }
+        }
+
+        previousKeyboardHeight = keyboardHeight;
       };
 
       window.visualViewport.addEventListener('resize', this.visualViewportHandler);
