@@ -43,10 +43,6 @@ function setOutput(name, value) {
   if (process.env.GITHUB_OUTPUT) {
     fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
   }
-  // Legacy format for older GitHub Actions
-  if (isCI) {
-    console.log(`::set-output name=${name}::${value}`);
-  }
 }
 
 // Helper to download files
