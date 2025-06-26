@@ -5,6 +5,8 @@
  * including multi-line URLs that span across terminal lines.
  */
 
+const MIN_URL_LENGTH = 7; // Minimum viable URL length (e.g., "http://x")
+
 /**
  * Process all lines in a container and highlight any URLs found
  * @param container - The DOM container containing terminal lines
@@ -85,7 +87,7 @@ export function processLinks(container: HTMLElement): void {
         fullUrl = cleanUrl(fullUrl);
 
         // Only create links if it's a valid URL and hasn't been processed
-        if (fullUrl.length > 7 && isValidUrl(fullUrl)) {
+        if (fullUrl.length > MIN_URL_LENGTH && isValidUrl(fullUrl)) {
           // Check if this URL was already processed
           let alreadyProcessed = false;
           for (let lineIdx = i - 1; lineIdx <= endLine; lineIdx++) {
@@ -122,7 +124,7 @@ export function processLinks(container: HTMLElement): void {
                 const urlEndPos = lastLineText.indexOf(' ');
                 processedRanges.get(lineIdx)?.push({
                   start: 0,
-                  end: urlEndPos > 0 ? urlEndPos : lastLineText.length,
+                  end: urlEndPos >= 0 ? urlEndPos : lastLineText.length,
                 });
               } else {
                 processedRanges
@@ -223,7 +225,7 @@ export function processLinks(container: HTMLElement): void {
       fullUrl = cleanUrl(fullUrl);
 
       // Now create links for this URL across the lines it spans
-      if (fullUrl.length > 7 && isValidUrl(fullUrl)) {
+      if (fullUrl.length > MIN_URL_LENGTH && isValidUrl(fullUrl)) {
         // More than just "http://" and looks like a valid URL
         createUrlLinks(lines, fullUrl, i, endLine, urlStart);
 
@@ -236,7 +238,9 @@ export function processLinks(container: HTMLElement): void {
           if (lineIdx === i) {
             // First line: from urlStart to end of URL part on this line
             const endPos =
-              lineIdx === endLine ? urlStart + fullUrl.length : getLineText(lines[lineIdx]).length;
+              lineIdx === endLine
+                ? Math.min(urlStart + fullUrl.length, getLineText(lines[lineIdx]).length)
+                : getLineText(lines[lineIdx]).length;
             processedRanges.get(lineIdx)?.push({ start: urlStart, end: endPos });
           } else {
             // Other lines: entire line is part of URL (approximately)
@@ -293,7 +297,7 @@ function createUrlLinks(
         // Be more careful about what ends a URL - don't include characters that are commonly in URLs
         const endMatch = availableText.match(/[\s<>"'`]/);
         const actualUrlLength = endMatch
-          ? Math.min(endMatch.index || urlPartLength, urlPartLength)
+          ? Math.min(endMatch.index ?? urlPartLength, urlPartLength)
           : urlPartLength;
 
         if (actualUrlLength > 0) {
@@ -436,7 +440,7 @@ function cleanUrl(url: string): string {
   if (closeParens > openParens) {
     cleaned = cleaned.replace(/\)+$/, (match) => {
       const toRemove = closeParens - openParens;
-      return match.substring(toRemove);
+      return match.substring(0, match.length - toRemove);
     });
   }
 
