@@ -185,7 +185,6 @@ jobs:
           fi
 
       - name: Test the built app
-        working-directory: mac
         run: |
           APP_PATH=$(find build -name "VibeTunnel.app" -type d | head -n 1)
           
@@ -213,7 +212,7 @@ jobs:
         with:
           name: VibeTunnel-macOS-SEA-${{ github.sha }}
           path: |
-            mac/build/**/VibeTunnel.app
+            build/**/VibeTunnel.app
           retention-days: 7
 
       - name: Upload test results
@@ -222,5 +221,5 @@ jobs:
         with:
           name: xcode-build-logs-${{ github.sha }}
           path: |
-            mac/build/**/Logs/Build/*.xcactivitylog
+            build/**/Logs/Build/*.xcactivitylog
           retention-days: 7
