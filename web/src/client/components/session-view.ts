@@ -24,7 +24,6 @@ import './session-view/mobile-input-overlay.js';
 import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
-import { authClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
 import {
   COMMON_TERMINAL_WIDTHS,
@@ -34,6 +33,11 @@ import { type AppPreferences, AppSettings } from './app-settings.js';
 import { ConnectionManager } from './session-view/connection-manager.js';
 import { InputManager } from './session-view/input-manager.js';
 import { MobileInputManager } from './session-view/mobile-input-manager.js';
+import {
+  type TerminalEventHandlers,
+  TerminalLifecycleManager,
+  type TerminalStateCallbacks,
+} from './session-view/terminal-lifecycle-manager.js';
 import type { Terminal } from './terminal.js';
 
 const logger = createLogger('session-view');
@@ -51,7 +55,6 @@ export class SessionView extends LitElement {
   @property({ type: Boolean }) sidebarCollapsed = false;
   @property({ type: Boolean }) disableFocusManagement = false;
   @state() private connected = false;
-  @state() private terminal: Terminal | null = null;
   @state() private showMobileInput = false;
   @state() private mobileInputText = '';
   @state() private isMobile = false;
@@ -73,6 +76,7 @@ export class SessionView extends LitElement {
   private connectionManager!: ConnectionManager;
   private inputManager!: InputManager;
   private mobileInputManager!: MobileInputManager;
+  private terminalLifecycleManager!: TerminalLifecycleManager;
   @state() private ctrlSequence: string[] = [];
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
@@ -82,9 +86,6 @@ export class SessionView extends LitElement {
   private keyboardListenerAdded = false;
   private touchListenersAdded = false;
   private hiddenInput: HTMLInputElement | null = null;
-  private resizeTimeout: number | null = null;
-  private lastResizeWidth = 0;
-  private lastResizeHeight = 0;
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private focusRetentionInterval: number | null = null;
   private visualViewportHandler: (() => void) | null = null;
@@ -207,13 +208,45 @@ export class SessionView extends LitElement {
     this.mobileInputManager = new MobileInputManager(this);
     this.mobileInputManager.setInputManager(this.inputManager);
 
+    // Initialize terminal lifecycle manager
+    this.terminalLifecycleManager = new TerminalLifecycleManager();
+    this.terminalLifecycleManager.setConnectionManager(this.connectionManager);
+    this.terminalLifecycleManager.setInputManager(this.inputManager);
+    this.terminalLifecycleManager.setConnected(this.connected);
+    this.terminalLifecycleManager.setDomElement(this);
+
+    // Set up event handlers for terminal lifecycle manager
+    const eventHandlers: TerminalEventHandlers = {
+      handleSessionExit: this.handleSessionExit.bind(this),
+      handleTerminalResize: this.terminalLifecycleManager.handleTerminalResize.bind(
+        this.terminalLifecycleManager
+      ),
+      handleTerminalPaste: this.terminalLifecycleManager.handleTerminalPaste.bind(
+        this.terminalLifecycleManager
+      ),
+    };
+    this.terminalLifecycleManager.setEventHandlers(eventHandlers);
+
+    // Set up state callbacks for terminal lifecycle manager
+    const stateCallbacks: TerminalStateCallbacks = {
+      updateTerminalDimensions: (cols: number, rows: number) => {
+        this.terminalCols = cols;
+        this.terminalRows = rows;
+        this.requestUpdate();
+      },
+    };
+    this.terminalLifecycleManager.setStateCallbacks(stateCallbacks);
+
     if (this.session) {
       this.inputManager.setSession(this.session);
+      this.terminalLifecycleManager.setSession(this.session);
     }
 
     // Load terminal preferences
     this.terminalMaxCols = this.preferencesManager.getMaxCols();
     this.terminalFontSize = this.preferencesManager.getFontSize();
+    this.terminalLifecycleManager.setTerminalFontSize(this.terminalFontSize);
+    this.terminalLifecycleManager.setTerminalMaxCols(this.terminalMaxCols);
 
     // Make session-view focusable
     this.tabIndex = 0;
@@ -308,12 +341,17 @@ export class SessionView extends LitElement {
     // Reset terminal size for external terminals when leaving session view
     if (this.session && this.session.status !== 'exited') {
       logger.log('Calling resetTerminalSize for session', this.session.id);
-      this.resetTerminalSize();
+      this.terminalLifecycleManager.resetTerminalSize();
     }
 
     // Update connection manager
     if (this.connectionManager) {
       this.connectionManager.setConnected(false);
+    }
+
+    // Cleanup terminal lifecycle manager
+    if (this.terminalLifecycleManager) {
+      this.terminalLifecycleManager.cleanup();
     }
 
     // Remove click outside handler
@@ -363,15 +401,14 @@ export class SessionView extends LitElement {
       this.connectionManager.cleanupStreamConnection();
     }
 
-    // Terminal cleanup is handled by the component itself
-    this.terminal = null;
+    // Terminal cleanup is handled by the lifecycle manager
   }
 
   firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
     if (this.session) {
       this.stopLoading();
-      this.setupTerminal();
+      this.terminalLifecycleManager.setupTerminal();
     }
   }
 
@@ -391,19 +428,28 @@ export class SessionView extends LitElement {
       if (this.inputManager) {
         this.inputManager.setSession(this.session);
       }
+      // Update terminal lifecycle manager with new session
+      if (this.terminalLifecycleManager) {
+        this.terminalLifecycleManager.setSession(this.session);
+      }
     }
 
     // Stop loading and create terminal when session becomes available
     if (changedProperties.has('session') && this.session && this.loading) {
       this.stopLoading();
-      this.setupTerminal();
+      this.terminalLifecycleManager.setupTerminal();
     }
 
     // Initialize terminal after first render when terminal element exists
-    if (!this.terminal && this.session && !this.loading && this.connected) {
+    if (
+      !this.terminalLifecycleManager.getTerminal() &&
+      this.session &&
+      !this.loading &&
+      this.connected
+    ) {
       const terminalElement = this.querySelector('vibe-terminal') as Terminal;
       if (terminalElement) {
-        this.initializeTerminal();
+        this.terminalLifecycleManager.initializeTerminal();
       }
     }
 
@@ -422,62 +468,6 @@ export class SessionView extends LitElement {
         }
       }, 100);
     }
-  }
-
-  private setupTerminal() {
-    // Terminal element will be created in render()
-    // We'll initialize it in updated() after first render
-  }
-
-  private async initializeTerminal() {
-    const terminalElement = this.querySelector('vibe-terminal') as Terminal;
-    if (!terminalElement || !this.session) {
-      logger.warn(`Cannot initialize terminal - missing element or session`);
-      return;
-    }
-
-    this.terminal = terminalElement;
-
-    // Update connection manager with terminal reference
-    if (this.connectionManager) {
-      this.connectionManager.setTerminal(this.terminal);
-      this.connectionManager.setSession(this.session);
-    }
-
-    // Configure terminal for interactive session
-    this.terminal.cols = 80;
-    this.terminal.rows = 24;
-    this.terminal.fontSize = this.terminalFontSize; // Apply saved font size preference
-    this.terminal.fitHorizontally = false; // Allow natural terminal sizing
-    this.terminal.maxCols = this.terminalMaxCols; // Apply saved max width preference
-
-    // Listen for session exit events
-    this.terminal.addEventListener(
-      'session-exit',
-      this.handleSessionExit.bind(this) as EventListener
-    );
-
-    // Listen for terminal resize events to capture dimensions
-    this.terminal.addEventListener(
-      'terminal-resize',
-      this.handleTerminalResize.bind(this) as unknown as EventListener
-    );
-
-    // Listen for paste events from terminal
-    this.terminal.addEventListener(
-      'terminal-paste',
-      this.handleTerminalPaste.bind(this) as EventListener
-    );
-
-    // Connect to stream directly without artificial delays
-    // Use setTimeout to ensure we're still connected after all synchronous updates
-    setTimeout(() => {
-      if (this.connected && this.connectionManager) {
-        this.connectionManager.connectToStream();
-      } else {
-        logger.warn(`Component disconnected before stream connection`);
-      }
-    }, 0);
   }
 
   private async handleKeyboardInput(e: KeyboardEvent) {
@@ -526,64 +516,6 @@ export class SessionView extends LitElement {
       if (this.connectionManager) {
         this.connectionManager.cleanupStreamConnection();
       }
-    }
-  }
-
-  private async handleTerminalResize(event: Event) {
-    const customEvent = event as CustomEvent;
-    // Update terminal dimensions for display
-    const { cols, rows } = customEvent.detail;
-    this.terminalCols = cols;
-    this.terminalRows = rows;
-    this.requestUpdate();
-
-    // Debounce resize requests to prevent jumpiness
-    if (this.resizeTimeout) {
-      clearTimeout(this.resizeTimeout);
-    }
-
-    this.resizeTimeout = window.setTimeout(async () => {
-      // Only send resize request if dimensions actually changed
-      if (cols === this.lastResizeWidth && rows === this.lastResizeHeight) {
-        logger.debug(`skipping redundant resize request: ${cols}x${rows}`);
-        return;
-      }
-
-      // Send resize request to backend if session is active
-      if (this.session && this.session.status !== 'exited') {
-        try {
-          logger.debug(
-            `sending resize request: ${cols}x${rows} (was ${this.lastResizeWidth}x${this.lastResizeHeight})`
-          );
-
-          const response = await fetch(`/api/sessions/${this.session.id}/resize`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authClient.getAuthHeader(),
-            },
-            body: JSON.stringify({ cols: cols, rows: rows }),
-          });
-
-          if (response.ok) {
-            // Cache the successfully sent dimensions
-            this.lastResizeWidth = cols;
-            this.lastResizeHeight = rows;
-          } else {
-            logger.warn(`failed to resize session: ${response.status}`);
-          }
-        } catch (error) {
-          logger.warn('failed to send resize request', error);
-        }
-      }
-    }, 250) as unknown as number; // 250ms debounce delay
-  }
-
-  private handleTerminalPaste(e: Event) {
-    const customEvent = e as CustomEvent;
-    const text = customEvent.detail?.text;
-    if (text && this.session && this.inputManager) {
-      this.inputManager.sendInputText(text);
     }
   }
 
@@ -745,6 +677,9 @@ export class SessionView extends LitElement {
     this.preferencesManager.setMaxCols(newMaxCols);
     this.showWidthSelector = false;
 
+    // Update the terminal lifecycle manager
+    this.terminalLifecycleManager.setTerminalMaxCols(newMaxCols);
+
     // Update the terminal component
     const terminal = this.querySelector('vibe-terminal') as Terminal;
     if (terminal) {
@@ -765,6 +700,9 @@ export class SessionView extends LitElement {
     const clampedSize = Math.max(8, Math.min(32, newSize));
     this.terminalFontSize = clampedSize;
     this.preferencesManager.setFontSize(clampedSize);
+
+    // Update the terminal lifecycle manager
+    this.terminalLifecycleManager.setTerminalFontSize(clampedSize);
 
     // Update the terminal component
     const terminal = this.querySelector('vibe-terminal') as Terminal;
@@ -795,39 +733,6 @@ export class SessionView extends LitElement {
     }
 
     logger.log(`inserted ${type} path into terminal: ${escapedPath}`);
-  }
-
-  private async resetTerminalSize() {
-    if (!this.session) {
-      logger.warn('resetTerminalSize called but no session available');
-      return;
-    }
-
-    logger.log('Sending reset-size request for session', this.session.id);
-
-    try {
-      const response = await fetch(`/api/sessions/${this.session.id}/reset-size`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authClient.getAuthHeader(),
-        },
-      });
-
-      if (!response.ok) {
-        logger.error('failed to reset terminal size', {
-          status: response.status,
-          sessionId: this.session.id,
-        });
-      } else {
-        logger.log('terminal size reset successfully for session', this.session.id);
-      }
-    } catch (error) {
-      logger.error('error resetting terminal size', {
-        error,
-        sessionId: this.session.id,
-      });
-    }
   }
 
   focusHiddenInput() {
@@ -1194,20 +1099,22 @@ export class SessionView extends LitElement {
   refreshTerminalAfterMobileInput() {
     // After closing mobile input, the viewport changes and the terminal
     // needs to recalculate its scroll position to avoid getting stuck
-    if (!this.terminal) return;
+    const terminal = this.terminalLifecycleManager.getTerminal();
+    if (!terminal) return;
 
     // Give the viewport time to settle after keyboard disappears
     setTimeout(() => {
-      if (this.terminal) {
+      const currentTerminal = this.terminalLifecycleManager.getTerminal();
+      if (currentTerminal) {
         // Force the terminal to recalculate its viewport dimensions and scroll boundaries
         // This fixes the issue where maxScrollPixels becomes incorrect after keyboard changes
-        const terminalElement = this.terminal as unknown as { fitTerminal?: () => void };
+        const terminalElement = currentTerminal as unknown as { fitTerminal?: () => void };
         if (typeof terminalElement.fitTerminal === 'function') {
           terminalElement.fitTerminal();
         }
 
         // Then scroll to bottom to fix the position
-        this.terminal.scrollToBottom();
+        currentTerminal.scrollToBottom();
       }
     }, 300); // Wait for viewport to settle
   }

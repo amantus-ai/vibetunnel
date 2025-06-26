@@ -67,6 +67,10 @@ export class TerminalLifecycleManager {
     this.terminalMaxCols = maxCols;
   }
 
+  getTerminal(): Terminal | null {
+    return this.terminal;
+  }
+
   setDomElement(element: Element | null) {
     this.domElement = element;
   }
