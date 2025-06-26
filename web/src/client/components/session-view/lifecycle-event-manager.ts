@@ -62,6 +62,7 @@ export class LifecycleEventManager {
   private keyboardListenerAdded = false;
   private touchListenersAdded = false;
   private visualViewportHandler: (() => void) | null = null;
+  private clickHandler: (() => void) | null = null;
 
   constructor() {
     logger.log('LifecycleEventManager initialized');
@@ -187,11 +188,14 @@ export class LifecycleEventManager {
 
     // Make session-view focusable
     this.callbacks.setTabIndex(0);
-    this.callbacks.addEventListener('click', () => {
+
+    // Store click handler reference for proper cleanup
+    this.clickHandler = () => {
       if (!this.callbacks?.getDisableFocusManagement()) {
         this.callbacks?.focus();
       }
-    });
+    };
+    this.callbacks.addEventListener('click', this.clickHandler);
 
     // Add click outside handler for width selector
     document.addEventListener('click', this.handleClickOutside);
@@ -303,8 +307,11 @@ export class LifecycleEventManager {
     // Remove click outside handler
     document.removeEventListener('click', this.handleClickOutside);
 
-    // Remove click handler (note: this is a simplified version, the original uses a complex callback reference)
-    // The original session-view will need to handle this specific cleanup
+    // Remove click handler
+    if (this.clickHandler) {
+      this.callbacks.removeEventListener('click', this.clickHandler);
+      this.clickHandler = null;
+    }
 
     // Remove global keyboard event listener
     if (!this.callbacks.getIsMobile() && this.keyboardListenerAdded) {
@@ -366,6 +373,9 @@ export class LifecycleEventManager {
       window.visualViewport.removeEventListener('scroll', this.visualViewportHandler);
       this.visualViewportHandler = null;
     }
+
+    // Clean up click handler reference
+    this.clickHandler = null;
 
     this.sessionViewElement = null;
     this.callbacks = null;

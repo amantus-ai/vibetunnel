@@ -11,11 +11,20 @@ import type { Session } from '../session-list.js';
 
 const logger = createLogger('input-manager');
 
+export interface InputManagerCallbacks {
+  requestUpdate(): void;
+}
+
 export class InputManager {
   private session: Session | null = null;
+  private callbacks: InputManagerCallbacks | null = null;
 
   setSession(session: Session | null): void {
     this.session = session;
+  }
+
+  setCallbacks(callbacks: InputManagerCallbacks): void {
+    this.callbacks = callbacks;
   }
 
   async handleKeyboardInput(e: KeyboardEvent): Promise<void> {
@@ -161,6 +170,18 @@ export class InputManager {
 
       if (!response.ok) {
         logger.error('failed to send input to session', { status: response.status });
+
+        // Check if session has exited (400 response)
+        if (response.status === 400) {
+          // Update session status to exited
+          if (this.session) {
+            this.session.status = 'exited';
+            // Trigger UI update through callbacks
+            if (this.callbacks) {
+              this.callbacks.requestUpdate();
+            }
+          }
+        }
       }
     } catch (error) {
       logger.error('error sending input', error);
@@ -173,14 +194,31 @@ export class InputManager {
       const body = [
         'enter',
         'escape',
+        'backspace',
+        'tab',
         'arrow_up',
         'arrow_down',
         'arrow_left',
         'arrow_right',
         'ctrl_enter',
         'shift_enter',
-        'backspace',
-        'tab',
+        'page_up',
+        'page_down',
+        'home',
+        'end',
+        'delete',
+        'f1',
+        'f2',
+        'f3',
+        'f4',
+        'f5',
+        'f6',
+        'f7',
+        'f8',
+        'f9',
+        'f10',
+        'f11',
+        'f12',
       ].includes(inputText)
         ? { key: inputText }
         : { text: inputText };
@@ -199,7 +237,14 @@ export class InputManager {
       if (!response.ok) {
         if (response.status === 400) {
           logger.log('session no longer accepting input (likely exited)');
-          // Parent component should handle session status updates
+          // Update session status to exited
+          if (this.session) {
+            this.session.status = 'exited';
+            // Trigger UI update through callbacks
+            if (this.callbacks) {
+              this.callbacks.requestUpdate();
+            }
+          }
         } else {
           logger.error('failed to send input to session', { status: response.status });
         }

@@ -6,6 +6,7 @@
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { COMMON_TERMINAL_WIDTHS } from '../../utils/terminal-preferences.js';
 import type { Session } from '../session-list.js';
 import '../clickable-path.js';
 import './width-selector.js';
@@ -59,10 +60,8 @@ export class SessionHeader extends LitElement {
   }
 
   private getCurrentWidthLabel(): string {
-    if (this.terminalMaxCols === 0) return '∞';
-    // We'll need to import COMMON_TERMINAL_WIDTHS or pass it as a prop
-    // For now, just return the number
-    return this.terminalMaxCols.toString();
+    const width = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
+    return width?.label || this.terminalMaxCols.toString();
   }
 
   private handleCloseWidthSelector() {

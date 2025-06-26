@@ -191,6 +191,9 @@ export class SessionView extends LitElement {
 
     // Initialize input manager
     this.inputManager = new InputManager();
+    this.inputManager.setCallbacks({
+      requestUpdate: () => this.requestUpdate(),
+    });
 
     // Initialize mobile input manager
     this.mobileInputManager = new MobileInputManager(this);
@@ -206,10 +209,37 @@ export class SessionView extends LitElement {
       getShowMobileInput: () => this.showMobileInput,
       getShowCtrlAlpha: () => this.showCtrlAlpha,
       getDisableFocusManagement: () => this.disableFocusManagement,
-      getVisualViewportHandler: () =>
-        this.lifecycleEventManager
-          ? null // Note: visualViewportHandler is managed internally by the lifecycle manager
-          : null,
+      getVisualViewportHandler: () => {
+        // Trigger the visual viewport handler if it exists
+        if (this.lifecycleEventManager && window.visualViewport) {
+          // Manually trigger keyboard height calculation
+          const viewport = window.visualViewport;
+          const keyboardHeight = window.innerHeight - viewport.height;
+          this.keyboardHeight = keyboardHeight;
+
+          // Update quick keys component if it exists
+          const quickKeys = this.querySelector('terminal-quick-keys') as HTMLElement & {
+            keyboardHeight: number;
+          };
+          if (quickKeys) {
+            quickKeys.keyboardHeight = keyboardHeight;
+          }
+
+          logger.log(`Visual Viewport keyboard height (manual trigger): ${keyboardHeight}px`);
+
+          // Return a function that can be called to trigger the calculation
+          return () => {
+            if (window.visualViewport) {
+              const currentHeight = window.innerHeight - window.visualViewport.height;
+              this.keyboardHeight = currentHeight;
+              if (quickKeys) {
+                quickKeys.keyboardHeight = currentHeight;
+              }
+            }
+          };
+        }
+        return null;
+      },
       getKeyboardHeight: () => this.keyboardHeight,
       updateShowQuickKeys: (value: boolean) => {
         this.showQuickKeys = value;
@@ -299,9 +329,6 @@ export class SessionView extends LitElement {
 
     // Clean up loading animation manager
     this.loadingAnimationManager.cleanup();
-
-    // Remove click handler (this specific one can't be handled by the lifecycle manager due to closure reference)
-    this.removeEventListener('click', () => this.focus());
   }
 
   firstUpdated(changedProperties: PropertyValues) {
@@ -369,16 +396,23 @@ export class SessionView extends LitElement {
       this.session &&
       !this.loadingAnimationManager.isLoading()
     ) {
-      // Delay creation to ensure terminal is rendered
+      // Delay creation to ensure terminal is rendered and DOM is stable
+      const TERMINAL_RENDER_DELAY_MS = 100;
       setTimeout(() => {
-        if (
-          this.isMobile &&
-          this.useDirectKeyboard &&
-          !this.directKeyboardManager.getShowQuickKeys()
-        ) {
-          this.directKeyboardManager.ensureHiddenInputVisible();
+        try {
+          // Re-validate conditions in case component state changed during the delay
+          if (
+            this.isMobile &&
+            this.useDirectKeyboard &&
+            !this.directKeyboardManager.getShowQuickKeys() &&
+            this.isConnected // Ensure component is still connected to DOM
+          ) {
+            this.directKeyboardManager.ensureHiddenInputVisible();
+          }
+        } catch (error) {
+          logger.warn('Failed to create hidden input during setTimeout:', error);
         }
-      }, 100);
+      }, TERMINAL_RENDER_DELAY_MS);
     }
   }
 
@@ -477,12 +511,12 @@ export class SessionView extends LitElement {
     this.directKeyboardManager.delayedRefocusHiddenInputPublic();
   }
 
-  private async handleMobileInputSendOnly() {
-    await this.mobileInputManager.handleMobileInputSendOnly();
+  private async handleMobileInputSendOnly(text: string) {
+    await this.mobileInputManager.handleMobileInputSendOnly(text);
   }
 
-  private async handleMobileInputSend() {
-    await this.mobileInputManager.handleMobileInputSend();
+  private async handleMobileInputSend(text: string) {
+    await this.mobileInputManager.handleMobileInputSend(text);
   }
 
   private handleMobileInputCancel() {
@@ -844,8 +878,8 @@ export class SessionView extends LitElement {
           .keyboardHeight=${this.keyboardHeight}
           .touchStartX=${this.touchStartX}
           .touchStartY=${this.touchStartY}
-          .onSend=${(_text: string) => this.handleMobileInputSendOnly()}
-          .onSendWithEnter=${(_text: string) => this.handleMobileInputSend()}
+          .onSend=${(text: string) => this.handleMobileInputSendOnly(text)}
+          .onSendWithEnter=${(text: string) => this.handleMobileInputSend(text)}
           .onCancel=${() => this.handleMobileInputCancel()}
           .onTextChange=${(text: string) => {
             this.mobileInputText = text;

@@ -52,12 +52,9 @@ export class MobileInputManager {
     this.sessionView.toggleMobileInputDisplay();
   }
 
-  async handleMobileInputSendOnly() {
-    // Get the current value from the textarea directly
-    const textarea = this.sessionView.querySelector(
-      '#mobile-input-textarea'
-    ) as HTMLTextAreaElement;
-    const textToSend = textarea?.value?.trim() || this.sessionView.getMobileInputText().trim();
+  async handleMobileInputSendOnly(text: string) {
+    // Use the passed text parameter instead of reading from textarea
+    const textToSend = text?.trim();
 
     if (!textToSend) return;
 
@@ -67,11 +64,8 @@ export class MobileInputManager {
         await this.inputManager.sendInputText(textToSend);
       }
 
-      // Clear both the reactive property and textarea
+      // Clear the reactive property
       this.sessionView.clearMobileInputText();
-      if (textarea) {
-        textarea.value = '';
-      }
 
       // Trigger re-render to update button state
       this.sessionView.requestUpdate();
@@ -92,12 +86,9 @@ export class MobileInputManager {
     }
   }
 
-  async handleMobileInputSend() {
-    // Get the current value from the textarea directly
-    const textarea = this.sessionView.querySelector(
-      '#mobile-input-textarea'
-    ) as HTMLTextAreaElement;
-    const textToSend = textarea?.value?.trim() || this.sessionView.getMobileInputText().trim();
+  async handleMobileInputSend(text: string) {
+    // Use the passed text parameter instead of reading from textarea
+    const textToSend = text?.trim();
 
     if (!textToSend) return;
 
@@ -108,11 +99,8 @@ export class MobileInputManager {
         await this.inputManager.sendInputText('enter');
       }
 
-      // Clear both the reactive property and textarea
+      // Clear the reactive property
       this.sessionView.clearMobileInputText();
-      if (textarea) {
-        textarea.value = '';
-      }
 
       // Trigger re-render to update button state
       this.sessionView.requestUpdate();
