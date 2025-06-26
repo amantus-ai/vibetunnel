@@ -21,6 +21,7 @@ import './file-browser.js';
 import './clickable-path.js';
 import './terminal-quick-keys.js';
 import './session-view/mobile-input-overlay.js';
+import './session-view/ctrl-alpha-overlay.js';
 import { authClient } from '../services/auth-client.js';
 import { CastConverter } from '../utils/cast-converter.js';
 import { createLogger } from '../utils/logger.js';
@@ -970,20 +971,18 @@ export class SessionView extends LitElement {
     this.requestUpdate();
   }
 
-  private handleCtrlAlphaBackdrop(e: Event) {
-    if (e.target === e.currentTarget) {
-      this.showCtrlAlpha = false;
-      this.ctrlSequence = [];
-      this.requestUpdate();
+  private handleCtrlAlphaCancel() {
+    this.showCtrlAlpha = false;
+    this.ctrlSequence = [];
+    this.requestUpdate();
 
-      // Refocus the hidden input
-      if (this.hiddenInput && this.showQuickKeys) {
-        setTimeout(() => {
-          if (this.hiddenInput) {
-            this.hiddenInput.focus();
-          }
-        }, 100);
-      }
+    // Refocus the hidden input
+    if (this.hiddenInput && this.showQuickKeys) {
+      setTimeout(() => {
+        if (this.hiddenInput) {
+          this.hiddenInput.focus();
+        }
+      }, 100);
     }
   }
 
@@ -1961,123 +1960,15 @@ export class SessionView extends LitElement {
         ></mobile-input-overlay>
 
         <!-- Ctrl+Alpha Overlay -->
-        ${
-          this.isMobile && this.showCtrlAlpha
-            ? html`
-              <div
-                class="fixed inset-0 z-50 flex flex-col"
-                style="background: rgba(0, 0, 0, 0.8);"
-                @click=${this.handleCtrlAlphaBackdrop}
-              >
-                <!-- Spacer to push content up above keyboard -->
-                <div class="flex-1"></div>
-                
-                <div
-                  class="font-mono text-sm mx-4 max-w-sm w-full self-center"
-                  style="background: black; border: 1px solid #569cd6; border-radius: 8px; padding: 10px; margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
-                  @click=${(e: Event) => e.stopPropagation()}
-                >
-                  <div class="text-vs-user text-center mb-2 font-bold">Ctrl + Key</div>
-
-                  <!-- Help text -->
-                  <div class="text-xs text-vs-muted text-center mb-3 opacity-70">
-                    Build sequences like ctrl+c ctrl+c
-                  </div>
-
-                  <!-- Current sequence display -->
-                  ${
-                    this.ctrlSequence.length > 0
-                      ? html`
-                        <div class="text-center mb-4 p-2 border border-vs-muted rounded bg-vs-bg">
-                          <div class="text-xs text-vs-muted mb-1">Current sequence:</div>
-                          <div class="text-sm text-vs-accent font-bold">
-                            ${this.ctrlSequence.map((letter) => `Ctrl+${letter}`).join(' ')}
-                          </div>
-                        </div>
-                      `
-                      : ''
-                  }
-
-                  <!-- Grid of A-Z buttons -->
-                  <div class="grid grid-cols-6 gap-1 mb-3">
-                    ${[
-                      'A',
-                      'B',
-                      'C',
-                      'D',
-                      'E',
-                      'F',
-                      'G',
-                      'H',
-                      'I',
-                      'J',
-                      'K',
-                      'L',
-                      'M',
-                      'N',
-                      'O',
-                      'P',
-                      'Q',
-                      'R',
-                      'S',
-                      'T',
-                      'U',
-                      'V',
-                      'W',
-                      'X',
-                      'Y',
-                      'Z',
-                    ].map(
-                      (letter) => html`
-                        <button
-                          class="font-mono text-xs transition-all cursor-pointer aspect-square flex items-center justify-center quick-start-btn py-2"
-                          @click=${() => this.handleCtrlKey(letter)}
-                        >
-                          ${letter}
-                        </button>
-                      `
-                    )}
-                  </div>
-
-                  <!-- Common shortcuts info -->
-                  <div class="text-xs text-vs-muted text-center mb-3">
-                    <div>Common: C=interrupt, X=exit, O=save, W=search</div>
-                  </div>
-
-                  <!-- Action buttons -->
-                  <div class="flex gap-2 justify-center">
-                    <button
-                      class="font-mono px-4 py-2 text-sm transition-all cursor-pointer btn-ghost"
-                      @click=${() => {
-                        this.showCtrlAlpha = false;
-                      }}
-                    >
-                      CANCEL
-                    </button>
-                    ${
-                      this.ctrlSequence.length > 0
-                        ? html`
-                          <button
-                            class="font-mono px-3 py-2 text-sm transition-all cursor-pointer btn-ghost"
-                            @click=${this.handleClearCtrlSequence}
-                          >
-                            CLEAR
-                          </button>
-                          <button
-                            class="font-mono px-3 py-2 text-sm transition-all cursor-pointer btn-secondary"
-                            @click=${this.handleSendCtrlSequence}
-                          >
-                            SEND
-                          </button>
-                        `
-                        : ''
-                    }
-                  </div>
-                </div>
-              </div>
-            `
-            : ''
-        }
+        <ctrl-alpha-overlay
+          .visible=${this.isMobile && this.showCtrlAlpha}
+          .ctrlSequence=${this.ctrlSequence}
+          .keyboardHeight=${this.keyboardHeight}
+          .onCtrlKey=${(letter: string) => this.handleCtrlKey(letter)}
+          .onSendSequence=${() => this.handleSendCtrlSequence()}
+          .onClearSequence=${() => this.handleClearCtrlSequence()}
+          .onCancel=${() => this.handleCtrlAlphaCancel()}
+        ></ctrl-alpha-overlay>
 
         <!-- Terminal Quick Keys (for direct keyboard mode) -->
         <terminal-quick-keys
