@@ -21,6 +21,8 @@ interface SessionViewInterface {
   querySelector(selector: string): Element | null;
   shouldRefocusHiddenInput(): boolean;
   refocusHiddenInput(): void;
+  startFocusRetention(): void;
+  delayedRefocusHiddenInput(): void;
 }
 
 export class MobileInputManager {
@@ -128,6 +130,17 @@ export class MobileInputManager {
     } catch (error) {
       console.error('error sending mobile input', error);
       // Don't hide the overlay if there was an error
+    }
+  }
+
+  handleMobileInputCancel() {
+    this.sessionView.closeMobileInput();
+    // Clear the text
+    this.sessionView.clearMobileInputText();
+    // Restart focus retention
+    if (this.sessionView.shouldRefocusHiddenInput()) {
+      this.sessionView.startFocusRetention();
+      this.sessionView.delayedRefocusHiddenInput();
     }
   }
 }

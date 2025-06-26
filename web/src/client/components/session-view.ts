@@ -629,6 +629,30 @@ export class SessionView extends LitElement {
     }, 100);
   }
 
+  startFocusRetention(): void {
+    this.focusRetentionInterval = setInterval(() => {
+      if (
+        !this.disableFocusManagement &&
+        this.showQuickKeys &&
+        this.hiddenInput &&
+        document.activeElement !== this.hiddenInput &&
+        !this.showMobileInput &&
+        !this.showCtrlAlpha
+      ) {
+        logger.log('Refocusing hidden input to maintain keyboard');
+        this.hiddenInput.focus();
+      }
+    }, 300) as unknown as number;
+  }
+
+  delayedRefocusHiddenInput(): void {
+    setTimeout(() => {
+      if (!this.disableFocusManagement && this.hiddenInput) {
+        this.hiddenInput.focus();
+      }
+    }, 100);
+  }
+
   private async handleMobileInputSendOnly() {
     await this.mobileInputManager.handleMobileInputSendOnly();
   }
@@ -638,31 +662,7 @@ export class SessionView extends LitElement {
   }
 
   private handleMobileInputCancel() {
-    this.showMobileInput = false;
-    // Clear the text
-    this.mobileInputText = '';
-    // Restart focus retention
-    if (!this.disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
-      this.focusRetentionInterval = setInterval(() => {
-        if (
-          !this.disableFocusManagement &&
-          this.showQuickKeys &&
-          this.hiddenInput &&
-          document.activeElement !== this.hiddenInput &&
-          !this.showMobileInput &&
-          !this.showCtrlAlpha
-        ) {
-          logger.log('Refocusing hidden input to maintain keyboard');
-          this.hiddenInput.focus();
-        }
-      }, 300) as unknown as number;
-
-      setTimeout(() => {
-        if (!this.disableFocusManagement && this.hiddenInput) {
-          this.hiddenInput.focus();
-        }
-      }, 100);
-    }
+    this.mobileInputManager.handleMobileInputCancel();
   }
 
   private async handleSpecialKey(key: string) {
