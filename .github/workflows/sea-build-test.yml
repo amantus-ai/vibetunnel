@@ -26,7 +26,7 @@ env:
 jobs:
   build-custom-node:
     name: Build Custom Node.js
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-32vcpu-ubuntu-2404-arm
     outputs:
       cache-hit: ${{ steps.cache-custom-node.outputs.cache-hit }}
       node-path: ${{ steps.node-info.outputs.path }}
@@ -43,9 +43,9 @@ jobs:
             ninja-build \
             ccache
 
-      - name: Cache custom Node.js build
+      - name: Cache custom Node.js build (Blacksmith)
         id: cache-custom-node
-        uses: actions/cache@v4
+        uses: useblacksmith/cache@v1
         with:
           path: |
             web/.node-builds/node-v${{ env.NODE_VERSION }}-minimal
@@ -81,7 +81,7 @@ jobs:
   test-sea-build:
     name: Test SEA Build
     needs: build-custom-node
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     strategy:
       matrix:
         node-type: [system, custom]
@@ -102,9 +102,9 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
-      - name: Restore custom Node.js from cache
+      - name: Restore custom Node.js from cache (Blacksmith)
         if: matrix.node-type == 'custom'
-        uses: actions/cache@v4
+        uses: useblacksmith/cache@v1
         with:
           path: |
             web/.node-builds/node-v${{ env.NODE_VERSION }}-minimal
@@ -160,11 +160,11 @@ jobs:
             web/native/
           retention-days: 7
 
-  # Optional: Use Blacksmith for faster builds
-  build-with-blacksmith:
-    name: Build with Blacksmith (Faster)
+  # Test on standard GitHub runners for comparison
+  test-github-runners:
+    name: Test on GitHub Runners
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -190,8 +190,8 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
-      - name: Cache custom Node.js build (Blacksmith)
-        uses: useblacksmith/cache@v1
+      - name: Cache custom Node.js build
+        uses: actions/cache@v4
         with:
           path: |
             web/.node-builds/node-v${{ env.NODE_VERSION }}-minimal

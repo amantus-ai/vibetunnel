@@ -19,7 +19,7 @@ defaults:
 jobs:
   lint-and-type-check:
     name: Lint and Type Check
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,7 +84,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
