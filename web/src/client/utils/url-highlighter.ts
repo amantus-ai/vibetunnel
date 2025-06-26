@@ -290,29 +290,52 @@ class LinkProcessor {
     startCol: number,
     url: string
   ): void {
-    for (let line = startLine; line <= endLine; line++) {
-      if (!this.processedRanges.has(line)) {
-        this.processedRanges.set(line, []);
+    // Calculate actual URL portions on each line
+    let remainingUrl = url;
+    let currentLine = startLine;
+
+    while (currentLine <= endLine && remainingUrl.length > 0) {
+      const lineText = this.getLineText(currentLine);
+
+      if (!this.processedRanges.has(currentLine)) {
+        this.processedRanges.set(currentLine, []);
       }
 
-      const ranges = this.processedRanges.get(line);
+      const ranges = this.processedRanges.get(currentLine);
       if (!ranges) continue;
 
-      if (line === startLine) {
-        const lineText = this.getLineText(line);
-        const endPos =
-          line === endLine ? Math.min(startCol + url.length, lineText.length) : lineText.length;
-        ranges.push({ start: startCol, end: endPos });
-      } else if (line === endLine) {
-        const lineText = this.getLineText(line);
-        const urlEndPos = lineText.indexOf(' ');
-        ranges.push({
-          start: 0,
-          end: urlEndPos > 0 ? urlEndPos : lineText.length,
-        });
+      let rangeStart: number;
+      let rangeEnd: number;
+
+      if (currentLine === startLine) {
+        // First line: start from startCol
+        rangeStart = startCol;
+        const availableText = lineText.substring(startCol);
+        const urlPartLength = Math.min(availableText.length, remainingUrl.length);
+        rangeEnd = startCol + urlPartLength;
       } else {
-        ranges.push({ start: 0, end: this.getLineText(line).length });
+        // Continuation lines: account for leading whitespace
+        const leadingWhitespace = lineText.match(/^\s*/);
+        rangeStart = leadingWhitespace ? leadingWhitespace[0].length : 0;
+        const availableText = lineText.substring(rangeStart);
+
+        // Find where the URL ends on this line
+        let urlPartLength = Math.min(availableText.length, remainingUrl.length);
+
+        // Check for URL-ending characters
+        if (currentLine === endLine) {
+          const endMatch = availableText.substring(0, urlPartLength).search(URL_END_CHARS_PATTERN);
+          if (endMatch >= 0) {
+            urlPartLength = endMatch;
+          }
+        }
+
+        rangeEnd = rangeStart + urlPartLength;
       }
+
+      ranges.push({ start: rangeStart, end: rangeEnd });
+      remainingUrl = remainingUrl.substring(rangeEnd - rangeStart);
+      currentLine++;
     }
   }
 }
@@ -370,33 +393,39 @@ class LinkHighlighter {
   }
 
   private wrapTextInLink(lineElement: Element, startCol: number, endCol: number): void {
+    // First pass: collect all text nodes and their positions
     const walker = document.createTreeWalker(lineElement, NodeFilter.SHOW_TEXT, null);
-
-    const textNodes: Text[] = [];
-    let node = walker.nextNode();
-    while (node) {
-      textNodes.push(node as Text);
-      node = walker.nextNode();
-    }
-
+    const textNodeData: Array<{ node: Text; start: number; end: number }> = [];
     let currentPos = 0;
+    let node = walker.nextNode();
 
-    for (const textNode of textNodes) {
+    while (node) {
+      const textNode = node as Text;
       const nodeText = textNode.textContent || '';
       const nodeStart = currentPos;
       const nodeEnd = currentPos + nodeText.length;
 
+      // Only collect nodes that overlap with our range
       if (nodeEnd > startCol && nodeStart < endCol) {
-        const linkStart = Math.max(0, startCol - nodeStart);
-        const linkEnd = Math.min(nodeText.length, endCol - nodeStart);
-
-        if (linkStart < linkEnd) {
-          this.wrapTextNode(textNode, linkStart, linkEnd);
-          break; // Text nodes will be modified, so we stop here
-        }
+        textNodeData.push({ node: textNode, start: nodeStart, end: nodeEnd });
       }
 
       currentPos = nodeEnd;
+      node = walker.nextNode();
+    }
+
+    // Second pass: process all relevant text nodes in reverse order
+    // (to avoid invalidating positions when modifying the DOM)
+    for (let i = textNodeData.length - 1; i >= 0; i--) {
+      const { node: textNode, start: nodeStart } = textNodeData[i];
+      const nodeText = textNode.textContent || '';
+
+      const linkStart = Math.max(0, startCol - nodeStart);
+      const linkEnd = Math.min(nodeText.length, endCol - nodeStart);
+
+      if (linkStart < linkEnd) {
+        this.wrapTextNode(textNode, linkStart, linkEnd);
+      }
     }
   }
 

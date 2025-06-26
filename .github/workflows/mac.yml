@@ -66,21 +66,20 @@ jobs:
           ${{ runner.os }}-spm-
     
     - name: Install all tools
-      continue-on-error: true
       shell: bash
       run: |
-        # Install linting and build tools
-        cat > Brewfile <<EOF
-        brew "swiftlint"
-        brew "swiftformat"
-        brew "xcbeautify"
-        EOF
-        brew bundle
+        # Update Homebrew
+        brew update
         
-        # Show final status
-        echo "SwiftLint: $(which swiftlint || echo 'not found')"
-        echo "SwiftFormat: $(which swiftformat || echo 'not found')"
-        echo "xcbeautify: $(which xcbeautify || echo 'not found')"
+        # Install or upgrade linting and build tools
+        brew install swiftlint || brew upgrade swiftlint || true
+        brew install swiftformat || brew upgrade swiftformat || true
+        brew install xcbeautify || brew upgrade xcbeautify || true
+        
+        # Show versions
+        echo "SwiftLint: $(swiftlint --version || echo 'not found')"
+        echo "SwiftFormat: $(swiftformat --version || echo 'not found')"
+        echo "xcbeautify: $(xcbeautify --version || echo 'not found')"
         echo "jq: $(which jq || echo 'not found')"
     
     - name: Cache pnpm store

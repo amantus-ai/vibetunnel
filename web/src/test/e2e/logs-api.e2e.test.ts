@@ -202,7 +202,7 @@ describe('Logs API Tests', () => {
       // Log file should be much smaller after clearing (might have some new logs already)
       // Allow up to 10KB for startup logs that might be written immediately after clearing
       expect(infoAfter.size).toBeLessThan(10000);
-      
+
       // Only check relative size if original log was large enough to make comparison meaningful
       // Skip this check if original log was small (< 10KB) as new logs might exceed half the size
       if (infoBefore.size > 10000) {
