@@ -33,6 +33,8 @@ export class LifecycleEventManager {
   private sessionViewElement: HTMLElement | null = null;
   private callbacks: LifecycleEventManagerCallbacks | null = null;
   private session: Session | null = null;
+  private touchStartX = 0;
+  private touchStartY = 0;
 
   constructor() {
     logger.log('LifecycleEventManager initialized');
@@ -100,6 +102,41 @@ export class LifecycleEventManager {
     e.stopPropagation();
 
     this.callbacks.handleKeyboardInput(e);
+  };
+
+  touchStartHandler = (e: TouchEvent): void => {
+    if (!this.callbacks) return;
+
+    const isMobile = this.callbacks.getIsMobile();
+    if (!isMobile) return;
+
+    const touch = e.touches[0];
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+  };
+
+  touchEndHandler = (e: TouchEvent): void => {
+    if (!this.callbacks) return;
+
+    const isMobile = this.callbacks.getIsMobile();
+    if (!isMobile) return;
+
+    const touch = e.changedTouches[0];
+    const touchEndX = touch.clientX;
+    const touchEndY = touch.clientY;
+
+    const deltaX = touchEndX - this.touchStartX;
+    const deltaY = touchEndY - this.touchStartY;
+
+    // Check for horizontal swipe from left edge (back gesture)
+    const isSwipeRight = deltaX > 100;
+    const isVerticallyStable = Math.abs(deltaY) < 100;
+    const startedFromLeftEdge = this.touchStartX < 50;
+
+    if (isSwipeRight && isVerticallyStable && startedFromLeftEdge) {
+      // Trigger back navigation
+      this.callbacks.handleBack();
+    }
   };
 
   cleanup(): void {
