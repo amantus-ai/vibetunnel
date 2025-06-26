@@ -14,7 +14,7 @@ import { type IBufferCell, type IBufferLine, Terminal as XtermTerminal } from '@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { createLogger } from '../utils/logger.js';
-import { UrlHighlighter } from '../utils/url-highlighter.js';
+import { UrlHighlighter } from '../utils/url-highlighter';
 
 const logger = createLogger('terminal');
 

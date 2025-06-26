@@ -5,489 +5,468 @@
  * including multi-line URLs that span across terminal lines.
  */
 
-const MIN_URL_LENGTH = 7; // Minimum viable URL length (e.g., "http://x")
+// Constants
+const MIN_URL_LENGTH = 7;
+const MAX_URL_LENGTH = 2048;
+const URL_PROTOCOLS = ['https://', 'http://', 'file://'] as const;
+const TERMINAL_LINK_CLASS = 'terminal-link';
+
+// Compiled regex patterns (created once for performance)
+const URL_START_PATTERN = /https?:\/\/|file:\/\//g;
+const PARTIAL_PROTOCOL_PATTERN =
+  /(^|\s)(h|ht|htt|http|https|https:|https:\/|https:\/\/|f|fi|fil|file|file:|file:\/|file:\/\/)$/;
+const DOMAIN_START_PATTERN = /^[a-zA-Z0-9[\].-]/;
+const PATH_START_PATTERN = /^[/a-zA-Z0-9[\].-]/;
+const URL_END_CHARS_PATTERN = /[^\w\-._~:/?#[\]@!$&'()*+,;=%{}|\\^`]/;
+const LOCALHOST_PATTERN =
+  /^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|.+\..+)(:\d+)?.*|file:\/\/.+)/;
+
+type ProcessedRange = {
+  start: number;
+  end: number;
+};
 
 /**
- * Process all lines in a container and highlight any URLs found
- * @param container - The DOM container containing terminal lines
+ * Main entry point - process all links in a container
  */
 export function processLinks(container: HTMLElement): void {
-  // Get all terminal lines
-  const lines = container.querySelectorAll('.terminal-line');
-  if (lines.length === 0) return;
+  const processor = new LinkProcessor(container);
+  processor.process();
+}
 
-  // Track which line positions have already been processed to avoid double-processing
-  const processedRanges: Map<number, Array<{ start: number; end: number }>> = new Map();
+/**
+ * LinkProcessor class encapsulates the URL detection and highlighting logic
+ */
+class LinkProcessor {
+  private container: HTMLElement;
+  private lines: NodeListOf<Element>;
+  private processedRanges: Map<number, ProcessedRange[]> = new Map();
 
-  for (let i = 0; i < lines.length; i++) {
-    const lineText = getLineText(lines[i]);
-    let searchOffset = 0;
+  constructor(container: HTMLElement) {
+    this.container = container;
+    this.lines = container.querySelectorAll('.terminal-line');
+  }
 
-    // First, check if this line might be a continuation of a URL from the previous line
-    if (i > 0) {
-      const prevLineText = getLineText(lines[i - 1]);
+  process(): void {
+    if (this.lines.length === 0) return;
 
-      // Check for various incomplete URL patterns at the end of previous line
-      let incompleteUrlMatch = null;
-      let potentialUrlStart = -1;
+    // Process each line
+    for (let i = 0; i < this.lines.length; i++) {
+      this.processLine(i);
+    }
+  }
 
-      // Pattern 1: Complete protocol with partial URL (https://exam)
-      incompleteUrlMatch = prevLineText.match(/(https?:\/\/|file:\/\/)([^\s]*?)$/);
-      if (incompleteUrlMatch) {
-        potentialUrlStart = incompleteUrlMatch.index ?? -1;
-      }
+  private processLine(lineIndex: number): void {
+    // Check if this line continues a URL from the previous line
+    if (lineIndex > 0) {
+      this.checkPreviousLineContinuation(lineIndex);
+    }
 
-      // Pattern 2: Partial protocol at end of line (ht, htt, http, https, https:, https:/)
-      if (!incompleteUrlMatch) {
-        const partialProtocolMatch = prevLineText.match(
-          /(^|\s)(https?:|https?:\/|https?:\/\/|file:|file:\/|file:\/\/)$/
-        );
-        if (partialProtocolMatch && lineText.match(/^(\/(\/.+)|\/.+)/)) {
-          potentialUrlStart =
-            (partialProtocolMatch.index ?? -1) + (partialProtocolMatch[1] ? 1 : 0);
-          incompleteUrlMatch = partialProtocolMatch;
+    // Find new URLs starting in this line
+    this.findUrlsInLine(lineIndex);
+  }
+
+  private checkPreviousLineContinuation(lineIndex: number): void {
+    const currentLineText = this.getLineText(lineIndex);
+    const prevLineText = this.getLineText(lineIndex - 1);
+
+    // Try to find incomplete URLs at the end of the previous line
+    const incompleteUrl = this.findIncompleteUrlAtLineEnd(prevLineText, currentLineText);
+
+    if (incompleteUrl) {
+      const { startPos } = incompleteUrl;
+
+      // Build the complete URL
+      const completeUrl = this.buildMultiLineUrl(lineIndex - 1, startPos);
+
+      if (completeUrl && this.isValidUrl(completeUrl.url)) {
+        // Check if already processed
+        if (!this.isRangeProcessed(lineIndex - 1, startPos, completeUrl.endLine)) {
+          this.createUrlLinks(completeUrl.url, lineIndex - 1, completeUrl.endLine, startPos);
+          this.markRangeAsProcessed(lineIndex - 1, completeUrl.endLine, startPos, completeUrl.url);
         }
       }
+    }
+  }
 
-      if (incompleteUrlMatch && potentialUrlStart >= 0) {
-        // Get the partial URL from the end of previous line
-        const partialUrl = prevLineText.substring(potentialUrlStart);
-
-        // Build the complete URL starting from previous line
-        let fullUrl = partialUrl;
-        let endLine = i;
-
-        // Continue building from current line
-        for (let j = i; j < lines.length; j++) {
-          const currentLineText = getLineText(lines[j]);
-          const remainingText = currentLineText;
-
-          if (j > i && remainingText.match(/^\s/)) {
-            endLine = j - 1;
-            break;
-          }
-
-          const whitespaceMatch = remainingText.match(/\s/);
-          if (whitespaceMatch) {
-            fullUrl += remainingText.substring(0, whitespaceMatch.index);
-            endLine = j;
-            break;
-          } else {
-            fullUrl += remainingText;
-            endLine = j;
-            if (j === lines.length - 1) break;
-          }
-        }
-
-        fullUrl = cleanUrl(fullUrl);
-
-        // Only create links if it's a valid URL and hasn't been processed
-        if (fullUrl.length > MIN_URL_LENGTH && isValidUrl(fullUrl)) {
-          // Check if this URL was already processed
-          let alreadyProcessed = false;
-          for (let lineIdx = i - 1; lineIdx <= endLine; lineIdx++) {
-            const ranges = processedRanges.get(lineIdx) || [];
-            if (lineIdx === i - 1) {
-              if (ranges.some((r) => r.start <= potentialUrlStart && r.end > potentialUrlStart)) {
-                alreadyProcessed = true;
-                break;
-              }
-            } else {
-              if (ranges.some((r) => r.start === 0)) {
-                alreadyProcessed = true;
-                break;
-              }
-            }
-          }
-
-          if (!alreadyProcessed) {
-            createUrlLinks(lines, fullUrl, i - 1, endLine, potentialUrlStart);
-
-            // Track processed ranges
-            for (let lineIdx = i - 1; lineIdx <= endLine; lineIdx++) {
-              if (!processedRanges.has(lineIdx)) {
-                processedRanges.set(lineIdx, []);
-              }
-
-              if (lineIdx === i - 1) {
-                processedRanges
-                  .get(lineIdx)
-                  ?.push({ start: potentialUrlStart, end: prevLineText.length });
-              } else if (lineIdx === endLine) {
-                // For the last line, only mark the URL portion as processed
-                const lastLineText = getLineText(lines[lineIdx]);
-                const urlEndPos = lastLineText.indexOf(' ');
-                processedRanges.get(lineIdx)?.push({
-                  start: 0,
-                  end: urlEndPos > 0 ? urlEndPos : lastLineText.length,
-                });
-              } else {
-                processedRanges
-                  .get(lineIdx)
-                  ?.push({ start: 0, end: getLineText(lines[lineIdx]).length });
-              }
-            }
-          }
+  private findIncompleteUrlAtLineEnd(
+    prevLineText: string,
+    currentLineText: string
+  ): { startPos: number; protocol: string } | null {
+    // Check for complete protocol at line end
+    for (const protocol of URL_PROTOCOLS) {
+      const index = prevLineText.lastIndexOf(protocol);
+      if (index >= 0 && prevLineText.endsWith(protocol)) {
+        // Verify next line starts with valid domain/path
+        if (DOMAIN_START_PATTERN.test(currentLineText)) {
+          return { startPos: index, protocol };
         }
       }
     }
 
-    // Look for ALL URLs in this line (not just the first one)
-    while (true) {
-      const urlMatch = lineText.substring(searchOffset).match(/(https?:\/\/|file:\/\/)/);
-      if (!urlMatch || urlMatch.index === undefined) break;
+    // Check for partial protocol at line end
+    const partialMatch = prevLineText.match(PARTIAL_PROTOCOL_PATTERN);
+    if (partialMatch) {
+      const protocol = partialMatch[2];
+      const startPos = (partialMatch.index ?? 0) + (partialMatch[1] ? 1 : 0);
 
-      const urlStart = searchOffset + urlMatch.index;
+      if (this.isValidContinuation(protocol, currentLineText)) {
+        return { startPos, protocol };
+      }
+    }
 
-      // Check if this position was already processed (e.g., as part of a multi-line URL)
-      const lineRanges = processedRanges.get(i) || [];
-      const alreadyProcessed = lineRanges.some(
-        (range) => urlStart >= range.start && urlStart < range.end
-      );
+    return null;
+  }
 
-      if (alreadyProcessed) {
-        searchOffset = urlStart + 1;
+  private isValidContinuation(partialProtocol: string, nextLineText: string): boolean {
+    // Complete protocols - accept domain names
+    if (partialProtocol === 'https://' || partialProtocol === 'file://') {
+      return DOMAIN_START_PATTERN.test(nextLineText);
+    }
+
+    // Partial protocol ending with /
+    if (partialProtocol.endsWith('/')) {
+      return PATH_START_PATTERN.test(nextLineText);
+    }
+
+    // Partial protocol without / - check if continuation completes it
+    const combined = partialProtocol + nextLineText;
+    return /^(https?:\/\/|file:\/\/)/.test(combined);
+  }
+
+  private findUrlsInLine(lineIndex: number): void {
+    const lineText = this.getLineText(lineIndex);
+
+    // Reset the regex
+    URL_START_PATTERN.lastIndex = 0;
+
+    let match = URL_START_PATTERN.exec(lineText);
+    while (match !== null) {
+      const urlStart = match.index;
+
+      // Check if already processed
+      if (this.isPositionProcessed(lineIndex, urlStart)) {
+        match = URL_START_PATTERN.exec(lineText);
         continue;
       }
 
-      let fullUrl = '';
-      let endLine = i;
+      // Build the URL from this position
+      const completeUrl = this.buildMultiLineUrl(lineIndex, urlStart);
 
-      // Build the URL by scanning from the http part until we hit whitespace or invalid URL characters
-      for (let j = i; j < lines.length; j++) {
-        let remainingText = '';
-
-        if (j === i) {
-          // Current line: start from http position
-          remainingText = lineText.substring(urlStart);
-        } else {
-          // Subsequent lines: take the whole line content without trimming first
-          // This handles URLs that wrap mid-word on mobile devices
-          const nextLineText = getLineText(lines[j]);
-
-          // If the line starts with whitespace, the URL has ended
-          if (nextLineText.match(/^\s/)) {
-            endLine = j - 1;
-            break;
-          }
-
-          // For wrapped URLs, we need to consider the entire line content
-          // But we still need to stop at the first whitespace within the line
-          remainingText = nextLineText;
-        }
-
-        // Stop if line is completely empty
-        if (remainingText === '') {
-          endLine = j - 1; // URL ended on previous line
-          break;
-        }
-
-        // Find first whitespace character in this line's text
-        const whitespaceMatch = remainingText.match(/\s/);
-        if (whitespaceMatch) {
-          // Found whitespace, URL ends here
-          const urlPart = remainingText.substring(0, whitespaceMatch.index);
-          fullUrl += urlPart;
-          endLine = j;
-          break;
-        } else {
-          // No whitespace found, but check if this looks like a URL continuation
-          // URLs can contain many characters, but certain characters indicate the URL has ended
-          // Updated regex to be more permissive with URL characters
-          const urlEndMatch = remainingText.match(/[^\w\-._~:/?#[\]@!$&'()*+,;=%{}|\\^`]/);
-          if (urlEndMatch && urlEndMatch.index !== undefined && urlEndMatch.index > 0) {
-            // Found a character that likely ends the URL
-            const urlPart = remainingText.substring(0, urlEndMatch.index);
-            fullUrl += urlPart;
-            endLine = j;
-            break;
-          } else if (urlEndMatch && urlEndMatch.index === 0) {
-            // URL ended at the beginning of this line
-            endLine = j - 1;
-            break;
-          } else {
-            // Take the whole line - likely a wrapped URL continuation
-            fullUrl += remainingText;
-            endLine = j;
-
-            // If this is the last line, we're done
-            if (j === lines.length - 1) break;
-          }
-        }
+      if (completeUrl && this.isValidUrl(completeUrl.url)) {
+        this.createUrlLinks(completeUrl.url, lineIndex, completeUrl.endLine, urlStart);
+        this.markRangeAsProcessed(lineIndex, completeUrl.endLine, urlStart, completeUrl.url);
       }
 
-      // Clean up the URL by removing common terminal artifacts
-      fullUrl = cleanUrl(fullUrl);
+      match = URL_START_PATTERN.exec(lineText);
+    }
+  }
 
-      // Now create links for this URL across the lines it spans
-      if (fullUrl.length > MIN_URL_LENGTH && isValidUrl(fullUrl)) {
-        // More than just "http://" and looks like a valid URL
-        createUrlLinks(lines, fullUrl, i, endLine, urlStart);
+  private buildMultiLineUrl(
+    startLine: number,
+    startCol: number
+  ): { url: string; endLine: number } | null {
+    let url = '';
+    let endLine = startLine;
 
-        // Track processed ranges to avoid double-processing
-        for (let lineIdx = i; lineIdx <= endLine; lineIdx++) {
-          if (!processedRanges.has(lineIdx)) {
-            processedRanges.set(lineIdx, []);
-          }
+    for (let i = startLine; i < this.lines.length; i++) {
+      const lineText = this.getLineText(i);
+      let remainingText: string;
 
-          if (lineIdx === i) {
-            // First line: from urlStart to end of URL part on this line
-            const lineLength = getLineText(lines[lineIdx]).length;
-            const endPos =
-              lineIdx === endLine
-                ? Math.min(
-                    urlStart + (endLine === i ? fullUrl.length : lineLength - urlStart),
-                    lineLength
-                  )
-                : lineLength;
-            processedRanges.get(lineIdx)?.push({ start: urlStart, end: endPos });
-          } else {
-            // Other lines: entire line is part of URL (approximately)
-            processedRanges
-              .get(lineIdx)
-              ?.push({ start: 0, end: getLineText(lines[lineIdx]).length });
-          }
+      if (i === startLine) {
+        remainingText = lineText.substring(startCol);
+      } else {
+        // Check if line starts with whitespace (URL ended)
+        if (/^\s/.test(lineText)) {
+          endLine = i - 1;
+          break;
         }
+        remainingText = lineText;
       }
 
-      // Move search offset forward to look for more URLs in the same line
-      // For multi-line URLs, only advance by the portion on the current line
-      const currentLineUrlLength =
-        endLine === i
-          ? Math.min(fullUrl.length, lineText.length - urlStart)
-          : lineText.length - urlStart;
-      searchOffset = urlStart + Math.max(currentLineUrlLength, 1);
+      // Find where the URL ends in this line
+      const urlEnd = this.findUrlEndInText(remainingText);
+
+      if (urlEnd >= 0) {
+        url += remainingText.substring(0, urlEnd);
+        endLine = i;
+        break;
+      } else {
+        url += remainingText;
+        endLine = i;
+
+        if (i === this.lines.length - 1) break;
+      }
+    }
+
+    return { url: this.cleanUrl(url), endLine };
+  }
+
+  private findUrlEndInText(text: string): number {
+    // Look for whitespace first
+    const whitespaceIndex = text.search(/\s/);
+    if (whitespaceIndex >= 0) return whitespaceIndex;
+
+    // Look for characters that typically end URLs
+    const endMatch = text.match(URL_END_CHARS_PATTERN);
+    if (endMatch && endMatch.index !== undefined) {
+      return endMatch.index;
+    }
+
+    return -1;
+  }
+
+  private createUrlLinks(url: string, startLine: number, endLine: number, startCol: number): void {
+    const highlighter = new LinkHighlighter(this.lines, url);
+    highlighter.createLinks(startLine, endLine, startCol);
+  }
+
+  private getLineText(lineIndex: number): string {
+    if (lineIndex < 0 || lineIndex >= this.lines.length) return '';
+    return this.lines[lineIndex].textContent || '';
+  }
+
+  private isValidUrl(url: string): boolean {
+    if (url.length < MIN_URL_LENGTH || url.length > MAX_URL_LENGTH) {
+      return false;
+    }
+
+    // Check for obvious non-URL characters
+    if (/[\n\r\t]/.test(url)) {
+      return false;
+    }
+
+    // Basic pattern validation
+    if (!LOCALHOST_PATTERN.test(url)) {
+      return false;
+    }
+
+    // Try to parse as URL
+    try {
+      const parsed = new URL(url);
+      return ['http:', 'https:', 'file:'].includes(parsed.protocol);
+    } catch {
+      return false;
+    }
+  }
+
+  private cleanUrl(url: string): string {
+    let cleaned = url;
+
+    // Balance parentheses
+    const openParens = (cleaned.match(/\(/g) || []).length;
+    const closeParens = (cleaned.match(/\)/g) || []).length;
+
+    if (closeParens > openParens) {
+      const toRemove = closeParens - openParens;
+      cleaned = cleaned.replace(/\)+$/, (match) => match.substring(0, match.length - toRemove));
+    }
+
+    // Remove common trailing punctuation
+    cleaned = cleaned.replace(/[.,;:!?]+$/, '');
+
+    return cleaned;
+  }
+
+  private isRangeProcessed(startLine: number, startCol: number, endLine: number): boolean {
+    for (let line = startLine; line <= endLine; line++) {
+      if (this.isPositionProcessed(line, line === startLine ? startCol : 0)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private isPositionProcessed(line: number, position: number): boolean {
+    const ranges = this.processedRanges.get(line);
+    if (!ranges) return false;
+
+    return ranges.some((range) => position >= range.start && position < range.end);
+  }
+
+  private markRangeAsProcessed(
+    startLine: number,
+    endLine: number,
+    startCol: number,
+    url: string
+  ): void {
+    for (let line = startLine; line <= endLine; line++) {
+      if (!this.processedRanges.has(line)) {
+        this.processedRanges.set(line, []);
+      }
+
+      const ranges = this.processedRanges.get(line);
+      if (!ranges) continue;
+
+      if (line === startLine) {
+        const lineText = this.getLineText(line);
+        const endPos =
+          line === endLine ? Math.min(startCol + url.length, lineText.length) : lineText.length;
+        ranges.push({ start: startCol, end: endPos });
+      } else if (line === endLine) {
+        const lineText = this.getLineText(line);
+        const urlEndPos = lineText.indexOf(' ');
+        ranges.push({
+          start: 0,
+          end: urlEndPos > 0 ? urlEndPos : lineText.length,
+        });
+      } else {
+        ranges.push({ start: 0, end: this.getLineText(line).length });
+      }
     }
   }
 }
 
-function createUrlLinks(
-  lines: NodeListOf<Element>,
-  fullUrl: string,
-  startLine: number,
-  endLine: number,
-  startCol: number
-): void {
-  let remainingUrl = fullUrl;
+/**
+ * LinkHighlighter handles the DOM manipulation to create clickable links
+ */
+class LinkHighlighter {
+  private lines: NodeListOf<Element>;
+  private url: string;
 
-  for (let lineIdx = startLine; lineIdx <= endLine; lineIdx++) {
-    const line = lines[lineIdx];
-    const lineText = getLineText(line);
+  constructor(lines: NodeListOf<Element>, url: string) {
+    this.lines = lines;
+    this.url = url;
+  }
 
-    if (lineIdx === startLine) {
-      // First line: URL starts at startCol
-      const lineUrlPart = lineText.substring(startCol);
-      const urlPartLength = Math.min(lineUrlPart.length, remainingUrl.length);
+  createLinks(startLine: number, endLine: number, startCol: number): void {
+    let remainingUrl = this.url;
 
-      createClickableInLine(line, fullUrl, 'url', startCol, startCol + urlPartLength);
-      remainingUrl = remainingUrl.substring(urlPartLength);
-    } else {
-      // Subsequent lines: handle both trimmed and non-trimmed cases for wrapped URLs
-      let startColForLine = 0;
-      let availableText = lineText;
+    for (let lineIdx = startLine; lineIdx <= endLine; lineIdx++) {
+      const line = this.lines[lineIdx];
+      const lineText = line.textContent || '';
 
-      // If the line starts with whitespace, the URL continuation starts after the whitespace
-      const leadingWhitespace = lineText.match(/^\s*/);
-      if (leadingWhitespace && leadingWhitespace[0].length > 0) {
-        startColForLine = leadingWhitespace[0].length;
-        availableText = lineText.substring(startColForLine);
-      }
+      let colStart: number;
+      let colEnd: number;
 
-      // For mobile wrapped URLs, we need to be more careful about what part of the line contains the URL
-      const urlPartLength = Math.min(availableText.length, remainingUrl.length);
+      if (lineIdx === startLine) {
+        colStart = startCol;
+        const lineUrlPart = lineText.substring(startCol);
+        colEnd = startCol + Math.min(lineUrlPart.length, remainingUrl.length);
+      } else {
+        // Handle wrapped URLs
+        const leadingWhitespace = lineText.match(/^\s*/);
+        colStart = leadingWhitespace ? leadingWhitespace[0].length : 0;
 
-      if (urlPartLength > 0) {
-        // Find where whitespace or URL-ending characters appear in the available text
-        // Be more careful about what ends a URL - don't include characters that are commonly in URLs
+        const availableText = lineText.substring(colStart);
+        const urlPartLength = Math.min(availableText.length, remainingUrl.length);
+
+        // Check for URL-ending characters
         const endMatch = availableText.match(/[\s<>"'`]/);
-        const actualUrlLength = endMatch
+        const actualLength = endMatch
           ? Math.min(endMatch.index ?? urlPartLength, urlPartLength)
           : urlPartLength;
 
-        if (actualUrlLength > 0) {
-          createClickableInLine(
-            line,
-            fullUrl,
-            'url',
-            startColForLine,
-            startColForLine + actualUrlLength
-          );
-          remainingUrl = remainingUrl.substring(actualUrlLength);
-        }
+        colEnd = colStart + actualLength;
       }
+
+      if (colStart < colEnd) {
+        this.wrapTextInLink(line, colStart, colEnd);
+        remainingUrl = remainingUrl.substring(colEnd - colStart);
+      }
+
+      if (remainingUrl.length === 0) break;
+    }
+  }
+
+  private wrapTextInLink(lineElement: Element, startCol: number, endCol: number): void {
+    const walker = document.createTreeWalker(lineElement, NodeFilter.SHOW_TEXT, null);
+
+    const textNodes: Text[] = [];
+    let node = walker.nextNode();
+    while (node) {
+      textNodes.push(node as Text);
+      node = walker.nextNode();
     }
 
-    if (remainingUrl.length === 0) break;
-  }
-}
+    let currentPos = 0;
 
-function getLineText(lineElement: Element): string {
-  // Get the text content, preserving spaces but removing HTML tags
-  const textContent = lineElement.textContent || '';
-  return textContent;
-}
+    for (const textNode of textNodes) {
+      const nodeText = textNode.textContent || '';
+      const nodeStart = currentPos;
+      const nodeEnd = currentPos + nodeText.length;
 
-function createClickableInLine(
-  lineElement: Element,
-  url: string,
-  _type: 'url',
-  startCol: number,
-  endCol: number
-): void {
-  if (startCol >= endCol) return;
+      if (nodeEnd > startCol && nodeStart < endCol) {
+        const linkStart = Math.max(0, startCol - nodeStart);
+        const linkEnd = Math.min(nodeText.length, endCol - nodeStart);
 
-  // We need to work with the actual DOM structure, not just text
-  const walker = document.createTreeWalker(lineElement, NodeFilter.SHOW_TEXT, null);
+        if (linkStart < linkEnd) {
+          this.wrapTextNode(textNode, linkStart, linkEnd);
+          break; // Text nodes will be modified, so we stop here
+        }
+      }
 
-  const textNodes: Text[] = [];
-  let node: Node | null = walker.nextNode();
-  while (node) {
-    textNodes.push(node as Text);
-    node = walker.nextNode();
+      currentPos = nodeEnd;
+    }
   }
 
-  let currentPos = 0;
-  let foundStart = false;
-  let foundEnd = false;
+  private wrapTextNode(textNode: Text, start: number, end: number): void {
+    const parent = textNode.parentNode;
+    if (!parent) return;
 
-  for (const textNode of textNodes) {
+    // Don't wrap if already inside a link
+    if (this.isInsideLink(parent as Element)) return;
+
     const nodeText = textNode.textContent || '';
-    const nodeStart = currentPos;
-    const nodeEnd = currentPos + nodeText.length;
+    const beforeText = nodeText.substring(0, start);
+    const linkText = nodeText.substring(start, end);
+    const afterText = nodeText.substring(end);
 
-    // Check if this text node contains part of our link
-    if (!foundEnd && nodeEnd > startCol && nodeStart < endCol) {
-      const linkStart = Math.max(0, startCol - nodeStart);
-      const linkEnd = Math.min(nodeText.length, endCol - nodeStart);
+    // Create the link element
+    const linkElement = this.createLinkElement(linkText);
 
-      if (linkStart < linkEnd) {
-        wrapTextInClickable(textNode, linkStart, linkEnd, url, !foundStart, nodeEnd >= endCol);
-        foundStart = true;
-        if (nodeEnd >= endCol) {
-          foundEnd = true;
-          break;
-        }
-      }
+    // Replace the text node
+    const fragment = document.createDocumentFragment();
+
+    if (beforeText) {
+      fragment.appendChild(document.createTextNode(beforeText));
     }
 
-    currentPos = nodeEnd;
-  }
-}
+    fragment.appendChild(linkElement);
 
-function wrapTextInClickable(
-  textNode: Text,
-  start: number,
-  end: number,
-  url: string,
-  _isFirst: boolean,
-  _isLast: boolean
-): void {
-  const parent = textNode.parentNode;
-  if (!parent) return;
+    if (afterText) {
+      fragment.appendChild(document.createTextNode(afterText));
+    }
 
-  const nodeText = textNode.textContent || '';
-  const beforeText = nodeText.substring(0, start);
-  const linkText = nodeText.substring(start, end);
-  const afterText = nodeText.substring(end);
-
-  // Create the link element
-  const linkElement = document.createElement('a');
-  linkElement.className = 'terminal-link';
-  linkElement.href = url;
-  linkElement.target = '_blank';
-  linkElement.rel = 'noopener noreferrer';
-  linkElement.style.color = '#4fc3f7';
-  linkElement.style.textDecoration = 'underline';
-  linkElement.style.cursor = 'pointer';
-  linkElement.textContent = linkText;
-
-  // Add hover effects
-  linkElement.addEventListener('mouseenter', () => {
-    linkElement.style.backgroundColor = 'rgba(79, 195, 247, 0.2)';
-  });
-
-  linkElement.addEventListener('mouseleave', () => {
-    linkElement.style.backgroundColor = '';
-  });
-
-  // Replace the text node with the new structure
-  const fragment = document.createDocumentFragment();
-
-  if (beforeText) {
-    fragment.appendChild(document.createTextNode(beforeText));
+    parent.replaceChild(fragment, textNode);
   }
 
-  fragment.appendChild(linkElement);
+  private createLinkElement(text: string): HTMLAnchorElement {
+    const link = document.createElement('a');
+    link.className = TERMINAL_LINK_CLASS;
+    link.href = this.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.color = '#4fc3f7';
+    link.style.textDecoration = 'underline';
+    link.style.cursor = 'pointer';
+    link.textContent = text;
 
-  if (afterText) {
-    fragment.appendChild(document.createTextNode(afterText));
-  }
-
-  parent.replaceChild(fragment, textNode);
-}
-
-/**
- * Clean up a URL by removing common terminal artifacts and trailing punctuation
- * @param url - The raw URL string
- * @returns The cleaned URL
- */
-function cleanUrl(url: string): string {
-  // Remove common trailing punctuation that's not part of URLs
-  // But be careful with parentheses - they might be part of the URL
-  let cleaned = url;
-
-  // First, try to balance parentheses
-  const openParens = (cleaned.match(/\(/g) || []).length;
-  const closeParens = (cleaned.match(/\)/g) || []).length;
-
-  // If we have more closing parens than opening, remove trailing ones
-  if (closeParens > openParens) {
-    cleaned = cleaned.replace(/\)+$/, (match) => {
-      const toRemove = closeParens - openParens;
-      return match.substring(0, match.length - toRemove);
+    // Add hover effects
+    link.addEventListener('mouseenter', () => {
+      link.style.backgroundColor = 'rgba(79, 195, 247, 0.2)';
     });
+
+    link.addEventListener('mouseleave', () => {
+      link.style.backgroundColor = '';
+    });
+
+    return link;
   }
 
-  // Remove other common trailing punctuation
-  cleaned = cleaned.replace(/[.,;:!?]+$/, '');
-
-  return cleaned;
-}
-
-/**
- * Check if a string looks like a valid URL
- * @param url - The URL string to validate
- * @returns True if the URL appears valid
- */
-function isValidUrl(url: string): boolean {
-  try {
-    // Add length check to prevent DoS from extremely long URLs
-    if (url.length > 2048) {
-      return false;
+  private isInsideLink(element: Element): boolean {
+    let current: Element | null = element;
+    while (current && current !== document.body) {
+      if (current.tagName === 'A' && current.classList.contains(TERMINAL_LINK_CLASS)) {
+        return true;
+      }
+      current = current.parentElement;
     }
-
-    // Basic validation: must start with http(s):// or file://, and have valid path
-    // Allow localhost, IP addresses, and domains with TLDs
-    if (
-      !url.match(/^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|.+\..+)(:\d+)?.*|file:\/\/.+)/)
-    ) {
-      return false;
-    }
-
-    // Check for obvious non-URL characters that might indicate terminal artifacts
-    if (url.includes('\n') || url.includes('\r') || url.includes('\t')) {
-      return false;
-    }
-
-    // Try to parse it as a URL
-    new URL(url);
-    return true;
-  } catch {
     return false;
   }
 }
 
-// Re-export as object for backwards compatibility
+// Export as default for backwards compatibility
 export const UrlHighlighter = {
   processLinks,
 };
