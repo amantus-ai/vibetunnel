@@ -29,7 +29,6 @@ jobs:
     runs-on: blacksmith-32vcpu-ubuntu-2404-arm
     outputs:
       cache-hit: ${{ steps.cache-custom-node.outputs.cache-hit }}
-      node-path: ${{ steps.node-info.outputs.path }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -56,27 +55,9 @@ jobs:
 
       - name: Build custom Node.js
         if: steps.cache-custom-node.outputs.cache-hit != 'true'
-        id: build-node
         working-directory: web
         run: |
-          node build-custom-node.js
-
-      - name: Set Node.js path output
-        id: node-info
-        run: |
-          if [ "${{ steps.cache-custom-node.outputs.cache-hit }}" == "true" ]; then
-            NODE_PATH="${{ github.workspace }}/web/.node-builds/node-v${{ env.NODE_VERSION }}-minimal/out/Release/node"
-          else
-            NODE_PATH="${{ steps.build-node.outputs.node-path }}"
-          fi
-          echo "path=${NODE_PATH}" >> $GITHUB_OUTPUT
-          if [ -f "${NODE_PATH}" ]; then
-            echo "Custom Node.js found at: ${NODE_PATH}"
-            ${NODE_PATH} --version
-          else
-            echo "ERROR: Custom Node.js not found at ${NODE_PATH}"
-            exit 1
-          fi
+          node build-custom-node.js --version=${{ env.NODE_VERSION }}
 
   test-sea-build:
     name: Test SEA Build
@@ -104,13 +85,22 @@ jobs:
 
       - name: Restore custom Node.js from cache (Blacksmith)
         if: matrix.node-type == 'custom'
+        id: restore-custom-node
         uses: useblacksmith/cache@v1
         with:
           path: |
             web/.node-builds/node-v${{ env.NODE_VERSION }}-minimal
           key: ${{ env.CUSTOM_NODE_CACHE_KEY }}-v${{ env.NODE_VERSION }}-${{ hashFiles('web/build-custom-node.js') }}
-          fail-on-cache-miss: true
+          restore-keys: |
+            ${{ env.CUSTOM_NODE_CACHE_KEY }}-v${{ env.NODE_VERSION }}-
 
+      - name: Build custom Node.js if not cached
+        if: matrix.node-type == 'custom' && steps.restore-custom-node.outputs.cache-hit != 'true'
+        working-directory: web
+        run: |
+          echo "Custom Node.js not found in cache, building..."
+          node build-custom-node.js --version=${{ env.NODE_VERSION }}
+          
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -133,10 +123,9 @@ jobs:
         if: matrix.node-type == 'custom'
         working-directory: web
         run: |
-          CUSTOM_NODE_PATH="${{ needs.build-custom-node.outputs.node-path }}"
-          echo "Building SEA with custom Node.js at: ${CUSTOM_NODE_PATH}"
-          ${CUSTOM_NODE_PATH} --version
-          node build-native.js --custom-node="${CUSTOM_NODE_PATH}"
+          # Use auto-discovery since we know the custom Node.js is in .node-builds
+          echo "Building SEA with custom Node.js (auto-discovery)..."
+          node build-native.js --custom-node
 
       - name: Test SEA executable
         working-directory: web
