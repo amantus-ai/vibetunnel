@@ -163,12 +163,13 @@ jobs:
           
           # Build the app (Debug configuration for faster builds in CI)
           xcodebuild \
-            -project VibeTunnel.xcodeproj \
-            -scheme VibeTunnel \
+            -workspace VibeTunnel.xcworkspace \
+            -scheme VibeTunnel-Mac \
             -configuration Debug \
             -derivedDataPath build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             PRODUCT_BUNDLE_IDENTIFIER="com.vibetunnel.test" \
             build
           
