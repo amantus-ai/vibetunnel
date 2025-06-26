@@ -29,13 +29,17 @@ import {
   COMMON_TERMINAL_WIDTHS,
   TerminalPreferencesManager,
 } from '../utils/terminal-preferences.js';
-import { type AppPreferences, AppSettings } from './app-settings.js';
+import { AppSettings } from './app-settings.js';
 import { ConnectionManager } from './session-view/connection-manager.js';
 import {
   type DirectKeyboardCallbacks,
   DirectKeyboardManager,
 } from './session-view/direct-keyboard-manager.js';
 import { InputManager } from './session-view/input-manager.js';
+import {
+  LifecycleEventManager,
+  type LifecycleEventManagerCallbacks,
+} from './session-view/lifecycle-event-manager.js';
 import { MobileInputManager } from './session-view/mobile-input-manager.js';
 import {
   type TerminalEventHandlers,
@@ -82,101 +86,88 @@ export class SessionView extends LitElement {
   private mobileInputManager!: MobileInputManager;
   private directKeyboardManager!: DirectKeyboardManager;
   private terminalLifecycleManager!: TerminalLifecycleManager;
+  private lifecycleEventManager!: LifecycleEventManager;
   @state() private ctrlSequence: string[] = [];
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
   @state() private keyboardHeight = 0;
 
   private loadingInterval: number | null = null;
-  private keyboardListenerAdded = false;
-  private touchListenersAdded = false;
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
-  private visualViewportHandler: (() => void) | null = null;
 
-  private handlePreferencesChanged = (e: Event) => {
-    const event = e as CustomEvent;
-    const preferences = event.detail as AppPreferences;
-    this.useDirectKeyboard = preferences.useDirectKeyboard;
+  // Removed methods that are now in LifecycleEventManager:
+  // - handlePreferencesChanged
+  // - keyboardHandler
+  // - touchStartHandler
+  // - touchEndHandler
+  // - handleClickOutside
 
-    // Update hidden input based on preference
-    if (this.isMobile && this.useDirectKeyboard && !this.directKeyboardManager.getShowQuickKeys()) {
-      this.directKeyboardManager.ensureHiddenInputVisible();
-    } else if (!this.useDirectKeyboard) {
-      // Cleanup direct keyboard manager when disabled
-      this.directKeyboardManager.cleanup();
-      this.showQuickKeys = false;
-    }
-  };
-
-  private keyboardHandler = (e: KeyboardEvent) => {
-    // Handle Cmd+O / Ctrl+O to open file browser
-    if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
-      e.preventDefault();
-      this.showFileBrowser = true;
-      return;
-    }
-
-    if (!this.session) return;
-
-    // Check if this is a browser shortcut we should allow
-    if (this.inputManager?.isKeyboardShortcut(e)) {
-      return;
-    }
-
-    // Handle Escape key specially for exited sessions
-    if (e.key === 'Escape' && this.session.status === 'exited') {
-      this.handleBack();
-      return;
-    }
-
-    // Only prevent default for keys we're actually going to handle
-    e.preventDefault();
-    e.stopPropagation();
-
-    this.handleKeyboardInput(e);
-  };
-
-  private touchStartHandler = (e: TouchEvent) => {
-    if (!this.isMobile) return;
-
-    const touch = e.touches[0];
-    this.touchStartX = touch.clientX;
-    this.touchStartY = touch.clientY;
-  };
-
-  private touchEndHandler = (e: TouchEvent) => {
-    if (!this.isMobile) return;
-
-    const touch = e.changedTouches[0];
-    const touchEndX = touch.clientX;
-    const touchEndY = touch.clientY;
-
-    const deltaX = touchEndX - this.touchStartX;
-    const deltaY = touchEndY - this.touchStartY;
-
-    // Check for horizontal swipe from left edge (back gesture)
-    const isSwipeRight = deltaX > 100;
-    const isVerticallyStable = Math.abs(deltaY) < 100;
-    const startedFromLeftEdge = this.touchStartX < 50;
-
-    if (isSwipeRight && isVerticallyStable && startedFromLeftEdge) {
-      // Trigger back navigation
-      this.handleBack();
-    }
-  };
-
-  private handleClickOutside = (e: Event) => {
-    if (this.showWidthSelector) {
-      const target = e.target as HTMLElement;
-      const widthSelector = this.querySelector('.width-selector-container');
-      const widthButton = this.querySelector('.width-selector-button');
-
-      if (!widthSelector?.contains(target) && !widthButton?.contains(target)) {
-        this.showWidthSelector = false;
-        this.customWidth = '';
-      }
-    }
-  };
+  private createLifecycleEventManagerCallbacks(): LifecycleEventManagerCallbacks {
+    return {
+      requestUpdate: () => this.requestUpdate(),
+      handleBack: () => this.handleBack(),
+      handleKeyboardInput: (e: KeyboardEvent) => this.handleKeyboardInput(e),
+      getIsMobile: () => this.isMobile,
+      setIsMobile: (value: boolean) => {
+        this.isMobile = value;
+      },
+      getUseDirectKeyboard: () => this.useDirectKeyboard,
+      setUseDirectKeyboard: (value: boolean) => {
+        this.useDirectKeyboard = value;
+      },
+      getDirectKeyboardManager: () => ({
+        getShowQuickKeys: () => this.directKeyboardManager.getShowQuickKeys(),
+        ensureHiddenInputVisible: () => this.directKeyboardManager.ensureHiddenInputVisible(),
+        cleanup: () => this.directKeyboardManager.cleanup(),
+      }),
+      setShowQuickKeys: (value: boolean) => {
+        this.showQuickKeys = value;
+      },
+      setShowFileBrowser: (value: boolean) => {
+        this.showFileBrowser = value;
+      },
+      getInputManager: () => this.inputManager,
+      getShowWidthSelector: () => this.showWidthSelector,
+      setShowWidthSelector: (value: boolean) => {
+        this.showWidthSelector = value;
+      },
+      setCustomWidth: (value: string) => {
+        this.customWidth = value;
+      },
+      querySelector: (selector: string) => this.querySelector(selector),
+      setTabIndex: (value: number) => {
+        this.tabIndex = value;
+      },
+      addEventListener: (event: string, handler: EventListener) =>
+        this.addEventListener(event, handler),
+      removeEventListener: (event: string, handler: EventListener) =>
+        this.removeEventListener(event, handler),
+      focus: () => this.focus(),
+      getDisableFocusManagement: () => this.disableFocusManagement,
+      startLoading: () => this.startLoading(),
+      stopLoading: () => this.stopLoading(),
+      setKeyboardHeight: (value: number) => {
+        this.keyboardHeight = value;
+      },
+      getTerminalLifecycleManager: () =>
+        this.terminalLifecycleManager
+          ? {
+              resetTerminalSize: () => this.terminalLifecycleManager.resetTerminalSize(),
+              cleanup: () => this.terminalLifecycleManager.cleanup(),
+            }
+          : null,
+      getConnectionManager: () =>
+        this.connectionManager
+          ? {
+              setConnected: (connected: boolean) => this.connectionManager.setConnected(connected),
+              cleanupStreamConnection: () => this.connectionManager.cleanupStreamConnection(),
+            }
+          : null,
+      setConnected: (connected: boolean) => {
+        this.connected = connected;
+      },
+    };
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -216,7 +207,10 @@ export class SessionView extends LitElement {
       getShowMobileInput: () => this.showMobileInput,
       getShowCtrlAlpha: () => this.showCtrlAlpha,
       getDisableFocusManagement: () => this.disableFocusManagement,
-      getVisualViewportHandler: () => this.visualViewportHandler,
+      getVisualViewportHandler: () =>
+        this.lifecycleEventManager
+          ? null // Note: visualViewportHandler is managed internally by the lifecycle manager
+          : null,
       getKeyboardHeight: () => this.keyboardHeight,
       updateShowQuickKeys: (value: boolean) => {
         this.showQuickKeys = value;
@@ -281,163 +275,31 @@ export class SessionView extends LitElement {
     this.terminalLifecycleManager.setTerminalFontSize(this.terminalFontSize);
     this.terminalLifecycleManager.setTerminalMaxCols(this.terminalMaxCols);
 
-    // Make session-view focusable
-    this.tabIndex = 0;
-    this.addEventListener('click', () => {
-      if (!this.disableFocusManagement) {
-        this.focus();
-      }
-    });
+    // Initialize lifecycle event manager
+    this.lifecycleEventManager = new LifecycleEventManager();
+    this.lifecycleEventManager.setSessionViewElement(this);
+    this.lifecycleEventManager.setCallbacks(this.createLifecycleEventManagerCallbacks());
+    this.lifecycleEventManager.setSession(this.session);
 
-    // Add click outside handler for width selector
-    document.addEventListener('click', this.handleClickOutside);
-
-    // Show loading animation if no session yet
-    if (!this.session) {
-      this.startLoading();
-    }
-
-    // Detect mobile device - only show onscreen keyboard on actual mobile devices
-    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
-
-    // Load direct keyboard preference
+    // Load direct keyboard preference (needed before lifecycle setup)
     const preferences = AppSettings.getPreferences();
     this.useDirectKeyboard = preferences.useDirectKeyboard;
 
-    // Listen for preference changes
-    window.addEventListener('app-preferences-changed', this.handlePreferencesChanged);
-
-    // Set up VirtualKeyboard API if available and on mobile
-    if (this.isMobile && 'virtualKeyboard' in navigator) {
-      // Enable overlays-content mode so keyboard doesn't resize viewport
-      try {
-        const nav = navigator as Navigator & { virtualKeyboard?: { overlaysContent: boolean } };
-        if (nav.virtualKeyboard) {
-          nav.virtualKeyboard.overlaysContent = true;
-        }
-        logger.log('VirtualKeyboard API: overlaysContent enabled');
-      } catch (e) {
-        logger.warn('Failed to set virtualKeyboard.overlaysContent:', e);
-      }
-    } else if (this.isMobile) {
-      logger.log('VirtualKeyboard API not available on this device');
-    }
-
-    // Set up Visual Viewport API for Safari keyboard detection
-    if (this.isMobile && window.visualViewport) {
-      this.visualViewportHandler = () => {
-        const viewport = window.visualViewport;
-        if (!viewport) return;
-        const keyboardHeight = window.innerHeight - viewport.height;
-
-        // Store keyboard height in state
-        this.keyboardHeight = keyboardHeight;
-
-        // Control showQuickKeys based on actual keyboard visibility
-        // The DirectKeyboardManager will handle showing quick keys based on focus state
-        // We just need to ensure the keyboard height is available
-        if (this.useDirectKeyboard && keyboardHeight > 50) {
-          // DirectKeyboardManager will control showQuickKeys based on its focus state
-          this.directKeyboardManager.ensureHiddenInputVisible();
-        }
-
-        // Update quick keys component if it exists
-        const quickKeys = this.querySelector('terminal-quick-keys') as HTMLElement & {
-          keyboardHeight: number;
-        };
-        if (quickKeys) {
-          quickKeys.keyboardHeight = keyboardHeight;
-        }
-
-        logger.log(
-          `Visual Viewport keyboard height: ${keyboardHeight}px, showQuickKeys: ${this.showQuickKeys}`
-        );
-      };
-
-      window.visualViewport.addEventListener('resize', this.visualViewportHandler);
-      window.visualViewport.addEventListener('scroll', this.visualViewportHandler);
-    }
-
-    // Only add listeners if not already added
-    if (!this.isMobile && !this.keyboardListenerAdded) {
-      document.addEventListener('keydown', this.keyboardHandler);
-      this.keyboardListenerAdded = true;
-    } else if (this.isMobile && !this.touchListenersAdded) {
-      // Add touch event listeners for mobile swipe gestures
-      document.addEventListener('touchstart', this.touchStartHandler, { passive: true });
-      document.addEventListener('touchend', this.touchEndHandler, { passive: true });
-      this.touchListenersAdded = true;
-    }
+    // Set up lifecycle (replaces the extracted lifecycle logic)
+    this.lifecycleEventManager.setupLifecycle();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.connected = false;
 
-    logger.log('SessionView disconnectedCallback called', {
-      sessionId: this.session?.id,
-      sessionStatus: this.session?.status,
-    });
-
-    // Reset terminal size for external terminals when leaving session view
-    if (this.session && this.session.status !== 'exited') {
-      logger.log('Calling resetTerminalSize for session', this.session.id);
-      this.terminalLifecycleManager.resetTerminalSize();
+    // Use lifecycle event manager for teardown
+    if (this.lifecycleEventManager) {
+      this.lifecycleEventManager.teardownLifecycle();
+      this.lifecycleEventManager.cleanup();
     }
 
-    // Update connection manager
-    if (this.connectionManager) {
-      this.connectionManager.setConnected(false);
-    }
-
-    // Cleanup terminal lifecycle manager
-    if (this.terminalLifecycleManager) {
-      this.terminalLifecycleManager.cleanup();
-    }
-
-    // Remove click outside handler
-    document.removeEventListener('click', this.handleClickOutside);
-
-    // Remove click handler
+    // Remove click handler (this specific one can't be handled by the lifecycle manager due to closure reference)
     this.removeEventListener('click', () => this.focus());
-
-    // Remove global keyboard event listener
-    if (!this.isMobile && this.keyboardListenerAdded) {
-      document.removeEventListener('keydown', this.keyboardHandler);
-      this.keyboardListenerAdded = false;
-    } else if (this.isMobile && this.touchListenersAdded) {
-      // Remove touch event listeners
-      document.removeEventListener('touchstart', this.touchStartHandler);
-      document.removeEventListener('touchend', this.touchEndHandler);
-      this.touchListenersAdded = false;
-    }
-
-    // Cleanup direct keyboard manager
-    if (this.directKeyboardManager) {
-      this.directKeyboardManager.cleanup();
-    }
-
-    // Clean up Visual Viewport listener
-    if (this.visualViewportHandler && window.visualViewport) {
-      window.visualViewport.removeEventListener('resize', this.visualViewportHandler);
-      window.visualViewport.removeEventListener('scroll', this.visualViewportHandler);
-      this.visualViewportHandler = null;
-    }
-
-    // Remove preference change listener
-    window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
-
-    // Stop loading animation
-    this.stopLoading();
-
-    // Cleanup stream connection if it exists
-    if (this.connectionManager) {
-      this.connectionManager.cleanupStreamConnection();
-    }
-
-    // Terminal cleanup is handled by the lifecycle manager
   }
 
   firstUpdated(changedProperties: PropertyValues) {
@@ -467,6 +329,10 @@ export class SessionView extends LitElement {
       // Update terminal lifecycle manager with new session
       if (this.terminalLifecycleManager) {
         this.terminalLifecycleManager.setSession(this.session);
+      }
+      // Update lifecycle event manager with new session
+      if (this.lifecycleEventManager) {
+        this.lifecycleEventManager.setSession(this.session);
       }
     }
 
