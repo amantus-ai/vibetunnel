@@ -110,8 +110,8 @@ function getPtyPath() {
 try {
   const ptyPath = getPtyPath();
 
-  // Set spawn-helper path for Unix systems
-  if (process.platform !== 'win32') {
+  // Set spawn-helper path for macOS (Linux doesn't use spawn-helper)
+  if (process.platform === 'darwin') {
     const execDir = path.dirname(process.execPath);
     const spawnHelperPath = path.join(execDir, 'spawn-helper');
     if (fs.existsSync(spawnHelperPath)) {
@@ -377,8 +377,8 @@ async function main() {
     fs.copyFileSync(ptyNodePath, 'native/pty.node');
     console.log('  - Copied pty.node');
 
-    // Copy spawn-helper (Unix only)
-    if (process.platform !== 'win32') {
+    // Copy spawn-helper (macOS only - node-pty only builds it on macOS)
+    if (process.platform === 'darwin') {
       const spawnHelperPath = path.join(nativeModulesDir, 'spawn-helper');
       if (!fs.existsSync(spawnHelperPath)) {
         console.error('Error: spawn-helper not found. Native module build may have failed.');
@@ -403,9 +403,10 @@ async function main() {
     console.log(`\nPortable executable created in native/ directory:`);
     console.log(`  - vibetunnel (executable)`);
     console.log(`  - pty.node`);
-    if (process.platform !== 'win32') {
+    if (process.platform === 'darwin') {
       console.log(`  - spawn-helper`);
     }
+    console.log(`  - authenticate_pam.node`);
     console.log('\nAll files must be kept together in the same directory.');
     console.log('This bundle will work on any machine with the same OS/architecture.');
 
