@@ -2,7 +2,7 @@ name: SEA Build Test
 
 on:
   push:
-    branches: [ main, ms-pty ]
+    branches: [ main ]
     paths:
       - 'web/**'
       - '.github/workflows/sea-build-test.yml'
