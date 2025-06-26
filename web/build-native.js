@@ -40,7 +40,6 @@ for (let i = 0; i < process.argv.length; i++) {
     if (i + 1 < process.argv.length && !process.argv[i + 1].startsWith('--')) {
       // Next argument is the path
       customNodePath = process.argv[i + 1];
-      i++; // Skip the path argument in next iteration
     } else {
       // No path provided, use auto-discovery
       customNodePath = 'auto';
@@ -109,6 +108,12 @@ function getPtyPath() {
   const ptyPath = path.join(execDir, 'pty.node');
 
   if (fs.existsSync(ptyPath)) {
+    // Add path validation for security
+    const resolvedPath = path.resolve(ptyPath);
+    const resolvedExecDir = path.resolve(execDir);
+    if (!resolvedPath.startsWith(resolvedExecDir)) {
+      throw new Error('Invalid pty.node path detected');
+    }
     return ptyPath;
   }
 

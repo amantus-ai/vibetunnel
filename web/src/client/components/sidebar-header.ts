@@ -52,6 +52,12 @@ export class SidebarHeader extends HeaderBase {
             >
               Create Session
             </button>
+            
+            <!-- Kill All button -->
+            ${this.renderKillAllButton(runningSessions)}
+            
+            <!-- Show/Hide Exited button -->
+            ${this.renderExitedToggleButton(this.exitedSessions, true)}
           </div>
         </div>
       </div>

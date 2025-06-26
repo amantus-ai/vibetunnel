@@ -51,7 +51,8 @@ if (fs.existsSync(symlinkNodePty) && fs.lstatSync(symlinkNodePty).isSymbolicLink
   if (!fs.existsSync(symlinkBuildDir) && fs.existsSync(buildDir)) {
     console.log('Creating symlink for build directory in node_modules/node-pty...');
     try {
-      fs.symlinkSync(buildDir, symlinkBuildDir, 'junction');
+      const symlinkType = process.platform === 'win32' ? 'junction' : 'dir';
+      fs.symlinkSync(buildDir, symlinkBuildDir, symlinkType);
       console.log('Created build directory symlink');
     } catch (e) {
       // If symlink fails, try copying instead
