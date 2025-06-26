@@ -28,7 +28,7 @@
     "prettier": "prettier --write src --experimental-cli",
     "prettier:check": "prettier --check src --experimental-cli",
     "prettier:fast": "PRETTIER_EXPERIMENTAL_CLI=1 prettier --write src",
-    "postinstall": "node -e \"try { require('child_process').execSync('node-gyp rebuild', {stdio: 'inherit', cwd: 'node_modules/node-pty'}) } catch (e) { console.error('Failed to build node-pty:', e.message) }\""
+    "postinstall": ""
   },
   "pnpm": {
     "onlyBuiltDependencies": [

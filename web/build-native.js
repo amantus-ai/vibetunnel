@@ -280,7 +280,7 @@ async function main() {
       --format=cjs \\
       --keep-names \\
       --external:authenticate-pam \\
-      --external:node-pty \\
+      --external:../build/Release/pty.node \\
       --define:process.env.BUILD_DATE='"${buildDate}"' \\
       --define:process.env.BUILD_TIMESTAMP='"${buildTimestamp}"' \\
       --define:process.env.VIBETUNNEL_SEA='"true"'`;
@@ -305,6 +305,29 @@ async function main() {
         NODE_NO_WARNINGS: '1'
       }
     });
+
+    // 2b. Post-process bundle to ensure VIBETUNNEL_SEA is properly set
+    console.log('\nPost-processing bundle for SEA compatibility...');
+    let bundleContent = fs.readFileSync('build/bundle.js', 'utf8');
+    
+    // Remove shebang line if present (not valid in SEA bundles)
+    if (bundleContent.startsWith('#!')) {
+      bundleContent = bundleContent.substring(bundleContent.indexOf('\n') + 1);
+    }
+    
+    // Add VIBETUNNEL_SEA environment variable at the top of the bundle
+    // This ensures the patched node-pty knows it's running in SEA mode
+    const seaEnvSetup = `// Set VIBETUNNEL_SEA environment variable for SEA mode
+if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+  process.env.VIBETUNNEL_SEA = 'true';
+}
+
+`;
+    
+    bundleContent = seaEnvSetup + bundleContent;
+    
+    fs.writeFileSync('build/bundle.js', bundleContent);
+    console.log('Bundle post-processing complete');
 
     // 3. Create SEA configuration
     console.log('\nCreating SEA configuration...');
