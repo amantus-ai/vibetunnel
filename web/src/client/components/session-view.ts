@@ -40,6 +40,7 @@ import {
   LifecycleEventManager,
   type LifecycleEventManagerCallbacks,
 } from './session-view/lifecycle-event-manager.js';
+import { LoadingAnimationManager } from './session-view/loading-animation-manager.js';
 import { MobileInputManager } from './session-view/mobile-input-manager.js';
 import {
   type TerminalEventHandlers,
@@ -68,8 +69,6 @@ export class SessionView extends LitElement {
   @state() private isMobile = false;
   @state() private touchStartX = 0;
   @state() private touchStartY = 0;
-  @state() private loading = false;
-  @state() private loadingFrame = 0;
   @state() private terminalCols = 0;
   @state() private terminalRows = 0;
   @state() private showCtrlAlpha = false;
@@ -87,12 +86,12 @@ export class SessionView extends LitElement {
   private directKeyboardManager!: DirectKeyboardManager;
   private terminalLifecycleManager!: TerminalLifecycleManager;
   private lifecycleEventManager!: LifecycleEventManager;
+  private loadingAnimationManager = new LoadingAnimationManager();
   @state() private ctrlSequence: string[] = [];
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
   @state() private keyboardHeight = 0;
 
-  private loadingInterval: number | null = null;
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
 
   // Removed methods that are now in LifecycleEventManager:
@@ -144,8 +143,8 @@ export class SessionView extends LitElement {
         this.removeEventListener(event, handler),
       focus: () => this.focus(),
       getDisableFocusManagement: () => this.disableFocusManagement,
-      startLoading: () => this.startLoading(),
-      stopLoading: () => this.stopLoading(),
+      startLoading: () => this.loadingAnimationManager.startLoading(() => this.requestUpdate()),
+      stopLoading: () => this.loadingAnimationManager.stopLoading(),
       setKeyboardHeight: (value: number) => {
         this.keyboardHeight = value;
       },
@@ -298,6 +297,9 @@ export class SessionView extends LitElement {
       this.lifecycleEventManager.cleanup();
     }
 
+    // Clean up loading animation manager
+    this.loadingAnimationManager.cleanup();
+
     // Remove click handler (this specific one can't be handled by the lifecycle manager due to closure reference)
     this.removeEventListener('click', () => this.focus());
   }
@@ -305,7 +307,7 @@ export class SessionView extends LitElement {
   firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
     if (this.session) {
-      this.stopLoading();
+      this.loadingAnimationManager.stopLoading();
       this.terminalLifecycleManager.setupTerminal();
     }
   }
@@ -337,8 +339,12 @@ export class SessionView extends LitElement {
     }
 
     // Stop loading and create terminal when session becomes available
-    if (changedProperties.has('session') && this.session && this.loading) {
-      this.stopLoading();
+    if (
+      changedProperties.has('session') &&
+      this.session &&
+      this.loadingAnimationManager.isLoading()
+    ) {
+      this.loadingAnimationManager.stopLoading();
       this.terminalLifecycleManager.setupTerminal();
     }
 
@@ -346,7 +352,7 @@ export class SessionView extends LitElement {
     if (
       !this.terminalLifecycleManager.getTerminal() &&
       this.session &&
-      !this.loading &&
+      !this.loadingAnimationManager.isLoading() &&
       this.connected
     ) {
       const terminalElement = this.querySelector('vibe-terminal') as Terminal;
@@ -361,7 +367,7 @@ export class SessionView extends LitElement {
       this.useDirectKeyboard &&
       !this.directKeyboardManager.getShowQuickKeys() &&
       this.session &&
-      !this.loading
+      !this.loadingAnimationManager.isLoading()
     ) {
       // Delay creation to ensure terminal is rendered
       setTimeout(() => {
@@ -653,34 +659,12 @@ export class SessionView extends LitElement {
     }, 300); // Wait for viewport to settle
   }
 
-  private startLoading() {
-    this.loading = true;
-    this.loadingFrame = 0;
-    this.loadingInterval = window.setInterval(() => {
-      this.loadingFrame = (this.loadingFrame + 1) % 4;
-      this.requestUpdate();
-    }, 200) as unknown as number; // Update every 200ms for smooth animation
-  }
-
-  private stopLoading() {
-    this.loading = false;
-    if (this.loadingInterval) {
-      clearInterval(this.loadingInterval);
-      this.loadingInterval = null;
-    }
-  }
-
-  private getLoadingText(): string {
-    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-    return frames[this.loadingFrame % frames.length];
-  }
-
   render() {
     if (!this.session) {
       return html`
         <div class="fixed inset-0 bg-dark-bg flex items-center justify-center">
           <div class="text-dark-text font-mono text-center">
-            <div class="text-2xl mb-2">${this.getLoadingText()}</div>
+            <div class="text-2xl mb-2">${this.loadingAnimationManager.getLoadingText()}</div>
             <div class="text-sm text-dark-text-muted">Waiting for session...</div>
           </div>
         </div>
@@ -736,14 +720,14 @@ export class SessionView extends LitElement {
           id="terminal-container"
         >
           ${
-            this.loading
+            this.loadingAnimationManager.isLoading()
               ? html`
                 <!-- Loading overlay -->
                 <div
                   class="absolute inset-0 bg-dark-bg bg-opacity-80 flex items-center justify-center z-10"
                 >
                   <div class="text-dark-text font-mono text-center">
-                    <div class="text-2xl mb-2">${this.getLoadingText()}</div>
+                    <div class="text-2xl mb-2">${this.loadingAnimationManager.getLoadingText()}</div>
                     <div class="text-sm text-dark-text-muted">Connecting to session...</div>
                   </div>
                 </div>
