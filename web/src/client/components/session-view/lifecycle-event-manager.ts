@@ -27,6 +27,10 @@ export interface LifecycleEventManagerCallbacks {
   getInputManager(): {
     isKeyboardShortcut(e: KeyboardEvent): boolean;
   } | null;
+  getShowWidthSelector(): boolean;
+  setShowWidthSelector(value: boolean): void;
+  setCustomWidth(value: string): void;
+  querySelector(selector: string): Element | null;
 }
 
 export class LifecycleEventManager {
@@ -136,6 +140,22 @@ export class LifecycleEventManager {
     if (isSwipeRight && isVerticallyStable && startedFromLeftEdge) {
       // Trigger back navigation
       this.callbacks.handleBack();
+    }
+  };
+
+  handleClickOutside = (e: Event): void => {
+    if (!this.callbacks) return;
+
+    const showWidthSelector = this.callbacks.getShowWidthSelector();
+    if (showWidthSelector) {
+      const target = e.target as HTMLElement;
+      const widthSelector = this.callbacks.querySelector('.width-selector-container');
+      const widthButton = this.callbacks.querySelector('.width-selector-button');
+
+      if (!widthSelector?.contains(target) && !widthButton?.contains(target)) {
+        this.callbacks.setShowWidthSelector(false);
+        this.callbacks.setCustomWidth('');
+      }
     }
   };
 
