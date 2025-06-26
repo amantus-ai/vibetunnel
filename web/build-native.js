@@ -214,11 +214,15 @@ async function main() {
     
     if (!fs.existsSync(nativePtyDir)) {
       console.log('Building node-pty native module...');
+      // Find the actual node-pty path (could be in .pnpm directory)
+      const nodePtyPath = require.resolve('node-pty/package.json');
+      const nodePtyDir = path.dirname(nodePtyPath);
+      console.log(`Found node-pty at: ${nodePtyDir}`);
+      
       // Build node-pty using node-gyp directly to avoid TypeScript compilation
-      execSync('cd node_modules/node-pty && npx node-gyp rebuild', { 
+      execSync(`cd "${nodePtyDir}" && npx node-gyp rebuild`, { 
         stdio: 'inherit',
-        shell: true,
-        cwd: __dirname
+        shell: true
       });
     }
     
@@ -409,7 +413,11 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
 
     // 9. Copy native modules
     console.log('\nCopying native modules...');
-    const nativeModulesDir = 'node_modules/node-pty/build/Release';
+    
+    // Find the actual node-pty build directory (could be in .pnpm directory)
+    const nodePtyPath = require.resolve('node-pty/package.json');
+    const nodePtyBaseDir = path.dirname(nodePtyPath);
+    const nativeModulesDir = path.join(nodePtyBaseDir, 'build/Release');
 
     // Check if native modules exist
     if (!fs.existsSync(nativeModulesDir)) {
