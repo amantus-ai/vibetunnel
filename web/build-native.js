@@ -276,6 +276,7 @@ async function main() {
       --format=cjs \\
       --keep-names \\
       --external:authenticate-pam \\
+      --external:node-pty \\
       --define:process.env.BUILD_DATE='"${buildDate}"' \\
       --define:process.env.BUILD_TIMESTAMP='"${buildTimestamp}"' \\
       --define:process.env.VIBETUNNEL_SEA='"true"'`;
