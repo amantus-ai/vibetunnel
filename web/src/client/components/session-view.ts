@@ -31,6 +31,10 @@ import {
 } from '../utils/terminal-preferences.js';
 import { type AppPreferences, AppSettings } from './app-settings.js';
 import { ConnectionManager } from './session-view/connection-manager.js';
+import {
+  type DirectKeyboardCallbacks,
+  DirectKeyboardManager,
+} from './session-view/direct-keyboard-manager.js';
 import { InputManager } from './session-view/input-manager.js';
 import { MobileInputManager } from './session-view/mobile-input-manager.js';
 import {
@@ -76,19 +80,17 @@ export class SessionView extends LitElement {
   private connectionManager!: ConnectionManager;
   private inputManager!: InputManager;
   private mobileInputManager!: MobileInputManager;
+  private directKeyboardManager!: DirectKeyboardManager;
   private terminalLifecycleManager!: TerminalLifecycleManager;
   @state() private ctrlSequence: string[] = [];
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
-  @state() private hiddenInputFocused = false;
   @state() private keyboardHeight = 0;
 
   private loadingInterval: number | null = null;
   private keyboardListenerAdded = false;
   private touchListenersAdded = false;
-  private hiddenInput: HTMLInputElement | null = null;
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
-  private focusRetentionInterval: number | null = null;
   private visualViewportHandler: (() => void) | null = null;
 
   private handlePreferencesChanged = (e: Event) => {
@@ -97,17 +99,12 @@ export class SessionView extends LitElement {
     this.useDirectKeyboard = preferences.useDirectKeyboard;
 
     // Update hidden input based on preference
-    if (this.isMobile && this.useDirectKeyboard && !this.hiddenInput) {
-      this.createHiddenInput();
-    } else if (!this.useDirectKeyboard && this.hiddenInput) {
-      // Remove hidden input when direct keyboard is disabled
-      this.hiddenInput.remove();
-      this.hiddenInput = null;
+    if (this.isMobile && this.useDirectKeyboard && !this.directKeyboardManager.getShowQuickKeys()) {
+      this.directKeyboardManager.ensureHiddenInputVisible();
+    } else if (!this.useDirectKeyboard) {
+      // Cleanup direct keyboard manager when disabled
+      this.directKeyboardManager.cleanup();
       this.showQuickKeys = false;
-      if (this.focusRetentionInterval) {
-        clearInterval(this.focusRetentionInterval);
-        this.focusRetentionInterval = null;
-      }
     }
   };
 
@@ -209,6 +206,41 @@ export class SessionView extends LitElement {
     this.mobileInputManager = new MobileInputManager(this);
     this.mobileInputManager.setInputManager(this.inputManager);
 
+    // Initialize direct keyboard manager
+    this.directKeyboardManager = new DirectKeyboardManager(this.instanceId);
+    this.directKeyboardManager.setInputManager(this.inputManager);
+    this.directKeyboardManager.setSessionViewElement(this);
+
+    // Set up callbacks for direct keyboard manager
+    const directKeyboardCallbacks: DirectKeyboardCallbacks = {
+      getShowMobileInput: () => this.showMobileInput,
+      getShowCtrlAlpha: () => this.showCtrlAlpha,
+      getDisableFocusManagement: () => this.disableFocusManagement,
+      getVisualViewportHandler: () => this.visualViewportHandler,
+      getKeyboardHeight: () => this.keyboardHeight,
+      updateShowQuickKeys: (value: boolean) => {
+        this.showQuickKeys = value;
+        this.requestUpdate();
+      },
+      toggleMobileInput: () => {
+        this.showMobileInput = !this.showMobileInput;
+        this.requestUpdate();
+      },
+      clearMobileInputText: () => {
+        this.mobileInputText = '';
+        this.requestUpdate();
+      },
+      toggleCtrlAlpha: () => {
+        this.showCtrlAlpha = !this.showCtrlAlpha;
+        this.requestUpdate();
+      },
+      clearCtrlSequence: () => {
+        this.ctrlSequence = [];
+        this.requestUpdate();
+      },
+    };
+    this.directKeyboardManager.setCallbacks(directKeyboardCallbacks);
+
     // Initialize terminal lifecycle manager
     this.terminalLifecycleManager = new TerminalLifecycleManager();
     this.terminalLifecycleManager.setConnectionManager(this.connectionManager);
@@ -304,9 +336,11 @@ export class SessionView extends LitElement {
         this.keyboardHeight = keyboardHeight;
 
         // Control showQuickKeys based on actual keyboard visibility
-        // Only show quick keys when both keyboard is visible AND input is focused
-        if (this.useDirectKeyboard && this.hiddenInputFocused) {
-          this.showQuickKeys = keyboardHeight > 50; // Use threshold to avoid false positives
+        // The DirectKeyboardManager will handle showing quick keys based on focus state
+        // We just need to ensure the keyboard height is available
+        if (this.useDirectKeyboard && keyboardHeight > 50) {
+          // DirectKeyboardManager will control showQuickKeys based on its focus state
+          this.directKeyboardManager.ensureHiddenInputVisible();
         }
 
         // Update quick keys component if it exists
@@ -380,10 +414,9 @@ export class SessionView extends LitElement {
       this.touchListenersAdded = false;
     }
 
-    // Clear focus retention interval
-    if (this.focusRetentionInterval) {
-      clearInterval(this.focusRetentionInterval);
-      this.focusRetentionInterval = null;
+    // Cleanup direct keyboard manager
+    if (this.directKeyboardManager) {
+      this.directKeyboardManager.cleanup();
     }
 
     // Clean up Visual Viewport listener
@@ -395,12 +428,6 @@ export class SessionView extends LitElement {
 
     // Remove preference change listener
     window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
-
-    // Remove hidden input if it exists
-    if (this.hiddenInput) {
-      this.hiddenInput.remove();
-      this.hiddenInput = null;
-    }
 
     // Stop loading animation
     this.stopLoading();
@@ -466,14 +493,18 @@ export class SessionView extends LitElement {
     if (
       this.isMobile &&
       this.useDirectKeyboard &&
-      !this.hiddenInput &&
+      !this.directKeyboardManager.getShowQuickKeys() &&
       this.session &&
       !this.loading
     ) {
       // Delay creation to ensure terminal is rendered
       setTimeout(() => {
-        if (this.isMobile && this.useDirectKeyboard && !this.hiddenInput) {
-          this.createHiddenInput();
+        if (
+          this.isMobile &&
+          this.useDirectKeyboard &&
+          !this.directKeyboardManager.getShowQuickKeys()
+        ) {
+          this.directKeyboardManager.ensureHiddenInputVisible();
         }
       }, 100);
     }
@@ -559,39 +590,19 @@ export class SessionView extends LitElement {
   }
 
   shouldRefocusHiddenInput(): boolean {
-    return !this.disableFocusManagement && !!this.hiddenInput && this.showQuickKeys;
+    return this.directKeyboardManager.shouldRefocusHiddenInput();
   }
 
   refocusHiddenInput(): void {
-    setTimeout(() => {
-      if (!this.disableFocusManagement && this.hiddenInput) {
-        this.hiddenInput.focus();
-      }
-    }, 100);
+    this.directKeyboardManager.refocusHiddenInput();
   }
 
   startFocusRetention(): void {
-    this.focusRetentionInterval = setInterval(() => {
-      if (
-        !this.disableFocusManagement &&
-        this.showQuickKeys &&
-        this.hiddenInput &&
-        document.activeElement !== this.hiddenInput &&
-        !this.showMobileInput &&
-        !this.showCtrlAlpha
-      ) {
-        logger.log('Refocusing hidden input to maintain keyboard');
-        this.hiddenInput.focus();
-      }
-    }, 300) as unknown as number;
+    this.directKeyboardManager.startFocusRetentionPublic();
   }
 
   delayedRefocusHiddenInput(): void {
-    setTimeout(() => {
-      if (!this.disableFocusManagement && this.hiddenInput) {
-        this.hiddenInput.focus();
-      }
-    }, 100);
+    this.directKeyboardManager.delayedRefocusHiddenInputPublic();
   }
 
   private async handleMobileInputSendOnly() {
@@ -636,12 +647,8 @@ export class SessionView extends LitElement {
     this.requestUpdate();
 
     // Refocus the hidden input
-    if (this.hiddenInput && this.showQuickKeys) {
-      setTimeout(() => {
-        if (this.hiddenInput) {
-          this.hiddenInput.focus();
-        }
-      }, 100);
+    if (this.directKeyboardManager.shouldRefocusHiddenInput()) {
+      this.directKeyboardManager.refocusHiddenInput();
     }
   }
 
@@ -656,12 +663,8 @@ export class SessionView extends LitElement {
     this.requestUpdate();
 
     // Refocus the hidden input
-    if (this.hiddenInput && this.showQuickKeys) {
-      setTimeout(() => {
-        if (this.hiddenInput) {
-          this.hiddenInput.focus();
-        }
-      }, 100);
+    if (this.directKeyboardManager.shouldRefocusHiddenInput()) {
+      this.directKeyboardManager.refocusHiddenInput();
     }
   }
 
@@ -745,8 +748,8 @@ export class SessionView extends LitElement {
   }
 
   focusHiddenInput() {
-    // Just delegate to the new method
-    this.ensureHiddenInputVisible();
+    // Delegate to the DirectKeyboardManager
+    this.directKeyboardManager.focusHiddenInput();
   }
 
   private handleTerminalClick(e: Event) {
@@ -760,357 +763,6 @@ export class SessionView extends LitElement {
       return;
     }
   }
-
-  private ensureHiddenInputVisible() {
-    if (!this.hiddenInput) {
-      this.createHiddenInput();
-    }
-
-    // Don't automatically show quick keys - wait for keyboard to actually appear
-    // The keyboard visibility will be detected by the visual viewport handler
-
-    // The input should already be covering the terminal and be focusable
-    // The user's tap on the terminal is actually a tap on the input
-  }
-
-  private createHiddenInput() {
-    this.hiddenInput = document.createElement('input');
-    this.hiddenInput.type = 'text';
-    this.hiddenInput.style.position = 'absolute';
-    this.hiddenInput.style.top = '0';
-    this.hiddenInput.style.left = '0';
-    this.hiddenInput.style.width = '100%';
-    this.hiddenInput.style.height = '100%';
-    this.hiddenInput.style.opacity = '0'; // Completely transparent
-    this.hiddenInput.style.fontSize = '16px'; // Prevent zoom on iOS
-    this.hiddenInput.style.zIndex = '10'; // Above terminal content
-    this.hiddenInput.style.border = 'none';
-    this.hiddenInput.style.outline = 'none';
-    this.hiddenInput.style.background = 'transparent';
-    this.hiddenInput.style.color = 'transparent';
-    this.hiddenInput.style.caretColor = 'transparent'; // Hide the cursor
-    this.hiddenInput.style.cursor = 'default'; // Normal cursor
-    this.hiddenInput.autocapitalize = 'off';
-    this.hiddenInput.autocomplete = 'off';
-    this.hiddenInput.setAttribute('autocorrect', 'off');
-    this.hiddenInput.setAttribute('spellcheck', 'false');
-    this.hiddenInput.setAttribute('aria-hidden', 'true');
-
-    // Make it visible for debugging (comment out in production)
-    // this.hiddenInput.style.opacity = '0.1';
-    // this.hiddenInput.style.background = 'rgba(255,0,0,0.1)';
-
-    // Prevent click events from propagating to terminal
-    this.hiddenInput.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-    });
-
-    // Also handle touchstart to ensure mobile taps don't propagate
-    this.hiddenInput.addEventListener('touchstart', (e) => {
-      e.stopPropagation();
-    });
-
-    // Handle input events
-    this.hiddenInput.addEventListener('input', (e) => {
-      const input = e.target as HTMLInputElement;
-      if (input.value) {
-        // Don't send input to terminal if mobile input overlay or Ctrl overlay is visible
-        if (!this.showMobileInput && !this.showCtrlAlpha && this.inputManager) {
-          // Send each character to terminal
-          this.inputManager.sendInputText(input.value);
-        }
-        // Always clear the input to prevent buffer buildup
-        input.value = '';
-      }
-    });
-
-    // Handle special keys
-    this.hiddenInput.addEventListener('keydown', (e) => {
-      // Don't process special keys if mobile input overlay or Ctrl overlay is visible
-      if (this.showMobileInput || this.showCtrlAlpha) {
-        return;
-      }
-
-      // Prevent default for all keys to stop browser shortcuts
-      if (['Enter', 'Backspace', 'Tab', 'Escape'].includes(e.key)) {
-        e.preventDefault();
-      }
-
-      if (e.key === 'Enter' && this.inputManager) {
-        this.inputManager.sendInputText('enter');
-      } else if (e.key === 'Backspace' && this.inputManager) {
-        // Always send backspace to terminal
-        this.inputManager.sendInputText('backspace');
-      } else if (e.key === 'Tab' && this.inputManager) {
-        this.inputManager.sendInputText('tab');
-      } else if (e.key === 'Escape' && this.inputManager) {
-        this.inputManager.sendInputText('escape');
-      }
-    });
-
-    // Handle focus/blur for quick keys visibility
-    this.hiddenInput.addEventListener('focus', () => {
-      this.hiddenInputFocused = true;
-      // Only show quick keys if keyboard is actually visible
-      if (this.keyboardHeight > 50) {
-        this.showQuickKeys = true;
-      }
-      logger.log(
-        `Hidden input focused, keyboard height: ${this.keyboardHeight}, showQuickKeys: ${this.showQuickKeys}`
-      );
-
-      // Trigger initial keyboard height calculation
-      if (this.visualViewportHandler) {
-        this.visualViewportHandler();
-      }
-
-      // Start focus retention
-      if (this.focusRetentionInterval) {
-        clearInterval(this.focusRetentionInterval);
-      }
-
-      this.focusRetentionInterval = setInterval(() => {
-        if (
-          !this.disableFocusManagement &&
-          this.showQuickKeys &&
-          this.hiddenInput &&
-          document.activeElement !== this.hiddenInput &&
-          !this.showMobileInput &&
-          !this.showCtrlAlpha
-        ) {
-          logger.log('Refocusing hidden input to maintain keyboard');
-          this.hiddenInput.focus();
-        }
-      }, 300) as unknown as number;
-    });
-
-    this.hiddenInput.addEventListener('blur', (e) => {
-      const _event = e as FocusEvent;
-
-      // Immediately try to recapture focus
-      if (!this.disableFocusManagement && this.showQuickKeys && this.hiddenInput) {
-        // Use a very short timeout to allow any legitimate focus changes to complete
-        setTimeout(() => {
-          if (
-            !this.disableFocusManagement &&
-            this.showQuickKeys &&
-            this.hiddenInput &&
-            document.activeElement !== this.hiddenInput
-          ) {
-            // Check if focus went to a quick key or somewhere else in our component
-            const activeElement = document.activeElement;
-            const isWithinComponent = this.contains(activeElement);
-
-            if (isWithinComponent || !activeElement || activeElement === document.body) {
-              // Focus was lost to nowhere specific or within our component - recapture it
-              logger.log('Recapturing focus on hidden input');
-              this.hiddenInput.focus();
-            } else {
-              // Focus went somewhere legitimate outside our component
-              // Wait a bit longer before hiding quick keys
-              setTimeout(() => {
-                if (document.activeElement !== this.hiddenInput) {
-                  this.hiddenInputFocused = false;
-                  this.showQuickKeys = false;
-                  logger.log('Hidden input blurred, hiding quick keys');
-
-                  // Clear focus retention interval
-                  if (this.focusRetentionInterval) {
-                    clearInterval(this.focusRetentionInterval);
-                    this.focusRetentionInterval = null;
-                  }
-                }
-              }, 500);
-            }
-          }
-        }, 10);
-      }
-    });
-
-    // Add to the terminal container to overlay it
-    const terminalContainer = this.querySelector('#terminal-container');
-    if (terminalContainer) {
-      terminalContainer.appendChild(this.hiddenInput);
-    }
-  }
-
-  private handleQuickKeyPress = (key: string, isModifier?: boolean, isSpecial?: boolean) => {
-    if (isSpecial && key === 'ABC') {
-      // Toggle the mobile input overlay
-      this.showMobileInput = !this.showMobileInput;
-
-      if (this.showMobileInput) {
-        // Stop focus retention when showing mobile input
-        if (this.focusRetentionInterval) {
-          clearInterval(this.focusRetentionInterval);
-          this.focusRetentionInterval = null;
-        }
-
-        // Blur the hidden input to prevent it from capturing input
-        if (this.hiddenInput) {
-          this.hiddenInput.blur();
-        }
-      } else {
-        // Clear the text when closing
-        this.mobileInputText = '';
-
-        // Restart focus retention when closing mobile input
-        if (!this.disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
-          // Restart focus retention
-          this.focusRetentionInterval = setInterval(() => {
-            if (
-              !this.disableFocusManagement &&
-              this.showQuickKeys &&
-              this.hiddenInput &&
-              document.activeElement !== this.hiddenInput &&
-              !this.showMobileInput &&
-              !this.showCtrlAlpha
-            ) {
-              logger.log('Refocusing hidden input to maintain keyboard');
-              this.hiddenInput.focus();
-            }
-          }, 300) as unknown as number;
-
-          setTimeout(() => {
-            if (!this.disableFocusManagement && this.hiddenInput) {
-              this.hiddenInput.focus();
-            }
-          }, 100);
-        }
-      }
-      return;
-    } else if (isModifier && key === 'Control') {
-      // Just send Ctrl modifier - don't show the overlay
-      // This allows using Ctrl as a modifier with physical keyboard
-      return;
-    } else if (key === 'CtrlFull') {
-      // Toggle the full Ctrl+Alpha overlay
-      this.showCtrlAlpha = !this.showCtrlAlpha;
-
-      if (this.showCtrlAlpha) {
-        // Stop focus retention when showing Ctrl overlay
-        if (this.focusRetentionInterval) {
-          clearInterval(this.focusRetentionInterval);
-          this.focusRetentionInterval = null;
-        }
-
-        // Blur the hidden input to prevent it from capturing input
-        if (this.hiddenInput) {
-          this.hiddenInput.blur();
-        }
-      } else {
-        // Clear the Ctrl sequence when closing
-        this.ctrlSequence = [];
-
-        // Restart focus retention when closing Ctrl overlay
-        if (!this.disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
-          // Restart focus retention
-          this.focusRetentionInterval = setInterval(() => {
-            if (
-              !this.disableFocusManagement &&
-              this.showQuickKeys &&
-              this.hiddenInput &&
-              document.activeElement !== this.hiddenInput &&
-              !this.showMobileInput &&
-              !this.showCtrlAlpha
-            ) {
-              logger.log('Refocusing hidden input to maintain keyboard');
-              this.hiddenInput.focus();
-            }
-          }, 300) as unknown as number;
-
-          setTimeout(() => {
-            if (!this.disableFocusManagement && this.hiddenInput) {
-              this.hiddenInput.focus();
-            }
-          }, 100);
-        }
-      }
-      return;
-    } else if (key === 'Ctrl+A' && this.inputManager) {
-      // Send Ctrl+A (start of line)
-      this.inputManager.sendInputText('\x01');
-    } else if (key === 'Ctrl+C' && this.inputManager) {
-      // Send Ctrl+C (interrupt signal)
-      this.inputManager.sendInputText('\x03');
-    } else if (key === 'Ctrl+D' && this.inputManager) {
-      // Send Ctrl+D (EOF)
-      this.inputManager.sendInputText('\x04');
-    } else if (key === 'Ctrl+E' && this.inputManager) {
-      // Send Ctrl+E (end of line)
-      this.inputManager.sendInputText('\x05');
-    } else if (key === 'Ctrl+K' && this.inputManager) {
-      // Send Ctrl+K (kill to end of line)
-      this.inputManager.sendInputText('\x0b');
-    } else if (key === 'Ctrl+L' && this.inputManager) {
-      // Send Ctrl+L (clear screen)
-      this.inputManager.sendInputText('\x0c');
-    } else if (key === 'Ctrl+R' && this.inputManager) {
-      // Send Ctrl+R (reverse search)
-      this.inputManager.sendInputText('\x12');
-    } else if (key === 'Ctrl+U' && this.inputManager) {
-      // Send Ctrl+U (clear line)
-      this.inputManager.sendInputText('\x15');
-    } else if (key === 'Ctrl+W' && this.inputManager) {
-      // Send Ctrl+W (delete word)
-      this.inputManager.sendInputText('\x17');
-    } else if (key === 'Ctrl+Z' && this.inputManager) {
-      // Send Ctrl+Z (suspend signal)
-      this.inputManager.sendInputText('\x1a');
-    } else if (key === 'Option' && this.inputManager) {
-      // Send ESC prefix for Option/Alt key
-      this.inputManager.sendInputText('\x1b');
-    } else if (key === 'Command') {
-      // Command key doesn't have a direct terminal equivalent
-      // Could potentially show a message or ignore
-      return;
-    } else if (key === 'Delete' && this.inputManager) {
-      // Send delete key
-      this.inputManager.sendInputText('delete');
-    } else if (key.startsWith('F') && this.inputManager) {
-      // Handle function keys F1-F12
-      const fNum = Number.parseInt(key.substring(1));
-      if (fNum >= 1 && fNum <= 12) {
-        this.inputManager.sendInputText(`f${fNum}`);
-      }
-    } else if (this.inputManager) {
-      // Map key names to proper values
-      let keyToSend = key;
-      if (key === 'Tab') {
-        keyToSend = 'tab';
-      } else if (key === 'Escape') {
-        keyToSend = 'escape';
-      } else if (key === 'ArrowUp') {
-        keyToSend = 'arrow_up';
-      } else if (key === 'ArrowDown') {
-        keyToSend = 'arrow_down';
-      } else if (key === 'ArrowLeft') {
-        keyToSend = 'arrow_left';
-      } else if (key === 'ArrowRight') {
-        keyToSend = 'arrow_right';
-      } else if (key === 'PageUp') {
-        keyToSend = 'page_up';
-      } else if (key === 'PageDown') {
-        keyToSend = 'page_down';
-      } else if (key === 'Home') {
-        keyToSend = 'home';
-      } else if (key === 'End') {
-        keyToSend = 'end';
-      }
-
-      // Send the key to terminal
-      this.inputManager.sendInputText(keyToSend.toLowerCase());
-    }
-
-    // Always keep focus on hidden input after any key press (except Done)
-    // Use requestAnimationFrame to ensure DOM has updated
-    requestAnimationFrame(() => {
-      if (!this.disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
-        this.hiddenInput.focus();
-      }
-    });
-  };
 
   refreshTerminalAfterMobileInput() {
     // After closing mobile input, the viewport changes and the terminal
@@ -1365,7 +1017,7 @@ export class SessionView extends LitElement {
         <!-- Terminal Quick Keys (for direct keyboard mode) -->
         <terminal-quick-keys
           .visible=${this.isMobile && this.useDirectKeyboard && this.showQuickKeys}
-          .onKeyPress=${this.handleQuickKeyPress}
+          .onKeyPress=${this.directKeyboardManager.handleQuickKeyPress}
         ></terminal-quick-keys>
 
         <!-- File Browser Modal -->
