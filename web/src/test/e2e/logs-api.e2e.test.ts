@@ -205,7 +205,8 @@ describe('Logs API Tests', () => {
 
       // Only check relative size if original log was large enough to make comparison meaningful
       // Skip this check if original log was small (< 10KB) as new logs might exceed half the size
-      if (infoBefore.size > 10000) {
+      const LOG_SIZE_THRESHOLD = 10000; // 10KB - minimum size for meaningful comparison
+      if (infoBefore.size > LOG_SIZE_THRESHOLD) {
         expect(infoAfter.size).toBeLessThan(infoBefore.size / 2);
       }
     });

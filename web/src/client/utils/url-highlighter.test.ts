@@ -408,5 +408,98 @@ describe('UrlHighlighter', () => {
       expect(urls).toHaveLength(1);
       expect(urls[0]).toBe('https://example.com/');
     });
+
+    it('should handle deeply nested text nodes', () => {
+      // Create nested structure with URL split across nested elements
+      container.innerHTML = `
+        <div class="terminal-line">See <strong>https://<em>example.com</em>/nested</strong> here</div>
+      `;
+      UrlHighlighter.processLinks(container);
+
+      const urls = getUniqueUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0]).toBe('https://example.com/nested');
+
+      // Verify link elements were created
+      const links = container.querySelectorAll('.terminal-link');
+      expect(links.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should handle URLs split across many small text nodes', () => {
+      // Simulate each character in its own node (worst case)
+      const urlChars = 'https://example.com'.split('');
+      const spans = urlChars.map((char) => `<span>${char}</span>`).join('');
+      container.innerHTML = `<div class="terminal-line">URL: ${spans} end</div>`;
+
+      UrlHighlighter.processLinks(container);
+
+      const urls = getUniqueUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0]).toBe('https://example.com/');
+    });
+  });
+
+  describe('Edge cases: URL end detection on last line', () => {
+    it('should properly detect URL end on the last line of container', () => {
+      createLines(['Last line: https://example.com']);
+      UrlHighlighter.processLinks(container);
+
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0].href).toBe('https://example.com/');
+      expect(urls[0].text).toBe('https://example.com');
+    });
+
+    it('should handle URL ending exactly at line end on last line', () => {
+      createLines(['Text before', 'https://example.com/ends-here']);
+      UrlHighlighter.processLinks(container);
+
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0].text).toBe('https://example.com/ends-here');
+    });
+
+    it('should handle partial URL on last line', () => {
+      createLines(['Starting https://']);
+      UrlHighlighter.processLinks(container);
+
+      // Partial URL should not be highlighted
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+  });
+
+  describe('Performance: Repeated processing', () => {
+    it('should handle repeated processing without duplicating links', () => {
+      createLines(['Visit https://example.com today']);
+
+      // Process multiple times
+      UrlHighlighter.processLinks(container);
+      UrlHighlighter.processLinks(container);
+      UrlHighlighter.processLinks(container);
+
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0].href).toBe('https://example.com/');
+    });
+
+    it('should correctly process after DOM modifications', () => {
+      createLines(['https://example.com']);
+      UrlHighlighter.processLinks(container);
+
+      // Modify the DOM by adding new content
+      const line = container.querySelector('.terminal-line');
+      if (line) {
+        line.appendChild(document.createTextNode(' and https://google.com'));
+      }
+
+      // Process again
+      UrlHighlighter.processLinks(container);
+
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(2);
+      expect(urls[0].href).toBe('https://example.com/');
+      expect(urls[1].href).toBe('https://google.com/');
+    });
   });
 });
