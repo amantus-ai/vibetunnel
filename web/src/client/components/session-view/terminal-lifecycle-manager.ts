@@ -202,6 +202,39 @@ export class TerminalLifecycleManager {
     }
   }
 
+  async resetTerminalSize() {
+    if (!this.session) {
+      logger.warn('resetTerminalSize called but no session available');
+      return;
+    }
+
+    logger.log('Sending reset-size request for session', this.session.id);
+
+    try {
+      const response = await fetch(`/api/sessions/${this.session.id}/reset-size`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authClient.getAuthHeader(),
+        },
+      });
+
+      if (!response.ok) {
+        logger.error('failed to reset terminal size', {
+          status: response.status,
+          sessionId: this.session.id,
+        });
+      } else {
+        logger.log('terminal size reset successfully for session', this.session.id);
+      }
+    } catch (error) {
+      logger.error('error resetting terminal size', {
+        error,
+        sessionId: this.session.id,
+      });
+    }
+  }
+
   cleanup() {
     if (this.resizeTimeout) {
       clearTimeout(this.resizeTimeout);
