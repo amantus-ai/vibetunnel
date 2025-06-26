@@ -33,6 +33,7 @@ import {
 import { type AppPreferences, AppSettings } from './app-settings.js';
 import { ConnectionManager } from './session-view/connection-manager.js';
 import { InputManager } from './session-view/input-manager.js';
+import { MobileInputManager } from './session-view/mobile-input-manager.js';
 import type { Terminal } from './terminal.js';
 
 const logger = createLogger('session-view');
@@ -71,6 +72,7 @@ export class SessionView extends LitElement {
   private preferencesManager = TerminalPreferencesManager.getInstance();
   private connectionManager!: ConnectionManager;
   private inputManager!: InputManager;
+  private mobileInputManager!: MobileInputManager;
   @state() private ctrlSequence: string[] = [];
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
@@ -200,6 +202,11 @@ export class SessionView extends LitElement {
 
     // Initialize input manager
     this.inputManager = new InputManager();
+
+    // Initialize mobile input manager
+    this.mobileInputManager = new MobileInputManager(this);
+    this.mobileInputManager.setInputManager(this.inputManager);
+
     if (this.session) {
       this.inputManager.setSession(this.session);
     }

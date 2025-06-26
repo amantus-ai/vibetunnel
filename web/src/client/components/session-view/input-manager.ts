@@ -186,7 +186,7 @@ export class InputManager {
         : { text: inputText };
 
       if (!this.session) return;
-      
+
       const response = await fetch(`/api/sessions/${this.session.id}/input`, {
         method: 'POST',
         headers: {
