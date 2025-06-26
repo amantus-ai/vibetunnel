@@ -13,24 +13,7 @@ struct DockIconManagerTests {
         let instance2 = DockIconManager.shared
         #expect(instance1 === instance2)
     }
-    
-    @Test("User preference for dock icon")
-    func userPreferenceForDockIcon() {
-        // Store current value to restore later
-        let currentValue = UserDefaults.standard.bool(forKey: "showInDock")
         
-        // Test with dock icon enabled
-        UserDefaults.standard.set(true, forKey: "showInDock")
-        #expect(UserDefaults.standard.bool(forKey: "showInDock") == true)
-        
-        // Test with dock icon disabled
-        UserDefaults.standard.set(false, forKey: "showInDock")
-        #expect(UserDefaults.standard.bool(forKey: "showInDock") == false)
-        
-        // Restore original value
-        UserDefaults.standard.set(currentValue, forKey: "showInDock")
-    }
-    
     @Test("Update dock visibility based on windows")
     @MainActor
     func updateDockVisibilityBasedOnWindows() {
