@@ -23,6 +23,10 @@ export interface LifecycleEventManagerCallbacks {
     cleanup(): void;
   };
   setShowQuickKeys(value: boolean): void;
+  setShowFileBrowser(value: boolean): void;
+  getInputManager(): {
+    isKeyboardShortcut(e: KeyboardEvent): boolean;
+  } | null;
 }
 
 export class LifecycleEventManager {
@@ -65,6 +69,37 @@ export class LifecycleEventManager {
       directKeyboardManager.cleanup();
       this.callbacks.setShowQuickKeys(false);
     }
+  };
+
+  keyboardHandler = (e: KeyboardEvent): void => {
+    if (!this.callbacks) return;
+
+    // Handle Cmd+O / Ctrl+O to open file browser
+    if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+      e.preventDefault();
+      this.callbacks.setShowFileBrowser(true);
+      return;
+    }
+
+    if (!this.session) return;
+
+    // Check if this is a browser shortcut we should allow
+    const inputManager = this.callbacks.getInputManager();
+    if (inputManager?.isKeyboardShortcut(e)) {
+      return;
+    }
+
+    // Handle Escape key specially for exited sessions
+    if (e.key === 'Escape' && this.session.status === 'exited') {
+      this.callbacks.handleBack();
+      return;
+    }
+
+    // Only prevent default for keys we're actually going to handle
+    e.preventDefault();
+    e.stopPropagation();
+
+    this.callbacks.handleKeyboardInput(e);
   };
 
   cleanup(): void {
