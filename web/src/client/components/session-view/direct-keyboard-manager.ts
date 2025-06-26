@@ -33,6 +33,11 @@ export class DirectKeyboardManager {
     return this.showQuickKeys;
   }
 
+  focusHiddenInput(): void {
+    // Just delegate to the new method
+    this.ensureHiddenInputVisible();
+  }
+
   ensureHiddenInputVisible(): void {
     if (!this.hiddenInput) {
       this.createHiddenInput();
