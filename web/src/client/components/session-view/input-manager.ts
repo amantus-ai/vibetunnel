@@ -87,13 +87,13 @@ export class InputManager {
         inputText = 'arrow_right';
         break;
       case 'Tab':
-        inputText = '\t';
+        inputText = 'tab';
         break;
       case 'Backspace':
-        inputText = '\b';
+        inputText = 'backspace';
         break;
       case 'Delete':
-        inputText = '\x7f';
+        inputText = 'delete';
         break;
       case ' ':
         inputText = ' ';

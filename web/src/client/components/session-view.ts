@@ -93,6 +93,7 @@ export class SessionView extends LitElement {
   @state() private keyboardHeight = 0;
 
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
+  private createHiddenInputTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Removed methods that are now in LifecycleEventManager:
   // - handlePreferencesChanged
@@ -322,6 +323,12 @@ export class SessionView extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
 
+    // Clear any pending timeout
+    if (this.createHiddenInputTimeout) {
+      clearTimeout(this.createHiddenInputTimeout);
+      this.createHiddenInputTimeout = null;
+    }
+
     // Use lifecycle event manager for teardown
     if (this.lifecycleEventManager) {
       this.lifecycleEventManager.teardownLifecycle();
@@ -397,9 +404,14 @@ export class SessionView extends LitElement {
       this.session &&
       !this.loadingAnimationManager.isLoading()
     ) {
+      // Clear any existing timeout
+      if (this.createHiddenInputTimeout) {
+        clearTimeout(this.createHiddenInputTimeout);
+      }
+
       // Delay creation to ensure terminal is rendered and DOM is stable
       const TERMINAL_RENDER_DELAY_MS = 100;
-      setTimeout(() => {
+      this.createHiddenInputTimeout = setTimeout(() => {
         try {
           // Re-validate conditions in case component state changed during the delay
           if (
@@ -413,6 +425,8 @@ export class SessionView extends LitElement {
         } catch (error) {
           logger.warn('Failed to create hidden input during setTimeout:', error);
         }
+        // Clear the timeout reference after execution
+        this.createHiddenInputTimeout = null;
       }, TERMINAL_RENDER_DELAY_MS);
     }
   }
