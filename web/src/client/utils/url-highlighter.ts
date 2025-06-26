@@ -15,53 +15,61 @@ export function processLinks(container: HTMLElement): void {
   if (lines.length === 0) return;
 
   // Track which line positions have already been processed to avoid double-processing
-  const processedRanges: Map<number, Array<{start: number, end: number}>> = new Map();
+  const processedRanges: Map<number, Array<{ start: number; end: number }>> = new Map();
 
   for (let i = 0; i < lines.length; i++) {
-    let lineText = getLineText(lines[i]);
+    const lineText = getLineText(lines[i]);
     let searchOffset = 0;
 
     // First, check if this line might be a continuation of a URL from the previous line
     if (i > 0) {
       const prevLineText = getLineText(lines[i - 1]);
-      
+
       // Check for various incomplete URL patterns at the end of previous line
       let incompleteUrlMatch = null;
       let potentialUrlStart = -1;
-      
+
       // Pattern 1: Complete protocol with partial URL (https://exam)
       incompleteUrlMatch = prevLineText.match(/(https?:\/\/|file:\/\/)([^\s]*?)$/);
       if (incompleteUrlMatch) {
-        potentialUrlStart = incompleteUrlMatch.index!;
+        potentialUrlStart = incompleteUrlMatch.index ?? -1;
       }
-      
+
       // Pattern 2: Partial protocol at end of line (ht, htt, http, https, https:, https:/)
       if (!incompleteUrlMatch) {
-        const partialProtocolMatch = prevLineText.match(/(^|\s)(h|ht|htt|http|https|https:|https:\/|f|fi|fil|file|file:|file:\/)$/);
-        if (partialProtocolMatch && lineText.match(/^(ttps?:\/\/|tps?:\/\/|ps?:\/\/|s?:\/\/|:\/\/|\/\/|\/|ile:\/\/|le:\/\/|e:\/\/)/)) {
-          potentialUrlStart = partialProtocolMatch.index! + (partialProtocolMatch[1] ? 1 : 0);
+        const partialProtocolMatch = prevLineText.match(
+          /(^|\s)(h|ht|htt|http|https|https:|https:\/|f|fi|fil|file|file:|file:\/)$/
+        );
+        if (
+          partialProtocolMatch &&
+          lineText.match(
+            /^(ttps?:\/\/|tps?:\/\/|ps?:\/\/|s?:\/\/|:\/\/|\/\/|\/|ile:\/\/|le:\/\/|e:\/\/)/
+          )
+        ) {
+          potentialUrlStart =
+            (partialProtocolMatch.index ?? -1) + (partialProtocolMatch[1] ? 1 : 0);
           incompleteUrlMatch = partialProtocolMatch;
         }
       }
-      
+
       if (incompleteUrlMatch && potentialUrlStart >= 0) {
         // Get the partial URL from the end of previous line
         const partialUrl = prevLineText.substring(potentialUrlStart);
-        
+
         // Build the complete URL starting from previous line
         let fullUrl = partialUrl;
         let endLine = i;
-        
+
         // Continue building from current line
         for (let j = i; j < lines.length; j++) {
           const currentLineText = getLineText(lines[j]);
-          let remainingText = currentLineText;
-          
+          const remainingText = currentLineText;
+
           if (j > i && remainingText.match(/^\s/)) {
             endLine = j - 1;
             break;
           }
-          
+
           const whitespaceMatch = remainingText.match(/\s/);
           if (whitespaceMatch) {
             fullUrl += remainingText.substring(0, whitespaceMatch.index);
@@ -73,9 +81,9 @@ export function processLinks(container: HTMLElement): void {
             if (j === lines.length - 1) break;
           }
         }
-        
+
         fullUrl = cleanUrl(fullUrl);
-        
+
         // Only create links if it's a valid URL and hasn't been processed
         if (fullUrl.length > 7 && isValidUrl(fullUrl)) {
           // Check if this URL was already processed
@@ -83,39 +91,43 @@ export function processLinks(container: HTMLElement): void {
           for (let lineIdx = i - 1; lineIdx <= endLine; lineIdx++) {
             const ranges = processedRanges.get(lineIdx) || [];
             if (lineIdx === i - 1) {
-              if (ranges.some(r => r.start <= potentialUrlStart && r.end > potentialUrlStart)) {
+              if (ranges.some((r) => r.start <= potentialUrlStart && r.end > potentialUrlStart)) {
                 alreadyProcessed = true;
                 break;
               }
             } else {
-              if (ranges.some(r => r.start === 0)) {
+              if (ranges.some((r) => r.start === 0)) {
                 alreadyProcessed = true;
                 break;
               }
             }
           }
-          
+
           if (!alreadyProcessed) {
             createUrlLinks(lines, fullUrl, i - 1, endLine, potentialUrlStart);
-            
+
             // Track processed ranges
             for (let lineIdx = i - 1; lineIdx <= endLine; lineIdx++) {
               if (!processedRanges.has(lineIdx)) {
                 processedRanges.set(lineIdx, []);
               }
-              
+
               if (lineIdx === i - 1) {
-                processedRanges.get(lineIdx)!.push({ start: potentialUrlStart, end: prevLineText.length });
+                processedRanges
+                  .get(lineIdx)
+                  ?.push({ start: potentialUrlStart, end: prevLineText.length });
               } else if (lineIdx === endLine) {
                 // For the last line, only mark the URL portion as processed
                 const lastLineText = getLineText(lines[lineIdx]);
                 const urlEndPos = lastLineText.indexOf(' ');
-                processedRanges.get(lineIdx)!.push({ 
-                  start: 0, 
-                  end: urlEndPos > 0 ? urlEndPos : lastLineText.length 
+                processedRanges.get(lineIdx)?.push({
+                  start: 0,
+                  end: urlEndPos > 0 ? urlEndPos : lastLineText.length,
                 });
               } else {
-                processedRanges.get(lineIdx)!.push({ start: 0, end: getLineText(lines[lineIdx]).length });
+                processedRanges
+                  .get(lineIdx)
+                  ?.push({ start: 0, end: getLineText(lines[lineIdx]).length });
               }
             }
           }
@@ -127,20 +139,20 @@ export function processLinks(container: HTMLElement): void {
     while (true) {
       const urlMatch = lineText.substring(searchOffset).match(/(https?:\/\/|file:\/\/)/);
       if (!urlMatch || urlMatch.index === undefined) break;
-      
+
       const urlStart = searchOffset + urlMatch.index;
-      
+
       // Check if this position was already processed (e.g., as part of a multi-line URL)
       const lineRanges = processedRanges.get(i) || [];
-      const alreadyProcessed = lineRanges.some(range => 
-        urlStart >= range.start && urlStart < range.end
+      const alreadyProcessed = lineRanges.some(
+        (range) => urlStart >= range.start && urlStart < range.end
       );
-      
+
       if (alreadyProcessed) {
         searchOffset = urlStart + 1;
         continue;
       }
-      
+
       let fullUrl = '';
       let endLine = i;
 
@@ -185,7 +197,7 @@ export function processLinks(container: HTMLElement): void {
           // No whitespace found, but check if this looks like a URL continuation
           // URLs can contain many characters, but certain characters indicate the URL has ended
           // Updated regex to be more permissive with URL characters
-          const urlEndMatch = remainingText.match(/[^\w\-._~:/?#[\]@!$&'()*+,;=%\{\}|\\^`]/);
+          const urlEndMatch = remainingText.match(/[^\w\-._~:/?#[\]@!$&'()*+,;=%{}|\\^`]/);
           if (urlEndMatch && urlEndMatch.index !== undefined && urlEndMatch.index > 0) {
             // Found a character that likely ends the URL
             const urlPart = remainingText.substring(0, urlEndMatch.index);
@@ -214,24 +226,27 @@ export function processLinks(container: HTMLElement): void {
       if (fullUrl.length > 7 && isValidUrl(fullUrl)) {
         // More than just "http://" and looks like a valid URL
         createUrlLinks(lines, fullUrl, i, endLine, urlStart);
-        
+
         // Track processed ranges to avoid double-processing
         for (let lineIdx = i; lineIdx <= endLine; lineIdx++) {
           if (!processedRanges.has(lineIdx)) {
             processedRanges.set(lineIdx, []);
           }
-          
+
           if (lineIdx === i) {
             // First line: from urlStart to end of URL part on this line
-            const endPos = lineIdx === endLine ? urlStart + fullUrl.length : getLineText(lines[lineIdx]).length;
-            processedRanges.get(lineIdx)!.push({ start: urlStart, end: endPos });
+            const endPos =
+              lineIdx === endLine ? urlStart + fullUrl.length : getLineText(lines[lineIdx]).length;
+            processedRanges.get(lineIdx)?.push({ start: urlStart, end: endPos });
           } else {
             // Other lines: entire line is part of URL (approximately)
-            processedRanges.get(lineIdx)!.push({ start: 0, end: getLineText(lines[lineIdx]).length });
+            processedRanges
+              .get(lineIdx)
+              ?.push({ start: 0, end: getLineText(lines[lineIdx]).length });
           }
         }
       }
-      
+
       // Move search offset forward to look for more URLs in the same line
       searchOffset = urlStart + Math.max(fullUrl.length, 1);
     }
@@ -412,11 +427,11 @@ function cleanUrl(url: string): string {
   // Remove common trailing punctuation that's not part of URLs
   // But be careful with parentheses - they might be part of the URL
   let cleaned = url;
-  
+
   // First, try to balance parentheses
   const openParens = (cleaned.match(/\(/g) || []).length;
   const closeParens = (cleaned.match(/\)/g) || []).length;
-  
+
   // If we have more closing parens than opening, remove trailing ones
   if (closeParens > openParens) {
     cleaned = cleaned.replace(/\)+$/, (match) => {
@@ -424,10 +439,10 @@ function cleanUrl(url: string): string {
       return match.substring(toRemove);
     });
   }
-  
+
   // Remove other common trailing punctuation
   cleaned = cleaned.replace(/[.,;:!?]+$/, '');
-  
+
   return cleaned;
 }
 
@@ -440,7 +455,9 @@ function isValidUrl(url: string): boolean {
   try {
     // Basic validation: must start with http(s):// or file://, and have valid path
     // Allow localhost, IP addresses, and domains with TLDs
-    if (!url.match(/^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|.+\..+)(:\d+)?.*|file:\/\/.+)/)) {
+    if (
+      !url.match(/^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|.+\..+)(:\d+)?.*|file:\/\/.+)/)
+    ) {
       return false;
     }
 
