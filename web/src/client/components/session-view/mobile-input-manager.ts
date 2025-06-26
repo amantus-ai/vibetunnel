@@ -14,6 +14,13 @@ interface SessionViewInterface {
   shouldUseDirectKeyboard(): boolean;
   focusHiddenInput(): void;
   refreshTerminalAfterMobileInput(): void;
+  getMobileInputText(): string;
+  clearMobileInputText(): void;
+  closeMobileInput(): void;
+  requestUpdate(): void;
+  querySelector(selector: string): Element | null;
+  shouldRefocusHiddenInput(): boolean;
+  refocusHiddenInput(): void;
 }
 
 export class MobileInputManager {
@@ -41,5 +48,86 @@ export class MobileInputManager {
     }
 
     this.sessionView.toggleMobileInputDisplay();
+  }
+
+  async handleMobileInputSendOnly() {
+    // Get the current value from the textarea directly
+    const textarea = this.sessionView.querySelector(
+      '#mobile-input-textarea'
+    ) as HTMLTextAreaElement;
+    const textToSend = textarea?.value?.trim() || this.sessionView.getMobileInputText().trim();
+
+    if (!textToSend) return;
+
+    try {
+      // Send text without enter key
+      if (this.inputManager) {
+        await this.inputManager.sendInputText(textToSend);
+      }
+
+      // Clear both the reactive property and textarea
+      this.sessionView.clearMobileInputText();
+      if (textarea) {
+        textarea.value = '';
+      }
+
+      // Trigger re-render to update button state
+      this.sessionView.requestUpdate();
+
+      // Hide the input overlay after sending
+      this.sessionView.closeMobileInput();
+
+      // Refocus the hidden input to restore keyboard functionality
+      if (this.sessionView.shouldRefocusHiddenInput()) {
+        this.sessionView.refocusHiddenInput();
+      }
+
+      // Refresh terminal scroll position after closing mobile input
+      this.sessionView.refreshTerminalAfterMobileInput();
+    } catch (error) {
+      console.error('error sending mobile input', error);
+      // Don't hide the overlay if there was an error
+    }
+  }
+
+  async handleMobileInputSend() {
+    // Get the current value from the textarea directly
+    const textarea = this.sessionView.querySelector(
+      '#mobile-input-textarea'
+    ) as HTMLTextAreaElement;
+    const textToSend = textarea?.value?.trim() || this.sessionView.getMobileInputText().trim();
+
+    if (!textToSend) return;
+
+    try {
+      // Add enter key at the end to execute the command
+      if (this.inputManager) {
+        await this.inputManager.sendInputText(textToSend);
+        await this.inputManager.sendInputText('enter');
+      }
+
+      // Clear both the reactive property and textarea
+      this.sessionView.clearMobileInputText();
+      if (textarea) {
+        textarea.value = '';
+      }
+
+      // Trigger re-render to update button state
+      this.sessionView.requestUpdate();
+
+      // Hide the input overlay after sending
+      this.sessionView.closeMobileInput();
+
+      // Refocus the hidden input to restore keyboard functionality
+      if (this.sessionView.shouldRefocusHiddenInput()) {
+        this.sessionView.refocusHiddenInput();
+      }
+
+      // Refresh terminal scroll position after closing mobile input
+      this.sessionView.refreshTerminalAfterMobileInput();
+    } catch (error) {
+      console.error('error sending mobile input', error);
+      // Don't hide the overlay if there was an error
+    }
   }
 }
