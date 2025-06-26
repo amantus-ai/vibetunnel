@@ -34,10 +34,21 @@ export interface LifecycleEventManagerCallbacks {
   querySelector(selector: string): Element | null;
   setTabIndex(value: number): void;
   addEventListener(event: string, handler: EventListener): void;
+  removeEventListener(event: string, handler: EventListener): void;
   focus(): void;
   getDisableFocusManagement(): boolean;
   startLoading(): void;
+  stopLoading(): void;
   setKeyboardHeight(value: number): void;
+  getTerminalLifecycleManager(): {
+    resetTerminalSize(): void;
+    cleanup(): void;
+  } | null;
+  getConnectionManager(): {
+    setConnected(connected: boolean): void;
+    cleanupStreamConnection(): void;
+  } | null;
+  setConnected(connected: boolean): void;
 }
 
 export class LifecycleEventManager {
@@ -258,6 +269,76 @@ export class LifecycleEventManager {
       document.addEventListener('touchstart', this.touchStartHandler, { passive: true });
       document.addEventListener('touchend', this.touchEndHandler, { passive: true });
       this.touchListenersAdded = true;
+    }
+  }
+
+  teardownLifecycle(): void {
+    if (!this.callbacks) return;
+
+    logger.log('SessionView disconnectedCallback called', {
+      sessionId: this.session?.id,
+      sessionStatus: this.session?.status,
+    });
+
+    this.callbacks.setConnected(false);
+
+    // Reset terminal size for external terminals when leaving session view
+    const terminalLifecycleManager = this.callbacks.getTerminalLifecycleManager();
+    if (this.session && this.session.status !== 'exited' && terminalLifecycleManager) {
+      logger.log('Calling resetTerminalSize for session', this.session.id);
+      terminalLifecycleManager.resetTerminalSize();
+    }
+
+    // Update connection manager
+    const connectionManager = this.callbacks.getConnectionManager();
+    if (connectionManager) {
+      connectionManager.setConnected(false);
+    }
+
+    // Cleanup terminal lifecycle manager
+    if (terminalLifecycleManager) {
+      terminalLifecycleManager.cleanup();
+    }
+
+    // Remove click outside handler
+    document.removeEventListener('click', this.handleClickOutside);
+
+    // Remove click handler (note: this is a simplified version, the original uses a complex callback reference)
+    // The original session-view will need to handle this specific cleanup
+
+    // Remove global keyboard event listener
+    if (!this.callbacks.getIsMobile() && this.keyboardListenerAdded) {
+      document.removeEventListener('keydown', this.keyboardHandler);
+      this.keyboardListenerAdded = false;
+    } else if (this.callbacks.getIsMobile() && this.touchListenersAdded) {
+      // Remove touch event listeners
+      document.removeEventListener('touchstart', this.touchStartHandler);
+      document.removeEventListener('touchend', this.touchEndHandler);
+      this.touchListenersAdded = false;
+    }
+
+    // Cleanup direct keyboard manager
+    const directKeyboardManager = this.callbacks.getDirectKeyboardManager();
+    if (directKeyboardManager) {
+      directKeyboardManager.cleanup();
+    }
+
+    // Clean up Visual Viewport listener
+    if (this.visualViewportHandler && window.visualViewport) {
+      window.visualViewport.removeEventListener('resize', this.visualViewportHandler);
+      window.visualViewport.removeEventListener('scroll', this.visualViewportHandler);
+      this.visualViewportHandler = null;
+    }
+
+    // Remove preference change listener
+    window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
+
+    // Stop loading animation
+    this.callbacks.stopLoading();
+
+    // Cleanup stream connection if it exists
+    if (connectionManager) {
+      connectionManager.cleanupStreamConnection();
     }
   }
 
