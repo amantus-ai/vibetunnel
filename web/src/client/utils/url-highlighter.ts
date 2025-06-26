@@ -40,14 +40,9 @@ export function processLinks(container: HTMLElement): void {
       // Pattern 2: Partial protocol at end of line (ht, htt, http, https, https:, https:/)
       if (!incompleteUrlMatch) {
         const partialProtocolMatch = prevLineText.match(
-          /(^|\s)(h|ht|htt|http|https|https:|https:\/|f|fi|fil|file|file:|file:\/)$/
+          /(^|\s)(https?:|https?:\/|https?:\/\/|file:|file:\/|file:\/\/)$/
         );
-        if (
-          partialProtocolMatch &&
-          lineText.match(
-            /^(ttps?:\/\/|tps?:\/\/|ps?:\/\/|s?:\/\/|:\/\/|\/\/|\/|ile:\/\/|le:\/\/|e:\/\/)/
-          )
-        ) {
+        if (partialProtocolMatch && lineText.match(/^(\/(\/.+)|\/.+)/)) {
           potentialUrlStart =
             (partialProtocolMatch.index ?? -1) + (partialProtocolMatch[1] ? 1 : 0);
           incompleteUrlMatch = partialProtocolMatch;
@@ -237,10 +232,14 @@ export function processLinks(container: HTMLElement): void {
 
           if (lineIdx === i) {
             // First line: from urlStart to end of URL part on this line
+            const lineLength = getLineText(lines[lineIdx]).length;
             const endPos =
               lineIdx === endLine
-                ? Math.min(urlStart + fullUrl.length, getLineText(lines[lineIdx]).length)
-                : getLineText(lines[lineIdx]).length;
+                ? Math.min(
+                    urlStart + (endLine === i ? fullUrl.length : lineLength - urlStart),
+                    lineLength
+                  )
+                : lineLength;
             processedRanges.get(lineIdx)?.push({ start: urlStart, end: endPos });
           } else {
             // Other lines: entire line is part of URL (approximately)
@@ -252,7 +251,9 @@ export function processLinks(container: HTMLElement): void {
       }
 
       // Move search offset forward to look for more URLs in the same line
-      searchOffset = urlStart + Math.max(fullUrl.length, 1);
+      // For multi-line URLs, only advance by the portion on the current line
+      const currentLineUrlLength = endLine === i ? fullUrl.length : lineText.length - urlStart;
+      searchOffset = urlStart + Math.max(currentLineUrlLength, 1);
     }
   }
 }
@@ -457,6 +458,11 @@ function cleanUrl(url: string): string {
  */
 function isValidUrl(url: string): boolean {
   try {
+    // Add length check to prevent DoS from extremely long URLs
+    if (url.length > 2048) {
+      return false;
+    }
+
     // Basic validation: must start with http(s):// or file://, and have valid path
     // Allow localhost, IP addresses, and domains with TLDs
     if (
