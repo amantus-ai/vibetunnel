@@ -119,7 +119,7 @@ export function processLinks(container: HTMLElement): void {
                 const urlEndPos = lastLineText.indexOf(' ');
                 processedRanges.get(lineIdx)?.push({
                   start: 0,
-                  end: urlEndPos >= 0 ? urlEndPos : lastLineText.length,
+                  end: urlEndPos > 0 ? urlEndPos : lastLineText.length,
                 });
               } else {
                 processedRanges
@@ -252,7 +252,10 @@ export function processLinks(container: HTMLElement): void {
 
       // Move search offset forward to look for more URLs in the same line
       // For multi-line URLs, only advance by the portion on the current line
-      const currentLineUrlLength = endLine === i ? fullUrl.length : lineText.length - urlStart;
+      const currentLineUrlLength =
+        endLine === i
+          ? Math.min(fullUrl.length, lineText.length - urlStart)
+          : lineText.length - urlStart;
       searchOffset = urlStart + Math.max(currentLineUrlLength, 1);
     }
   }
