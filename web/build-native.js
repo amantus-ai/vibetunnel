@@ -171,6 +171,7 @@ if (process.env.VIBETUNNEL_SEA) {
             helperPath = process.env.NODE_PTY_SPAWN_HELPER_PATH;
         }
     }
+    // On Linux, helperPath remains undefined which is fine
 } else {
     // Original loading logic
     try {
