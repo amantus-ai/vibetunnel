@@ -15,6 +15,10 @@ export interface DirectKeyboardCallbacks {
   getDisableFocusManagement(): boolean;
   getVisualViewportHandler(): (() => void) | null;
   updateShowQuickKeys(value: boolean): void;
+  toggleMobileInput(): void;
+  clearMobileInputText(): void;
+  toggleCtrlAlpha(): void;
+  clearCtrlSequence(): void;
 }
 
 export class DirectKeyboardManager {
@@ -234,6 +238,188 @@ export class DirectKeyboardManager {
     if (terminalContainer) {
       terminalContainer.appendChild(this.hiddenInput);
     }
+  }
+
+  handleQuickKeyPress = (key: string, isModifier?: boolean, isSpecial?: boolean): void => {
+    if (isSpecial && key === 'ABC') {
+      // Toggle the mobile input overlay
+      if (this.callbacks) {
+        this.callbacks.toggleMobileInput();
+      }
+
+      const showMobileInput = this.callbacks?.getShowMobileInput() ?? false;
+      if (showMobileInput) {
+        // Stop focus retention when showing mobile input
+        if (this.focusRetentionInterval) {
+          clearInterval(this.focusRetentionInterval);
+          this.focusRetentionInterval = null;
+        }
+
+        // Blur the hidden input to prevent it from capturing input
+        if (this.hiddenInput) {
+          this.hiddenInput.blur();
+        }
+      } else {
+        // Clear the text when closing
+        if (this.callbacks) {
+          this.callbacks.clearMobileInputText();
+        }
+
+        // Restart focus retention when closing mobile input
+        const disableFocusManagement = this.callbacks?.getDisableFocusManagement() ?? false;
+        if (!disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
+          this.startFocusRetention();
+          this.delayedRefocusHiddenInput();
+        }
+      }
+      return;
+    } else if (isModifier && key === 'Control') {
+      // Just send Ctrl modifier - don't show the overlay
+      // This allows using Ctrl as a modifier with physical keyboard
+      return;
+    } else if (key === 'CtrlFull') {
+      // Toggle the full Ctrl+Alpha overlay
+      if (this.callbacks) {
+        this.callbacks.toggleCtrlAlpha();
+      }
+
+      const showCtrlAlpha = this.callbacks?.getShowCtrlAlpha() ?? false;
+      if (showCtrlAlpha) {
+        // Stop focus retention when showing Ctrl overlay
+        if (this.focusRetentionInterval) {
+          clearInterval(this.focusRetentionInterval);
+          this.focusRetentionInterval = null;
+        }
+
+        // Blur the hidden input to prevent it from capturing input
+        if (this.hiddenInput) {
+          this.hiddenInput.blur();
+        }
+      } else {
+        // Clear the Ctrl sequence when closing
+        if (this.callbacks) {
+          this.callbacks.clearCtrlSequence();
+        }
+
+        // Restart focus retention when closing Ctrl overlay
+        const disableFocusManagement = this.callbacks?.getDisableFocusManagement() ?? false;
+        if (!disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
+          this.startFocusRetention();
+          this.delayedRefocusHiddenInput();
+        }
+      }
+      return;
+    } else if (key === 'Ctrl+A' && this.inputManager) {
+      // Send Ctrl+A (start of line)
+      this.inputManager.sendInputText('\x01');
+    } else if (key === 'Ctrl+C' && this.inputManager) {
+      // Send Ctrl+C (interrupt signal)
+      this.inputManager.sendInputText('\x03');
+    } else if (key === 'Ctrl+D' && this.inputManager) {
+      // Send Ctrl+D (EOF)
+      this.inputManager.sendInputText('\x04');
+    } else if (key === 'Ctrl+E' && this.inputManager) {
+      // Send Ctrl+E (end of line)
+      this.inputManager.sendInputText('\x05');
+    } else if (key === 'Ctrl+K' && this.inputManager) {
+      // Send Ctrl+K (kill to end of line)
+      this.inputManager.sendInputText('\x0b');
+    } else if (key === 'Ctrl+L' && this.inputManager) {
+      // Send Ctrl+L (clear screen)
+      this.inputManager.sendInputText('\x0c');
+    } else if (key === 'Ctrl+R' && this.inputManager) {
+      // Send Ctrl+R (reverse search)
+      this.inputManager.sendInputText('\x12');
+    } else if (key === 'Ctrl+U' && this.inputManager) {
+      // Send Ctrl+U (clear line)
+      this.inputManager.sendInputText('\x15');
+    } else if (key === 'Ctrl+W' && this.inputManager) {
+      // Send Ctrl+W (delete word)
+      this.inputManager.sendInputText('\x17');
+    } else if (key === 'Ctrl+Z' && this.inputManager) {
+      // Send Ctrl+Z (suspend signal)
+      this.inputManager.sendInputText('\x1a');
+    } else if (key === 'Option' && this.inputManager) {
+      // Send ESC prefix for Option/Alt key
+      this.inputManager.sendInputText('\x1b');
+    } else if (key === 'Command') {
+      // Command key doesn't have a direct terminal equivalent
+      // Could potentially show a message or ignore
+      return;
+    } else if (key === 'Delete' && this.inputManager) {
+      // Send delete key
+      this.inputManager.sendInputText('delete');
+    } else if (key.startsWith('F') && this.inputManager) {
+      // Handle function keys F1-F12
+      const fNum = Number.parseInt(key.substring(1));
+      if (fNum >= 1 && fNum <= 12) {
+        this.inputManager.sendInputText(`f${fNum}`);
+      }
+    } else if (this.inputManager) {
+      // Map key names to proper values
+      let keyToSend = key;
+      if (key === 'Tab') {
+        keyToSend = 'tab';
+      } else if (key === 'Escape') {
+        keyToSend = 'escape';
+      } else if (key === 'ArrowUp') {
+        keyToSend = 'arrow_up';
+      } else if (key === 'ArrowDown') {
+        keyToSend = 'arrow_down';
+      } else if (key === 'ArrowLeft') {
+        keyToSend = 'arrow_left';
+      } else if (key === 'ArrowRight') {
+        keyToSend = 'arrow_right';
+      } else if (key === 'PageUp') {
+        keyToSend = 'page_up';
+      } else if (key === 'PageDown') {
+        keyToSend = 'page_down';
+      } else if (key === 'Home') {
+        keyToSend = 'home';
+      } else if (key === 'End') {
+        keyToSend = 'end';
+      }
+
+      // Send the key to terminal
+      this.inputManager.sendInputText(keyToSend.toLowerCase());
+    }
+
+    // Always keep focus on hidden input after any key press (except Done)
+    // Use requestAnimationFrame to ensure DOM has updated
+    requestAnimationFrame(() => {
+      const disableFocusManagement = this.callbacks?.getDisableFocusManagement() ?? false;
+      if (!disableFocusManagement && this.hiddenInput && this.showQuickKeys) {
+        this.hiddenInput.focus();
+      }
+    });
+  };
+
+  private startFocusRetention(): void {
+    this.focusRetentionInterval = setInterval(() => {
+      const disableFocusManagement = this.callbacks?.getDisableFocusManagement() ?? false;
+      const showMobileInput = this.callbacks?.getShowMobileInput() ?? false;
+      const showCtrlAlpha = this.callbacks?.getShowCtrlAlpha() ?? false;
+      if (
+        !disableFocusManagement &&
+        this.showQuickKeys &&
+        this.hiddenInput &&
+        document.activeElement !== this.hiddenInput &&
+        !showMobileInput &&
+        !showCtrlAlpha
+      ) {
+        logger.log('Refocusing hidden input to maintain keyboard');
+        this.hiddenInput.focus();
+      }
+    }, 300) as unknown as number;
+  }
+
+  private delayedRefocusHiddenInput(): void {
+    setTimeout(() => {
+      const disableFocusManagement = this.callbacks?.getDisableFocusManagement() ?? false;
+      if (!disableFocusManagement && this.hiddenInput) {
+        this.hiddenInput.focus();
+      }
+    }, 100);
   }
 
   cleanup(): void {
