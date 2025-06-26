@@ -266,4 +266,99 @@ describe('UrlHighlighter', () => {
       expect(urls[0].href).toBe(expectedUrl);
     });
   });
+
+  describe('Bug fixes: Accurate range marking', () => {
+    it('should correctly mark ranges for multi-line URLs', () => {
+      // Test that range marking accounts for actual text on each line
+      const lines = ['Check out https://very-', 'long-domain.com/path'];
+      createLines(lines);
+      UrlHighlighter.processLinks(container);
+
+      const urls = getUniqueUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0]).toBe('https://very-long-domain.com/path');
+
+      // Verify that only the URL portion is highlighted, not the entire lines
+      const links = container.querySelectorAll('.terminal-link');
+      const firstLineLink = links[0] as HTMLAnchorElement;
+      const secondLineLink = links[1] as HTMLAnchorElement;
+
+      expect(firstLineLink.textContent).toBe('https://very-');
+      expect(secondLineLink.textContent).toBe('long-domain.com/path');
+    });
+
+    it('should handle URLs with cleaned endings', () => {
+      // Test that the cleaned URL length doesn't under-mark the range
+      createLines(['Visit https://example.com/test) here']);
+      UrlHighlighter.processLinks(container);
+
+      const urls = getUniqueUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0]).toBe('https://example.com/test');
+
+      // Verify the link text includes the full URL before cleaning
+      const links = container.querySelectorAll('.terminal-link');
+      expect(links).toHaveLength(1);
+      expect(links[0].textContent).toBe('https://example.com/test');
+    });
+
+    it('should not over-mark single-line URLs', () => {
+      createLines(['Visit https://example.com! for more']);
+      UrlHighlighter.processLinks(container);
+
+      const links = container.querySelectorAll('.terminal-link');
+      expect(links).toHaveLength(1);
+      expect(links[0].textContent).toBe('https://example.com');
+
+      // Verify exclamation mark is not included
+      const fullText = container.textContent;
+      expect(fullText).toContain('!');
+    });
+  });
+
+  describe('Bug fixes: Multi-node URL highlighting', () => {
+    it('should highlight URLs spanning multiple text nodes', () => {
+      // Create a scenario with multiple text nodes within a line
+      container.innerHTML =
+        '<div class="terminal-line">Check <span>https://</span><span>example.com</span> out</div>';
+      UrlHighlighter.processLinks(container);
+
+      const links = container.querySelectorAll('.terminal-link');
+      expect(links).toHaveLength(2); // Two spans should be converted to links
+
+      const urls = getUniqueUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0]).toBe('https://example.com/');
+    });
+
+    it('should handle complex HTML structures with multiple text nodes', () => {
+      // Create a more realistic scenario - terminal lines usually have spans for styling
+      container.innerHTML = `
+        <div class="terminal-line">
+          <span>Visit </span>
+          <span class="highlight">https://example.com/path</span>
+          <span> for info</span>
+        </div>
+      `;
+      UrlHighlighter.processLinks(container);
+
+      const urls = getUniqueUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0]).toBe('https://example.com/path');
+
+      // Verify the URL is highlighted
+      const links = container.querySelectorAll('.terminal-link');
+      expect(links.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should handle partial URL matches across nodes', () => {
+      container.innerHTML =
+        '<div class="terminal-line">URL: ht<span>tps://ex</span>ample.com here</div>';
+      UrlHighlighter.processLinks(container);
+
+      const urls = getUniqueUrls();
+      expect(urls).toHaveLength(1);
+      expect(urls[0]).toBe('https://example.com/');
+    });
+  });
 });

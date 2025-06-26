@@ -97,8 +97,8 @@ class LinkProcessor {
     for (const protocol of URL_PROTOCOLS) {
       const index = prevLineText.lastIndexOf(protocol);
       if (index >= 0 && prevLineText.endsWith(protocol)) {
-        // Verify next line starts with valid domain/path
-        if (DOMAIN_START_PATTERN.test(currentLineText)) {
+        // Verify next line starts with valid domain/path (after trimming whitespace)
+        if (DOMAIN_START_PATTERN.test(currentLineText.trimStart())) {
           return { startPos: index, protocol };
         }
       }
@@ -119,18 +119,21 @@ class LinkProcessor {
   }
 
   private isValidContinuation(partialProtocol: string, nextLineText: string): boolean {
+    // Trim leading whitespace for validation
+    const trimmedText = nextLineText.trimStart();
+
     // Complete protocols - accept domain names
     if (partialProtocol === 'https://' || partialProtocol === 'file://') {
-      return DOMAIN_START_PATTERN.test(nextLineText);
+      return DOMAIN_START_PATTERN.test(trimmedText);
     }
 
     // Partial protocol ending with /
     if (partialProtocol.endsWith('/')) {
-      return PATH_START_PATTERN.test(nextLineText);
+      return PATH_START_PATTERN.test(trimmedText);
     }
 
     // Partial protocol without / - check if continuation completes it
-    const combined = partialProtocol + nextLineText;
+    const combined = partialProtocol + trimmedText;
     return /^(https?:\/\/|file:\/\/)/.test(combined);
   }
 
