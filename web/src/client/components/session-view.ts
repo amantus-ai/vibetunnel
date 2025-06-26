@@ -589,12 +589,15 @@ export class SessionView extends LitElement {
 
   // Mobile input methods
   private handleMobileInputToggle() {
-    // If direct keyboard is enabled, focus a hidden input instead of showing overlay
-    if (this.useDirectKeyboard) {
-      this.focusHiddenInput();
-      return;
-    }
+    this.mobileInputManager.handleMobileInputToggle();
+  }
 
+  // Helper methods for MobileInputManager
+  shouldUseDirectKeyboard(): boolean {
+    return this.useDirectKeyboard;
+  }
+
+  toggleMobileInputDisplay(): void {
     this.showMobileInput = !this.showMobileInput;
     if (!this.showMobileInput) {
       // Refresh terminal scroll position after closing mobile input
@@ -880,7 +883,7 @@ export class SessionView extends LitElement {
     }
   }
 
-  private focusHiddenInput() {
+  focusHiddenInput() {
     // Just delegate to the new method
     this.ensureHiddenInputVisible();
   }
@@ -1241,7 +1244,7 @@ export class SessionView extends LitElement {
     });
   };
 
-  private refreshTerminalAfterMobileInput() {
+  refreshTerminalAfterMobileInput() {
     // After closing mobile input, the viewport changes and the terminal
     // needs to recalculate its scroll position to avoid getting stuck
     if (!this.terminal) return;

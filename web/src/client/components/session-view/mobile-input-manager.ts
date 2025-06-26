@@ -4,16 +4,16 @@
  * Manages mobile-specific input handling for terminal sessions,
  * including keyboard overlays and direct input modes.
  */
-import { createLogger } from '../../utils/logger.js';
 import type { Terminal } from '../terminal.js';
 import type { InputManager } from './input-manager.js';
 
-const logger = createLogger('mobile-input-manager');
-
 // Forward declaration for SessionView to avoid circular dependency
 interface SessionViewInterface {
-  // We'll add methods as needed
-  requestUpdate(): void;
+  // Methods to be called by the manager
+  toggleMobileInputDisplay(): void;
+  shouldUseDirectKeyboard(): boolean;
+  focusHiddenInput(): void;
+  refreshTerminalAfterMobileInput(): void;
 }
 
 export class MobileInputManager {
@@ -33,9 +33,13 @@ export class MobileInputManager {
     this.terminal = terminal;
   }
 
-  // Basic toggle method - initial functionality
   handleMobileInputToggle() {
-    // Placeholder for mobile input toggle logic
-    logger.debug('Mobile input toggle requested');
+    // If direct keyboard is enabled, focus a hidden input instead of showing overlay
+    if (this.sessionView.shouldUseDirectKeyboard()) {
+      this.sessionView.focusHiddenInput();
+      return;
+    }
+
+    this.sessionView.toggleMobileInputDisplay();
   }
 }
