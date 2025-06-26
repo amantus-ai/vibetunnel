@@ -68,46 +68,36 @@ jobs:
     - name: Install all tools
       shell: bash
       run: |
-        # Function to run brew commands with retry logic
-        brew_with_retry() {
-          local cmd="$1"
-          local max_attempts=5
-          local wait_time=5
+        # Retry logic for brew commands to handle concurrent access
+        MAX_ATTEMPTS=5
+        WAIT_TIME=5
+        
+        for attempt in $(seq 1 $MAX_ATTEMPTS); do
+          echo "Attempting Homebrew operations (attempt $attempt/$MAX_ATTEMPTS)"
           
-          for attempt in $(seq 1 $max_attempts); do
-            echo "Attempting: brew $cmd (attempt $attempt/$max_attempts)"
-            
-            # Check if another brew process is running
-            if pgrep -x "brew" > /dev/null; then
-              echo "Another brew process is running, waiting ${wait_time}s..."
-              sleep $wait_time
-              wait_time=$((wait_time * 2))  # Exponential backoff
-              continue
+          # Check if another brew process is running
+          if pgrep -x "brew" > /dev/null; then
+            echo "Another brew process detected, waiting ${WAIT_TIME}s..."
+            sleep $WAIT_TIME
+            WAIT_TIME=$((WAIT_TIME * 2))  # Exponential backoff
+            continue
+          fi
+          
+          # Update Homebrew and install all tools in one command
+          # brew install automatically upgrades if already installed
+          if brew update && brew install swiftlint swiftformat xcbeautify; then
+            echo "Successfully installed/upgraded all tools"
+            break
+          else
+            if [ $attempt -eq $MAX_ATTEMPTS ]; then
+              echo "Failed to install tools after $MAX_ATTEMPTS attempts"
+              exit 1
             fi
-            
-            # Try to run the brew command
-            if brew $cmd; then
-              echo "Successfully executed: brew $cmd"
-              return 0
-            else
-              if [ $attempt -eq $max_attempts ]; then
-                echo "Failed to execute: brew $cmd after $max_attempts attempts"
-                return 1
-              fi
-              echo "Command failed, waiting ${wait_time}s before retry..."
-              sleep $wait_time
-              wait_time=$((wait_time * 2))  # Exponential backoff
-            fi
-          done
-        }
-        
-        # Update Homebrew with retry
-        brew_with_retry "update"
-        
-        # Install or upgrade linting and build tools
-        brew_with_retry "install swiftlint" || brew_with_retry "upgrade swiftlint" || true
-        brew_with_retry "install swiftformat" || brew_with_retry "upgrade swiftformat" || true
-        brew_with_retry "install xcbeautify" || brew_with_retry "upgrade xcbeautify" || true
+            echo "Command failed, waiting ${WAIT_TIME}s before retry..."
+            sleep $WAIT_TIME
+            WAIT_TIME=$((WAIT_TIME * 2))  # Exponential backoff
+          fi
+        done
         
         # Show versions
         echo "SwiftLint: $(swiftlint --version || echo 'not found')"
