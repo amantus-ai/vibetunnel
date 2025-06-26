@@ -54,6 +54,14 @@ export class LoadingAnimationManager {
   }
 
   /**
+   * Get current loading animation text frame
+   */
+  getLoadingText(): string {
+    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    return frames[this.loadingFrame % frames.length];
+  }
+
+  /**
    * Clean up any active intervals
    */
   cleanup(): void {
