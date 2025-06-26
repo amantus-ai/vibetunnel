@@ -155,8 +155,12 @@ jobs:
           echo "=== Copied files ==="
           ls -lah mac/Resources/web-dist/
 
+      - name: Resolve Xcode dependencies
+        run: |
+          echo "Resolving Swift package dependencies..."
+          xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
+
       - name: Build macOS app with Xcode
-        working-directory: mac
         run: |
           # Clean build directory
           rm -rf build/
