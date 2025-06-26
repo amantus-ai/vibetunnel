@@ -43,6 +43,17 @@ export class LoadingAnimationManager {
   }
 
   /**
+   * Stop loading animation
+   */
+  stopLoading(): void {
+    this.loading = false;
+    if (this.loadingInterval) {
+      clearInterval(this.loadingInterval);
+      this.loadingInterval = null;
+    }
+  }
+
+  /**
    * Clean up any active intervals
    */
   cleanup(): void {
