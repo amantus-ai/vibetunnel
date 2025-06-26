@@ -17,7 +17,9 @@
  * ```bash
  * node build-native.js                    # Build with system Node.js
  * node build-native.js --sourcemap        # Build with inline sourcemaps
- * node build-native.js --custom-node=/path/to/node  # Use custom Node.js binary
+ * node build-native.js --custom-node      # Auto-discover custom Node.js (uses most recent)
+ * node build-native.js --custom-node=/path/to/node  # Use specific custom Node.js binary
+ * node build-native.js --custom-node /path/to/node  # Alternative syntax
  * ```
  */
 
@@ -34,8 +36,15 @@ for (let i = 0; i < process.argv.length; i++) {
   const arg = process.argv[i];
   if (arg.startsWith('--custom-node=')) {
     customNodePath = arg.split('=')[1];
-  } else if (arg === '--custom-node' && i + 1 < process.argv.length) {
-    customNodePath = process.argv[i + 1];
+  } else if (arg === '--custom-node') {
+    if (i + 1 < process.argv.length && !process.argv[i + 1].startsWith('--')) {
+      // Next argument is the path
+      customNodePath = process.argv[i + 1];
+      i++; // Skip the path argument in next iteration
+    } else {
+      // No path provided, use auto-discovery
+      customNodePath = 'auto';
+    }
   }
 }
 
@@ -247,11 +256,47 @@ async function main() {
     // 0. Determine which Node.js to use
     let nodeExe = process.execPath;
     if (customNodePath) {
-      // Validate custom node exists
-      if (!fs.existsSync(customNodePath)) {
-        console.error(`Error: Custom Node.js not found at ${customNodePath}`);
-        console.error('Build one using: node build-custom-node.js');
-        process.exit(1);
+      if (customNodePath === 'auto') {
+        // Auto-discover custom Node.js build
+        const buildDir = path.join(__dirname, '.node-builds');
+        if (fs.existsSync(buildDir)) {
+          // Find the most recent custom Node.js build
+          const builds = fs.readdirSync(buildDir)
+            .filter(name => name.startsWith('node-v') && name.endsWith('-minimal'))
+            .map(name => {
+              const nodePath = path.join(buildDir, name, 'out', 'Release', 'node');
+              if (fs.existsSync(nodePath)) {
+                return {
+                  path: nodePath,
+                  version: name.match(/node-v(.+)-minimal/)[1],
+                  mtime: fs.statSync(nodePath).mtime
+                };
+              }
+              return null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.mtime - a.mtime);
+          
+          if (builds.length > 0) {
+            customNodePath = builds[0].path;
+            console.log(`Auto-discovered custom Node.js v${builds[0].version} at ${customNodePath}`);
+          } else {
+            console.error('Error: No custom Node.js builds found in .node-builds/');
+            console.error('Build one using: node build-custom-node.js');
+            process.exit(1);
+          }
+        } else {
+          console.error('Error: No .node-builds directory found');
+          console.error('Build a custom Node.js using: node build-custom-node.js');
+          process.exit(1);
+        }
+      } else {
+        // Validate custom node exists at specified path
+        if (!fs.existsSync(customNodePath)) {
+          console.error(`Error: Custom Node.js not found at ${customNodePath}`);
+          console.error('Build one using: node build-custom-node.js');
+          process.exit(1);
+        }
       }
       nodeExe = customNodePath;
     }
