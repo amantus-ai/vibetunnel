@@ -405,7 +405,7 @@ export class SessionView extends LitElement {
             this.isMobile &&
             this.useDirectKeyboard &&
             !this.directKeyboardManager.getShowQuickKeys() &&
-            this.isConnected // Ensure component is still connected to DOM
+            this.connected // Ensure component is still connected to DOM
           ) {
             this.directKeyboardManager.ensureHiddenInputVisible();
           }
