@@ -6,7 +6,6 @@
 import { html } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { HeaderBase } from './header-base.js';
-import type { Session } from './session-list.js';
 import './terminal-icon.js';
 
 @customElement('sidebar-header')
@@ -52,92 +51,9 @@ export class SidebarHeader extends HeaderBase {
             >
               Create Session
             </button>
-            
-            <!-- Kill All button -->
-            ${this.renderKillAllButton(runningSessions)}
-            
-            <!-- Show/Hide Exited button -->
-            ${this.renderExitedToggleButton(this.exitedSessions, true)}
           </div>
         </div>
       </div>
-    `;
-  }
-
-  private renderExitedToggleButton(exitedSessions: Session[], compact: boolean) {
-    if (exitedSessions.length === 0) return '';
-
-    const buttonClass = compact
-      ? 'relative font-mono text-xs px-3 py-1.5 w-full rounded-lg border transition-all duration-200'
-      : 'relative font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200';
-
-    const stateClass = this.hideExited
-      ? 'border-dark-border bg-dark-bg-tertiary text-dark-text hover:border-accent-green-darker'
-      : 'border-accent-green bg-accent-green text-dark-bg hover:bg-accent-green-darker';
-
-    return html`
-      <button
-        class="${buttonClass} ${stateClass}"
-        @click=${this.handleHideExitedToggle}
-        title="${
-          this.hideExited
-            ? `Show ${exitedSessions.length} exited sessions`
-            : `Hide ${exitedSessions.length} exited sessions`
-        }"
-      >
-        <div class="flex items-center justify-between">
-          <span>${this.hideExited ? 'Show' : 'Hide'} Exited</span>
-          <div class="flex items-center gap-2">
-            <span class="text-xs opacity-75">(${exitedSessions.length})</span>
-            <div
-              class="w-8 h-4 rounded-full transition-colors duration-200 ${
-                this.hideExited ? 'bg-dark-border' : 'bg-dark-bg'
-              }"
-            >
-              <div
-                class="w-3 h-3 rounded-full transition-transform duration-200 mt-0.5 ${
-                  this.hideExited
-                    ? 'translate-x-0.5 bg-dark-text-muted'
-                    : 'translate-x-4 bg-dark-bg'
-                }"
-              ></div>
-            </div>
-          </div>
-        </div>
-      </button>
-    `;
-  }
-
-  private renderKillAllButton(runningSessions: Session[]) {
-    // Only show Kill button if there are running sessions
-    if (runningSessions.length === 0) return '';
-
-    // Matching the same style as Show Exited button for consistency
-    const buttonClass =
-      'relative font-mono text-xs px-3 py-1.5 w-full rounded-lg border transition-all duration-200';
-    const stateClass = this.killingAll
-      ? 'border-status-error bg-status-error text-dark-bg cursor-not-allowed'
-      : 'border-dark-border bg-dark-bg-tertiary text-status-error hover:border-status-error hover:bg-dark-bg-secondary';
-
-    return html`
-      <button
-        class="${buttonClass} ${stateClass}"
-        @click=${this.handleKillAll}
-        ?disabled=${this.killingAll}
-      >
-        ${
-          this.killingAll
-            ? html`
-              <div class="flex items-center justify-center gap-2">
-                <div
-                  class="w-3 h-3 border-2 border-dark-bg border-t-transparent rounded-full animate-spin"
-                ></div>
-                <span>Killing...</span>
-              </div>
-            `
-            : `Kill All (${runningSessions.length})`
-        }
-      </button>
     `;
   }
 
@@ -185,7 +101,6 @@ export class SidebarHeader extends HeaderBase {
                   class="w-full text-left px-3 py-1.5 text-xs font-mono text-dark-text hover:bg-dark-bg-secondary"
                   @click=${(e: Event) => {
                     e.stopPropagation();
-                    console.log('🔧 Settings button clicked in sidebar header');
                     this.handleOpenSettings();
                   }}
                 >
