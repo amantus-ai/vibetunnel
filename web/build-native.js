@@ -212,9 +212,19 @@ async function main() {
     const nativePtyDir = 'node_modules/node-pty/build/Release';
     const nativeAuthDir = 'node_modules/authenticate-pam/build/Release';
     
-    if (!fs.existsSync(nativePtyDir) || !fs.existsSync(nativeAuthDir)) {
-      console.log('Building native modules...');
-      execSync('npm rebuild node-pty authenticate-pam', { 
+    if (!fs.existsSync(nativePtyDir)) {
+      console.log('Building node-pty native module...');
+      // Build node-pty using node-gyp directly to avoid TypeScript compilation
+      execSync('cd node_modules/node-pty && npx node-gyp rebuild', { 
+        stdio: 'inherit',
+        shell: true,
+        cwd: __dirname
+      });
+    }
+    
+    if (!fs.existsSync(nativeAuthDir)) {
+      console.log('Building authenticate-pam native module...');
+      execSync('npm rebuild authenticate-pam', { 
         stdio: 'inherit',
         cwd: __dirname
       });
@@ -293,6 +303,7 @@ async function main() {
       --keep-names \\
       --external:authenticate-pam \\
       --external:../build/Release/pty.node \\
+      --external:./build/Release/pty.node \\
       --define:process.env.BUILD_DATE='"${buildDate}"' \\
       --define:process.env.BUILD_TIMESTAMP='"${buildTimestamp}"' \\
       --define:process.env.VIBETUNNEL_SEA='"true"'`;
