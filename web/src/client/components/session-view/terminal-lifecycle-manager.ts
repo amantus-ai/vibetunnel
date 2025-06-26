@@ -5,6 +5,7 @@
  * for session view components.
  */
 
+import { authClient } from '../../services/auth-client.js';
 import { createLogger } from '../../utils/logger.js';
 import type { Session } from '../session-list.js';
 import type { Terminal } from '../terminal.js';
@@ -17,6 +18,10 @@ export interface TerminalEventHandlers {
   handleSessionExit: (e: Event) => void;
   handleTerminalResize: (e: Event) => void;
   handleTerminalPaste: (e: Event) => void;
+}
+
+export interface TerminalStateCallbacks {
+  updateTerminalDimensions: (cols: number, rows: number) => void;
 }
 
 export class TerminalLifecycleManager {
@@ -32,6 +37,7 @@ export class TerminalLifecycleManager {
   private lastResizeHeight = 0;
   private domElement: Element | null = null;
   private eventHandlers: TerminalEventHandlers | null = null;
+  private stateCallbacks: TerminalStateCallbacks | null = null;
 
   setSession(session: Session | null) {
     this.session = session;
@@ -67,6 +73,10 @@ export class TerminalLifecycleManager {
 
   setEventHandlers(handlers: TerminalEventHandlers | null) {
     this.eventHandlers = handlers;
+  }
+
+  setStateCallbacks(callbacks: TerminalStateCallbacks | null) {
+    this.stateCallbacks = callbacks;
   }
 
   setupTerminal() {
@@ -130,6 +140,58 @@ export class TerminalLifecycleManager {
         logger.warn(`Component disconnected before stream connection`);
       }
     }, 0);
+  }
+
+  async handleTerminalResize(event: Event) {
+    const customEvent = event as CustomEvent;
+    // Update terminal dimensions for display
+    const { cols, rows } = customEvent.detail;
+
+    // Notify the session view to update its state
+    if (this.stateCallbacks) {
+      this.stateCallbacks.updateTerminalDimensions(cols, rows);
+    }
+
+    // Debounce resize requests to prevent jumpiness
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+    }
+
+    this.resizeTimeout = window.setTimeout(async () => {
+      // Only send resize request if dimensions actually changed
+      if (cols === this.lastResizeWidth && rows === this.lastResizeHeight) {
+        logger.debug(`skipping redundant resize request: ${cols}x${rows}`);
+        return;
+      }
+
+      // Send resize request to backend if session is active
+      if (this.session && this.session.status !== 'exited') {
+        try {
+          logger.debug(
+            `sending resize request: ${cols}x${rows} (was ${this.lastResizeWidth}x${this.lastResizeHeight})`
+          );
+
+          const response = await fetch(`/api/sessions/${this.session.id}/resize`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...authClient.getAuthHeader(),
+            },
+            body: JSON.stringify({ cols: cols, rows: rows }),
+          });
+
+          if (response.ok) {
+            // Cache the successfully sent dimensions
+            this.lastResizeWidth = cols;
+            this.lastResizeHeight = rows;
+          } else {
+            logger.warn(`failed to resize session: ${response.status}`);
+          }
+        } catch (error) {
+          logger.warn('failed to send resize request', error);
+        }
+      }
+    }, 250) as unknown as number; // 250ms debounce delay
   }
 
   cleanup() {
