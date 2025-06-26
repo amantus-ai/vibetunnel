@@ -154,8 +154,11 @@ jobs:
           
           # Ensure native modules are present
           test -f native/pty.node || (echo "ERROR: pty.node not found" && exit 1)
-          test -f native/spawn-helper || (echo "ERROR: spawn-helper not found" && exit 1)
           test -f native/authenticate_pam.node || (echo "ERROR: authenticate_pam.node not found" && exit 1)
+          # spawn-helper is only needed on macOS
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            test -f native/spawn-helper || (echo "ERROR: spawn-helper not found" && exit 1)
+          fi
 
       - name: Upload SEA artifacts
         uses: actions/upload-artifact@v4
