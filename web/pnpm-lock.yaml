@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  node-pty:
-    hash: db1525fe72939682dc591e3ee02b2ac11621f7d868cf49729ba65dda3b37c1ee
-    path: patches/node-pty.patch
-
 importers:
 
   .:
@@ -69,7 +64,7 @@ importers:
         version: 0.52.2
       node-pty:
         specifier: github:microsoft/node-pty#v1.1.0-beta34
-        version: https://codeload.github.com/microsoft/node-pty/tar.gz/d738123f1faf7287513b0df8b9e327be54702e94(patch_hash=db1525fe72939682dc591e3ee02b2ac11621f7d868cf49729ba65dda3b37c1ee)
+        version: https://codeload.github.com/microsoft/node-pty/tar.gz/d738123f1faf7287513b0df8b9e327be54702e94
       postject:
         specifier: ^1.0.0-alpha.6
         version: 1.0.0-alpha.6
@@ -4999,7 +4994,7 @@ snapshots:
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
 
-  node-pty@https://codeload.github.com/microsoft/node-pty/tar.gz/d738123f1faf7287513b0df8b9e327be54702e94(patch_hash=db1525fe72939682dc591e3ee02b2ac11621f7d868cf49729ba65dda3b37c1ee):
+  node-pty@https://codeload.github.com/microsoft/node-pty/tar.gz/d738123f1faf7287513b0df8b9e327be54702e94:
     dependencies:
       node-addon-api: 7.1.1
 
