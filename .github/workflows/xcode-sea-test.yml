@@ -137,28 +137,13 @@ jobs:
           # Quick smoke test
           timeout 5s ./native/vibetunnel --help 2>&1 || true
 
-      - name: Copy SEA to macOS app resources
-        run: |
-          # Create the web-dist directory structure expected by Xcode
-          mkdir -p mac/Resources/web-dist
-          
-          # Copy the SEA executable and native modules
-          cp -v web/native/vibetunnel mac/Resources/web-dist/
-          cp -v web/native/pty.node mac/Resources/web-dist/
-          cp -v web/native/spawn-helper mac/Resources/web-dist/
-          cp -v web/native/authenticate_pam.node mac/Resources/web-dist/
-          
-          # Ensure executables have correct permissions
-          chmod +x mac/Resources/web-dist/vibetunnel
-          chmod +x mac/Resources/web-dist/spawn-helper
-          
-          echo "=== Copied files ==="
-          ls -lah mac/Resources/web-dist/
+      # Note: The Xcode build script (build-web-frontend.sh) will copy files from web/native/
+      # to the correct location in the app bundle, so we don't need to pre-copy them
 
       - name: Resolve Xcode dependencies
         run: |
           echo "Resolving Swift package dependencies..."
-          xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
+          xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace || echo "Dependency resolution completed"
 
       - name: Build macOS app with Xcode
         run: |
@@ -183,17 +168,19 @@ jobs:
           
           # Verify the SEA executable is in the app bundle
           echo "=== Checking app bundle contents ==="
-          ls -lah "${APP_PATH}/Contents/Resources/web-dist/" || echo "web-dist not found in bundle"
+          ls -lah "${APP_PATH}/Contents/Resources/" | grep -E "(vibetunnel|pty.node|spawn-helper|authenticate_pam.node)" || true
           
           # Check if vibetunnel binary exists in the bundle
-          if [ -f "${APP_PATH}/Contents/Resources/web-dist/vibetunnel" ]; then
+          if [ -f "${APP_PATH}/Contents/Resources/vibetunnel" ]; then
             echo "✓ SEA executable found in app bundle"
             
             # Test the binary from within the app bundle
             echo "=== Testing SEA from app bundle ==="
-            "${APP_PATH}/Contents/Resources/web-dist/vibetunnel" --version 2>&1 || echo "Version test failed"
+            "${APP_PATH}/Contents/Resources/vibetunnel" --version 2>&1 || echo "Version test failed"
           else
             echo "✗ SEA executable NOT found in app bundle!"
+            echo "Contents of Resources directory:"
+            ls -lah "${APP_PATH}/Contents/Resources/" || true
             exit 1
           fi
 
@@ -211,12 +198,14 @@ jobs:
           # Check binary architecture
           echo "=== Checking architectures ==="
           lipo -info "${APP_PATH}/Contents/MacOS/VibeTunnel"
-          lipo -info "${APP_PATH}/Contents/Resources/web-dist/vibetunnel" || true
+          lipo -info "${APP_PATH}/Contents/Resources/vibetunnel" || true
           
           # Size comparison
           echo "=== Size Analysis ==="
           echo "App size: $(du -sh "${APP_PATH}" | cut -f1)"
-          echo "SEA executable: $(du -h "${APP_PATH}/Contents/Resources/web-dist/vibetunnel" | cut -f1)"
+          if [ -f "${APP_PATH}/Contents/Resources/vibetunnel" ]; then
+            echo "SEA executable: $(du -h "${APP_PATH}/Contents/Resources/vibetunnel" | cut -f1)"
+          fi
           echo "Custom Node.js used: $(( ${{ needs.build-custom-node-mac.outputs.node-size }} / 1024 / 1024 )) MB"
 
       - name: Upload app artifact
