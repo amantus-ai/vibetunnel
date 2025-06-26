@@ -53,6 +53,11 @@ export class TerminalLifecycleManager {
     this.terminalMaxCols = maxCols;
   }
 
+  setupTerminal() {
+    // Terminal element will be created in render()
+    // We'll initialize it in updated() after first render
+  }
+
   cleanup() {
     if (this.resizeTimeout) {
       clearTimeout(this.resizeTimeout);
