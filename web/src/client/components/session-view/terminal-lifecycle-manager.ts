@@ -194,6 +194,14 @@ export class TerminalLifecycleManager {
     }, 250) as unknown as number; // 250ms debounce delay
   }
 
+  handleTerminalPaste(e: Event) {
+    const customEvent = e as CustomEvent;
+    const text = customEvent.detail?.text;
+    if (text && this.session && this.inputManager) {
+      this.inputManager.sendInputText(text);
+    }
+  }
+
   cleanup() {
     if (this.resizeTimeout) {
       clearTimeout(this.resizeTimeout);
