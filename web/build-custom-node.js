@@ -3,18 +3,27 @@
 /**
  * Build a custom Node.js binary with reduced size by excluding features we don't need.
  * 
- * See custom-node-build-flags.md for detailed documentation and size optimization results.
+ * This script automatically adapts to CI and local environments.
  * 
- * Quick usage:
- *   node build-custom-node.js               # Builds Node.js 24.2.0 (recommended)
- *   node build-custom-node.js --latest      # Latest version
- *   node build-custom-node.js --version=24.2.0  # Specific version
+ * Usage:
+ *   node build-custom-node.js                    # Builds Node.js 24.2.0 (recommended)
+ *   node build-custom-node.js --latest           # Latest version
+ *   node build-custom-node.js --version=24.2.0   # Specific version
+ *   NODE_VERSION=24.2.0 node build-custom-node.js  # Via environment variable (CI)
+ * 
+ * In CI environments:
+ *   - Outputs GitHub Actions variables
+ *   - Uses ccache if available
+ *   - Creates build summary files
  */
 
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+
+// Detect if running in CI
+const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -26,6 +35,17 @@ for (const arg of args) {
     targetVersion = arg.split('=')[1];
   } else if (arg === '--latest') {
     useLatest = true;
+  }
+}
+
+// Helper for GitHub Actions output
+function setOutput(name, value) {
+  if (process.env.GITHUB_OUTPUT) {
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
+  }
+  // Legacy format for older GitHub Actions
+  if (isCI) {
+    console.log(`::set-output name=${name}::${value}`);
   }
 }
 
@@ -70,7 +90,7 @@ async function getLatestNodeVersion() {
 }
 
 async function buildCustomNode() {
-  // Determine version to build
+  // Determine version to build (CLI args take precedence over env vars)
   let nodeSourceVersion;
   if (useLatest) {
     console.log('Fetching latest Node.js version...');
@@ -78,18 +98,27 @@ async function buildCustomNode() {
     console.log(`Latest Node.js version: ${nodeSourceVersion}`);
   } else if (targetVersion) {
     nodeSourceVersion = targetVersion;
+  } else if (process.env.NODE_VERSION) {
+    // Support CI environment variable
+    nodeSourceVersion = process.env.NODE_VERSION;
   } else {
     // Default to Node.js 24.2.0 (recommended version)
     nodeSourceVersion = '24.2.0';
   }
   
-  console.log(`Building custom Node.js ${nodeSourceVersion} with all feature removals (-Os)...`);
-  console.log('This will take 10-20 minutes on first run, but will be cached for future builds.');
+  const platform = process.platform;
+  const arch = process.arch;
+  
+  console.log(`Building custom Node.js ${nodeSourceVersion} for ${platform}-${arch}...`);
+  if (!isCI) {
+    console.log('This will take 10-20 minutes on first run, but will be cached for future builds.');
+  }
   
   const nodeSourceUrl = `https://nodejs.org/dist/v${nodeSourceVersion}/node-v${nodeSourceVersion}.tar.gz`;
   const majorVersion = nodeSourceVersion.split('.')[0];
   
-  const buildDir = path.join(__dirname, '.node-builds');
+  // In CI scripts directory, go up one level to find web root
+  const buildDir = path.join(__dirname, __dirname.endsWith('scripts') ? '..' : '.', '.node-builds');
   const versionDir = path.join(buildDir, `node-v${nodeSourceVersion}-minimal`);
   const markerFile = path.join(versionDir, '.build-complete');
   const customNodePath = path.join(versionDir, 'out', 'Release', 'node');
@@ -99,8 +128,16 @@ async function buildCustomNode() {
     console.log(`Using cached custom Node.js build from ${customNodePath}`);
     const stats = fs.statSync(customNodePath);
     console.log(`Cached custom Node.js size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`\nTo use this custom Node.js with build-native.js:`);
-    console.log(`node build-native.js --custom-node="${customNodePath}"`);
+    
+    if (isCI) {
+      // Set outputs for GitHub Actions
+      setOutput('node-path', customNodePath);
+      setOutput('node-size', stats.size);
+      setOutput('cache-hit', 'true');
+    } else {
+      console.log(`\nTo use this custom Node.js with build-native.js:`);
+      console.log(`node build-native.js --custom-node="${customNodePath}"`);
+    }
     return customNodePath;
   }
   
@@ -109,8 +146,8 @@ async function buildCustomNode() {
     fs.mkdirSync(buildDir, { recursive: true });
   }
   
-  // Clean up old version directory if exists
-  if (fs.existsSync(versionDir)) {
+  // Clean up incomplete builds (check for marker file)
+  if (fs.existsSync(versionDir) && !fs.existsSync(markerFile)) {
     console.log('Cleaning up incomplete build...');
     fs.rmSync(versionDir, { recursive: true, force: true });
   }
@@ -131,12 +168,14 @@ async function buildCustomNode() {
     
     // Rename to version-specific directory
     const extractedDir = path.join(buildDir, `node-v${nodeSourceVersion}`);
-    fs.renameSync(extractedDir, versionDir);
+    if (fs.existsSync(extractedDir)) {
+      fs.renameSync(extractedDir, versionDir);
+    }
     
     // Configure and build
     process.chdir(versionDir);
     
-    console.log('Configuring Node.js build (all feature removals, -Os only)...');
+    console.log('Configuring Node.js build...');
     const configureArgs = [
       '--without-intl',  // Remove internationalization support
       '--without-npm',   // Don't include npm
@@ -144,8 +183,39 @@ async function buildCustomNode() {
       '--without-inspector', // Remove debugging/profiling features
       '--without-node-code-cache', // Disable code cache
       '--without-node-snapshot',  // Don't create/use startup snapshot
-      '--ninja',  // Use ninja if available for faster builds
     ];
+    
+    // Check if ninja is available
+    try {
+      execSync('which ninja', { stdio: 'ignore' });
+      configureArgs.push('--ninja');
+      console.log('Using Ninja for faster builds...');
+    } catch {
+      if (!isCI && platform === 'darwin') {
+        console.log('Ninja not found, installing via Homebrew...');
+        try {
+          execSync('brew install ninja', { stdio: 'inherit' });
+          configureArgs.push('--ninja');
+          console.log('Ninja installed successfully');
+        } catch (brewError) {
+          console.log('Failed to install ninja, falling back to Make...');
+        }
+      } else {
+        console.log('Ninja not found, using Make...');
+      }
+    }
+    
+    // Enable ccache if available in CI
+    if (isCI) {
+      try {
+        execSync('which ccache', { stdio: 'ignore' });
+        process.env.CC = 'ccache gcc';
+        process.env.CXX = 'ccache g++';
+        console.log('Using ccache for faster rebuilds...');
+      } catch {
+        console.log('ccache not found, proceeding without it...');
+      }
+    }
     
     // Use -Os optimization which is proven to be safe
     process.env.CFLAGS = '-Os';
@@ -153,33 +223,22 @@ async function buildCustomNode() {
     // Clear LDFLAGS to avoid any issues
     delete process.env.LDFLAGS;
     
-    // Check if ninja is available, install if not
-    try {
-      execSync('which ninja', { stdio: 'ignore' });
-      console.log('Using Ninja for faster builds...');
-    } catch {
-      console.log('Ninja not found, installing via Homebrew...');
-      try {
-        execSync('brew install ninja', { stdio: 'inherit' });
-        console.log('Ninja installed successfully');
-      } catch (brewError) {
-        console.log('Failed to install ninja, falling back to Make...');
-        // Remove --ninja if not available
-        configureArgs.pop();
-      }
-    }
-    
     execSync(`./configure ${configureArgs.join(' ')}`, { stdio: 'inherit' });
     
     console.log('Building Node.js (this will take a while)...');
     const cores = require('os').cpus().length;
+    const startTime = Date.now();
     
     // Check if we're using ninja or make
-    const buildSystem = configureArgs.includes('--ninja') ? 'ninja' : 'make';
-    if (buildSystem === 'ninja') {
-      execSync(`ninja -C out/Release -j ${cores}`, { stdio: 'inherit' });
-    } else {
-      execSync(`make -j${cores}`, { stdio: 'inherit' });
+    const buildCmd = configureArgs.includes('--ninja')
+      ? `ninja -C out/Release -j ${cores}`
+      : `make -j${cores}`;
+    
+    execSync(buildCmd, { stdio: 'inherit' });
+    
+    const buildTime = Math.round((Date.now() - startTime) / 1000);
+    if (isCI) {
+      console.log(`Build completed in ${buildTime} seconds`);
     }
     
     // Verify the build
@@ -187,9 +246,14 @@ async function buildCustomNode() {
       throw new Error('Node.js build failed - binary not found');
     }
     
-    // Strip the binary
+    // Test the binary
+    const version = execSync(`"${customNodePath}" --version`, { encoding: 'utf8' }).trim();
+    console.log(`Built Node.js version: ${version}`);
+    
+    // Strip the binary (different command for Linux vs macOS)
     console.log('Stripping Node.js binary...');
-    execSync(`strip -S "${customNodePath}"`, { stdio: 'inherit' });
+    const stripCmd = platform === 'darwin' ? 'strip -S' : 'strip -s';
+    execSync(`${stripCmd} "${customNodePath}"`, { stdio: 'inherit' });
     
     // Check final size
     const stats = fs.statSync(customNodePath);
@@ -206,31 +270,76 @@ async function buildCustomNode() {
     }
     
     // Mark build as complete
-    fs.writeFileSync(markerFile, JSON.stringify({
+    const buildInfo = {
       version: nodeSourceVersion,
       buildDate: new Date().toISOString(),
       size: stats.size,
+      platform: platform,
+      arch: arch,
       configureArgs: configureArgs
-    }, null, 2));
+    };
+    
+    if (isCI) {
+      buildInfo.buildTime = buildTime;
+    }
+    
+    fs.writeFileSync(markerFile, JSON.stringify(buildInfo, null, 2));
+    
+    // Create a summary file for CI
+    if (isCI) {
+      const summaryPath = path.join(versionDir, 'build-summary.txt');
+      const summary = `
+Custom Node.js Build Summary
+============================
+Version: ${nodeSourceVersion}
+Platform: ${platform}-${arch}
+Size: ${(stats.size / 1024 / 1024).toFixed(2)} MB
+Build Time: ${buildTime} seconds
+Configure Args: ${configureArgs.join(' ')}
+Path: ${customNodePath}
+`;
+      fs.writeFileSync(summaryPath, summary);
+    }
     
     // Change back to original directory
     process.chdir(originalCwd);
     
+    if (isCI) {
+      // Set outputs for GitHub Actions
+      setOutput('node-path', customNodePath);
+      setOutput('node-size', stats.size);
+      setOutput('node-version', version);
+      setOutput('build-time', buildTime);
+      setOutput('cache-hit', 'false');
+    }
+    
+    // Output for both CI and local use
     console.log(`\nCustom Node.js location: ${customNodePath}`);
-    console.log(`\nTo use this custom Node.js with build-native.js:`);
+    console.log(`To use this custom Node.js with build-native.js:`);
     console.log(`node build-native.js --custom-node="${customNodePath}"`);
     
     return customNodePath;
     
   } catch (error) {
     process.chdir(originalCwd);
-    console.error('Failed to build custom Node.js:', error.message);
+    console.error('Failed to build custom Node.js:', error.message || error);
+    
+    // Set error output for CI
+    if (isCI) {
+      setOutput('build-error', error.message || 'Unknown error');
+    }
+    
     process.exit(1);
   }
 }
 
-// Run the build
-buildCustomNode().catch(err => {
-  console.error('Build failed:', err);
-  process.exit(1);
-});
+// Run the build if called directly
+if (require.main === module) {
+  buildCustomNode().catch(err => {
+    console.error('Build failed:', err);
+    process.exit(1);
+  });
+}
+
+// Export for use as a module
+module.exports = { buildCustomNode };

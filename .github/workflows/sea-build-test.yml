@@ -59,8 +59,7 @@ jobs:
         id: build-node
         working-directory: web
         run: |
-          chmod +x scripts/build-custom-node-ci.js
-          node scripts/build-custom-node-ci.js
+          node build-custom-node.js
 
       - name: Set Node.js path output
         id: node-info
