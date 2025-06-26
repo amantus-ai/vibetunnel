@@ -36,6 +36,11 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpam0g-dev
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -66,6 +71,11 @@ jobs:
           node-version: 20
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpam0g-dev
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -100,6 +110,11 @@ jobs:
           node-version: 20
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpam0g-dev
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

@@ -36,9 +36,6 @@
       "esbuild",
       "puppeteer"
     ],
-    "patchedDependencies": {
-      "node-pty": "patches/node-pty.patch"
-    }
   },
   "dependencies": {
     "@codemirror/commands": "^6.6.2",

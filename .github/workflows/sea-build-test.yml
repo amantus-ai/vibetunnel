@@ -41,7 +41,8 @@ jobs:
             build-essential \
             python3 \
             ninja-build \
-            ccache
+            ccache \
+            libpam0g-dev
 
       - name: Cache custom Node.js build (Blacksmith)
         id: cache-custom-node
@@ -111,6 +112,11 @@ jobs:
           key: ${{ env.CUSTOM_NODE_CACHE_KEY }}-v${{ env.NODE_VERSION }}-${{ hashFiles('web/build-custom-node.js') }}
           fail-on-cache-miss: true
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpam0g-dev
+
       - name: Install dependencies
         working-directory: web
         run: |
@@ -176,7 +182,8 @@ jobs:
             build-essential \
             python3 \
             ninja-build \
-            ccache
+            ccache \
+            libpam0g-dev
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
