@@ -5,8 +5,8 @@
  * Tests PTY spawning, terminal raw mode, stdin/stdout forwarding
  */
 
-import * as pty from '@homebridge/node-pty-prebuilt-multiarch';
-import { which } from '@homebridge/node-pty-prebuilt-multiarch/lib/utils';
+import * as pty from 'node-pty';
+import { which } from 'node-pty/lib/utils';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';

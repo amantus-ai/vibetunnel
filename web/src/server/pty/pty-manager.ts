@@ -5,12 +5,12 @@
  * using the node-pty library while maintaining compatibility with tty-fwd.
  */
 
-import type { IPty } from '@homebridge/node-pty-prebuilt-multiarch';
-import * as pty from '@homebridge/node-pty-prebuilt-multiarch';
 import chalk from 'chalk';
 import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import * as net from 'net';
+import type { IPty } from 'node-pty';
+import * as pty from 'node-pty';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import type {

@@ -11,7 +11,7 @@ if (!globalThis.crypto) {
 }
 
 // Mock the native pty module before any imports
-vi.mock('@homebridge/node-pty-prebuilt-multiarch', () => ({
+vi.mock('node-pty', () => ({
   spawn: vi.fn(() => ({
     pid: 12345,
     cols: 80,

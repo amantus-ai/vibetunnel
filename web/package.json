@@ -31,11 +31,14 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@homebridge/node-pty-prebuilt-multiarch",
+      "node-pty",
       "authenticate-pam",
       "esbuild",
       "puppeteer"
-    ]
+    ],
+    "patchedDependencies": {
+      "node-pty": "patches/node-pty.patch"
+    }
   },
   "dependencies": {
     "@codemirror/commands": "^6.6.2",
@@ -48,7 +51,6 @@
     "@codemirror/state": "^6.4.1",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.28.0",
-    "@homebridge/node-pty-prebuilt-multiarch": "^0.12.0",
     "@xterm/headless": "^5.5.0",
     "authenticate-pam": "^1.0.5",
     "chalk": "^4.1.2",
@@ -57,6 +59,7 @@
     "lit": "^3.3.0",
     "mime-types": "^3.0.1",
     "monaco-editor": "^0.52.2",
+    "node-pty": "github:microsoft/node-pty#v1.1.0-beta34",
     "postject": "^1.0.0-alpha.6",
     "signal-exit": "^4.1.0",
     "web-push": "^3.6.7",

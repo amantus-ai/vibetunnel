@@ -13,51 +13,12 @@
  * - `pty.node` - Native binding for terminal emulation
  * - `spawn-helper` - Helper binary for spawning processes (Unix only)
  *
- * ## How it works
- *
- * 1. **Patches node-pty** to work with SEA's limitations:
- *    - SEA's require() can only load built-in Node.js modules, not external files
- *    - We patch node-pty to use `process.dlopen()` instead of `require()` for native modules
- *    - All file lookups are changed to look next to the executable, not in node_modules
- *
- * 2. **Bundles TypeScript** using esbuild:
- *    - Compiles and bundles all TypeScript/JavaScript into a single file
- *    - Includes inline sourcemaps for better debugging
- *    - Source map support can be enabled with --sourcemap flag
- *
- * 3. **Creates SEA blob**:
- *    - Uses Node.js's experimental SEA config to generate a blob from the bundle
- *    - The blob contains all the JavaScript code and can be injected into a Node binary
- *
- * 4. **Injects into Node.js binary**:
- *    - Copies the Node.js executable and injects the SEA blob using postject
- *    - Signs the binary on macOS to avoid security warnings
- *
- * ## Portability
- * The resulting executable is fully portable:
- * - No absolute paths are embedded
- * - Native modules are loaded relative to the executable location
- * - Can be moved to any directory or machine with the same OS/architecture
- *
  * ## Usage
  * ```bash
  * node build-native.js                    # Build with system Node.js
  * node build-native.js --sourcemap        # Build with inline sourcemaps
  * node build-native.js --custom-node=/path/to/node  # Use custom Node.js binary
- *
- * # Build custom Node.js first:
- * node build-custom-node.js               # Build minimal Node.js for current version
- * node build-custom-node.js --version=24.2.0  # Build specific version
  * ```
- *
- * ## Requirements
- * - Node.js 20+ (for SEA support)
- * - postject (installed automatically if needed)
- *
- * ## Known Limitations
- * - The SEA warning about require() limitations is expected and harmless
- * - Native modules must be distributed alongside the executable
- * - Cross-platform builds are not supported (build on the target platform)
  */
 
 const { execSync } = require('child_process');
@@ -73,33 +34,8 @@ for (let i = 0; i < process.argv.length; i++) {
   const arg = process.argv[i];
   if (arg.startsWith('--custom-node=')) {
     customNodePath = arg.split('=')[1];
-  } else if (arg === '--custom-node') {
-    // Check if next argument is a path
-    if (i + 1 < process.argv.length && !process.argv[i + 1].startsWith('--')) {
-      customNodePath = process.argv[i + 1];
-    } else {
-      // No path provided, search for custom Node.js build
-      console.log('Searching for custom Node.js build...');
-      const customBuildsDir = path.join(__dirname, '.node-builds');
-      if (fs.existsSync(customBuildsDir)) {
-        const dirs = fs.readdirSync(customBuildsDir)
-          .filter(dir => dir.startsWith('node-v') && dir.endsWith('-minimal'))
-          .map(dir => ({
-            name: dir,
-            path: path.join(customBuildsDir, dir, 'out/Release/node'),
-            mtime: fs.statSync(path.join(customBuildsDir, dir)).mtime
-          }))
-          .filter(item => fs.existsSync(item.path))
-          .sort((a, b) => b.mtime - a.mtime); // Sort by modification time, newest first
-
-        if (dirs.length > 0) {
-          customNodePath = dirs[0].path;
-          console.log(`Found custom Node.js at: ${customNodePath}`);
-        } else {
-          console.log('No custom Node.js builds found in .node-builds/');
-        }
-      }
-    }
+  } else if (arg === '--custom-node' && i + 1 < process.argv.length) {
+    customNodePath = process.argv[i + 1];
   }
 }
 
@@ -114,340 +50,6 @@ const nodeVersion = parseInt(process.version.split('.')[0].substring(1));
 if (nodeVersion < 20) {
   console.error('Error: Node.js 20 or higher is required for SEA feature');
   process.exit(1);
-}
-
-function patchNodePty() {
-  console.log('Preparing node-pty for SEA build...');
-
-  // Always reinstall to ensure clean state
-  console.log('Reinstalling node-pty to ensure clean state...');
-  execSync('rm -rf node_modules/@homebridge/node-pty-prebuilt-multiarch', { stdio: 'inherit' });
-  
-  // Suppress npm warnings during installation
-  execSync('NODE_NO_WARNINGS=1 pnpm install @homebridge/node-pty-prebuilt-multiarch --silent', { 
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      NODE_NO_WARNINGS: '1',
-      npm_config_loglevel: 'error'
-    }
-  });
-  
-  // Also ensure authenticate-pam is installed
-  console.log('Ensuring authenticate-pam is installed...');
-  execSync('pnpm install authenticate-pam --silent 2>/dev/null || pnpm install authenticate-pam --silent', { 
-    stdio: ['inherit', 'inherit', 'pipe'],
-    shell: true 
-  });
-
-  // If using custom Node.js, rebuild native modules
-  if (customNodePath) {
-    console.log('Custom Node.js detected - rebuilding native modules...');
-
-    // Get versions
-    const customVersion = execSync(`"${customNodePath}" --version`, { encoding: 'utf8' }).trim();
-    const systemVersion = process.version;
-
-    console.log(`Custom Node.js: ${customVersion}`);
-    console.log(`System Node.js: ${systemVersion}`);
-
-    // Rebuild node-pty with the custom Node using pnpm rebuild
-    console.log('Rebuilding @homebridge/node-pty-prebuilt-multiarch with custom Node.js...');
-
-    try {
-      // Use system Node to run pnpm, but rebuild for custom Node version
-      // The key is to use system Node.js to run pnpm (which needs regex support),
-      // but tell node-gyp to build against the custom Node.js headers
-      console.log('Using system Node.js to run pnpm for compatibility...');
-      
-      // First rebuild node-pty which is critical
-      execSync(`pnpm rebuild @homebridge/node-pty-prebuilt-multiarch`, {
-        stdio: 'inherit',
-        env: {
-          ...process.env,
-          npm_config_runtime: 'node',
-          npm_config_target: customVersion.substring(1), // Remove 'v' prefix
-          npm_config_arch: process.arch,
-          npm_config_target_arch: process.arch,
-          npm_config_disturl: 'https://nodejs.org/dist',
-          npm_config_build_from_source: 'true',
-          CXXFLAGS: '-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0',
-          MACOSX_DEPLOYMENT_TARGET: '14.0'
-        }
-      });
-      console.log('node-pty rebuilt successfully');
-      
-      // Rebuild authenticate-pam (required for authentication)
-      console.log('Rebuilding authenticate-pam...');
-      
-      // Create a wrapper script to filter warnings
-      const wrapperScript = `#!/bin/bash
-# Filter out specific warnings while preserving errors
-pnpm rebuild authenticate-pam "$@" 2>&1 | grep -v "cast from 'typename" | grep -v "converts to incompatible function type" | grep -v "expanded from macro" | grep -v "~~~" | grep -v "In file included from" | grep -v "warnings generated" | grep -v "In instantiation of" | grep -v "requested here" || true
-`;
-      fs.writeFileSync('build-wrapper.sh', wrapperScript, { mode: 0o755 });
-      
-      try {
-        execSync(`./build-wrapper.sh`, {
-          stdio: 'inherit',
-          env: {
-            ...process.env,
-            npm_config_runtime: 'node',
-            npm_config_target: customVersion.substring(1),
-            npm_config_arch: process.arch,
-            npm_config_target_arch: process.arch,
-            npm_config_disturl: 'https://nodejs.org/dist',
-            npm_config_build_from_source: 'true',
-            CXXFLAGS: '-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0 -Wno-cast-function-type -Wno-incompatible-function-pointer-types',
-            MACOSX_DEPLOYMENT_TARGET: '14.0'
-          }
-        });
-        console.log('authenticate-pam rebuilt successfully');
-      } finally {
-        // Clean up wrapper script
-        if (fs.existsSync('build-wrapper.sh')) {
-          fs.unlinkSync('build-wrapper.sh');
-        }
-      }
-      
-      console.log('Native modules rebuilt successfully with custom Node.js');
-    } catch (error) {
-      console.error('Failed to rebuild native module:', error.message);
-      console.error('Trying alternative rebuild method...');
-
-      // Alternative: Force reinstall and rebuild
-      try {
-        console.log('Forcing reinstall and rebuild...');
-        execSync(`rm -rf node_modules/@homebridge/node-pty-prebuilt-multiarch`, { stdio: 'inherit' });
-        execSync(`rm -rf node_modules/authenticate-pam`, { stdio: 'inherit' });
-        
-        // First install the packages
-        execSync(`pnpm install @homebridge/node-pty-prebuilt-multiarch authenticate-pam --force`, { stdio: 'inherit' });
-        
-        // Then rebuild them with custom Node settings
-        // Create a wrapper script to filter warnings
-        const rebuildWrapperScript = `#!/bin/bash
-# Filter out specific warnings while preserving errors
-pnpm rebuild @homebridge/node-pty-prebuilt-multiarch authenticate-pam "$@" 2>&1 | grep -v "cast from 'typename" | grep -v "converts to incompatible function type" | grep -v "expanded from macro" | grep -v "~~~" | grep -v "In file included from" | grep -v "warnings generated" | grep -v "In instantiation of" | grep -v "requested here" || true
-`;
-        fs.writeFileSync('rebuild-wrapper.sh', rebuildWrapperScript, { mode: 0o755 });
-        
-        try {
-          execSync(`./rebuild-wrapper.sh`, {
-            stdio: 'inherit',
-            env: {
-              ...process.env,
-              npm_config_runtime: 'node',
-              npm_config_target: customVersion.substring(1),
-              npm_config_arch: process.arch,
-              npm_config_target_arch: process.arch,
-              npm_config_disturl: 'https://nodejs.org/dist',
-              CXXFLAGS: '-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0 -Wno-cast-function-type -Wno-incompatible-function-pointer-types',
-              MACOSX_DEPLOYMENT_TARGET: '14.0'
-            }
-          });
-        } finally {
-          // Clean up wrapper script
-          if (fs.existsSync('rebuild-wrapper.sh')) {
-            fs.unlinkSync('rebuild-wrapper.sh');
-          }
-        }
-        console.log('Native module rebuilt from source successfully');
-      } catch (error2) {
-        console.error('Alternative rebuild also failed:', error2.message);
-        process.exit(1);
-      }
-    }
-  }
-
-  console.log('Patching node-pty for SEA build...');
-
-  // Marker to detect if files have been patched
-  const PATCH_MARKER = '/* VIBETUNNEL_SEA_PATCHED */';
-
-  // Helper function to check if file is already patched
-  function isFilePatched(filePath) {
-    if (!fs.existsSync(filePath)) return false;
-    const content = fs.readFileSync(filePath, 'utf8');
-    return content.includes(PATCH_MARKER);
-  }
-
-  // Patch prebuild-loader.js to use process.dlopen instead of require
-  const prebuildLoaderFile = path.join(__dirname, 'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/prebuild-loader.js');
-  const prebuildLoaderContent = `"use strict";
-${PATCH_MARKER}
-Object.defineProperty(exports, "__esModule", { value: true });
-var path = require("path");
-var fs = require("fs");
-
-// Custom loader for SEA that uses process.dlopen
-var pty;
-
-// Helper function to load native module using dlopen
-function loadNativeModule(modulePath) {
-  const module = { exports: {} };
-  process.dlopen(module, modulePath);
-  return module.exports;
-}
-
-// Determine the path to pty.node
-function getPtyPath() {
-  const execDir = path.dirname(process.execPath);
-  // Look for pty.node next to the executable first
-  const ptyPath = path.join(execDir, 'pty.node');
-
-  if (fs.existsSync(ptyPath)) {
-    return ptyPath;
-  }
-
-  // If not found, throw error with helpful message
-  throw new Error('Could not find pty.node next to executable at: ' + ptyPath);
-}
-
-try {
-  const ptyPath = getPtyPath();
-
-  // Set spawn-helper path for Unix systems
-  if (process.platform !== 'win32') {
-    const execDir = path.dirname(process.execPath);
-    const spawnHelperPath = path.join(execDir, 'spawn-helper');
-    if (fs.existsSync(spawnHelperPath)) {
-      process.env.NODE_PTY_SPAWN_HELPER_PATH = spawnHelperPath;
-    }
-  }
-
-  pty = loadNativeModule(ptyPath);
-} catch (error) {
-  console.error('Failed to load pty.node:', error);
-  throw error;
-}
-
-exports.default = pty;
-//# sourceMappingURL=prebuild-loader.js.map`;
-
-  if (isFilePatched(prebuildLoaderFile)) {
-    console.log('prebuild-loader.js is already patched, skipping...');
-  } else {
-    fs.writeFileSync(prebuildLoaderFile, prebuildLoaderContent.trimEnd() + '\n');
-    console.log('Patched prebuild-loader.js');
-  }
-
-  // Also patch windowsPtyAgent.js if it exists
-  const windowsPtyAgentFile = path.join(__dirname, 'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/windowsPtyAgent.js');
-  if (fs.existsSync(windowsPtyAgentFile)) {
-    if (isFilePatched(windowsPtyAgentFile)) {
-      console.log('windowsPtyAgent.js is already patched, skipping...');
-    } else {
-      let content = fs.readFileSync(windowsPtyAgentFile, 'utf8');
-      // Add patch marker at the beginning
-      content = `${PATCH_MARKER}\n` + content;
-      // Replace direct require of .node files with our loader
-      content = content.replace(
-        /require\(['"]\.\.\/build\/Release\/pty\.node['"]\)/g,
-        "require('./prebuild-loader').default"
-      );
-      fs.writeFileSync(windowsPtyAgentFile, content.trimEnd() + '\n');
-      console.log('Patched windowsPtyAgent.js');
-    }
-  }
-
-  // Patch index.js exports.native line
-  const indexFile = path.join(__dirname, 'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/index.js');
-  if (fs.existsSync(indexFile)) {
-    if (isFilePatched(indexFile)) {
-      console.log('index.js is already patched, skipping...');
-    } else {
-      let content = fs.readFileSync(indexFile, 'utf8');
-      // Add patch marker at the beginning
-      content = `${PATCH_MARKER}\n` + content;
-      // Replace the exports.native line that directly requires .node
-      content = content.replace(
-        /exports\.native = \(process\.platform !== 'win32' \? require\(prebuild_file_path_1\.ptyPath \|\| '\.\.\/build\/Release\/pty\.node'\) : null\);/,
-        "exports.native = (process.platform !== 'win32' ? require('./prebuild-loader').default : null);"
-      );
-      fs.writeFileSync(indexFile, content.trimEnd() + '\n');
-      console.log('Patched index.js');
-    }
-  }
-
-  // Patch unixTerminal.js to fix spawn-helper path resolution
-  const unixTerminalFile = path.join(__dirname, 'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/unixTerminal.js');
-  if (fs.existsSync(unixTerminalFile)) {
-    if (isFilePatched(unixTerminalFile)) {
-      console.log('unixTerminal.js is already patched, skipping...');
-    } else {
-      let content = fs.readFileSync(unixTerminalFile, 'utf8');
-      // Add patch marker at the beginning
-      content = `${PATCH_MARKER}\n` + content;
-
-      // Replace the helperPath resolution logic
-      const helperPathPatch = `var helperPath;
-// For SEA, use spawn-helper from environment or next to executable
-if (process.env.NODE_PTY_SPAWN_HELPER_PATH) {
-  helperPath = process.env.NODE_PTY_SPAWN_HELPER_PATH;
-} else {
-  // In SEA context, look next to the executable
-  const execDir = path.dirname(process.execPath);
-  const spawnHelperPath = path.join(execDir, 'spawn-helper');
-  if (require('fs').existsSync(spawnHelperPath)) {
-    helperPath = spawnHelperPath;
-  } else {
-    // Fallback to original logic
-    helperPath = '../build/Release/spawn-helper';
-    helperPath = path.resolve(__dirname, helperPath);
-    helperPath = helperPath.replace('app.asar', 'app.asar.unpacked');
-    helperPath = helperPath.replace('node_modules.asar', 'node_modules.asar.unpacked');
-  }
-}`;
-
-      // Find and replace the helperPath section
-      content = content.replace(
-        /var helperPath;[\s\S]*?helperPath = helperPath\.replace\('node_modules\.asar', 'node_modules\.asar\.unpacked'\);/m,
-        helperPathPatch
-      );
-
-      fs.writeFileSync(unixTerminalFile, content.trimEnd() + '\n');
-      console.log('Patched unixTerminal.js');
-    }
-  }
-
-  console.log('node-pty patching complete.');
-}
-
-// Function to clean patches from node-pty
-function cleanPatches() {
-  console.log('Cleaning patches from node-pty...');
-  
-  const filesToClean = [
-    'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/prebuild-loader.js',
-    'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/windowsPtyAgent.js',
-    'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/index.js',
-    'node_modules/@homebridge/node-pty-prebuilt-multiarch/lib/unixTerminal.js'
-  ];
-  
-  filesToClean.forEach(file => {
-    const filePath = path.join(__dirname, file);
-    if (fs.existsSync(filePath)) {
-      try {
-        fs.unlinkSync(filePath);
-        console.log(`Removed patched file: ${file}`);
-      } catch (err) {
-        console.error(`Failed to remove ${file}:`, err.message);
-      }
-    }
-  });
-  
-  // Run pnpm install to restore original files
-  console.log('Running pnpm install to restore original files...');
-  try {
-    execSync('pnpm install @homebridge/node-pty-prebuilt-multiarch --force', {
-      cwd: __dirname,
-      stdio: 'inherit'
-    });
-    console.log('Original files restored.');
-  } catch (err) {
-    console.error('Failed to restore original files:', err.message);
-  }
 }
 
 // Cleanup function
@@ -471,34 +73,6 @@ process.on('SIGTERM', () => {
 
 async function main() {
   try {
-    // Set up environment to suppress warnings
-    process.env.NODE_NO_WARNINGS = '1';
-    process.env.npm_config_loglevel = 'error';
-    
-    // Handle command line arguments
-    if (process.argv.includes('--help')) {
-      console.log('VibeTunnel Native Build Script\n');
-      console.log('Usage: node build-native.js [options]\n');
-      console.log('Options:');
-      console.log('  --help          Show this help message');
-      console.log('  --clean-patches Remove all patches from node-pty and restore original files');
-      console.log('  --force-patch   Force re-patching even if files are already patched');
-      console.log('  --keep-build    Keep the build directory after completion');
-      console.log('  --node <path>   Use a custom Node.js binary for SEA\n');
-      process.exit(0);
-    }
-    
-    if (process.argv.includes('--clean-patches')) {
-      cleanPatches();
-      process.exit(0);
-    }
-    
-    const forcePatching = process.argv.includes('--force-patch');
-    if (forcePatching) {
-      console.log('Force patching enabled - will re-patch even if already patched');
-      cleanPatches();
-    }
-    
     // Create build directory
     if (!fs.existsSync('build')) {
       fs.mkdirSync('build');
@@ -525,26 +99,32 @@ async function main() {
     const nodeStats = fs.statSync(nodeExe);
     console.log(`Node.js binary size: ${(nodeStats.size / 1024 / 1024).toFixed(2)} MB`);
 
-    // Get version of the Node.js we're using
+    // 1. Rebuild native modules if using custom Node.js
     if (customNodePath) {
-      try {
-        const customVersion = execSync(`"${nodeExe}" --version`, { encoding: 'utf8' }).trim();
-        console.log(`Custom Node.js version: ${customVersion}`);
-        console.log('This minimal build excludes intl, npm, inspector, and other unused features.');
-      } catch (e) {
-        console.log('Could not determine custom Node.js version');
-      }
+      console.log('\nCustom Node.js detected - rebuilding native modules...');
+      const customVersion = execSync(`"${nodeExe}" --version`, { encoding: 'utf8' }).trim();
+      console.log(`Custom Node.js version: ${customVersion}`);
+      
+      execSync(`pnpm rebuild node-pty authenticate-pam`, {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          npm_config_runtime: 'node',
+          npm_config_target: customVersion.substring(1), // Remove 'v' prefix
+          npm_config_arch: process.arch,
+          npm_config_target_arch: process.arch,
+          npm_config_disturl: 'https://nodejs.org/dist',
+          npm_config_build_from_source: 'true'
+        }
+      });
     }
 
-    // 1. Patch node-pty
-    patchNodePty();
-
-    // 2. Bundle TypeScript with esbuild using custom loader
+    // 2. Bundle TypeScript with esbuild
     console.log('\nBundling TypeScript with esbuild...');
     
     // Use deterministic timestamps based on git commit or source
-    let buildDate;
-    let buildTimestamp;
+    let buildDate = new Date().toISOString();
+    let buildTimestamp = Date.now();
     
     try {
       // Try to use the last commit date for reproducible builds
@@ -553,20 +133,10 @@ async function main() {
       buildTimestamp = new Date(gitDate).getTime();
       console.log(`Using git commit date for reproducible build: ${buildDate}`);
     } catch (e) {
-      // Fallback to SOURCE_DATE_EPOCH if set (for reproducible builds)
-      if (process.env.SOURCE_DATE_EPOCH) {
-        buildTimestamp = parseInt(process.env.SOURCE_DATE_EPOCH) * 1000;
-        buildDate = new Date(buildTimestamp).toISOString();
-        console.log(`Using SOURCE_DATE_EPOCH for reproducible build: ${buildDate}`);
-      } else {
-        // Only use current time as last resort
-        buildDate = new Date().toISOString();
-        buildTimestamp = Date.now();
-        console.warn('Warning: Using current time for build - output will not be reproducible');
-      }
+      // Fallback to current time
+      console.warn('Warning: Using current time for build - output will not be reproducible');
     }
 
-    // Use esbuild directly without custom loader since we're patching node-pty
     let esbuildCmd = `NODE_NO_WARNINGS=1 npx esbuild src/cli.ts \\
       --bundle \\
       --platform=node \\
@@ -576,14 +146,14 @@ async function main() {
       --keep-names \\
       --external:authenticate-pam \\
       --define:process.env.BUILD_DATE='"${buildDate}"' \\
-      --define:process.env.BUILD_TIMESTAMP='"${buildTimestamp}"'`;
+      --define:process.env.BUILD_TIMESTAMP='"${buildTimestamp}"' \\
+      --define:process.env.VIBETUNNEL_SEA='"true"'`;
     
     // Also inject git commit hash for version tracking
     try {
       const gitCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
       esbuildCmd += ` \\\n      --define:process.env.GIT_COMMIT='"${gitCommit}"'`;
     } catch (e) {
-      // Not in a git repo or git not available
       esbuildCmd += ` \\\n      --define:process.env.GIT_COMMIT='"unknown"'`;
     }
 
@@ -600,7 +170,7 @@ async function main() {
       }
     });
 
-    // 2. Create SEA configuration
+    // 3. Create SEA configuration
     console.log('\nCreating SEA configuration...');
     const seaConfig = {
       main: 'build/bundle.js',
@@ -612,11 +182,11 @@ async function main() {
 
     fs.writeFileSync('build/sea-config.json', JSON.stringify(seaConfig, null, 2));
 
-    // 3. Generate SEA blob
+    // 4. Generate SEA blob
     console.log('Generating SEA blob...');
     execSync('node --experimental-sea-config build/sea-config.json', { stdio: 'inherit' });
 
-    // 4. Create executable
+    // 5. Create executable
     console.log('\nCreating executable...');
     const targetExe = process.platform === 'win32' ? 'native/vibetunnel.exe' : 'native/vibetunnel';
 
@@ -626,7 +196,7 @@ async function main() {
       fs.chmodSync(targetExe, 0o755);
     }
 
-    // 5. Inject the blob
+    // 6. Inject the blob
     console.log('Injecting SEA blob...');
     let postjectCmd = `npx postject ${targetExe} NODE_SEA_BLOB build/sea-prep.blob \\
       --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2`;
@@ -637,16 +207,14 @@ async function main() {
 
     execSync(postjectCmd, { stdio: 'inherit' });
 
-    // 6. Strip the executable first (before signing)
+    // 7. Strip the executable first (before signing)
     console.log('Stripping final executable...');
-    // Note: This will show a warning about invalidating code signature, which is expected
-    // since we're modifying a signed Node.js binary. We'll re-sign it in the next step.
     execSync(`strip -S ${targetExe} 2>&1 | grep -v "warning: changes being made" || true`, {
       stdio: 'inherit',
       shell: true
     });
 
-    // 7. Sign on macOS (after stripping)
+    // 8. Sign on macOS (after stripping)
     if (process.platform === 'darwin') {
       console.log('Signing executable...');
       execSync(`codesign --sign - ${targetExe}`, { stdio: 'inherit' });
@@ -657,9 +225,9 @@ async function main() {
     console.log(`Final executable size: ${(finalStats.size / 1024 / 1024).toFixed(2)} MB`);
     console.log(`Size reduction: ${((nodeStats.size - finalStats.size) / 1024 / 1024).toFixed(2)} MB`);
 
-    // 8. Copy native modules BEFORE restoring (to preserve custom-built versions)
-    console.log('Copying native modules...');
-    const nativeModulesDir = 'node_modules/@homebridge/node-pty-prebuilt-multiarch/build/Release';
+    // 9. Copy native modules
+    console.log('\nCopying native modules...');
+    const nativeModulesDir = 'node_modules/node-pty/build/Release';
 
     // Check if native modules exist
     if (!fs.existsSync(nativeModulesDir)) {
@@ -698,11 +266,6 @@ async function main() {
       console.error('Error: authenticate_pam.node not found. PAM authentication is required.');
       process.exit(1);
     }
-
-    // 9. Restore original node-pty (AFTER copying the custom-built version)
-    console.log('\nRestoring original node-pty for development...');
-    execSync('rm -rf node_modules/@homebridge/node-pty-prebuilt-multiarch', { stdio: 'inherit' });
-    execSync('pnpm install @homebridge/node-pty-prebuilt-multiarch --silent', { stdio: 'inherit' });
 
     console.log('\n✅ Build complete!');
     console.log(`\nPortable executable created in native/ directory:`);

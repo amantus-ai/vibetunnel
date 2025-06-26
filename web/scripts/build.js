@@ -66,7 +66,7 @@ async function build() {
       format: 'cjs',
       outfile: 'dist/vibetunnel-cli',
       external: [
-        '@homebridge/node-pty-prebuilt-multiarch',
+        'node-pty',
         'authenticate-pam',
       ],
       minify: true,

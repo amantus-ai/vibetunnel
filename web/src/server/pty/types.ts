@@ -4,9 +4,9 @@
  * These types match the tty-fwd format to ensure compatibility
  */
 
-import type { IPty } from '@homebridge/node-pty-prebuilt-multiarch';
 import type * as fs from 'fs';
 import type * as net from 'net';
+import type { IPty } from 'node-pty';
 import type { SessionInfo } from '../../shared/types.js';
 import type { AsciinemaWriter } from './asciinema-writer.js';
 
