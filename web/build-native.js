@@ -152,7 +152,27 @@ exports.default = pty;
     if (!content.includes('VIBETUNNEL_SEA')) {
       content = content.replace(
         "exports.native = (process.platform !== 'win32' ? require('../build/Release/pty.node') : null);",
-        "exports.native = (process.platform !== 'win32' ? (process.env.VIBETUNNEL_SEA ? require('./sea-loader').default : require('../build/Release/pty.node')) : null);"
+        `exports.native = (process.platform !== 'win32' ? (() => {
+          if (process.env.VIBETUNNEL_SEA) {
+            return require('./sea-loader').default;
+          }
+          // Try built version first
+          try {
+            return require('../build/Release/pty.node');
+          } catch (e) {
+            // Fallback to local native directory for development
+            try {
+              const path = require('path');
+              const localPtyPath = path.join(process.cwd(), 'native/pty.node');
+              const module = { exports: {} };
+              process.dlopen(module, localPtyPath);
+              return module.exports;
+            } catch (fallbackError) {
+              console.error('Failed to load pty.node from any location:', e.message, fallbackError.message);
+              throw e;
+            }
+          }
+        })() : null);`
       );
       fs.writeFileSync(indexPath, content);
     }
@@ -187,7 +207,7 @@ if (process.env.VIBETUNNEL_SEA) {
     }
     // On Linux, helperPath remains undefined which is fine
 } else {
-    // Original loading logic
+    // Enhanced loading logic with fallback to local native directory
     try {
         pty = require('../build/Release/pty.node');
         helperPath = '../build/Release/spawn-helper';
@@ -198,14 +218,41 @@ if (process.env.VIBETUNNEL_SEA) {
             helperPath = '../build/Debug/spawn-helper';
         }
         catch (innerError) {
-            console.error('innerError', innerError);
-            // Re-throw the exception from the Release require if the Debug require fails as well
-            throw outerError;
+            // Fallback to local native directory for development
+            try {
+                console.log('Attempting to load pty.node from local native directory...');
+                const fs = require('fs');
+                const localPtyPath = path.join(process.cwd(), 'native/pty.node');
+                const localSpawnHelperPath = path.join(process.cwd(), 'native/spawn-helper');
+                
+                if (fs.existsSync(localPtyPath)) {
+                    const module = { exports: {} };
+                    process.dlopen(module, localPtyPath);
+                    pty = module.exports;
+                    
+                    // Set helper path if it exists
+                    if (fs.existsSync(localSpawnHelperPath)) {
+                        helperPath = localSpawnHelperPath;
+                    }
+                    console.log('Successfully loaded pty.node from:', localPtyPath);
+                } else {
+                    throw new Error('pty.node not found in local native directory: ' + localPtyPath);
+                }
+            } catch (fallbackError) {
+                console.error('innerError', innerError);
+                console.error('fallbackError', fallbackError);
+                // Re-throw the exception from the Release require if all methods fail
+                throw outerError;
+            }
         }
     }
-    helperPath = path.resolve(__dirname, helperPath);
-    helperPath = helperPath.replace('app.asar', 'app.asar.unpacked');
-    helperPath = helperPath.replace('node_modules.asar', 'node_modules.asar.unpacked');
+    
+    // Only process helperPath if it's a relative path (not already absolute from fallback)
+    if (helperPath && !path.isAbsolute(helperPath)) {
+        helperPath = path.resolve(__dirname, helperPath);
+        helperPath = helperPath.replace('app.asar', 'app.asar.unpacked');
+        helperPath = helperPath.replace('node_modules.asar', 'node_modules.asar.unpacked');
+    }
 }
 `;
         content = content.substring(0, startIdx) + newSection + content.substring(endIdx);
@@ -223,22 +270,47 @@ async function main() {
     applyMinimalPatches();
     
     // Ensure native modules are built (in case postinstall didn't run)
-    const nativePtyDir = 'node_modules/node-pty/build/Release';
-    const nativeAuthDir = 'node_modules/authenticate-pam/build/Release';
+    // Check if we have pty.node available (either built or pre-existing)
+    const localPtyPath = path.join(__dirname, 'native/pty.node');
+    let havePtyNode = fs.existsSync(localPtyPath);
     
-    if (!fs.existsSync(nativePtyDir)) {
-      console.log('Building node-pty native module...');
-      // Find the actual node-pty path (could be in .pnpm directory)
-      const nodePtyPath = require.resolve('node-pty/package.json');
-      const nodePtyDir = path.dirname(nodePtyPath);
-      console.log(`Found node-pty at: ${nodePtyDir}`);
-      
-      // Build node-pty using node-gyp directly to avoid TypeScript compilation
-      execSync(`cd "${nodePtyDir}" && npx node-gyp rebuild`, { 
-        stdio: 'inherit',
-        shell: true
-      });
+    if (!havePtyNode) {
+      // Check if built in node_modules
+      try {
+        const nodePtyPath = require.resolve('node-pty/package.json');
+        const nodePtyDir = path.dirname(nodePtyPath);
+        const nativePtyDir = path.join(nodePtyDir, 'build/Release');
+        const builtPtyPath = path.join(nativePtyDir, 'pty.node');
+        
+        if (fs.existsSync(builtPtyPath)) {
+          havePtyNode = true;
+          console.log('Found existing node-pty build');
+        } else {
+          console.log('Building node-pty native module...');
+          console.log(`Found node-pty at: ${nodePtyDir}`);
+          
+          try {
+            // Build node-pty using node-gyp directly to avoid TypeScript compilation
+            execSync(`cd "${nodePtyDir}" && npx node-gyp rebuild`, { 
+              stdio: 'inherit',
+              shell: true
+            });
+            havePtyNode = true;
+          } catch (buildError) {
+            console.warn('Warning: Failed to build node-pty:', buildError.message);
+            console.warn('Continuing with build - will check for pre-built pty.node later');
+          }
+        }
+      } catch (e) {
+        console.warn('Warning: Could not resolve node-pty package:', e.message);
+        console.warn('Continuing with build - will check for pre-built pty.node later');
+      }
+    } else {
+      console.log('Found existing pty.node in ./native/ directory');
     }
+    
+    // Check authenticate-pam
+    const nativeAuthDir = 'node_modules/authenticate-pam/build/Release';
     
     if (!fs.existsSync(nativeAuthDir)) {
       console.log('Building authenticate-pam native module...');
@@ -472,39 +544,74 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
     // 9. Copy native modules
     console.log('\nCopying native modules...');
     
-    // Find the actual node-pty build directory (could be in .pnpm directory)
-    const nodePtyPath = require.resolve('node-pty/package.json');
-    const nodePtyBaseDir = path.dirname(nodePtyPath);
-    const nativeModulesDir = path.join(nodePtyBaseDir, 'build/Release');
+    // Find pty.node with fallback paths
+    let ptyNodePath = null;
+    let spawnHelperPath = null;
+    
+    // Option 1: Check if already exists in ./native/
+    const nativePtyPath = path.join(__dirname, 'native/pty.node');
+    if (fs.existsSync(nativePtyPath)) {
+      console.log(`Found existing pty.node at ${nativePtyPath}`);
+      ptyNodePath = nativePtyPath;
+    } else {
+      // Option 2: Look in node-pty build directory
+      try {
+        const nodePtyPath = require.resolve('node-pty/package.json');
+        const nodePtyBaseDir = path.dirname(nodePtyPath);
+        const nativeModulesDir = path.join(nodePtyBaseDir, 'build/Release');
+        const builtPtyPath = path.join(nativeModulesDir, 'pty.node');
+        
+        if (fs.existsSync(builtPtyPath)) {
+          console.log(`Found pty.node in node-pty build directory: ${builtPtyPath}`);
+          ptyNodePath = builtPtyPath;
+          
+          // Also check for spawn-helper in the same directory
+          if (process.platform === 'darwin') {
+            spawnHelperPath = path.join(nativeModulesDir, 'spawn-helper');
+          }
+        }
+      } catch (e) {
+        console.warn('Could not resolve node-pty package path');
+      }
+    }
 
-    // Check if native modules exist
-    if (!fs.existsSync(nativeModulesDir)) {
-      console.error(`Error: Native modules directory not found at ${nativeModulesDir}`);
-      console.error('This usually means the native module build failed.');
+    // If still not found, error out
+    if (!ptyNodePath || !fs.existsSync(ptyNodePath)) {
+      console.error('Error: pty.node not found in any of the expected locations:');
+      console.error('  1. ./native/pty.node (local build)');
+      console.error('  2. node_modules/node-pty/build/Release/pty.node (npm build)');
+      console.error('\nPlease ensure you have either:');
+      console.error('  - A pre-built pty.node in ./native/ directory, or');
+      console.error('  - Successfully built node-pty using: npm rebuild node-pty');
       process.exit(1);
     }
 
-    // Copy pty.node
-    const ptyNodePath = path.join(nativeModulesDir, 'pty.node');
-    if (!fs.existsSync(ptyNodePath)) {
-      console.error('Error: pty.node not found. Native module build may have failed.');
-      process.exit(1);
+    // Copy pty.node (only if not already in the target location)
+    if (ptyNodePath !== nativePtyPath) {
+      fs.copyFileSync(ptyNodePath, 'native/pty.node');
+      console.log(`  - Copied pty.node from ${ptyNodePath}`);
+    } else {
+      console.log('  - Using existing pty.node');
     }
-    fs.copyFileSync(ptyNodePath, 'native/pty.node');
-    console.log('  - Copied pty.node');
 
     // Copy spawn-helper (macOS only)
     // Note: spawn-helper is only built and required on macOS where it's used for pty_posix_spawn()
     // On Linux, node-pty uses forkpty() directly and doesn't need spawn-helper
     if (process.platform === 'darwin') {
-      const spawnHelperPath = path.join(nativeModulesDir, 'spawn-helper');
-      if (!fs.existsSync(spawnHelperPath)) {
-        console.error('Error: spawn-helper not found. Native module build may have failed.');
-        process.exit(1);
+      const localSpawnHelperPath = path.join(__dirname, 'native/spawn-helper');
+      
+      // Check if spawn-helper already exists locally
+      if (fs.existsSync(localSpawnHelperPath)) {
+        console.log('  - Using existing spawn-helper');
+      } else if (spawnHelperPath && fs.existsSync(spawnHelperPath)) {
+        // Copy from node-pty build directory
+        fs.copyFileSync(spawnHelperPath, 'native/spawn-helper');
+        fs.chmodSync('native/spawn-helper', 0o755);
+        console.log(`  - Copied spawn-helper from ${spawnHelperPath}`);
+      } else {
+        console.warn('Warning: spawn-helper not found. This may cause issues on macOS.');
+        console.warn('spawn-helper is typically built alongside pty.node in node-pty.');
       }
-      fs.copyFileSync(spawnHelperPath, 'native/spawn-helper');
-      fs.chmodSync('native/spawn-helper', 0o755);
-      console.log('  - Copied spawn-helper');
     }
 
     // Copy authenticate_pam.node
