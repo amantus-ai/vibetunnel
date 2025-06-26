@@ -266,9 +266,14 @@ async function main() {
             .map(name => {
               const nodePath = path.join(buildDir, name, 'out', 'Release', 'node');
               if (fs.existsSync(nodePath)) {
+                const match = name.match(/node-v(.+)-minimal/);
+                if (!match || !match[1]) {
+                  console.warn(`Warning: Skipping directory with invalid name format: ${name}`);
+                  return null;
+                }
                 return {
                   path: nodePath,
-                  version: name.match(/node-v(.+)-minimal/)[1],
+                  version: match[1],
                   mtime: fs.statSync(nodePath).mtime
                 };
               }
