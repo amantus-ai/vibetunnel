@@ -272,19 +272,15 @@ async function buildCustomNode() {
       size: stats.size,
       platform: platform,
       arch: arch,
-      configureArgs: configureArgs
+      configureArgs: configureArgs,
+      buildTime: buildTime
     };
-    
-    if (isCI) {
-      buildInfo.buildTime = buildTime;
-    }
     
     fs.writeFileSync(markerFile, JSON.stringify(buildInfo, null, 2));
     
-    // Create a summary file for CI
-    if (isCI) {
-      const summaryPath = path.join(versionDir, 'build-summary.txt');
-      const summary = `
+    // Create a summary file
+    const summaryPath = path.join(versionDir, 'build-summary.txt');
+    const summary = `
 Custom Node.js Build Summary
 ============================
 Version: ${nodeSourceVersion}
@@ -294,8 +290,7 @@ Build Time: ${buildTime} seconds
 Configure Args: ${configureArgs.join(' ')}
 Path: ${customNodePath}
 `;
-      fs.writeFileSync(summaryPath, summary);
-    }
+    fs.writeFileSync(summaryPath, summary);
     
     // Change back to original directory
     process.chdir(originalCwd);
