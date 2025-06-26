@@ -48,7 +48,7 @@ final class SSEClient: NSObject, @unchecked Sendable {
                 requestURL = urlWithToken
             }
         }
-        
+
         var request = URLRequest(url: requestURL)
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")

@@ -50,7 +50,7 @@ struct ServerConfig: Codable, Equatable {
     func apiURL(path: String) -> URL {
         baseURL.appendingPathComponent(path)
     }
-    
+
     /// Unique identifier for this server configuration.
     ///
     /// Used for keychain storage and identifying server instances.

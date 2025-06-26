@@ -16,8 +16,8 @@ describe('Resource Limits and Concurrent Sessions', () => {
   let testDir: string;
 
   beforeAll(async () => {
-    // Create temporary directory for test
-    testDir = createTestDirectory('resource-limits');
+    // Create temporary directory for test (use short name to avoid Unix socket path limits)
+    testDir = createTestDirectory('rs');
 
     // Start server with specific limits
     server = await startTestServer({

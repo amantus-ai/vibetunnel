@@ -4,22 +4,23 @@ import SwiftUI
 struct LoginView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var isPresented: Bool
-    
+
     let serverConfig: ServerConfig
     let authenticationService: AuthenticationService
     let onSuccess: () -> Void
-    
+
     @State private var username = ""
     @State private var password = ""
     @State private var isAuthenticating = false
     @State private var errorMessage: String?
     @State private var authConfig: AuthenticationService.AuthConfig?
     @FocusState private var focusedField: Field?
-    
+
     private enum Field: Hashable {
-        case username, password
+        case username
+        case password
     }
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
@@ -28,17 +29,17 @@ struct LoginView: View {
                     Image(systemName: "server.rack")
                         .font(.system(size: 48))
                         .foregroundStyle(.accent)
-                    
+
                     Text(serverConfig.displayName)
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    
+
                     Text("Authentication Required")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.top, 24)
-                
+
                 // Login form
                 VStack(spacing: 16) {
                     TextField("Username", text: $username)
@@ -49,14 +50,14 @@ struct LoginView: View {
                         .onSubmit {
                             focusedField = .password
                         }
-                    
+
                     SecureField("Password", text: $password)
                         .textFieldStyle(.roundedBorder)
                         .focused($focusedField, equals: .password)
                         .onSubmit {
                             authenticate()
                         }
-                    
+
                     if let error = errorMessage {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
@@ -69,7 +70,7 @@ struct LoginView: View {
                     }
                 }
                 .padding(.horizontal)
-                
+
                 // Action buttons
                 HStack(spacing: 12) {
                     Button("Cancel") {
@@ -78,7 +79,7 @@ struct LoginView: View {
                     }
                     .buttonStyle(.bordered)
                     .disabled(isAuthenticating)
-                    
+
                     Button(action: authenticate) {
                         if isAuthenticating {
                             ProgressView()
@@ -92,9 +93,9 @@ struct LoginView: View {
                     .disabled(username.isEmpty || password.isEmpty || isAuthenticating)
                 }
                 .padding(.horizontal)
-                
+
                 Spacer()
-                
+
                 // Auth method info
                 if let config = authConfig {
                     VStack(spacing: 4) {
@@ -144,11 +145,11 @@ struct LoginView: View {
             } catch {
                 // If we can't get username, leave it empty
             }
-            
+
             // Get auth configuration
             do {
                 authConfig = try await authenticationService.getAuthConfig()
-                
+
                 // If no auth required, dismiss immediately
                 if authConfig?.noAuth == true {
                     dismiss()
@@ -157,7 +158,7 @@ struct LoginView: View {
             } catch {
                 // Continue with password auth
             }
-            
+
             // Focus username field if empty, otherwise password
             if username.isEmpty {
                 focusedField = .username
@@ -166,20 +167,20 @@ struct LoginView: View {
             }
         }
     }
-    
+
     private func authenticate() {
         guard !username.isEmpty && !password.isEmpty else { return }
-        
+
         Task { @MainActor in
             isAuthenticating = true
             errorMessage = nil
-            
+
             do {
                 try await authenticationService.authenticateWithPassword(
                     username: username,
                     password: password
                 )
-                
+
                 // Success - dismiss and call completion
                 dismiss()
                 isPresented = false
@@ -191,12 +192,12 @@ struct LoginView: View {
                 } else {
                     errorMessage = error.localizedDescription
                 }
-                
+
                 // Clear password on error
                 password = ""
                 focusedField = .password
             }
-            
+
             isAuthenticating = false
         }
     }
@@ -205,20 +206,20 @@ struct LoginView: View {
 // MARK: - Preview
 
 #if DEBUG
-struct LoginView_Previews: PreviewProvider {
-    static var previews: some View {
-        LoginView(
-            isPresented: .constant(true),
-            serverConfig: ServerConfig(
-                host: "localhost",
-                port: 3000,
-                name: "Test Server"
-            ),
-            authenticationService: AuthenticationService(
-                apiClient: APIClient.shared,
-                serverConfig: ServerConfig(host: "localhost", port: 3000)
-            )
-        )            {}
+    struct LoginView_Previews: PreviewProvider {
+        static var previews: some View {
+            LoginView(
+                isPresented: .constant(true),
+                serverConfig: ServerConfig(
+                    host: "localhost",
+                    port: 3_000,
+                    name: "Test Server"
+                ),
+                authenticationService: AuthenticationService(
+                    apiClient: APIClient.shared,
+                    serverConfig: ServerConfig(host: "localhost", port: 3_000)
+                )
+            ) {}
+        }
     }
-}
 #endif

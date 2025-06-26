@@ -1,5 +1,5 @@
-// Use Web Crypto API available in browsers
-const { subtle } = window.crypto;
+// Use Web Crypto API available in browsers and Node.js (via globalThis)
+const { subtle } = globalThis.crypto;
 
 interface SSHKey {
   id: string;

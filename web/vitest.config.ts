@@ -6,13 +6,8 @@ export default defineConfig({
     globals: true,
     include: ['src/**/*.test.ts'],
     setupFiles: ['./src/test/setup.ts'],
-    // Set default environment
+    // Default to Node environment
     environment: 'node',
-    // Override environment for specific test files
-    environmentMatchGlobs: [
-      ['**/buffer-subscription-service.test.ts', 'happy-dom'],
-      ['src/client/**/*.test.ts', 'happy-dom'],
-    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

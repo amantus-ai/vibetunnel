@@ -7,52 +7,14 @@
 import { createLogger } from '../../utils/logger.js';
 import type { AppPreferences } from '../app-settings.js';
 import type { Session } from '../session-list.js';
+import { type LifecycleEventManagerCallbacks, ManagerEventEmitter } from './interfaces.js';
 
 const logger = createLogger('lifecycle-event-manager');
 
-export interface LifecycleEventManagerCallbacks {
-  requestUpdate(): void;
-  handleBack(): void;
-  handleKeyboardInput(e: KeyboardEvent): Promise<void>;
-  getIsMobile(): boolean;
-  setIsMobile(value: boolean): void;
-  getUseDirectKeyboard(): boolean;
-  setUseDirectKeyboard(value: boolean): void;
-  getDirectKeyboardManager(): {
-    getShowQuickKeys(): boolean;
-    setShowQuickKeys?(value: boolean): void;
-    ensureHiddenInputVisible(): void;
-    cleanup(): void;
-  };
-  setShowQuickKeys(value: boolean): void;
-  setShowFileBrowser(value: boolean): void;
-  getInputManager(): {
-    isKeyboardShortcut(e: KeyboardEvent): boolean;
-  } | null;
-  getShowWidthSelector(): boolean;
-  setShowWidthSelector(value: boolean): void;
-  setCustomWidth(value: string): void;
-  querySelector(selector: string): Element | null;
-  setTabIndex(value: number): void;
-  addEventListener(event: string, handler: EventListener): void;
-  removeEventListener(event: string, handler: EventListener): void;
-  focus(): void;
-  getDisableFocusManagement(): boolean;
-  startLoading(): void;
-  stopLoading(): void;
-  setKeyboardHeight(value: number): void;
-  getTerminalLifecycleManager(): {
-    resetTerminalSize(): void;
-    cleanup(): void;
-  } | null;
-  getConnectionManager(): {
-    setConnected(connected: boolean): void;
-    cleanupStreamConnection(): void;
-  } | null;
-  setConnected(connected: boolean): void;
-}
+// Re-export the interface for backward compatibility
+export type { LifecycleEventManagerCallbacks } from './interfaces.js';
 
-export class LifecycleEventManager {
+export class LifecycleEventManager extends ManagerEventEmitter {
   private sessionViewElement: HTMLElement | null = null;
   private callbacks: LifecycleEventManagerCallbacks | null = null;
   private session: Session | null = null;
@@ -66,6 +28,7 @@ export class LifecycleEventManager {
   private clickHandler: (() => void) | null = null;
 
   constructor() {
+    super();
     logger.log('LifecycleEventManager initialized');
   }
 

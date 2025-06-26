@@ -472,7 +472,7 @@ class APIClient: APIClientProtocol {
     func setAuthenticationService(_ authService: AuthenticationService) {
         self.authenticationService = authService
     }
-    
+
     private func addAuthenticationIfNeeded(_ request: inout URLRequest) {
         // Add authorization header from authentication service
         if let authHeaders = authenticationService?.getAuthHeader() {

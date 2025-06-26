@@ -94,15 +94,16 @@ struct ConnectionView: View {
         }
         .sheet(isPresented: $viewModel.showLoginView) {
             if let config = viewModel.pendingServerConfig,
-               let authService = connectionManager.authenticationService {
+               let authService = connectionManager.authenticationService
+            {
                 LoginView(
                     isPresented: $viewModel.showLoginView,
                     serverConfig: config,
                     authenticationService: authService
-                )                    {
-                        // Authentication successful, mark as connected
-                        connectionManager.isConnected = true
-                    }
+                ) {
+                    // Authentication successful, mark as connected
+                    connectionManager.isConnected = true
+                }
             }
         }
     }

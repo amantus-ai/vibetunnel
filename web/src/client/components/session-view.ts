@@ -36,10 +36,8 @@ import {
   DirectKeyboardManager,
 } from './session-view/direct-keyboard-manager.js';
 import { InputManager } from './session-view/input-manager.js';
-import {
-  LifecycleEventManager,
-  type LifecycleEventManagerCallbacks,
-} from './session-view/lifecycle-event-manager.js';
+import type { LifecycleEventManagerCallbacks } from './session-view/interfaces.js';
+import { LifecycleEventManager } from './session-view/lifecycle-event-manager.js';
 import { LoadingAnimationManager } from './session-view/loading-animation-manager.js';
 import { MobileInputManager } from './session-view/mobile-input-manager.js';
 import {
@@ -431,7 +429,7 @@ export class SessionView extends LitElement {
     }
   }
 
-  private async handleKeyboardInput(e: KeyboardEvent) {
+  async handleKeyboardInput(e: KeyboardEvent) {
     if (!this.inputManager) return;
 
     await this.inputManager.handleKeyboardInput(e);
@@ -444,7 +442,7 @@ export class SessionView extends LitElement {
     }
   }
 
-  private handleBack() {
+  handleBack() {
     // Dispatch a custom event that the app can handle with view transitions
     this.dispatchEvent(
       new CustomEvent('navigate-to-list', {

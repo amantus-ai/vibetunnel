@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { fixture, html } from '@open-wc/testing';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getTextContent, setupFetchMock } from '@/test/utils/component-helpers';

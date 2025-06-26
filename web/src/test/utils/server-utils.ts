@@ -66,12 +66,12 @@ export function extractPortFromOutput(output: string): number | null {
 
 /**
  * Creates a temporary directory for testing
- * @param prefix - Directory prefix (e.g., 'vt-test', 'vt-hq')
+ * @param prefix - Directory prefix (e.g., 'vt', 'rs', 'hq')
  * @returns The created directory path
  */
-export function createTestDirectory(prefix = 'vt-test'): string {
-  // Use shorter directory name to avoid exceeding Unix socket path limit (104 chars on macOS)
-  const dir = path.join(os.tmpdir(), prefix, uuidv4().substring(0, 8));
+export function createTestDirectory(prefix = 'vt'): string {
+  // Use short prefix and only 4 chars from UUID to avoid exceeding Unix socket path limit (104 chars on macOS)
+  const dir = path.join(os.tmpdir(), prefix, uuidv4().substring(0, 4));
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }

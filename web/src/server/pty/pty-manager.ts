@@ -472,7 +472,8 @@ export class PtyManager extends EventEmitter {
     }
 
     // Create Unix domain socket for fast IPC
-    const socketPath = path.join(session.controlDir, 'input.sock');
+    // Use shorter name to avoid macOS 104 char limit for Unix socket paths
+    const socketPath = path.join(session.controlDir, 'i.sock');
 
     try {
       // Remove existing socket if it exists
@@ -660,7 +661,7 @@ export class PtyManager extends EventEmitter {
         }
 
         // For forwarded sessions, we need to use socket communication
-        const socketPath = path.join(sessionPaths.controlDir, 'input.sock');
+        const socketPath = path.join(sessionPaths.controlDir, 'i.sock');
 
         // Check if we have a cached socket connection
         let socketClient = this.inputSocketClients.get(sessionId);
@@ -1347,7 +1348,7 @@ export class PtyManager extends EventEmitter {
       // Unref the server so it doesn't keep the process alive
       session.inputSocketServer.unref();
       try {
-        fs.unlinkSync(path.join(session.controlDir, 'input.sock'));
+        fs.unlinkSync(path.join(session.controlDir, 'i.sock'));
       } catch (_e) {
         // Socket already removed
       }

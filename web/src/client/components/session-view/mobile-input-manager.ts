@@ -131,4 +131,10 @@ export class MobileInputManager {
       this.sessionView.delayedRefocusHiddenInput();
     }
   }
+
+  cleanup(): void {
+    // Clear references to prevent memory leaks
+    this.inputManager = null;
+    // Note: We don't null sessionView as it's a readonly property
+  }
 }

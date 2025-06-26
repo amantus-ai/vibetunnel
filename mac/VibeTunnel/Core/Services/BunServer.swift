@@ -178,19 +178,19 @@ final class BunServer {
         // Create wrapper to run vibetunnel with parent death monitoring
         let parentPid = ProcessInfo.processInfo.processIdentifier
         let vibetunnelCommand = """
-            # Start vibetunnel in background
-            \(binaryPath) \(vibetunnelArgs.joined(separator: " ")) &
-            VIBETUNNEL_PID=$!
-            
-            # Monitor parent process
-            while kill -0 \(parentPid) 2>/dev/null; do
-                sleep 1
-            done
-            
-            # Parent died, kill vibetunnel
-            kill -TERM $VIBETUNNEL_PID 2>/dev/null
-            wait $VIBETUNNEL_PID
-            """
+        # Start vibetunnel in background
+        \(binaryPath) \(vibetunnelArgs.joined(separator: " ")) &
+        VIBETUNNEL_PID=$!
+
+        # Monitor parent process
+        while kill -0 \(parentPid) 2>/dev/null; do
+            sleep 1
+        done
+
+        # Parent died, kill vibetunnel
+        kill -TERM $VIBETUNNEL_PID 2>/dev/null
+        wait $VIBETUNNEL_PID
+        """
         process.arguments = ["-l", "-c", vibetunnelCommand]
 
         // Set up a termination handler for logging
@@ -258,7 +258,8 @@ final class BunServer {
                     do {
                         if let errorData = try stderrPipe.fileHandleForReading.readToEnd(),
                            !errorData.isEmpty,
-                           let errorOutput = String(data: errorData, encoding: .utf8) {
+                           let errorOutput = String(data: errorData, encoding: .utf8)
+                        {
                             errorDetails += "\nError: \(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
                         }
                     } catch {
@@ -609,7 +610,6 @@ enum BunServerError: LocalizedError {
         }
     }
 }
-
 
 // MARK: - LogHandler
 

@@ -109,13 +109,13 @@ class ConnectionManager {
             // Save connection timestamp
             lastConnectionTime = Date()
             UserDefaults.standard.set(lastConnectionTime, forKey: "lastConnectionTime")
-            
+
             // Create and configure authentication service
             authenticationService = AuthenticationService(
                 apiClient: APIClient.shared,
                 serverConfig: config
             )
-            
+
             // Configure API client and WebSocket client with auth service
             if let authService = authenticationService {
                 APIClient.shared.setAuthenticationService(authService)
@@ -128,7 +128,7 @@ class ConnectionManager {
         isConnected = false
         UserDefaults.standard.removeObject(forKey: "connectionState")
         UserDefaults.standard.removeObject(forKey: "lastConnectionTime")
-        
+
         // Clean up authentication
         Task {
             await authenticationService?.logout()

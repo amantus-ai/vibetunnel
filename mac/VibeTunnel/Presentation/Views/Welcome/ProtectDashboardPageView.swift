@@ -39,7 +39,6 @@ struct ProtectDashboardPageView: View {
 
                 // Authentication info
                 VStack(spacing: 20) {
-
                     // Authentication methods
                     VStack(alignment: .leading, spacing: 12) {
                         Label {

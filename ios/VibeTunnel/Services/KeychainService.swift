@@ -116,9 +116,9 @@ enum KeychainService {
             throw KeychainError.unhandledError(status: status)
         }
     }
-    
+
     // MARK: - Generic Key-Value Storage
-    
+
     /// Save a password/token with a generic key
     static func savePassword(_ password: String, for key: String) throws {
         guard let passwordData = password.data(using: .utf8) else {

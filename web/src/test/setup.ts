@@ -1,5 +1,14 @@
 // Global test setup for Vitest
+import { webcrypto } from 'crypto';
 import { vi } from 'vitest';
+
+// Polyfill crypto for Node.js environments
+if (!globalThis.crypto) {
+  Object.defineProperty(globalThis, 'crypto', {
+    value: webcrypto,
+    configurable: true,
+  });
+}
 
 // Mock the native pty module before any imports
 vi.mock('@homebridge/node-pty-prebuilt-multiarch', () => ({

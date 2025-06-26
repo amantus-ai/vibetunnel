@@ -306,4 +306,10 @@ export class InputManager {
 
     return false;
   }
+
+  cleanup(): void {
+    // Clear references to prevent memory leaks
+    this.session = null;
+    this.callbacks = null;
+  }
 }

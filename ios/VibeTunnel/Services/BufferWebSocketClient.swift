@@ -83,7 +83,7 @@ class BufferWebSocketClient: NSObject {
     func setAuthenticationService(_ authService: AuthenticationService) {
         self.authenticationService = authService
     }
-    
+
     func connect() {
         guard !isConnecting else { return }
         guard let baseURL else {

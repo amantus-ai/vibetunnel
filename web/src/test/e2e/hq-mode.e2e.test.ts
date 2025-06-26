@@ -18,11 +18,11 @@ describe('HQ Mode E2E Tests', () => {
   let hqServer: ServerInstance | null = null;
   const remoteServers: ServerInstance[] = [];
   const testDirs: string[] = [];
-  const baseDir = createTestDirectory('vt-hq');
+  const baseDir = createTestDirectory('h');
 
   beforeAll(async () => {
     // Start HQ server
-    const hqDir = path.join(baseDir, 'hq');
+    const hqDir = path.join(baseDir, 'q');
     fs.mkdirSync(hqDir, { recursive: true });
     testDirs.push(hqDir);
 
@@ -41,7 +41,7 @@ describe('HQ Mode E2E Tests', () => {
 
     // Start remote servers
     for (let i = 0; i < 3; i++) {
-      const remoteDir = path.join(baseDir, `remote-${i}`);
+      const remoteDir = path.join(baseDir, `r${i}`);
       fs.mkdirSync(remoteDir, { recursive: true });
       testDirs.push(remoteDir);
 
@@ -52,7 +52,7 @@ describe('HQ Mode E2E Tests', () => {
           '--hq-url',
           `http://localhost:${hqServer.port}`,
           '--name',
-          `remote-${i}`,
+          `r${i}`,
           '--allow-insecure-hq',
           '--no-auth',
           '--no-hq-auth',
@@ -102,7 +102,7 @@ describe('HQ Mode E2E Tests', () => {
     expect(remotes).toHaveLength(3);
 
     for (let i = 0; i < 3; i++) {
-      const remote = remotes.find((r: { name: string; url: string }) => r.name === `remote-${i}`);
+      const remote = remotes.find((r: { name: string; url: string }) => r.name === `r${i}`);
       expect(remote).toBeDefined();
       expect(remote.url).toBe(`http://localhost:${remoteServers[i].port}`);
     }

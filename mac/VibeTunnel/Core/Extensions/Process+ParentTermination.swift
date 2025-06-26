@@ -1,10 +1,3 @@
-//
-//  Process+ParentTermination.swift
-//  VibeTunnel
-//
-//  Simple extension to run processes asynchronously
-//
-
 import Foundation
 
 extension Process {
@@ -22,19 +15,19 @@ extension Process {
             }
         }
     }
-    
+
     /// Run process with parent termination handling
     /// (The actual parent monitoring is handled by the shell wrapper)
     func runWithParentTermination() throws {
         try run()
     }
-    
+
     /// Async version of runWithParentTermination
     @available(macOS 14.0, *)
     func runWithParentTerminationAsync() async throws {
         try await runAsync()
     }
-    
+
     /// Wait for the process to exit asynchronously
     func waitUntilExitAsync() async {
         await withCheckedContinuation { continuation in
