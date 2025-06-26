@@ -32,6 +32,7 @@ import {
 } from '../utils/terminal-preferences.js';
 import { type AppPreferences, AppSettings } from './app-settings.js';
 import { ConnectionManager } from './session-view/connection-manager.js';
+import { InputManager } from './session-view/input-manager.js';
 import type { Terminal } from './terminal.js';
 
 const logger = createLogger('session-view');
@@ -69,6 +70,7 @@ export class SessionView extends LitElement {
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
   private connectionManager!: ConnectionManager;
+  private inputManager!: InputManager;
   @state() private ctrlSequence: string[] = [];
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
@@ -106,60 +108,23 @@ export class SessionView extends LitElement {
   };
 
   private keyboardHandler = (e: KeyboardEvent) => {
-    // Check if we're typing in an input field
-    const target = e.target as HTMLElement;
-    if (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.tagName === 'SELECT'
-    ) {
-      // Allow normal input in form fields
-      return;
-    }
-
     // Handle Cmd+O / Ctrl+O to open file browser
     if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
       e.preventDefault();
       this.showFileBrowser = true;
       return;
     }
+
     if (!this.session) return;
 
-    // Allow important browser shortcuts to pass through
-    const isMacOS = navigator.platform.toLowerCase().includes('mac');
-
-    // Allow F12 and Ctrl+Shift+I (DevTools)
-    if (
-      e.key === 'F12' ||
-      (!isMacOS && e.ctrlKey && e.shiftKey && e.key === 'I') ||
-      (isMacOS && e.metaKey && e.altKey && e.key === 'I')
-    ) {
+    // Check if this is a browser shortcut we should allow
+    if (this.inputManager?.isKeyboardShortcut(e)) {
       return;
     }
 
-    // Allow Ctrl+A (select all), Ctrl+F (find), Ctrl+R (refresh), Ctrl+C/V (copy/paste), etc.
-    if (
-      !isMacOS &&
-      e.ctrlKey &&
-      !e.shiftKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
-    ) {
-      return;
-    }
-
-    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), etc. on macOS
-    if (
-      isMacOS &&
-      e.metaKey &&
-      !e.shiftKey &&
-      !e.altKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
-    ) {
-      return;
-    }
-
-    // Allow Alt+Tab, Cmd+Tab (window switching)
-    if ((e.altKey || e.metaKey) && e.key === 'Tab') {
+    // Handle Escape key specially for exited sessions
+    if (e.key === 'Escape' && this.session.status === 'exited') {
+      this.handleBack();
       return;
     }
 
@@ -232,6 +197,12 @@ export class SessionView extends LitElement {
       }
     );
     this.connectionManager.setConnected(true);
+
+    // Initialize input manager
+    this.inputManager = new InputManager();
+    if (this.session) {
+      this.inputManager.setSession(this.session);
+    }
 
     // Load terminal preferences
     this.terminalMaxCols = this.preferencesManager.getMaxCols();
@@ -409,6 +380,10 @@ export class SessionView extends LitElement {
           this.connectionManager.cleanupStreamConnection();
         }
       }
+      // Update input manager with new session
+      if (this.inputManager) {
+        this.inputManager.setSession(this.session);
+      }
     }
 
     // Stop loading and create terminal when session becomes available
@@ -499,138 +474,15 @@ export class SessionView extends LitElement {
   }
 
   private async handleKeyboardInput(e: KeyboardEvent) {
-    if (!this.session) return;
+    if (!this.inputManager) return;
 
-    // Handle Escape key specially for exited sessions
-    if (e.key === 'Escape' && this.session.status === 'exited') {
-      this.handleBack();
-      return;
-    }
+    await this.inputManager.handleKeyboardInput(e);
 
-    // Don't send input to exited sessions
-    if (this.session.status === 'exited') {
-      logger.log('ignoring keyboard input - session has exited');
-      return;
-    }
-
-    // Allow standard browser copy/paste shortcuts
-    const isMacOS = navigator.platform.toLowerCase().includes('mac');
-    const isStandardPaste =
-      (isMacOS && e.metaKey && e.key === 'v' && !e.ctrlKey && !e.shiftKey) ||
-      (!isMacOS && e.ctrlKey && e.key === 'v' && !e.shiftKey);
-    const isStandardCopy =
-      (isMacOS && e.metaKey && e.key === 'c' && !e.ctrlKey && !e.shiftKey) ||
-      (!isMacOS && e.ctrlKey && e.key === 'c' && !e.shiftKey);
-
-    if (isStandardPaste || isStandardCopy) {
-      // Allow standard browser copy/paste to work
-      return;
-    }
-
-    let inputText = '';
-
-    // Handle special keys
-    switch (e.key) {
-      case 'Enter':
-        if (e.ctrlKey) {
-          // Ctrl+Enter - send to tty-fwd for proper handling
-          inputText = 'ctrl_enter';
-        } else if (e.shiftKey) {
-          // Shift+Enter - send to tty-fwd for proper handling
-          inputText = 'shift_enter';
-        } else {
-          // Regular Enter
-          inputText = 'enter';
-        }
-        break;
-      case 'Escape':
-        inputText = 'escape';
-        break;
-      case 'ArrowUp':
-        inputText = 'arrow_up';
-        break;
-      case 'ArrowDown':
-        inputText = 'arrow_down';
-        break;
-      case 'ArrowLeft':
-        inputText = 'arrow_left';
-        break;
-      case 'ArrowRight':
-        inputText = 'arrow_right';
-        break;
-      case 'Tab':
-        inputText = '\t';
-        break;
-      case 'Backspace':
-        inputText = '\b';
-        break;
-      case 'Delete':
-        inputText = '\x7f';
-        break;
-      case ' ':
-        inputText = ' ';
-        break;
-      default:
-        // Handle regular printable characters
-        if (e.key.length === 1) {
-          inputText = e.key;
-        } else {
-          // Ignore other special keys
-          return;
-        }
-        break;
-    }
-
-    // Handle Ctrl combinations (but not if we already handled Ctrl+Enter above)
-    if (e.ctrlKey && e.key.length === 1 && e.key !== 'Enter') {
-      const charCode = e.key.toLowerCase().charCodeAt(0);
-      if (charCode >= 97 && charCode <= 122) {
-        // a-z
-        inputText = String.fromCharCode(charCode - 96); // Ctrl+A = \x01, etc.
-      }
-    }
-
-    // Send the input to the session
-    try {
-      // Determine if we should send as key or text
-      const body = [
-        'enter',
-        'escape',
-        'arrow_up',
-        'arrow_down',
-        'arrow_left',
-        'arrow_right',
-        'ctrl_enter',
-        'shift_enter',
-        'backspace',
-        'tab',
-      ].includes(inputText)
-        ? { key: inputText }
-        : { text: inputText };
-
-      const response = await fetch(`/api/sessions/${this.session.id}/input`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authClient.getAuthHeader(),
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        if (response.status === 400) {
-          logger.log('session no longer accepting input (likely exited)');
-          // Update session status to exited if we get 400 error
-          if (this.session && (this.session.status as string) !== 'exited') {
-            this.session = { ...this.session, status: 'exited' };
-            this.requestUpdate();
-          }
-        } else {
-          logger.error('failed to send input to session', { status: response.status });
-        }
-      }
-    } catch (error) {
-      logger.error('error sending input', error);
+    // Check if session status needs updating after input attempt
+    // The input manager will have attempted to send input and may have detected session exit
+    if (this.session && this.session.status !== 'exited') {
+      // InputManager doesn't directly update session status, so we don't need to handle that here
+      // This is handled by the connection manager when it detects connection issues
     }
   }
 
@@ -723,8 +575,8 @@ export class SessionView extends LitElement {
   private handleTerminalPaste(e: Event) {
     const customEvent = e as CustomEvent;
     const text = customEvent.detail?.text;
-    if (text && this.session) {
-      this.sendInputText(text);
+    if (text && this.session && this.inputManager) {
+      this.inputManager.sendInputText(text);
     }
   }
 
@@ -752,7 +604,9 @@ export class SessionView extends LitElement {
 
     try {
       // Send text without enter key
-      await this.sendInputText(textToSend);
+      if (this.inputManager) {
+        await this.inputManager.sendInputText(textToSend);
+      }
 
       // Clear both the reactive property and textarea
       this.mobileInputText = '';
@@ -792,8 +646,10 @@ export class SessionView extends LitElement {
 
     try {
       // Add enter key at the end to execute the command
-      await this.sendInputText(textToSend);
-      await this.sendInputText('enter');
+      if (this.inputManager) {
+        await this.inputManager.sendInputText(textToSend);
+        await this.inputManager.sendInputText('enter');
+      }
 
       // Clear both the reactive property and textarea
       this.mobileInputText = '';
@@ -853,7 +709,9 @@ export class SessionView extends LitElement {
   }
 
   private async handleSpecialKey(key: string) {
-    await this.sendInputText(key);
+    if (this.inputManager) {
+      await this.inputManager.sendInputText(key);
+    }
   }
 
   private handleCtrlAlphaToggle() {
@@ -868,9 +726,11 @@ export class SessionView extends LitElement {
 
   private async handleSendCtrlSequence() {
     // Send each ctrl key in sequence
-    for (const letter of this.ctrlSequence) {
-      const controlCode = String.fromCharCode(letter.charCodeAt(0) - 64);
-      await this.sendInputText(controlCode);
+    if (this.inputManager) {
+      for (const letter of this.ctrlSequence) {
+        const controlCode = String.fromCharCode(letter.charCodeAt(0) - 64);
+        await this.inputManager.sendInputText(controlCode);
+      }
     }
     // Clear sequence and close overlay
     this.ctrlSequence = [];
@@ -973,63 +833,11 @@ export class SessionView extends LitElement {
     const escapedPath = path.includes(' ') ? `"${path}"` : path;
 
     // Send the path to the terminal
-    await this.sendInputText(escapedPath);
+    if (this.inputManager) {
+      await this.inputManager.sendInputText(escapedPath);
+    }
 
     logger.log(`inserted ${type} path into terminal: ${escapedPath}`);
-  }
-
-  private async sendInputText(text: string) {
-    if (!this.session) return;
-
-    try {
-      // Determine if we should send as key or text
-      const body = [
-        'enter',
-        'escape',
-        'backspace',
-        'tab',
-        'arrow_up',
-        'arrow_down',
-        'arrow_left',
-        'arrow_right',
-        'ctrl_enter',
-        'shift_enter',
-        'page_up',
-        'page_down',
-        'home',
-        'end',
-        'delete',
-        'f1',
-        'f2',
-        'f3',
-        'f4',
-        'f5',
-        'f6',
-        'f7',
-        'f8',
-        'f9',
-        'f10',
-        'f11',
-        'f12',
-      ].includes(text)
-        ? { key: text }
-        : { text };
-
-      const response = await fetch(`/api/sessions/${this.session.id}/input`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authClient.getAuthHeader(),
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        logger.error('failed to send input to session', { status: response.status });
-      }
-    } catch (error) {
-      logger.error('error sending input', error);
-    }
   }
 
   private async resetTerminalSize() {
@@ -1137,9 +945,9 @@ export class SessionView extends LitElement {
       const input = e.target as HTMLInputElement;
       if (input.value) {
         // Don't send input to terminal if mobile input overlay or Ctrl overlay is visible
-        if (!this.showMobileInput && !this.showCtrlAlpha) {
+        if (!this.showMobileInput && !this.showCtrlAlpha && this.inputManager) {
           // Send each character to terminal
-          this.sendInputText(input.value);
+          this.inputManager.sendInputText(input.value);
         }
         // Always clear the input to prevent buffer buildup
         input.value = '';
@@ -1158,15 +966,15 @@ export class SessionView extends LitElement {
         e.preventDefault();
       }
 
-      if (e.key === 'Enter') {
-        this.sendInputText('enter');
-      } else if (e.key === 'Backspace') {
+      if (e.key === 'Enter' && this.inputManager) {
+        this.inputManager.sendInputText('enter');
+      } else if (e.key === 'Backspace' && this.inputManager) {
         // Always send backspace to terminal
-        this.sendInputText('backspace');
-      } else if (e.key === 'Tab') {
-        this.sendInputText('tab');
-      } else if (e.key === 'Escape') {
-        this.sendInputText('escape');
+        this.inputManager.sendInputText('backspace');
+      } else if (e.key === 'Tab' && this.inputManager) {
+        this.inputManager.sendInputText('tab');
+      } else if (e.key === 'Escape' && this.inputManager) {
+        this.inputManager.sendInputText('escape');
       }
     });
 
@@ -1342,53 +1150,53 @@ export class SessionView extends LitElement {
         }
       }
       return;
-    } else if (key === 'Ctrl+A') {
+    } else if (key === 'Ctrl+A' && this.inputManager) {
       // Send Ctrl+A (start of line)
-      this.sendInputText('\x01');
-    } else if (key === 'Ctrl+C') {
+      this.inputManager.sendInputText('\x01');
+    } else if (key === 'Ctrl+C' && this.inputManager) {
       // Send Ctrl+C (interrupt signal)
-      this.sendInputText('\x03');
-    } else if (key === 'Ctrl+D') {
+      this.inputManager.sendInputText('\x03');
+    } else if (key === 'Ctrl+D' && this.inputManager) {
       // Send Ctrl+D (EOF)
-      this.sendInputText('\x04');
-    } else if (key === 'Ctrl+E') {
+      this.inputManager.sendInputText('\x04');
+    } else if (key === 'Ctrl+E' && this.inputManager) {
       // Send Ctrl+E (end of line)
-      this.sendInputText('\x05');
-    } else if (key === 'Ctrl+K') {
+      this.inputManager.sendInputText('\x05');
+    } else if (key === 'Ctrl+K' && this.inputManager) {
       // Send Ctrl+K (kill to end of line)
-      this.sendInputText('\x0b');
-    } else if (key === 'Ctrl+L') {
+      this.inputManager.sendInputText('\x0b');
+    } else if (key === 'Ctrl+L' && this.inputManager) {
       // Send Ctrl+L (clear screen)
-      this.sendInputText('\x0c');
-    } else if (key === 'Ctrl+R') {
+      this.inputManager.sendInputText('\x0c');
+    } else if (key === 'Ctrl+R' && this.inputManager) {
       // Send Ctrl+R (reverse search)
-      this.sendInputText('\x12');
-    } else if (key === 'Ctrl+U') {
+      this.inputManager.sendInputText('\x12');
+    } else if (key === 'Ctrl+U' && this.inputManager) {
       // Send Ctrl+U (clear line)
-      this.sendInputText('\x15');
-    } else if (key === 'Ctrl+W') {
+      this.inputManager.sendInputText('\x15');
+    } else if (key === 'Ctrl+W' && this.inputManager) {
       // Send Ctrl+W (delete word)
-      this.sendInputText('\x17');
-    } else if (key === 'Ctrl+Z') {
+      this.inputManager.sendInputText('\x17');
+    } else if (key === 'Ctrl+Z' && this.inputManager) {
       // Send Ctrl+Z (suspend signal)
-      this.sendInputText('\x1a');
-    } else if (key === 'Option') {
+      this.inputManager.sendInputText('\x1a');
+    } else if (key === 'Option' && this.inputManager) {
       // Send ESC prefix for Option/Alt key
-      this.sendInputText('\x1b');
+      this.inputManager.sendInputText('\x1b');
     } else if (key === 'Command') {
       // Command key doesn't have a direct terminal equivalent
       // Could potentially show a message or ignore
       return;
-    } else if (key === 'Delete') {
+    } else if (key === 'Delete' && this.inputManager) {
       // Send delete key
-      this.sendInputText('delete');
-    } else if (key.startsWith('F')) {
+      this.inputManager.sendInputText('delete');
+    } else if (key.startsWith('F') && this.inputManager) {
       // Handle function keys F1-F12
       const fNum = Number.parseInt(key.substring(1));
       if (fNum >= 1 && fNum <= 12) {
-        this.sendInputText(`f${fNum}`);
+        this.inputManager.sendInputText(`f${fNum}`);
       }
-    } else {
+    } else if (this.inputManager) {
       // Map key names to proper values
       let keyToSend = key;
       if (key === 'Tab') {
@@ -1414,7 +1222,7 @@ export class SessionView extends LitElement {
       }
 
       // Send the key to terminal
-      this.sendInputText(keyToSend.toLowerCase());
+      this.inputManager.sendInputText(keyToSend.toLowerCase());
     }
 
     // Always keep focus on hidden input after any key press (except Done)
