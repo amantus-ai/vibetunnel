@@ -257,14 +257,18 @@ export class InputManager {
   }
 
   isKeyboardShortcut(e: KeyboardEvent): boolean {
-    // Check if we're typing in an input field
+    // Check if we're typing in an input field or editor
     const target = e.target as HTMLElement;
     if (
       target.tagName === 'INPUT' ||
       target.tagName === 'TEXTAREA' ||
-      target.tagName === 'SELECT'
+      target.tagName === 'SELECT' ||
+      target.contentEditable === 'true' ||
+      target.closest('.monaco-editor') ||
+      target.closest('[data-keybinding-context]') ||
+      target.closest('.editor-container')
     ) {
-      // Allow normal input in form fields
+      // Allow normal input in form fields and editors
       return false;
     }
 
