@@ -729,6 +729,13 @@ export class SessionView extends LitElement {
     }
   }
 
+  private async handleTerminalInput(e: CustomEvent) {
+    const { text } = e.detail;
+    if (this.inputManager && text) {
+      await this.inputManager.sendInputText(text);
+    }
+  }
+
   private updateTerminalTransform(): void {
     // Calculate height reduction for keyboard and quick keys
     let heightReduction = 0;
@@ -895,6 +902,7 @@ export class SessionView extends LitElement {
             .hideScrollButton=${this.showQuickKeys}
             class="w-full h-full p-0 m-0"
             @click=${this.handleTerminalClick}
+            @terminal-input=${this.handleTerminalInput}
           ></vibe-terminal>
         </div>
 
