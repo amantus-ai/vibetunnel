@@ -237,6 +237,9 @@ export class PtyManager extends EventEmitter {
         const ptyEnv = {
           ...process.env,
           TERM: term,
+          // Mark this as a VibeTunnel session to prevent recursive vt calls
+          INSIDE_VIBETUNNEL: '1',
+          VIBETUNNEL_SESSION: 'true',
         };
 
         // Debug log the spawn parameters
