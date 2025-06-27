@@ -84,16 +84,9 @@ const SHORTCUT_PATTERNS = [
   { pattern: /\bq\s+to\s+(quit|exit)\b/gi, keySequence: () => 'q' },
   { pattern: /\bpress\s+q\b/gi, keySequence: () => 'q' },
 
-  // Claude Code interactive prompts
+  // Claude Code interactive prompts - generic numbered options
   { pattern: /❯\s*(\d+)\.\s+/g, keySequence: (match: RegExpMatchArray) => match[1] },
-  {
-    pattern: /\s+(\d+)\.\s+(?:Yes|No|Exit|Proceed|Continue|Cancel|Skip)/gi,
-    keySequence: (match: RegExpMatchArray) => match[1],
-  },
-  {
-    pattern: /(\d+)\.\s+(?:Yes|No|Exit|Proceed|Continue|Cancel|Skip)/gi,
-    keySequence: (match: RegExpMatchArray) => match[1],
-  },
+  { pattern: /(\d+)\.\s+\w+/g, keySequence: (match: RegExpMatchArray) => match[1] },
 ];
 
 type ProcessedRange = {
