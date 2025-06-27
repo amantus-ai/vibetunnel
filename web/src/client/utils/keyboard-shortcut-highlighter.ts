@@ -83,6 +83,10 @@ const SHORTCUT_PATTERNS = [
   // q to quit pattern
   { pattern: /\bq\s+to\s+(quit|exit)\b/gi, keySequence: () => 'q' },
   { pattern: /\bpress\s+q\b/gi, keySequence: () => 'q' },
+
+  // Claude Code interactive prompts
+  { pattern: /^❯?\s*(\d+)\.\s+/gm, keySequence: (match: RegExpMatchArray) => match[1] },
+  { pattern: /^\s*(\d+)\.\s+/gm, keySequence: (match: RegExpMatchArray) => match[1] },
 ];
 
 type ProcessedRange = {
