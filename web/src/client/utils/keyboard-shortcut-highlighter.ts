@@ -85,8 +85,15 @@ const SHORTCUT_PATTERNS = [
   { pattern: /\bpress\s+q\b/gi, keySequence: () => 'q' },
 
   // Claude Code interactive prompts
-  { pattern: /^❯?\s*(\d+)\.\s+/gm, keySequence: (match: RegExpMatchArray) => match[1] },
-  { pattern: /^\s*(\d+)\.\s+/gm, keySequence: (match: RegExpMatchArray) => match[1] },
+  { pattern: /❯\s*(\d+)\.\s+/g, keySequence: (match: RegExpMatchArray) => match[1] },
+  {
+    pattern: /\s+(\d+)\.\s+(?:Yes|No|Exit|Proceed|Continue|Cancel|Skip)/gi,
+    keySequence: (match: RegExpMatchArray) => match[1],
+  },
+  {
+    pattern: /(\d+)\.\s+(?:Yes|No|Exit|Proceed|Continue|Cancel|Skip)/gi,
+    keySequence: (match: RegExpMatchArray) => match[1],
+  },
 ];
 
 type ProcessedRange = {
