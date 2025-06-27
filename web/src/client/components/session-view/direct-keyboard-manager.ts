@@ -2,7 +2,29 @@
  * Direct Keyboard Input Manager
  *
  * Manages hidden input element and direct keyboard input for mobile devices.
- * Handles focus management, input events, and quick key interactions.
+ * Handles focus management, input events, quick key interactions, and IME composition.
+ *
+ * ## IME Support for Japanese/CJK Input
+ *
+ * This manager now includes full support for Input Method Editor (IME) composition,
+ * which is essential for Japanese, Chinese, and Korean text input on mobile devices.
+ *
+ * **How IME Works:**
+ * 1. User types "konnichiwa" on Japanese keyboard
+ * 2. Browser shows composition UI: "こんにちは" (intermediate characters)
+ * 3. User selects final text from candidates
+ * 4. Browser fires `compositionend` with final text: "こんにちは"
+ *
+ * **Bug Fixed (GitHub #99):**
+ * Previously, intermediate composition characters were sent to terminal during typing,
+ * causing duplicated/garbled Japanese text. Now we properly wait for composition
+ * completion before sending any text to the terminal.
+ *
+ * **Implementation:**
+ * - `compositionstart`: Sets isComposing=true, prevents input events from sending text
+ * - `compositionupdate`: Tracks intermediate composition (for logging/debugging)
+ * - `compositionend`: Sends only the final composed text to terminal
+ * - `input`: Skipped entirely during composition, normal handling otherwise
  */
 import { createLogger } from '../../utils/logger.js';
 import type { InputManager } from './input-manager.js';
@@ -36,6 +58,10 @@ export class DirectKeyboardManager {
   private keyboardModeTimestamp = 0; // Track when we entered keyboard mode
   private keyboardActivationTimeout: number | null = null;
   private captureClickHandler: ((e: Event) => void) | null = null;
+
+  // IME composition state tracking for Japanese/CJK input
+  private isComposing = false;
+  private compositionBuffer = '';
 
   constructor(instanceId: string) {
     this.instanceId = instanceId;
@@ -198,15 +224,56 @@ export class DirectKeyboardManager {
     // Set initial position based on mode
     this.updateHiddenInputPosition();
 
-    // Handle input events
+    // Handle IME composition events for Japanese/CJK input
+    this.hiddenInput.addEventListener('compositionstart', () => {
+      this.isComposing = true;
+      this.compositionBuffer = '';
+    });
+
+    this.hiddenInput.addEventListener('compositionupdate', (e) => {
+      const compositionEvent = e as CompositionEvent;
+      this.compositionBuffer = compositionEvent.data || '';
+    });
+
+    this.hiddenInput.addEventListener('compositionend', (e) => {
+      const compositionEvent = e as CompositionEvent;
+      this.isComposing = false;
+
+      // Get the final composed text
+      const finalText = compositionEvent.data || this.hiddenInput?.value || '';
+
+      if (finalText) {
+        // Don't send input to terminal if mobile input overlay or Ctrl overlay is visible
+        const showMobileInput = this.callbacks?.getShowMobileInput() ?? false;
+        const showCtrlAlpha = this.callbacks?.getShowCtrlAlpha() ?? false;
+        if (!showMobileInput && !showCtrlAlpha && this.inputManager) {
+          // Send the completed composition to terminal
+          this.inputManager.sendInputText(finalText);
+        }
+      }
+
+      // Clear the input and composition buffer
+      if (this.hiddenInput) {
+        this.hiddenInput.value = '';
+      }
+      this.compositionBuffer = '';
+    });
+
+    // Handle input events (non-composition)
     this.hiddenInput.addEventListener('input', (e) => {
       const input = e.target as HTMLInputElement;
+
+      // Skip processing if we're in the middle of IME composition
+      if (this.isComposing) {
+        return;
+      }
+
       if (input.value) {
         // Don't send input to terminal if mobile input overlay or Ctrl overlay is visible
         const showMobileInput = this.callbacks?.getShowMobileInput() ?? false;
         const showCtrlAlpha = this.callbacks?.getShowCtrlAlpha() ?? false;
         if (!showMobileInput && !showCtrlAlpha && this.inputManager) {
-          // Send each character to terminal
+          // Send each character to terminal (only for non-IME input)
           this.inputManager.sendInputText(input.value);
         }
         // Always clear the input to prevent buffer buildup

@@ -2,7 +2,23 @@
  * Mobile Input Overlay Component
  *
  * Full-screen overlay for mobile text input with virtual keyboard support.
- * Handles text input, command sending, and keyboard height adjustments.
+ * Handles text input, command sending, keyboard height adjustments, and IME composition.
+ *
+ * ## IME Support for Japanese/CJK Input
+ *
+ * This overlay includes full support for Input Method Editor (IME) composition
+ * for Japanese, Chinese, and Korean text input on mobile devices.
+ *
+ * **Bug Fixed (GitHub #99):**
+ * Added proper IME composition event handling to prevent duplication of
+ * Japanese text during typing. The overlay now waits for composition
+ * completion before updating the text state.
+ *
+ * **Implementation:**
+ * - `compositionstart`: Sets isComposing=true, prevents input change handling
+ * - `compositionupdate`: Tracks intermediate composition text
+ * - `compositionend`: Updates text state only with final composed text
+ * - `input`: Skipped during composition, normal handling otherwise
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
@@ -27,6 +43,10 @@ export class MobileInputOverlay extends LitElement {
   @property({ type: Function }) onCancel?: () => void;
   @property({ type: Function }) onTextChange?: (text: string) => void;
   @property({ type: Function }) handleBack?: () => void;
+
+  // IME composition state tracking for Japanese/CJK input
+  private isComposing = false;
+  private compositionBuffer = '';
 
   private touchStartHandler = (e: TouchEvent) => {
     const touch = e.touches[0];
@@ -54,11 +74,44 @@ export class MobileInputOverlay extends LitElement {
 
   private handleMobileInputChange(e: Event) {
     const textarea = e.target as HTMLTextAreaElement;
+
+    // Skip processing if we're in the middle of IME composition
+    if (this.isComposing) {
+      return;
+    }
+
     this.mobileInputText = textarea.value;
     this.onTextChange?.(textarea.value);
     // Force update to ensure button states update
     this.requestUpdate();
   }
+
+  private handleCompositionStart = (_e: CompositionEvent) => {
+    this.isComposing = true;
+    this.compositionBuffer = '';
+  };
+
+  private handleCompositionUpdate = (e: CompositionEvent) => {
+    this.compositionBuffer = e.data || '';
+  };
+
+  private handleCompositionEnd = (e: CompositionEvent) => {
+    this.isComposing = false;
+
+    // Get the final composed text
+    const finalText = e.data || '';
+
+    // Update the mobile input text with the final composition
+    const textarea = e.target as HTMLTextAreaElement;
+    if (textarea && finalText) {
+      this.mobileInputText = textarea.value;
+      this.onTextChange?.(textarea.value);
+      this.requestUpdate();
+    }
+
+    // Clear composition buffer
+    this.compositionBuffer = '';
+  };
 
   private focusMobileTextarea() {
     const textarea = this.querySelector('#mobile-input-textarea') as HTMLTextAreaElement;
@@ -187,6 +240,9 @@ export class MobileInputOverlay extends LitElement {
               @focus=${this.handleFocus}
               @blur=${this.handleBlur}
               @keydown=${this.handleKeydown}
+              @compositionstart=${this.handleCompositionStart}
+              @compositionupdate=${this.handleCompositionUpdate}
+              @compositionend=${this.handleCompositionEnd}
               style="height: 120px; background: black; color: #d4d4d4; border: none; padding: 12px;"
               autocomplete="off"
               autocorrect="off"
