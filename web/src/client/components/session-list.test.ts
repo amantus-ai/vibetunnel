@@ -51,7 +51,7 @@ describe('SessionList', () => {
       expect(element.sessions).toEqual([]);
       expect(element.loading).toBe(false);
       expect(element.hideExited).toBe(true);
-      expect(element.showCreateModal).toBe(false);
+      expect(element.compactMode).toBe(false);
     });
   });
 
