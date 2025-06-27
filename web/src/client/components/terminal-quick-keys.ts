@@ -9,6 +9,7 @@ const TERMINAL_QUICK_KEYS = [
   { key: 'CtrlExpand', label: '⌃', toggle: true, row: 1 },
   { key: 'F', label: 'F', toggle: true, row: 1 },
   { key: 'Tab', label: 'Tab', row: 1 },
+  { key: 'shift_tab', label: '⇤', row: 1 },
   { key: 'ArrowUp', label: '↑', arrow: true, row: 1 },
   { key: 'ArrowDown', label: '↓', arrow: true, row: 1 },
   { key: 'ArrowLeft', label: '←', arrow: true, row: 1 },
