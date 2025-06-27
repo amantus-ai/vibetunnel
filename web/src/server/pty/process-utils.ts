@@ -352,18 +352,28 @@ export function resolveCommand(command: string[]): {
     // Unix shells: Choose execution mode based on command type
     if (isCommand) {
       // Non-interactive command execution: shell will exit after completion
-      // Source shell config to ensure aliases and functions are available
+      // Use interactive mode to ensure aliases and functions are properly expanded
       const shellConfig = getShellConfigFile(userShell);
-      const commandStr = shellConfig
-        ? `source ${shellConfig} 2>/dev/null || true; ${command.join(' ')}`
-        : command.join(' ');
 
-      return {
-        command: userShell,
-        args: ['-c', commandStr],
-        useShell: true,
-        resolvedFrom: 'shell',
-      };
+      if (shellConfig) {
+        // Use interactive mode with login shell to ensure aliases are loaded and expanded
+        // The -i flag enables interactive mode, which loads aliases
+        // The -l flag makes it a login shell, ensuring profile/rc files are sourced
+        return {
+          command: userShell,
+          args: ['-i', '-l', '-c', command.join(' ')],
+          useShell: true,
+          resolvedFrom: 'alias',
+        };
+      } else {
+        // No shell config found, use basic execution
+        return {
+          command: userShell,
+          args: ['-c', command.join(' ')],
+          useShell: true,
+          resolvedFrom: 'shell',
+        };
+      }
     } else {
       // Interactive shell session: use -i and -l for proper initialization
       return {
