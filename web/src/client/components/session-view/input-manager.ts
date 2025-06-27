@@ -6,6 +6,7 @@
  */
 
 import { authClient } from '../../services/auth-client.js';
+import { websocketInputClient } from '../../services/websocket-input-client.js';
 import { createLogger } from '../../utils/logger.js';
 import type { Session } from '../session-list.js';
 
@@ -21,6 +22,13 @@ export class InputManager {
 
   setSession(session: Session | null): void {
     this.session = session;
+    
+    // Connect to WebSocket when session is set
+    if (session) {
+      websocketInputClient.connect(session).catch((error) => {
+        logger.debug('WebSocket connection failed, will use HTTP fallback:', error);
+      });
+    }
   }
 
   setCallbacks(callbacks: InputManagerCallbacks): void {
@@ -127,7 +135,7 @@ export class InputManager {
 
     try {
       // Determine if we should send as key or text
-      const body = [
+      const input = [
         'enter',
         'escape',
         'backspace',
@@ -160,13 +168,23 @@ export class InputManager {
         ? { key: text }
         : { text };
 
+      // Try WebSocket first - non-blocking (connection should already be established)
+      const sentViaWebSocket = websocketInputClient.sendInput(input);
+
+      if (sentViaWebSocket) {
+        // Successfully sent via WebSocket, no need for HTTP fallback
+        return;
+      }
+
+      // Fallback to HTTP if WebSocket failed
+      logger.debug('WebSocket unavailable, falling back to HTTP');
       const response = await fetch(`/api/sessions/${this.session.id}/input`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...authClient.getAuthHeader(),
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(input),
       });
 
       if (!response.ok) {
@@ -190,9 +208,11 @@ export class InputManager {
   }
 
   private async sendInput(inputText: string): Promise<void> {
+    if (!this.session) return;
+
     try {
       // Determine if we should send as key or text
-      const body = [
+      const input = [
         'enter',
         'escape',
         'backspace',
@@ -225,15 +245,23 @@ export class InputManager {
         ? { key: inputText }
         : { text: inputText };
 
-      if (!this.session) return;
+      // Try WebSocket first - non-blocking (connection should already be established)
+      const sentViaWebSocket = websocketInputClient.sendInput(input);
 
+      if (sentViaWebSocket) {
+        // Successfully sent via WebSocket, no need for HTTP fallback
+        return;
+      }
+
+      // Fallback to HTTP if WebSocket failed
+      logger.debug('WebSocket unavailable, falling back to HTTP');
       const response = await fetch(`/api/sessions/${this.session.id}/input`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...authClient.getAuthHeader(),
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(input),
       });
 
       if (!response.ok) {
@@ -314,6 +342,9 @@ export class InputManager {
   }
 
   cleanup(): void {
+    // Disconnect WebSocket
+    websocketInputClient.disconnect();
+    
     // Clear references to prevent memory leaks
     this.session = null;
     this.callbacks = null;
