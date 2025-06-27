@@ -14,6 +14,7 @@ import type { ActivityMonitor } from '../services/activity-monitor.js';
 import type { AuthService } from '../services/auth-service.js';
 import type { RemoteRegistry } from '../services/remote-registry.js';
 import type { TerminalManager } from '../services/terminal-manager.js';
+import type { SessionInput, SpecialKey } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('websocket-input');
@@ -35,6 +36,16 @@ export class WebSocketInputHandler {
   private authService: AuthService;
   private isHQMode: boolean;
 
+  // Special key names that need mapping (same as HTTP /input endpoint)
+  private readonly specialKeys = new Set([
+    'enter', 'escape', 'backspace', 'tab', 'shift_tab',
+    'arrow_up', 'arrow_down', 'arrow_left', 'arrow_right',
+    'ctrl_enter', 'shift_enter', 'page_up', 'page_down',
+    'home', 'end', 'delete',
+    'f1', 'f2', 'f3', 'f4', 'f5', 'f6',
+    'f7', 'f8', 'f9', 'f10', 'f11', 'f12'
+  ]);
+
   constructor(options: WebSocketInputHandlerOptions) {
     this.ptyManager = options.ptyManager;
     this.terminalManager = options.terminalManager;
@@ -42,6 +53,10 @@ export class WebSocketInputHandler {
     this.remoteRegistry = options.remoteRegistry;
     this.authService = options.authService;
     this.isHQMode = options.isHQMode;
+  }
+
+  private isSpecialKey(input: string): boolean {
+    return this.specialKeys.has(input);
   }
 
   handleConnection(ws: WebSocket, sessionId: string, userId: string): void {
@@ -59,106 +74,17 @@ export class WebSocketInputHandler {
           return; // Ignore empty messages
         }
 
-        // Map special key names to actual key codes
-        let inputToSend: string;
-        switch (inputReceived) {
-          case 'enter':
-            inputToSend = '\r';
-            break;
-          case 'escape':
-            inputToSend = '\x1b';
-            break;
-          case 'backspace':
-            inputToSend = '\x7f';
-            break;
-          case 'tab':
-            inputToSend = '\t';
-            break;
-          case 'shift_tab':
-            inputToSend = '\x1b[Z';
-            break;
-          case 'arrow_up':
-            inputToSend = '\x1b[A';
-            break;
-          case 'arrow_down':
-            inputToSend = '\x1b[B';
-            break;
-          case 'arrow_right':
-            inputToSend = '\x1b[C';
-            break;
-          case 'arrow_left':
-            inputToSend = '\x1b[D';
-            break;
-          case 'ctrl_enter':
-            inputToSend = '\r';
-            break;
-          case 'shift_enter':
-            inputToSend = '\r';
-            break;
-          case 'page_up':
-            inputToSend = '\x1b[5~';
-            break;
-          case 'page_down':
-            inputToSend = '\x1b[6~';
-            break;
-          case 'home':
-            inputToSend = '\x1b[H';
-            break;
-          case 'end':
-            inputToSend = '\x1b[F';
-            break;
-          case 'delete':
-            inputToSend = '\x1b[3~';
-            break;
-          case 'f1':
-            inputToSend = '\x1bOP';
-            break;
-          case 'f2':
-            inputToSend = '\x1bOQ';
-            break;
-          case 'f3':
-            inputToSend = '\x1bOR';
-            break;
-          case 'f4':
-            inputToSend = '\x1bOS';
-            break;
-          case 'f5':
-            inputToSend = '\x1b[15~';
-            break;
-          case 'f6':
-            inputToSend = '\x1b[17~';
-            break;
-          case 'f7':
-            inputToSend = '\x1b[18~';
-            break;
-          case 'f8':
-            inputToSend = '\x1b[19~';
-            break;
-          case 'f9':
-            inputToSend = '\x1b[20~';
-            break;
-          case 'f10':
-            inputToSend = '\x1b[21~';
-            break;
-          case 'f11':
-            inputToSend = '\x1b[23~';
-            break;
-          case 'f12':
-            inputToSend = '\x1b[24~';
-            break;
-          default:
-            // Regular text or single characters - send as is
-            inputToSend = inputReceived;
-            break;
-        }
-
-        // Send to PTY with proper key code mapping
-        const ptyProcess = this.ptyManager.getPtyForSession(sessionId);
-        if (ptyProcess) {
-          ptyProcess.write(inputToSend);
-        } else {
-          logger.warn(`PTY process for session ${sessionId} not found`);
-          ws.close();
+        // Use the existing PtyManager's sendInput method for proper key handling
+        // This reuses the same key mapping logic as the HTTP /input endpoint
+        try {
+          const input: SessionInput = this.isSpecialKey(inputReceived)
+            ? { key: inputReceived as SpecialKey }
+            : { text: inputReceived };
+          
+          this.ptyManager.sendInput(sessionId, input);
+        } catch (error) {
+          logger.warn(`Failed to send input to session ${sessionId}:`, error);
+          // Don't close connection on input errors, just log
         }
 
       } catch (error) {
