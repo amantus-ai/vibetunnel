@@ -19,12 +19,21 @@ export interface InputManagerCallbacks {
 export class InputManager {
   private session: Session | null = null;
   private callbacks: InputManagerCallbacks | null = null;
+  private useWebSocketInput = true; // Feature flag for WebSocket input
 
   setSession(session: Session | null): void {
     this.session = session;
     
-    // Connect to WebSocket when session is set
-    if (session) {
+    // Check URL parameter for WebSocket input feature flag
+    const urlParams = new URLSearchParams(window.location.search);
+    const socketInputParam = urlParams.get('socket_input');
+    if (socketInputParam !== null) {
+      this.useWebSocketInput = socketInputParam === 'true';
+      logger.log(`WebSocket input ${this.useWebSocketInput ? 'enabled' : 'disabled'} via URL parameter`);
+    }
+    
+    // Connect to WebSocket when session is set (if feature enabled)
+    if (session && this.useWebSocketInput) {
       websocketInputClient.connect(session).catch((error) => {
         logger.debug('WebSocket connection failed, will use HTTP fallback:', error);
       });
@@ -168,12 +177,14 @@ export class InputManager {
         ? { key: text }
         : { text };
 
-      // Try WebSocket first - non-blocking (connection should already be established)
-      const sentViaWebSocket = websocketInputClient.sendInput(input);
+      // Try WebSocket first if feature enabled - non-blocking (connection should already be established)
+      if (this.useWebSocketInput) {
+        const sentViaWebSocket = websocketInputClient.sendInput(input);
 
-      if (sentViaWebSocket) {
-        // Successfully sent via WebSocket, no need for HTTP fallback
-        return;
+        if (sentViaWebSocket) {
+          // Successfully sent via WebSocket, no need for HTTP fallback
+          return;
+        }
       }
 
       // Fallback to HTTP if WebSocket failed
@@ -245,12 +256,14 @@ export class InputManager {
         ? { key: inputText }
         : { text: inputText };
 
-      // Try WebSocket first - non-blocking (connection should already be established)
-      const sentViaWebSocket = websocketInputClient.sendInput(input);
+      // Try WebSocket first if feature enabled - non-blocking (connection should already be established)
+      if (this.useWebSocketInput) {
+        const sentViaWebSocket = websocketInputClient.sendInput(input);
 
-      if (sentViaWebSocket) {
-        // Successfully sent via WebSocket, no need for HTTP fallback
-        return;
+        if (sentViaWebSocket) {
+          // Successfully sent via WebSocket, no need for HTTP fallback
+          return;
+        }
       }
 
       // Fallback to HTTP if WebSocket failed
@@ -342,8 +355,10 @@ export class InputManager {
   }
 
   cleanup(): void {
-    // Disconnect WebSocket
-    websocketInputClient.disconnect();
+    // Disconnect WebSocket if feature was enabled
+    if (this.useWebSocketInput) {
+      websocketInputClient.disconnect();
+    }
     
     // Clear references to prevent memory leaks
     this.session = null;
