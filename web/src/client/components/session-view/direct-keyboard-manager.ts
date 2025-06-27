@@ -234,7 +234,7 @@ export class DirectKeyboardManager {
         // Always send backspace to terminal
         this.inputManager.sendInputText('backspace');
       } else if (e.key === 'Tab' && this.inputManager) {
-        this.inputManager.sendInputText('tab');
+        this.inputManager.sendInputText(e.shiftKey ? 'shift_tab' : 'tab');
       } else if (e.key === 'Escape' && this.inputManager) {
         this.inputManager.sendInputText('escape');
       }

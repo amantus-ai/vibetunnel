@@ -79,6 +79,7 @@ export type SpecialKey =
   | 'shift_enter'
   | 'backspace'
   | 'tab'
+  | 'shift_tab'
   | 'page_up'
   | 'page_down'
   | 'home'

@@ -737,6 +737,7 @@ export class PtyManager extends EventEmitter {
       shift_enter: '\r\n',
       backspace: '\x7f',
       tab: '\t',
+      shift_tab: '\x1b[Z',
       page_up: '\x1b[5~',
       page_down: '\x1b[6~',
       home: '\x1b[H',
