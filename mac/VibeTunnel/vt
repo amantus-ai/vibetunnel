@@ -2,8 +2,8 @@
 # VibeTunnel CLI wrapper
 
 # Check if we're already inside a VibeTunnel session
-if [ -n "$INSIDE_VIBETUNNEL" ] || [ "$VIBETUNNEL_SESSION" = "true" ]; then
-    echo "Error: Already inside a VibeTunnel session. Recursive VibeTunnel sessions are not supported." >&2
+if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
+    echo "Error: Already inside a VibeTunnel session (ID: $VIBETUNNEL_SESSION_ID). Recursive VibeTunnel sessions are not supported." >&2
     echo "If you need to run commands, use them directly without the 'vt' prefix." >&2
     exit 1
 fi
