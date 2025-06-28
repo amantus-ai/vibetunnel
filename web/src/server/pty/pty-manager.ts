@@ -638,8 +638,10 @@ export class PtyManager extends EventEmitter {
       let dataToSend = '';
       if (input.text !== undefined) {
         dataToSend = input.text;
+        logger.debug(`Received text input: ${JSON.stringify(input.text)} -> sending: ${JSON.stringify(dataToSend)}`);
       } else if (input.key !== undefined) {
         dataToSend = this.convertSpecialKey(input.key);
+        logger.debug(`Received special key: "${input.key}" -> converted to: ${JSON.stringify(dataToSend)}`);
       } else {
         throw new PtyError('No text or key specified in input', 'INVALID_INPUT');
       }

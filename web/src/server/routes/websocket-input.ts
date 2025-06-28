@@ -127,6 +127,7 @@ export class WebSocketInputHandler {
             logger.debug(`Regular text input: ${JSON.stringify(input)}`);
           }
 
+          logger.debug(`Sending to PTY manager: ${JSON.stringify(input)}`);
           this.ptyManager.sendInput(sessionId, input);
         } catch (error) {
           logger.warn(`Failed to send input to session ${sessionId}:`, error);
