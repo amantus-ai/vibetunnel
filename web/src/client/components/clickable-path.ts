@@ -8,7 +8,7 @@
  * @fires path-copy-failed - When path copy fails (detail: { path: string, error: string })
  */
 import { html, LitElement } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import { createLogger } from '../utils/logger.js';
 import { copyToClipboard, formatPathForDisplay } from '../utils/path-utils.js';
 import './copy-icon.js';
@@ -25,10 +25,6 @@ export class ClickablePath extends LitElement {
   @property({ type: String }) path = '';
   @property({ type: String }) class = '';
   @property({ type: Number }) iconSize = 12;
-
-  // Cache formatted path to avoid re-computation on every render
-  @state() private _formattedPath = '';
-  private _lastPath = '';
 
   private async handleClick(e: Event) {
     e.stopPropagation();
@@ -68,11 +64,7 @@ export class ClickablePath extends LitElement {
   render() {
     if (!this.path) return html``;
 
-    // Only recompute if path has changed
-    if (this.path !== this._lastPath) {
-      this._formattedPath = formatPathForDisplay(this.path);
-      this._lastPath = this.path;
-    }
+    const displayPath = formatPathForDisplay(this.path);
 
     return html`
       <div
@@ -82,7 +74,7 @@ export class ClickablePath extends LitElement {
         title="Click to copy path"
         @click=${this.handleClick}
       >
-        <span class="truncate">${this._formattedPath}</span>
+        <span class="truncate">${displayPath}</span>
         <copy-icon size="${this.iconSize}" class="flex-shrink-0"></copy-icon>
       </div>
     `;
