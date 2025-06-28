@@ -19,7 +19,7 @@ const DOMAIN_START_PATTERN = /^[a-zA-Z0-9[\].-]/;
 const PATH_START_PATTERN = /^[/a-zA-Z0-9[\].-]/;
 const URL_END_CHARS_PATTERN = /[^\w\-._~:/?#[\]@!$&'()*+,;=%{}|\\^`]/;
 const LOCALHOST_PATTERN =
-  /^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|.+\..+)(:\d+)?.*|file:\/\/.+)/;
+  /^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+)(:\d+)?.*|file:\/\/.+)/;
 
 type ProcessedRange = {
   start: number;

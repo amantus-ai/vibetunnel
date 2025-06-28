@@ -502,4 +502,117 @@ describe('UrlHighlighter', () => {
       expect(urls[1].href).toBe('https://google.com/');
     });
   });
+
+  describe('Bug fix: Numbered lists should not be detected as URLs', () => {
+    it('should not detect single digit numbered lists as URLs', () => {
+      createLines([
+        '1. First item in the list',
+        '2. Second item in the list',
+        '3. Third item in the list',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect double digit numbered lists as URLs', () => {
+      createLines(['10. Tenth item', '11. Eleventh item', '99. Ninety-ninth item']);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect numbered lists with various content as URLs', () => {
+      createLines([
+        '1. Successfully set up Playwright E2E testing framework with:',
+        '2. There might be a WebSocket or SSE connection issue',
+        '3. The terminal component might not be initializing properly for web sessions',
+        '4. Identified the issue: Web sessions in the test environment',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect numbered sub-lists as URLs', () => {
+      createLines([
+        '1.1 First sub-item',
+        '1.2 Second sub-item',
+        '2.1 Another sub-item',
+        '10.5 Decimal numbered item',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should still detect actual URLs in lines with numbers', () => {
+      createLines([
+        '1. Visit https://example.com for more info',
+        '2. Check http://localhost:3000 for the local server',
+        '3. The file is at file:///home/user/doc.pdf',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(3);
+      expect(urls[0].href).toBe('https://example.com/');
+      expect(urls[1].href).toBe('http://localhost:3000/');
+      expect(urls[2].href).toBe('file:///home/user/doc.pdf');
+    });
+
+    it('should not detect lettered lists as URLs', () => {
+      createLines([
+        'a. First lettered item',
+        'b. Second lettered item',
+        'A. Uppercase letter',
+        'B. Another uppercase',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect version numbers as URLs', () => {
+      createLines(['Version 1.0', 'Release 2.5.3', 'v3.14.159']);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect decimal numbers as URLs', () => {
+      createLines([
+        'Pi is approximately 3.14159',
+        'The price is $19.99',
+        'Temperature: 98.6 degrees',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect IP-like patterns in text as URLs', () => {
+      createLines([
+        'Error code 404.503 occurred',
+        'Section 1.2.3 of the manual',
+        'Coordinates 40.7128.74.0060',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should still detect actual domains with numbers', () => {
+      createLines([
+        'Visit https://web3.example.com',
+        'Check http://api.v2.service.io',
+        'Go to https://365.microsoft.com',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(3);
+      expect(urls[0].href).toBe('https://web3.example.com/');
+      expect(urls[1].href).toBe('http://api.v2.service.io/');
+      expect(urls[2].href).toBe('https://365.microsoft.com/');
+    });
+  });
 });
