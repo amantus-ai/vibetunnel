@@ -602,35 +602,6 @@ describe('UrlHighlighter', () => {
     });
 
     it('should still detect actual domains with numbers', () => {
-      // Test each URL individually first
-      createLines(['Visit https://web3.example.com']);
-      UrlHighlighter.processLinks(container);
-      let urls = getHighlightedUrls();
-      console.log(
-        'web3.example.com detected:',
-        urls.map((u) => u.href)
-      );
-      container.innerHTML = ''; // Clear
-
-      createLines(['Check http://api.v2.service.io']);
-      UrlHighlighter.processLinks(container);
-      urls = getHighlightedUrls();
-      console.log(
-        'api.v2.service.io detected:',
-        urls.map((u) => u.href)
-      );
-      container.innerHTML = ''; // Clear
-
-      createLines(['Go to https://365.microsoft.com']);
-      UrlHighlighter.processLinks(container);
-      urls = getHighlightedUrls();
-      console.log(
-        '365.microsoft.com detected:',
-        urls.map((u) => u.href)
-      );
-      container.innerHTML = ''; // Clear
-
-      // Now test all together
       createLines([
         'Visit https://web3.example.com',
         'Check http://api.v2.service.io',
@@ -638,16 +609,10 @@ describe('UrlHighlighter', () => {
       ]);
       UrlHighlighter.processLinks(container);
       const uniqueUrls = getUniqueUrls();
-      console.log('All URLs detected:', uniqueUrls);
-
-      // For now, just check that we detect at least some URLs
-      expect(uniqueUrls.length).toBeGreaterThan(0);
-
-      // TODO: Fix regex to detect all 3 URLs
-      // expect(uniqueUrls).toHaveLength(3);
-      // expect(uniqueUrls).toContain('https://web3.example.com/');
-      // expect(uniqueUrls).toContain('http://api.v2.service.io/');
-      // expect(uniqueUrls).toContain('https://365.microsoft.com/');
+      expect(uniqueUrls).toHaveLength(3);
+      expect(uniqueUrls).toContain('https://web3.example.com/');
+      expect(uniqueUrls).toContain('http://api.v2.service.io/');
+      expect(uniqueUrls).toContain('https://365.microsoft.com/');
     });
 
     it('should not detect Roman numerals as URLs', () => {
