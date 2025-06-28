@@ -2,8 +2,9 @@
 
 /**
  * Script to clean up multiple Claude bot comments on a PR
- * Keeps only the most recent successful review
- * Deletes error comments and collapses other outdated comments
+ * Uses GitHub's minimizeComment mutation for a cleaner UI
+ * Keeps only the most recent successful review visible
+ * Minimizes outdated comments and deletes error comments
  */
 
 async function cleanupClaudeComments({ github, context, core }) {
@@ -62,25 +63,25 @@ async function cleanupClaudeComments({ github, context, core }) {
     }
 
     // Keep the most recent successful review visible
-    const commentsToCollapse = [];
+    const commentsToMinimize = [];
     const commentsToDelete = [];
     let keptReview = false;
 
     if (successfulReviews.length > 0) {
       // Keep the first (most recent) successful review
       keptReview = true;
-      commentsToCollapse.push(...successfulReviews.slice(1));
+      commentsToMinimize.push(...successfulReviews.slice(1));
     }
 
-    // Delete all error comments, collapse status comments
+    // Delete all error comments, minimize status comments
     commentsToDelete.push(...errorComments);
-    commentsToCollapse.push(...statusComments);
+    commentsToMinimize.push(...statusComments);
 
     // If no successful review, keep the most recent non-error comment
     if (!keptReview && claudeComments.length > 0) {
       const nonErrorComments = claudeComments.filter(c => !errorComments.includes(c));
       if (nonErrorComments.length > 0) {
-        commentsToCollapse.push(...nonErrorComments.slice(1));
+        commentsToMinimize.push(...nonErrorComments.slice(1));
       }
     }
 
@@ -98,8 +99,8 @@ async function cleanupClaudeComments({ github, context, core }) {
       }
     }
 
-    // Process comments to collapse
-    for (const comment of commentsToCollapse) {
+    // Process comments to minimize using GraphQL
+    for (const comment of commentsToMinimize) {
       try {
         const timestamp = new Date(comment.created_at).toLocaleString();
         const commentType = 
@@ -107,31 +108,62 @@ async function cleanupClaudeComments({ github, context, core }) {
           comment.body.includes('is analyzing') ? 'status' :
           comment.body.includes('finished') ? 'review' : 'comment';
 
-        // Collapse the comment
-        await github.rest.issues.updateComment({
-          owner,
-          repo,
-          comment_id: comment.id,
-          body: `<details><summary>Claude ${commentType} from ${timestamp} (outdated - click to expand)</summary>\n\n${comment.body}\n</details>`
+        // Use minimizeComment mutation
+        const result = await github.graphql(`
+          mutation minimizeComment($nodeId: ID!) {
+            minimizeComment(input: { 
+              subjectId: $nodeId, 
+              classifier: OUTDATED 
+            }) {
+              minimizedComment {
+                id
+                isMinimized
+                minimizedReason
+              }
+            }
+          }
+        `, {
+          nodeId: comment.node_id
         });
 
-        core.info(`Collapsed Claude ${commentType} comment ${comment.id} from ${timestamp}`);
+        core.info(`Minimized Claude ${commentType} comment ${comment.id} from ${timestamp}`);
       } catch (error) {
-        // If update fails, try to delete (might not have permission)
+        // Fallback to the original approach if minimization fails
+        core.warning(`Failed to minimize comment ${comment.id}, falling back to collapse: ${error.message}`);
+        
         try {
-          await github.rest.issues.deleteComment({
+          const timestamp = new Date(comment.created_at).toLocaleString();
+          const commentType = 
+            comment.body.includes('encountered an error') ? 'error' :
+            comment.body.includes('is analyzing') ? 'status' :
+            comment.body.includes('finished') ? 'review' : 'comment';
+
+          // Collapse the comment using the original approach
+          await github.rest.issues.updateComment({
             owner,
             repo,
-            comment_id: comment.id
+            comment_id: comment.id,
+            body: `<details><summary>Claude ${commentType} from ${timestamp} (outdated - click to expand)</summary>\n\n${comment.body}\n</details>`
           });
-          core.info(`Deleted Claude comment ${comment.id}`);
-        } catch (deleteError) {
-          core.warning(`Failed to update or delete comment ${comment.id}: ${error.message}`);
+
+          core.info(`Collapsed Claude ${commentType} comment ${comment.id} from ${timestamp} (fallback)`);
+        } catch (updateError) {
+          // If update also fails, try to delete
+          try {
+            await github.rest.issues.deleteComment({
+              owner,
+              repo,
+              comment_id: comment.id
+            });
+            core.info(`Deleted Claude comment ${comment.id} (fallback)`);
+          } catch (deleteError) {
+            core.warning(`Failed to minimize, update, or delete comment ${comment.id}: ${error.message}`);
+          }
         }
       }
     }
 
-    core.info(`Cleanup complete. Deleted ${commentsToDelete.length} error comments, collapsed ${commentsToCollapse.length} comments`);
+    core.info(`Cleanup complete. Deleted ${commentsToDelete.length} error comments, minimized/collapsed ${commentsToMinimize.length} comments`);
 
   } catch (error) {
     core.error(`Failed to cleanup Claude comments: ${error.message}`);
