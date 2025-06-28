@@ -78,6 +78,7 @@ export interface ManagerAccessCallbacks {
   getConnectionManager(): {
     setConnected(connected: boolean): void;
     cleanupStreamConnection(): void;
+    hasActiveConnections?(): boolean;
   } | null;
 }
 

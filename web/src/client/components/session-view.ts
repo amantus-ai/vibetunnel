@@ -453,6 +453,8 @@ export class SessionView extends LitElement {
               this.transitionClearTimeout = setTimeout(() => {
                 this.isTransitioningSession = false;
                 this.transitionClearTimeout = undefined;
+                // Verify connection state after transition completes
+                this.verifyConnectionState();
               }, 100);
             } else {
               // No new session or same session - clear transition state immediately
@@ -892,6 +894,17 @@ export class SessionView extends LitElement {
         }
       }
     });
+  }
+
+  private verifyConnectionState(): boolean {
+    const hasActiveConnections = this.connectionManager?.hasActiveConnections?.() ?? false;
+    const stateMatches = hasActiveConnections === this.connected;
+    if (!stateMatches) {
+      logger.warn(
+        `Connection state mismatch detected: hasActiveConnections=${hasActiveConnections}, connected=${this.connected}`
+      );
+    }
+    return stateMatches;
   }
 
   refreshTerminalAfterMobileInput() {

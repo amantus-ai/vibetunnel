@@ -133,6 +133,10 @@ export class ConnectionManager {
     return this.reconnectCount;
   }
 
+  hasActiveConnections(): boolean {
+    return this.streamConnection !== null;
+  }
+
   private async loadSessionSnapshot(): Promise<void> {
     if (!this.terminal || !this.session) return;
 
