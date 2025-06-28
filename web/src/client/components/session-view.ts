@@ -375,6 +375,16 @@ export class SessionView extends LitElement {
         if (this.connectionManager) {
           this.connectionManager.cleanupStreamConnection();
         }
+
+        // Clear the terminal for the new session
+        const terminal = this.querySelector('vibe-terminal') as Terminal;
+        if (terminal) {
+          logger.log('Clearing terminal for session switch');
+          terminal.clear();
+        }
+
+        // Reset the terminal connection state
+        this.connected = false;
       }
       // Update input manager with new session
       if (this.inputManager) {
@@ -387,6 +397,17 @@ export class SessionView extends LitElement {
       // Update lifecycle event manager with new session
       if (this.lifecycleEventManager) {
         this.lifecycleEventManager.setSession(this.session);
+      }
+      // Update connection manager with new session
+      if (this.connectionManager) {
+        this.connectionManager.setSession(this.session);
+      }
+
+      // If we have a new session, re-initialize the terminal connection
+      if (this.session && oldSession?.id !== this.session.id) {
+        logger.log('New session detected, will reinitialize terminal connection');
+        this.connected = true;
+        // The terminal connection will be established in the next update cycle
       }
     }
 
@@ -401,14 +422,16 @@ export class SessionView extends LitElement {
     }
 
     // Initialize terminal after first render when terminal element exists
-    if (
-      !this.terminalLifecycleManager.getTerminal() &&
-      this.session &&
-      !this.loadingAnimationManager.isLoading() &&
-      this.connected
-    ) {
+    // Also re-initialize when session changes
+    if (this.session && !this.loadingAnimationManager.isLoading() && this.connected) {
       const terminalElement = this.querySelector('vibe-terminal') as Terminal;
-      if (terminalElement) {
+      const needsInit =
+        !this.terminalLifecycleManager.getTerminal() ||
+        (changedProperties.has('session') &&
+          changedProperties.get('session') &&
+          (changedProperties.get('session') as Session).id !== this.session.id);
+
+      if (terminalElement && needsInit) {
         this.terminalLifecycleManager.initializeTerminal();
       }
     }

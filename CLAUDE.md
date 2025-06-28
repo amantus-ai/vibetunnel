@@ -14,6 +14,19 @@ VibeTunnel is a macOS application that allows users to access their terminal ses
 - **Never commit and/or push before the user has tested your changes!**
 - **ABSOLUTELY SUPER IMPORTANT & CRITICAL**: NEVER USE git rebase --skip EVER
 
+## GitHub Issue Fetching
+
+**IMPORTANT**: When fetching GitHub issues, use the Bash tool directly with gh commands for faster results:
+
+```bash
+# Fast way - use Bash tool directly
+gh issue view 88              # View specific issue
+gh issue list                  # List all issues
+gh issue view 88 --comments   # View issue with comments
+```
+
+**DO NOT** use the Task/Agent tool for simple gh commands - it's much slower and unnecessary.
+
 ## Web Development Commands
 
 **IMPORTANT**: The user has `pnpm run dev` running - DO NOT manually build the web project!

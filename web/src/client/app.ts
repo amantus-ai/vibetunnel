@@ -1,6 +1,5 @@
 import { html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { keyed } from 'lit/directives/keyed.js';
 
 // Import shared types
 import type { Session } from '../shared/types.js';
@@ -1259,21 +1258,16 @@ export class VibeTunnelApp extends LitElement {
           showSplitView
             ? html`
               <div class="flex-1 relative sm:static transition-none">
-                ${keyed(
-                  this.selectedSessionId,
-                  html`
-                    <session-view
-                      .session=${selectedSession}
-                      .showBackButton=${false}
-                      .showSidebarToggle=${true}
-                      .sidebarCollapsed=${this.sidebarCollapsed}
-                      .disableFocusManagement=${this.hasActiveOverlay}
-                      @navigate-to-list=${this.handleNavigateToList}
-                      @toggle-sidebar=${this.handleToggleSidebar}
-                      @session-status-changed=${this.handleSessionStatusChanged}
-                    ></session-view>
-                  `
-                )}
+                <session-view
+                  .session=${selectedSession}
+                  .showBackButton=${false}
+                  .showSidebarToggle=${true}
+                  .sidebarCollapsed=${this.sidebarCollapsed}
+                  .disableFocusManagement=${this.hasActiveOverlay}
+                  @navigate-to-list=${this.handleNavigateToList}
+                  @toggle-sidebar=${this.handleToggleSidebar}
+                  @session-status-changed=${this.handleSessionStatusChanged}
+                ></session-view>
               </div>
             `
             : ''
