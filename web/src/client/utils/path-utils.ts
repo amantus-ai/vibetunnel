@@ -4,25 +4,52 @@
 
 /**
  * Format a file path for display by replacing the home directory with ~
- * Uses regex to match common home directory patterns across platforms
- * @param path The absolute path to format
+ *
+ * Handles common home directory patterns across different platforms:
+ * - macOS: /Users/username
+ * - Linux: /home/username
+ * - Windows: C:\Users\username or C:/Users/username (case-insensitive)
+ * - Root: /root
+ *
+ * @param path - The absolute path to format
  * @returns The formatted path with ~ replacing the home directory
+ *
+ * @example
+ * formatPathForDisplay('/Users/john/Documents') // returns '~/Documents'
+ * formatPathForDisplay('C:\\Users\\jane\\Desktop') // returns '~/Desktop'
+ * formatPathForDisplay('/home/bob/projects') // returns '~/projects'
  */
 export function formatPathForDisplay(path: string): string {
   if (!path) return '';
 
-  // Match common home directory patterns
-  return path
-    .replace(/^\/Users\/[^/]+/, '~') // macOS
-    .replace(/^\/home\/[^/]+/, '~') // Linux
-    .replace(/^C:\\Users\\[^\\]+/, '~') // Windows
-    .replace(/^\/root/, '~'); // Root user
+  // Use a single regex to match all patterns at once to avoid multiple replacements
+  // This prevents issues like /home/user1/projects/home/user2 becoming ~/projects/~
+  const homePattern = new RegExp(
+    '^(' +
+      '/Users/[^/]+|' + // macOS
+      '/home/[^/]+|' + // Linux
+      '[Cc]:[/\\\\]Users[/\\\\][^/\\\\]+|' + // Windows (both slashes, case-insensitive)
+      '/root' + // Root user
+      ')'
+  );
+
+  return path.replace(homePattern, '~');
 }
 
 /**
  * Copy text to clipboard with fallback for older browsers
- * @param text The text to copy
- * @returns Promise<boolean> indicating success
+ *
+ * Attempts to use the modern Clipboard API first, then falls back to the
+ * deprecated execCommand method for older browsers.
+ *
+ * @param text - The text to copy to clipboard
+ * @returns A promise that resolves to true if successful, false otherwise
+ *
+ * @example
+ * const success = await copyToClipboard('Hello, world!');
+ * if (success) {
+ *   console.log('Text copied to clipboard');
+ * }
  */
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {

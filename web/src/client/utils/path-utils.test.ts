@@ -39,7 +39,7 @@ describe('formatPathForDisplay', () => {
   });
 
   describe('Windows paths', () => {
-    it('should replace C:\\Users\\username with ~', () => {
+    it('should replace C:\\Users\\username with ~ (backslashes)', () => {
       expect(formatPathForDisplay('C:\\Users\\john\\Documents\\project')).toBe(
         '~\\Documents\\project'
       );
@@ -47,14 +47,42 @@ describe('formatPathForDisplay', () => {
       expect(formatPathForDisplay('C:\\Users\\bob')).toBe('~');
     });
 
+    it('should replace C:/Users/username with ~ (forward slashes)', () => {
+      expect(formatPathForDisplay('C:/Users/john/Documents/project')).toBe('~/Documents/project');
+      expect(formatPathForDisplay('C:/Users/alice/Downloads')).toBe('~/Downloads');
+      expect(formatPathForDisplay('C:/Users/bob')).toBe('~');
+    });
+
+    it('should handle case-insensitive drive letters', () => {
+      expect(formatPathForDisplay('c:\\Users\\john\\Documents')).toBe('~\\Documents');
+      expect(formatPathForDisplay('c:/Users/alice/Downloads')).toBe('~/Downloads');
+      expect(formatPathForDisplay('C:\\Users\\bob')).toBe('~');
+      expect(formatPathForDisplay('c:\\Users\\jane')).toBe('~');
+    });
+
+    it('should handle mixed path separators', () => {
+      expect(formatPathForDisplay('C:/Users/john\\Documents')).toBe('~\\Documents');
+      expect(formatPathForDisplay('c:\\Users/alice/Downloads')).toBe('~/Downloads');
+    });
+
     it('should handle usernames with special characters', () => {
       expect(formatPathForDisplay('C:\\Users\\john.doe\\Documents')).toBe('~\\Documents');
-      expect(formatPathForDisplay('C:\\Users\\alice-smith\\Projects')).toBe('~\\Projects');
-      expect(formatPathForDisplay('C:\\Users\\user123\\Desktop')).toBe('~\\Desktop');
+      expect(formatPathForDisplay('C:/Users/alice-smith/Projects')).toBe('~/Projects');
+      expect(formatPathForDisplay('c:\\Users\\user123\\Desktop')).toBe('~\\Desktop');
+      expect(formatPathForDisplay('c:/Users/test_user/Files')).toBe('~/Files');
     });
 
     it('should not replace if not C: drive', () => {
       expect(formatPathForDisplay('D:\\Users\\john')).toBe('D:\\Users\\john');
+      expect(formatPathForDisplay('d:/Users/alice')).toBe('d:/Users/alice');
+      expect(formatPathForDisplay('E:\\Users\\bob')).toBe('E:\\Users\\bob');
+    });
+
+    it('should not replace if Users is not after drive', () => {
+      expect(formatPathForDisplay('C:\\Program Files\\Users\\app')).toBe(
+        'C:\\Program Files\\Users\\app'
+      );
+      expect(formatPathForDisplay('C:/Documents/Users/file')).toBe('C:/Documents/Users/file');
     });
   });
 
@@ -96,8 +124,18 @@ describe('formatPathForDisplay', () => {
 
     it('should apply only the first matching pattern', () => {
       // This tests that the replacements are not cumulative
-      const testPath = '/Users/test/home/another/Users/path';
-      expect(formatPathForDisplay(testPath)).toBe('~/home/another/Users/path');
+      expect(formatPathForDisplay('/Users/test/home/another/Users/path')).toBe(
+        '~/home/another/Users/path'
+      );
+      expect(formatPathForDisplay('/home/user1/projects/home/user2')).toBe('~/projects/home/user2');
+      expect(formatPathForDisplay('C:\\Users\\john\\Users\\data')).toBe('~\\Users\\data');
+    });
+
+    it('should handle multiple home directory patterns in path', () => {
+      // Ensure only the first match is replaced
+      expect(formatPathForDisplay('/home/alice/work/home/bob/files')).toBe('~/work/home/bob/files');
+      expect(formatPathForDisplay('/Users/john/backup/Users/jane')).toBe('~/backup/Users/jane');
+      expect(formatPathForDisplay('C:/Users/admin/home/user')).toBe('~/home/user');
     });
   });
 });
