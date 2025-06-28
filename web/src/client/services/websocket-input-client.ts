@@ -136,9 +136,16 @@ export class WebSocketInputClient {
     }
 
     try {
-      // Ultra-minimal: send raw input directly, no JSON overhead
-      const rawInput = input.key || input.text;
-      if (!rawInput) {
+      // Ultra-minimal: send raw input with special key markers
+      let rawInput: string;
+      
+      if (input.key) {
+        // Special keys: wrap in null bytes to distinguish from literal text
+        rawInput = `\x00${input.key}\x00`;
+      } else if (input.text) {
+        // Regular text: send as-is
+        rawInput = input.text;
+      } else {
         return false;
       }
 

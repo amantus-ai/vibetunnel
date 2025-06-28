@@ -74,12 +74,25 @@ export class WebSocketInputHandler {
           return; // Ignore empty messages
         }
 
-        // Use the existing PtyManager's sendInput method for proper key handling
-        // This reuses the same key mapping logic as the HTTP /input endpoint
+        // Parse input with special key marker detection
+        // Special keys are wrapped in null bytes: "\x00enter\x00"
+        // Regular text (including literal "enter") is sent as-is
         try {
-          const input: SessionInput = this.isSpecialKey(inputReceived)
-            ? { key: inputReceived as SpecialKey }
-            : { text: inputReceived };
+          let input: SessionInput;
+          
+          if (inputReceived.startsWith('\x00') && inputReceived.endsWith('\x00') && inputReceived.length > 2) {
+            // Special key wrapped in null bytes
+            const keyName = inputReceived.slice(1, -1); // Remove null byte markers
+            if (this.isSpecialKey(keyName)) {
+              input = { key: keyName as SpecialKey };
+            } else {
+              // Unknown special key, treat as text
+              input = { text: inputReceived };
+            }
+          } else {
+            // Regular text (including literal words like "enter", "escape", etc.)
+            input = { text: inputReceived };
+          }
           
           this.ptyManager.sendInput(sessionId, input);
         } catch (error) {
