@@ -765,5 +765,51 @@ describe('UrlHighlighter', () => {
       expect(urls[1].href).toBe('https://test-123.sub-domain.example.org/');
       expect(urls[2].href).toBe('https://a.b.c.d.e.f.g.com/');
     });
+
+    it('should reject domains with invalid TLD labels', () => {
+      createLines([
+        'Invalid: https://example.com- (TLD ends with hyphen)',
+        'Invalid: https://example.-com (TLD starts with hyphen)',  
+        'Valid: https://example.c-om (TLD has hyphen in middle)',
+        'Invalid: https://example.123 (TLD is purely numeric)',
+        'Valid: https://example.co2m (TLD with number but has letters)',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      // Only the valid ones should be detected
+      expect(urls).toHaveLength(2);
+      expect(urls[0].text).toBe('https://example.c-om');
+      expect(urls[1].text).toBe('https://example.co2m');
+    });
+
+    it('should validate each subdomain label independently', () => {
+      createLines([
+        'https://valid-.subdomain.example.com',     // First label invalid
+        'https://valid.-subdomain.example.com',     // Second label invalid  
+        'https://valid.subdomain-.example.com',     // Third label invalid
+        'https://valid.subdomain.example-.com',     // Fourth label invalid
+        'https://valid.subdomain.example.-com',     // TLD invalid
+        'https://valid-sub.sub-domain.ex-ample.com', // All valid
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      // Only the last one with all valid labels should be detected
+      expect(urls).toHaveLength(1);
+      expect(urls[0].href).toBe('https://valid-sub.sub-domain.ex-ample.com/');
+    });
+
+    it('should enforce minimum domain structure', () => {
+      createLines([
+        'Test 1: https://com (No domain, just TLD)',
+        'Test 2: https://example (No TLD)',
+        'Test 3: https://example.c (Single letter TLD - valid)',
+        'Test 4: https://a.b (Minimal valid domain)',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(2);
+      expect(urls[0].text).toBe('https://example.c');
+      expect(urls[1].text).toBe('https://a.b');
+    });
   });
 });
