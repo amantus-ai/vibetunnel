@@ -814,8 +814,10 @@ export class SessionView extends LitElement {
     const terminal = this.querySelector('vibe-terminal') as Terminal;
     if (terminal) {
       terminal.maxCols = newMaxCols;
-      // Trigger a resize to apply the new constraint
+      terminal.setUserOverrideWidth(true);
       terminal.requestUpdate();
+    } else {
+      logger.warn('Terminal component not found when setting width');
     }
   }
 

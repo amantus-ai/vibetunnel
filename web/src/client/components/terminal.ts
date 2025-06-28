@@ -37,6 +37,7 @@ export class Terminal extends LitElement {
   @property({ type: Boolean }) hideScrollButton = false; // Hide scroll-to-bottom button
 
   private originalFontSize: number = 14;
+  private userOverrideWidth = false; // Track if user has manually set a width preference
 
   @state() private terminal: XtermTerminal | null = null;
   private _viewportY = 0; // Current scroll position in pixels
@@ -106,9 +107,39 @@ export class Terminal extends LitElement {
 
     // Check for debug mode
     this.debugMode = new URLSearchParams(window.location.search).has('debug');
+
+    // Load user width preference with error handling
+    if (this.sessionId) {
+      try {
+        const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
+        if (stored !== null) {
+          this.userOverrideWidth = stored === 'true';
+        }
+      } catch (error) {
+        logger.warn('Failed to load width preference from localStorage:', error);
+      }
+    }
   }
 
   updated(changedProperties: PropertyValues) {
+    super.updated(changedProperties);
+
+    // Load preference when sessionId changes
+    if (changedProperties.has('sessionId') && this.sessionId) {
+      try {
+        const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
+        if (stored !== null) {
+          this.userOverrideWidth = stored === 'true';
+          // Apply preference if terminal is already initialized
+          if (this.terminal && this.userOverrideWidth) {
+            this.fitTerminal();
+          }
+        }
+      } catch (error) {
+        logger.warn('Failed to load width preference from localStorage:', error);
+      }
+    }
+
     if (changedProperties.has('cols') || changedProperties.has('rows')) {
       if (this.terminal) {
         this.reinitializeTerminal();
@@ -346,7 +377,8 @@ export class Terminal extends LitElement {
 
       // Ensure charWidth is valid before division
       const safeCharWidth = Number.isFinite(charWidth) && charWidth > 0 ? charWidth : 8; // Default char width
-      const calculatedCols = Math.max(20, Math.floor(containerWidth / safeCharWidth)) - 1; // This -1 should not be needed, but it is...
+      // Subtract 1 to prevent horizontal scrollbar due to rounding/border issues
+      const calculatedCols = Math.max(20, Math.floor(containerWidth / safeCharWidth)) - 1;
       // Apply maxCols constraint if set (0 means no limit)
       this.cols = this.maxCols > 0 ? Math.min(calculatedCols, this.maxCols) : calculatedCols;
       this.rows = Math.max(6, Math.floor(containerHeight / lineHeight));
@@ -1026,6 +1058,28 @@ export class Terminal extends LitElement {
    */
   public queueCallback(callback: () => void) {
     this.queueRenderOperation(callback);
+  }
+
+  /**
+   * Set user width override preference and persist to localStorage.
+   * @param override - Whether user has manually set a width preference
+   */
+  public setUserOverrideWidth(override: boolean) {
+    this.userOverrideWidth = override;
+
+    // Persist preference with error handling
+    if (this.sessionId) {
+      try {
+        localStorage.setItem(`terminal-width-override-${this.sessionId}`, String(override));
+      } catch (error) {
+        logger.warn('Failed to save width preference to localStorage:', error);
+      }
+    }
+
+    // Apply the change immediately
+    if (this.terminal && this.container) {
+      this.fitTerminal();
+    }
   }
 
   // === QUERY METHODS (Immediate) ===
