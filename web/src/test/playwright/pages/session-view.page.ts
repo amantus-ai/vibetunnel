@@ -1,5 +1,5 @@
 import { TerminalTestUtils } from '../utils/terminal-test-utils';
-import { TerminalUtils, WaitUtils } from '../utils/test-utils';
+import { WaitUtils } from '../utils/test-utils';
 import { BasePage } from './base.page';
 
 export class SessionViewPage extends BasePage {

@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 /**
  * Test data factory for generating consistent test data
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: Utility class pattern for test helpers
 export class TestDataFactory {
   /**
    * Generate a unique session name for testing
@@ -58,6 +59,7 @@ export async function withRetry<T>(
 /**
  * Wait utilities for common scenarios
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: Utility class pattern for test helpers
 export class WaitUtils {
   /**
    * Wait for terminal to be ready (xterm initialized and visible)
@@ -116,7 +118,7 @@ export class WaitUtils {
         if (!term) return false;
 
         const text = term.textContent || '';
-        
+
         // Check if any prompt pattern exists in the terminal content
         return patterns.some((pattern) => {
           const regex = new RegExp(pattern);
@@ -275,6 +277,7 @@ export class WaitUtils {
 /**
  * Assertion helpers for common checks
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: Utility class pattern for test helpers
 export class AssertionUtils {
   /**
    * Assert terminal contains expected text
@@ -325,6 +328,7 @@ export class AssertionUtils {
 /**
  * Terminal interaction utilities
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: Utility class pattern for test helpers
 export class TerminalUtils {
   /**
    * Type command with proper shell escaping
@@ -408,6 +412,7 @@ export class TerminalUtils {
 /**
  * Screenshot utilities with proper paths
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: Utility class pattern for test helpers
 export class ScreenshotUtils {
   static getScreenshotPath(name: string): string {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');

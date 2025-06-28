@@ -17,7 +17,10 @@ export class SessionListPage extends BasePage {
 
     // Wait for the modal to appear by checking for the session name input
     try {
-      await this.page.waitForSelector('[data-testid="session-name-input"]', { state: 'visible', timeout: 5000 });
+      await this.page.waitForSelector('[data-testid="session-name-input"]', {
+        state: 'visible',
+        timeout: 5000,
+      });
     } catch {
       // Fallback to placeholder if data-testid is not found
       await this.page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
@@ -25,12 +28,12 @@ export class SessionListPage extends BasePage {
 
     // IMPORTANT: Set spawn window toggle to create web sessions, not native terminals
     let spawnWindowToggle = this.page.locator('[data-testid="spawn-window-toggle"]');
-    
+
     // Check if toggle exists with data-testid, if not use role selector
     if (!(await spawnWindowToggle.isVisible({ timeout: 1000 }).catch(() => false))) {
       spawnWindowToggle = this.page.locator('button[role="switch"]');
     }
-    
+
     const isSpawnWindowOn = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
 
     // If current state doesn't match desired state, click to toggle
@@ -39,8 +42,9 @@ export class SessionListPage extends BasePage {
       // Verify the toggle state changed
       await this.page.waitForFunction(
         (expectedState) => {
-          const toggle = document.querySelector('[data-testid="spawn-window-toggle"]') || 
-                        document.querySelector('button[role="switch"]');
+          const toggle =
+            document.querySelector('[data-testid="spawn-window-toggle"]') ||
+            document.querySelector('button[role="switch"]');
           return toggle?.getAttribute('aria-checked') === expectedState;
         },
         spawnWindow ? 'true' : 'false',

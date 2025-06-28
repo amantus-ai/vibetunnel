@@ -60,7 +60,7 @@ test.describe('UI Features', () => {
     // The file browser is already open (we waited for ".." to be visible)
     // Get the path display element - it's inside the visible file browser
     const fileBrowser = page.locator('file-browser').filter({ has: page.locator('text=..') });
-    
+
     // Get current path text from the clickable path div
     const pathElement = fileBrowser.locator('div[title*="click to edit"]').first();
     const pathText = await pathElement.textContent();
@@ -132,10 +132,10 @@ test.describe('UI Features', () => {
   test('should display notification options', async ({ page }) => {
     // Check notification button in header - it's the notification-status component
     const notificationButton = page.locator('notification-status button').first();
-    
+
     // Wait for notification button to be visible
     await expect(notificationButton).toBeVisible({ timeout: 5000 });
-    
+
     // Verify the button has a tooltip
     const tooltip = await notificationButton.getAttribute('title');
     expect(tooltip).toBeTruthy();
@@ -143,10 +143,10 @@ test.describe('UI Features', () => {
   });
 
   test('should show session count in header', async ({ page }) => {
-    // The header should show session count - look for text like "(5)" 
+    // The header should show session count - look for text like "(5)"
     // It's in the full-header component
     await page.waitForSelector('full-header', { state: 'visible' });
-    
+
     // Get initial count from header
     const headerElement = page.locator('full-header').first();
     const sessionCountElement = headerElement.locator('p.text-xs').first();

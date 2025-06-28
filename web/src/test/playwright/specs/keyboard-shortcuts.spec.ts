@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { TerminalTestUtils } from '../utils/terminal-test-utils';
-import { TerminalUtils, TestDataFactory, WaitUtils } from '../utils/test-utils';
 import { generateTestSessionName } from '../helpers/terminal.helper';
+import { TerminalTestUtils } from '../utils/terminal-test-utils';
+import { WaitUtils } from '../utils/test-utils';
 
 test.describe('Keyboard Shortcuts', () => {
   test.beforeEach(async ({ page }) => {
@@ -24,7 +24,7 @@ test.describe('Keyboard Shortcuts', () => {
     await page.fill('input[placeholder="My Session"]', sessionName);
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
-    
+
     // Wait for terminal to be ready
     await TerminalTestUtils.waitForTerminalReady(page);
 
@@ -34,19 +34,19 @@ test.describe('Keyboard Shortcuts', () => {
 
     // File browser should open - wait for any directory listing
     await page.waitForTimeout(500); // Give it time to open
-    
+
     // Check for file browser by looking for common elements
     const hasParentDir = await page.locator('text=..').isVisible();
     const hasGitButtons = await page.locator('text=Git Changes').isVisible();
     const hasHiddenFiles = await page.locator('text=Hidden Files').isVisible();
-    
+
     // At least one of these should be visible
     expect(hasParentDir || hasGitButtons || hasHiddenFiles).toBe(true);
 
     // Press Escape to close
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
-    
+
     // Verify file browser closed
     const isParentDirHidden = await page.locator('text=..').isHidden();
     expect(isParentDirHidden).toBe(true);
@@ -72,7 +72,7 @@ test.describe('Keyboard Shortcuts', () => {
     // Click on terminal to ensure focus
     const terminal = page.locator('vibe-terminal');
     await terminal.click();
-    
+
     // Press Escape to go back to list
     await page.keyboard.press('Escape');
     await page.waitForTimeout(1000); // Give navigation time
@@ -157,7 +157,10 @@ test.describe('Keyboard Shortcuts', () => {
 
     // Test exit command
     await TerminalTestUtils.executeCommand(page, 'exit');
-    await page.waitForSelector('text=/exited|EXITED|terminated/', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('text=/exited|EXITED|terminated/', {
+      state: 'visible',
+      timeout: 5000,
+    });
 
     // Session should show as exited
     await expect(page.locator('text=/exited|EXITED/').first()).toBeVisible({ timeout: 5000 });

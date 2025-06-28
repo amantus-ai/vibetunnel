@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { TerminalTestUtils } from '../utils/terminal-test-utils';
-import { TerminalUtils, TestDataFactory, WaitUtils, withRetry } from '../utils/test-utils';
+import { TestDataFactory, WaitUtils, withRetry } from '../utils/test-utils';
 
 /**
  * Wait for shell prompt with improved detection
@@ -63,7 +63,9 @@ export async function waitForProcessToComplete(page: Page, processName: string, 
   await page.waitForFunction(
     (proc) => {
       const lines = document.querySelectorAll('.terminal-line');
-      const text = Array.from(lines).map(l => l.textContent || '').join('\n');
+      const text = Array.from(lines)
+        .map((l) => l.textContent || '')
+        .join('\n');
       // Check if process completed
       return (
         text.includes(`${proc}: command not found`) ||
@@ -114,10 +116,10 @@ export async function cleanupSessions(page: Page) {
         await cleanExitedButton.click();
         await page.waitForTimeout(1000); // Wait for cleanup to complete
       }
-      
+
       // Check if there are any running sessions to clean up
       let sessionCards = await page.locator('session-card').count();
-      
+
       // If no visible sessions, check for exited sessions
       if (sessionCards === 0) {
         // Look for "Show Exited" button
@@ -126,7 +128,7 @@ export async function cleanupSessions(page: Page) {
           await showExitedButton.click();
           await page.waitForTimeout(500); // Wait for UI to update
           sessionCards = await page.locator('session-card').count();
-          
+
           // Try clean exited again after showing them
           const cleanExitedAfterShow = page.locator('button:has-text("Clean Exited")');
           if (await cleanExitedAfterShow.isVisible()) {
@@ -135,7 +137,7 @@ export async function cleanupSessions(page: Page) {
             sessionCards = await page.locator('session-card').count();
           }
         }
-        
+
         if (sessionCards === 0) {
           return; // No sessions to clean up
         }

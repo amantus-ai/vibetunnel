@@ -2,7 +2,6 @@ import { expect, test } from '../fixtures/test.fixture';
 import {
   cleanupSessions,
   generateTestSessionName,
-  getLastCommandOutput,
   waitForShellPrompt,
 } from '../helpers/terminal.helper';
 
@@ -110,10 +109,10 @@ test.describe('Terminal Interaction', () => {
     // The terminal should be cleared - check that the "Line" outputs are gone
     expect(outputAfter).not.toContain('Line 0');
     expect(outputAfter).not.toContain('Line 4');
-    
+
     // But should still have a prompt
     expect(outputAfter).toMatch(/[$>#%❯]/);
-    
+
     // And should be significantly shorter
     expect(outputAfter.trim().split('\n').length).toBeLessThan(5);
   });
@@ -158,7 +157,7 @@ test.describe('Terminal Interaction', () => {
     // Verify it's in the environment
     await sessionViewPage.typeCommand('env | grep TEST_VAR');
     await waitForShellPrompt(page);
-    
+
     // Just verify the output contains the variable name
     const output = await sessionViewPage.getTerminalOutput();
     expect(output).toContain(varName);
@@ -169,8 +168,8 @@ test.describe('Terminal Interaction', () => {
     // Get initial viewport size
     const initialViewport = page.viewportSize();
     expect(initialViewport).toBeTruthy();
-    const initialWidth = initialViewport!.width;
-    const initialHeight = initialViewport!.height;
+    const initialWidth = initialViewport?.width || 1280;
+    const _initialHeight = initialViewport?.height || 720;
 
     // Type something before resize
     await sessionViewPage.typeCommand('echo "Before resize"');
@@ -180,13 +179,13 @@ test.describe('Terminal Interaction', () => {
     const newWidth = initialWidth === 1280 ? 1600 : 1200;
     const newHeight = 800;
     await sessionViewPage.resizeTerminal(newWidth, newHeight);
-    
+
     // Verify viewport actually changed
     const newViewport = page.viewportSize();
     expect(newViewport).toBeTruthy();
-    expect(newViewport!.width).toBe(newWidth);
-    expect(newViewport!.height).toBe(newHeight);
-    expect(newViewport!.width).not.toBe(initialWidth);
+    expect(newViewport?.width).toBe(newWidth);
+    expect(newViewport?.height).toBe(newHeight);
+    expect(newViewport?.width).not.toBe(initialWidth);
 
     // Verify the terminal element still exists after resize
     const terminalExists = await page.locator('vibe-terminal').isVisible();
