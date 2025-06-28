@@ -387,10 +387,14 @@ export class SessionView extends LitElement {
     // If session changed, clean up old stream connection
     if (changedProperties.has('session')) {
       const oldSession = changedProperties.get('session') as Session | null;
-      if (oldSession && oldSession.id !== this.session?.id) {
+      // Handle session changes including null to valid transitions
+      const sessionChanged = oldSession?.id !== this.session?.id;
+
+      if (sessionChanged) {
         // Clear any pending session switch debounce
         if (this.sessionSwitchDebounce) {
           clearTimeout(this.sessionSwitchDebounce);
+          this.sessionSwitchDebounce = undefined;
         }
 
         // Clear any pending transition clear timeout to prevent race condition
@@ -411,6 +415,11 @@ export class SessionView extends LitElement {
             this.connectionManager.cleanupStreamConnection();
           }
           return;
+        }
+
+        // For null to valid session transitions, we need to ensure proper setup
+        if (!oldSession) {
+          logger.log('Transitioning from null to valid session');
         }
 
         // Start transition state

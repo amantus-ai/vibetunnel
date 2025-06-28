@@ -196,6 +196,9 @@ describe('SessionView', () => {
       const mockSession = createMockSession();
       element.session = mockSession;
       await element.updateComplete;
+
+      // Wait for any session transition to complete
+      await waitForAsync(120); // Wait for debounce + transition
     });
 
     it('should send keyboard input to terminal', async () => {
@@ -258,8 +261,15 @@ describe('SessionView', () => {
         }
       );
 
+      // Wait a bit longer to ensure terminal is fully set up
+      await waitForAsync(50);
+
       const terminal = element.querySelector('vibe-terminal');
       if (terminal) {
+        // Dispatch terminal-ready event first to ensure handlers are set up
+        terminal.dispatchEvent(new Event('terminal-ready', { bubbles: true }));
+        await waitForAsync();
+
         // Dispatch paste event from terminal
         const pasteEvent = new CustomEvent('terminal-paste', {
           detail: { text: 'pasted text' },
@@ -273,8 +283,15 @@ describe('SessionView', () => {
     });
 
     it('should handle terminal resize', async () => {
+      // Wait for terminal to be initialized
+      await waitForAsync(50);
+
       const terminal = element.querySelector('vibe-terminal');
       if (terminal) {
+        // Dispatch terminal-ready event to ensure handlers are set up
+        terminal.dispatchEvent(new Event('terminal-ready', { bubbles: true }));
+        await waitForAsync();
+
         // Dispatch resize event
         const resizeEvent = new CustomEvent('terminal-resize', {
           detail: { cols: 100, rows: 30 },
@@ -298,8 +315,17 @@ describe('SessionView', () => {
       element.session = mockSession;
       await element.updateComplete;
 
-      // Wait for connection
-      await waitForAsync();
+      // Wait for session transition and connection setup
+      await waitForAsync(120);
+
+      // Find terminal and dispatch terminal-ready event
+      const terminal = element.querySelector('vibe-terminal');
+      if (terminal) {
+        terminal.dispatchEvent(new Event('terminal-ready', { bubbles: true }));
+      }
+
+      // Wait for async connection setup (setTimeout in terminal lifecycle manager)
+      await waitForAsync(10);
 
       // Should create EventSource
       expect(MockEventSource.instances.size).toBeGreaterThan(0);
@@ -465,6 +491,11 @@ describe('SessionView', () => {
 
       const mockSession = createMockSession();
       element.session = mockSession;
+      await element.updateComplete;
+
+      // Wait for session transition to complete
+      await waitForAsync(120);
+
       element.showFileBrowser = true;
       await element.updateComplete;
 
@@ -589,6 +620,9 @@ describe('SessionView', () => {
       const mockSession = createMockSession({ status: 'exited' });
       element.session = mockSession;
       await element.updateComplete;
+
+      // Wait for session transition to complete
+      await waitForAsync(120);
 
       // Press escape on exited session
       await pressKey(element, 'Escape');
@@ -884,6 +918,9 @@ describe('SessionView', () => {
       element.session = session;
       await element.updateComplete;
 
+      // Wait for initial session to be set up
+      await waitForAsync(120);
+
       const testElement = element as SessionViewTestInterface;
       const updateManagersSpy = vi.spyOn(testElement, 'updateManagers');
       const cleanupSpy = vi.fn();
@@ -1028,6 +1065,53 @@ describe('SessionView', () => {
 
       // Restore
       element.updated = originalUpdated;
+    });
+
+    it('should handle null to valid session transition with full setup', async () => {
+      // Create a fresh element for this test to avoid interference
+      const freshElement = await fixture<SessionView>(html` <session-view></session-view> `);
+      await freshElement.updateComplete;
+
+      // Start with null session
+      freshElement.session = null;
+      await freshElement.updateComplete;
+
+      const testElement = freshElement as SessionViewTestInterface;
+
+      // Transition from null to valid session
+      const session = createMockSession({ id: 'new-session-1' });
+      freshElement.session = session;
+      await freshElement.updateComplete;
+
+      // Should start transition
+      expect(testElement.isTransitioningSession).toBe(true);
+
+      // Wait for debounce
+      await waitForAsync(60);
+
+      // Wait for async operations
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      await waitForAsync(10);
+
+      // Connection should be established
+      expect(testElement.connected).toBe(true);
+
+      // Wait for transition to complete
+      await waitForAsync(60);
+
+      // Transition should be complete
+      expect(testElement.isTransitioningSession).toBe(false);
+
+      // Verify the session was properly set
+      expect(freshElement.session?.id).toBe('new-session-1');
+
+      // Verify terminal was created
+      const terminal = freshElement.querySelector('vibe-terminal') as TerminalTestInterface;
+      expect(terminal).toBeTruthy();
+      expect(terminal?.sessionId).toBe('new-session-1');
+
+      // Clean up
+      freshElement.remove();
     });
   });
 });
