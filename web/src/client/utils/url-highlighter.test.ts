@@ -769,7 +769,7 @@ describe('UrlHighlighter', () => {
     it('should reject domains with invalid TLD labels', () => {
       createLines([
         'Invalid: https://example.com- (TLD ends with hyphen)',
-        'Invalid: https://example.-com (TLD starts with hyphen)',  
+        'Invalid: https://example.-com (TLD starts with hyphen)',
         'Valid: https://example.c-om (TLD has hyphen in middle)',
         'Invalid: https://example.123 (TLD is purely numeric)',
         'Valid: https://example.co2m (TLD with number but has letters)',
@@ -784,11 +784,11 @@ describe('UrlHighlighter', () => {
 
     it('should validate each subdomain label independently', () => {
       createLines([
-        'https://valid-.subdomain.example.com',     // First label invalid
-        'https://valid.-subdomain.example.com',     // Second label invalid  
-        'https://valid.subdomain-.example.com',     // Third label invalid
-        'https://valid.subdomain.example-.com',     // Fourth label invalid
-        'https://valid.subdomain.example.-com',     // TLD invalid
+        'https://valid-.subdomain.example.com', // First label invalid
+        'https://valid.-subdomain.example.com', // Second label invalid
+        'https://valid.subdomain-.example.com', // Third label invalid
+        'https://valid.subdomain.example-.com', // Fourth label invalid
+        'https://valid.subdomain.example.-com', // TLD invalid
         'https://valid-sub.sub-domain.ex-ample.com', // All valid
       ]);
       UrlHighlighter.processLinks(container);
