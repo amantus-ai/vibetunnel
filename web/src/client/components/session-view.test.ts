@@ -15,10 +15,10 @@ import { resetFactoryCounters } from '@/test/utils/test-factories';
 // Mock EventSource globally
 global.EventSource = MockEventSource as unknown as typeof EventSource;
 
+import type { Session } from '@/types/session';
 // Import component type
 import type { SessionView } from './session-view';
 import type { Terminal } from './terminal';
-import type { Session } from '@/types/session';
 
 // Test interface for SessionView private properties
 interface SessionViewTestInterface extends SessionView {
