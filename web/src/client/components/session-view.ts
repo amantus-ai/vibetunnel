@@ -433,14 +433,15 @@ export class SessionView extends LitElement {
         // Start transition state
         this.isTransitioningSession = true;
 
+        // Capture the session ID before the debounce to detect changes during the delay
+        const expectedSessionId = this.session?.id;
+
         // Debounce rapid session switches to prevent multiple connection attempts
         this.sessionSwitchDebounce = setTimeout(async () => {
-          // Store expected session ID immediately
-          const expectedSessionId = this.session?.id;
-
           // Exit early if session changed during debounce
           if (this.session?.id !== expectedSessionId) {
             logger.log('Session changed during debounce, skipping transition');
+            this.isTransitioningSession = false;
             this.isTransitioning = false;
             return;
           }
@@ -517,8 +518,7 @@ export class SessionView extends LitElement {
           } finally {
             this.cleanupInProgress = false;
             this.isTransitioning = false;
-            // Note: isTransitioningSession is handled by the timeout above
-            // Do NOT clear it here as it would override the intended delay
+            // Remove redundant check - isTransitioningSession is already handled above
           }
         }, SESSION_SWITCH_DEBOUNCE_MS);
       } else {

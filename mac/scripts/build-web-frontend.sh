@@ -172,23 +172,23 @@ if [ "$BUILD_CONFIG" = "Release" ]; then
         echo "  Version: $CUSTOM_NODE_VERSION"
         echo "  Size: $CUSTOM_NODE_SIZE (vs ~110MB for standard Node.js)"
         echo "  Path: $CUSTOM_NODE_PATH"
-        pnpm run build -- --custom-node
+        pnpm run build -- --custom-node 2>&1 | filter_build_output
     else
         echo "WARNING: Custom Node.js build failed, using system Node.js"
         echo "The app will be larger than optimal."
-        pnpm run build
+        pnpm run build 2>&1 | filter_build_output
     fi
 else
     # Debug build
     if [ -f "$CUSTOM_NODE_PATH" ]; then
         CUSTOM_NODE_VERSION=$("$CUSTOM_NODE_PATH" --version 2>/dev/null || echo "unknown")
         echo "Debug build - found existing custom Node.js $CUSTOM_NODE_VERSION, using it for consistency"
-        pnpm run build -- --custom-node
+        pnpm run build -- --custom-node 2>&1 | filter_build_output
     else
         echo "Debug build - using system Node.js for faster builds"
         echo "System Node.js: $(node --version)"
         echo "To use custom Node.js in debug builds, run: cd web && node build-custom-node.js --latest"
-        pnpm run build
+        pnpm run build 2>&1 | filter_build_output
     fi
 fi
 
