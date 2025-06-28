@@ -9,6 +9,10 @@ on:
       - 'web/**'
       - '.github/workflows/playwright.yml'
 
+permissions:
+  pull-requests: write
+  issues: write
+
 jobs:
   test:
     name: Playwright E2E Tests

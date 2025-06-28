@@ -21,16 +21,14 @@ test.describe('Session Creation', () => {
     // Verify we're in the session view (URL should have session query param)
     await expect(sessionViewPage.page).toHaveURL(/\?session=/);
 
-    // For now, just verify the session was created by checking the title
-    // The UI seems to have changed - we need to investigate the new layout
-    await page.waitForTimeout(3000);
-
-    // Take a screenshot for debugging
-    await page.screenshot({ path: 'session-created.png' });
-
-    // Check if we have a session title in the header
-    const headerText = await page.locator('header').textContent();
-    expect(headerText).toContain('zsh');
+    // The session view has a dark sidebar on the left showing sessions
+    // Look for the session name in the sidebar (it shows "zsh (~)")
+    const sessionInSidebar = page.locator('text=/zsh.*\\(~\\)/').first();
+    await expect(sessionInSidebar).toBeVisible({ timeout: 5000 });
+    
+    // The terminal area should be visible (even if black initially)
+    const terminalArea = page.locator('vibe-terminal');
+    await expect(terminalArea).toBeVisible();
   });
 
   test('should create a new session with custom name', async ({
@@ -68,7 +66,7 @@ test.describe('Session Creation', () => {
     const initialCount = await sessionListPage.getSessionCount();
 
     // Create a new session
-    await sessionListPage.createNewSession(sessionName);
+    await sessionListPage.createNewSession(sessionName, false);
 
     // Wait for terminal to be ready
     await sessionViewPage.waitForTerminalReady();
@@ -97,7 +95,7 @@ test.describe('Session Creation', () => {
 
     // Create multiple sessions
     for (const name of sessionNames) {
-      await sessionListPage.createNewSession(name);
+      await sessionListPage.createNewSession(name, false);
       await sessionViewPage.waitForTerminalReady();
       await sessionViewPage.navigateBack();
     }
@@ -118,7 +116,7 @@ test.describe('Session Creation', () => {
 
     // Create a session
     await sessionListPage.navigate();
-    await sessionListPage.createNewSession(sessionName);
+    await sessionListPage.createNewSession(sessionName, false);
     await sessionViewPage.waitForTerminalReady();
 
     // Type a command to identify the session

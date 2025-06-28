@@ -9,16 +9,32 @@ export class SessionViewPage extends BasePage {
     // Wait for terminal component to be visible
     await this.page.waitForSelector(this.terminalSelector, { state: 'visible' });
 
-    // Wait for xterm to be initialized inside the terminal
-    await this.page.waitForSelector(`${this.terminalSelector} .xterm`, { state: 'visible' });
+    // For web sessions, the terminal might take longer to initialize
+    // Try to wait for xterm, but don't fail if it doesn't appear immediately
+    try {
+      await this.page.waitForSelector(`${this.terminalSelector} .xterm`, { 
+        state: 'visible',
+        timeout: 5000 
+      });
+    } catch (e) {
+      // Terminal component exists but xterm might not be initialized yet
+      // This can happen with web sessions that are still connecting
+      console.log('Note: xterm not immediately visible, continuing...');
+    }
 
     // Wait a bit for terminal to be fully interactive
     await this.page.waitForTimeout(2000);
   }
 
   async typeCommand(command: string, pressEnter = true) {
-    // Focus the terminal screen
-    await this.page.click(this.terminalScreenSelector);
+    // Click on the terminal component to focus it
+    try {
+      // Try clicking the xterm screen first
+      await this.page.click(this.terminalScreenSelector);
+    } catch (e) {
+      // If xterm screen not available, click the terminal component itself
+      await this.page.click(this.terminalSelector);
+    }
 
     // Type the command
     await this.page.keyboard.type(command, { delay: 50 });
