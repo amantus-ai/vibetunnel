@@ -379,19 +379,23 @@ export class Terminal extends LitElement {
       // Apply constraints in order of priority:
       // 1. If user has manually selected a specific width (maxCols > 0), use that as the limit
       // 2. If user has explicitly selected "unlimited" (maxCols = 0 with userOverrideWidth), use full width
-      // 3. Otherwise, if we have initial dimensions and no user override, limit to initial width
+      // 3. For tunneled sessions (fwd_*), if we have initial dimensions and no user override, limit to initial width
       // 4. Otherwise, use calculated width (unlimited)
+
+      // Check if this is a tunneled session (from vt command)
+      const isTunneledSession = this.sessionId.startsWith('fwd_');
+
       if (this.maxCols > 0) {
         // User has manually selected a specific width limit
         this.cols = Math.min(calculatedCols, this.maxCols);
       } else if (this.userOverrideWidth) {
         // User has explicitly selected "unlimited" - use full width
         this.cols = calculatedCols;
-      } else if (this.initialCols > 0) {
-        // No manual selection, but we have initial dimensions - limit to initial width
+      } else if (this.initialCols > 0 && isTunneledSession) {
+        // Only apply initial width restriction for tunneled sessions
         this.cols = Math.min(calculatedCols, this.initialCols);
       } else {
-        // No constraints - use full width (fallback for sessions without initial dimensions)
+        // No constraints - use full width (for frontend-created sessions or sessions without initial dimensions)
         this.cols = calculatedCols;
       }
       this.rows = Math.max(6, Math.floor(containerHeight / lineHeight));
