@@ -602,6 +602,8 @@ describe('SessionView', () => {
 
     it('should show limited width label when constrained by session dimensions', async () => {
       const mockSession = createMockSession();
+      // Set up a tunneled session (from vt command) with 'fwd_' prefix
+      mockSession.id = 'fwd_1234567890';
       mockSession.initialCols = 120;
       mockSession.initialRows = 30;
 
@@ -617,13 +619,13 @@ describe('SessionView', () => {
       }
 
       // With no manual selection (terminalMaxCols = 0) and initial dimensions,
-      // the label should show "≤120"
+      // the label should show "≤120" for tunneled sessions
       const label = element.getCurrentWidthLabel();
       expect(label).toBe('≤120');
 
       // Tooltip should explain the limitation
       const tooltip = element.getWidthTooltip();
-      expect(tooltip).toContain('Limited to session width');
+      expect(tooltip).toContain('Limited to native terminal width');
       expect(tooltip).toContain('120 columns');
     });
 
@@ -644,6 +646,32 @@ describe('SessionView', () => {
       const label = element.getCurrentWidthLabel();
       expect(label).toBe('∞');
 
+      const tooltip = element.getWidthTooltip();
+      expect(tooltip).toBe('Terminal width: Unlimited');
+    });
+
+    it('should show unlimited width for frontend-created sessions', async () => {
+      const mockSession = createMockSession();
+      // Use default UUID format ID (not tunneled) - do not override the ID
+      mockSession.initialCols = 120;
+      mockSession.initialRows = 30;
+
+      element.session = mockSession;
+      element.terminalMaxCols = 0; // No manual width selection
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        terminal.initialCols = 120;
+        terminal.initialRows = 30;
+        terminal.userOverrideWidth = false;
+      }
+
+      // Frontend-created sessions should show unlimited, not limited by initial dimensions
+      const label = element.getCurrentWidthLabel();
+      expect(label).toBe('∞');
+
+      // Tooltip should show unlimited
       const tooltip = element.getWidthTooltip();
       expect(tooltip).toBe('Terminal width: Unlimited');
     });
