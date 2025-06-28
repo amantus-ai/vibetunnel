@@ -68,6 +68,9 @@ importers:
       postject:
         specifier: ^1.0.0-alpha.6
         version: 1.0.0-alpha.6
+      robot3:
+        specifier: ^1.1.1
+        version: 1.1.1
       signal-exit:
         specifier: ^4.1.0
         version: 4.1.0
@@ -2440,6 +2443,9 @@ packages:
   reusify@1.1.0:
     resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
+
+  robot3@1.1.1:
+    resolution: {integrity: sha512-kuD0oQg2KUE74FCQ1a5uoRsEJ/bUKrU1D3vnluop9X7LSiGLndejQgjUEcMqJMVzUA836HSXhtY7XNtQiPTCLQ==}
 
   rollup@4.44.0:
     resolution: {integrity: sha512-qHcdEzLCiktQIfwBq420pn2dP+30uzqYxv9ETm91wdt2R9AFcWfjNAmje4NWlnCIQ5RMTzVf0ZyisOKqHR6RwA==}
@@ -5303,6 +5309,8 @@ snapshots:
       signal-exit: 3.0.7
 
   reusify@1.1.0: {}
+
+  robot3@1.1.1: {}
 
   rollup@4.44.0:
     dependencies:

@@ -62,6 +62,7 @@
     "monaco-editor": "^0.52.2",
     "node-pty": "github:microsoft/node-pty#v1.1.0-beta34",
     "postject": "^1.0.0-alpha.6",
+    "robot3": "^1.1.1",
     "signal-exit": "^4.1.0",
     "web-push": "^3.6.7",
     "ws": "^8.18.2"

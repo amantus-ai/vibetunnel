@@ -1,165 +1,179 @@
 # Terminal Title Management in VibeTunnel
 
-## Overview
+VibeTunnel provides comprehensive terminal title management with four distinct modes to suit different workflows and preferences.
 
-VibeTunnel provides comprehensive terminal title management features to help you organize multiple terminal sessions. This is particularly useful when running multiple instances of tools like Claude Code across different projects.
+## Title Modes
 
-## Features
+VibeTunnel offers four terminal title management modes:
 
-### 1. Automatic Terminal Title Setting (Frontend → Server)
+### 1. None Mode (Default)
+- **Behavior**: No title management - applications control their own titles
+- **Use case**: When you want standard terminal behavior
+- **Example**: Standard shell prompts, vim, etc.
 
-When creating a new session through the web interface, you can enable automatic terminal title updates that show:
-- Current working directory
-- Running command
-- Session name (if provided)
+### 2. Filter Mode
+- **Behavior**: Blocks all title changes from applications
+- **Use case**: When you want to maintain your own terminal organization system
+- **Example**: Using custom terminal title management scripts
+- **CLI**: `--title-mode filter`
 
-**Format**: `~/path/to/project — command — session name`
+### 3. Static Mode
+- **Behavior**: Shows working directory and command in title
+- **Format**: `~/path/to/project — command — session name`
+- **Use case**: Basic session identification
+- **Examples**:
+  - `~/Projects/vibetunnel5 — zsh`
+  - `~/Projects/app — npm — Dev Server`
+- **CLI**: `--title-mode static`
 
-**Examples**: 
-- `~/Projects/vibetunnel5 — claude` (no session name)
-- `~/Projects/app-frontend — npm — Frontend Dev` (with session name)
-- `~/docs — vim — Documentation`
+### 4. Dynamic Mode
+- **Behavior**: Shows directory, command, and real-time activity status
+- **Format**: `~/path — command [— activity] — session name`
+- **Activity indicators**:
+  - `•` - Generic activity within last 5 seconds
+  - App-specific status (e.g., Claude: `✻ Crafting (205s, ↑6.0k)`)
+- **Use case**: Monitoring active processes and their status
+- **Auto-selected**: For Claude commands
+- **CLI**: `--title-mode dynamic`
 
-This feature:
-- Is controlled by a "Set terminal title" toggle in the session creation form (on by default)
-- Injects OSC title sequences into the terminal output
-- Updates dynamically when you change directories
-- Works in both terminal emulators and browser tabs
+## Using Title Modes
 
-### 2. Terminal Title Change Prevention (CLI)
+### Web Interface
 
-When using VibeTunnel's forwarding tool (`fwd.ts`), you can prevent applications from changing your terminal title:
+When creating a new session through the web interface, the default is Dynamic mode, which provides real-time activity tracking. You can select a different mode from the dropdown:
 
-```bash
-# Using command-line flag
-pnpm exec tsx src/server/fwd.ts --prevent-title-change claude
-
-# Using environment variable
-VIBETUNNEL_PREVENT_TITLE_CHANGE=1 pnpm exec tsx src/server/fwd.ts claude
+```
+Terminal Title Mode: [Dynamic ▼]
+  - None - No title management
+  - Filter - Block title changes  
+  - Static - Show path & command
+  - Dynamic - Show path, command & activity
 ```
 
-This is useful when you want to maintain your own terminal organization system, as described in [Commanding Your Claude Code Army](https://steipete.me/posts/2025/commanding-your-claude-code-army).
+Dynamic mode is also automatically selected when running Claude from the command line.
+
+### Command Line (fwd.ts)
+
+```bash
+# Explicitly set title mode
+pnpm exec tsx src/server/fwd.ts --title-mode static bash
+pnpm exec tsx src/server/fwd.ts --title-mode filter vim
+pnpm exec tsx src/server/fwd.ts --title-mode dynamic python
+
+# Auto-selects dynamic mode for Claude
+pnpm exec tsx src/server/fwd.ts claude
+
+# Using environment variable
+VIBETUNNEL_TITLE_MODE=static pnpm exec tsx src/server/fwd.ts zsh
+```
 
 ## Implementation Details
 
-### Title Injection (Server → Terminal)
+### Dynamic Mode Activity Detection
 
-When "Set terminal title" is enabled, the server:
-1. Tracks the current working directory by monitoring:
-   - Initial working directory from session creation
-   - `cd` commands in the PTY input
-   - Shell prompt updates (when detectable)
-   
-2. Injects title sequences using OSC codes:
-   ```
-   ESC ] 2 ; <title> BEL
-   ```
+The dynamic mode includes real-time activity monitoring:
 
-3. Updates the title whenever:
-   - Session starts (shows initial directory and command)
-   - Directory changes (detected via cd commands)
-   - Command changes (for long-running processes)
+1. **Generic Activity**: Any terminal output within 5 seconds shows `•`
+2. **Claude Status Detection**: Parses status lines like:
+   - `✻ Crafting… (205s · ↑ 6.0k tokens · esc to interrupt)`
+   - `✢ Transitioning… (381s · ↑ 4.0k tokens · esc to interrupt)`
+   - Filters these lines from output and displays compact version in title
 
-### Title Filtering (Server → Client)
+3. **Extensible System**: New app detectors can be added for:
+   - npm install progress
+   - git clone status
+   - docker build steps
+   - Any CLI tool with parseable output
 
-When `--prevent-title-change` is used, the server:
-1. Intercepts all PTY output
-2. Filters out OSC 0, 1, and 2 sequences (terminal title codes)
-3. Preserves all other terminal output unchanged
+### Title Sequence Management
 
-The filtering uses a regex pattern that matches:
-- `ESC ] 0 ; <text> BEL` - Set icon and window title
-- `ESC ] 1 ; <text> BEL` - Set icon title  
-- `ESC ] 2 ; <text> BEL` - Set window title
+All modes use OSC (Operating System Command) sequences:
+```
+ESC ] 2 ; <title> BEL
+```
 
-These sequences can end with either BEL (`\x07`) or `ESC \` (`\x1B\x5C`).
+- **Filter mode**: Removes all OSC 0, 1, and 2 sequences
+- **Static/Dynamic modes**: Filter app sequences and inject VibeTunnel titles
+- **Title injection**: Smart detection of shell prompts for natural updates
 
 ## Use Cases
 
 ### Managing Multiple Claude Code Sessions
 
-When running multiple Claude Code instances across different projects:
+When running multiple Claude Code instances across different projects, dynamic mode provides instant visibility:
 
-1. **With automatic titles** (web interface):
-   ```
-   Terminal 1: ~/Projects/app-frontend — claude
-   Terminal 2: ~/Projects/app-backend — claude  
-   Terminal 3: ~/Projects/docs — claude
-   ```
-
-2. **With custom wrapper script** (CLI with prevention):
-   ```bash
-   # In your ~/.config/zsh/claude-wrapper.zsh
-   cly() {
-       local folder_name="${PWD##*/}"
-       echo -ne "\033]0;${PWD/#$HOME/~} — Claude\007"
-       
-       # Prevent Claude from changing the title
-       VIBETUNNEL_PREVENT_TITLE_CHANGE=1 command claude "$@"
-   }
-   ```
-
-### Web Development Sessions
-
-Automatic titles help identify what's running where:
 ```
-Tab 1: ~/myapp/frontend — pnpm run dev
-Tab 2: ~/myapp/backend — npm start
-Tab 3: ~/myapp — bash
+Terminal 1: ~/frontend — claude — ✻ Crafting (45s, ↑2.1k) — Web UI
+Terminal 2: ~/backend — claude — ✢ Transitioning (12s, ↓0.5k) — API Server  
+Terminal 3: ~/docs — claude • — Documentation
+Terminal 4: ~/tests — claude — Test Suite
 ```
 
-## Configuration
+The titles show:
+- Which project each Claude is working on
+- Current activity status (Crafting, Transitioning, idle)
+- Progress indicators (time and token usage)
+- Custom session names for context
 
-### Web Interface
+### Using with Custom Terminal Management
 
-The "Set terminal title" toggle in the session creation form:
-- **On** (default): Automatically updates terminal titles with working directory and command
-- **Off**: No title injection, applications control their own titles
+If you have your own terminal title system (as described in [Commanding Your Claude Code Army](https://steipete.me/posts/2025/commanding-your-claude-code-army)), use filter mode:
 
-### CLI Options
+```bash
+# Your custom wrapper
+cly() {
+    echo -ne "\033]0;${PWD/#$HOME/~} — Claude\007"
+    VIBETUNNEL_TITLE_MODE=filter command claude "$@"
+}
+```
 
-For `fwd.ts`:
-- `--prevent-title-change`: Prevents applications from changing terminal titles
-- `VIBETUNNEL_PREVENT_TITLE_CHANGE=1`: Environment variable alternative
+### Development Workflow Visibility
 
-### Interaction Between Features
+Static mode for basic session tracking:
+```
+Tab 1: ~/myapp/frontend — pnpm run dev — Dev Server
+Tab 2: ~/myapp/backend — npm start — API
+Tab 3: ~/myapp — zsh — Terminal
+Tab 4: ~/myapp — vim — Editor
+```
 
-When both features are in play:
-1. If a session was created with "Set terminal title" enabled, VibeTunnel will inject titles
-2. If `--prevent-title-change` is used in the forwarder, it strips title sequences from applications
-3. The prevention flag takes precedence over injection for forwarded sessions
 
-## Technical Notes
+## Technical Considerations
 
-- Title updates are performed using ANSI escape sequences
-- The feature works with any terminal emulator that supports OSC sequences
-- Browser tabs also update their titles when viewing sessions
-- Title filtering is performed efficiently using pre-compiled regex patterns
-- All regex patterns are pre-compiled for optimal performance
+### Performance
+- Pre-compiled regex patterns for efficient filtering
+- Minimal overhead: <1ms per output chunk
+- Activity detection uses 500ms intervals for title updates
+- Claude status parsing adds negligible latency
 
-## Limitations
+### Compatibility
+- Works with any terminal supporting OSC sequences
+- Browser tabs update their titles automatically
+- Compatible with tmux, screen, and terminal multiplexers
+- Works across SSH connections
 
-### Directory Tracking
-The automatic title feature tracks directory changes by monitoring `cd` commands. This has some limitations:
+### Limitations
 
-- **Only tracks direct `cd` commands** - More complex operations are not tracked:
-  - `pushd` / `popd` commands
-  - Directory changes via aliases or functions
-  - Changes within subshells or scripts
-  - Directory changes from other tools (e.g., `z`, `autojump`)
-- **`cd -` (previous directory)** - Cannot be tracked accurately as we don't maintain directory history
-- **Symbolic links** - Tracked paths are resolved, which may differ from displayed paths
+**Directory Tracking** (Static/Dynamic modes):
+- Only tracks direct `cd` commands
+- Doesn't track: `pushd`/`popd`, aliases, subshells
+- `cd -` (previous directory) not supported
+- Symbolic links show resolved paths
 
-### Title Injection
-The title injection relies on detecting shell prompts, which may not work correctly with:
-- Heavily customized prompts
-- Non-standard shell configurations
-- Prompts that don't end with common patterns (`$`, `>`, `#`, etc.)
-- Multi-line prompts
+**Activity Detection** (Dynamic mode):
+- 5-second timeout for generic activity
+- Claude detection requires exact status format
+- Some app outputs may interfere with detection
 
-### Performance Considerations
-- Regex patterns are pre-compiled to minimize overhead
-- String/Buffer conversions are optimized to reduce allocations
-- For very high-throughput sessions, there may be minimal latency from filtering
+**Title Injection**:
+- Relies on shell prompt detection
+- May not work with heavily customized prompts
+- Multi-line prompts may cause issues
 
-Despite these limitations, the features work well for typical development workflows and provide significant value for session organization.
+## Future Enhancements
+
+- Additional app detectors (npm, git, docker)
+- Customizable activity timeout
+- User-defined status patterns
+- Title templates and formatting options
+- Integration with session recording features

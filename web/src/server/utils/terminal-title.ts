@@ -7,6 +7,7 @@
 
 import * as os from 'os';
 import * as path from 'path';
+import type { ActivityState } from './activity-detector.js';
 
 // Pre-compiled regex patterns for performance
 // Match cd command with optional arguments, handling newlines
@@ -140,4 +141,48 @@ export function injectTitleIfNeeded(data: string, title: string): string {
   }
 
   return data;
+}
+
+/**
+ * Generate a dynamic terminal title with activity indicators
+ *
+ * @param cwd Current working directory
+ * @param command Command being run
+ * @param activity Current activity state
+ * @param sessionName Optional session name
+ * @returns Terminal title escape sequence
+ */
+export function generateDynamicTitle(
+  cwd: string,
+  command: string[],
+  activity: ActivityState,
+  sessionName?: string
+): string {
+  const homeDir = os.homedir();
+  const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
+  const cmdName = command[0] || 'shell';
+
+  const parts = [displayPath, cmdName];
+
+  // Add activity indicator or specific status
+  if (activity.isActive) {
+    if (activity.specificStatus) {
+      // App-specific status (e.g., "✻ Crafting (205s, ↑6.0k)")
+      parts.push(activity.specificStatus.status);
+    } else {
+      // Generic activity indicator
+      parts.push('•');
+    }
+  }
+
+  // Add session name if provided
+  if (sessionName?.trim()) {
+    parts.push(sessionName);
+  }
+
+  // Format: path — command [— status/•] — session name
+  const title = parts.join(' — ');
+
+  // OSC 2 sequence: ESC ] 2 ; <title> BEL
+  return `\x1B]2;${title}\x07`;
 }

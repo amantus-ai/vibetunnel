@@ -125,7 +125,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
   // Create new session (local or on remote)
   router.post('/sessions', async (req, res) => {
-    const { command, workingDir, name, remoteId, spawn_terminal, cols, rows, setTerminalTitle } = req.body;
+    const { command, workingDir, name, remoteId, spawn_terminal, cols, rows, titleMode } = req.body;
     logger.debug(
       `creating new session: command=${JSON.stringify(command)}, remoteId=${remoteId || 'local'}, cols=${cols}, rows=${rows}`
     );
@@ -161,7 +161,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
             spawn_terminal,
             cols,
             rows,
-            setTerminalTitle,
+            titleMode,
             // Don't forward remoteId to avoid recursion
           }),
           signal: AbortSignal.timeout(10000), // 10 second timeout
@@ -251,7 +251,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         workingDir: cwd,
         cols,
         rows,
-        setTerminalTitle,
+        titleMode,
       });
 
       const { sessionId, sessionInfo } = result;

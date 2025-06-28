@@ -36,8 +36,13 @@ VibeTunnel lives in your menu bar. Click the icon to start the server.
 # Run any command in the browser
 vt pnpm run dev
 
-# Monitor AI agents
+# Monitor AI agents (with automatic activity tracking)
 vt claude --dangerously-skip-permissions
+
+# Control terminal titles
+vt --title-mode static npm run dev    # Shows path and command
+vt --title-mode dynamic python app.py  # Shows path, command, and activity
+vt --title-mode filter vim            # Blocks vim from changing title
 
 # Shell aliases work automatically!
 vt claude-danger  # Your custom aliases are resolved
@@ -55,6 +60,7 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 - **🌐 Browser-Based Access** - Control your Mac terminal from any device with a web browser
 - **🚀 Zero Configuration** - No SSH keys, no port forwarding, no complexity
 - **🤖 AI Agent Friendly** - Perfect for monitoring Claude Code, ChatGPT, or any terminal-based AI tools
+- **📊 Dynamic Terminal Titles** - Real-time activity tracking shows what's happening in each session
 - **🔒 Secure by Design** - Password protection, localhost-only mode, or secure tunneling via Tailscale/ngrok
 - **📱 Mobile Ready** - Native iOS app and responsive web interface for phones and tablets
 - **🎬 Session Recording** - All sessions recorded in asciinema format for later playback
@@ -95,6 +101,30 @@ The server runs as a standalone Bun executable with embedded Node.js modules, pr
 2. Run `cloudflared tunnel --url http://localhost:4020`
 3. Access via the generated `*.trycloudflare.com` URL
 
+## Terminal Title Management
+
+VibeTunnel provides intelligent terminal title management to help you track what's happening in each session:
+
+### Title Modes
+
+- **Dynamic Mode** (default for web UI): Shows working directory, command, and real-time activity
+  - Generic activity: `~/projects — npm — •`
+  - Claude status: `~/projects — claude — ✻ Crafting (45s, ↑2.1k)`
+  
+- **Static Mode**: Shows working directory and command
+  - Example: `~/projects/app — npm run dev`
+  
+- **Filter Mode**: Blocks all title changes from applications
+  - Useful when you have your own terminal management system
+  
+- **None Mode**: No title management - applications control their own titles
+
+### Activity Detection
+
+Dynamic mode includes real-time activity detection:
+- Shows `•` when there's terminal output within 5 seconds
+- Claude commands show specific status (Crafting, Transitioning, etc.)
+- Extensible system for future app-specific detectors
 ## Building from Source
 
 ### Prerequisites

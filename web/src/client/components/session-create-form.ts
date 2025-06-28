@@ -14,6 +14,7 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
+import { TitleMode } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
 import type { Session } from './session-list.js';
@@ -27,7 +28,7 @@ export interface SessionCreateData {
   spawn_terminal?: boolean;
   cols?: number;
   rows?: number;
-  setTerminalTitle?: boolean;
+  titleMode?: TitleMode;
 }
 
 @customElement('session-create-form')
@@ -44,7 +45,7 @@ export class SessionCreateForm extends LitElement {
   @property({ type: Boolean }) visible = false;
   @property({ type: Object }) authClient!: AuthClient;
   @property({ type: Boolean }) spawnWindow = true;
-  @property({ type: Boolean }) setTerminalTitle = true;
+  @property({ type: String }) titleMode = TitleMode.DYNAMIC;
 
   @state() private isCreating = false;
   @state() private showFileBrowser = false;
@@ -63,7 +64,7 @@ export class SessionCreateForm extends LitElement {
   private readonly STORAGE_KEY_WORKING_DIR = 'vibetunnel_last_working_dir';
   private readonly STORAGE_KEY_COMMAND = 'vibetunnel_last_command';
   private readonly STORAGE_KEY_SPAWN_WINDOW = 'vibetunnel_spawn_window';
-  private readonly STORAGE_KEY_SET_TERMINAL_TITLE = 'vibetunnel_set_terminal_title';
+  private readonly STORAGE_KEY_TITLE_MODE = 'vibetunnel_title_mode';
 
   connectedCallback() {
     super.connectedCallback();
@@ -108,10 +109,10 @@ export class SessionCreateForm extends LitElement {
       const savedWorkingDir = localStorage.getItem(this.STORAGE_KEY_WORKING_DIR);
       const savedCommand = localStorage.getItem(this.STORAGE_KEY_COMMAND);
       const savedSpawnWindow = localStorage.getItem(this.STORAGE_KEY_SPAWN_WINDOW);
-      const savedSetTerminalTitle = localStorage.getItem(this.STORAGE_KEY_SET_TERMINAL_TITLE);
+      const savedTitleMode = localStorage.getItem(this.STORAGE_KEY_TITLE_MODE);
 
       logger.debug(
-        `loading from localStorage: workingDir=${savedWorkingDir}, command=${savedCommand}, spawnWindow=${savedSpawnWindow}, setTerminalTitle=${savedSetTerminalTitle}`
+        `loading from localStorage: workingDir=${savedWorkingDir}, command=${savedCommand}, spawnWindow=${savedSpawnWindow}, titleMode=${savedTitleMode}`
       );
 
       if (savedWorkingDir) {
@@ -123,8 +124,11 @@ export class SessionCreateForm extends LitElement {
       if (savedSpawnWindow !== null) {
         this.spawnWindow = savedSpawnWindow === 'true';
       }
-      if (savedSetTerminalTitle !== null) {
-        this.setTerminalTitle = savedSetTerminalTitle === 'true';
+      if (savedTitleMode !== null) {
+        // Validate the saved mode is a valid enum value
+        if (Object.values(TitleMode).includes(savedTitleMode as TitleMode)) {
+          this.titleMode = savedTitleMode as TitleMode;
+        }
       }
 
       // Force re-render to update the input values
@@ -140,7 +144,7 @@ export class SessionCreateForm extends LitElement {
       const command = this.command.trim();
 
       logger.debug(
-        `saving to localStorage: workingDir=${workingDir}, command=${command}, spawnWindow=${this.spawnWindow}, setTerminalTitle=${this.setTerminalTitle}`
+        `saving to localStorage: workingDir=${workingDir}, command=${command}, spawnWindow=${this.spawnWindow}, titleMode=${this.titleMode}`
       );
 
       // Only save non-empty values
@@ -151,7 +155,7 @@ export class SessionCreateForm extends LitElement {
         localStorage.setItem(this.STORAGE_KEY_COMMAND, command);
       }
       localStorage.setItem(this.STORAGE_KEY_SPAWN_WINDOW, String(this.spawnWindow));
-      localStorage.setItem(this.STORAGE_KEY_SET_TERMINAL_TITLE, String(this.setTerminalTitle));
+      localStorage.setItem(this.STORAGE_KEY_TITLE_MODE, this.titleMode);
     } catch (_error) {
       logger.warn('failed to save to localStorage');
     }
@@ -187,6 +191,11 @@ export class SessionCreateForm extends LitElement {
   private handleCommandChange(e: Event) {
     const input = e.target as HTMLInputElement;
     this.command = input.value;
+
+    // Auto-select dynamic mode for Claude
+    if (this.command.toLowerCase().includes('claude')) {
+      this.titleMode = TitleMode.DYNAMIC;
+    }
   }
 
   private handleSessionNameChange(e: Event) {
@@ -198,8 +207,24 @@ export class SessionCreateForm extends LitElement {
     this.spawnWindow = !this.spawnWindow;
   }
 
-  private handleSetTerminalTitleChange() {
-    this.setTerminalTitle = !this.setTerminalTitle;
+  private handleTitleModeChange(e: Event) {
+    const select = e.target as HTMLSelectElement;
+    this.titleMode = select.value as TitleMode;
+  }
+
+  private getTitleModeDescription(): string {
+    switch (this.titleMode) {
+      case TitleMode.NONE:
+        return 'Terminal applications control their own titles';
+      case TitleMode.FILTER:
+        return 'Prevents applications from changing terminal titles';
+      case TitleMode.STATIC:
+        return 'Shows working directory and command in title';
+      case TitleMode.DYNAMIC:
+        return 'Shows directory, command, and activity status (• = active)';
+      default:
+        return '';
+    }
   }
 
   private handleBrowse() {
@@ -236,7 +261,7 @@ export class SessionCreateForm extends LitElement {
       command: this.parseCommand(this.command.trim()),
       workingDir: this.workingDir.trim(),
       spawn_terminal: this.spawnWindow,
-      setTerminalTitle: this.setTerminalTitle,
+      titleMode: this.titleMode,
       cols: terminalCols,
       rows: terminalRows,
     };
@@ -331,6 +356,11 @@ export class SessionCreateForm extends LitElement {
   private handleQuickStart(command: string) {
     this.command = command;
     this.selectedQuickStart = command;
+
+    // Auto-select dynamic mode for Claude
+    if (command.toLowerCase().includes('claude')) {
+      this.titleMode = TitleMode.DYNAMIC;
+    }
   }
 
   render() {
@@ -441,27 +471,25 @@ export class SessionCreateForm extends LitElement {
               </button>
             </div>
 
-            <!-- Set Terminal Title Toggle -->
-            <div class="mb-4 flex items-center justify-between">
-              <div class="flex-1 pr-4">
-                <span class="text-dark-text text-sm">Set terminal title</span>
-                <p class="text-xs text-dark-text-muted mt-1">Shows working directory and command in title</p>
-              </div>
-              <button
-                role="switch"
-                aria-checked="${this.setTerminalTitle}"
-                @click=${this.handleSetTerminalTitleChange}
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-dark-bg ${
-                  this.setTerminalTitle ? 'bg-accent-green' : 'bg-dark-border'
-                }"
+            <!-- Terminal Title Mode -->
+            <div class="mb-4">
+              <label class="form-label text-dark-text-muted uppercase text-xs tracking-wider"
+                >Terminal Title Mode</label
+              >
+              <select
+                .value=${this.titleMode}
+                @change=${this.handleTitleModeChange}
+                class="form-input w-full mt-1 bg-dark-input"
                 ?disabled=${this.disabled || this.isCreating}
               >
-                <span
-                  class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                    this.setTerminalTitle ? 'translate-x-5' : 'translate-x-0.5'
-                  }"
-                ></span>
-              </button>
+                <option value="${TitleMode.NONE}">None - No title management</option>
+                <option value="${TitleMode.FILTER}">Filter - Block title changes</option>
+                <option value="${TitleMode.STATIC}">Static - Show path & command</option>
+                <option value="${TitleMode.DYNAMIC}">Dynamic - Show path, command & activity</option>
+              </select>
+              <p class="text-xs text-dark-text-muted mt-1">
+                ${this.getTitleModeDescription()}
+              </p>
             </div>
 
             <!-- Quick Start Section -->

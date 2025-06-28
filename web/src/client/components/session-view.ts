@@ -39,6 +39,12 @@ import type { LifecycleEventManagerCallbacks } from './session-view/interfaces.j
 import { LifecycleEventManager } from './session-view/lifecycle-event-manager.js';
 import { LoadingAnimationManager } from './session-view/loading-animation-manager.js';
 import { MobileInputManager } from './session-view/mobile-input-manager.js';
+import { RobotInterpreter } from './session-view/robot-interpreter.js';
+import {
+  type SessionContext,
+  SessionStates,
+  sessionMachine,
+} from './session-view/session-state-machine.js';
 import {
   type TerminalEventHandlers,
   TerminalLifecycleManager,
@@ -92,6 +98,8 @@ export class SessionView extends LitElement {
 
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private createHiddenInputTimeout: ReturnType<typeof setTimeout> | null = null;
+  private stateMachine!: RobotInterpreter<SessionContext>;
+  private debounceTimer?: ReturnType<typeof setTimeout>;
 
   // Removed methods that are now in LifecycleEventManager:
   // - handlePreferencesChanged
@@ -172,7 +180,6 @@ export class SessionView extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.connected = true;
 
     // Initialize connection manager
     this.connectionManager = new ConnectionManager(
@@ -333,6 +340,26 @@ export class SessionView extends LitElement {
       this.useDirectKeyboard = true; // Default to true on error
     }
 
+    // Initialize state machine
+    this.stateMachine = new RobotInterpreter<SessionContext>(sessionMachine, {
+      session: this.session,
+      previousSession: null,
+      error: null,
+      connectionManager: this.connectionManager,
+      terminalLifecycleManager: this.terminalLifecycleManager,
+      terminal: null,
+    });
+
+    // Subscribe to state changes
+    this.stateMachine.subscribe((state, context) => {
+      this.handleStateChange(state, context);
+    });
+
+    // If we have an initial session, trigger state machine
+    if (this.session) {
+      this.stateMachine.send({ type: 'setSession', session: this.session });
+    }
+
     // Set up lifecycle (replaces the extracted lifecycle logic)
     this.lifecycleEventManager.setupLifecycle();
   }
@@ -344,6 +371,17 @@ export class SessionView extends LitElement {
     if (this.createHiddenInputTimeout) {
       clearTimeout(this.createHiddenInputTimeout);
       this.createHiddenInputTimeout = null;
+    }
+
+    // Clear debounce timer
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = undefined;
+    }
+
+    // Clean up state machine
+    if (this.stateMachine) {
+      this.stateMachine.destroy();
     }
 
     // Use lifecycle event manager for teardown
@@ -358,8 +396,8 @@ export class SessionView extends LitElement {
 
   firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
-    if (this.session) {
-      this.loadingAnimationManager.stopLoading();
+    if (this.session && this.connected) {
+      // Terminal setup is handled by state machine when reaching active state
       this.terminalLifecycleManager.setupTerminal();
     }
   }
@@ -367,46 +405,53 @@ export class SessionView extends LitElement {
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
 
-    // If session changed, clean up old stream connection
+    // If session changed, use state machine to handle transition
     if (changedProperties.has('session')) {
-      const oldSession = changedProperties.get('session') as Session | null;
-      if (oldSession && oldSession.id !== this.session?.id) {
-        logger.log('Session changed, cleaning up old stream connection');
-        if (this.connectionManager) {
-          this.connectionManager.cleanupStreamConnection();
+      const _oldSession = changedProperties.get('session') as Session | null;
+
+      // Send session change event to state machine
+      if (this.stateMachine) {
+        const currentState = this.stateMachine.getState();
+
+        // TRICKY: Debounce timer management
+        // Robot doesn't have built-in timers, so we manage the 50ms
+        // debounce manually. If already debouncing, we cancel the old
+        // timer since the state machine will update to latest session.
+        if (currentState === SessionStates.DEBOUNCING) {
+          // Clear existing timer and reset it
+          if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+          }
+        }
+
+        // Send the setSession event
+        this.stateMachine.send({ type: 'setSession', session: this.session });
+
+        // Start debounce timer if we transitioned to debouncing state
+        if (this.stateMachine.getState() === SessionStates.DEBOUNCING) {
+          this.debounceTimer = setTimeout(() => {
+            this.stateMachine.send({ type: 'debounceComplete' });
+            this.debounceTimer = undefined;
+          }, 50);
         }
       }
-      // Update input manager with new session
+
+      // Update managers with new session (they will be initialized by state machine)
       if (this.inputManager) {
         this.inputManager.setSession(this.session);
       }
-      // Update terminal lifecycle manager with new session
       if (this.terminalLifecycleManager) {
         this.terminalLifecycleManager.setSession(this.session);
       }
-      // Update lifecycle event manager with new session
       if (this.lifecycleEventManager) {
         this.lifecycleEventManager.setSession(this.session);
       }
     }
 
-    // Stop loading and create terminal when session becomes available
-    if (
-      changedProperties.has('session') &&
-      this.session &&
-      this.loadingAnimationManager.isLoading()
-    ) {
-      this.loadingAnimationManager.stopLoading();
-      this.terminalLifecycleManager.setupTerminal();
-    }
+    // Terminal setup is handled by state machine, no need for manual loading management
 
     // Initialize terminal after first render when terminal element exists
-    if (
-      !this.terminalLifecycleManager.getTerminal() &&
-      this.session &&
-      !this.loadingAnimationManager.isLoading() &&
-      this.connected
-    ) {
+    if (!this.terminalLifecycleManager.getTerminal() && this.session && this.connected) {
       const terminalElement = this.querySelector('vibe-terminal') as Terminal;
       if (terminalElement) {
         this.terminalLifecycleManager.initializeTerminal();
@@ -419,7 +464,7 @@ export class SessionView extends LitElement {
       this.useDirectKeyboard &&
       !this.directKeyboardManager.getShowQuickKeys() &&
       this.session &&
-      !this.loadingAnimationManager.isLoading()
+      this.connected
     ) {
       // Clear any existing timeout
       if (this.createHiddenInputTimeout) {
@@ -545,6 +590,58 @@ export class SessionView extends LitElement {
 
   refocusHiddenInput(): void {
     this.directKeyboardManager.refocusHiddenInput();
+  }
+
+  private handleStateChange(state: string, context: SessionContext) {
+    logger.log(`State changed to: ${state}`);
+
+    // Update connected status based on state
+    const wasConnected = this.connected;
+    this.connected = state === SessionStates.ACTIVE;
+
+    if (wasConnected !== this.connected) {
+      // Update all managers with connection status
+      this.connectionManager?.setConnected(this.connected);
+      this.terminalLifecycleManager?.setConnected(this.connected);
+    }
+
+    // Update terminal reference when available
+    if (!context.terminal) {
+      const terminal = this.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        this.stateMachine.updateContext({ terminal });
+      }
+    }
+
+    // Handle loading animation
+    if (state === SessionStates.LOADING || state === SessionStates.INITIALIZING) {
+      if (!this.loadingAnimationManager.isLoading()) {
+        this.loadingAnimationManager.startLoading(() => this.requestUpdate());
+      }
+    } else if (state === SessionStates.ACTIVE || state === SessionStates.ERROR) {
+      if (this.loadingAnimationManager.isLoading()) {
+        this.loadingAnimationManager.stopLoading();
+      }
+    }
+
+    // Show transition UI when switching
+    if (state === SessionStates.DEBOUNCING || state === SessionStates.CLEANING_UP) {
+      // Could add a transition overlay here if desired
+      logger.log('Session transitioning...');
+    }
+
+    // Handle errors
+    if (state === SessionStates.ERROR && context.error) {
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: context.error.message,
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
+
+    this.requestUpdate();
   }
 
   startFocusRetention(): void {

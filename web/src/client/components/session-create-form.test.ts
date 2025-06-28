@@ -9,6 +9,7 @@ import {
   typeInInput,
   waitForAsync,
 } from '@/test/utils/component-helpers';
+import { TitleMode } from '../../shared/types';
 import type { AuthClient } from '../services/auth-client';
 
 // Mock AuthClient
@@ -218,7 +219,7 @@ describe('SessionCreateForm', () => {
         command: ['npm', 'run', 'dev'],
         workingDir: '/home/user/project',
         spawn_terminal: true,
-        setTerminalTitle: true, // Default value for the toggle
+        titleMode: TitleMode.DYNAMIC, // Default value
         cols: 120,
         rows: 30,
       });

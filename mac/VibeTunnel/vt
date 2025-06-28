@@ -83,7 +83,15 @@ EXAMPLES:
 OPTIONS:
     --shell, -i            Launch current shell (equivalent to vt $SHELL)
     --no-shell-wrap, -S    Execute command directly without shell wrapper
+    --title-mode <mode>    Terminal title mode (none, filter, static, dynamic)
+                          Default: none (dynamic for claude)
     --help, -h             Show this help message and exit
+    
+TITLE MODES:
+    none       No title management - apps control their own titles
+    filter     Block all title changes from applications  
+    static     Show working directory and command in title
+    dynamic    Show directory, command, and live activity status (default for web UI)
 
 NOTE:
     This script automatically uses the vibetunnel executable bundled with
@@ -104,15 +112,15 @@ resolve_command() {
     case "$shell_name" in
         zsh)
             # For zsh, we need interactive mode to get aliases
-            exec "$VIBETUNNEL_BIN" fwd "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
             ;;
         bash)
             # For bash, expand aliases in non-interactive mode
-            exec "$VIBETUNNEL_BIN" fwd "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
             ;;
         *)
             # Generic shell handling
-            exec "$VIBETUNNEL_BIN" fwd "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
             ;;
     esac
 }
@@ -137,16 +145,23 @@ if [[ "$1" == "--no-shell-wrap" || "$1" == "-S" ]]; then
     shift
 fi
 
+# Handle --title-mode option
+TITLE_MODE_ARGS=""
+if [[ "$1" == "--title-mode" && $# -gt 1 ]]; then
+    TITLE_MODE_ARGS="--title-mode $2"
+    shift 2
+fi
+
 # Check if we have arguments and if the first argument is not an option
 if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     if [[ "$NO_SHELL_WRAP" == "true" ]]; then
         # Execute directly without shell wrapper
-        exec "$VIBETUNNEL_BIN" fwd "$@"
+        exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
     else
         # Check if the first argument is a real binary
         if which "$1" >/dev/null 2>&1; then
             # It's a real binary, execute directly
-            exec "$VIBETUNNEL_BIN" fwd "$@"
+            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
         else
             # Not a real binary, try alias resolution
             resolve_command "$@"
@@ -154,5 +169,5 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     fi
 else
     # Run with fwd command (original behavior for options)
-    exec "$VIBETUNNEL_BIN" fwd "$@"
+    exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
 fi

@@ -14,6 +14,7 @@
 import chalk from 'chalk';
 import * as os from 'os';
 import * as path from 'path';
+import { TitleMode } from '../shared/types.js';
 import { PtyManager } from './pty/index.js';
 import { closeLogger, createLogger } from './utils/logger.js';
 import { generateSessionName } from './utils/session-naming.js';
@@ -26,24 +27,28 @@ function showUsage() {
   console.log('');
   console.log('Usage:');
   console.log(
-    '  pnpm exec tsx src/fwd.ts [--session-id <id>] [--prevent-title-change] <command> [args...]'
+    '  pnpm exec tsx src/fwd.ts [--session-id <id>] [--title-mode <mode>] <command> [args...]'
   );
   console.log('');
   console.log('Options:');
-  console.log('  --session-id <id>   Use a pre-generated session ID');
-  console.log('  --prevent-title-change  Prevent terminal title from being changed');
+  console.log('  --session-id <id>     Use a pre-generated session ID');
+  console.log('  --title-mode <mode>   Terminal title mode: none, filter, static, dynamic');
+  console.log('                        (defaults to none for most commands, dynamic for claude)');
+  console.log('');
+  console.log('Title Modes:');
+  console.log('  none     - No title management (default)');
+  console.log('  filter   - Block all title changes from applications');
+  console.log('  static   - Show working directory and command');
+  console.log('  dynamic  - Show directory, command, and activity (auto-selected for claude)');
   console.log('');
   console.log('Environment Variables:');
-  console.log(
-    '  VIBETUNNEL_PREVENT_TITLE_CHANGE=1  Prevent title changes (same as --prevent-title-change)'
-  );
+  console.log('  VIBETUNNEL_TITLE_MODE=<mode>         Set default title mode');
   console.log('');
   console.log('Examples:');
   console.log('  pnpm exec tsx src/fwd.ts claude --resume');
-  console.log('  pnpm exec tsx src/fwd.ts bash -l');
-  console.log('  pnpm exec tsx src/fwd.ts python3 -i');
+  console.log('  pnpm exec tsx src/fwd.ts --title-mode static bash -l');
+  console.log('  pnpm exec tsx src/fwd.ts --title-mode filter vim');
   console.log('  pnpm exec tsx src/fwd.ts --session-id abc123 claude');
-  console.log('  pnpm exec tsx src/fwd.ts --prevent-title-change claude');
   console.log('');
   console.log('The command will be spawned in the current working directory');
   console.log('and managed through the VibeTunnel PTY infrastructure.');
@@ -66,15 +71,15 @@ export async function startVibeTunnelForward(args: string[]) {
 
   // Parse command line arguments
   let sessionId: string | undefined;
-  let preventTitleChange = false;
+  let titleMode: TitleMode = TitleMode.NONE;
   let remainingArgs = args;
 
-  // Check environment variable for preventing title changes
-  if (
-    process.env.VIBETUNNEL_PREVENT_TITLE_CHANGE === '1' ||
-    process.env.VIBETUNNEL_PREVENT_TITLE_CHANGE === 'true'
-  ) {
-    preventTitleChange = true;
+  // Check environment variables for title mode
+  if (process.env.VIBETUNNEL_TITLE_MODE) {
+    const envMode = process.env.VIBETUNNEL_TITLE_MODE.toLowerCase();
+    if (Object.values(TitleMode).includes(envMode as TitleMode)) {
+      titleMode = envMode as TitleMode;
+    }
   }
 
   // Parse flags
@@ -82,9 +87,17 @@ export async function startVibeTunnelForward(args: string[]) {
     if (remainingArgs[0] === '--session-id' && remainingArgs.length > 1) {
       sessionId = remainingArgs[1];
       remainingArgs = remainingArgs.slice(2);
-    } else if (remainingArgs[0] === '--prevent-title-change') {
-      preventTitleChange = true;
-      remainingArgs = remainingArgs.slice(1);
+    } else if (remainingArgs[0] === '--title-mode' && remainingArgs.length > 1) {
+      const mode = remainingArgs[1].toLowerCase();
+      if (Object.values(TitleMode).includes(mode as TitleMode)) {
+        titleMode = mode as TitleMode;
+      } else {
+        logger.error(`Invalid title mode: ${remainingArgs[1]}`);
+        logger.error(`Valid modes: ${Object.values(TitleMode).join(', ')}`);
+        closeLogger();
+        process.exit(1);
+      }
+      remainingArgs = remainingArgs.slice(2);
     } else {
       // Not a flag, must be the start of the command
       break;
@@ -104,6 +117,12 @@ export async function startVibeTunnelForward(args: string[]) {
     showUsage();
     closeLogger();
     process.exit(1);
+  }
+
+  // Auto-select dynamic mode for Claude if no mode was explicitly set
+  if (titleMode === TitleMode.NONE && command[0] && command[0].toLowerCase().includes('claude')) {
+    titleMode = TitleMode.DYNAMIC;
+    logger.log(chalk.cyan('✓ Auto-selected dynamic title mode for Claude'));
   }
 
   const cwd = process.cwd();
@@ -127,8 +146,15 @@ export async function startVibeTunnelForward(args: string[]) {
 
     logger.log(`Creating session for command: ${command.join(' ')}`);
     logger.debug(`Session ID: ${finalSessionId}, working directory: ${cwd}`);
-    if (preventTitleChange) {
-      logger.log(chalk.cyan('✓ Terminal title changes will be prevented'));
+
+    // Log title mode if not default
+    if (titleMode !== TitleMode.NONE) {
+      const modeDescriptions = {
+        [TitleMode.FILTER]: 'Terminal title changes will be blocked',
+        [TitleMode.STATIC]: 'Terminal title will show path and command',
+        [TitleMode.DYNAMIC]: 'Terminal title will show path, command, and activity',
+      };
+      logger.log(chalk.cyan(`✓ ${modeDescriptions[titleMode]}`));
     }
 
     const result = await ptyManager.createSession(command, {
@@ -137,7 +163,7 @@ export async function startVibeTunnelForward(args: string[]) {
       workingDir: cwd,
       cols: originalCols,
       rows: originalRows,
-      preventTitleChange: preventTitleChange,
+      titleMode: titleMode,
       forwardToStdout: true,
       onExit: async (exitCode: number) => {
         // Show exit message

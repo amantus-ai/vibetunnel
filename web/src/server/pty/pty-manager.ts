@@ -20,11 +20,14 @@ import type {
   SessionInput,
   SpecialKey,
 } from '../../shared/types.js';
+import { TitleMode } from '../../shared/types.js';
 import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
+import { ActivityDetector } from '../utils/activity-detector.js';
 import { filterTerminalTitleSequences } from '../utils/ansi-filter.js';
 import { createLogger } from '../utils/logger.js';
 import {
   extractCdDirectory,
+  generateDynamicTitle,
   generateTitleSequence,
   injectTitleIfNeeded,
 } from '../utils/terminal-title.js';
@@ -312,6 +315,13 @@ export class PtyManager extends EventEmitter {
       }
 
       // Create session object
+      // Auto-detect Claude commands and set dynamic mode if no title mode specified
+      let titleMode = options.titleMode;
+      if (!titleMode && command[0] && command[0].toLowerCase().includes('claude')) {
+        titleMode = TitleMode.DYNAMIC;
+        logger.log(chalk.cyan('✓ Auto-selected dynamic title mode for Claude'));
+      }
+
       const session: PtySession = {
         id: sessionId,
         sessionInfo,
@@ -323,8 +333,7 @@ export class PtyManager extends EventEmitter {
         controlPipePath: paths.controlPipePath,
         sessionJsonPath: paths.sessionJsonPath,
         startTime: new Date(),
-        preventTitleChange: options.preventTitleChange,
-        setTerminalTitle: options.setTerminalTitle,
+        titleMode: titleMode || TitleMode.NONE,
         currentWorkingDir: workingDir,
       };
 
@@ -402,30 +411,86 @@ export class PtyManager extends EventEmitter {
       session.stdoutQueue = stdoutQueue;
     }
 
+    // Setup activity detector for dynamic mode
+    if (session.titleMode === TitleMode.DYNAMIC) {
+      session.activityDetector = new ActivityDetector(session.sessionInfo.command);
+
+      // Periodic title updates for activity timeout
+      session.titleUpdateInterval = setInterval(() => {
+        if (session.activityDetector && session.ptyProcess) {
+          const activity = session.activityDetector.getActivityState();
+          const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+          const titleSequence = generateDynamicTitle(
+            currentDir,
+            session.sessionInfo.command,
+            activity,
+            session.sessionInfo.name
+          );
+          // Write title update directly to PTY output
+          session.ptyProcess.write(titleSequence);
+        }
+      }, 500);
+    }
+
     // Handle PTY data output
     ptyProcess.onData((data: string) => {
-      // Prevent title changes if enabled
-      let processedData = session.preventTitleChange
-        ? filterTerminalTitleSequences(data, true)
-        : data;
+      let processedData = data;
 
-      // Inject terminal title if enabled
-      if (session.setTerminalTitle) {
-        const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-        const titleSequence = generateTitleSequence(
-          currentDir,
-          session.sessionInfo.command,
-          session.sessionInfo.name
-        );
+      // Handle title modes
+      switch (session.titleMode) {
+        case TitleMode.FILTER:
+          // Filter out all title sequences
+          processedData = filterTerminalTitleSequences(data, true);
+          break;
 
-        // Send initial title immediately on first output
-        if (!session.initialTitleSent) {
-          processedData = titleSequence + processedData;
-          session.initialTitleSent = true;
-        } else {
-          // For subsequent output, only inject when we detect a prompt
-          processedData = injectTitleIfNeeded(processedData, titleSequence);
+        case TitleMode.STATIC: {
+          // Filter out app titles and inject static title
+          processedData = filterTerminalTitleSequences(data, true);
+          const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+          const titleSequence = generateTitleSequence(
+            currentDir,
+            session.sessionInfo.command,
+            session.sessionInfo.name
+          );
+
+          if (!session.initialTitleSent) {
+            processedData = titleSequence + processedData;
+            session.initialTitleSent = true;
+          } else {
+            processedData = injectTitleIfNeeded(processedData, titleSequence);
+          }
+          break;
         }
+
+        case TitleMode.DYNAMIC:
+          // Filter out app titles and process through activity detector
+          processedData = filterTerminalTitleSequences(data, true);
+
+          if (session.activityDetector) {
+            const { filteredData, activity } =
+              session.activityDetector.processOutput(processedData);
+            processedData = filteredData;
+
+            // Generate dynamic title with activity
+            const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+            const dynamicTitleSequence = generateDynamicTitle(
+              dynamicDir,
+              session.sessionInfo.command,
+              activity,
+              session.sessionInfo.name
+            );
+
+            if (!session.initialTitleSent) {
+              processedData = dynamicTitleSequence + processedData;
+              session.initialTitleSent = true;
+            } else {
+              processedData = injectTitleIfNeeded(processedData, dynamicTitleSequence);
+            }
+          }
+          break;
+        default:
+          // No title management
+          break;
       }
 
       // Write to asciinema file (it has its own internal queue)
@@ -692,8 +757,12 @@ export class PtyManager extends EventEmitter {
         memorySession.ptyProcess.write(dataToSend);
         memorySession.asciinemaWriter?.writeInput(dataToSend);
 
-        // Track directory changes if title setting is enabled
-        if (memorySession.setTerminalTitle && input.text) {
+        // Track directory changes for title modes that need it
+        if (
+          (memorySession.titleMode === TitleMode.STATIC ||
+            memorySession.titleMode === TitleMode.DYNAMIC) &&
+          input.text
+        ) {
           const newDir = extractCdDirectory(
             input.text,
             memorySession.currentWorkingDir || memorySession.sessionInfo.workingDir
@@ -1396,6 +1465,18 @@ export class PtyManager extends EventEmitter {
   private cleanupSessionResources(session: PtySession): void {
     // Clean up resize tracking
     this.sessionResizeSources.delete(session.id);
+
+    // Clean up title update interval for dynamic mode
+    if (session.titleUpdateInterval) {
+      clearInterval(session.titleUpdateInterval);
+      session.titleUpdateInterval = undefined;
+    }
+
+    // Clean up activity detector
+    if (session.activityDetector) {
+      session.activityDetector.clearStatus();
+      session.activityDetector = undefined;
+    }
 
     // Clean up input socket server
     if (session.inputSocketServer) {

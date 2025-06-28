@@ -49,6 +49,16 @@ export interface SessionActivity {
 }
 
 /**
+ * Terminal title management modes
+ */
+export enum TitleMode {
+  NONE = 'none', // No title management
+  FILTER = 'filter', // Block all title changes from apps
+  STATIC = 'static', // Static title: path — command — session
+  DYNAMIC = 'dynamic', // Static + live activity indicators
+}
+
+/**
  * Session creation options
  */
 export interface SessionCreateOptions {
@@ -57,8 +67,7 @@ export interface SessionCreateOptions {
   workingDir?: string;
   cols?: number;
   rows?: number;
-  preventTitleChange?: boolean;
-  setTerminalTitle?: boolean;
+  titleMode?: TitleMode;
 }
 
 /**

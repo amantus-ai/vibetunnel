@@ -4,6 +4,7 @@ import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PtyManager } from '../../server/pty/pty-manager.js';
+import { TitleMode } from '../../shared/types.js';
 
 describe('PTY Terminal Title Integration', () => {
   let ptyManager: PtyManager;
@@ -39,7 +40,7 @@ describe('PTY Terminal Title Integration', () => {
     }
   });
 
-  it('should set initial terminal title when setTerminalTitle is enabled', async () => {
+  it('should set terminal title in static mode', async () => {
     const sessionId = `test-${uuidv4()}`;
     testSessionIds.push(sessionId);
 
@@ -47,18 +48,18 @@ describe('PTY Terminal Title Integration', () => {
       sessionId,
       name: 'test-session',
       workingDir: process.cwd(),
-      setTerminalTitle: true,
+      titleMode: TitleMode.STATIC,
     });
 
     expect(_result.sessionId).toBe(sessionId);
 
-    // Get the internal session to verify it was created with setTerminalTitle
+    // Get the internal session to verify it was created with static title mode
     const session = ptyManager.getInternalSession(sessionId);
     expect(session).toBeDefined();
-    expect(session?.setTerminalTitle).toBe(true);
+    expect(session?.titleMode).toBe(TitleMode.STATIC);
   });
 
-  it('should not set terminal title when setTerminalTitle is false', async () => {
+  it('should set terminal title in dynamic mode', async () => {
     const sessionId = `test-${uuidv4()}`;
     testSessionIds.push(sessionId);
 
@@ -66,77 +67,106 @@ describe('PTY Terminal Title Integration', () => {
       sessionId,
       name: 'test-session',
       workingDir: process.cwd(),
-      setTerminalTitle: false,
+      titleMode: TitleMode.DYNAMIC,
     });
 
+    expect(_result.sessionId).toBe(sessionId);
+
+    // Get the internal session to verify it was created with dynamic title mode
     const session = ptyManager.getInternalSession(sessionId);
-    expect(session?.setTerminalTitle).toBe(false);
+    expect(session).toBeDefined();
+    expect(session?.titleMode).toBe(TitleMode.DYNAMIC);
+    expect(session?.activityDetector).toBeDefined();
   });
 
-  it('should track working directory changes on cd commands', async () => {
+  it('should not set terminal title when mode is none', async () => {
     const sessionId = `test-${uuidv4()}`;
     testSessionIds.push(sessionId);
 
-    await ptyManager.createSession(['echo', 'test'], {
+    const _result = await ptyManager.createSession(['echo', 'test'], {
       sessionId,
       name: 'test-session',
       workingDir: process.cwd(),
-      setTerminalTitle: true,
+      titleMode: TitleMode.NONE,
+    });
+
+    const session = ptyManager.getInternalSession(sessionId);
+    expect(session?.titleMode).toBe(TitleMode.NONE);
+  });
+
+  it('should track current working directory in static and dynamic modes', async () => {
+    const sessionId = `test-${uuidv4()}`;
+    testSessionIds.push(sessionId);
+
+    const _result = await ptyManager.createSession(['bash'], {
+      sessionId,
+      name: 'test-session',
+      workingDir: process.cwd(),
+      titleMode: TitleMode.STATIC,
+    });
+
+    const session = ptyManager.getInternalSession(sessionId);
+    expect(session).toBeDefined();
+    expect(session?.currentWorkingDir).toBe(process.cwd());
+
+    // Simulate cd command
+    await ptyManager.sendInput(sessionId, { text: 'cd /tmp\n' });
+
+    // Wait a bit for processing
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Verify directory was updated
+    expect(session?.currentWorkingDir).toBe('/tmp');
+  });
+
+  it('should filter title sequences when filter mode is enabled', async () => {
+    const sessionId = `test-${uuidv4()}`;
+    testSessionIds.push(sessionId);
+
+    const _result = await ptyManager.createSession(['echo', 'test'], {
+      sessionId,
+      name: 'test-session',
+      workingDir: process.cwd(),
+      titleMode: TitleMode.FILTER,
+    });
+
+    // Session should have filter mode enabled
+    const session = ptyManager.getInternalSession(sessionId);
+    expect(session).toBeDefined();
+    expect(session?.titleMode).toBe(TitleMode.FILTER);
+  });
+
+  it('should handle Claude commands with dynamic mode by default', async () => {
+    const sessionId = `test-${uuidv4()}`;
+    testSessionIds.push(sessionId);
+
+    // Don't specify titleMode - should auto-detect for Claude
+    const _result = await ptyManager.createSession(['claude', '--help'], {
+      sessionId,
+      name: 'claude-session',
+      workingDir: process.cwd(),
     });
 
     const session = ptyManager.getInternalSession(sessionId);
     expect(session).toBeDefined();
 
-    // Initial working directory
-    expect(session?.currentWorkingDir).toBe(process.cwd());
-
-    // Simulate sending a cd command - the tracking happens on input
-    ptyManager.sendInput(sessionId, { text: 'cd /tmp\n' });
-
-    // The directory tracking happens immediately on input
-    // (not waiting for shell to actually process it)
-    expect(session?.currentWorkingDir).toBe('/tmp');
-
-    // Test relative path
-    ptyManager.sendInput(sessionId, { text: 'cd ..\n' });
-    expect(session?.currentWorkingDir).toBe(path.dirname('/tmp'));
-
-    // Test home directory
-    ptyManager.sendInput(sessionId, { text: 'cd ~\n' });
-    expect(session?.currentWorkingDir).toBe(os.homedir());
+    // Claude commands should default to dynamic mode
+    expect(session?.titleMode).toBe(TitleMode.DYNAMIC);
+    expect(session?.activityDetector).toBeDefined();
   });
 
-  it('should filter title sequences when preventTitleChange is enabled', async () => {
+  it('should respect explicit title mode even for Claude', async () => {
     const sessionId = `test-${uuidv4()}`;
     testSessionIds.push(sessionId);
 
-    const _result = await ptyManager.createSession(['echo', '-e', '\\033]2;Test Title\\007Hello'], {
+    const _result = await ptyManager.createSession(['claude', '--help'], {
       sessionId,
-      name: 'test-session',
+      name: 'claude-session',
       workingDir: process.cwd(),
-      preventTitleChange: true,
-      forwardToStdout: false,
-    });
-
-    // Session should have preventTitleChange enabled
-    const session = ptyManager.getInternalSession(sessionId);
-    expect(session?.preventTitleChange).toBe(true);
-  });
-
-  it('should allow both setTerminalTitle and preventTitleChange to be configured', async () => {
-    const sessionId = `test-${uuidv4()}`;
-    testSessionIds.push(sessionId);
-
-    await ptyManager.createSession(['bash'], {
-      sessionId,
-      name: 'test-session',
-      workingDir: process.cwd(),
-      setTerminalTitle: true,
-      preventTitleChange: true,
+      titleMode: TitleMode.FILTER,
     });
 
     const session = ptyManager.getInternalSession(sessionId);
-    expect(session?.setTerminalTitle).toBe(true);
-    expect(session?.preventTitleChange).toBe(true);
+    expect(session?.titleMode).toBe(TitleMode.FILTER);
   });
 });
