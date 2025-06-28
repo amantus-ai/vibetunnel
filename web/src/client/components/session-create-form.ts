@@ -16,7 +16,6 @@ import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
-import { formatPathForDisplay } from '../utils/path-utils.js';
 import type { Session } from './session-list.js';
 
 const logger = createLogger('session-create-form');
@@ -390,7 +389,7 @@ export class SessionCreateForm extends LitElement {
                 <input
                   type="text"
                   class="input-field"
-                  .value=${formatPathForDisplay(this.workingDir)}
+                  .value=${this.workingDir}
                   @input=${this.handleWorkingDirChange}
                   placeholder="~/"
                   ?disabled=${this.disabled || this.isCreating}
