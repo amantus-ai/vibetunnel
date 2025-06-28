@@ -906,8 +906,8 @@ export async function startVibeTunnelServer() {
     config,
   } = appInstance;
 
-  // Update debug mode based on config
-  if (config.debug) {
+  // Update debug mode based on config or environment variable
+  if (config.debug || process.env.DEBUG === 'true') {
     setDebugMode(true);
     logger.log(chalk.gray('Debug logging enabled'));
   }
