@@ -122,12 +122,7 @@ export function shouldInjectTitle(data: string): boolean {
  */
 export function injectTitleIfNeeded(data: string, title: string): string {
   if (shouldInjectTitle(data)) {
-    // Inject title sequence before the prompt
-    // Find the last line that contains the prompt
-    const lines = data.split('\n');
-    const _lastLineIndex = lines.length - 1;
-
-    // Insert title sequence at the beginning of the output
+    // Simply prepend the title sequence
     return title + data;
   }
 
