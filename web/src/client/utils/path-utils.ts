@@ -19,21 +19,15 @@
  * formatPathForDisplay('C:\\Users\\jane\\Desktop') // returns '~/Desktop'
  * formatPathForDisplay('/home/bob/projects') // returns '~/projects'
  */
+// Compile regex once for better performance
+const HOME_PATTERN = /^(?:\/Users\/[^/]+|\/home\/[^/]+|[Cc]:[\/\\]Users[\/\\][^\/\\]+|\/root)/;
+
 export function formatPathForDisplay(path: string): string {
   if (!path) return '';
 
-  // Use a single regex to match all patterns at once to avoid multiple replacements
-  // This prevents issues like /home/user1/projects/home/user2 becoming ~/projects/~
-  const homePattern = new RegExp(
-    '^(' +
-      '/Users/[^/]+|' + // macOS
-      '/home/[^/]+|' + // Linux
-      '[Cc]:[/\\\\]Users[/\\\\][^/\\\\]+|' + // Windows (both slashes, case-insensitive)
-      '/root' + // Root user
-      ')'
-  );
-
-  return path.replace(homePattern, '~');
+  // Use pre-compiled regex for better performance
+  // The regex safely matches home directories without being affected by special characters in usernames
+  return path.replace(HOME_PATTERN, '~');
 }
 
 /**

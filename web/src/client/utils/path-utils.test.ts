@@ -13,6 +13,20 @@ describe('formatPathForDisplay', () => {
       expect(formatPathForDisplay('/Users/john.doe/Documents')).toBe('~/Documents');
       expect(formatPathForDisplay('/Users/alice-smith/Projects')).toBe('~/Projects');
       expect(formatPathForDisplay('/Users/user123/Desktop')).toBe('~/Desktop');
+      expect(formatPathForDisplay('/Users/user_name/Files')).toBe('~/Files');
+      expect(formatPathForDisplay('/Users/user@company/Work')).toBe('~/Work');
+    });
+
+    it('should handle usernames with regex special characters safely', () => {
+      // Test usernames that contain regex special characters
+      expect(formatPathForDisplay('/Users/user[test]/Documents')).toBe('~/Documents');
+      expect(formatPathForDisplay('/Users/user(group)/Projects')).toBe('~/Projects');
+      expect(formatPathForDisplay('/Users/user+plus/Desktop')).toBe('~/Desktop');
+      expect(formatPathForDisplay('/Users/user$money/Files')).toBe('~/Files');
+      expect(formatPathForDisplay('/Users/user.com/Work')).toBe('~/Work');
+      expect(formatPathForDisplay('/Users/user*star/Downloads')).toBe('~/Downloads');
+      expect(formatPathForDisplay('/Users/user?question/Apps')).toBe('~/Apps');
+      expect(formatPathForDisplay('/Users/user^caret/Code')).toBe('~/Code');
     });
 
     it('should not replace if not at the beginning', () => {
@@ -31,6 +45,20 @@ describe('formatPathForDisplay', () => {
       expect(formatPathForDisplay('/home/john.doe/Documents')).toBe('~/Documents');
       expect(formatPathForDisplay('/home/alice-smith/Projects')).toBe('~/Projects');
       expect(formatPathForDisplay('/home/user123/Desktop')).toBe('~/Desktop');
+      expect(formatPathForDisplay('/home/user_name/Files')).toBe('~/Files');
+      expect(formatPathForDisplay('/home/user@company/Work')).toBe('~/Work');
+    });
+
+    it('should handle usernames with regex special characters safely', () => {
+      // Test usernames that contain regex special characters
+      expect(formatPathForDisplay('/home/user[test]/Documents')).toBe('~/Documents');
+      expect(formatPathForDisplay('/home/user(group)/Projects')).toBe('~/Projects');
+      expect(formatPathForDisplay('/home/user+plus/Desktop')).toBe('~/Desktop');
+      expect(formatPathForDisplay('/home/user$money/Files')).toBe('~/Files');
+      expect(formatPathForDisplay('/home/user.com/Work')).toBe('~/Work');
+      expect(formatPathForDisplay('/home/user*star/Downloads')).toBe('~/Downloads');
+      expect(formatPathForDisplay('/home/user?question/Apps')).toBe('~/Apps');
+      expect(formatPathForDisplay('/home/user^caret/Code')).toBe('~/Code');
     });
 
     it('should not replace if not at the beginning', () => {
@@ -70,6 +98,19 @@ describe('formatPathForDisplay', () => {
       expect(formatPathForDisplay('C:/Users/alice-smith/Projects')).toBe('~/Projects');
       expect(formatPathForDisplay('c:\\Users\\user123\\Desktop')).toBe('~\\Desktop');
       expect(formatPathForDisplay('c:/Users/test_user/Files')).toBe('~/Files');
+      expect(formatPathForDisplay('C:\\Users\\user@company\\Work')).toBe('~\\Work');
+    });
+
+    it('should handle usernames with regex special characters safely', () => {
+      // Test usernames that contain regex special characters on Windows
+      expect(formatPathForDisplay('C:\\Users\\user[test]\\Documents')).toBe('~\\Documents');
+      expect(formatPathForDisplay('C:/Users/user(group)/Projects')).toBe('~/Projects');
+      expect(formatPathForDisplay('c:\\Users\\user+plus\\Desktop')).toBe('~\\Desktop');
+      expect(formatPathForDisplay('c:/Users/user$money/Files')).toBe('~/Files');
+      expect(formatPathForDisplay('C:\\Users\\user.com\\Work')).toBe('~\\Work');
+      expect(formatPathForDisplay('C:/Users/user*star/Downloads')).toBe('~/Downloads');
+      expect(formatPathForDisplay('c:\\Users\\user?question\\Apps')).toBe('~\\Apps');
+      expect(formatPathForDisplay('c:/Users/user^caret/Code')).toBe('~/Code');
     });
 
     it('should not replace if not C: drive', () => {
@@ -141,9 +182,12 @@ describe('formatPathForDisplay', () => {
 });
 
 describe('copyToClipboard', () => {
-  // Note: These tests would require mocking navigator.clipboard
-  // which is better handled in a browser environment or with proper mocks
   it('should be a function', () => {
     expect(typeof copyToClipboard).toBe('function');
   });
+
+  // Note: Full testing of clipboard functionality requires a DOM environment
+  // These tests verify the basic structure without mocking the entire DOM/browser APIs
+  // which is complex in the current test setup. The actual clipboard functionality
+  // is tested through integration tests and manual testing.
 });
