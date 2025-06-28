@@ -2,7 +2,8 @@
 
 /**
  * Script to clean up multiple Claude bot comments on a PR
- * Keeps only the most recent successful review and collapses others
+ * Keeps only the most recent successful review
+ * Deletes error comments and collapses other outdated comments
  */
 
 async function cleanupClaudeComments({ github, context, core }) {
@@ -62,6 +63,7 @@ async function cleanupClaudeComments({ github, context, core }) {
 
     // Keep the most recent successful review visible
     const commentsToCollapse = [];
+    const commentsToDelete = [];
     let keptReview = false;
 
     if (successfulReviews.length > 0) {
@@ -70,12 +72,30 @@ async function cleanupClaudeComments({ github, context, core }) {
       commentsToCollapse.push(...successfulReviews.slice(1));
     }
 
-    // Collapse all error and status comments
-    commentsToCollapse.push(...errorComments, ...statusComments);
+    // Delete all error comments, collapse status comments
+    commentsToDelete.push(...errorComments);
+    commentsToCollapse.push(...statusComments);
 
-    // If no successful review, keep the most recent comment of any type
+    // If no successful review, keep the most recent non-error comment
     if (!keptReview && claudeComments.length > 0) {
-      commentsToCollapse.push(...claudeComments.slice(1));
+      const nonErrorComments = claudeComments.filter(c => !errorComments.includes(c));
+      if (nonErrorComments.length > 0) {
+        commentsToCollapse.push(...nonErrorComments.slice(1));
+      }
+    }
+
+    // Process comments to delete
+    for (const comment of commentsToDelete) {
+      try {
+        await github.rest.issues.deleteComment({
+          owner,
+          repo,
+          comment_id: comment.id
+        });
+        core.info(`Deleted Claude error comment ${comment.id}`);
+      } catch (error) {
+        core.warning(`Failed to delete error comment ${comment.id}: ${error.message}`);
+      }
     }
 
     // Process comments to collapse
@@ -111,7 +131,7 @@ async function cleanupClaudeComments({ github, context, core }) {
       }
     }
 
-    core.info(`Cleanup complete. Collapsed ${commentsToCollapse.length} comments`);
+    core.info(`Cleanup complete. Deleted ${commentsToDelete.length} error comments, collapsed ${commentsToCollapse.length} comments`);
 
   } catch (error) {
     core.error(`Failed to cleanup Claude comments: ${error.message}`);
