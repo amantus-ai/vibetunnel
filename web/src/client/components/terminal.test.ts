@@ -228,6 +228,42 @@ describe('Terminal', () => {
       await element.updateComplete;
       expect(element.initialCols).toBe(100);
     });
+
+    it('should handle undefined initial dimensions gracefully', async () => {
+      element.initialCols = undefined as unknown as number;
+      element.initialRows = undefined as unknown as number;
+      await element.updateComplete;
+
+      // Should fall back to default dimensions
+      expect(element.cols).toBe(80); // Default cols
+      expect(element.rows).toBe(24); // Default rows
+
+      // Should still be able to resize
+      element.setTerminalSize(100, 30);
+      await element.updateComplete;
+      expect(element.cols).toBe(100);
+      expect(element.rows).toBe(30);
+    });
+
+    it('should persist user override preference to localStorage', async () => {
+      // Clear any existing value
+      localStorage.removeItem('terminal-width-override-test-123');
+
+      // Set user override
+      element.setUserOverrideWidth(true);
+
+      // Check localStorage
+      const stored = localStorage.getItem('terminal-width-override-test-123');
+      expect(stored).toBe('true');
+
+      // Set to false
+      element.setUserOverrideWidth(false);
+      const storedFalse = localStorage.getItem('terminal-width-override-test-123');
+      expect(storedFalse).toBe('false');
+
+      // Clean up
+      localStorage.removeItem('terminal-width-override-test-123');
+    });
   });
 
   describe('scrolling behavior', () => {

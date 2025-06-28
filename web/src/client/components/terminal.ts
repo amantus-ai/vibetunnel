@@ -109,6 +109,14 @@ export class Terminal extends LitElement {
 
     // Check for debug mode
     this.debugMode = new URLSearchParams(window.location.search).has('debug');
+
+    // Restore user override preference if we have a sessionId
+    if (this.sessionId) {
+      const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
+      if (stored !== null) {
+        this.userOverrideWidth = stored === 'true';
+      }
+    }
   }
 
   updated(changedProperties: PropertyValues) {
@@ -150,6 +158,10 @@ export class Terminal extends LitElement {
   // Method to set user override when width is manually selected
   setUserOverrideWidth(override: boolean) {
     this.userOverrideWidth = override;
+    // Persist the preference
+    if (this.sessionId) {
+      localStorage.setItem(`terminal-width-override-${this.sessionId}`, String(override));
+    }
     // Trigger a resize to apply the new setting
     if (this.container) {
       this.fitTerminal();
@@ -358,7 +370,8 @@ export class Terminal extends LitElement {
 
       // Ensure charWidth is valid before division
       const safeCharWidth = Number.isFinite(charWidth) && charWidth > 0 ? charWidth : 8; // Default char width
-      const calculatedCols = Math.max(20, Math.floor(containerWidth / safeCharWidth)) - 1; // This -1 should not be needed, but it is...
+      // Subtract 1 to prevent horizontal scrollbar due to rounding/border issues
+      const calculatedCols = Math.max(20, Math.floor(containerWidth / safeCharWidth)) - 1;
 
       // Apply constraints in order of priority:
       // 1. If user has manually selected a specific width (maxCols > 0), use that as the limit

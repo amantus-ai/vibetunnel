@@ -665,6 +665,8 @@ export class SessionView extends LitElement {
       terminal.setUserOverrideWidth(true);
       // Trigger a resize to apply the new constraint
       terminal.requestUpdate();
+    } else {
+      logger.warn('Terminal component not found when setting width');
     }
   }
 
