@@ -12,7 +12,7 @@ import type { RemoteRegistry } from '../services/remote-registry.js';
 import type { StreamWatcher } from '../services/stream-watcher.js';
 import type { TerminalManager } from '../services/terminal-manager.js';
 import { createLogger } from '../utils/logger.js';
-import { generateSessionName } from '../utils/session-naming.js';
+import { abbreviatePath, generateSessionName } from '../utils/session-naming.js';
 
 const logger = createLogger('sessions');
 
@@ -57,10 +57,11 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       const localSessions = ptyManager.listSessions();
       logger.debug(`found ${localSessions.length} local sessions`);
 
-      // Add source info to local sessions
+      // Add source info and formatted path to local sessions
       const localSessionsWithSource = localSessions.map((session) => ({
         ...session,
         source: 'local' as const,
+        displayWorkingDir: abbreviatePath(session.workingDir),
       }));
 
       allSessions = [...localSessionsWithSource];
@@ -88,13 +89,14 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
               const sessionIds = remoteSessions.map((s: Session) => s.id);
               remoteRegistry.updateRemoteSessions(remote.id, sessionIds);
 
-              // Add remote info to each session
+              // Add remote info and formatted path to each session
               return remoteSessions.map((session: Session) => ({
                 ...session,
                 source: 'remote',
                 remoteId: remote.id,
                 remoteName: remote.name,
                 remoteUrl: remote.url,
+                displayWorkingDir: session.displayWorkingDir || abbreviatePath(session.workingDir),
               }));
             } else {
               logger.warn(
@@ -388,7 +390,12 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
               return res.status(response.status).json(await response.json());
             }
 
-            return res.json(await response.json());
+            const remoteSession = (await response.json()) as Session;
+            return res.json({
+              ...remoteSession,
+              displayWorkingDir:
+                remoteSession.displayWorkingDir || abbreviatePath(remoteSession.workingDir),
+            });
           } catch (error) {
             logger.error(`failed to get session info from remote ${remote.name}:`, error);
             return res.status(503).json({ error: 'Failed to reach remote server' });
@@ -402,7 +409,10 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       if (!session) {
         return res.status(404).json({ error: 'Session not found' });
       }
-      res.json(session);
+      res.json({
+        ...session,
+        displayWorkingDir: abbreviatePath(session.workingDir),
+      });
     } catch (error) {
       logger.error('error getting session info:', error);
       res.status(500).json({ error: 'Failed to get session info' });

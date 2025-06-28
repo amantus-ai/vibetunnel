@@ -35,6 +35,9 @@ export interface Session extends SessionInfo {
   remoteId?: string;
   remoteName?: string;
   remoteUrl?: string;
+
+  // Display-formatted fields
+  displayWorkingDir?: string;
 }
 
 /**

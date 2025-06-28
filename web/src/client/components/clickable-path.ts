@@ -23,6 +23,7 @@ export class ClickablePath extends LitElement {
   }
 
   @property({ type: String }) path = '';
+  @property({ type: String }) displayPath = '';
   @property({ type: String }) class = '';
   @property({ type: Number }) iconSize = 12;
 
@@ -64,7 +65,7 @@ export class ClickablePath extends LitElement {
   render() {
     if (!this.path) return html``;
 
-    const displayPath = formatPathForDisplay(this.path);
+    const displayText = this.displayPath || formatPathForDisplay(this.path);
 
     return html`
       <div
@@ -74,7 +75,7 @@ export class ClickablePath extends LitElement {
         title="Click to copy path"
         @click=${this.handleClick}
       >
-        <span class="truncate">${displayPath}</span>
+        <span class="truncate">${displayText}</span>
         <copy-icon size="${this.iconSize}" class="flex-shrink-0"></copy-icon>
       </div>
     `;
