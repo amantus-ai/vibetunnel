@@ -20,7 +20,7 @@
  * formatPathForDisplay('/home/bob/projects') // returns '~/projects'
  */
 // Compile regex once for better performance
-const HOME_PATTERN = /^(?:\/Users\/[^/]+|\/home\/[^/]+|[Cc]:[\/\\]Users[\/\\][^\/\\]+|\/root)/;
+const HOME_PATTERN = /^(?:\/Users\/[^/]+|\/home\/[^/]+|[A-Za-z]:[\/\\]Users[\/\\][^\/\\]+|\/root)/;
 
 export function formatPathForDisplay(path: string): string {
   if (!path) return '';
