@@ -894,5 +894,71 @@ describe('SessionView', () => {
       expect(cleanupSpy).not.toHaveBeenCalled();
       expect(testElement.isTransitioningSession).toBe(false);
     });
+
+    it('should clear stuck transition state when session becomes null', async () => {
+      const session = createMockSession({ id: 'session-1' });
+
+      element.session = session;
+      await element.updateComplete;
+      await waitForAsync(100); // Wait for initial setup
+
+      const testElement = element as SessionViewTestInterface;
+
+      // Manually set transition state to simulate it being stuck
+      testElement.isTransitioningSession = true;
+      testElement.isTransitioning = true;
+
+      // Verify states are set
+      expect(testElement.isTransitioningSession).toBe(true);
+      expect(testElement.isTransitioning).toBe(true);
+
+      // Set session to null
+      element.session = null;
+      await element.updateComplete;
+
+      // Both transition states should be cleared immediately
+      expect(testElement.isTransitioningSession).toBe(false);
+      expect(testElement.isTransitioning).toBe(false);
+      expect(testElement.connected).toBe(false);
+    });
+
+    it('should prevent multiple transition timeout instances', async () => {
+      const session1 = createMockSession({ id: 'session-1' });
+      const session2 = createMockSession({ id: 'session-2' });
+      const session3 = createMockSession({ id: 'session-3' });
+
+      element.session = session1;
+      await element.updateComplete;
+      await waitForAsync(100); // Wait for initial setup
+
+      const testElement = element as SessionViewTestInterface;
+
+      // Clear timeout spy
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+
+      // Switch to session2
+      element.session = session2;
+      await element.updateComplete;
+      await waitForAsync(60); // Wait past debounce
+
+      // Get the first timeout ID
+      const firstTimeoutId = testElement.transitionClearTimeout;
+      expect(firstTimeoutId).toBeDefined();
+
+      // Switch to session3 before transition completes
+      element.session = session3;
+      await element.updateComplete;
+      await waitForAsync(60); // Wait past debounce
+
+      // Verify the first timeout was cleared before creating new one
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(firstTimeoutId);
+
+      // Verify only one timeout is active
+      const secondTimeoutId = testElement.transitionClearTimeout;
+      expect(secondTimeoutId).toBeDefined();
+      expect(secondTimeoutId).not.toBe(firstTimeoutId);
+
+      clearTimeoutSpy.mockRestore();
+    });
   });
 });

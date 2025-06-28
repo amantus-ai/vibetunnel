@@ -401,7 +401,11 @@ export class SessionView extends LitElement {
 
         // Handle session becoming null (navigation away)
         if (!this.session) {
-          this.isTransitioningSession = false;
+          // Clear transition state if it was already set
+          if (this.isTransitioningSession) {
+            this.isTransitioningSession = false;
+          }
+          this.isTransitioning = false;
           this.connected = false;
           if (this.connectionManager) {
             this.connectionManager.cleanupStreamConnection();
@@ -443,14 +447,31 @@ export class SessionView extends LitElement {
 
             // If we have a new session, re-initialize the terminal connection
             if (this.session) {
-              logger.log('Cleanup complete, initializing new connection');
-              // Only set connected after cleanup is truly complete
-              this.connected = true;
-              // Track the timeout so we can clear it if needed
-              this.transitionClearTimeout = setTimeout(() => {
-                this.isTransitioningSession = false;
-                this.transitionClearTimeout = undefined;
-              }, 100);
+              logger.log('Cleanup complete, preparing new connection');
+              // Ensure cleanup is truly complete before setting connected
+              // Use requestAnimationFrame to ensure DOM updates have processed
+              requestAnimationFrame(() => {
+                // Double-check session hasn't changed again
+                if (this.session && !this.cleanupInProgress) {
+                  this.connected = true;
+                  logger.log('Connection state updated after cleanup');
+                }
+
+                // Clear transition state after a short delay
+                // Clear any existing timeout first to prevent multiple instances
+                if (this.transitionClearTimeout) {
+                  clearTimeout(this.transitionClearTimeout);
+                  this.transitionClearTimeout = undefined;
+                }
+                // Track the timeout so we can clear it if needed
+                this.transitionClearTimeout = setTimeout(() => {
+                  this.isTransitioningSession = false;
+                  this.transitionClearTimeout = undefined;
+
+                  // Verify connection state after transition completes
+                  this.verifyConnectionState();
+                }, 100);
+              });
             } else {
               // No new session - clear transition state immediately
               this.isTransitioningSession = false;
@@ -492,9 +513,7 @@ export class SessionView extends LitElement {
       const terminalElement = this.querySelector('vibe-terminal') as Terminal;
       const needsInit =
         !this.terminalLifecycleManager.getTerminal() ||
-        (changedProperties.has('session') &&
-          changedProperties.get('session') &&
-          (changedProperties.get('session') as Session).id !== this.session.id);
+        (changedProperties.has('session') && changedProperties.get('session'));
 
       if (terminalElement && needsInit) {
         this.terminalLifecycleManager.initializeTerminal();
