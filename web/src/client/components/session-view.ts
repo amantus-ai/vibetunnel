@@ -96,6 +96,7 @@ export class SessionView extends LitElement {
   private sessionSwitchDebounce?: ReturnType<typeof setTimeout>;
   private transitionClearTimeout?: ReturnType<typeof setTimeout>;
   private cleanupInProgress = false;
+  private isTransitioning = false;
 
   // Removed methods that are now in LifecycleEventManager:
   // - handlePreferencesChanged
@@ -413,6 +414,13 @@ export class SessionView extends LitElement {
 
         // Debounce rapid session switches to prevent multiple connection attempts
         this.sessionSwitchDebounce = setTimeout(async () => {
+          // Check if already transitioning
+          if (this.isTransitioning) {
+            logger.warn('Transition already in progress, skipping');
+            return;
+          }
+          this.isTransitioning = true;
+
           logger.log('Session changed, cleaning up old stream connection');
           this.cleanupInProgress = true;
           this.connected = false;
@@ -431,21 +439,10 @@ export class SessionView extends LitElement {
             }
 
             // Update all managers with new session
-            if (this.inputManager) {
-              this.inputManager.setSession(this.session);
-            }
-            if (this.terminalLifecycleManager) {
-              this.terminalLifecycleManager.setSession(this.session);
-            }
-            if (this.lifecycleEventManager) {
-              this.lifecycleEventManager.setSession(this.session);
-            }
-            if (this.connectionManager) {
-              this.connectionManager.setSession(this.session);
-            }
+            this.updateManagers(this.session);
 
             // If we have a new session, re-initialize the terminal connection
-            if (this.session && oldSession?.id !== this.session.id) {
+            if (this.session) {
               logger.log('Cleanup complete, initializing new connection');
               // Only set connected after cleanup is truly complete
               this.connected = true;
@@ -453,16 +450,11 @@ export class SessionView extends LitElement {
               this.transitionClearTimeout = setTimeout(() => {
                 this.isTransitioningSession = false;
                 this.transitionClearTimeout = undefined;
-                // Verify connection state after transition completes
-                this.verifyConnectionState();
               }, 100);
             } else {
-              // No new session or same session - clear transition state immediately
+              // No new session - clear transition state immediately
               this.isTransitioningSession = false;
-              // If session is null, ensure we're disconnected
-              if (!this.session) {
-                this.connected = false;
-              }
+              this.connected = false;
             }
           } catch (error) {
             logger.error('Error during session transition:', error);
@@ -471,6 +463,7 @@ export class SessionView extends LitElement {
             this.connected = false;
           } finally {
             this.cleanupInProgress = false;
+            this.isTransitioning = false;
             // Ensure transition state is cleared even if an unexpected error occurs
             if (this.isTransitioningSession) {
               this.isTransitioningSession = false;
@@ -479,18 +472,7 @@ export class SessionView extends LitElement {
         }, 50); // 50ms debounce for rapid switches
       } else {
         // Just update managers if session properties changed but not the ID
-        if (this.inputManager) {
-          this.inputManager.setSession(this.session);
-        }
-        if (this.terminalLifecycleManager) {
-          this.terminalLifecycleManager.setSession(this.session);
-        }
-        if (this.lifecycleEventManager) {
-          this.lifecycleEventManager.setSession(this.session);
-        }
-        if (this.connectionManager) {
-          this.connectionManager.setSession(this.session);
-        }
+        this.updateManagers(this.session);
       }
     }
 
@@ -905,6 +887,21 @@ export class SessionView extends LitElement {
       );
     }
     return stateMatches;
+  }
+
+  private updateManagers(session: Session | null): void {
+    const managers = [
+      this.inputManager,
+      this.terminalLifecycleManager,
+      this.lifecycleEventManager,
+      this.connectionManager,
+    ];
+
+    managers.forEach((manager) => {
+      if (manager && 'setSession' in manager) {
+        (manager as { setSession: (session: Session | null) => void }).setSession(session);
+      }
+    });
   }
 
   refreshTerminalAfterMobileInput() {
