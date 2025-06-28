@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 export class BasePage {
   readonly page: Page;
@@ -23,11 +23,11 @@ export class BasePage {
   }
 
   async clickByTestId(testId: string) {
-    await this.getByTestId(testId).then(el => el.click());
+    await this.getByTestId(testId).then((el) => el.click());
   }
 
   async fillByTestId(testId: string, value: string) {
-    await this.getByTestId(testId).then(el => el.fill(value));
+    await this.getByTestId(testId).then((el) => el.fill(value));
   }
 
   async waitForText(text: string, options?: { timeout?: number }) {

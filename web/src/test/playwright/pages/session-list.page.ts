@@ -1,11 +1,6 @@
-import { Page } from '@playwright/test';
 import { BasePage } from './base.page';
 
 export class SessionListPage extends BasePage {
-  constructor(page: Page) {
-    super(page);
-  }
-
   async navigate() {
     await super.navigate('/');
     await this.waitForLoadComplete();
@@ -14,18 +9,18 @@ export class SessionListPage extends BasePage {
   async createNewSession(sessionName?: string) {
     // Click the create session button (it's an icon button with title)
     await this.page.click('button[title="Create New Session"]');
-    
+
     // Wait for the modal to appear by checking for the session name input
     await this.page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
-    
+
     // Fill in the session name if provided
     if (sessionName) {
       await this.page.fill('input[placeholder="My Session"]', sessionName);
     }
-    
+
     // Submit the form - click the Create button
     await this.page.click('button:has-text("Create")');
-    
+
     // Wait for navigation to session view
     await this.page.waitForSelector('session-view', { state: 'visible' });
   }
@@ -52,9 +47,9 @@ export class SessionListPage extends BasePage {
   async killSession(sessionName: string) {
     const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`);
     await sessionCard.locator('button:has-text("Kill")').click();
-    
+
     // Confirm in dialog if it appears
-    this.page.on('dialog', dialog => dialog.accept());
+    this.page.on('dialog', (dialog) => dialog.accept());
   }
 
   async waitForEmptyState() {

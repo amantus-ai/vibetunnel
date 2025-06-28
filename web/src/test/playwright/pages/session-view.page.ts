@@ -1,4 +1,3 @@
-import { Page, expect } from '@playwright/test';
 import { BasePage } from './base.page';
 
 export class SessionViewPage extends BasePage {
@@ -6,17 +5,13 @@ export class SessionViewPage extends BasePage {
   private terminalScreenSelector = '.xterm-screen';
   private terminalTextLayerSelector = '.xterm-text-layer';
 
-  constructor(page: Page) {
-    super(page);
-  }
-
   async waitForTerminalReady() {
     // Wait for terminal component to be visible
     await this.page.waitForSelector(this.terminalSelector, { state: 'visible' });
-    
+
     // Wait for xterm to be initialized inside the terminal
     await this.page.waitForSelector(`${this.terminalSelector} .xterm`, { state: 'visible' });
-    
+
     // Wait a bit for terminal to be fully interactive
     await this.page.waitForTimeout(2000);
   }
@@ -24,10 +19,10 @@ export class SessionViewPage extends BasePage {
   async typeCommand(command: string, pressEnter = true) {
     // Focus the terminal screen
     await this.page.click(this.terminalScreenSelector);
-    
+
     // Type the command
     await this.page.keyboard.type(command, { delay: 50 });
-    
+
     // Press Enter if requested
     if (pressEnter) {
       await this.page.keyboard.press('Enter');
@@ -90,7 +85,10 @@ export class SessionViewPage extends BasePage {
 
   async navigateBack() {
     // Click the back button in the header or sidebar
-    const backButton = this.page.locator('button').filter({ hasText: /back|×/i }).first();
+    const backButton = this.page
+      .locator('button')
+      .filter({ hasText: /back|×/i })
+      .first();
     if (await backButton.isVisible()) {
       await backButton.click();
     } else {
