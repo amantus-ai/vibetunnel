@@ -20,15 +20,22 @@ const PATH_START_PATTERN = /^[/a-zA-Z0-9[\].-]/;
 const URL_END_CHARS_PATTERN = /[^\w\-._~:/?#[\]@!$&'()*+,;=%{}|\\^`]/;
 // Pattern breakdown:
 // - https?:\/\/ - HTTP or HTTPS protocol
-// - localhost|[\d.]+ - localhost or IPv4 addresses
-// - \[[\da-fA-F:]+\] - IPv6 addresses in brackets
-// - [a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])? - Domain label: starts/ends with alphanumeric, hyphens allowed in middle
-// - (\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)* - Zero or more subdomains with same rules
-// - \.[a-zA-Z]+ - Required TLD with at least 1 letter (to support edge cases like http://a.b)
+// - Host options:
+//   - localhost - literal localhost
+//   - [\d.]+ - IPv4 addresses
+//   - \[[\da-fA-F:]+\] - IPv6 addresses in brackets
+//   - Domain names: Must have at least domain.tld structure
+//     - Optional subdomains: ([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)*
+//     - Required domain: [a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?
+//     - Required dot and TLD: \.[a-zA-Z]+
 // - (:\d+)? - Optional port number
+// - .* - Any path/query/fragment
 // - file:\/\/.+ - File protocol with any path
 const LOCALHOST_PATTERN =
-  /^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]+)(:\d+)?.*|file:\/\/.+)/;
+  /^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|(([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.[a-zA-Z]+))(:\d+)?.*|file:\/\/.+)/;
+
+// Pattern to validate individual domain labels
+const VALID_DOMAIN_LABEL = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/;
 
 type ProcessedRange = {
   start: number;
@@ -331,7 +338,40 @@ class LinkProcessor {
     // Try to parse as URL
     try {
       const parsed = new URL(url);
-      return ['http:', 'https:', 'file:'].includes(parsed.protocol);
+      if (!['http:', 'https:', 'file:'].includes(parsed.protocol)) {
+        return false;
+      }
+
+      // For HTTP(S) URLs, validate domain structure
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        const hostname = parsed.hostname;
+
+        // Skip validation for localhost, IP addresses, and IPv6
+        if (hostname === 'localhost' || /^[\d.]+$/.test(hostname) || hostname.startsWith('[')) {
+          return true;
+        }
+
+        // Validate each domain label
+        const labels = hostname.split('.');
+        if (labels.length < 2) {
+          return false; // Must have at least domain.tld
+        }
+
+        // Check all labels except the last one (TLD)
+        for (let i = 0; i < labels.length - 1; i++) {
+          if (!VALID_DOMAIN_LABEL.test(labels[i])) {
+            return false;
+          }
+        }
+
+        // Check TLD (must be letters only)
+        const tld = labels[labels.length - 1];
+        if (!/^[a-zA-Z]+$/.test(tld)) {
+          return false;
+        }
+      }
+
+      return true;
     } catch {
       return false;
     }
