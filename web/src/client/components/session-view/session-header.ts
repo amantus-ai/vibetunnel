@@ -143,7 +143,6 @@ export class SessionHeader extends LitElement {
             <div class="text-xs opacity-75 mt-0.5 overflow-hidden">
               <clickable-path 
                 .path=${this.session.workingDir} 
-                .displayPath=${this.session.displayWorkingDir}
                 .iconSize=${12}
               ></clickable-path>
             </div>

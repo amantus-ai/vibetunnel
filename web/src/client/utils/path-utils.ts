@@ -1,6 +1,23 @@
 /**
- * Path utilities for clipboard operations
+ * Path utilities for formatting and clipboard operations
  */
+
+/**
+ * Format a file path for display by replacing the home directory with ~
+ * Uses regex to match common home directory patterns across platforms
+ * @param path The absolute path to format
+ * @returns The formatted path with ~ replacing the home directory
+ */
+export function formatPathForDisplay(path: string): string {
+  if (!path) return '';
+
+  // Match common home directory patterns
+  return path
+    .replace(/^\/Users\/[^/]+/, '~') // macOS
+    .replace(/^\/home\/[^/]+/, '~') // Linux
+    .replace(/^C:\\Users\\[^\\]+/, '~') // Windows
+    .replace(/^\/root/, '~'); // Root user
+}
 
 /**
  * Copy text to clipboard with fallback for older browsers

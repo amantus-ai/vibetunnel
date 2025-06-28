@@ -23,6 +23,7 @@ import type { Session } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
 import { createLogger } from '../utils/logger.js';
+import { formatPathForDisplay } from '../utils/path-utils.js';
 
 const logger = createLogger('session-list');
 
@@ -293,7 +294,7 @@ export class SessionList extends LitElement {
                                 }
                               </div>
                               <div class="text-xs text-dark-text-muted truncate">
-                                ${session.displayWorkingDir || session.workingDir}
+                                ${formatPathForDisplay(session.workingDir)}
                               </div>
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">

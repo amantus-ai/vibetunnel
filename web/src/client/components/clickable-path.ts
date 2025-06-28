@@ -10,7 +10,7 @@
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { createLogger } from '../utils/logger.js';
-import { copyToClipboard } from '../utils/path-utils.js';
+import { copyToClipboard, formatPathForDisplay } from '../utils/path-utils.js';
 import './copy-icon.js';
 
 const logger = createLogger('clickable-path');
@@ -23,7 +23,6 @@ export class ClickablePath extends LitElement {
   }
 
   @property({ type: String }) path = '';
-  @property({ type: String }) displayPath = '';
   @property({ type: String }) class = '';
   @property({ type: Number }) iconSize = 12;
 
@@ -65,7 +64,7 @@ export class ClickablePath extends LitElement {
   render() {
     if (!this.path) return html``;
 
-    const displayText = this.displayPath || this.path;
+    const displayText = formatPathForDisplay(this.path);
 
     return html`
       <div
