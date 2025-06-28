@@ -599,6 +599,54 @@ describe('SessionView', () => {
       expect(terminal.maxCols).toBe(0);
       expect(element.terminalMaxCols).toBe(0);
     });
+
+    it('should show limited width label when constrained by session dimensions', async () => {
+      const mockSession = createMockSession();
+      mockSession.initialCols = 120;
+      mockSession.initialRows = 30;
+
+      element.session = mockSession;
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        terminal.initialCols = 120;
+        terminal.initialRows = 30;
+        // Simulate no user override
+        terminal.userOverrideWidth = false;
+      }
+
+      // With no manual selection (terminalMaxCols = 0) and initial dimensions,
+      // the label should show "≤120"
+      const label = element.getCurrentWidthLabel();
+      expect(label).toBe('≤120');
+
+      // Tooltip should explain the limitation
+      const tooltip = element.getWidthTooltip();
+      expect(tooltip).toContain('Limited to session width');
+      expect(tooltip).toContain('120 columns');
+    });
+
+    it('should show unlimited label when user overrides', async () => {
+      const mockSession = createMockSession();
+      mockSession.initialCols = 120;
+
+      element.session = mockSession;
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        terminal.initialCols = 120;
+        terminal.userOverrideWidth = true; // User has overridden
+      }
+
+      // With user override, should show ∞
+      const label = element.getCurrentWidthLabel();
+      expect(label).toBe('∞');
+
+      const tooltip = element.getWidthTooltip();
+      expect(tooltip).toBe('Terminal width: Unlimited');
+    });
   });
 
   describe('navigation', () => {

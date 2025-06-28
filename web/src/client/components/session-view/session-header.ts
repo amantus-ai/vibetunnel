@@ -28,6 +28,8 @@ export class SessionHeader extends LitElement {
   @property({ type: Number }) terminalFontSize = 14;
   @property({ type: String }) customWidth = '';
   @property({ type: Boolean }) showWidthSelector = false;
+  @property({ type: String }) widthLabel = '';
+  @property({ type: String }) widthTooltip = '';
   @property({ type: Function }) onBack?: () => void;
   @property({ type: Function }) onSidebarToggle?: () => void;
   @property({ type: Function }) onOpenFileBrowser?: () => void;
@@ -57,11 +59,6 @@ export class SessionHeader extends LitElement {
       return 'bg-dark-text-muted';
     }
     return this.session.status === 'running' ? 'bg-status-success' : 'bg-status-warning';
-  }
-
-  private getCurrentWidthLabel(): string {
-    const width = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
-    return width?.label || this.terminalMaxCols.toString();
   }
 
   private handleCloseWidthSelector() {
@@ -163,11 +160,9 @@ export class SessionHeader extends LitElement {
           <button
             class="btn-secondary font-mono text-xs px-2 py-1 flex-shrink-0 width-selector-button"
             @click=${() => this.onMaxWidthToggle?.()}
-            title="Terminal width: ${
-              this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`
-            }"
+            title="${this.widthTooltip}"
           >
-            ${this.getCurrentWidthLabel()}
+            ${this.widthLabel}
           </button>
           <width-selector
             .visible=${this.showWidthSelector}

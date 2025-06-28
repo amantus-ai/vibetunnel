@@ -669,9 +669,27 @@ export class SessionView extends LitElement {
   }
 
   private getCurrentWidthLabel(): string {
+    const terminal = this.querySelector('vibe-terminal') as Terminal;
+
+    // If no manual selection and we have initial dimensions that are limiting
+    if (this.terminalMaxCols === 0 && terminal?.initialCols > 0 && !terminal.userOverrideWidth) {
+      return `≤${terminal.initialCols}`; // Shows "≤120" to indicate limited to session width
+    }
+
     if (this.terminalMaxCols === 0) return '∞';
     const commonWidth = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
     return commonWidth ? commonWidth.label : this.terminalMaxCols.toString();
+  }
+
+  private getWidthTooltip(): string {
+    const terminal = this.querySelector('vibe-terminal') as Terminal;
+
+    // If no manual selection and we have initial dimensions that are limiting
+    if (this.terminalMaxCols === 0 && terminal?.initialCols > 0 && !terminal.userOverrideWidth) {
+      return `Terminal width: Limited to session width (${terminal.initialCols} columns)`;
+    }
+
+    return `Terminal width: ${this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`}`;
   }
 
   private handleFontSizeChange(newSize: number) {
@@ -856,6 +874,8 @@ export class SessionView extends LitElement {
           .terminalFontSize=${this.terminalFontSize}
           .customWidth=${this.customWidth}
           .showWidthSelector=${this.showWidthSelector}
+          .widthLabel=${this.getCurrentWidthLabel()}
+          .widthTooltip=${this.getWidthTooltip()}
           .onBack=${() => this.handleBack()}
           .onSidebarToggle=${() => this.handleSidebarToggle()}
           .onOpenFileBrowser=${() => this.handleOpenFileBrowser()}
