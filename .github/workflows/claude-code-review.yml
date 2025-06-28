@@ -149,3 +149,16 @@ jobs:
             CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
             ADDITIONS: ${{ github.event.pull_request.additions }}
             DELETIONS: ${{ github.event.pull_request.deletions }}
+
+      - name: Clean up old Claude comments
+        if: steps.check-review.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Wait a bit to ensure the new comment is posted
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            
+            // Use the cleanup script
+            const cleanup = require('./.github/scripts/cleanup-claude-comments.js');
+            await cleanup({ github, context, core });

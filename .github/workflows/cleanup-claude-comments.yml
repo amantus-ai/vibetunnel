@@ -1,0 +1,89 @@
+name: Cleanup Claude Comments
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number to clean up'
+        required: true
+        type: number
+  
+  # Also run when PR is closed or merged
+  pull_request:
+    types: [closed]
+  
+  # Run on a schedule to clean up old PRs
+  schedule:
+    - cron: '0 0 * * 0' # Weekly on Sunday
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    
+    steps:
+      - name: Checkout scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/scripts/cleanup-claude-comments.js
+      
+      - name: Cleanup Claude comments on specific PR
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const cleanup = require('./.github/scripts/cleanup-claude-comments.js');
+            
+            // Override context for manual trigger
+            const customContext = {
+              ...context,
+              issue: { number: ${{ github.event.inputs.pr_number }} }
+            };
+            
+            await cleanup({ github, context: customContext, core });
+      
+      - name: Cleanup Claude comments on closed PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const cleanup = require('./.github/scripts/cleanup-claude-comments.js');
+            await cleanup({ github, context, core });
+      
+      - name: Cleanup Claude comments on all recent PRs
+        if: github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const cleanup = require('./.github/scripts/cleanup-claude-comments.js');
+            
+            // Get recent PRs
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 50
+            });
+            
+            for (const pr of prs) {
+              core.info(`Checking PR #${pr.number}: ${pr.title}`);
+              
+              const customContext = {
+                ...context,
+                issue: { number: pr.number }
+              };
+              
+              try {
+                await cleanup({ github, context: customContext, core });
+              } catch (error) {
+                core.warning(`Failed to cleanup PR #${pr.number}: ${error.message}`);
+              }
+            }
