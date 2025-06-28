@@ -429,6 +429,9 @@ export class SessionView extends LitElement {
           this.cleanupInProgress = true;
           this.connected = false;
 
+          // Store expected session ID to verify we're still on the same session
+          const expectedSessionId = this.session?.id;
+
           try {
             // Perform cleanup operations
             if (this.connectionManager) {
@@ -445,33 +448,29 @@ export class SessionView extends LitElement {
             // Update all managers with new session
             this.updateManagers(this.session);
 
-            // If we have a new session, re-initialize the terminal connection
-            if (this.session) {
-              logger.log('Cleanup complete, preparing new connection');
-              // Ensure cleanup is truly complete before setting connected
-              // Use requestAnimationFrame to ensure DOM updates have processed
-              requestAnimationFrame(() => {
-                // Double-check session hasn't changed again
-                if (this.session && !this.cleanupInProgress) {
-                  this.connected = true;
-                  logger.log('Connection state updated after cleanup');
-                }
+            // Use a single async point for state updates
+            await new Promise((resolve) => requestAnimationFrame(resolve));
 
-                // Clear transition state after a short delay
-                // Clear any existing timeout first to prevent multiple instances
-                if (this.transitionClearTimeout) {
-                  clearTimeout(this.transitionClearTimeout);
-                  this.transitionClearTimeout = undefined;
-                }
-                // Track the timeout so we can clear it if needed
-                this.transitionClearTimeout = setTimeout(() => {
+            // If we have a new session, re-initialize the terminal connection
+            if (this.session && !this.cleanupInProgress) {
+              this.connected = true;
+              logger.log('Connection state updated after cleanup');
+
+              // Clear any existing timeout first to prevent multiple instances
+              if (this.transitionClearTimeout) {
+                clearTimeout(this.transitionClearTimeout);
+                this.transitionClearTimeout = undefined;
+              }
+
+              // Set transition clear timeout with session ID verification
+              this.transitionClearTimeout = setTimeout(() => {
+                // Only clear transition if we're still on the same session
+                if (this.session?.id === expectedSessionId) {
                   this.isTransitioningSession = false;
                   this.transitionClearTimeout = undefined;
-
-                  // Verify connection state after transition completes
                   this.verifyConnectionState();
-                }, 100);
-              });
+                }
+              }, 50); // Reduced delay for snappier UI
             } else {
               // No new session - clear transition state immediately
               this.isTransitioningSession = false;
@@ -508,12 +507,14 @@ export class SessionView extends LitElement {
     }
 
     // Initialize terminal after first render when terminal element exists
-    // Also re-initialize when session changes
+    // Also re-initialize when session changes (including from null to valid session)
     if (this.session && !this.loadingAnimationManager.isLoading() && this.connected) {
       const terminalElement = this.querySelector('vibe-terminal') as Terminal;
-      const needsInit =
-        !this.terminalLifecycleManager.getTerminal() ||
-        (changedProperties.has('session') && changedProperties.get('session'));
+      const oldSession = changedProperties.get('session') as Session | null | undefined;
+      const sessionIdChanged =
+        changedProperties.has('session') && oldSession?.id !== this.session.id;
+
+      const needsInit = !this.terminalLifecycleManager.getTerminal() || sessionIdChanged;
 
       if (terminalElement && needsInit) {
         this.terminalLifecycleManager.initializeTerminal();
