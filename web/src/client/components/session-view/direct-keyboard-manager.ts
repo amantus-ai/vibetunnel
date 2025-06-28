@@ -293,14 +293,14 @@ export class DirectKeyboardManager {
       }
 
       if (e.key === 'Enter' && this.inputManager) {
-        this.inputManager.sendInputText('enter');
+        this.inputManager.sendInput('enter');
       } else if (e.key === 'Backspace' && this.inputManager) {
         // Always send backspace to terminal
-        this.inputManager.sendInputText('backspace');
+        this.inputManager.sendInput('backspace');
       } else if (e.key === 'Tab' && this.inputManager) {
-        this.inputManager.sendInputText(e.shiftKey ? 'shift_tab' : 'tab');
+        this.inputManager.sendInput(e.shiftKey ? 'shift_tab' : 'tab');
       } else if (e.key === 'Escape' && this.inputManager) {
-        this.inputManager.sendInputText('escape');
+        this.inputManager.sendInput('escape');
       }
     });
 
@@ -416,6 +416,10 @@ export class DirectKeyboardManager {
   }
 
   handleQuickKeyPress = (key: string, isModifier?: boolean, isSpecial?: boolean): void => {
+    if (!this.inputManager) {
+      logger.error('No input manager found');
+      return;
+    }
     if (isSpecial && key === 'Done') {
       // Dismiss the keyboard
       logger.log('Done button pressed - dismissing keyboard');
@@ -457,53 +461,53 @@ export class DirectKeyboardManager {
         }
       }
       return;
-    } else if (key === 'Ctrl+A' && this.inputManager) {
+    } else if (key === 'Ctrl+A') {
       // Send Ctrl+A (start of line)
       this.inputManager.sendControlSequence('\x01');
-    } else if (key === 'Ctrl+C' && this.inputManager) {
+    } else if (key === 'Ctrl+C') {
       // Send Ctrl+C (interrupt signal)
       this.inputManager.sendControlSequence('\x03');
-    } else if (key === 'Ctrl+D' && this.inputManager) {
+    } else if (key === 'Ctrl+D') {
       // Send Ctrl+D (EOF)
       this.inputManager.sendControlSequence('\x04');
-    } else if (key === 'Ctrl+E' && this.inputManager) {
+    } else if (key === 'Ctrl+E') {
       // Send Ctrl+E (end of line)
       this.inputManager.sendControlSequence('\x05');
-    } else if (key === 'Ctrl+K' && this.inputManager) {
+    } else if (key === 'Ctrl+K') {
       // Send Ctrl+K (kill to end of line)
       this.inputManager.sendControlSequence('\x0b');
-    } else if (key === 'Ctrl+L' && this.inputManager) {
+    } else if (key === 'Ctrl+L') {
       // Send Ctrl+L (clear screen)
       this.inputManager.sendControlSequence('\x0c');
-    } else if (key === 'Ctrl+R' && this.inputManager) {
+    } else if (key === 'Ctrl+R') {
       // Send Ctrl+R (reverse search)
       this.inputManager.sendControlSequence('\x12');
-    } else if (key === 'Ctrl+U' && this.inputManager) {
+    } else if (key === 'Ctrl+U') {
       // Send Ctrl+U (clear line)
       this.inputManager.sendControlSequence('\x15');
-    } else if (key === 'Ctrl+W' && this.inputManager) {
+    } else if (key === 'Ctrl+W') {
       // Send Ctrl+W (delete word)
       this.inputManager.sendControlSequence('\x17');
-    } else if (key === 'Ctrl+Z' && this.inputManager) {
+    } else if (key === 'Ctrl+Z') {
       // Send Ctrl+Z (suspend signal)
       this.inputManager.sendControlSequence('\x1a');
-    } else if (key === 'Option' && this.inputManager) {
+    } else if (key === 'Option') {
       // Send ESC prefix for Option/Alt key
       this.inputManager.sendControlSequence('\x1b');
     } else if (key === 'Command') {
       // Command key doesn't have a direct terminal equivalent
       // Could potentially show a message or ignore
       return;
-    } else if (key === 'Delete' && this.inputManager) {
+    } else if (key === 'Delete') {
       // Send delete key
-      this.inputManager.sendInputText('delete');
-    } else if (key.startsWith('F') && this.inputManager) {
+      this.inputManager.sendInput('delete');
+    } else if (key.startsWith('F')) {
       // Handle function keys F1-F12
       const fNum = Number.parseInt(key.substring(1));
       if (fNum >= 1 && fNum <= 12) {
-        this.inputManager.sendInputText(`f${fNum}`);
+        this.inputManager.sendInput(`f${fNum}`);
       }
-    } else if (this.inputManager) {
+    } else {
       // Map key names to proper values
       let keyToSend = key;
       if (key === 'Tab') {
@@ -529,7 +533,7 @@ export class DirectKeyboardManager {
       }
 
       // Send the key to terminal
-      this.inputManager.sendInputText(keyToSend.toLowerCase());
+      this.inputManager.sendInput(keyToSend.toLowerCase());
     }
 
     // Always keep focus on hidden input after any key press (except Done)

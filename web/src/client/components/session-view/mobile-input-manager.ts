@@ -96,7 +96,8 @@ export class MobileInputManager {
       // Add enter key at the end to execute the command
       if (this.inputManager) {
         await this.inputManager.sendInputText(textToSend);
-        await this.inputManager.sendInputText('enter');
+        // Use sendInput (not sendInputText) for special keys like 'enter'
+        await this.inputManager.sendInput('enter');
       }
 
       // Clear the reactive property

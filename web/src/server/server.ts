@@ -712,7 +712,6 @@ export async function createApp(): Promise<AppInstance> {
     } else if (pathname === '/ws/input') {
       // Handle input WebSocket
       const sessionId = searchParams?.get('sessionId');
-      const token = searchParams?.get('token');
 
       if (!sessionId) {
         logger.error('WebSocket input connection missing sessionId parameter');

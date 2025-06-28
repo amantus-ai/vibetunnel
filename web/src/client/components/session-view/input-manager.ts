@@ -239,7 +239,7 @@ export class InputManager {
     }
   }
 
-  private async sendInput(inputText: string): Promise<void> {
+  async sendInput(inputText: string): Promise<void> {
     if (!this.session) return;
 
     try {

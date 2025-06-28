@@ -8,7 +8,7 @@
  * - Direct PTY forwarding
  */
 
-import type WebSocket from 'ws';
+import type { WebSocket as WSWebSocket } from 'ws';
 import type { SessionInput, SpecialKey } from '../../shared/types.js';
 import type { PtyManager } from '../pty/index.js';
 import type { ActivityMonitor } from '../services/activity-monitor.js';
@@ -35,6 +35,7 @@ export class WebSocketInputHandler {
   private remoteRegistry: RemoteRegistry | null;
   private authService: AuthService;
   private isHQMode: boolean;
+  private remoteConnections: Map<string, WebSocket> = new Map();
 
   // Special key names that need mapping (same as HTTP /input endpoint)
   private readonly specialKeys = new Set([
@@ -81,14 +82,95 @@ export class WebSocketInputHandler {
     return this.specialKeys.has(input);
   }
 
-  handleConnection(ws: WebSocket, sessionId: string, userId: string): void {
+  private async connectToRemote(
+    remoteUrl: string,
+    sessionId: string,
+    token: string
+  ): Promise<WebSocket> {
+    const wsUrl = remoteUrl.replace(/^https?:/, (match) => (match === 'https:' ? 'wss:' : 'ws:'));
+    const fullUrl = `${wsUrl}/ws/input?sessionId=${sessionId}&token=${encodeURIComponent(token)}`;
+
+    logger.log(`Establishing proxy connection to remote: ${fullUrl}`);
+
+    const remoteWs = new WebSocket(fullUrl);
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        remoteWs.close();
+        reject(new Error('Remote WebSocket connection timeout'));
+      }, 5000);
+
+      remoteWs.addEventListener('open', () => {
+        clearTimeout(timeout);
+        logger.log(`Remote WebSocket proxy established for session ${sessionId}`);
+        resolve(remoteWs);
+      });
+
+      remoteWs.addEventListener('error', (error) => {
+        clearTimeout(timeout);
+        logger.error(`Remote WebSocket error for session ${sessionId}:`, error);
+        reject(error);
+      });
+    });
+  }
+
+  async handleConnection(ws: WSWebSocket, sessionId: string, userId: string): Promise<void> {
     logger.log(`WebSocket input connection established for session ${sessionId}, user ${userId}`);
 
-    // Verify session exists upfront
-    this.ptyManager.getPtyForSession(sessionId);
+    // Check if this is a remote session in HQ mode
+    let remoteWs: WebSocket | null = null;
+    if (this.isHQMode && this.remoteRegistry) {
+      const remote = this.remoteRegistry.getRemoteBySessionId(sessionId);
+      if (remote) {
+        logger.log(
+          `Session ${sessionId} is on remote ${remote.name}, establishing proxy connection`
+        );
+
+        try {
+          remoteWs = await this.connectToRemote(remote.url, sessionId, remote.token);
+          this.remoteConnections.set(sessionId, remoteWs);
+
+          // Set up remote connection error handling
+          remoteWs.addEventListener('close', () => {
+            logger.log(`Remote WebSocket closed for session ${sessionId}`);
+            this.remoteConnections.delete(sessionId);
+            ws.close(); // Close client connection when remote closes
+          });
+
+          remoteWs.addEventListener('error', (error) => {
+            logger.error(`Remote WebSocket error for session ${sessionId}:`, error);
+            this.remoteConnections.delete(sessionId);
+            ws.close(); // Close client connection on remote error
+          });
+        } catch (error) {
+          logger.error(
+            `Failed to establish proxy connection to remote for session ${sessionId}:`,
+            error
+          );
+          ws.close();
+          return;
+        }
+      }
+    }
 
     ws.on('message', (data) => {
       try {
+        // If we have a remote connection, just forward the raw data
+        if (remoteWs && remoteWs.readyState === WebSocket.OPEN) {
+          // Convert ws library's RawData to something native WebSocket can send
+          if (data instanceof Buffer) {
+            remoteWs.send(data);
+          } else if (Array.isArray(data)) {
+            // Concatenate buffer array
+            remoteWs.send(Buffer.concat(data));
+          } else {
+            // ArrayBuffer or other types
+            remoteWs.send(data);
+          }
+          return;
+        }
+
+        // Otherwise, handle local session
         // Ultra-minimal: expect raw text input directly
         const inputReceived = data.toString();
 
@@ -103,8 +185,10 @@ export class WebSocketInputHandler {
           let input: SessionInput;
 
           // Debug logging to see what we're receiving
-          logger.debug(`Raw WebSocket input: ${JSON.stringify(inputReceived)} (length: ${inputReceived.length})`);
-          
+          logger.debug(
+            `Raw WebSocket input: ${JSON.stringify(inputReceived)} (length: ${inputReceived.length})`
+          );
+
           if (
             inputReceived.startsWith('\x00') &&
             inputReceived.endsWith('\x00') &&
@@ -141,6 +225,12 @@ export class WebSocketInputHandler {
 
     ws.on('close', () => {
       logger.log(`WebSocket input connection closed for session ${sessionId}`);
+
+      // Clean up remote connection if exists
+      if (remoteWs) {
+        remoteWs.close();
+        this.remoteConnections.delete(sessionId);
+      }
     });
 
     ws.on('error', (error) => {
