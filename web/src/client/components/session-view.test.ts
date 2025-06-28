@@ -18,6 +18,7 @@ global.EventSource = MockEventSource as unknown as typeof EventSource;
 // Import component type
 import type { SessionView } from './session-view';
 import type { Terminal } from './terminal';
+import type { Session } from '@/types/session';
 
 // Test interface for SessionView private properties
 interface SessionViewTestInterface extends SessionView {
@@ -39,7 +40,7 @@ interface SessionViewTestInterface extends SessionView {
     cleanupStreamConnection: () => void;
     hasActiveConnections?: () => boolean;
   };
-  updateManagers: (session: any) => void;
+  updateManagers: (session: Session | null) => void;
   verifyConnectionState: () => boolean;
 }
 
@@ -680,7 +681,7 @@ describe('SessionView', () => {
       // Rapid switches
       element.session = session2;
       await element.updateComplete;
-      
+
       // Switch again before debounce completes (within 50ms)
       element.session = session3;
       await element.updateComplete;
@@ -736,15 +737,13 @@ describe('SessionView', () => {
       await element.updateComplete;
       await waitForAsync(100); // Wait for initial setup
 
-      const testElement = element as SessionViewTestInterface;
-
       // Start a transition
       element.session = session2;
       await element.updateComplete;
 
       // Wait a bit but not the full debounce
       await waitForAsync(25);
-      
+
       // The transition should now be in progress
       // Try to switch again while transition is happening
       const session3 = createMockSession({ id: 'session-3' });
@@ -794,10 +793,10 @@ describe('SessionView', () => {
       await waitForAsync(100); // Wait for initial setup
 
       const testElement = element as SessionViewTestInterface;
-      
+
       // Track if cleanup was called
       let cleanupCalled = false;
-      
+
       // Mock cleanup to track calls (don't throw error as it propagates to multiple places)
       if (testElement.connectionManager) {
         testElement.connectionManager.cleanupStreamConnection = () => {
