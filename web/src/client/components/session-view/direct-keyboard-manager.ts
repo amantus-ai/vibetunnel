@@ -459,37 +459,37 @@ export class DirectKeyboardManager {
       return;
     } else if (key === 'Ctrl+A' && this.inputManager) {
       // Send Ctrl+A (start of line)
-      this.inputManager.sendInputText('\x01');
+      this.inputManager.sendControlSequence('\x01');
     } else if (key === 'Ctrl+C' && this.inputManager) {
       // Send Ctrl+C (interrupt signal)
-      this.inputManager.sendInputText('\x03');
+      this.inputManager.sendControlSequence('\x03');
     } else if (key === 'Ctrl+D' && this.inputManager) {
       // Send Ctrl+D (EOF)
-      this.inputManager.sendInputText('\x04');
+      this.inputManager.sendControlSequence('\x04');
     } else if (key === 'Ctrl+E' && this.inputManager) {
       // Send Ctrl+E (end of line)
-      this.inputManager.sendInputText('\x05');
+      this.inputManager.sendControlSequence('\x05');
     } else if (key === 'Ctrl+K' && this.inputManager) {
       // Send Ctrl+K (kill to end of line)
-      this.inputManager.sendInputText('\x0b');
+      this.inputManager.sendControlSequence('\x0b');
     } else if (key === 'Ctrl+L' && this.inputManager) {
       // Send Ctrl+L (clear screen)
-      this.inputManager.sendInputText('\x0c');
+      this.inputManager.sendControlSequence('\x0c');
     } else if (key === 'Ctrl+R' && this.inputManager) {
       // Send Ctrl+R (reverse search)
-      this.inputManager.sendInputText('\x12');
+      this.inputManager.sendControlSequence('\x12');
     } else if (key === 'Ctrl+U' && this.inputManager) {
       // Send Ctrl+U (clear line)
-      this.inputManager.sendInputText('\x15');
+      this.inputManager.sendControlSequence('\x15');
     } else if (key === 'Ctrl+W' && this.inputManager) {
       // Send Ctrl+W (delete word)
-      this.inputManager.sendInputText('\x17');
+      this.inputManager.sendControlSequence('\x17');
     } else if (key === 'Ctrl+Z' && this.inputManager) {
       // Send Ctrl+Z (suspend signal)
-      this.inputManager.sendInputText('\x1a');
+      this.inputManager.sendControlSequence('\x1a');
     } else if (key === 'Option' && this.inputManager) {
       // Send ESC prefix for Option/Alt key
-      this.inputManager.sendInputText('\x1b');
+      this.inputManager.sendControlSequence('\x1b');
     } else if (key === 'Command') {
       // Command key doesn't have a direct terminal equivalent
       // Could potentially show a message or ignore

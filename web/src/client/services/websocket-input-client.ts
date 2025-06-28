@@ -138,7 +138,7 @@ export class WebSocketInputClient {
     try {
       // Ultra-minimal: send raw input with special key markers
       let rawInput: string;
-      
+
       if (input.key) {
         // Special keys: wrap in null bytes to distinguish from literal text
         rawInput = `\x00${input.key}\x00`;

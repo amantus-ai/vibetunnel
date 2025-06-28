@@ -9,12 +9,12 @@
  */
 
 import type WebSocket from 'ws';
+import type { SessionInput, SpecialKey } from '../../shared/types.js';
 import type { PtyManager } from '../pty/index.js';
 import type { ActivityMonitor } from '../services/activity-monitor.js';
 import type { AuthService } from '../services/auth-service.js';
 import type { RemoteRegistry } from '../services/remote-registry.js';
 import type { TerminalManager } from '../services/terminal-manager.js';
-import type { SessionInput, SpecialKey } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('websocket-input');
@@ -38,12 +38,34 @@ export class WebSocketInputHandler {
 
   // Special key names that need mapping (same as HTTP /input endpoint)
   private readonly specialKeys = new Set([
-    'enter', 'escape', 'backspace', 'tab', 'shift_tab',
-    'arrow_up', 'arrow_down', 'arrow_left', 'arrow_right',
-    'ctrl_enter', 'shift_enter', 'page_up', 'page_down',
-    'home', 'end', 'delete',
-    'f1', 'f2', 'f3', 'f4', 'f5', 'f6',
-    'f7', 'f8', 'f9', 'f10', 'f11', 'f12'
+    'enter',
+    'escape',
+    'backspace',
+    'tab',
+    'shift_tab',
+    'arrow_up',
+    'arrow_down',
+    'arrow_left',
+    'arrow_right',
+    'ctrl_enter',
+    'shift_enter',
+    'page_up',
+    'page_down',
+    'home',
+    'end',
+    'delete',
+    'f1',
+    'f2',
+    'f3',
+    'f4',
+    'f5',
+    'f6',
+    'f7',
+    'f8',
+    'f9',
+    'f10',
+    'f11',
+    'f12',
   ]);
 
   constructor(options: WebSocketInputHandlerOptions) {
@@ -69,7 +91,7 @@ export class WebSocketInputHandler {
       try {
         // Ultra-minimal: expect raw text input directly
         const inputReceived = data.toString();
-        
+
         if (!inputReceived) {
           return; // Ignore empty messages
         }
@@ -79,8 +101,12 @@ export class WebSocketInputHandler {
         // Regular text (including literal "enter") is sent as-is
         try {
           let input: SessionInput;
-          
-          if (inputReceived.startsWith('\x00') && inputReceived.endsWith('\x00') && inputReceived.length > 2) {
+
+          if (
+            inputReceived.startsWith('\x00') &&
+            inputReceived.endsWith('\x00') &&
+            inputReceived.length > 2
+          ) {
             // Special key wrapped in null bytes
             const keyName = inputReceived.slice(1, -1); // Remove null byte markers
             if (this.isSpecialKey(keyName)) {
@@ -93,13 +119,12 @@ export class WebSocketInputHandler {
             // Regular text (including literal words like "enter", "escape", etc.)
             input = { text: inputReceived };
           }
-          
+
           this.ptyManager.sendInput(sessionId, input);
         } catch (error) {
           logger.warn(`Failed to send input to session ${sessionId}:`, error);
           // Don't close connection on input errors, just log
         }
-
       } catch (error) {
         logger.error('Error processing WebSocket input message:', error);
         // Don't close connection on errors, just ignore

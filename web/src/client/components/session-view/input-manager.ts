@@ -23,15 +23,17 @@ export class InputManager {
 
   setSession(session: Session | null): void {
     this.session = session;
-    
+
     // Check URL parameter for WebSocket input feature flag
     const urlParams = new URLSearchParams(window.location.search);
     const socketInputParam = urlParams.get('socket_input');
     if (socketInputParam !== null) {
       this.useWebSocketInput = socketInputParam === 'true';
-      logger.log(`WebSocket input ${this.useWebSocketInput ? 'enabled' : 'disabled'} via URL parameter`);
+      logger.log(
+        `WebSocket input ${this.useWebSocketInput ? 'enabled' : 'disabled'} via URL parameter`
+      );
     }
-    
+
     // Connect to WebSocket when session is set (if feature enabled)
     if (session && this.useWebSocketInput) {
       websocketInputClient.connect(session).catch((error) => {
@@ -143,39 +145,9 @@ export class InputManager {
     if (!this.session) return;
 
     try {
-      // Determine if we should send as key or text
-      const input = [
-        'enter',
-        'escape',
-        'backspace',
-        'tab',
-        'shift_tab',
-        'arrow_up',
-        'arrow_down',
-        'arrow_left',
-        'arrow_right',
-        'ctrl_enter',
-        'shift_enter',
-        'page_up',
-        'page_down',
-        'home',
-        'end',
-        'delete',
-        'f1',
-        'f2',
-        'f3',
-        'f4',
-        'f5',
-        'f6',
-        'f7',
-        'f8',
-        'f9',
-        'f10',
-        'f11',
-        'f12',
-      ].includes(text)
-        ? { key: text }
-        : { text };
+      // sendInputText is used for pasted content - always treat as literal text
+      // Never interpret pasted text as special keys to avoid ambiguity
+      const input = { text };
 
       // Try WebSocket first if feature enabled - non-blocking (connection should already be established)
       if (this.useWebSocketInput) {
@@ -215,6 +187,55 @@ export class InputManager {
       }
     } catch (error) {
       logger.error('error sending input', error);
+    }
+  }
+
+  async sendControlSequence(controlChar: string): Promise<void> {
+    if (!this.session) return;
+
+    try {
+      // sendControlSequence is for control characters - always send as literal text
+      // Control characters like '\x12' (Ctrl+R) should be sent directly
+      const input = { text: controlChar };
+
+      // Try WebSocket first if feature enabled - non-blocking (connection should already be established)
+      if (this.useWebSocketInput) {
+        const sentViaWebSocket = websocketInputClient.sendInput(input);
+
+        if (sentViaWebSocket) {
+          // Successfully sent via WebSocket, no need for HTTP fallback
+          return;
+        }
+      }
+
+      // Fallback to HTTP if WebSocket failed
+      logger.debug('WebSocket unavailable, falling back to HTTP');
+      const response = await fetch(`/api/sessions/${this.session.id}/input`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authClient.getAuthHeader(),
+        },
+        body: JSON.stringify(input),
+      });
+
+      if (!response.ok) {
+        logger.error('failed to send control sequence to session', { status: response.status });
+
+        // Check if session has exited (400 response)
+        if (response.status === 400) {
+          // Update session status to exited
+          if (this.session) {
+            this.session.status = 'exited';
+            // Trigger UI update through callbacks
+            if (this.callbacks) {
+              this.callbacks.requestUpdate();
+            }
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('error sending control sequence', error);
     }
   }
 
@@ -359,7 +380,7 @@ export class InputManager {
     if (this.useWebSocketInput) {
       websocketInputClient.disconnect();
     }
-    
+
     // Clear references to prevent memory leaks
     this.session = null;
     this.callbacks = null;
