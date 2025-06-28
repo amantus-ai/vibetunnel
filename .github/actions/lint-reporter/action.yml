@@ -42,7 +42,7 @@ runs:
           const status = result === 'success' ? 'Passed' : 'Failed';
           
           // Create section content
-          let sectionContent = `### ${title}\n${icon} **Status**: ${status}\n`;
+          let sectionContent = `### ${title} ${icon} **Status**: ${status}\n`;
           
           // Special formatting for coverage reports
           if (title.includes('Coverage')) {
