@@ -94,6 +94,7 @@ export class SessionView extends LitElement {
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private createHiddenInputTimeout: ReturnType<typeof setTimeout> | null = null;
   private sessionSwitchDebounce?: ReturnType<typeof setTimeout>;
+  private transitionClearTimeout?: ReturnType<typeof setTimeout>;
   private cleanupInProgress = false;
 
   // Removed methods that are now in LifecycleEventManager:
@@ -352,6 +353,13 @@ export class SessionView extends LitElement {
     if (this.sessionSwitchDebounce) {
       clearTimeout(this.sessionSwitchDebounce);
       this.sessionSwitchDebounce = undefined;
+      // Reset transition state in case component is unmounted during transition
+      this.isTransitioningSession = false;
+    }
+
+    if (this.transitionClearTimeout) {
+      clearTimeout(this.transitionClearTimeout);
+      this.transitionClearTimeout = undefined;
     }
 
     // Use lifecycle event manager for teardown
@@ -382,6 +390,16 @@ export class SessionView extends LitElement {
         // Clear any pending session switch debounce
         if (this.sessionSwitchDebounce) {
           clearTimeout(this.sessionSwitchDebounce);
+        }
+
+        // Handle session becoming null (navigation away)
+        if (!this.session) {
+          this.isTransitioningSession = false;
+          this.connected = false;
+          if (this.connectionManager) {
+            this.connectionManager.cleanupStreamConnection();
+          }
+          return;
         }
 
         // Start transition state
@@ -422,19 +440,33 @@ export class SessionView extends LitElement {
 
             // If we have a new session, re-initialize the terminal connection
             if (this.session && oldSession?.id !== this.session.id) {
-              logger.log('New session detected, reinitializing terminal connection');
-              // Only set connected after cleanup completes
+              logger.log('Cleanup complete, initializing new connection');
+              // Only set connected after cleanup is truly complete
               this.connected = true;
-              // Clear transition state after a brief delay to ensure smooth visual transition
-              setTimeout(() => {
+              // Track the timeout so we can clear it if needed
+              this.transitionClearTimeout = setTimeout(() => {
                 this.isTransitioningSession = false;
+                this.transitionClearTimeout = undefined;
               }, 100);
+            } else {
+              // No new session or same session - clear transition state immediately
+              this.isTransitioningSession = false;
+              // If session is null, ensure we're disconnected
+              if (!this.session) {
+                this.connected = false;
+              }
             }
           } catch (error) {
             logger.error('Error during session transition:', error);
+            // Always clear transition state on error
             this.isTransitioningSession = false;
+            this.connected = false;
           } finally {
             this.cleanupInProgress = false;
+            // Ensure transition state is cleared even if an unexpected error occurs
+            if (this.isTransitioningSession) {
+              this.isTransitioningSession = false;
+            }
           }
         }, 50); // 50ms debounce for rapid switches
       } else {
