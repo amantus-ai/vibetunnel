@@ -325,6 +325,7 @@ struct SessionCreateView: View {
 
     private var quickStartCommands: [QuickStartItem] {
         [
+            QuickStartItem(title: "gemini", command: "gemini", icon: "sparkle"),
             QuickStartItem(title: "claude", command: "claude", icon: "sparkle"),
             QuickStartItem(title: "zsh", command: "zsh", icon: "terminal"),
             QuickStartItem(title: "bash", command: "bash", icon: "terminal.fill"),
@@ -340,6 +341,8 @@ struct SessionCreateView: View {
 
     private func commandIcon(for command: String) -> String {
         switch command {
+        case "gemini":
+            "sparkle"
         case "claude":
             "sparkle"
         case "zsh", "bash":

@@ -49,6 +49,7 @@ export class SessionCreateForm extends LitElement {
   @state() private selectedQuickStart = 'zsh';
 
   private quickStartCommands = [
+    { label: 'gemini', command: 'gemini' },
     { label: 'claude', command: 'claude' },
     { label: 'zsh', command: 'zsh' },
     { label: 'bash', command: 'bash' },
@@ -445,7 +446,7 @@ export class SessionCreateForm extends LitElement {
                         }"
                       ?disabled=${this.disabled || this.isCreating}
                     >
-                      ${label === 'claude' ? '✨ ' : ''}${
+                      ${label === 'gemini' ? '✨ ' : ''}${label === 'claude' ? '✨ ' : ''}${
                         label === 'pnpm run dev' ? '▶️ ' : ''
                       }${label}
                     </button>
