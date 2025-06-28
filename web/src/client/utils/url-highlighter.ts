@@ -22,12 +22,13 @@ const URL_END_CHARS_PATTERN = /[^\w\-._~:/?#[\]@!$&'()*+,;=%{}|\\^`]/;
 // - https?:\/\/ - HTTP or HTTPS protocol
 // - localhost|[\d.]+ - localhost or IPv4 addresses
 // - \[[\da-fA-F:]+\] - IPv6 addresses in brackets
-// - [a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])? - Domain label: starts/ends with alphanumeric, allows hyphens in middle
-// - (\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+ - Requires at least one dot and TLD
+// - [a-zA-Z0-9][a-zA-Z0-9-]* - Domain starting with alphanumeric, followed by alphanumeric or hyphen
+// - (\.[a-zA-Z0-9][a-zA-Z0-9-]*)* - Zero or more subdomains
+// - \.[a-zA-Z]{2,} - Required TLD with at least 2 letters
 // - (:\d+)? - Optional port number
 // - file:\/\/.+ - File protocol with any path
 const LOCALHOST_PATTERN =
-  /^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+)(:\d+)?.*|file:\/\/.+)/;
+  /^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|[a-zA-Z0-9][a-zA-Z0-9-]*(\.[a-zA-Z0-9][a-zA-Z0-9-]*)*\.[a-zA-Z]{2,})(:\d+)?.*|file:\/\/.+)/;
 
 type ProcessedRange = {
   start: number;
