@@ -64,6 +64,7 @@ export class Terminal extends LitElement {
 
   private container: HTMLElement | null = null;
   private resizeTimeout: NodeJS.Timeout | null = null;
+  private explicitSizeSet = false; // Flag to prevent auto-resize when size is explicitly set
 
   // Virtual scrolling optimization
   private renderPending = false;
@@ -121,9 +122,11 @@ export class Terminal extends LitElement {
 
   updated(changedProperties: PropertyValues) {
     if (changedProperties.has('cols') || changedProperties.has('rows')) {
-      if (this.terminal) {
+      if (this.terminal && !this.explicitSizeSet) {
         this.reinitializeTerminal();
       }
+      // Reset the flag after processing
+      this.explicitSizeSet = false;
     }
     if (changedProperties.has('fontSize')) {
       // Store original font size when it changes (but not during horizontal fitting)
@@ -1001,6 +1004,8 @@ export class Terminal extends LitElement {
    * @param rows - Number of rows
    */
   public setTerminalSize(cols: number, rows: number) {
+    // Set flag to prevent auto-resize in updated() lifecycle
+    this.explicitSizeSet = true;
     this.cols = cols;
     this.rows = rows;
 
@@ -1010,7 +1015,8 @@ export class Terminal extends LitElement {
       if (!this.terminal) return;
 
       this.terminal.resize(cols, rows);
-      this.fitTerminal();
+      // Don't call fitTerminal here - when explicitly setting size,
+      // we shouldn't recalculate based on container dimensions
       this.requestUpdate();
     });
   }
