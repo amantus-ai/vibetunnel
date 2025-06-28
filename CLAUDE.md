@@ -82,6 +82,38 @@ In the `mac/` directory:
 - **Process spawning and forwarding tool**:  `web/src/server/fwd.ts`
 - **Server Management**: `mac/VibeTunnel/Core/Services/ServerManager.swift`
 
+## Git Commands
+
+**CRITICAL**: ALWAYS use combined git commands for ALL git operations:
+
+```bash
+# Standard commit and push (use this 99% of the time):
+git add -A && git commit -m "commit message" && git push
+
+# Amending the last commit:
+git add -A && git commit --amend --no-edit && git push --force-with-lease
+
+# With specific commit message for amend:
+git add -A && git commit --amend -m "new message" && git push --force-with-lease
+```
+
+**NEVER** use separate commands:
+```bash
+# ❌ WRONG - This is slow and inefficient:
+git add -A
+git commit -m "message"
+git push
+```
+
+This applies to ALL scenarios including:
+- Regular commits
+- After fixing linting/formatting issues  
+- When updating PRs
+- After addressing code review feedback
+- Any time you need to commit and push changes
+
+The combined approach executes ~3x faster because it doesn't wait for each command to complete before starting the next. This saves significant time, especially when working with remote repositories.
+
 ## Testing
 
 - **Never run tests unless explicitly asked**
