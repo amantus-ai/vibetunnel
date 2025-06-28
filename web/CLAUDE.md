@@ -60,7 +60,7 @@ NEVER give a code reference or location in any other format.
 **IMPORTANT**: NEVER USE GREP. ALWAYS USE RIPGREP!
 
 ## Git Commands
-When asked to "commit and push" or "commit + push", use a single command:
+When asked to "commit and push", "commit + push", "/cp", or "c+p", use a single command:
 ```bash
 git add -A && git commit -m "commit message" && git push
 ```
