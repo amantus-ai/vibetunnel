@@ -59,6 +59,13 @@ NEVER give a code reference or location in any other format.
 **IMPORTANT**: BEFORE YOU DO ANYTHING, READ spec.md IN FULL USING THE READ TOOL!
 **IMPORTANT**: NEVER USE GREP. ALWAYS USE RIPGREP!
 
+## Git Commands
+When asked to "commit and push" or "commit + push", use a single command:
+```bash
+git add -A && git commit -m "commit message" && git push
+```
+Do NOT use three separate commands (add, commit, push) as this is slow.
+
 ## Refactoring Philosophy
 - We do not care about deprecation - remove old code completely
 - Always prefer clean refactoring over gradual migration
