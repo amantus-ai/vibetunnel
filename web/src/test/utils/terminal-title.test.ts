@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import * as os from 'os';
 import * as path from 'path';
+import { describe, expect, it, vi } from 'vitest';
 import {
   extractCdDirectory,
   generateTitleSequence,
@@ -10,7 +9,7 @@ import {
 
 // Mock os.homedir
 vi.mock('os', async () => {
-  const actual = await vi.importActual<typeof import('os')>('os');
+  const actual = (await vi.importActual('os')) as typeof import('os');
   return {
     ...actual,
     homedir: vi.fn(() => '/home/user'),
@@ -102,9 +101,7 @@ describe('Terminal Title Utilities', () => {
     it('should handle relative paths', () => {
       expect(extractCdDirectory('cd ..', currentDir)).toBe('/home/user');
       expect(extractCdDirectory('cd ../..', currentDir)).toBe('/home');
-      expect(extractCdDirectory('cd ./src', currentDir)).toBe(
-        path.resolve(currentDir, 'src')
-      );
+      expect(extractCdDirectory('cd ./src', currentDir)).toBe(path.resolve(currentDir, 'src'));
     });
 
     it('should return null for non-cd commands', () => {

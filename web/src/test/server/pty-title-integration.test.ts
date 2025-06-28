@@ -1,9 +1,9 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
-import { PtyManager } from '../../server/pty/pty-manager.js';
 import { v4 as uuidv4 } from 'uuid';
-import * as fs from 'fs/promises';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { PtyManager } from '../../server/pty/pty-manager.js';
 
 describe('PTY Terminal Title Integration', () => {
   let ptyManager: PtyManager;
@@ -22,7 +22,7 @@ describe('PTY Terminal Title Integration', () => {
     for (const sessionId of testSessionIds) {
       try {
         await ptyManager.killSession(sessionId);
-      } catch (error) {
+      } catch (_error) {
         // Session might already be killed
       }
     }
@@ -34,7 +34,7 @@ describe('PTY Terminal Title Integration', () => {
     // Clean up control directory
     try {
       await fs.rm(controlPath, { recursive: true, force: true });
-    } catch (error) {
+    } catch (_error) {
       // Ignore cleanup errors
     }
   });
@@ -43,17 +43,17 @@ describe('PTY Terminal Title Integration', () => {
     const sessionId = `test-${uuidv4()}`;
     testSessionIds.push(sessionId);
 
-    const result = await ptyManager.createSession(['echo', 'test'], {
+    const _result = await ptyManager.createSession(['echo', 'test'], {
       sessionId,
       name: 'test-session',
       workingDir: process.cwd(),
       setTerminalTitle: true,
     });
 
-    expect(result.sessionId).toBe(sessionId);
-    
-    // Get the session to verify it was created with setTerminalTitle
-    const session = ptyManager.getSession(sessionId);
+    expect(_result.sessionId).toBe(sessionId);
+
+    // Get the internal session to verify it was created with setTerminalTitle
+    const session = ptyManager.getInternalSession(sessionId);
     expect(session).toBeDefined();
     expect(session?.setTerminalTitle).toBe(true);
   });
@@ -62,14 +62,14 @@ describe('PTY Terminal Title Integration', () => {
     const sessionId = `test-${uuidv4()}`;
     testSessionIds.push(sessionId);
 
-    const result = await ptyManager.createSession(['echo', 'test'], {
+    const _result = await ptyManager.createSession(['echo', 'test'], {
       sessionId,
       name: 'test-session',
       workingDir: process.cwd(),
       setTerminalTitle: false,
     });
 
-    const session = ptyManager.getSession(sessionId);
+    const session = ptyManager.getInternalSession(sessionId);
     expect(session?.setTerminalTitle).toBe(false);
   });
 
@@ -84,9 +84,9 @@ describe('PTY Terminal Title Integration', () => {
       setTerminalTitle: true,
     });
 
-    const session = ptyManager.getSession(sessionId);
+    const session = ptyManager.getInternalSession(sessionId);
     expect(session).toBeDefined();
-    
+
     // Initial working directory
     expect(session?.currentWorkingDir).toBe(process.cwd());
 
@@ -94,7 +94,7 @@ describe('PTY Terminal Title Integration', () => {
     ptyManager.sendInput(sessionId, { text: 'cd /tmp\n' });
 
     // Wait a bit for the command to be processed
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Check that working directory was updated
     expect(session?.currentWorkingDir).toBe('/tmp');
@@ -104,7 +104,7 @@ describe('PTY Terminal Title Integration', () => {
     const sessionId = `test-${uuidv4()}`;
     testSessionIds.push(sessionId);
 
-    const result = await ptyManager.createSession(['echo', '-e', '\\033]2;Test Title\\007Hello'], {
+    const _result = await ptyManager.createSession(['echo', '-e', '\\033]2;Test Title\\007Hello'], {
       sessionId,
       name: 'test-session',
       workingDir: process.cwd(),
@@ -113,7 +113,7 @@ describe('PTY Terminal Title Integration', () => {
     });
 
     // Session should have preventTitleChange enabled
-    const session = ptyManager.getSession(sessionId);
+    const session = ptyManager.getInternalSession(sessionId);
     expect(session?.preventTitleChange).toBe(true);
   });
 
@@ -129,7 +129,7 @@ describe('PTY Terminal Title Integration', () => {
       preventTitleChange: true,
     });
 
-    const session = ptyManager.getSession(sessionId);
+    const session = ptyManager.getInternalSession(sessionId);
     expect(session?.setTerminalTitle).toBe(true);
     expect(session?.preventTitleChange).toBe(true);
   });
