@@ -247,8 +247,9 @@ describe('Terminal', () => {
     });
 
     it('should persist user override preference to localStorage', async () => {
-      // Ensure sessionId is set
-      expect(element.sessionId).toBe('test-123');
+      // Set sessionId directly since attribute binding might not work in tests
+      element.sessionId = 'test-123';
+      await element.updateComplete;
 
       // Clear any existing value
       localStorage.removeItem('terminal-width-override-test-123');
@@ -267,6 +268,29 @@ describe('Terminal', () => {
 
       // Clean up
       localStorage.removeItem('terminal-width-override-test-123');
+    });
+
+    it('should restore user override preference from localStorage', async () => {
+      // Pre-set localStorage value
+      localStorage.setItem('terminal-width-override-test-456', 'true');
+
+      // Create new element with sessionId
+      const newElement = await fixture<Terminal>(html`
+        <vibe-terminal></vibe-terminal>
+      `);
+      newElement.sessionId = 'test-456';
+
+      // Trigger connectedCallback by removing and re-adding to DOM
+      newElement.remove();
+      document.body.appendChild(newElement);
+      await newElement.updateComplete;
+
+      // Verify override was restored
+      expect(newElement.userOverrideWidth).toBe(true);
+
+      // Clean up
+      newElement.remove();
+      localStorage.removeItem('terminal-width-override-test-456');
     });
   });
 
