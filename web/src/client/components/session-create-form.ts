@@ -49,8 +49,8 @@ export class SessionCreateForm extends LitElement {
   @state() private selectedQuickStart = 'zsh';
 
   private quickStartCommands = [
-    { label: 'gemini', command: 'gemini' },
     { label: 'claude', command: 'claude' },
+    { label: 'gemini', command: 'gemini' },
     { label: 'zsh', command: 'zsh' },
     { label: 'bash', command: 'bash' },
     { label: 'python3', command: 'python3' },
