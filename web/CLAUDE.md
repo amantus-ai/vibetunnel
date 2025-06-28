@@ -29,11 +29,13 @@ As code changes, the spec.md might get outdated. If you detect outdated informat
 
 ## Development Workflow
 - Make changes to source files in `src/`
-- Format, lint and typecheck after you made changes
-    - `pnpm run format`
-    - `pnpm run lint`
-    - `pnpm run lint:fix`
-    - `pnpm run typecheck`
+- Check code quality after making changes:
+    - `pnpm run check` - Run all checks (format, lint, typecheck) in parallel
+    - `pnpm run check:fix` - Auto-fix formatting and linting issues
+    - Or run individually:
+      - `pnpm run format` / `pnpm run format:check`
+      - `pnpm run lint` / `pnpm run lint:fix`
+      - `pnpm run typecheck`
 - Always fix all linting and type checking errors, including in unrelated code
 - Never run the tests, unless explicitely asked to. `pnpm run test`
 
