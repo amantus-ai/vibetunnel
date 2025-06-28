@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
+import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('Session Navigation', () => {
   test.beforeEach(async ({ page }) => {
@@ -18,7 +19,7 @@ test.describe('Session Navigation', () => {
       await spawnWindowToggle.click();
     }
 
-    const sessionName = `Nav-Test-${Date.now()}`;
+    const sessionName = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionName);
     await page.click('button:has-text("Create")');
 
@@ -52,7 +53,7 @@ test.describe('Session Navigation', () => {
       await spawnWindowToggle.click();
     }
 
-    const sessionName1 = `Sidebar-Test-1-${Date.now()}`;
+    const sessionName1 = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionName1);
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
@@ -66,25 +67,25 @@ test.describe('Session Navigation', () => {
       await spawnWindowToggle2.click();
     }
 
-    const sessionName2 = `Sidebar-Test-2-${Date.now()}`;
+    const sessionName2 = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionName2);
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
 
     // Now we should see both sessions in the sidebar
     const sidebar = page.locator('[role="complementary"], aside, nav').first();
-    await expect(sidebar.locator('text=' + sessionName1)).toBeVisible();
-    await expect(sidebar.locator('text=' + sessionName2)).toBeVisible();
+    await expect(sidebar.locator(`text=${sessionName1}`)).toBeVisible();
+    await expect(sidebar.locator(`text=${sessionName2}`)).toBeVisible();
 
     // Click on the first session in sidebar
-    await sidebar.locator('text=' + sessionName1).click();
+    await sidebar.locator(`text=${sessionName1}`).click();
 
     // URL should update
     await page.waitForTimeout(500); // Give time for navigation
     const url1 = page.url();
 
     // Click on the second session
-    await sidebar.locator('text=' + sessionName2).click();
+    await sidebar.locator(`text=${sessionName2}`).click();
     await page.waitForTimeout(500);
     const url2 = page.url();
 
@@ -104,7 +105,7 @@ test.describe('Session Navigation', () => {
       await spawnWindowToggle.click();
     }
 
-    await page.fill('input[placeholder="My Session"]', `History-Test-${Date.now()}`);
+    await page.fill('input[placeholder="My Session"]', generateTestSessionName());
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
 

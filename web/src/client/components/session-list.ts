@@ -160,7 +160,7 @@ export class SessionList extends LitElement {
       : this.sessions;
 
     return html`
-      <div class="font-mono text-sm p-4 bg-black">
+      <div class="font-mono text-sm p-4 bg-black" data-testid="session-list-container">
         ${
           filteredSessions.length === 0
             ? html`

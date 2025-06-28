@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
+import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('Advanced Session Management', () => {
   test.beforeEach(async ({ page }) => {
@@ -16,7 +17,7 @@ test.describe('Advanced Session Management', () => {
       await spawnWindowToggle.click();
     }
 
-    const sessionName = `Kill-Test-${Date.now()}`;
+    const sessionName = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionName);
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
@@ -52,7 +53,7 @@ test.describe('Advanced Session Management', () => {
         await spawnWindowToggle.click();
       }
 
-      const name = `KillAll-Test-${Date.now()}-${i}`;
+      const name = generateTestSessionName();
       sessionNames.push(name);
       await page.fill('input[placeholder="My Session"]', name);
       await page.click('button:has-text("Create")');
@@ -88,7 +89,7 @@ test.describe('Advanced Session Management', () => {
       await spawnWindowToggle.click();
     }
 
-    const sessionName = `Copy-Test-${Date.now()}`;
+    const sessionName = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionName);
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
@@ -125,7 +126,7 @@ test.describe('Advanced Session Management', () => {
       await spawnWindowToggle.click();
     }
 
-    const sessionName = `Metadata-Test-${Date.now()}`;
+    const sessionName = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionName);
 
     // Change working directory
@@ -155,7 +156,7 @@ test.describe('Advanced Session Management', () => {
       await spawnWindowToggle.click();
     }
 
-    const sessionName = `Filter-Test-${Date.now()}`;
+    const sessionName = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionName);
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);

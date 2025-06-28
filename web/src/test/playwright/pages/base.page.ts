@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
+import { WaitUtils } from '../utils/test-utils';
 
 export class BasePage {
   readonly page: Page;
@@ -14,8 +15,8 @@ export class BasePage {
   async waitForLoadComplete() {
     // Wait for the main app to be loaded
     await this.page.waitForSelector('vibetunnel-app', { state: 'attached' });
-    // Give the app a moment to initialize
-    await this.page.waitForTimeout(500);
+    // Wait for network to settle
+    await WaitUtils.waitForNetworkIdle(this.page, { timeout: 5000 });
   }
 
   async getByTestId(testId: string): Promise<Locator> {

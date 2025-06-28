@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { cleanupSessions } from '../helpers/terminal.helper';
+import { cleanupSessions, generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('Basic Session Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -49,8 +49,9 @@ test.describe('Basic Session Tests', () => {
       await spawnWindowToggle.click();
     }
 
-    // Give it a custom name
-    await page.fill('input[placeholder="My Session"]', 'Test Session');
+    // Give it a unique custom name
+    const sessionName = generateTestSessionName();
+    await page.fill('input[placeholder="My Session"]', sessionName);
     await page.click('button:has-text("Create")');
 
     // Wait for navigation
@@ -60,8 +61,8 @@ test.describe('Basic Session Tests', () => {
     // Go back to session list
     await page.goto('/');
 
-    // Check if our session is listed
-    const sessionCard = page.locator('session-card').filter({ hasText: 'Test Session' });
+    // Check if our session is listed (use first() to handle multiple matches)
+    const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
     await expect(sessionCard).toBeVisible();
   });
 
@@ -80,7 +81,8 @@ test.describe('Basic Session Tests', () => {
       await spawnWindowToggle1.click();
     }
 
-    await page.fill('input[placeholder="My Session"]', 'Session One');
+    const sessionOneName = generateTestSessionName();
+    await page.fill('input[placeholder="My Session"]', sessionOneName);
     await page.click('button:has-text("Create")');
     await expect(page).toHaveURL(/\?session=/);
     const firstSessionUrl = page.url();
@@ -96,7 +98,8 @@ test.describe('Basic Session Tests', () => {
       await spawnWindowToggle2.click();
     }
 
-    await page.fill('input[placeholder="My Session"]', 'Session Two');
+    const sessionTwoName = generateTestSessionName();
+    await page.fill('input[placeholder="My Session"]', sessionTwoName);
     await page.click('button:has-text("Create")');
     await expect(page).toHaveURL(/\?session=/);
     const secondSessionUrl = page.url();
@@ -109,8 +112,8 @@ test.describe('Basic Session Tests', () => {
     await page.waitForSelector('session-card', { state: 'visible' });
 
     // Both sessions should be listed
-    const sessionOne = page.locator('session-card').filter({ hasText: 'Session One' });
-    const sessionTwo = page.locator('session-card').filter({ hasText: 'Session Two' });
+    const sessionOne = page.locator('session-card').filter({ hasText: sessionOneName });
+    const sessionTwo = page.locator('session-card').filter({ hasText: sessionTwoName });
 
     await expect(sessionOne).toBeVisible();
     await expect(sessionTwo).toBeVisible();

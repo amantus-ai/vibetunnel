@@ -25,7 +25,7 @@ test.describe('Session Creation', () => {
     // Look for the session name in the sidebar (it shows "zsh (~)")
     const sessionInSidebar = page.locator('text=/zsh.*\\(~\\)/').first();
     await expect(sessionInSidebar).toBeVisible({ timeout: 5000 });
-    
+
     // The terminal area should be visible (even if black initially)
     const terminalArea = page.locator('vibe-terminal');
     await expect(terminalArea).toBeVisible();

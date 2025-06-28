@@ -231,6 +231,7 @@ export class SessionCard extends LitElement {
           this.session.id
         }"
         data-session-id="${this.session.id}"
+        data-testid="session-card"
         @click=${this.handleCardClick}
       >
         <!-- Compact Header -->
@@ -256,6 +257,7 @@ export class SessionCard extends LitElement {
                   @click=${this.handleKillClick}
                   ?disabled=${this.killing}
                   title="${this.session.status === 'running' ? 'Kill session' : 'Clean up session'}"
+                  data-testid="kill-session-button"
                 >
                   ${
                     this.killing

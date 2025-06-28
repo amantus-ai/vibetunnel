@@ -367,6 +367,7 @@ export class SessionCreateForm extends LitElement {
                 @input=${this.handleSessionNameChange}
                 placeholder="My Session"
                 ?disabled=${this.disabled || this.isCreating}
+                data-testid="session-name-input"
               />
             </div>
 
@@ -380,6 +381,7 @@ export class SessionCreateForm extends LitElement {
                 @input=${this.handleCommandChange}
                 placeholder="zsh"
                 ?disabled=${this.disabled || this.isCreating}
+                data-testid="command-input"
               />
             </div>
 
@@ -394,6 +396,7 @@ export class SessionCreateForm extends LitElement {
                   @input=${this.handleWorkingDirChange}
                   placeholder="~/"
                   ?disabled=${this.disabled || this.isCreating}
+                  data-testid="working-dir-input"
                 />
                 <button
                   class="btn-secondary font-mono px-4"
@@ -418,6 +421,7 @@ export class SessionCreateForm extends LitElement {
                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-dark-bg ${
                   this.spawnWindow ? 'bg-accent-green' : 'bg-dark-border'
                 }"
+                data-testid="spawn-window-toggle"
                 ?disabled=${this.disabled || this.isCreating}
               >
                 <span
@@ -472,6 +476,7 @@ export class SessionCreateForm extends LitElement {
                   !this.workingDir.trim() ||
                   !this.command.trim()
                 }
+                data-testid="create-session-submit"
               >
                 ${this.isCreating ? 'Creating...' : 'Create'}
               </button>

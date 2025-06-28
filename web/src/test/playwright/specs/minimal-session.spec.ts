@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
+import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('Minimal Session Tests', () => {
   test('should create and list a session', async ({ page }) => {
@@ -26,7 +27,7 @@ test.describe('Minimal Session Tests', () => {
     }
 
     // Fill in session name
-    const sessionName = `Test-${Date.now()}`;
+    const sessionName = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionName);
 
     // Click create button
@@ -79,7 +80,7 @@ test.describe('Minimal Session Tests', () => {
       }
 
       // Give unique name
-      const name = `Session-${Date.now()}-${i}`;
+      const name = generateTestSessionName();
       sessions.push(name);
       await page.fill('input[placeholder="My Session"]', name);
 

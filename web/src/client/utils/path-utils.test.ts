@@ -1,8 +1,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { formatPathForDisplay, copyToClipboard } from './path-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { copyToClipboard, formatPathForDisplay } from './path-utils';
 
 describe('formatPathForDisplay', () => {
   describe('macOS paths', () => {
@@ -194,11 +194,11 @@ describe('copyToClipboard', () => {
     // Reset mocks
     writeTextSpy = vi.fn().mockResolvedValue(undefined);
     execCommandSpy = vi.fn().mockReturnValue(true);
-    
+
     // Mock document.execCommand
     Object.defineProperty(document, 'execCommand', {
       value: execCommandSpy,
-      configurable: true
+      configurable: true,
     });
   });
 
@@ -211,7 +211,7 @@ describe('copyToClipboard', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText: writeTextSpy } });
 
     const result = await copyToClipboard('test text');
-    
+
     expect(writeTextSpy).toHaveBeenCalledWith('test text');
     expect(result).toBe(true);
     expect(execCommandSpy).not.toHaveBeenCalled();
@@ -223,7 +223,7 @@ describe('copyToClipboard', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText: writeTextSpy } });
 
     const result = await copyToClipboard('test text');
-    
+
     expect(writeTextSpy).toHaveBeenCalledWith('test text');
     expect(execCommandSpy).toHaveBeenCalledWith('copy');
     expect(result).toBe(true);
@@ -234,7 +234,7 @@ describe('copyToClipboard', () => {
     vi.stubGlobal('navigator', {});
 
     const result = await copyToClipboard('test text');
-    
+
     expect(execCommandSpy).toHaveBeenCalledWith('copy');
     expect(result).toBe(true);
   });
@@ -243,12 +243,12 @@ describe('copyToClipboard', () => {
     // Mock navigator.clipboard to throw error
     writeTextSpy = vi.fn().mockRejectedValue(new Error('Clipboard API failed'));
     vi.stubGlobal('navigator', { clipboard: { writeText: writeTextSpy } });
-    
+
     // Mock execCommand to fail
     execCommandSpy.mockReturnValue(false);
 
     const result = await copyToClipboard('test text');
-    
+
     expect(writeTextSpy).toHaveBeenCalledWith('test text');
     expect(execCommandSpy).toHaveBeenCalledWith('copy');
     expect(result).toBe(false);
@@ -258,14 +258,14 @@ describe('copyToClipboard', () => {
     // Mock navigator.clipboard to throw error
     writeTextSpy = vi.fn().mockRejectedValue(new Error('Clipboard API failed'));
     vi.stubGlobal('navigator', { clipboard: { writeText: writeTextSpy } });
-    
+
     // Mock execCommand to throw
     execCommandSpy.mockImplementation(() => {
       throw new Error('execCommand failed');
     });
 
     const result = await copyToClipboard('test text');
-    
+
     expect(writeTextSpy).toHaveBeenCalledWith('test text');
     expect(execCommandSpy).toHaveBeenCalledWith('copy');
     expect(result).toBe(false);
@@ -274,15 +274,15 @@ describe('copyToClipboard', () => {
   it('should clean up textarea element after copy', async () => {
     // Mock navigator without clipboard
     vi.stubGlobal('navigator', {});
-    
+
     const appendChildSpy = vi.spyOn(document.body, 'appendChild');
     const removeChildSpy = vi.spyOn(document.body, 'removeChild');
 
     await copyToClipboard('test text');
-    
+
     expect(appendChildSpy).toHaveBeenCalled();
     expect(removeChildSpy).toHaveBeenCalled();
-    
+
     // Verify textarea was created with correct properties
     const textarea = appendChildSpy.mock.calls[0][0] as HTMLTextAreaElement;
     expect(textarea.value).toBe('test text');
@@ -294,14 +294,14 @@ describe('copyToClipboard', () => {
   it('should clean up textarea even when execCommand fails', async () => {
     // Mock navigator without clipboard
     vi.stubGlobal('navigator', {});
-    
+
     // Mock execCommand to fail
     execCommandSpy.mockReturnValue(false);
-    
+
     const removeChildSpy = vi.spyOn(document.body, 'removeChild');
 
     await copyToClipboard('test text');
-    
+
     expect(removeChildSpy).toHaveBeenCalled();
   });
 });

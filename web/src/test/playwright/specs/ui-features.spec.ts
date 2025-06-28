@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
+import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('UI Features', () => {
   test.beforeEach(async ({ page }) => {
@@ -16,17 +17,15 @@ test.describe('UI Features', () => {
       await spawnWindowToggle.click();
     }
 
-    await page.fill('input[placeholder="My Session"]', `FileBrowser-Test-${Date.now()}`);
+    await page.fill('input[placeholder="My Session"]', generateTestSessionName());
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
 
     // Click Browse Files button
     await page.click('button[title*="Browse Files"]');
 
-    // File browser should appear
-    await expect(page.locator('file-browser, [data-component="file-browser"]').first()).toBeVisible(
-      { timeout: 5000 }
-    );
+    // Wait for file browser to open by checking for directory content
+    await page.waitForSelector('text=Applications', { state: 'visible', timeout: 5000 });
 
     // Should show file listing
     await expect(page.locator('text=..')).toBeVisible(); // Parent directory
@@ -50,7 +49,7 @@ test.describe('UI Features', () => {
       await spawnWindowToggle.click();
     }
 
-    await page.fill('input[placeholder="My Session"]', `FileNav-Test-${Date.now()}`);
+    await page.fill('input[placeholder="My Session"]', generateTestSessionName());
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
 
@@ -58,13 +57,18 @@ test.describe('UI Features', () => {
     await page.click('button[title*="Browse Files"]');
     await page.waitForSelector('text=..', { state: 'visible' });
 
-    // The path should be displayed
-    const pathDisplay = page.locator('text=/\\/Users\\/|~\\/|Home/');
-    await expect(pathDisplay.first()).toBeVisible();
+    // The file browser is already open (we waited for ".." to be visible)
+    // Get the path display element - it's inside the visible file browser
+    const fileBrowser = page.locator('file-browser').filter({ has: page.locator('text=..') });
+    
+    // Get current path text from the clickable path div
+    const pathElement = fileBrowser.locator('div[title*="click to edit"]').first();
+    const pathText = await pathElement.textContent();
+    expect(pathText).toBeTruthy();
 
-    // Click on a directory (if available)
+    // Click on a directory (if available) - look for directory entries
     const directories = page
-      .locator('[data-type="directory"], img[alt*="folder"], text=/^[A-Z][a-z]+$/')
+      .locator('[data-type=directory]')
       .filter({ hasText: /^(?!\.\.)[A-Za-z]+$/ });
     const dirCount = await directories.count();
 
@@ -74,8 +78,9 @@ test.describe('UI Features', () => {
       await page.waitForTimeout(500);
 
       // Path should update
-      const newPath = await pathDisplay.first().textContent();
+      const newPath = await pathElement.textContent();
       expect(newPath).toBeTruthy();
+      expect(newPath).not.toBe(pathText); // Path should have changed
     }
 
     // Click back button if available
@@ -119,33 +124,34 @@ test.describe('UI Features', () => {
     }
 
     // Create the session
-    await page.fill('input[placeholder="My Session"]', `QuickStart-Test-${Date.now()}`);
+    await page.fill('input[placeholder="My Session"]', generateTestSessionName());
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
   });
 
   test('should display notification options', async ({ page }) => {
-    // Check notification button in header
-    const notificationButton = page
-      .locator(
-        'button[title*="Notification"], button:has-text("🔔"), button[aria-label*="notification"]'
-      )
-      .first();
-    await expect(notificationButton).toBeVisible();
-
-    // The button might show "not subscribed" state
-    const buttonText = await notificationButton.textContent();
-    expect(buttonText?.toLowerCase()).toMatch(/notification|🔔/);
+    // Check notification button in header - it's the notification-status component
+    const notificationButton = page.locator('notification-status button').first();
+    
+    // Wait for notification button to be visible
+    await expect(notificationButton).toBeVisible({ timeout: 5000 });
+    
+    // Verify the button has a tooltip
+    const tooltip = await notificationButton.getAttribute('title');
+    expect(tooltip).toBeTruthy();
+    expect(tooltip?.toLowerCase()).toContain('notification');
   });
 
   test('should show session count in header', async ({ page }) => {
-    // The header should show session count
-    const header = page.locator('header, [role="banner"]').first();
-    const sessionCount = header.locator('text=/\\d+\\s*session|\\(\\d+\\)/');
-
-    // Create a new session to see count change
-    const initialText = (await sessionCount.textContent()) || '0';
-    const initialCount = Number.parseInt(initialText.match(/\d+/)?.[0] || '0');
+    // The header should show session count - look for text like "(5)" 
+    // It's in the full-header component
+    await page.waitForSelector('full-header', { state: 'visible' });
+    
+    // Get initial count from header
+    const headerElement = page.locator('full-header').first();
+    const sessionCountElement = headerElement.locator('p.text-xs').first();
+    const initialText = await sessionCountElement.textContent();
+    const initialCount = Number.parseInt(initialText?.match(/\d+/)?.[0] || '0');
 
     // Create a session
     await page.click('button[title="Create New Session"]');
@@ -156,7 +162,7 @@ test.describe('UI Features', () => {
       await spawnWindowToggle.click();
     }
 
-    await page.fill('input[placeholder="My Session"]', `Count-Test-${Date.now()}`);
+    await page.fill('input[placeholder="My Session"]', generateTestSessionName());
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
 
@@ -164,8 +170,9 @@ test.describe('UI Features', () => {
     await page.goto('/');
     await page.waitForTimeout(500);
 
-    const newText = (await sessionCount.textContent()) || '0';
-    const newCount = Number.parseInt(newText.match(/\d+/)?.[0] || '0');
+    // Get new count from header
+    const newText = await sessionCountElement.textContent();
+    const newCount = Number.parseInt(newText?.match(/\d+/)?.[0] || '0');
 
     // Count should have increased
     expect(newCount).toBeGreaterThan(initialCount);
@@ -212,7 +219,7 @@ test.describe('UI Features', () => {
       await spawnWindowToggle.click();
     }
 
-    const sessionName = `Preview-Test-${Date.now()}`;
+    const sessionName = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionName);
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
