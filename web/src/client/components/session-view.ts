@@ -392,6 +392,12 @@ export class SessionView extends LitElement {
           clearTimeout(this.sessionSwitchDebounce);
         }
 
+        // Clear any pending transition clear timeout to prevent race condition
+        if (this.transitionClearTimeout) {
+          clearTimeout(this.transitionClearTimeout);
+          this.transitionClearTimeout = undefined;
+        }
+
         // Handle session becoming null (navigation away)
         if (!this.session) {
           this.isTransitioningSession = false;
