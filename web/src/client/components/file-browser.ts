@@ -20,7 +20,7 @@ import {
   UIIcons,
 } from '../utils/file-icons.js';
 import { createLogger } from '../utils/logger.js';
-import { copyToClipboard } from '../utils/path-utils.js';
+import { copyToClipboard, formatPathForDisplay } from '../utils/path-utils.js';
 import type { Session } from './session-list.js';
 import './monaco-editor.js';
 
@@ -562,7 +562,7 @@ export class FileBrowser extends LitElement {
                         } (click to edit)"
                         @click=${this.handlePathClick}
                       >
-                        ${this.currentFullPath || this.currentPath || 'File Browser'}
+                        ${formatPathForDisplay(this.currentFullPath || this.currentPath || 'File Browser')}
                       </div>
                     `
                 }
