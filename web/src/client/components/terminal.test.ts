@@ -273,6 +273,22 @@ describe('Terminal', () => {
       expect(element.rows).toBe(30);
     });
 
+    it('should handle zero initial dimensions gracefully', async () => {
+      element.initialCols = 0;
+      element.initialRows = 0;
+      element.maxCols = 0;
+      await element.updateComplete;
+
+      // Should fall back to calculated width based on container
+      expect(element.cols).toBeGreaterThan(0);
+      expect(element.rows).toBeGreaterThan(0);
+
+      // Terminal should still be functional
+      element.write('Test content');
+      await element.updateComplete;
+      expect(element.querySelector('.terminal-container')).toBeTruthy();
+    });
+
     it('should persist user override preference to localStorage', async () => {
       // Set sessionId directly since attribute binding might not work in tests
       element.sessionId = 'test-123';
@@ -318,6 +334,28 @@ describe('Terminal', () => {
       // Clean up
       newElement.remove();
       localStorage.removeItem('terminal-width-override-test-456');
+    });
+
+    it('should restore user override preference when sessionId changes', async () => {
+      // Pre-set localStorage value for the new sessionId
+      localStorage.setItem('terminal-width-override-new-session-789', 'true');
+
+      // Create element with initial sessionId
+      element.sessionId = 'old-session-123';
+      await element.updateComplete;
+
+      // Verify initial state (no override for old session)
+      expect(element.userOverrideWidth).toBe(false);
+
+      // Change sessionId - this should trigger loading the preference
+      element.sessionId = 'new-session-789';
+      await element.updateComplete;
+
+      // The updated() lifecycle method should have loaded the preference
+      expect(element.userOverrideWidth).toBe(true);
+
+      // Clean up
+      localStorage.removeItem('terminal-width-override-new-session-789');
     });
   });
 

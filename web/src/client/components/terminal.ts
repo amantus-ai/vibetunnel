@@ -121,6 +121,14 @@ export class Terminal extends LitElement {
   }
 
   updated(changedProperties: PropertyValues) {
+    // Load user width override preference when sessionId changes
+    if (changedProperties.has('sessionId') && this.sessionId) {
+      const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
+      if (stored !== null) {
+        this.userOverrideWidth = stored === 'true';
+      }
+    }
+
     if (changedProperties.has('cols') || changedProperties.has('rows')) {
       if (this.terminal && !this.explicitSizeSet) {
         this.reinitializeTerminal();
