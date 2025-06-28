@@ -35,8 +35,11 @@ export class Terminal extends LitElement {
   @property({ type: Number }) maxCols = 0; // 0 means no limit
   @property({ type: Boolean }) disableClick = false; // Disable click handling (for mobile direct keyboard)
   @property({ type: Boolean }) hideScrollButton = false; // Hide scroll-to-bottom button
+  @property({ type: Number }) initialCols = 0; // Initial terminal width from session creation
+  @property({ type: Number }) initialRows = 0; // Initial terminal height from session creation
 
   private originalFontSize: number = 14;
+  private userOverrideWidth = false; // Track if user manually selected a width
 
   @state() private terminal: XtermTerminal | null = null;
   private _viewportY = 0; // Current scroll position in pixels
@@ -142,6 +145,15 @@ export class Terminal extends LitElement {
   disconnectedCallback() {
     this.cleanup();
     super.disconnectedCallback();
+  }
+
+  // Method to set user override when width is manually selected
+  setUserOverrideWidth(override: boolean) {
+    this.userOverrideWidth = override;
+    // Trigger a resize to apply the new setting
+    if (this.container) {
+      this.fitTerminal();
+    }
   }
 
   private cleanup() {
@@ -347,8 +359,25 @@ export class Terminal extends LitElement {
       // Ensure charWidth is valid before division
       const safeCharWidth = Number.isFinite(charWidth) && charWidth > 0 ? charWidth : 8; // Default char width
       const calculatedCols = Math.max(20, Math.floor(containerWidth / safeCharWidth)) - 1; // This -1 should not be needed, but it is...
-      // Apply maxCols constraint if set (0 means no limit)
-      this.cols = this.maxCols > 0 ? Math.min(calculatedCols, this.maxCols) : calculatedCols;
+
+      // Apply constraints in order of priority:
+      // 1. If user has manually selected a specific width (maxCols > 0), use that as the limit
+      // 2. If user has explicitly selected "unlimited" (maxCols = 0 with userOverrideWidth), use full width
+      // 3. Otherwise, if we have initial dimensions and no user override, limit to initial width
+      // 4. Otherwise, use calculated width (unlimited)
+      if (this.maxCols > 0) {
+        // User has manually selected a specific width limit
+        this.cols = Math.min(calculatedCols, this.maxCols);
+      } else if (this.userOverrideWidth) {
+        // User has explicitly selected "unlimited" - use full width
+        this.cols = calculatedCols;
+      } else if (this.initialCols > 0) {
+        // No manual selection, but we have initial dimensions - limit to initial width
+        this.cols = Math.min(calculatedCols, this.initialCols);
+      } else {
+        // No constraints - use full width (fallback for sessions without initial dimensions)
+        this.cols = calculatedCols;
+      }
       this.rows = Math.max(6, Math.floor(containerHeight / lineHeight));
       this.actualRows = this.rows;
 

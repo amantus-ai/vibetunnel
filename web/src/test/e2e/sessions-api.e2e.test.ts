@@ -101,6 +101,33 @@ describe('Sessions API Tests', () => {
       const result = await response.json();
       expect(result).toHaveProperty('sessionId');
     });
+
+    it('should create session with initial dimensions', async () => {
+      const response = await fetch(`http://localhost:${server?.port}/api/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          command: ['echo', 'dimension test'],
+          workingDir: server?.testDir,
+          cols: 120,
+          rows: 30,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(result).toHaveProperty('sessionId');
+
+      // Verify session was created with initial dimensions
+      const sessionResponse = await fetch(
+        `http://localhost:${server?.port}/api/sessions/${result.sessionId}`
+      );
+      const session = await sessionResponse.json();
+      expect(session.initialCols).toBe(120);
+      expect(session.initialRows).toBe(30);
+    });
   });
 
   describe('Session lifecycle', () => {

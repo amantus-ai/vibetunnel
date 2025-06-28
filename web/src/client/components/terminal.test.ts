@@ -187,6 +187,47 @@ describe('Terminal', () => {
       // So this test should verify the property is set
       expect(element.maxCols).toBe(100);
     });
+
+    it('should respect initial dimensions when no user override', async () => {
+      element.initialCols = 120;
+      element.initialRows = 30;
+      await element.updateComplete;
+
+      // Verify properties are set
+      expect(element.initialCols).toBe(120);
+      expect(element.initialRows).toBe(30);
+    });
+
+    it('should allow user override with setUserOverrideWidth', async () => {
+      element.initialCols = 120;
+      element.setUserOverrideWidth(true);
+      await element.updateComplete;
+
+      // Verify the method exists and can be called
+      expect(element.setUserOverrideWidth).toBeDefined();
+      expect(typeof element.setUserOverrideWidth).toBe('function');
+    });
+
+    it('should handle different width constraint scenarios', async () => {
+      // Test scenario 1: User sets specific width
+      element.maxCols = 80;
+      element.initialCols = 120;
+      await element.updateComplete;
+      expect(element.maxCols).toBe(80);
+
+      // Test scenario 2: User selects unlimited with override
+      element.maxCols = 0;
+      element.setUserOverrideWidth(true);
+      await element.updateComplete;
+      expect(element.maxCols).toBe(0);
+
+      // Test scenario 3: Initial dimensions with no override
+      element.maxCols = 0;
+      element.setUserOverrideWidth(false);
+      element.initialCols = 100;
+      await element.updateComplete;
+      expect(element.initialCols).toBe(100);
+    });
   });
 
   describe('scrolling behavior', () => {

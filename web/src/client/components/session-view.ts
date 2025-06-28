@@ -661,6 +661,8 @@ export class SessionView extends LitElement {
     const terminal = this.querySelector('vibe-terminal') as Terminal;
     if (terminal) {
       terminal.maxCols = newMaxCols;
+      // Mark that user has manually selected a width
+      terminal.setUserOverrideWidth(true);
       // Trigger a resize to apply the new constraint
       terminal.requestUpdate();
     }
@@ -898,6 +900,8 @@ export class SessionView extends LitElement {
             .fontSize=${this.terminalFontSize}
             .fitHorizontally=${false}
             .maxCols=${this.terminalMaxCols}
+            .initialCols=${this.session?.initialCols || 0}
+            .initialRows=${this.session?.initialRows || 0}
             .disableClick=${this.isMobile && this.useDirectKeyboard}
             .hideScrollButton=${this.showQuickKeys}
             class="w-full h-full p-0 m-0"

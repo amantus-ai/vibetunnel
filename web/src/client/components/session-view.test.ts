@@ -551,6 +551,54 @@ describe('SessionView', () => {
         expect(element.showWidthSelector).toBe(false);
       }
     });
+
+    it('should pass initial dimensions to terminal', async () => {
+      const mockSession = createMockSession();
+      // Add initial dimensions to mock session
+      mockSession.initialCols = 120;
+      mockSession.initialRows = 30;
+
+      element.session = mockSession;
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        expect(terminal.initialCols).toBe(120);
+        expect(terminal.initialRows).toBe(30);
+      }
+    });
+
+    it('should set user override when width is selected', async () => {
+      element.showWidthSelector = true;
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      const setUserOverrideWidthSpy = vi.spyOn(terminal, 'setUserOverrideWidth');
+
+      // Simulate width selection
+      element.handleWidthSelect(100);
+      await element.updateComplete;
+
+      expect(setUserOverrideWidthSpy).toHaveBeenCalledWith(true);
+      expect(terminal.maxCols).toBe(100);
+      expect(element.terminalMaxCols).toBe(100);
+    });
+
+    it('should allow unlimited width selection with override', async () => {
+      element.showWidthSelector = true;
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      const setUserOverrideWidthSpy = vi.spyOn(terminal, 'setUserOverrideWidth');
+
+      // Select unlimited (0)
+      element.handleWidthSelect(0);
+      await element.updateComplete;
+
+      expect(setUserOverrideWidthSpy).toHaveBeenCalledWith(true);
+      expect(terminal.maxCols).toBe(0);
+      expect(element.terminalMaxCols).toBe(0);
+    });
   });
 
   describe('navigation', () => {
