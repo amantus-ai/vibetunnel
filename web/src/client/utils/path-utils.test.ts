@@ -113,10 +113,12 @@ describe('formatPathForDisplay', () => {
       expect(formatPathForDisplay('c:/Users/user^caret/Code')).toBe('~/Code');
     });
 
-    it('should not replace if not C: drive', () => {
-      expect(formatPathForDisplay('D:\\Users\\john')).toBe('D:\\Users\\john');
-      expect(formatPathForDisplay('d:/Users/alice')).toBe('d:/Users/alice');
-      expect(formatPathForDisplay('E:\\Users\\bob')).toBe('E:\\Users\\bob');
+    it('should replace home directory for any Windows drive letter', () => {
+      expect(formatPathForDisplay('D:\\Users\\john')).toBe('~');
+      expect(formatPathForDisplay('d:/Users/alice')).toBe('~');
+      expect(formatPathForDisplay('E:\\Users\\bob')).toBe('~');
+      expect(formatPathForDisplay('Z:\\Users\\user\\Documents')).toBe('~\\Documents');
+      expect(formatPathForDisplay('a:/Users/test/Desktop')).toBe('~/Desktop');
     });
 
     it('should not replace if Users is not after drive', () => {
