@@ -1,16 +1,64 @@
 # Changelog
 
+## [1.0.0-beta.5] - upcoming
+
+### 🎯 Reliability & Stability
+- **Fixed critical race condition in terminal output** - Terminal sessions now handle high-volume output without corruption or out-of-order text.
+
+### 🌏 International Input Support
+- **Fixed Japanese/CJK input duplication on iOS** - Typing Japanese, Chinese, or Korean text on mobile browsers no longer produces duplicate characters. IME composition is now handled correctly.
+
+### ⌨️ Enhanced Terminal Experience
+- **Shell aliases now work properly** - Commands like `claude`, `ll`, and other custom aliases from your `.zshrc`/`.bashrc` are now recognized when launching terminals through VibeTunnel.
+- **Prevented recursive VibeTunnel sessions** - Running `vt` inside a VibeTunnel session now shows a helpful error instead of creating confusing nested sessions.
+
+### 🤖 Claude Code Integration
+- **Added Shift+Tab support** - Full support for Claude Code's mode switching (regular/planning/autoaccept modes) on both desktop and mobile.
+- **Mobile quick keyboard enhancement** - Added dedicated Shift+Tab button (⇤) to the mobile keyboard for easy mode switching.
+- **Fixed keyboard input conflicts** - Typing in Monaco Editor or other code editors no longer triggers unintended shortcuts.
+
+### 🧹 Code Quality
+- **Major codebase cleanup** - Improved code organization and updated technical specifications for contributors.
+
 ## [1.0.0-beta.4] - 2025-06-27
 
-- Completely revamped mobile keyboard
-- Mobile and Mac UI polish
-- Fixes issues with Terminal app
-- New security model: OS password or SSH keys
-- Enhanced terminal session handling and stability
-- Fixed various edge cases in terminal rendering and performance
-- Resolved session management issues
-- Fixed URL link detection for wrapped URLs on mobile terminals (#85)
-- Split session view file for better code organization (#89)
+### 🔐 Security & Authentication
+- **Comprehensive authentication system** - Choose between password-only, SSH key-only, both, or no authentication based on your security needs.
+- **Browser-based SSH key management** - Generate, import, and manage Ed25519 SSH keys directly in your browser. Keys are encrypted and stored locally.
+- **24-hour session tokens** - Stay logged in longer with JWT-based authentication.
+- **macOS profile integration** - See your system profile picture on the login screen.
+
+### 🎨 Revolutionary UI Design
+- **Arc-style vertical tabs** - Modern sidebar interface inspired by Arc browser makes better use of widescreen displays.
+- **Persistent session management** - All active sessions visible at a glance in a resizable sidebar (240-600px).
+- **Mobile-optimized interface** - Responsive design with slide-out sidebar and proper touch targets.
+- **Smooth animations** - Polished transitions and no layout shifts for a premium feel.
+
+### 📱 Mobile Terminal Excellence
+- **Dedicated terminal keyboard** - Custom on-screen keyboard with Escape, Tab, arrows, function keys, and common terminal shortcuts (Ctrl+C, Ctrl+Z, etc.).
+- **Essential special characters** - Quick access to pipes, backticks, tildes, and brackets without keyboard switching.
+- **Fixed wrapped URL detection** - Long URLs that span multiple lines are now properly clickable on mobile.
+
+### ⚡ Performance & Reliability
+- **Upgraded to Microsoft node-pty v1.1.0** - Latest terminal emulation library for better performance and compatibility.
+- **Fixed large paste operations** - Paste massive logs or code files without the terminal hanging.
+- **Improved backpressure handling** - Terminal gracefully manages data flow during high-volume operations.
+
+### 🗂️ File Management
+- **Symlink support in file browser** - Navigate through symbolic links with visual indicators showing link targets.
+- **Better directory detection** - File browser correctly identifies whether symlinks point to files or directories.
+
+### 🐛 Bug Fixes & Improvements
+- **Fixed session status detection** - Terminal status (running/exited) now updates reliably.
+- **Eliminated double button rendering** - UI cleanup for cleaner interface.
+- **Fixed Monaco editor integration** - Code editing now works smoothly within VibeTunnel.
+- **Improved error handling** - Better error messages and recovery from edge cases (including fixes for Terminal.app)
+- **Enhanced test infrastructure** - Comprehensive test suite for improved stability.
+
+### 🔧 Developer Experience
+- **No-auth mode for development** - Run VibeTunnel without authentication for local development.
+- **Improved logging** - Better debugging information for troubleshooting.
+- **Alias resolution for commands** - Terminal commands resolve through proper shell initialization.
 
 ## [1.0.0-beta.3] - 2025-06-23
 

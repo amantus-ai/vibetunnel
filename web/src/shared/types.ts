@@ -36,7 +36,10 @@ export interface Session extends SessionInfo {
   remoteName?: string;
   remoteUrl?: string;
 
-  // Display-formatted fields
+  /**
+   * Display-formatted working directory path with home directory replaced by ~
+   * This is computed server-side using os.homedir() for accurate path formatting
+   */
   displayWorkingDir?: string;
 }
 
