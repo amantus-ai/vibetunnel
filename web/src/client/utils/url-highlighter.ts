@@ -18,6 +18,14 @@ const PARTIAL_PROTOCOL_PATTERN =
 const DOMAIN_START_PATTERN = /^[a-zA-Z0-9[\].-]/;
 const PATH_START_PATTERN = /^[/a-zA-Z0-9[\].-]/;
 const URL_END_CHARS_PATTERN = /[^\w\-._~:/?#[\]@!$&'()*+,;=%{}|\\^`]/;
+// Pattern breakdown:
+// - https?:\/\/ - HTTP or HTTPS protocol
+// - localhost|[\d.]+ - localhost or IPv4 addresses
+// - \[[\da-fA-F:]+\] - IPv6 addresses in brackets
+// - [a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])? - Domain label: starts/ends with alphanumeric, allows hyphens in middle
+// - (\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+ - Requires at least one dot and TLD
+// - (:\d+)? - Optional port number
+// - file:\/\/.+ - File protocol with any path
 const LOCALHOST_PATTERN =
   /^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+)(:\d+)?.*|file:\/\/.+)/;
 

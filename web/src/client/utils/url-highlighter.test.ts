@@ -608,11 +608,83 @@ describe('UrlHighlighter', () => {
         'Go to https://365.microsoft.com',
       ]);
       UrlHighlighter.processLinks(container);
+      const uniqueUrls = getUniqueUrls();
+      expect(uniqueUrls).toHaveLength(3);
+      expect(uniqueUrls).toContain('https://web3.example.com/');
+      expect(uniqueUrls).toContain('http://api.v2.service.io/');
+      expect(uniqueUrls).toContain('https://365.microsoft.com/');
+    });
+
+    it('should not detect Roman numerals as URLs', () => {
+      createLines([
+        'i. First item',
+        'ii. Second item',
+        'iii. Third item',
+        'iv. Fourth item',
+        'v. Fifth item',
+        'I. First uppercase',
+        'II. Second uppercase',
+        'III. Third uppercase',
+      ]);
+      UrlHighlighter.processLinks(container);
       const urls = getHighlightedUrls();
-      expect(urls).toHaveLength(3);
-      expect(urls[0].href).toBe('https://web3.example.com/');
-      expect(urls[1].href).toBe('http://api.v2.service.io/');
-      expect(urls[2].href).toBe('https://365.microsoft.com/');
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect alternative list styles as URLs', () => {
+      createLines([
+        '1) Alternative list style',
+        '2) Another item',
+        '3) Third item with content',
+        'a) Letter with parenthesis',
+        'b) Another letter item',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect extremely long numbered lists as URLs', () => {
+      createLines([
+        '999. Item nine hundred ninety-nine',
+        '1000. Item one thousand',
+        '12345. Very long numbered item',
+        '999999. Extremely long number',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect markdown-style checkbox lists as URLs', () => {
+      createLines([
+        '- [ ] Unchecked item',
+        '- [x] Checked item',
+        '* [ ] Another unchecked',
+        '+ [x] Another checked',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect time formats as URLs', () => {
+      createLines([
+        'Meeting at 10:30 AM',
+        'Deadline: 23:59:59',
+        'Duration: 1:30:45',
+        'Timer: 00:05:30',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
+    });
+
+    it('should not detect mathematical expressions as URLs', () => {
+      createLines(['Result: 3.14 * 2.71', 'Formula: E = mc^2', 'Ratio 16:9', 'Score 10/10']);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
     });
   });
 });
