@@ -625,7 +625,7 @@ describe('UrlHighlighter', () => {
       expect(urls).toHaveLength(0);
     });
 
-    it('should still detect actual domains with numbers', () => {
+    it('should still detect domains containing numbers', () => {
       createLines([
         'Visit https://web3.example.com',
         'Check http://api.v2.service.io',
@@ -637,6 +637,34 @@ describe('UrlHighlighter', () => {
       expect(uniqueUrls).toContain('https://web3.example.com/');
       expect(uniqueUrls).toContain('http://api.v2.service.io/');
       expect(uniqueUrls).toContain('https://365.microsoft.com/');
+    });
+
+    it('should detect domains starting with numbers', () => {
+      createLines([
+        'Visit https://365.microsoft.com',
+        'Check https://911.gov',
+        'Go to https://123movies.example.com',
+        'See https://4chan.org',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const uniqueUrls = getUniqueUrls();
+      expect(uniqueUrls).toHaveLength(4);
+      expect(uniqueUrls).toContain('https://365.microsoft.com/');
+      expect(uniqueUrls).toContain('https://911.gov/');
+      expect(uniqueUrls).toContain('https://123movies.example.com/');
+      expect(uniqueUrls).toContain('https://4chan.org/');
+    });
+
+    it('should not detect invalid domains with hyphens at start or end', () => {
+      createLines([
+        'https://-invalid.com',
+        'https://invalid-.com',
+        'https://test.-invalid.com',
+        'https://test.invalid-.com',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(0);
     });
 
     it('should not detect Roman numerals as URLs', () => {
