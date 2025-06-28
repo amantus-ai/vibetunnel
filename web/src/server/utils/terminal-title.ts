@@ -8,6 +8,26 @@
 import * as os from 'os';
 import * as path from 'path';
 
+// Pre-compiled regex patterns for performance
+// Match cd command with optional arguments, handling newlines
+// The argument capture group excludes command separators
+const CD_REGEX = /^\s*cd(?:\s+([^;&|\n]+?))?(?:\s*[;&|\n]|$)/;
+
+// Common shell prompt patterns
+const PROMPT_PATTERNS = [
+  /\$\s*$/, // $ prompt
+  />\s*$/, // > prompt
+  /#\s*$/, // # prompt (root)
+  /❯\s*$/, // Modern prompt arrows
+  /➜\s*$/, // Another common arrow
+  /\]\$\s*$/, // Bracketed prompts like [user@host]$
+  /\]#\s*$/, // Bracketed root prompts
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Escape sequences are required for terminal prompts
+  /\$\s*\x1B\[/, // Prompt followed by escape sequence
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Escape sequences are required for terminal prompts
+  />\s*\x1B\[/, // Prompt followed by escape sequence
+];
+
 /**
  * Generate a terminal title sequence (OSC 2)
  *
@@ -38,12 +58,15 @@ export function generateTitleSequence(cwd: string, command: string[]): string {
  * @returns New directory if cd command detected, null otherwise
  */
 export function extractCdDirectory(input: string, currentDir: string): string | null {
-  // Match various cd patterns - handle newlines at the end
-  const cdRegex = /^\s*cd\s+(.+?)(?:\s*[;&|\n]|$)/;
-  const match = input.match(cdRegex);
+  const match = input.match(CD_REGEX);
 
   if (!match) {
     return null;
+  }
+
+  // Handle cd without arguments (goes to home directory)
+  if (!match[1]) {
+    return os.homedir();
   }
 
   let targetDir = match[1].trim();
@@ -87,23 +110,7 @@ export function extractCdDirectory(input: string, currentDir: string): string | 
 export function shouldInjectTitle(data: string): boolean {
   // Look for common shell prompt patterns that indicate command completion
   // This is a heuristic approach - not perfect but works for most shells
-
-  // Common prompt endings
-  const promptPatterns = [
-    /\$\s*$/, // $ prompt
-    />\s*$/, // > prompt
-    /#\s*$/, // # prompt (root)
-    /❯\s*$/, // Modern prompt arrows
-    /➜\s*$/, // Another common arrow
-    /\]\$\s*$/, // Bracketed prompts like [user@host]$
-    /\]#\s*$/, // Bracketed root prompts
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: Escape sequences are required for terminal prompts
-    /\$\s*\x1B\[/, // Prompt followed by escape sequence
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: Escape sequences are required for terminal prompts
-    />\s*\x1B\[/, // Prompt followed by escape sequence
-  ];
-
-  return promptPatterns.some((pattern) => pattern.test(data));
+  return PROMPT_PATTERNS.some((pattern) => pattern.test(data));
 }
 
 /**

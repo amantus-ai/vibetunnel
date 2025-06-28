@@ -130,5 +130,32 @@ When both features are in play:
 - Title updates are performed using ANSI escape sequences
 - The feature works with any terminal emulator that supports OSC sequences
 - Browser tabs also update their titles when viewing sessions
-- Title filtering is performed efficiently using regex matching on the output stream
-- Directory tracking may have limitations with complex shell configurations or non-standard prompts
+- Title filtering is performed efficiently using pre-compiled regex patterns
+- All regex patterns are pre-compiled for optimal performance
+
+## Limitations
+
+### Directory Tracking
+The automatic title feature tracks directory changes by monitoring `cd` commands. This has some limitations:
+
+- **Only tracks direct `cd` commands** - More complex operations are not tracked:
+  - `pushd` / `popd` commands
+  - Directory changes via aliases or functions
+  - Changes within subshells or scripts
+  - Directory changes from other tools (e.g., `z`, `autojump`)
+- **`cd -` (previous directory)** - Cannot be tracked accurately as we don't maintain directory history
+- **Symbolic links** - Tracked paths are resolved, which may differ from displayed paths
+
+### Title Injection
+The title injection relies on detecting shell prompts, which may not work correctly with:
+- Heavily customized prompts
+- Non-standard shell configurations
+- Prompts that don't end with common patterns (`$`, `>`, `#`, etc.)
+- Multi-line prompts
+
+### Performance Considerations
+- Regex patterns are pre-compiled to minimize overhead
+- String/Buffer conversions are optimized to reduce allocations
+- For very high-throughput sessions, there may be minimal latency from filtering
+
+Despite these limitations, the features work well for typical development workflows and provide significant value for session organization.

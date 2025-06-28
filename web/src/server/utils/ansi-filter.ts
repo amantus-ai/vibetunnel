@@ -5,6 +5,12 @@
  * all other terminal output intact.
  */
 
+// Pre-compiled regex for performance
+// Matches: ESC ] (0|1|2) ; <any text> (BEL | ESC \)
+// Using non-greedy matching to handle multiple sequences in one buffer
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Control characters are required to match terminal escape sequences
+const TITLE_SEQUENCE_REGEX = /\x1B\](?:0|1|2);[^\x07\x1B]*(?:\x07|\x1B\\)/g;
+
 /**
  * Filter out terminal title escape sequences from data.
  *
@@ -24,13 +30,7 @@ export function filterTerminalTitleSequences(data: string, filterTitles: boolean
     return data;
   }
 
-  // Regex to match OSC title sequences
-  // Matches: ESC ] (0|1|2) ; <any text> (BEL | ESC \)
-  // Using non-greedy matching to handle multiple sequences in one buffer
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: Control characters are required to match terminal escape sequences
-  const titleSequenceRegex = /\x1B\](?:0|1|2);[^\x07\x1B]*(?:\x07|\x1B\\)/g;
-
-  return data.replace(titleSequenceRegex, '');
+  return data.replace(TITLE_SEQUENCE_REGEX, '');
 }
 
 /**

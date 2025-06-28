@@ -75,8 +75,9 @@ describe('Terminal Title Utilities', () => {
 
     it('should handle cd ~ to home directory', () => {
       expect(extractCdDirectory('cd ~', currentDir)).toBe('/home/user');
-      // Plain 'cd' without arguments is not matched by our regex
-      expect(extractCdDirectory('cd', currentDir)).toBeNull();
+      // Plain 'cd' without arguments should go to home directory
+      expect(extractCdDirectory('cd', currentDir)).toBe('/home/user');
+      expect(extractCdDirectory('cd\n', currentDir)).toBe('/home/user');
     });
 
     it('should handle cd with home directory path', () => {
@@ -113,6 +114,12 @@ describe('Terminal Title Utilities', () => {
     it('should handle whitespace variations', () => {
       expect(extractCdDirectory('  cd   /tmp  ', currentDir)).toBe('/tmp');
       expect(extractCdDirectory('\tcd\t/tmp', currentDir)).toBe('/tmp');
+    });
+
+    it('should handle cd without arguments in different contexts', () => {
+      expect(extractCdDirectory('cd && ls', currentDir)).toBe('/home/user');
+      expect(extractCdDirectory('cd;pwd', currentDir)).toBe('/home/user');
+      expect(extractCdDirectory('cd | tee log', currentDir)).toBe('/home/user');
     });
   });
 
