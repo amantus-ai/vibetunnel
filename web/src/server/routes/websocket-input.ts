@@ -102,6 +102,9 @@ export class WebSocketInputHandler {
         try {
           let input: SessionInput;
 
+          // Debug logging to see what we're receiving
+          logger.debug(`Raw WebSocket input: ${JSON.stringify(inputReceived)} (length: ${inputReceived.length})`);
+          
           if (
             inputReceived.startsWith('\x00') &&
             inputReceived.endsWith('\x00') &&
@@ -109,15 +112,19 @@ export class WebSocketInputHandler {
           ) {
             // Special key wrapped in null bytes
             const keyName = inputReceived.slice(1, -1); // Remove null byte markers
+            logger.debug(`Detected special key: "${keyName}"`);
             if (this.isSpecialKey(keyName)) {
               input = { key: keyName as SpecialKey };
+              logger.debug(`Mapped to special key: ${JSON.stringify(input)}`);
             } else {
               // Unknown special key, treat as text
               input = { text: inputReceived };
+              logger.debug(`Unknown special key, treating as text: ${JSON.stringify(input)}`);
             }
           } else {
             // Regular text (including literal words like "enter", "escape", etc.)
             input = { text: inputReceived };
+            logger.debug(`Regular text input: ${JSON.stringify(input)}`);
           }
 
           this.ptyManager.sendInput(sessionId, input);

@@ -142,15 +142,17 @@ export class WebSocketInputClient {
       if (input.key) {
         // Special keys: wrap in null bytes to distinguish from literal text
         rawInput = `\x00${input.key}\x00`;
+        logger.debug(`Sending special key: "${input.key}" as: ${JSON.stringify(rawInput)}`);
       } else if (input.text) {
         // Regular text: send as-is
         rawInput = input.text;
+        logger.debug(`Sending text: ${JSON.stringify(rawInput)}`);
       } else {
         return false;
       }
 
       this.ws.send(rawInput);
-      logger.debug('Sent raw input via WebSocket:', rawInput);
+      logger.debug('Sent raw input via WebSocket:', JSON.stringify(rawInput));
       return true;
     } catch (error) {
       logger.error('Failed to send via WebSocket:', error);
