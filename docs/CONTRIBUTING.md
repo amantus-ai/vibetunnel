@@ -30,10 +30,10 @@ We love your input! We want to make contributing to VibeTunnel as easy and trans
    ```bash
    # Install Node.js dependencies
    cd web
-   npm install
+   pnpm install
 
    # Start the development server (keep this running)
-   npm run dev
+   pnpm run dev
    ```
 
 3. **Open the Xcode project**
@@ -55,7 +55,7 @@ The web server (Node.js/TypeScript) runs in development mode with hot reloading:
 
 ```bash
 cd web
-npm run dev  # Keep this running in a separate terminal
+pnpm run dev  # Keep this running in a separate terminal
 ```
 
 **Important**: Never manually build the web project - the development server handles all compilation automatically.
@@ -102,10 +102,10 @@ swiftlint
 Run before committing:
 ```bash
 cd web
-npm run format      # Format with Prettier
-npm run lint        # Check with ESLint
-npm run lint:fix    # Auto-fix ESLint issues
-npm run typecheck   # Check TypeScript types
+pnpm run format      # Format with Prettier
+pnpm run lint        # Check with ESLint
+pnpm run lint:fix    # Auto-fix ESLint issues
+pnpm run typecheck   # Check TypeScript types
 ```
 
 ### Important Rules
@@ -165,7 +165,7 @@ We use Vitest for Node.js testing:
 
 ```bash
 cd web
-npm run test
+pnpm run test
 ```
 
 ### Writing Tests
@@ -195,7 +195,7 @@ npm run test
 4. **Commit your changes**
    ```bash
    # Web changes
-   cd web && npm run lint:fix && npm run typecheck
+   cd web && pnpm run lint:fix && pnpm run typecheck
 
    # Swift changes
    cd mac && swiftformat . && swiftlint
@@ -232,7 +232,7 @@ We follow conventional commits:
 
 ### Web Server
 - Use Chrome DevTools for frontend debugging
-- Server logs appear in the terminal running `npm run dev`
+- Server logs appear in the terminal running `pnpm run dev`
 - Use `--inspect` flag for Node.js debugging
 
 ### Common Issues
@@ -247,7 +247,7 @@ We follow conventional commits:
 - Check that `web/native/vibetunnel` exists
 
 **WebSocket connection failures**
-- Ensure the server is running (`npm run dev`)
+- Ensure the server is running (`pnpm run dev`)
 - Check for CORS issues in browser console
 - Verify the port matches between client and server
 
