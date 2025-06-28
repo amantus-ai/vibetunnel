@@ -117,6 +117,30 @@ describe('UrlHighlighter', () => {
       expect(uniqueUrls).toHaveLength(1);
       expect(uniqueUrls[0]).toBe('https://example.com/very/long/path/to/resource');
     });
+
+    it('should handle domain continuation with TLD extension', () => {
+      createLines(['https://example.com', '.uk/path']);
+      UrlHighlighter.processLinks(container);
+      const uniqueUrls = getUniqueUrls();
+      expect(uniqueUrls).toHaveLength(1);
+      expect(uniqueUrls[0]).toBe('https://example.com.uk/path');
+    });
+
+    it('should handle path continuation without leading slash', () => {
+      createLines(['https://example.com/', 'path/to/resource']);
+      UrlHighlighter.processLinks(container);
+      const uniqueUrls = getUniqueUrls();
+      expect(uniqueUrls).toHaveLength(1);
+      expect(uniqueUrls[0]).toBe('https://example.com/path/to/resource');
+    });
+
+    it('should not continue URL with common words', () => {
+      createLines(['https://example.com', 'Check this out']);
+      UrlHighlighter.processLinks(container);
+      const uniqueUrls = getUniqueUrls();
+      expect(uniqueUrls).toHaveLength(1);
+      expect(uniqueUrls[0]).toBe('https://example.com/');
+    });
   });
 
   describe('False positive prevention', () => {

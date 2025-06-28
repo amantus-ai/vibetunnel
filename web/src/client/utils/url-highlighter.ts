@@ -166,20 +166,13 @@ class LinkProcessor {
       return DOMAIN_START_PATTERN.test(trimmedNext);
     }
 
-    // Check if the current URL appears to be complete (has protocol, domain, and TLD)
-    if (this.isValidUrl(currentUrl)) {
-      // A complete URL should only continue if the next line starts with URL path characters
-      // This prevents "https://example.com" from continuing with "Check"
-      return /^[/?#]/.test(trimmedNext);
-    }
-
     // For established URLs, check if the next line could plausibly continue the URL
     // This is more permissive to handle various splitting scenarios
 
     // Common cases where URLs definitely don't continue:
     // - Line starts with common non-URL words
     if (
-      /^(and|or|but|the|is|are|was|were|been|have|has|had|will|would|could|should|may|might)\b/i.test(
+      /^(and|or|but|the|is|are|was|were|been|have|has|had|will|would|could|should|may|might|check|visit|go|see|click|open|navigate)\b/i.test(
         trimmedNext
       )
     ) {
