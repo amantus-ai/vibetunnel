@@ -53,3 +53,8 @@ NEVER give a code reference or location in any other format.
 ## CRITICAL
 **IMPORTANT**: BEFORE YOU DO ANYTHING, READ spec.md IN FULL USING THE READ TOOL!
 **IMPORTANT**: NEVER USE GREP. ALWAYS USE RIPGREP!
+
+## Refactoring Philosophy
+- We do not care about deprecation - remove old code completely
+- Always prefer clean refactoring over gradual migration
+- Delete unused functions and code paths immediately
