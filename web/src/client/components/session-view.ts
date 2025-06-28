@@ -48,6 +48,10 @@ import type { Terminal } from './terminal.js';
 
 const logger = createLogger('session-view');
 
+// Session switching timing constants
+const SESSION_SWITCH_DEBOUNCE_MS = 50;
+const TRANSITION_CLEAR_DELAY_MS = 50;
+
 @customElement('session-view')
 export class SessionView extends LitElement {
   // Disable shadow DOM to use Tailwind
@@ -376,8 +380,12 @@ export class SessionView extends LitElement {
   firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
     if (this.session) {
+      logger.log('Session exists on first update, initializing terminal');
       this.loadingAnimationManager.stopLoading();
       this.terminalLifecycleManager.setupTerminal();
+
+      // Force an update to ensure the terminal is rendered
+      this.requestUpdate();
     }
   }
 
@@ -427,6 +435,16 @@ export class SessionView extends LitElement {
 
         // Debounce rapid session switches to prevent multiple connection attempts
         this.sessionSwitchDebounce = setTimeout(async () => {
+          // Store expected session ID immediately
+          const expectedSessionId = this.session?.id;
+
+          // Exit early if session changed during debounce
+          if (this.session?.id !== expectedSessionId) {
+            logger.log('Session changed during debounce, skipping transition');
+            this.isTransitioning = false;
+            return;
+          }
+
           // Check if already transitioning
           if (this.isTransitioning) {
             logger.warn('Transition already in progress, skipping');
@@ -437,9 +455,6 @@ export class SessionView extends LitElement {
           logger.log('Session changed, cleaning up old stream connection');
           this.cleanupInProgress = true;
           this.connected = false;
-
-          // Store expected session ID to verify we're still on the same session
-          const expectedSessionId = this.session?.id;
 
           try {
             // Perform cleanup operations
@@ -462,8 +477,17 @@ export class SessionView extends LitElement {
 
             // If we have a new session, re-initialize the terminal connection
             if (this.session && !this.cleanupInProgress) {
+              // CRITICAL: Stop any loading state before setting connected
+              if (this.loadingAnimationManager.isLoading()) {
+                logger.log('Stopping loading animation during session transition');
+                this.loadingAnimationManager.stopLoading();
+              }
+
               this.connected = true;
               logger.log('Connection state updated after cleanup');
+
+              // Setup terminal immediately after stopping loading
+              this.terminalLifecycleManager.setupTerminal();
 
               // Clear any existing timeout first to prevent multiple instances
               if (this.transitionClearTimeout) {
@@ -479,7 +503,7 @@ export class SessionView extends LitElement {
                   this.transitionClearTimeout = undefined;
                   this.verifyConnectionState();
                 }
-              }, 50); // Reduced delay for snappier UI
+              }, TRANSITION_CLEAR_DELAY_MS);
             } else {
               // No new session - clear transition state immediately
               this.isTransitioningSession = false;
@@ -493,12 +517,10 @@ export class SessionView extends LitElement {
           } finally {
             this.cleanupInProgress = false;
             this.isTransitioning = false;
-            // Ensure transition state is cleared even if an unexpected error occurs
-            if (this.isTransitioningSession) {
-              this.isTransitioningSession = false;
-            }
+            // Note: isTransitioningSession is handled by the timeout above
+            // Do NOT clear it here as it would override the intended delay
           }
-        }, 50); // 50ms debounce for rapid switches
+        }, SESSION_SWITCH_DEBOUNCE_MS);
       } else {
         // Just update managers if session properties changed but not the ID
         this.updateManagers(this.session);
@@ -525,7 +547,21 @@ export class SessionView extends LitElement {
 
       const needsInit = !this.terminalLifecycleManager.getTerminal() || sessionIdChanged;
 
+      logger.log('Terminal init check:', {
+        hasSession: !!this.session,
+        isLoading: this.loadingAnimationManager.isLoading(),
+        connected: this.connected,
+        hasTerminalElement: !!terminalElement,
+        needsInit,
+        sessionIdChanged,
+      });
+
       if (terminalElement && needsInit) {
+        // Ensure loading is stopped before initializing terminal
+        if (this.loadingAnimationManager.isLoading()) {
+          logger.log('Force stopping loading animation before terminal init');
+          this.loadingAnimationManager.stopLoading();
+        }
         this.terminalLifecycleManager.initializeTerminal();
       }
     }

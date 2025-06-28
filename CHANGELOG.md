@@ -60,6 +60,7 @@
 - **Improved logging** - Better debugging information for troubleshooting.
 - **Alias resolution for commands** - Terminal commands resolve through proper shell initialization.
 
+
 ## [1.0.0-beta.3] - 2025-06-23
 
 There's too much to list! This is the version you've been waiting for. 
