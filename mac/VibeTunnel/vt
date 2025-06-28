@@ -50,5 +50,109 @@ if [ ! -f "$VIBETUNNEL_BIN" ]; then
     exit 1
 fi
 
-# Run with fwd command
-exec "$VIBETUNNEL_BIN" fwd "$@"
+# Function to show help
+show_help() {
+    cat << 'EOF'
+vt - VibeTunnel TTY Forward Wrapper
+
+USAGE:
+    vt [command] [args...]
+    vt --shell [args...]
+    vt -i [args...]
+    vt --no-shell-wrap [command] [args...]
+    vt -S [command] [args...]
+    vt --help
+
+DESCRIPTION:
+    This wrapper script allows VibeTunnel to see the output of commands by
+    forwarding TTY data through the vibetunnel utility. When you run commands
+    through 'vt', VibeTunnel can monitor and display the command's output
+    in real-time.
+
+    By default, commands are executed through your shell to resolve aliases,
+    functions, and builtins. Use --no-shell-wrap to execute commands directly.
+
+EXAMPLES:
+    vt top                  # Watch top with VibeTunnel monitoring
+    vt python script.py     # Run Python script with output forwarding
+    vt npm test             # Run tests with VibeTunnel visibility
+    vt --shell              # Launch current shell (equivalent to vt $SHELL)
+    vt -i                   # Launch current shell (short form)
+    vt -S ls -la            # List files without shell alias resolution
+
+OPTIONS:
+    --shell, -i            Launch current shell (equivalent to vt $SHELL)
+    --no-shell-wrap, -S    Execute command directly without shell wrapper
+    --help, -h             Show this help message and exit
+
+NOTE:
+    This script automatically uses the vibetunnel executable bundled with
+    VibeTunnel from the app bundle.
+EOF
+}
+
+# Function to resolve command through user's shell
+resolve_command() {
+    local user_shell="${SHELL:-/bin/bash}"
+    local cmd="$1"
+    shift
+
+    local shell_name=$(basename "$user_shell")
+
+    # Always try through shell first to handle aliases, functions, and builtins
+    # The shell will fall back to PATH lookup if no alias/function exists
+    case "$shell_name" in
+        zsh)
+            # For zsh, we need interactive mode to get aliases
+            exec "$VIBETUNNEL_BIN" fwd -- "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            ;;
+        bash)
+            # For bash, expand aliases in non-interactive mode
+            exec "$VIBETUNNEL_BIN" fwd -- "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            ;;
+        *)
+            # Generic shell handling
+            exec "$VIBETUNNEL_BIN" fwd -- "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            ;;
+    esac
+}
+
+# Handle --help or -h option, or no arguments (show help)
+if [[ $# -eq 0 || "$1" == "--help" || "$1" == "-h" ]]; then
+    show_help
+    exit 0
+fi
+
+# Handle --shell or -i option (launch current shell)
+if [[ "$1" == "--shell" || "$1" == "-i" ]]; then
+    shift
+    # Execute current shell through vibetunnel
+    exec "$0" "${SHELL:-/bin/bash}" "$@"
+fi
+
+# Handle --no-shell-wrap or -S option
+NO_SHELL_WRAP=false
+if [[ "$1" == "--no-shell-wrap" || "$1" == "-S" ]]; then
+    NO_SHELL_WRAP=true
+    shift
+fi
+
+# Check if we have arguments and if the first argument is not an option
+if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
+    if [[ "$NO_SHELL_WRAP" == "true" ]]; then
+        # Execute directly without shell wrapper
+        exec "$VIBETUNNEL_BIN" fwd -- "$@"
+    else
+        # Check if the first argument is a real binary
+        if which "$1" >/dev/null 2>&1; then
+            # It's a real binary, execute directly
+            exec "$VIBETUNNEL_BIN" fwd "$@"
+        else
+            # Not a real binary, try alias resolution
+            resolve_command "$@"
+        fi
+    fi
+else
+    # Run with fwd command (original behavior for options)
+    exec "$VIBETUNNEL_BIN" fwd "$@"
+fi

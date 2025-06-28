@@ -13,6 +13,7 @@
 import { type IBufferCell, type IBufferLine, Terminal as XtermTerminal } from '@xterm/headless';
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { processKeyboardShortcuts } from '../utils/keyboard-shortcut-highlighter.js';
 import { createLogger } from '../utils/logger.js';
 import { UrlHighlighter } from '../utils/url-highlighter';
 
@@ -731,6 +732,9 @@ export class Terminal extends LitElement {
     // Process links after rendering
     UrlHighlighter.processLinks(this.container);
 
+    // Process keyboard shortcuts after rendering
+    processKeyboardShortcuts(this.container, this.handleShortcutClick);
+
     // Track render performance in debug mode
     if (this.debugMode) {
       const endTime = performance.now();
@@ -1237,6 +1241,16 @@ export class Terminal extends LitElement {
     if (this.container) {
       this.container.focus();
     }
+  };
+
+  private handleShortcutClick = (keySequence: string) => {
+    // Dispatch a custom event with the keyboard shortcut
+    this.dispatchEvent(
+      new CustomEvent('terminal-input', {
+        detail: { text: keySequence },
+        bubbles: true,
+      })
+    );
   };
 
   render() {
