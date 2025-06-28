@@ -388,16 +388,19 @@ export class SessionList extends LitElement {
     // If no exited sessions and no running sessions, don't show controls
     if (exitedSessions.length === 0 && runningSessions.length === 0) return '';
 
+    // Use consistent button styling based on compact mode
+    const buttonBaseClass = this.compactMode
+      ? 'font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 w-full'
+      : 'font-mono text-xs sm:text-sm px-3 sm:px-6 py-2 rounded-lg border transition-all duration-200';
+
     return html`
-      <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2 mt-8 pb-4 px-4 w-full">
-        <!-- First group: Show/Hide Exited and Clean Exited (when visible) -->
+      <div class="flex flex-col gap-2 mt-8 pb-4 ${this.compactMode ? 'px-0' : 'px-4'} w-full">
+        <!-- Show/Hide Exited button (always show when there are exited sessions) -->
         ${
           exitedSessions.length > 0
             ? html`
-              <div class="flex flex-col gap-2 w-full sm:w-auto">
-                <!-- Show/Hide Exited button -->
                 <button
-                  class="font-mono text-xs sm:text-sm px-3 sm:px-6 py-2 rounded-lg border transition-all duration-200 flex-1 sm:flex-none sm:w-auto sm:min-w-[180px] ${
+                  class="${buttonBaseClass} ${
                     this.hideExited
                       ? 'border-dark-border bg-dark-bg-secondary text-dark-text-muted hover:bg-dark-bg-tertiary hover:text-dark-text'
                       : 'border-dark-border bg-dark-bg-tertiary text-dark-text hover:bg-dark-bg-secondary'
@@ -407,16 +410,11 @@ export class SessionList extends LitElement {
                       new CustomEvent('hide-exited-change', { detail: !this.hideExited })
                     )}
                 >
-                  <div class="flex items-center justify-center gap-2 sm:gap-3">
-                    <span class="hidden sm:inline"
-                      >${this.hideExited ? 'Show' : 'Hide'} Exited (${exitedSessions.length})</span
-                    >
-                    <span class="sm:hidden"
-                      >${this.hideExited ? 'Show' : 'Hide'} (${exitedSessions.length})</span
-                    >
+                  <div class="flex items-center justify-between">
+                    <span>${this.hideExited ? 'Show' : 'Hide'} Exited (${exitedSessions.length})</span>
                     <div
                       class="w-8 h-4 rounded-full transition-colors duration-200 ${
-                        this.hideExited ? 'bg-dark-surface' : 'bg-dark-bg'
+                        this.hideExited ? 'bg-dark-surface' : 'bg-accent-green/20'
                       }"
                     >
                       <div
@@ -435,23 +433,19 @@ export class SessionList extends LitElement {
                   !this.hideExited
                     ? html`
                       <button
-                        class="font-mono text-xs sm:text-sm px-3 sm:px-6 py-2 rounded-lg border transition-all duration-200 flex-1 sm:flex-none sm:w-auto sm:min-w-[120px] border-dark-border bg-dark-bg-secondary text-status-warning hover:bg-dark-bg-tertiary hover:border-status-warning"
+                        class="${buttonBaseClass} border-dark-border bg-dark-bg-secondary text-status-warning hover:bg-dark-bg-tertiary hover:border-status-warning"
                         @click=${this.handleCleanupExited}
                         ?disabled=${this.cleaningExited}
                       >
-                        <span class="hidden sm:inline"
-                          >${
-                            this.cleaningExited
-                              ? 'Cleaning...'
-                              : `Clean Exited (${exitedSessions.length})`
-                          }</span
-                        >
-                        <span class="sm:hidden">${this.cleaningExited ? 'Cleaning...' : 'Clean'}</span>
+                        ${
+                          this.cleaningExited
+                            ? 'Cleaning...'
+                            : `Clean Exited (${exitedSessions.length})`
+                        }
                       </button>
                     `
                     : ''
                 }
-              </div>
             `
             : ''
         }
@@ -461,7 +455,7 @@ export class SessionList extends LitElement {
           runningSessions.length > 0
             ? html`
               <button
-                class="font-mono text-xs sm:text-sm px-3 sm:px-6 py-2 rounded-lg border transition-all duration-200 w-full sm:w-auto sm:min-w-[120px] border-status-error bg-dark-bg-secondary text-status-error hover:bg-dark-bg-tertiary hover:border-status-error"
+                class="${buttonBaseClass} border-status-error bg-dark-bg-secondary text-status-error hover:bg-dark-bg-tertiary hover:border-status-error"
                 @click=${() => this.dispatchEvent(new CustomEvent('kill-all-sessions'))}
               >
                 Kill All (${runningSessions.length})

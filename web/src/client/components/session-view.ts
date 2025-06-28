@@ -89,9 +89,12 @@ export class SessionView extends LitElement {
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
   @state() private keyboardHeight = 0;
+  @state() private isTransitioningSession = false;
 
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private createHiddenInputTimeout: ReturnType<typeof setTimeout> | null = null;
+  private sessionSwitchDebounce?: ReturnType<typeof setTimeout>;
+  private cleanupInProgress = false;
 
   // Removed methods that are now in LifecycleEventManager:
   // - handlePreferencesChanged
@@ -340,10 +343,15 @@ export class SessionView extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
 
-    // Clear any pending timeout
+    // Clear any pending timeouts
     if (this.createHiddenInputTimeout) {
       clearTimeout(this.createHiddenInputTimeout);
       this.createHiddenInputTimeout = null;
+    }
+
+    if (this.sessionSwitchDebounce) {
+      clearTimeout(this.sessionSwitchDebounce);
+      this.sessionSwitchDebounce = undefined;
     }
 
     // Use lifecycle event manager for teardown
@@ -371,43 +379,78 @@ export class SessionView extends LitElement {
     if (changedProperties.has('session')) {
       const oldSession = changedProperties.get('session') as Session | null;
       if (oldSession && oldSession.id !== this.session?.id) {
-        logger.log('Session changed, cleaning up old stream connection');
+        // Clear any pending session switch debounce
+        if (this.sessionSwitchDebounce) {
+          clearTimeout(this.sessionSwitchDebounce);
+        }
+
+        // Start transition state
+        this.isTransitioningSession = true;
+
+        // Debounce rapid session switches to prevent multiple connection attempts
+        this.sessionSwitchDebounce = setTimeout(async () => {
+          logger.log('Session changed, cleaning up old stream connection');
+          this.cleanupInProgress = true;
+          this.connected = false;
+
+          try {
+            // Perform cleanup operations
+            if (this.connectionManager) {
+              this.connectionManager.cleanupStreamConnection();
+            }
+
+            // Clear the terminal for the new session
+            const terminal = this.querySelector('vibe-terminal') as Terminal;
+            if (terminal) {
+              logger.log('Clearing terminal for session switch');
+              terminal.clear();
+            }
+
+            // Update all managers with new session
+            if (this.inputManager) {
+              this.inputManager.setSession(this.session);
+            }
+            if (this.terminalLifecycleManager) {
+              this.terminalLifecycleManager.setSession(this.session);
+            }
+            if (this.lifecycleEventManager) {
+              this.lifecycleEventManager.setSession(this.session);
+            }
+            if (this.connectionManager) {
+              this.connectionManager.setSession(this.session);
+            }
+
+            // If we have a new session, re-initialize the terminal connection
+            if (this.session && oldSession?.id !== this.session.id) {
+              logger.log('New session detected, reinitializing terminal connection');
+              // Only set connected after cleanup completes
+              this.connected = true;
+              // Clear transition state after a brief delay to ensure smooth visual transition
+              setTimeout(() => {
+                this.isTransitioningSession = false;
+              }, 100);
+            }
+          } catch (error) {
+            logger.error('Error during session transition:', error);
+            this.isTransitioningSession = false;
+          } finally {
+            this.cleanupInProgress = false;
+          }
+        }, 50); // 50ms debounce for rapid switches
+      } else {
+        // Just update managers if session properties changed but not the ID
+        if (this.inputManager) {
+          this.inputManager.setSession(this.session);
+        }
+        if (this.terminalLifecycleManager) {
+          this.terminalLifecycleManager.setSession(this.session);
+        }
+        if (this.lifecycleEventManager) {
+          this.lifecycleEventManager.setSession(this.session);
+        }
         if (this.connectionManager) {
-          this.connectionManager.cleanupStreamConnection();
+          this.connectionManager.setSession(this.session);
         }
-
-        // Clear the terminal for the new session
-        const terminal = this.querySelector('vibe-terminal') as Terminal;
-        if (terminal) {
-          logger.log('Clearing terminal for session switch');
-          terminal.clear();
-        }
-
-        // Reset the terminal connection state
-        this.connected = false;
-      }
-      // Update input manager with new session
-      if (this.inputManager) {
-        this.inputManager.setSession(this.session);
-      }
-      // Update terminal lifecycle manager with new session
-      if (this.terminalLifecycleManager) {
-        this.terminalLifecycleManager.setSession(this.session);
-      }
-      // Update lifecycle event manager with new session
-      if (this.lifecycleEventManager) {
-        this.lifecycleEventManager.setSession(this.session);
-      }
-      // Update connection manager with new session
-      if (this.connectionManager) {
-        this.connectionManager.setSession(this.session);
-      }
-
-      // If we have a new session, re-initialize the terminal connection
-      if (this.session && oldSession?.id !== this.session.id) {
-        logger.log('New session detected, will reinitialize terminal connection');
-        this.connected = true;
-        // The terminal connection will be established in the next update cycle
       }
     }
 
@@ -928,6 +971,26 @@ export class SessionView extends LitElement {
             @terminal-input=${this.handleTerminalInput}
           ></vibe-terminal>
         </div>
+
+        <!-- Session Transition Overlay -->
+        ${
+          this.isTransitioningSession
+            ? html`
+              <div
+                class="fixed inset-0 flex items-center justify-center bg-dark-bg/50 backdrop-blur-sm z-[24]"
+              >
+                <div
+                  class="bg-dark-bg-secondary border border-dark-border text-dark-text font-mono text-sm px-6 py-4 rounded-lg shadow-lg"
+                >
+                  <div class="flex items-center gap-3">
+                    <div class="animate-spin h-4 w-4 border-2 border-accent-green border-t-transparent rounded-full"></div>
+                    <span>Switching session...</span>
+                  </div>
+                </div>
+              </div>
+            `
+            : ''
+        }
 
         <!-- Floating Session Exited Banner (outside terminal container to avoid filter effects) -->
         ${
