@@ -24,11 +24,11 @@ const URL_END_CHARS_PATTERN = /[^\w\-._~:/?#[\]@!$&'()*+,;=%{}|\\^`]/;
 // - \[[\da-fA-F:]+\] - IPv6 addresses in brackets
 // - [a-zA-Z0-9][a-zA-Z0-9-]* - Domain starting with alphanumeric, followed by alphanumeric or hyphen
 // - (\.[a-zA-Z0-9][a-zA-Z0-9-]*)* - Zero or more subdomains
-// - \.[a-zA-Z]{2,} - Required TLD with at least 2 letters
+// - \.[a-zA-Z]+ - Required TLD with at least 1 letter (to support edge cases like http://a.b)
 // - (:\d+)? - Optional port number
 // - file:\/\/.+ - File protocol with any path
 const LOCALHOST_PATTERN =
-  /^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|[a-zA-Z0-9][a-zA-Z0-9-]*(\.[a-zA-Z0-9][a-zA-Z0-9-]*)*\.[a-zA-Z]{2,})(:\d+)?.*|file:\/\/.+)/;
+  /^(https?:\/\/(localhost|[\d.]+|\[[\da-fA-F:]+\]|[a-zA-Z0-9][a-zA-Z0-9-]*(\.[a-zA-Z0-9][a-zA-Z0-9-]*)*\.[a-zA-Z]+)(:\d+)?.*|file:\/\/.+)/;
 
 type ProcessedRange = {
   start: number;
