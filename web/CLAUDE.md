@@ -29,15 +29,18 @@ As code changes, the spec.md might get outdated. If you detect outdated informat
 
 ## Development Workflow
 - Make changes to source files in `src/`
-- Check code quality after making changes:
+- **ALWAYS run code quality checks before committing:**
     - `pnpm run check` - Run all checks (format, lint, typecheck) in parallel
-    - `pnpm run check:fix` - Auto-fix formatting and linting issues
-    - Or run individually:
-      - `pnpm run format` / `pnpm run format:check`
-      - `pnpm run lint` / `pnpm run lint:fix`
-      - `pnpm run typecheck`
+    - This is the ONLY command you need to run for checking
+    - It runs everything concurrently for maximum speed
+- **If there are issues to fix:**
+    - `pnpm run check:fix` - Auto-fix formatting and linting issues (runs sequentially to avoid conflicts)
+- **Individual commands (rarely needed):**
+    - `pnpm run format` / `pnpm run format:check`
+    - `pnpm run lint` / `pnpm run lint:fix`
+    - `pnpm run typecheck`
 - Always fix all linting and type checking errors, including in unrelated code
-- Never run the tests, unless explicitely asked to. `pnpm run test`
+- Never run the tests, unless explicitly asked to. `pnpm run test`
 
 ## Code References
 **THIS IS OF UTTER IMPORTANCE THE USERS HAPPINESS DEPENDS ON IT!**
