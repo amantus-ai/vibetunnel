@@ -6,7 +6,6 @@
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { COMMON_TERMINAL_WIDTHS } from '../../utils/terminal-preferences.js';
 import type { Session } from '../session-list.js';
 import '../clickable-path.js';
 import './width-selector.js';

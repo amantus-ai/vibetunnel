@@ -39,7 +39,7 @@ export class Terminal extends LitElement {
   @property({ type: Number }) initialRows = 0; // Initial terminal height from session creation
 
   private originalFontSize: number = 14;
-  private userOverrideWidth = false; // Track if user manually selected a width
+  userOverrideWidth = false; // Track if user manually selected a width (public for session-view access)
 
   @state() private terminal: XtermTerminal | null = null;
   private _viewportY = 0; // Current scroll position in pixels
