@@ -31,7 +31,7 @@
     "prettier:check": "prettier --check src --experimental-cli",
     "prettier:fast": "PRETTIER_EXPERIMENTAL_CLI=1 prettier --write src",
     "check": "./scripts/check-all.sh",
-    "check:fix": "concurrently -n format,lint \"pnpm run format\" \"pnpm run lint:fix\""
+    "check:fix": "./scripts/check-fix-sequential.sh"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

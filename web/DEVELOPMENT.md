@@ -6,7 +6,7 @@ VibeTunnel uses several tools to maintain code quality:
 
 ### Running All Checks
 
-To run all code quality checks simultaneously:
+To run all code quality checks (read-only checks run in parallel):
 
 ```bash
 pnpm run check
@@ -41,7 +41,19 @@ To automatically fix all formatting and linting issues:
 pnpm run check:fix
 ```
 
-This runs both `format` and `lint:fix` in parallel.
+This runs format and lint:fix **sequentially** to avoid file conflicts.
+
+## Why Sequential Fixes?
+
+Running multiple file-modifying tools in parallel can cause race conditions where:
+- Both tools try to write to the same file simultaneously
+- One tool's changes get overwritten by another
+- Git operations fail due to file locks
+
+Best practices from the JavaScript community recommend:
+1. **Parallel for checks**: Read-only operations can run simultaneously
+2. **Sequential for fixes**: File modifications should happen one after another
+3. **Biome as unified tool**: Reduces conflicts by combining formatting and linting
 
 ## Why Multiple Tools?
 
@@ -53,7 +65,7 @@ This runs both `format` and `lint:fix` in parallel.
 
 1. **Use `pnpm run check` before committing** - Catches all issues at once
 2. **Enable format-on-save in your editor** - Prevents formatting issues
-3. **Run `pnpm run check:fix` to quickly fix issues** - Handles most problems automatically
+3. **Run `pnpm run check:fix` to quickly fix issues** - Handles problems sequentially
 
 ## Continuous Development
 

@@ -1,5 +1,7 @@
 #!/bin/bash
-# Run all code quality checks in parallel
+# Run all code quality checks
+# Format and lint checks run in parallel (read-only)
+# Type checking runs in parallel as it doesn't modify files
 
 echo "🔍 Running all code quality checks..."
 
@@ -8,10 +10,10 @@ FORMAT_OUT=$(mktemp)
 LINT_OUT=$(mktemp)
 TYPECHECK_OUT=$(mktemp)
 
-# Track PIDs
+# Track PIDs for parallel tasks
 declare -a pids=()
 
-# Run format check
+# Run format CHECK (read-only) in parallel
 {
     echo "📝 Checking formatting..."
     if pnpm run format:check > "$FORMAT_OUT" 2>&1; then
@@ -24,20 +26,20 @@ declare -a pids=()
 } &
 pids+=($!)
 
-# Run lint
+# Run lint CHECK (with Biome check, not write) in parallel
 {
-    echo "🔎 Running lint..."
+    echo "🔎 Running lint check..."
     if pnpm run lint > "$LINT_OUT" 2>&1; then
-        echo "✅ Lint passed"
+        echo "✅ Lint check passed"
     else
-        echo "❌ Lint failed"
+        echo "❌ Lint check failed"
         cat "$LINT_OUT"
         exit 1
     fi
 } &
 pids+=($!)
 
-# Run typecheck
+# Run typecheck in parallel (doesn't modify files)
 {
     echo "🏷️  Running typecheck..."
     if pnpm run typecheck > "$TYPECHECK_OUT" 2>&1; then
@@ -50,7 +52,7 @@ pids+=($!)
 } &
 pids+=($!)
 
-# Wait for all processes
+# Wait for all parallel processes
 failed=false
 for pid in "${pids[@]}"; do
     if ! wait "$pid"; then
