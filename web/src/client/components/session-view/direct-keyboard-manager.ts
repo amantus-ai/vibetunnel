@@ -147,9 +147,6 @@ export class DirectKeyboardManager {
           // Only prevent clicks on the terminal area itself
           // This keeps focus on the hidden input when tapping the terminal
           if (target.closest('#terminal-container') || target.closest('vibe-terminal')) {
-            e.preventDefault();
-            e.stopPropagation();
-
             if (this.hiddenInput) {
               this.hiddenInput.focus();
             }
@@ -613,9 +610,9 @@ export class DirectKeyboardManager {
       this.hiddenInput.style.top = '0';
       this.hiddenInput.style.left = '0';
       this.hiddenInput.style.width = '100%';
-      this.hiddenInput.style.height = '100%';
+      this.hiddenInput.style.height = '1px';
       this.hiddenInput.style.zIndex = '10';
-      this.hiddenInput.style.pointerEvents = 'auto';
+      this.hiddenInput.style.pointerEvents = 'none';
     } else {
       // In scroll mode: position off-screen
       this.hiddenInput.style.position = 'fixed';
