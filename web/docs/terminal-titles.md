@@ -11,10 +11,14 @@ VibeTunnel provides comprehensive terminal title management features to help you
 When creating a new session through the web interface, you can enable automatic terminal title updates that show:
 - Current working directory
 - Running command
+- Session name (if provided)
 
-**Format**: `~/path/to/project — command`
+**Format**: `~/path/to/project — command — session name`
 
-**Example**: `~/Projects/vibetunnel5 — claude`
+**Examples**: 
+- `~/Projects/vibetunnel5 — claude` (no session name)
+- `~/Projects/app-frontend — npm — Frontend Dev` (with session name)
+- `~/docs — vim — Documentation`
 
 This feature:
 - Is controlled by a "Set terminal title" toggle in the session creation form (on by default)

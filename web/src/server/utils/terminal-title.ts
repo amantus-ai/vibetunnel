@@ -33,9 +33,14 @@ const PROMPT_PATTERNS = [
  *
  * @param cwd Current working directory
  * @param command Command being run
+ * @param sessionName Optional session name
  * @returns Terminal title escape sequence
  */
-export function generateTitleSequence(cwd: string, command: string[]): string {
+export function generateTitleSequence(
+  cwd: string,
+  command: string[],
+  sessionName?: string
+): string {
   // Convert absolute path to use ~ for home directory
   const homeDir = os.homedir();
   const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
@@ -43,8 +48,16 @@ export function generateTitleSequence(cwd: string, command: string[]): string {
   // Get the command name (first element of command array)
   const cmdName = command[0] || 'shell';
 
-  // Format: path — command
-  const title = `${displayPath} — ${cmdName}`;
+  // Build title parts
+  const parts = [displayPath, cmdName];
+
+  // Add session name if provided
+  if (sessionName?.trim()) {
+    parts.push(sessionName);
+  }
+
+  // Format: path — command — session name
+  const title = parts.join(' — ');
 
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
   return `\x1B]2;${title}\x07`;

@@ -412,7 +412,11 @@ export class PtyManager extends EventEmitter {
       // Inject terminal title if enabled
       if (session.setTerminalTitle) {
         const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-        const titleSequence = generateTitleSequence(currentDir, session.sessionInfo.command);
+        const titleSequence = generateTitleSequence(
+          currentDir,
+          session.sessionInfo.command,
+          session.sessionInfo.name
+        );
 
         // Send initial title immediately on first output
         if (!session.initialTitleSent) {

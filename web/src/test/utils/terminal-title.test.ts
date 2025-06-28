@@ -52,6 +52,28 @@ describe('Terminal Title Utilities', () => {
       const result = generateTitleSequence(cwd, command);
       expect(result).toBe('\x1B]2;~ — git\x07');
     });
+
+    it('should include session name when provided', () => {
+      const cwd = '/home/user/projects';
+      const command = ['npm', 'run', 'dev'];
+      const sessionName = 'Frontend Dev';
+      const result = generateTitleSequence(cwd, command, sessionName);
+      expect(result).toBe('\x1B]2;~/projects — npm — Frontend Dev\x07');
+    });
+
+    it('should handle empty session name', () => {
+      const cwd = '/home/user';
+      const command = ['vim'];
+      const result = generateTitleSequence(cwd, command, '');
+      expect(result).toBe('\x1B]2;~ — vim\x07');
+    });
+
+    it('should handle whitespace-only session name', () => {
+      const cwd = '/home/user';
+      const command = ['bash'];
+      const result = generateTitleSequence(cwd, command, '   ');
+      expect(result).toBe('\x1B]2;~ — bash\x07');
+    });
   });
 
   describe('extractCdDirectory', () => {
