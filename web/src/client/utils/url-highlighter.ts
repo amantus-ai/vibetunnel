@@ -357,17 +357,18 @@ class LinkProcessor {
           return false; // Must have at least domain.tld
         }
 
-        // Check all labels except the last one (TLD)
-        for (let i = 0; i < labels.length - 1; i++) {
+        // Check all labels including the last one
+        for (let i = 0; i < labels.length; i++) {
           if (!VALID_DOMAIN_LABEL.test(labels[i])) {
             return false;
           }
         }
 
-        // Check TLD (must be letters only)
+        // Additional check for TLD - must contain at least one letter
+        // This allows for internationalized TLDs while ensuring it's not purely numeric
         const tld = labels[labels.length - 1];
-        if (!/^[a-zA-Z]+$/.test(tld)) {
-          return false;
+        if (!/[a-zA-Z]/.test(tld)) {
+          return false; // TLD must contain at least one letter
         }
       }
 

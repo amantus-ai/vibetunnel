@@ -738,5 +738,32 @@ describe('UrlHighlighter', () => {
       const urls = getHighlightedUrls();
       expect(urls).toHaveLength(0);
     });
+
+    it('should detect internationalized domain names', () => {
+      createLines([
+        'Visit https://münchen.de',
+        'Check https://россия.рф',
+        'Go to https://香港.cn',
+        'See https://example.xn--fiqs8s', // Punycode for .中国
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      // Note: The browser's URL constructor will convert IDNs to punycode
+      expect(urls.length).toBeGreaterThan(0);
+    });
+
+    it('should validate all domain labels correctly', () => {
+      createLines([
+        'Visit https://valid.subdomain.example.com today',
+        'Check https://test-123.sub-domain.example.org now',
+        'Go to https://a.b.c.d.e.f.g.com please',
+      ]);
+      UrlHighlighter.processLinks(container);
+      const urls = getHighlightedUrls();
+      expect(urls).toHaveLength(3);
+      expect(urls[0].href).toBe('https://valid.subdomain.example.com/');
+      expect(urls[1].href).toBe('https://test-123.sub-domain.example.org/');
+      expect(urls[2].href).toBe('https://a.b.c.d.e.f.g.com/');
+    });
   });
 });
