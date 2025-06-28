@@ -350,12 +350,8 @@ export class PtyManager extends EventEmitter {
         logger.log(chalk.gray('Stdin forwarding enabled'));
       }
 
-      // Send initial title if enabled
-      if (session.setTerminalTitle && session.ptyProcess) {
-        const titleSequence = generateTitleSequence(workingDir, resolvedCommand);
-        session.ptyProcess.write(titleSequence);
-        logger.debug(`Set initial terminal title for session ${sessionId}`);
-      }
+      // Initial title will be set when the first output is received
+      // Do not write title sequence to PTY input as it would be sent to the shell
 
       return {
         sessionId,
@@ -417,7 +413,15 @@ export class PtyManager extends EventEmitter {
       if (session.setTerminalTitle) {
         const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
         const titleSequence = generateTitleSequence(currentDir, session.sessionInfo.command);
-        processedData = injectTitleIfNeeded(processedData, titleSequence);
+
+        // Send initial title immediately on first output
+        if (!session.initialTitleSent) {
+          processedData = titleSequence + processedData;
+          session.initialTitleSent = true;
+        } else {
+          // For subsequent output, only inject when we detect a prompt
+          processedData = injectTitleIfNeeded(processedData, titleSequence);
+        }
       }
 
       // Write to asciinema file (it has its own internal queue)

@@ -78,6 +78,8 @@ export interface PtySession {
   setTerminalTitle?: boolean;
   // Track current working directory for title updates
   currentWorkingDir?: string;
+  // Track if initial title has been sent
+  initialTitleSent?: boolean;
 }
 
 export class PtyError extends Error {
