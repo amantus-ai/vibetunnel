@@ -21,7 +21,13 @@ import type {
   SpecialKey,
 } from '../../shared/types.js';
 import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
+import { filterTerminalTitleSequences } from '../utils/ansi-filter.js';
 import { createLogger } from '../utils/logger.js';
+import {
+  extractCdDirectory,
+  generateTitleSequence,
+  injectTitleIfNeeded,
+} from '../utils/terminal-title.js';
 import { WriteQueue } from '../utils/write-queue.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
 import { ProcessUtils } from './process-utils.js';
@@ -317,6 +323,9 @@ export class PtyManager extends EventEmitter {
         controlPipePath: paths.controlPipePath,
         sessionJsonPath: paths.sessionJsonPath,
         startTime: new Date(),
+        preventTitleChange: options.preventTitleChange,
+        setTerminalTitle: options.setTerminalTitle,
+        currentWorkingDir: workingDir,
       };
 
       this.sessions.set(sessionId, session);
@@ -339,6 +348,13 @@ export class PtyManager extends EventEmitter {
         // Setup stdin forwarding for fwd mode
         this.setupStdinForwarding(session);
         logger.log(chalk.gray('Stdin forwarding enabled'));
+      }
+
+      // Send initial title if enabled
+      if (session.setTerminalTitle && session.ptyProcess) {
+        const titleSequence = generateTitleSequence(workingDir, resolvedCommand);
+        session.ptyProcess.write(titleSequence);
+        logger.debug(`Set initial terminal title for session ${sessionId}`);
       }
 
       return {
@@ -392,13 +408,25 @@ export class PtyManager extends EventEmitter {
 
     // Handle PTY data output
     ptyProcess.onData((data: string) => {
+      // Prevent title changes if enabled
+      let processedData = session.preventTitleChange
+        ? filterTerminalTitleSequences(data, true)
+        : data;
+
+      // Inject terminal title if enabled
+      if (session.setTerminalTitle) {
+        const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+        const titleSequence = generateTitleSequence(currentDir, session.sessionInfo.command);
+        processedData = injectTitleIfNeeded(processedData, titleSequence);
+      }
+
       // Write to asciinema file (it has its own internal queue)
-      asciinemaWriter?.writeOutput(Buffer.from(data, 'utf8'));
+      asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
 
       // Forward to stdout if requested (using queue for ordering)
       if (forwardToStdout && stdoutQueue) {
         stdoutQueue.enqueue(async () => {
-          const canWrite = process.stdout.write(data);
+          const canWrite = process.stdout.write(processedData);
           if (!canWrite) {
             await once(process.stdout, 'drain');
           }
@@ -655,6 +683,19 @@ export class PtyManager extends EventEmitter {
       if (memorySession?.ptyProcess) {
         memorySession.ptyProcess.write(dataToSend);
         memorySession.asciinemaWriter?.writeInput(dataToSend);
+
+        // Track directory changes if title setting is enabled
+        if (memorySession.setTerminalTitle && input.text) {
+          const newDir = extractCdDirectory(
+            input.text,
+            memorySession.currentWorkingDir || memorySession.sessionInfo.workingDir
+          );
+          if (newDir) {
+            memorySession.currentWorkingDir = newDir;
+            logger.debug(`Session ${sessionId} changed directory to: ${newDir}`);
+          }
+        }
+
         return; // Important: return here to avoid socket path
       } else {
         const sessionPaths = this.sessionManager.getSessionPaths(sessionId);

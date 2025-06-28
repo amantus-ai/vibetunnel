@@ -72,6 +72,12 @@ export interface PtySession {
   controlWatcher?: fs.FSWatcher;
   stdinHandler?: (data: string) => void;
   stdoutQueue?: WriteQueue;
+  // Prevent terminal title changes
+  preventTitleChange?: boolean;
+  // Set terminal title with working directory and command
+  setTerminalTitle?: boolean;
+  // Track current working directory for title updates
+  currentWorkingDir?: string;
 }
 
 export class PtyError extends Error {

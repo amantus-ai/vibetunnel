@@ -27,6 +27,7 @@ export interface SessionCreateData {
   spawn_terminal?: boolean;
   cols?: number;
   rows?: number;
+  setTerminalTitle?: boolean;
 }
 
 @customElement('session-create-form')
@@ -43,6 +44,7 @@ export class SessionCreateForm extends LitElement {
   @property({ type: Boolean }) visible = false;
   @property({ type: Object }) authClient!: AuthClient;
   @property({ type: Boolean }) spawnWindow = true;
+  @property({ type: Boolean }) setTerminalTitle = true;
 
   @state() private isCreating = false;
   @state() private showFileBrowser = false;
@@ -61,6 +63,7 @@ export class SessionCreateForm extends LitElement {
   private readonly STORAGE_KEY_WORKING_DIR = 'vibetunnel_last_working_dir';
   private readonly STORAGE_KEY_COMMAND = 'vibetunnel_last_command';
   private readonly STORAGE_KEY_SPAWN_WINDOW = 'vibetunnel_spawn_window';
+  private readonly STORAGE_KEY_SET_TERMINAL_TITLE = 'vibetunnel_set_terminal_title';
 
   connectedCallback() {
     super.connectedCallback();
@@ -105,9 +108,10 @@ export class SessionCreateForm extends LitElement {
       const savedWorkingDir = localStorage.getItem(this.STORAGE_KEY_WORKING_DIR);
       const savedCommand = localStorage.getItem(this.STORAGE_KEY_COMMAND);
       const savedSpawnWindow = localStorage.getItem(this.STORAGE_KEY_SPAWN_WINDOW);
+      const savedSetTerminalTitle = localStorage.getItem(this.STORAGE_KEY_SET_TERMINAL_TITLE);
 
       logger.debug(
-        `loading from localStorage: workingDir=${savedWorkingDir}, command=${savedCommand}, spawnWindow=${savedSpawnWindow}`
+        `loading from localStorage: workingDir=${savedWorkingDir}, command=${savedCommand}, spawnWindow=${savedSpawnWindow}, setTerminalTitle=${savedSetTerminalTitle}`
       );
 
       if (savedWorkingDir) {
@@ -118,6 +122,9 @@ export class SessionCreateForm extends LitElement {
       }
       if (savedSpawnWindow !== null) {
         this.spawnWindow = savedSpawnWindow === 'true';
+      }
+      if (savedSetTerminalTitle !== null) {
+        this.setTerminalTitle = savedSetTerminalTitle === 'true';
       }
 
       // Force re-render to update the input values
@@ -133,7 +140,7 @@ export class SessionCreateForm extends LitElement {
       const command = this.command.trim();
 
       logger.debug(
-        `saving to localStorage: workingDir=${workingDir}, command=${command}, spawnWindow=${this.spawnWindow}`
+        `saving to localStorage: workingDir=${workingDir}, command=${command}, spawnWindow=${this.spawnWindow}, setTerminalTitle=${this.setTerminalTitle}`
       );
 
       // Only save non-empty values
@@ -144,6 +151,7 @@ export class SessionCreateForm extends LitElement {
         localStorage.setItem(this.STORAGE_KEY_COMMAND, command);
       }
       localStorage.setItem(this.STORAGE_KEY_SPAWN_WINDOW, String(this.spawnWindow));
+      localStorage.setItem(this.STORAGE_KEY_SET_TERMINAL_TITLE, String(this.setTerminalTitle));
     } catch (_error) {
       logger.warn('failed to save to localStorage');
     }
@@ -190,6 +198,10 @@ export class SessionCreateForm extends LitElement {
     this.spawnWindow = !this.spawnWindow;
   }
 
+  private handleSetTerminalTitleChange() {
+    this.setTerminalTitle = !this.setTerminalTitle;
+  }
+
   private handleBrowse() {
     this.showFileBrowser = true;
   }
@@ -224,6 +236,7 @@ export class SessionCreateForm extends LitElement {
       command: this.parseCommand(this.command.trim()),
       workingDir: this.workingDir.trim(),
       spawn_terminal: this.spawnWindow,
+      setTerminalTitle: this.setTerminalTitle,
       cols: terminalCols,
       rows: terminalRows,
     };
@@ -423,6 +436,29 @@ export class SessionCreateForm extends LitElement {
                 <span
                   class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
                     this.spawnWindow ? 'translate-x-5' : 'translate-x-0.5'
+                  }"
+                ></span>
+              </button>
+            </div>
+
+            <!-- Set Terminal Title Toggle -->
+            <div class="mb-4 flex items-center justify-between">
+              <div class="flex-1 pr-4">
+                <span class="text-dark-text text-sm">Set terminal title</span>
+                <p class="text-xs text-dark-text-muted mt-1">Shows working directory and command in title</p>
+              </div>
+              <button
+                role="switch"
+                aria-checked="${this.setTerminalTitle}"
+                @click=${this.handleSetTerminalTitleChange}
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-dark-bg ${
+                  this.setTerminalTitle ? 'bg-accent-green' : 'bg-dark-border'
+                }"
+                ?disabled=${this.disabled || this.isCreating}
+              >
+                <span
+                  class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                    this.setTerminalTitle ? 'translate-x-5' : 'translate-x-0.5'
                   }"
                 ></span>
               </button>

@@ -57,6 +57,8 @@ export interface SessionCreateOptions {
   workingDir?: string;
   cols?: number;
   rows?: number;
+  preventTitleChange?: boolean;
+  setTerminalTitle?: boolean;
 }
 
 /**

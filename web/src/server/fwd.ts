@@ -25,16 +25,25 @@ function showUsage() {
   console.log(chalk.blue(`VibeTunnel Forward v${VERSION}`) + chalk.gray(` (${BUILD_DATE})`));
   console.log('');
   console.log('Usage:');
-  console.log('  pnpm exec tsx src/fwd.ts [--session-id <id>] <command> [args...]');
+  console.log(
+    '  pnpm exec tsx src/fwd.ts [--session-id <id>] [--prevent-title-change] <command> [args...]'
+  );
   console.log('');
   console.log('Options:');
   console.log('  --session-id <id>   Use a pre-generated session ID');
+  console.log('  --prevent-title-change  Prevent terminal title from being changed');
+  console.log('');
+  console.log('Environment Variables:');
+  console.log(
+    '  VIBETUNNEL_PREVENT_TITLE_CHANGE=1  Prevent title changes (same as --prevent-title-change)'
+  );
   console.log('');
   console.log('Examples:');
   console.log('  pnpm exec tsx src/fwd.ts claude --resume');
   console.log('  pnpm exec tsx src/fwd.ts bash -l');
   console.log('  pnpm exec tsx src/fwd.ts python3 -i');
   console.log('  pnpm exec tsx src/fwd.ts --session-id abc123 claude');
+  console.log('  pnpm exec tsx src/fwd.ts --prevent-title-change claude');
   console.log('');
   console.log('The command will be spawned in the current working directory');
   console.log('and managed through the VibeTunnel PTY infrastructure.');
@@ -55,13 +64,31 @@ export async function startVibeTunnelForward(args: string[]) {
 
   logger.log(chalk.blue(`VibeTunnel Forward v${VERSION}`) + chalk.gray(` (${BUILD_DATE})`));
 
-  // Check for --session-id parameter
+  // Parse command line arguments
   let sessionId: string | undefined;
+  let preventTitleChange = false;
   let remainingArgs = args;
 
-  if (args[0] === '--session-id' && args.length > 1) {
-    sessionId = args[1];
-    remainingArgs = args.slice(2);
+  // Check environment variable for preventing title changes
+  if (
+    process.env.VIBETUNNEL_PREVENT_TITLE_CHANGE === '1' ||
+    process.env.VIBETUNNEL_PREVENT_TITLE_CHANGE === 'true'
+  ) {
+    preventTitleChange = true;
+  }
+
+  // Parse flags
+  while (remainingArgs.length > 0) {
+    if (remainingArgs[0] === '--session-id' && remainingArgs.length > 1) {
+      sessionId = remainingArgs[1];
+      remainingArgs = remainingArgs.slice(2);
+    } else if (remainingArgs[0] === '--prevent-title-change') {
+      preventTitleChange = true;
+      remainingArgs = remainingArgs.slice(1);
+    } else {
+      // Not a flag, must be the start of the command
+      break;
+    }
   }
 
   // Handle -- separator (used by some shells as end-of-options marker)
@@ -100,6 +127,9 @@ export async function startVibeTunnelForward(args: string[]) {
 
     logger.log(`Creating session for command: ${command.join(' ')}`);
     logger.debug(`Session ID: ${finalSessionId}, working directory: ${cwd}`);
+    if (preventTitleChange) {
+      logger.log(chalk.cyan('✓ Terminal title changes will be prevented'));
+    }
 
     const result = await ptyManager.createSession(command, {
       sessionId: finalSessionId,
@@ -107,6 +137,7 @@ export async function startVibeTunnelForward(args: string[]) {
       workingDir: cwd,
       cols: originalCols,
       rows: originalRows,
+      preventTitleChange: preventTitleChange,
       forwardToStdout: true,
       onExit: async (exitCode: number) => {
         // Show exit message
