@@ -38,8 +38,8 @@ export function generateTitleSequence(cwd: string, command: string[]): string {
  * @returns New directory if cd command detected, null otherwise
  */
 export function extractCdDirectory(input: string, currentDir: string): string | null {
-  // Match various cd patterns
-  const cdRegex = /^\s*cd\s+(.+?)(?:\s*[;&|]|$)/;
+  // Match various cd patterns - handle newlines at the end
+  const cdRegex = /^\s*cd\s+(.+?)(?:\s*[;&|\n]|$)/;
   const match = input.match(cdRegex);
 
   if (!match) {

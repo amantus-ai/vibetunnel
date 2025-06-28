@@ -77,7 +77,7 @@ describe('PTY Terminal Title Integration', () => {
     const sessionId = `test-${uuidv4()}`;
     testSessionIds.push(sessionId);
 
-    await ptyManager.createSession(['bash', '-i'], {
+    await ptyManager.createSession(['echo', 'test'], {
       sessionId,
       name: 'test-session',
       workingDir: process.cwd(),
@@ -90,14 +90,20 @@ describe('PTY Terminal Title Integration', () => {
     // Initial working directory
     expect(session?.currentWorkingDir).toBe(process.cwd());
 
-    // Send cd command
+    // Simulate sending a cd command - the tracking happens on input
     ptyManager.sendInput(sessionId, { text: 'cd /tmp\n' });
 
-    // Wait a bit for the command to be processed
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Check that working directory was updated
+    // The directory tracking happens immediately on input
+    // (not waiting for shell to actually process it)
     expect(session?.currentWorkingDir).toBe('/tmp');
+
+    // Test relative path
+    ptyManager.sendInput(sessionId, { text: 'cd ..\n' });
+    expect(session?.currentWorkingDir).toBe(path.dirname('/tmp'));
+
+    // Test home directory
+    ptyManager.sendInput(sessionId, { text: 'cd ~\n' });
+    expect(session?.currentWorkingDir).toBe(os.homedir());
   });
 
   it('should filter title sequences when preventTitleChange is enabled', async () => {

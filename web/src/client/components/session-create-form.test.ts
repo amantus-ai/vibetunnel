@@ -218,6 +218,7 @@ describe('SessionCreateForm', () => {
         command: ['npm', 'run', 'dev'],
         workingDir: '/home/user/project',
         spawn_terminal: true,
+        setTerminalTitle: true, // Default value for the toggle
         cols: 120,
         rows: 30,
       });
