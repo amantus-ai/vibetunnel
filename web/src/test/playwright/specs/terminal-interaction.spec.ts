@@ -10,7 +10,7 @@ test.describe('Terminal Interaction', () => {
     // Clean up and create a new session
     await cleanupSessions(page);
     await sessionListPage.navigate();
-    await sessionListPage.createNewSession('Terminal Test');
+    await sessionListPage.createNewSession('Terminal Test', false);
     await sessionViewPage.waitForTerminalReady();
     await waitForShellPrompt(page);
   });

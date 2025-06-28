@@ -74,13 +74,18 @@ export class SessionViewPage extends BasePage {
 
   async pasteText(text: string) {
     await this.page.click(this.terminalScreenSelector);
-    // Use clipboard API if available, otherwise type
-    await this.page.evaluate(async (textToPaste) => {
-      if (navigator.clipboard) {
+    // Use clipboard API if available, otherwise type directly
+    const clipboardAvailable = await this.page.evaluate(() => !!navigator.clipboard);
+
+    if (clipboardAvailable) {
+      await this.page.evaluate(async (textToPaste) => {
         await navigator.clipboard.writeText(textToPaste);
-      }
-    }, text);
-    await this.page.keyboard.press('Control+v');
+      }, text);
+      await this.page.keyboard.press('Control+v');
+    } else {
+      // Fallback: type the text directly
+      await this.page.keyboard.type(text);
+    }
   }
 
   async navigateBack() {

@@ -6,12 +6,30 @@ export class SessionListPage extends BasePage {
     await this.waitForLoadComplete();
   }
 
-  async createNewSession(sessionName?: string) {
+  async createNewSession(sessionName?: string, spawnWindow = false) {
     // Click the create session button (it's an icon button with title)
     await this.page.click('button[title="Create New Session"]');
 
     // Wait for the modal to appear by checking for the session name input
     await this.page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
+
+    // IMPORTANT: Set spawn window toggle to create web sessions, not native terminals
+    const spawnWindowToggle = this.page.locator('button[role="switch"]');
+    const isSpawnWindowOn = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
+
+    // If current state doesn't match desired state, click to toggle
+    if (isSpawnWindowOn !== spawnWindow) {
+      await spawnWindowToggle.click();
+      // Verify the toggle state changed
+      await this.page.waitForFunction(
+        (expectedState) => {
+          const toggle = document.querySelector('button[role="switch"]');
+          return toggle?.getAttribute('aria-checked') === expectedState;
+        },
+        spawnWindow ? 'true' : 'false',
+        { timeout: 2000 }
+      );
+    }
 
     // Fill in the session name if provided
     if (sessionName) {
@@ -21,8 +39,11 @@ export class SessionListPage extends BasePage {
     // Submit the form - click the Create button
     await this.page.click('button:has-text("Create")');
 
-    // Wait for navigation to session view
-    await this.page.waitForSelector('session-view', { state: 'visible' });
+    // Wait for navigation to session view (only for web sessions)
+    if (!spawnWindow) {
+      await this.page.waitForURL(/\?session=/, { timeout: 10000 });
+      await this.page.waitForSelector('vibe-terminal', { state: 'visible' });
+    }
   }
 
   async getSessionCards() {

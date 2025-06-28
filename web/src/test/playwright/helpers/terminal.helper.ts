@@ -108,9 +108,15 @@ export async function cleanupSessions(page: Page) {
     for (let i = sessionCards - 1; i >= 0; i--) {
       const killButton = page.locator('session-card').nth(i).locator('button:has-text("Kill")');
       if (await killButton.isVisible()) {
+        // Set up dialog handler before clicking
+        const dialogPromise = page.waitForEvent('dialog');
         await killButton.click();
-        // Accept confirmation dialog
-        page.once('dialog', (dialog) => dialog.accept());
+
+        // Wait for and accept confirmation dialog
+        const dialog = await dialogPromise;
+        await dialog.accept();
+
+        // Wait for the session to be removed from DOM
         await page.waitForTimeout(500);
       }
     }

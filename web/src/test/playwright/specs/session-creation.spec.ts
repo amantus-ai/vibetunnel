@@ -15,8 +15,8 @@ test.describe('Session Creation', () => {
     // Navigate to session list
     await sessionListPage.navigate();
 
-    // Create a new session without specifying a name
-    await sessionListPage.createNewSession();
+    // Create a new session without specifying a name (spawn window = false for web session)
+    await sessionListPage.createNewSession(undefined, false);
 
     // Verify we're in the session view (URL should have session query param)
     await expect(sessionViewPage.page).toHaveURL(/\?session=/);
@@ -42,8 +42,8 @@ test.describe('Session Creation', () => {
     // Navigate to session list
     await sessionListPage.navigate();
 
-    // Create a new session with custom name
-    await sessionListPage.createNewSession(sessionName);
+    // Create a new session with custom name (spawn window = false for web session)
+    await sessionListPage.createNewSession(sessionName, false);
 
     // Verify we're in the session view (URL should have session query param)
     await expect(sessionViewPage.page).toHaveURL(/\?session=/);

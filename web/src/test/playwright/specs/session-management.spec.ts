@@ -16,7 +16,7 @@ test.describe('Session Management', () => {
 
     // Create a session
     await sessionListPage.navigate();
-    await sessionListPage.createNewSession(sessionName);
+    await sessionListPage.createNewSession(sessionName, false);
     await sessionViewPage.waitForTerminalReady();
 
     // Navigate back to list
@@ -42,7 +42,7 @@ test.describe('Session Management', () => {
 
     // Create a session
     await sessionListPage.navigate();
-    await sessionListPage.createNewSession(sessionName);
+    await sessionListPage.createNewSession(sessionName, false);
     await sessionViewPage.waitForTerminalReady();
     await waitForShellPrompt(page);
 
@@ -68,7 +68,7 @@ test.describe('Session Management', () => {
 
     // Create a session
     await sessionListPage.navigate();
-    await sessionListPage.createNewSession(sessionName);
+    await sessionListPage.createNewSession(sessionName, false);
     await sessionViewPage.waitForTerminalReady();
 
     // Navigate back to see the session card
@@ -90,7 +90,7 @@ test.describe('Session Management', () => {
 
     // Create first session
     await sessionListPage.navigate();
-    await sessionListPage.createNewSession(session1);
+    await sessionListPage.createNewSession(session1, false);
     await sessionViewPage.waitForTerminalReady();
 
     // Type a command to identify session 1
@@ -99,7 +99,7 @@ test.describe('Session Management', () => {
 
     // Create second session
     await sessionViewPage.navigateBack();
-    await sessionListPage.createNewSession(session2);
+    await sessionListPage.createNewSession(session2, false);
     await sessionViewPage.waitForTerminalReady();
 
     // Type a command to identify session 2
@@ -135,7 +135,7 @@ test.describe('Session Management', () => {
 
     // Create a session
     await sessionListPage.navigate();
-    await sessionListPage.createNewSession(sessionName);
+    await sessionListPage.createNewSession(sessionName, false);
     await sessionViewPage.waitForTerminalReady();
     await waitForShellPrompt(page);
 
@@ -160,7 +160,7 @@ test.describe('Session Management', () => {
 
     // Create a session
     await sessionListPage.navigate();
-    await sessionListPage.createNewSession(sessionName);
+    await sessionListPage.createNewSession(sessionName, false);
     await sessionViewPage.waitForTerminalReady();
     await waitForShellPrompt(page);
 
@@ -194,7 +194,7 @@ test.describe('Session Management', () => {
 
     // Create a session
     await sessionListPage.navigate();
-    await sessionListPage.createNewSession(sessionName);
+    await sessionListPage.createNewSession(sessionName, false);
     await sessionViewPage.waitForTerminalReady();
 
     // Type a command
