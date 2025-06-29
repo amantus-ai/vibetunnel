@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { generateTestSessionName } from '../helpers/terminal.helper';
-import { createSession, waitForSessionsToLoad } from '../helpers/session.helper';
 import { navigateToHome } from '../helpers/navigation.helper';
+import { createSession, waitForSessionsToLoad } from '../helpers/session.helper';
+import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('Minimal Session Tests', () => {
   test('should create and list a session', async ({ page }) => {
