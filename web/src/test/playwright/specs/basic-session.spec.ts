@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
+import { navigateToHome } from '../helpers/navigation.helper';
 import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('Basic Session Tests', () => {
@@ -52,7 +53,7 @@ test.describe('Basic Session Tests', () => {
     await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
 
     // Go back to session list
-    await page.goto('/');
+    await navigateToHome(page);
 
     // Wait for the page to fully load
     await page.waitForLoadState('networkidle');
@@ -87,7 +88,7 @@ test.describe('Basic Session Tests', () => {
     const firstSessionUrl = page.url();
 
     // Second session
-    await page.goto('/');
+    await navigateToHome(page);
     await page.click('button[title="Create New Session"]');
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
@@ -107,7 +108,7 @@ test.describe('Basic Session Tests', () => {
     expect(firstSessionUrl).not.toBe(secondSessionUrl);
 
     // Go back to session list
-    await page.goto('/');
+    await navigateToHome(page);
 
     // Wait for the page to fully load
     await page.waitForLoadState('networkidle');

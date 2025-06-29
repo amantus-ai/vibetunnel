@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
+import { navigateToHome } from '../helpers/navigation.helper';
 import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('UI Features', () => {
@@ -94,7 +95,7 @@ test.describe('UI Features', () => {
     await page.waitForURL(/\?session=/);
 
     // Go back to see updated count
-    await page.goto('/');
+    await navigateToHome(page);
     // Wait for session list to load
     await page.waitForSelector('session-card', { state: 'visible' });
 
@@ -154,7 +155,7 @@ test.describe('UI Features', () => {
     await page.waitForURL(/\?session=/);
 
     // Go back to list
-    await page.goto('/');
+    await navigateToHome(page);
     await page.waitForSelector('session-card', { state: 'visible' });
 
     // Find our session card

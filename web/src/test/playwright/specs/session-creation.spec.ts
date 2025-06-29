@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
+import { navigateToHome } from '../helpers/navigation.helper';
 import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('Session Creation', () => {
@@ -123,7 +124,7 @@ test.describe('Session Creation', () => {
     await page.waitForURL(/\?session=/, { timeout: 4000 });
 
     // Go back to list using browser navigation
-    await page.goto('/');
+    await navigateToHome(page);
     await page.waitForSelector('session-card', { state: 'visible' });
 
     // Create second session
@@ -131,7 +132,7 @@ test.describe('Session Creation', () => {
     await page.waitForURL(/\?session=/, { timeout: 4000 });
 
     // Go back to list
-    await page.goto('/');
+    await navigateToHome(page);
 
     // Wait for and verify both sessions are visible
     const cards = await page.locator('session-card').all();

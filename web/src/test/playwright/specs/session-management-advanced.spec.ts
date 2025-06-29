@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
+import { navigateToHome } from '../helpers/navigation.helper';
 import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('Advanced Session Management', () => {
@@ -22,7 +23,7 @@ test.describe('Advanced Session Management', () => {
     await page.waitForURL(/\?session=/);
 
     // Go back to session list
-    await page.goto('/');
+    await navigateToHome(page);
     await page.waitForSelector('session-card', { state: 'visible' });
 
     // Find the session card
@@ -122,7 +123,7 @@ test.describe('Advanced Session Management', () => {
       await page.waitForURL(/\?session=/);
 
       // Go back to list
-      await page.goto('/');
+      await navigateToHome(page);
       await page.waitForSelector('session-card', { state: 'visible' });
     }
 
@@ -234,7 +235,7 @@ test.describe('Advanced Session Management', () => {
     // We can't test clipboard content directly in Playwright
 
     // Go back to list view
-    await page.goto('/');
+    await navigateToHome(page);
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
 
     // Hover to see PID copy option
@@ -296,7 +297,7 @@ test.describe('Advanced Session Management', () => {
       await page.waitForURL(/\?session=/);
 
       // Go back to list
-      await page.goto('/');
+      await navigateToHome(page);
       await page.waitForSelector('session-card', { state: 'visible' });
     }
 
@@ -315,7 +316,7 @@ test.describe('Advanced Session Management', () => {
     await page.waitForURL(/\?session=/);
 
     // Go back to list
-    await page.goto('/');
+    await navigateToHome(page);
     await page.waitForSelector('session-card', { state: 'visible' });
 
     // Kill this session
