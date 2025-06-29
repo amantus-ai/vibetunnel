@@ -127,7 +127,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
   router.post('/sessions', async (req, res) => {
     const { command, workingDir, name, remoteId, spawn_terminal, cols, rows } = req.body;
     logger.debug(
-      `creating new session: command=${JSON.stringify(command)}, remoteId=${remoteId || 'local'}, cols=${cols}, rows=${rows}`
+      `creating new session: command=${JSON.stringify(command)}, remoteId=${remoteId || 'local'}, spawn_terminal=${spawn_terminal}, cols=${cols}, rows=${rows}`
     );
 
     if (!command || !Array.isArray(command) || command.length === 0) {
@@ -183,51 +183,81 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         return;
       }
 
-      // If spawn_terminal is true and socket exists, use the spawn-terminal logic
+      // Handle spawn_terminal logic
       const socketPath = '/tmp/vibetunnel-terminal.sock';
-      if (spawn_terminal && fs.existsSync(socketPath)) {
-        try {
-          // Generate session ID
-          const sessionId = generateSessionId();
-          const sessionName =
-            name || generateSessionName(command, resolvePath(workingDir, process.cwd()));
+      let shouldFallbackToNormalSpawn = false;
 
-          // Request Mac app to spawn terminal
-          logger.log(
-            chalk.blue(`requesting terminal spawn with command: ${JSON.stringify(command)}`)
+      if (spawn_terminal) {
+        if (fs.existsSync(socketPath)) {
+          logger.debug(
+            `spawn_terminal is true, attempting to use terminal socket at ${socketPath}`
           );
-          const spawnResult = await requestTerminalSpawn({
-            sessionId,
-            sessionName,
-            command,
-            workingDir: resolvePath(workingDir, process.cwd()),
-          });
+          try {
+            // Generate session ID
+            const sessionId = generateSessionId();
+            const sessionName =
+              name || generateSessionName(command, resolvePath(workingDir, process.cwd()));
 
-          if (!spawnResult.success) {
-            if (spawnResult.error?.includes('ECONNREFUSED')) {
-              logger.debug('terminal spawn socket not available, falling back to normal spawn');
+            // Request Mac app to spawn terminal
+            logger.log(
+              chalk.blue(`requesting terminal spawn with command: ${JSON.stringify(command)}`)
+            );
+            const spawnResult = await requestTerminalSpawn({
+              sessionId,
+              sessionName,
+              command,
+              workingDir: resolvePath(workingDir, process.cwd()),
+            });
+
+            if (!spawnResult.success) {
+              if (spawnResult.error?.includes('ECONNREFUSED')) {
+                logger.debug(
+                  'terminal spawn socket not available (ECONNREFUSED), falling back to normal spawn'
+                );
+                shouldFallbackToNormalSpawn = true;
+              } else {
+                logger.error('terminal spawn failed:', spawnResult.error);
+                res.status(500).json({
+                  error: 'Failed to spawn terminal',
+                  details: spawnResult.error || 'Unknown error',
+                });
+                return;
+              }
             } else {
-              throw new Error(spawnResult.error || 'Failed to spawn terminal');
-            }
-          } else {
-            // Wait a bit for the session to be created
-            await new Promise((resolve) => setTimeout(resolve, 500));
+              // Success - wait a bit for the session to be created
+              await new Promise((resolve) => setTimeout(resolve, 500));
 
-            // Return the session ID - client will poll for the session to appear
-            logger.log(chalk.green(`terminal spawn requested for session ${sessionId}`));
-            res.json({ sessionId, message: 'Terminal spawn requested' });
+              // Return the session ID - client will poll for the session to appear
+              logger.log(chalk.green(`terminal spawn requested for session ${sessionId}`));
+              res.json({ sessionId, message: 'Terminal spawn requested' });
+              return;
+            }
+          } catch (error) {
+            logger.error('error spawning terminal:', error);
+            res.status(500).json({
+              error: 'Failed to spawn terminal',
+              details: error instanceof Error ? error.message : 'Unknown error',
+            });
             return;
           }
-        } catch (error) {
-          logger.error('error spawning terminal:', error);
-          res.status(500).json({
-            error: 'Failed to spawn terminal',
-            details: error instanceof Error ? error.message : 'Unknown error',
-          });
-          return;
+        } else {
+          logger.debug(
+            `spawn_terminal is true but socket doesn't exist at ${socketPath}, falling back to normal spawn`
+          );
+          shouldFallbackToNormalSpawn = true;
         }
-      } else if (spawn_terminal && !fs.existsSync(socketPath)) {
-        logger.debug('terminal spawn socket not available, falling back to normal spawn');
+      } else {
+        logger.debug('spawn_terminal is false, creating normal web session');
+      }
+
+      // If we should NOT fallback and spawn_terminal was requested, return error
+      if (spawn_terminal && !shouldFallbackToNormalSpawn) {
+        logger.error('spawn_terminal requested but unable to spawn and no fallback allowed');
+        res.status(500).json({
+          error: 'Terminal spawn not available',
+          details: 'Unable to connect to terminal spawn service',
+        });
+        return;
       }
 
       // Create local session

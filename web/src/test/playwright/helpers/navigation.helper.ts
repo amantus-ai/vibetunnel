@@ -16,6 +16,11 @@ export async function navigateToHome(page: Page): Promise<void> {
   if (await appTitle.isVisible({ timeout: 1000 })) {
     await appTitle.click();
     await page.waitForURL('/');
+
+    // Wait for the session list to load after navigation
+    // This ensures the app has time to fetch and render sessions
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500); // Give the app time to fetch sessions
     return;
   }
 
@@ -23,9 +28,12 @@ export async function navigateToHome(page: Page): Promise<void> {
   try {
     await page.goBack();
     await page.waitForURL('/');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500); // Give the app time to fetch sessions
   } catch {
     // Last resort: use page.goto if all else fails
     // This should only happen at the very beginning of tests
     await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
   }
 }

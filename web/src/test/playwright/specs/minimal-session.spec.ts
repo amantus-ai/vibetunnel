@@ -1,53 +1,34 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { generateTestSessionName } from '../helpers/terminal.helper';
+import { createSession, waitForSessionsToLoad } from '../helpers/session.helper';
+import { navigateToHome } from '../helpers/navigation.helper';
 
 test.describe('Minimal Session Tests', () => {
   test('should create and list a session', async ({ page }) => {
-    // Wait for create button to be available (page is already navigated in fixture)
+    // Wait for page to be ready
     await page.waitForSelector('button[title="Create New Session"]', {
       state: 'visible',
       timeout: 5000,
     });
 
-    // Click the create session button
-    await page.click('button[title="Create New Session"]');
-
-    // Wait for the modal content to appear (modal renders nothing when not visible)
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
-
-    // IMPORTANT: Turn OFF "Spawn window" to create web sessions instead of native terminals
-    // Find the toggle switch by its role and current state
-    const spawnWindowToggle = page.locator('button[role="switch"]');
-    const isSpawnWindowOn = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
-    if (isSpawnWindowOn) {
-      await spawnWindowToggle.click();
-      // Verify it's now off
-      await expect(spawnWindowToggle).toHaveAttribute('aria-checked', 'false');
-    }
-
-    // Fill in session name
+    // Create a session with spawn_terminal: false
     const sessionName = generateTestSessionName();
-    await page.fill('input[placeholder="My Session"]', sessionName);
+    const sessionId = await createSession(page, {
+      name: sessionName,
+      spawnWindow: false,
+    });
 
-    // Click create button
-    await page.locator('button').filter({ hasText: 'Create' }).click();
+    console.log(`Created session ${sessionId} with name: ${sessionName}`);
 
-    // Verify we navigated to a session
-    await expect(page).toHaveURL(/\?session=/, { timeout: 10000 });
+    // Navigate back to home
+    await navigateToHome(page);
 
-    // Wait for terminal to be visible
-    await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
+    // Wait for sessions to load
+    await waitForSessionsToLoad(page);
 
-    // Go back to session list using UI navigation instead of page.goto
-    // This better simulates real user behavior and maintains session state
-    await page.click('button:has(h1:has-text("VibeTunnel"))');
-
-    // Wait for navigation to complete and session list to load
-    await page.waitForURL('/');
-    await page.waitForLoadState('domcontentloaded');
-
-    // Wait for session cards to appear with increased timeout for CI
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
+    // Debug: log all session cards found
+    const sessionCount = await page.locator('session-card').count();
+    console.log(`Found ${sessionCount} session cards after navigation`);
 
     // Check if our session is listed
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
@@ -61,86 +42,48 @@ test.describe('Minimal Session Tests', () => {
       timeout: 5000,
     });
 
-    const sessions = [];
+    const sessionNames: string[] = [];
+    const sessionIds: string[] = [];
 
     // Create 3 sessions
     for (let i = 0; i < 3; i++) {
       // Make sure we're on the home page before creating a session
       const currentUrl = page.url();
       if (currentUrl.includes('?session=')) {
-        // Navigate back using UI instead of page.goto
-        await page.click('button:has(h1:has-text("VibeTunnel"))');
-        await page.waitForURL('/');
-        await page.waitForSelector('button[title="Create New Session"]', {
-          state: 'visible',
-          timeout: 5000,
-        });
+        await navigateToHome(page);
+        await waitForSessionsToLoad(page);
       }
 
-      // Click create button
-      await page.click('button[title="Create New Session"]');
-
-      // Wait for the modal content to appear
-      await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
-
-      // IMPORTANT: Turn OFF "Spawn window" toggle
-      const spawnWindowToggle = page.locator('button[role="switch"]');
-      const isSpawnWindowOn = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
-      if (isSpawnWindowOn) {
-        await spawnWindowToggle.click();
-        await expect(spawnWindowToggle).toHaveAttribute('aria-checked', 'false');
-      }
-
-      // Give unique name
+      // Create a session
       const name = generateTestSessionName();
-      sessions.push(name);
-      await page.fill('input[placeholder="My Session"]', name);
+      sessionNames.push(name);
 
-      // Wait for form to be ready
-      await page.waitForTimeout(200); // Small delay to ensure form is ready
-
-      // Click create button in modal
-      const createButton = page.locator('button').filter({ hasText: 'Create' }).first();
-      await expect(createButton).toBeEnabled({ timeout: 1000 });
-      await createButton.click();
-
-      // Wait for navigation to session
-      await page.waitForURL(/\?session=/, { timeout: 4000 });
-
-      // Wait for terminal to be visible
-      await page.waitForSelector('vibe-terminal', {
-        state: 'visible',
-        timeout: 4000,
+      const sessionId = await createSession(page, {
+        name,
+        spawnWindow: false,
       });
+      sessionIds.push(sessionId);
 
-      // Wait for terminal to be fully initialized
-      await page.waitForFunction(
-        () => {
-          const terminal = document.querySelector('vibe-terminal');
-          return terminal && (terminal.textContent?.trim().length > 0 || !!terminal.shadowRoot);
-        },
-        { timeout: 2000 }
-      );
+      console.log(`Created session ${i + 1}: ${sessionId} with name: ${name}`);
     }
 
-    // Navigate back to home using UI navigation
-    await page.click('button:has(h1:has-text("VibeTunnel"))');
+    // Navigate back to home
+    await navigateToHome(page);
 
-    // Wait for navigation to complete
-    await page.waitForURL('/');
-    await page.waitForLoadState('domcontentloaded');
+    // Wait for sessions to load
+    await waitForSessionsToLoad(page);
 
-    // Wait for session cards to load with increased timeout for CI
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
+    // Debug: log session count
+    const totalCards = await page.locator('session-card').count();
+    console.log(`Found ${totalCards} total session cards`);
 
     // Verify all sessions are listed
-    for (const sessionName of sessions) {
+    for (const sessionName of sessionNames) {
       const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
       await expect(sessionCard).toBeVisible({ timeout: 10000 });
     }
 
     // Count total session cards (should be at least our 3)
-    const totalCards = await page.locator('session-card').count();
     expect(totalCards).toBeGreaterThanOrEqual(3);
   });
 });
