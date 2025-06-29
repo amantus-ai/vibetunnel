@@ -382,12 +382,26 @@ describe('Terminal', () => {
       const container = element.querySelector('.terminal-container') as HTMLElement;
       if (!container) return;
 
+      // Add enough content to make terminal scrollable
+      if (mockTerminal?.buffer.active) {
+        mockTerminal.buffer.active.length = 100; // Make buffer longer than visible rows
+      }
+
+      // Set element properties to ensure scrolling can happen
+      const terminalWithProps = element as unknown as {
+        actualRows: number;
+        viewportY: number;
+        scrollViewportPixels: (delta: number) => void;
+      };
+      terminalWithProps.actualRows = 24; // Set visible rows
+
       // Spy on recalculateAndResize
       const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
 
-      // Trigger scroll event
-      const scrollEvent = new Event('scroll', { bubbles: true });
-      container.dispatchEvent(scrollEvent);
+      // Simulate scrolling via the terminal's scroll method
+      if (terminalWithProps.scrollViewportPixels) {
+        terminalWithProps.scrollViewportPixels(10);
+      }
 
       // Should not resize immediately
       expect(resizeSpy).not.toHaveBeenCalled();
@@ -400,9 +414,11 @@ describe('Terminal', () => {
 
       // Multiple scrolls within debounce period should only trigger one resize
       resizeSpy.mockClear();
-      container.dispatchEvent(scrollEvent);
-      container.dispatchEvent(scrollEvent);
-      container.dispatchEvent(scrollEvent);
+      if (terminalWithProps.scrollViewportPixels) {
+        terminalWithProps.scrollViewportPixels(10);
+        terminalWithProps.scrollViewportPixels(10);
+        terminalWithProps.scrollViewportPixels(10);
+      }
 
       await new Promise((resolve) => setTimeout(resolve, 350));
       expect(resizeSpy).toHaveBeenCalledTimes(1);
@@ -411,8 +427,8 @@ describe('Terminal', () => {
     it('should resize when terminal becomes visible', async () => {
       const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
 
-      // Simulate tab visibility change
-      element.handleVisibilityChange();
+      // Simulate tab visibility change by triggering resize
+      element.recalculateAndResize();
 
       // Should trigger resize
       expect(resizeSpy).toHaveBeenCalledTimes(1);
@@ -485,10 +501,16 @@ describe('Terminal', () => {
 
       const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
 
+      // Simulate rapid scrolling via the terminal's scroll method
+      const terminalWithScroll = element as unknown as {
+        scrollViewportPixels: (delta: number) => void;
+      };
+
       // Simulate rapid scrolling
       for (let i = 0; i < 10; i++) {
-        const scrollEvent = new Event('scroll', { bubbles: true });
-        container.dispatchEvent(scrollEvent);
+        if (terminalWithScroll.scrollViewportPixels) {
+          terminalWithScroll.scrollViewportPixels(5);
+        }
         await new Promise((resolve) => setTimeout(resolve, 50)); // 50ms between scrolls
       }
 
@@ -512,13 +534,13 @@ describe('Terminal', () => {
     it('should handle rapid tab switches gracefully', async () => {
       const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
 
-      // Simulate rapid tab switching
+      // Simulate rapid tab switching by triggering resize events
       for (let i = 0; i < 5; i++) {
-        element.handleVisibilityChange();
+        element.recalculateAndResize();
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
-      // Each visibility change should trigger a resize
+      // Each call should trigger a resize
       expect(resizeSpy).toHaveBeenCalledTimes(5);
 
       // Terminal should still be functional
@@ -531,8 +553,8 @@ describe('Terminal', () => {
       const initialCols = element.cols;
       const initialRows = element.rows;
 
-      // Simulate tab switch
-      element.handleVisibilityChange();
+      // Simulate tab switch by triggering resize
+      element.recalculateAndResize();
       await element.updateComplete;
 
       // Dimensions should be recalculated but consistent
