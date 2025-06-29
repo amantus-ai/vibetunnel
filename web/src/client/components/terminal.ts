@@ -153,8 +153,8 @@ export class Terminal extends LitElement {
         // Update tracking IDs for the new session
         this.currentRenderSessionId = this.sessionId;
         this.expectedSessionId = this.sessionId;
-        // CRITICAL: Do NOT reset lastWriteSessionId here - we need it to reject old writes
-        // It will be updated when the first write from the new session arrives
+        // Reset lastWriteSessionId to ensure old session data is rejected
+        this.lastWriteSessionId = '';
 
         // CRITICAL: Clear everything immediately
         if (this.container) {
@@ -168,59 +168,11 @@ export class Terminal extends LitElement {
         }
 
         if (this.terminal) {
-          // Clear the terminal buffer completely
-          this.terminal.clear();
-          this.terminal.reset();
-
-          // CRITICAL: Access internal buffer service to completely clear all buffers
-          // This ensures no content from previous sessions can persist
-          // @ts-expect-error - accessing private xterm internals
-          const core = this.terminal._core;
-          if (core?._bufferService) {
-            // Clear the active buffer
-            const activeBuffer = core._bufferService.buffer;
-            if (activeBuffer) {
-              // Reset cursor position
-              activeBuffer.x = 0;
-              activeBuffer.y = 0;
-              activeBuffer.ybase = 0;
-              activeBuffer.ydisp = 0;
-
-              // Clear all lines in the buffer
-              for (let i = 0; i < activeBuffer.lines.length; i++) {
-                const line = activeBuffer.lines.get(i);
-                if (line) {
-                  line.fill(activeBuffer.getNullCell());
-                  line.isWrapped = false;
-                }
-              }
-
-              // Reset scrollback
-              activeBuffer.scrollTop = 0;
-              activeBuffer.scrollBottom = activeBuffer.lines.length - 1;
-            }
-
-            // Clear the alternate buffer too if it exists
-            const altBuffer = core._bufferService?.buffers?.get(1);
-            if (altBuffer) {
-              altBuffer.x = 0;
-              altBuffer.y = 0;
-              altBuffer.ybase = 0;
-              altBuffer.ydisp = 0;
-
-              for (let i = 0; i < altBuffer.lines.length; i++) {
-                const line = altBuffer.lines.get(i);
-                if (line) {
-                  line.fill(altBuffer.getNullCell());
-                  line.isWrapped = false;
-                }
-              }
-            }
-          }
-
-          // Write a single space to ensure the buffer has at least one line
-          this.terminal.write(' ');
-          this.terminal.write('\r'); // Return to start of line
+          // CRITICAL: Dispose of the old terminal completely to ensure no content leaks
+          // Creating a new terminal instance is the only way to guarantee complete isolation
+          this.terminal.dispose();
+          this.terminal = null;
+          logger.log(`[${this.terminalInstanceId}] Disposed old terminal for complete isolation`);
 
           // Clear any pending operations
           this.operationQueue = [];
@@ -234,24 +186,22 @@ export class Terminal extends LitElement {
 
           // Reset viewport to top
           this.viewportY = 0;
-
-          // Force immediate synchronous render of empty viewport
-          this.renderBuffer();
-
-          // Force another reflow after render
-          if (this.container) {
-            void this.container.offsetHeight;
-          }
         }
 
         // Allow writes again after ensuring DOM is updated
         requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            // Double RAF to ensure all DOM updates are complete
-            this.isSessionSwitching = false;
-            this.cleanupInProgress = false;
-            logger.log(`[${this.terminalInstanceId}] Session switch complete, writes enabled`);
-          });
+          // Single RAF is enough - we just need to ensure the DOM clear happened
+          this.isSessionSwitching = false;
+          this.cleanupInProgress = false;
+          logger.log(`[${this.terminalInstanceId}] Session switch complete, writes enabled`);
+
+          // CRITICAL: Re-initialize terminal after disposal for the new session
+          if (!this.terminal && this.sessionId) {
+            logger.log(
+              `[${this.terminalInstanceId}] Re-initializing terminal for new session ${this.sessionId}`
+            );
+            this.initializeTerminal();
+          }
         });
       }
 
@@ -424,7 +374,10 @@ export class Terminal extends LitElement {
     try {
       // Only create a new terminal if we don't have one
       if (this.terminal) {
-        logger.log(`[${this.terminalInstanceId}] Reusing existing terminal instance`);
+        logger.log(`[${this.terminalInstanceId}] Clearing existing terminal for new session`);
+        // Clear the terminal completely for the new session
+        this.terminal.clear();
+        this.terminal.reset();
         return;
       }
 
@@ -1177,23 +1130,30 @@ export class Terminal extends LitElement {
       return;
     }
 
-    // CRITICAL: Block writes during session switching to prevent content mixing
-    if (this.isSessionSwitching) {
-      logger.warn(`[terminal] Rejecting write during switch - data for session ${this.sessionId}`);
+    // CRITICAL: During session switching, only accept writes for the expected session
+    // This prevents old session data from being written while allowing new session data
+    if (this.isSessionSwitching && this.sessionId !== this.expectedSessionId) {
+      logger.warn(
+        `[terminal] Rejecting write during switch - expected ${this.expectedSessionId}, got ${this.sessionId}`
+      );
       return;
     }
 
     // CRITICAL: Check if we're receiving data for the expected session
-    // Initialize expectedSessionId if this is the first write for this session
+    // Reject writes from old sessions
+    if (
+      this.lastWriteSessionId &&
+      this.lastWriteSessionId !== this.sessionId &&
+      this.lastWriteSessionId !== ''
+    ) {
+      logger.warn(
+        `[terminal] Rejecting write from old session. Last: ${this.lastWriteSessionId}, Current: ${this.sessionId}, Expected: ${this.expectedSessionId}`
+      );
+      return;
+    }
+
+    // Update expected session ID if needed
     if (!this.expectedSessionId || this.expectedSessionId !== this.sessionId) {
-      if (this.lastWriteSessionId && this.lastWriteSessionId !== this.sessionId) {
-        // This is data from a different session than what we last wrote
-        logger.warn(
-          `[terminal] Rejecting write from old session. Last: ${this.lastWriteSessionId}, Current: ${this.sessionId}, Expected: ${this.expectedSessionId}`
-        );
-        return;
-      }
-      // This is the first write for this session, update expected
       this.expectedSessionId = this.sessionId;
     }
 

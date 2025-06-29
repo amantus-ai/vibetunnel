@@ -31,7 +31,15 @@
     "prettier:check": "prettier --check src --experimental-cli",
     "prettier:fast": "PRETTIER_EXPERIMENTAL_CLI=1 prettier --write src",
     "check": "./scripts/check-all.sh",
-    "check:fix": "./scripts/check-fix-sequential.sh"
+    "check:fix": "./scripts/check-fix-sequential.sh",
+    "logs": "tail -f ~/.vibetunnel/log.txt",
+    "logs:50": "tail -n 50 ~/.vibetunnel/log.txt",
+    "logs:100": "tail -n 100 ~/.vibetunnel/log.txt",
+    "logs:follow": "tail -f -n 50 ~/.vibetunnel/log.txt",
+    "logs:error": "grep ERROR ~/.vibetunnel/log.txt | tail -n 50",
+    "logs:warn": "grep WARN ~/.vibetunnel/log.txt | tail -n 50",
+    "logs:clear": "echo '' > ~/.vibetunnel/log.txt",
+    "logs:search": "grep -i"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

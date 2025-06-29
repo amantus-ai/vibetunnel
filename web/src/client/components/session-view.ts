@@ -74,6 +74,10 @@ export class SessionView extends LitElement {
         logger.log('Switching sessions', context);
 
         try {
+          // Show switching overlay
+          this.isSwitchingSessions = true;
+          this.requestUpdate();
+
           // Reset initialization tracking
           this.terminalInitialized = false;
 
@@ -98,6 +102,12 @@ export class SessionView extends LitElement {
           logger.log('Session switch complete, terminal will initialize in next update');
         } catch (error) {
           logger.error('Error during session switch:', error);
+        } finally {
+          // Hide switching overlay after a short delay to ensure smooth transition
+          setTimeout(() => {
+            this.isSwitchingSessions = false;
+            this.requestUpdate();
+          }, 200);
         }
       },
 
@@ -180,6 +190,7 @@ export class SessionView extends LitElement {
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
   @state() private keyboardHeight = 0;
+  @state() private isSwitchingSessions = false;
 
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private createHiddenInputTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -1103,6 +1114,20 @@ export class SessionView extends LitElement {
                   <div class="text-dark-text font-mono text-center">
                     <div class="text-2xl mb-2">${this.loadingAnimationManager.getLoadingText()}</div>
                     <div class="text-sm text-dark-text-muted">Connecting to session...</div>
+                  </div>
+                </div>
+              `
+              : ''
+          }
+          ${
+            this.isSwitchingSessions
+              ? html`
+                <!-- Session switching overlay -->
+                <div
+                  class="absolute inset-0 bg-dark-bg bg-opacity-90 flex items-center justify-center z-20"
+                >
+                  <div class="text-dark-text font-mono text-center">
+                    <div class="text-xl mb-2">Switching sessions...</div>
                   </div>
                 </div>
               `

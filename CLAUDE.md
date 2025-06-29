@@ -127,3 +127,23 @@ The combined approach executes ~3x faster because it doesn't wait for each comma
 - Server Implementation Guide: `web/spec.md`
 - Build Configuration: `web/package.json`, `mac/Package.swift`
 - Large Codebase Analysis: `docs/gemini.md` - Using Gemini CLI for analyzing entire projects
+
+## Server Logging
+
+Quick access to server logs for debugging:
+
+```bash
+# In web/ directory - Show last 50 lines of logs
+pnpm run logs:50
+
+# Show errors only
+pnpm run logs:error
+
+# Follow logs in real-time
+pnpm run logs
+
+# Using make command
+make tail-logs
+```
+
+Log file location: `~/.vibetunnel/log.txt`

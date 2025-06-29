@@ -63,3 +63,45 @@ NEVER give a code reference or location in any other format.
 - We do not care about deprecation - remove old code completely
 - Always prefer clean refactoring over gradual migration
 - Delete unused functions and code paths immediately
+
+## Logging and Debugging
+
+The server uses a unified logging system that writes to `~/.vibetunnel/log.txt` with automatic rotation.
+
+### Quick Access to Logs
+```bash
+# NPM scripts (recommended for agents)
+pnpm run logs:50      # Show last 50 lines
+pnpm run logs         # Follow logs in real-time
+pnpm run logs:error   # Show recent errors
+pnpm run logs:warn    # Show recent warnings
+
+# Make commands
+make tail-logs        # Follow logs (last 50 lines)
+make logs            # Show last 100 lines
+make logs-error      # Show errors only
+make logs-grep filter="session"  # Search for pattern
+
+# Direct script
+./logs.sh            # Show last 50 lines
+./logs.sh tail       # Follow logs
+./logs.sh error 100  # Show last 100 errors
+./logs.sh help       # Show all options
+```
+
+### Log Features
+- Unified logging from all server modules to `~/.vibetunnel/log.txt`
+- Automatic log rotation when file reaches 10MB (keeps 5 rotated files)
+- Structured format with timestamps, log levels, and module names
+- Client-side logs forwarded to server via `/api/logs/client`
+- Debug mode can be enabled with `--debug` flag
+
+### For Agents
+When debugging issues, always check the logs first:
+```bash
+# Quick check for errors
+pnpm run logs:error
+
+# Follow logs while testing
+pnpm run logs
+```

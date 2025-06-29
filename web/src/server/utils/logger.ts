@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { rotateLogFile, setupAutoRotation } from './log-rotation';
 
 // Log file path
 const LOG_DIR = path.join(os.homedir(), '.vibetunnel');
@@ -13,6 +14,9 @@ let debugMode = false;
 // File handle for log file
 let logFileHandle: fs.WriteStream | null = null;
 
+// Log rotation interval ID
+let rotationInterval: ReturnType<typeof setInterval> | null = null;
+
 // ANSI color codes for stripping from file output
 // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
 const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
@@ -20,7 +24,7 @@ const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
 /**
  * Initialize the logger - creates log directory and file
  */
-export function initLogger(debug: boolean = false): void {
+export function initLogger(debug: boolean = false, enableRotation: boolean = true): void {
   debugMode = debug;
 
   try {
@@ -29,18 +33,24 @@ export function initLogger(debug: boolean = false): void {
       fs.mkdirSync(LOG_DIR, { recursive: true });
     }
 
-    // Delete old log file if it exists
-    try {
-      if (fs.existsSync(LOG_FILE)) {
-        fs.unlinkSync(LOG_FILE);
-      }
-    } catch (unlinkError) {
-      // Ignore unlink errors - file might not exist or be locked
-      console.debug('Could not delete old log file:', unlinkError);
+    // Check if we should rotate before starting
+    if (fs.existsSync(LOG_FILE)) {
+      rotateLogFile(LOG_FILE, {
+        maxSize: 10 * 1024 * 1024, // 10MB
+        maxFiles: 5,
+      });
     }
 
     // Create new log file write stream
     logFileHandle = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+
+    // Set up automatic log rotation
+    if (enableRotation) {
+      rotationInterval = setupAutoRotation(LOG_FILE, {
+        maxSize: 10 * 1024 * 1024, // 10MB
+        maxFiles: 5,
+      });
+    }
   } catch (error) {
     // Don't throw, just log to console
     console.error('Failed to initialize log file:', error);
@@ -54,6 +64,11 @@ export function closeLogger(): void {
   if (logFileHandle) {
     logFileHandle.end();
     logFileHandle = null;
+  }
+
+  if (rotationInterval) {
+    clearInterval(rotationInterval);
+    rotationInterval = null;
   }
 }
 
