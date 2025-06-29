@@ -1,4 +1,7 @@
+import { createLogger } from '../utils/logger.js';
 import { BrowserSSHAgent } from './ssh-agent.js';
+
+const logger = createLogger('auth-client');
 
 interface AuthResponse {
   success: boolean;
@@ -66,7 +69,7 @@ export class AuthClient {
       }
       throw new Error('Failed to get current user');
     } catch (error) {
-      console.error('Failed to get current system user:', error);
+      logger.error('Failed to get current system user:', error);
       throw error;
     }
   }
@@ -90,7 +93,7 @@ export class AuthClient {
         }
       }
     } catch (error) {
-      console.error('Failed to get user avatar:', error);
+      logger.error('Failed to get user avatar:', error);
     }
 
     // Return generic avatar SVG for non-macOS or when no avatar found
@@ -139,24 +142,24 @@ export class AuthClient {
       });
 
       const result = await response.json();
-      console.log('🔐 SSH key auth server response:', result);
+      logger.log('🔐 SSH key auth server response:', result);
 
       if (result.success) {
-        console.log('✅ SSH key auth successful, setting current user');
+        logger.log('✅ SSH key auth successful, setting current user');
         this.setCurrentUser({
           userId: result.userId,
           token: result.token,
           authMethod: 'ssh-key',
           loginTime: Date.now(),
         });
-        console.log('👤 Current user set:', this.getCurrentUser());
+        logger.log('👤 Current user set:', this.getCurrentUser());
       } else {
-        console.log('❌ SSH key auth failed:', result.error);
+        logger.log('❌ SSH key auth failed:', result.error);
       }
 
       return result;
     } catch (error) {
-      console.error('SSH key authentication failed:', error);
+      logger.error('SSH key authentication failed:', error);
       return { success: false, error: 'SSH key authentication failed' };
     }
   }
@@ -185,7 +188,7 @@ export class AuthClient {
 
       return result;
     } catch (error) {
-      console.error('Password authentication failed:', error);
+      logger.error('Password authentication failed:', error);
       return { success: false, error: 'Password authentication failed' };
     }
   }
@@ -194,12 +197,12 @@ export class AuthClient {
    * Automated authentication - tries SSH keys first, then prompts for password
    */
   async authenticate(userId: string): Promise<AuthResponse> {
-    console.log('🚀 Starting SSH authentication for user:', userId);
+    logger.log('🚀 Starting SSH authentication for user:', userId);
 
     // Try SSH key authentication first if agent is unlocked
     if (this.sshAgent.isUnlocked()) {
       const keys = this.sshAgent.listKeys();
-      console.log(
+      logger.log(
         '🗝️ Found SSH keys:',
         keys.length,
         keys.map((k) => ({ id: k.id, name: k.name }))
@@ -207,20 +210,20 @@ export class AuthClient {
 
       for (const key of keys) {
         try {
-          console.log(`🔑 Trying SSH key: ${key.name} (${key.id})`);
+          logger.log(`🔑 Trying SSH key: ${key.name} (${key.id})`);
           const result = await this.authenticateWithSSHKey(userId, key.id);
-          console.log(`🎯 SSH key ${key.name} result:`, result);
+          logger.log(`🎯 SSH key ${key.name} result:`, result);
 
           if (result.success) {
-            console.log(`✅ Authenticated with SSH key: ${key.name}`);
+            logger.log(`✅ Authenticated with SSH key: ${key.name}`);
             return result;
           }
         } catch (error) {
-          console.warn(`❌ SSH key authentication failed for key ${key.name}:`, error);
+          logger.warn(`❌ SSH key authentication failed for key ${key.name}:`, error);
         }
       }
     } else {
-      console.log('🔒 SSH agent is locked');
+      logger.log('🔒 SSH agent is locked');
     }
 
     // SSH key auth failed or no keys available
@@ -246,7 +249,7 @@ export class AuthClient {
         });
       }
     } catch (error) {
-      console.warn('Server logout failed:', error);
+      logger.warn('Server logout failed:', error);
     } finally {
       // Clear local state
       this.clearCurrentUser();
@@ -260,10 +263,7 @@ export class AuthClient {
     if (this.currentUser?.token) {
       return { Authorization: `Bearer ${this.currentUser.token}` };
     }
-    // Suppress warning in test environment to reduce noise
-    if (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test') {
-      console.warn('⚠️ No token available for auth header');
-    }
+    // No warning needed when token is not available
     return {};
   }
 
@@ -281,7 +281,7 @@ export class AuthClient {
       const result = await response.json();
       return result.valid;
     } catch (error) {
-      console.error('Token verification failed:', error);
+      logger.error('Token verification failed:', error);
       return false;
     }
   }
@@ -370,7 +370,7 @@ export class AuthClient {
         });
       }
     } catch (error) {
-      console.error('Failed to load current user:', error);
+      logger.error('Failed to load current user:', error);
       this.clearCurrentUser();
     }
   }

@@ -329,7 +329,7 @@ export class SessionView extends LitElement {
         this.useDirectKeyboard = true; // Default to true when no settings exist
       }
     } catch (error) {
-      console.error('Failed to load app preferences', error);
+      logger.error('Failed to load app preferences', error);
       this.useDirectKeyboard = true; // Default to true on error
     }
 
