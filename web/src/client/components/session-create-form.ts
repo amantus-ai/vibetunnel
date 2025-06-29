@@ -51,7 +51,7 @@ export class SessionCreateForm extends LitElement {
   @state() private showFileBrowser = false;
   @state() private selectedQuickStart = 'zsh';
 
-  private quickStartCommands = [
+  quickStartCommands = [
     { label: 'claude', command: 'claude' },
     { label: 'gemini', command: 'gemini' },
     { label: 'zsh', command: 'zsh' },
@@ -94,7 +94,7 @@ export class SessionCreateForm extends LitElement {
 
       // Check if form is valid (same conditions as Create button)
       const canCreate =
-        !this.disabled && !this.isCreating && this.workingDir.trim() && this.command.trim();
+        !this.disabled && !this.isCreating && this.workingDir?.trim() && this.command?.trim();
 
       if (canCreate) {
         e.preventDefault();
@@ -140,8 +140,8 @@ export class SessionCreateForm extends LitElement {
 
   private saveToLocalStorage() {
     try {
-      const workingDir = this.workingDir.trim();
-      const command = this.command.trim();
+      const workingDir = this.workingDir?.trim() || '';
+      const command = this.command?.trim() || '';
 
       logger.debug(
         `saving to localStorage: workingDir=${workingDir}, command=${command}, spawnWindow=${this.spawnWindow}, titleMode=${this.titleMode}`
@@ -241,7 +241,7 @@ export class SessionCreateForm extends LitElement {
   }
 
   private async handleCreate() {
-    if (!this.workingDir.trim() || !this.command.trim()) {
+    if (!this.workingDir?.trim() || !this.command?.trim()) {
       this.dispatchEvent(
         new CustomEvent('error', {
           detail: 'Please fill in both working directory and command',
@@ -258,8 +258,8 @@ export class SessionCreateForm extends LitElement {
     const terminalRows = 30;
 
     const sessionData: SessionCreateData = {
-      command: this.parseCommand(this.command.trim()),
-      workingDir: this.workingDir.trim(),
+      command: this.parseCommand(this.command?.trim() || ''),
+      workingDir: this.workingDir?.trim() || '',
       spawn_terminal: this.spawnWindow,
       titleMode: this.titleMode,
       cols: terminalCols,
@@ -267,7 +267,7 @@ export class SessionCreateForm extends LitElement {
     };
 
     // Add session name if provided
-    if (this.sessionName.trim()) {
+    if (this.sessionName?.trim()) {
       sessionData.name = this.sessionName.trim();
     }
 
@@ -502,12 +502,11 @@ export class SessionCreateForm extends LitElement {
                   ({ label, command }) => html`
                     <button
                       @click=${() => this.handleQuickStart(command)}
-                      class="px-4 py-3 rounded border text-left transition-all
-                        ${
-                          this.command === command
-                            ? 'bg-accent-green bg-opacity-20 border-accent-green text-accent-green'
-                            : 'bg-dark-border bg-opacity-10 border-dark-border text-dark-text hover:bg-opacity-20 hover:border-dark-text-secondary'
-                        }"
+                      class="${
+                        this.command === command
+                          ? 'px-4 py-3 rounded border text-left transition-all bg-accent-green bg-opacity-20 border-accent-green text-accent-green'
+                          : 'px-4 py-3 rounded border text-left transition-all bg-dark-border bg-opacity-10 border-dark-border text-dark-text hover:bg-opacity-20 hover:border-dark-text-secondary'
+                      }"
                       ?disabled=${this.disabled || this.isCreating}
                     >
                       ${label === 'gemini' ? '✨ ' : ''}${label === 'claude' ? '✨ ' : ''}${
@@ -533,8 +532,8 @@ export class SessionCreateForm extends LitElement {
                 ?disabled=${
                   this.disabled ||
                   this.isCreating ||
-                  !this.workingDir.trim() ||
-                  !this.command.trim()
+                  !this.workingDir?.trim() ||
+                  !this.command?.trim()
                 }
               >
                 ${this.isCreating ? 'Creating...' : 'Create'}
