@@ -274,6 +274,11 @@ export class Terminal extends LitElement {
 
       // Use shadowRoot if available, otherwise use this for light DOM
       const root = this.shadowRoot || this;
+
+      // Check for multiple containers (debugging)
+      const allContainers = root.querySelectorAll('#terminal-container');
+      logger.log(`Found ${allContainers.length} terminal containers`);
+
       this.container = root.querySelector('#terminal-container') as HTMLElement;
 
       if (!this.container) {
@@ -818,6 +823,10 @@ export class Terminal extends LitElement {
       `Rendering buffer for session ${this.sessionId}, bufferLength: ${bufferLength}, actualRows: ${this.actualRows}`
     );
 
+    // Check current DOM state before rendering
+    const currentChildCount = this.container.childElementCount;
+    logger.log(`Container has ${currentChildCount} child elements before render`);
+
     // Convert pixel scroll position to fractional line position
     const startRowFloat = this.viewportY / lineHeight;
     const startRow = Math.floor(startRowFloat);
@@ -866,7 +875,20 @@ export class Terminal extends LitElement {
     }
 
     // Set the complete innerHTML at once
+    logger.log(`Setting container innerHTML, html length: ${html.length} chars`);
     this.container.innerHTML = html;
+
+    // Verify the DOM was updated
+    const afterChildCount = this.container.childElementCount;
+    logger.log(`Container has ${afterChildCount} child elements after render`);
+
+    // Log first and last lines for debugging
+    if (afterChildCount > 0) {
+      const firstLine = this.container.firstElementChild?.textContent || '';
+      const lastLine = this.container.lastElementChild?.textContent || '';
+      logger.log(`First line: "${firstLine.slice(0, 50)}..."`);
+      logger.log(`Last line: "${lastLine.slice(0, 50)}..."`);
+    }
 
     // Process links after rendering
     UrlHighlighter.processLinks(this.container);
