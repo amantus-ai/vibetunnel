@@ -141,6 +141,7 @@ export class SessionView extends LitElement {
         this.removeEventListener(event, handler),
       focus: () => this.focus(),
       getDisableFocusManagement: () => this.disableFocusManagement,
+      proposeOptimalWidth: () => this.proposeOptimalWidth(),
       startLoading: () => this.loadingAnimationManager.startLoading(() => this.requestUpdate()),
       stopLoading: () => this.loadingAnimationManager.stopLoading(),
       setKeyboardHeight: (value: number) => {
@@ -883,6 +884,16 @@ export class SessionView extends LitElement {
   focusHiddenInput() {
     // Delegate to the DirectKeyboardManager
     this.directKeyboardManager.focusHiddenInput();
+  }
+
+  public proposeOptimalWidth(): void {
+    const terminal = this.querySelector('vibe-terminal') as Terminal;
+    if (terminal) {
+      // Use requestAnimationFrame to ensure the call happens after any pending layout changes.
+      requestAnimationFrame(() => {
+        terminal.recalculateAndResize();
+      });
+    }
   }
 
   private handleTerminalClick(e: Event) {

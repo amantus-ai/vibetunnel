@@ -26,6 +26,7 @@ export interface UICallbacks {
   requestUpdate(): void;
   focus(): void;
   getDisableFocusManagement(): boolean;
+  proposeOptimalWidth(): void;
 }
 
 /**

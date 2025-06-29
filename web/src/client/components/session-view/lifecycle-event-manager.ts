@@ -30,6 +30,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
   private touchListenersAdded = false;
   private visualViewportHandler: (() => void) | null = null;
   private clickHandler: (() => void) | null = null;
+  private visibilityChangeHandler: (() => void) | null = null;
 
   constructor() {
     super();
@@ -178,6 +179,15 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     // Listen for preference changes
     window.addEventListener('app-preferences-changed', this.handlePreferencesChanged);
+
+    // Set up tab visibility listener for "last client wins" behavior
+    this.visibilityChangeHandler = () => {
+      if (document.visibilityState === 'visible') {
+        logger.log('Tab became visible, proposing optimal terminal width.');
+        this.callbacks?.proposeOptimalWidth();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityChangeHandler);
 
     this.setupMobileFeatures(isMobile);
     this.setupEventListeners(isMobile);
@@ -331,6 +341,12 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     // Remove preference change listener
     window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
 
+    // Remove visibility change listener
+    if (this.visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeHandler = null;
+    }
+
     // Stop loading animation
     this.callbacks.stopLoading();
 
@@ -345,6 +361,12 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     // Clean up event listeners
     window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
+
+    // Remove visibility change listener
+    if (this.visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeHandler = null;
+    }
 
     // Remove global keyboard event listener
     if (!this.callbacks?.getIsMobile() && this.keyboardListenerAdded) {
