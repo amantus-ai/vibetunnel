@@ -90,6 +90,11 @@ The server runs as a standalone Bun executable with embedded Node.js modules, pr
 2. Switch to "Network" mode
 3. Access via `http://[your-mac-ip]:4020`
 
+### Option 4: Cloudflare Quick Tunnel
+1. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+2. Run `cloudflared tunnel --url http://localhost:4020`
+3. Access via the generated `*.trycloudflare.com` URL
+
 ## Building from Source
 
 ### Prerequisites
