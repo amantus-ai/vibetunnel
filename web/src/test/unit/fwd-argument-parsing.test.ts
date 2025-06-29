@@ -20,6 +20,7 @@ describe('fwd.ts argument parsing with -- separator', () => {
       // The actual command is in the args after -c
       const cIndex = result.args.indexOf('-c');
       expect(cIndex).toBeGreaterThan(-1);
+      // ProcessUtils preserves just the command string after -c
       expect(result.args[cIndex + 1]).toBe('echo "hello"');
       expect(result.resolvedFrom).toBe('path');
       expect(result.useShell).toBe(false);
@@ -108,6 +109,7 @@ describe('fwd.ts argument parsing with -- separator', () => {
       // The actual command is preserved after -c
       const cIndex = result.args.indexOf('-c');
       expect(cIndex).toBeGreaterThan(-1);
+      // ProcessUtils preserves just the command string after -c
       expect(result.args[cIndex + 1]).toBe('claude --dangerously-skip-permissions');
       expect(result.resolvedFrom).toBe('path');
       expect(result.useShell).toBe(false);
