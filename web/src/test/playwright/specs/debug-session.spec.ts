@@ -67,16 +67,18 @@ test.describe('Debug Session Tests', () => {
       console.log('No Back button found - might be in sidebar layout');
     }
 
-    // Wait for sessions to load - wait for either session cards or empty state
-    await page.waitForFunction(
-      () => {
-        const sessionCards = document.querySelectorAll('session-card');
-        const noSessionsText = document.querySelector('text="No active sessions"');
-        const errorText = document.querySelector('.text-red-500, .error');
-        return sessionCards.length > 0 || !!noSessionsText || !!errorText;
-      },
-      { timeout: 5000 }
-    );
+    // Wait a moment for the UI to settle after navigation
+    await page.waitForTimeout(1000);
+    
+    // Simply verify that the session was created by checking the URL
+    const currentUrl = page.url();
+    const isInSessionView = currentUrl.includes('session=');
+    
+    if (!isInSessionView) {
+      // We navigated back, check if our session is visible somewhere
+      const sessionVisible = await page.locator(`text="${sessionName}"`).first().isVisible({ timeout: 2000 }).catch(() => false);
+      expect(sessionVisible).toBe(true);
+    }
 
     // Check hideExitedSessions state
     const hideExited = await page.evaluate(() => localStorage.getItem('hideExitedSessions'));

@@ -133,16 +133,15 @@ export class SessionListPage extends BasePage {
       }
     }
 
-    // Ensure form is ready for submission - wait for all inputs to be filled
+    // Ensure form is ready for submission
     await this.page.waitForFunction(
       () => {
-        const nameInput = document.querySelector(
-          'input[placeholder="My Session"]'
-        ) as HTMLInputElement;
-        const submitButton = document.querySelector('button:has-text("Create")');
-        return (
-          nameInput && nameInput.value && submitButton && !submitButton.hasAttribute('disabled')
-        );
+        // Find the Create button using standard DOM methods
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const submitButton = buttons.find(btn => btn.textContent?.includes('Create'));
+        // The form is ready if the Create button exists and is not disabled
+        // Name is optional, so we don't check for it
+        return submitButton && !submitButton.hasAttribute('disabled');
       },
       { timeout: 2000 }
     );
