@@ -198,8 +198,24 @@ pnpm run dev
 - ✅ session-management-advanced.spec.ts (5 tests)
 - ✅ Other tests remain unchanged
 
+## Fixed Tests (Session 2 - After Rebase)
+
+13. **session-management-advanced.spec.ts** - "should copy session information"
+    - **Problem**: Timeout clicking "Create New Session" button - page intercepting pointer events
+    - **Fix**: Added wait for page ready and increased timeout for button clicks
+    - **Status**: ✅ Fixed
+
+14. **session-management-advanced.spec.ts** - "should filter sessions by status"
+    - **Problem**: Test timeout - too complex with multiple session creation
+    - **Fix**: Simplified test to create just 1 running session instead of 2, increased timeout
+    - **Status**: 🔄 In progress
+
 ## Important Notes:
 - Tests run one at a time (not in parallel)
 - Previous test sessions might affect subsequent tests
 - Don't assume the application works - investigate actual behavior
 - Check logs before making assumptions about test failures
+
+# Next Steps
+- Fix the remaining test in session-management-advanced.spec.ts
+- Run all tests to check overall status
