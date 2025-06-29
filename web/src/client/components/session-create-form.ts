@@ -55,7 +55,6 @@ export class SessionCreateForm extends LitElement {
     { label: 'claude', command: 'claude' },
     { label: 'gemini', command: 'gemini' },
     { label: 'zsh', command: 'zsh' },
-    { label: 'bash', command: 'bash' },
     { label: 'python3', command: 'python3' },
     { label: 'node', command: 'node' },
     { label: 'pnpm run dev', command: 'pnpm run dev' },

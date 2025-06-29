@@ -327,7 +327,6 @@ struct SessionCreateView: View {
             QuickStartItem(title: "claude", command: "claude", icon: "sparkle"),
             QuickStartItem(title: "gemini", command: "gemini", icon: "sparkle"),
             QuickStartItem(title: "zsh", command: "zsh", icon: "terminal"),
-            QuickStartItem(title: "bash", command: "bash", icon: "terminal.fill"),
             QuickStartItem(title: "python3", command: "python3", icon: "chevron.left.forwardslash.chevron.right"),
             QuickStartItem(title: "node", command: "node", icon: "server.rack"),
             QuickStartItem(title: "npm run dev", command: "npm run dev", icon: "play.circle")

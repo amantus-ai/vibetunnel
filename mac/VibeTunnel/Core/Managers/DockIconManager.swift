@@ -46,6 +46,7 @@ final class DockIconManager: NSObject, @unchecked Sendable {
                 window.isVisible &&
                     window.frame.width > 1 && window.frame.height > 1 && // settings window hack
                     !window.isKind(of: NSPanel.self) &&
+                    "\(type(of: window))" != "NSPopupMenuWindow" && // Filter out popup menus (menu bar sidebar)
                     window.contentViewController != nil
             } ?? []
 
