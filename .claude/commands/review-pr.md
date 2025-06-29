@@ -9,7 +9,7 @@ Perform a comprehensive code review of the current pull request using parallel s
 ```
 
 Options:
-- `--focus <area>` - Focus on specific areas (security, performance, tests, etc.)
+- `--focus <area>` - Focus on specific areas. Valid values: `security`, `performance`, `tests`, `architecture`, `documentation`, `all`
 - `--gemini-only` - Perform the review only with gemini CLI
 
 ## Description
@@ -42,7 +42,11 @@ When you use this command, I will:
    - Run `gh pr view` to check PR description and any existing comments (handle errors gracefully)
    - Run `git log "main..HEAD" --oneline` to see all commits in this PR (with proper shell escaping)
    - Run `git diff "main...HEAD" --stat` to get an overview of changed files (with proper shell escaping)
-   - Generate comprehensive diff with `git diff "main...HEAD"` and save to `.pr_review_diff.tmp` in project root for Gemini access
+   - Generate comprehensive diff with secure temporary file handling:
+     ```bash
+     touch .pr_review_diff.tmp && chmod 600 .pr_review_diff.tmp
+     git diff "main...HEAD" > .pr_review_diff.tmp
+     ```
    - If any git commands fail, provide helpful error messages and guidance
 
 2. **Launch Two Parallel Sub-Agents**
@@ -57,7 +61,7 @@ When you use this command, I will:
    - Performs complete multi-aspect code review using Gemini
    - Form the prompt to the Gemini CLI in a way that it only returns the final output of its findings, to save tokens
    - Analyzes all aspects below independently
-   - Use a timeout of 10 minutes for the gemini CLI command
+   - Use a timeout of 10 minutes for the gemini CLI command (configurable via environment variable `GEMINI_TIMEOUT_SECONDS`, default: 600)
    - **IMPORTANT**: Gemini CLI can only access files within the project directory
      - Create temporary diff file in project root (e.g., `.pr_review_diff.tmp`)
      - Use `@.pr_review_diff.tmp` syntax to include the diff in Gemini prompt
@@ -213,12 +217,32 @@ For large PRs, consider reviewing incrementally and suggesting the author break 
 - For full functionality: Gemini CLI must be installed (see Gemini documentation)
 - For `--gemini-only` mode: Only Gemini CLI is required
 
+## Security Considerations
+
+**Input Sanitization:**
+- All user-provided parameters (e.g., `--focus` values) are validated against a whitelist
+- Git commands use proper shell escaping with quotes around branch names
+- Temporary files are created with secure permissions (mode 600)
+- File paths are validated to prevent directory traversal attacks
+- The `--focus` parameter only accepts predefined values: security, performance, tests, architecture, documentation, all
+
+**Safe Command Execution:**
+```bash
+# Always quote branch names and file paths
+git diff "main...HEAD" --stat  # Correct
+git diff main...HEAD --stat     # Vulnerable to injection
+
+# Set restrictive permissions on temporary files
+touch .pr_review_diff.tmp && chmod 600 .pr_review_diff.tmp
+git diff "main...HEAD" > .pr_review_diff.tmp
+```
+
 ## Error Handling
 
 - If required tools are missing, the command will provide installation instructions
 - Git command failures are handled gracefully with helpful error messages
 - If automated checks fail, the review continues but notes the failures
-- Timeout protection: Gemini sub-agent has a 10-minute timeout
+- Timeout protection: Gemini sub-agent has a 10-minute timeout (configurable via `GEMINI_TIMEOUT_SECONDS` environment variable)
 
 ## Implementation Notes
 
@@ -228,8 +252,11 @@ For large PRs, consider reviewing incrementally and suggesting the author break 
 - Use `.gitignore` patterns for temporary files (e.g., `.pr_review_*.tmp`)
 - Example workflow:
   ```bash
+  # Create file with secure permissions
+  touch .pr_review_diff.tmp && chmod 600 .pr_review_diff.tmp
+  
   # Save diff to project-accessible location
-  git diff main...HEAD > .pr_review_diff.tmp
+  git diff "main...HEAD" > .pr_review_diff.tmp
   
   # Use with Gemini
   gemini -p "@.pr_review_diff.tmp Your review prompt here"
@@ -242,3 +269,46 @@ For large PRs, consider reviewing incrementally and suggesting the author break 
 - For very large PRs, consider splitting the diff by file type or directory
 - Use Gemini's 2M token context window advantage for comprehensive analysis
 - If diff exceeds reasonable size, suggest breaking PR into smaller chunks
+
+**Chunking Strategy for Diffs Exceeding 1.5M Tokens:**
+
+1. **Automatic splitting by file type:**
+   ```bash
+   # JavaScript/TypeScript files
+   git diff "main...HEAD" -- "*.js" "*.ts" "*.jsx" "*.tsx" > .pr_review_js.tmp
+   
+   # Python files
+   git diff "main...HEAD" -- "*.py" > .pr_review_py.tmp
+   
+   # Documentation
+   git diff "main...HEAD" -- "*.md" "*.rst" "*.txt" > .pr_review_docs.tmp
+   ```
+
+2. **Split by directory structure:**
+   ```bash
+   # Frontend changes
+   git diff "main...HEAD" -- "web/src/client/" > .pr_review_frontend.tmp
+   
+   # Backend changes
+   git diff "main...HEAD" -- "web/src/server/" > .pr_review_backend.tmp
+   
+   # Test changes
+   git diff "main...HEAD" -- "**/test/" "**/tests/" > .pr_review_tests.tmp
+   ```
+
+3. **Prioritize by change type:**
+   ```bash
+   # New files (highest priority)
+   git diff "main...HEAD" --name-status | grep "^A" | cut -f2 | xargs git diff "main...HEAD" -- > .pr_review_new.tmp
+   
+   # Modified files
+   git diff "main...HEAD" --name-status | grep "^M" | cut -f2 | xargs git diff "main...HEAD" -- > .pr_review_modified.tmp
+   
+   # Deleted files (lowest priority for review)
+   git diff "main...HEAD" --name-status | grep "^D" | cut -f2 > .pr_review_deleted_list.tmp
+   ```
+
+4. **Token estimation:**
+   - Rough estimate: 1 token ≈ 4 characters
+   - Check file size: `wc -c .pr_review_diff.tmp`
+   - If > 6MB (≈1.5M tokens), implement chunking strategy
