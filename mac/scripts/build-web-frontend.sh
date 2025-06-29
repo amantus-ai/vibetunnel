@@ -105,7 +105,15 @@ export MACOSX_DEPLOYMENT_TARGET="14.0"
 export CXXFLAGS="-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0"
 export CXX="${CXX:-clang++}"
 export CC="${CC:-clang}"
-pnpm install --frozen-lockfile
+
+# Function to filter warnings from build output
+filter_build_output() {
+    grep -v -E '(missing field .* initializer|is deprecated.*Use.*instead|expanded from macro|has been explicitly marked deprecated|converts to incompatible function type|instantiation of function template|npm warn Unknown.*config|warn - Your.*content.*configuration|warn - Pattern:.*\*\.js|warn - See our documentation)' | \
+    grep -v -E '(gyp info spawn args|\.\.\.\/node_modules\/.*install:)'
+}
+
+# Run pnpm install with filtered output
+pnpm install --frozen-lockfile 2>&1 | filter_build_output
 
 # Determine build configuration
 BUILD_CONFIG="${CONFIGURATION:-Debug}"
@@ -148,11 +156,11 @@ if [ "$BUILD_CONFIG" = "Release" ]; then
     if [ "${CI:-false}" = "true" ]; then
         echo "CI environment detected - skipping custom Node.js build to avoid timeout"
         echo "The app will be larger than optimal but will build within CI time limits."
-        pnpm run build
+        pnpm run build 2>&1 | filter_build_output
     elif [ ! -f "$CUSTOM_NODE_PATH" ]; then
         echo "Custom Node.js not found, building it for optimal size..."
         echo "This will take 10-20 minutes on first run but will be cached."
-        node build-custom-node.js --latest
+        node build-custom-node.js --latest 2>&1 | filter_build_output
         CUSTOM_NODE_DIR=$(find "${WEB_DIR}/.node-builds" -name "node-v*-minimal" -type d -exec test -f {}/out/Release/node \; -print 2>/dev/null | sort -V | tail -n1)
         CUSTOM_NODE_PATH="${CUSTOM_NODE_DIR}/out/Release/node"
     fi
@@ -164,23 +172,23 @@ if [ "$BUILD_CONFIG" = "Release" ]; then
         echo "  Version: $CUSTOM_NODE_VERSION"
         echo "  Size: $CUSTOM_NODE_SIZE (vs ~110MB for standard Node.js)"
         echo "  Path: $CUSTOM_NODE_PATH"
-        pnpm run build -- --custom-node
+        pnpm run build -- --custom-node 2>&1 | filter_build_output
     else
         echo "WARNING: Custom Node.js build failed, using system Node.js"
         echo "The app will be larger than optimal."
-        pnpm run build
+        pnpm run build 2>&1 | filter_build_output
     fi
 else
     # Debug build
     if [ -f "$CUSTOM_NODE_PATH" ]; then
         CUSTOM_NODE_VERSION=$("$CUSTOM_NODE_PATH" --version 2>/dev/null || echo "unknown")
         echo "Debug build - found existing custom Node.js $CUSTOM_NODE_VERSION, using it for consistency"
-        pnpm run build -- --custom-node
+        pnpm run build -- --custom-node 2>&1 | filter_build_output
     else
         echo "Debug build - using system Node.js for faster builds"
         echo "System Node.js: $(node --version)"
         echo "To use custom Node.js in debug builds, run: cd web && node build-custom-node.js --latest"
-        pnpm run build
+        pnpm run build 2>&1 | filter_build_output
     fi
 fi
 
