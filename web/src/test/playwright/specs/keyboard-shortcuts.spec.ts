@@ -14,10 +14,10 @@ test.describe('Keyboard Shortcuts', () => {
 
   test('should open file browser with Cmd+O / Ctrl+O', async ({ page }) => {
     test.setTimeout(20000); // Increase timeout
-    
+
     // Wait for page to be ready
     await page.waitForTimeout(1000);
-    
+
     // Create a session first
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });

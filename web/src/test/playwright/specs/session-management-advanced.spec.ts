@@ -171,10 +171,10 @@ test.describe('Advanced Session Management', () => {
             // Check data attributes for more reliable status detection
             const status = card.getAttribute('data-session-status');
             const isKilling = card.getAttribute('data-is-killing') === 'true';
-            
+
             // Also check if the card contains the exited text as a fallback
             const hasExitedText = card.textContent?.toLowerCase().includes('exited') || false;
-            
+
             return (status === 'exited' || hasExitedText) && !isKilling;
           })
         );
@@ -241,7 +241,7 @@ test.describe('Advanced Session Management', () => {
 
   test('should copy session information', async ({ page }) => {
     test.setTimeout(20000); // Increase timeout
-    
+
     // Create a session
     await page.click('button[title="Create New Session"]');
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });

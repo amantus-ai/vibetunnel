@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures/test.fixture';
 test.describe('Debug Session Tests', () => {
   test('debug session creation and listing', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout for debug test
-    
+
     // Wait for page to be ready
     await page.waitForSelector('button[title="Create New Session"]', {
       state: 'visible',

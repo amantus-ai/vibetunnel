@@ -62,7 +62,10 @@ export async function createSession(
   await page.click('button[title="Create New Session"]');
 
   // Wait for modal to appear
-  await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible', timeout: 5000 });
+  await page.waitForSelector('input[placeholder="My Session"]', {
+    state: 'visible',
+    timeout: 5000,
+  });
 
   // Set spawn window option
   const spawnWindowToggle = page.locator('button[role="switch"]');

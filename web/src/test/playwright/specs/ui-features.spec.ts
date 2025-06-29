@@ -72,7 +72,7 @@ test.describe('UI Features', () => {
 
   test('should show session count in header', async ({ page }) => {
     test.setTimeout(20000); // Increase timeout
-    
+
     // The header should show session count - look for text like "(5)"
     // It's in the full-header component
     await page.waitForSelector('full-header', { state: 'visible', timeout: 10000 });
@@ -143,7 +143,7 @@ test.describe('UI Features', () => {
 
   test('should show terminal preview in session cards', async ({ page }) => {
     test.setTimeout(20000); // Increase timeout
-    
+
     // Create a session
     await page.click('button[title="Create New Session"]');
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });

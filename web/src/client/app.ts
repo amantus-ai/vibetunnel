@@ -384,7 +384,8 @@ export class VibeTunnelApp extends LitElement {
           logger.log('✨ Initial load view transition ready');
         })
         .catch((err) => {
-          logger.error('❌ Initial load view transition failed:', err);
+          // This is expected to fail in browsers that don't support View Transitions
+          logger.debug('View transition not supported or failed (this is normal):', err);
         });
 
       // Clean up the class after transition completes

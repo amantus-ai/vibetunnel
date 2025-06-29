@@ -6,8 +6,8 @@ test.describe('Session Navigation', () => {
   // Page navigation is handled by fixture
 
   test('should navigate between session list and session view', async ({ page }) => {
-    test.setTimeout(15000); // Increase timeout 
-    
+    test.setTimeout(15000); // Increase timeout
+
     // Create a new session
     await page.click('button[title="Create New Session"]');
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
@@ -27,11 +27,11 @@ test.describe('Session Navigation', () => {
     try {
       await expect(page).toHaveURL(/\?session=/, { timeout: 5000 });
       await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 5000 });
-    } catch (e) {
+    } catch (_e) {
       // If we're not in session view, let's check current URL
       const currentUrl = page.url();
       console.log('Current URL after session creation:', currentUrl);
-      
+
       // If we're still on the home page, click on the session to open it
       if (!currentUrl.includes('?session=')) {
         await page.waitForSelector('session-card', { state: 'visible' });
@@ -45,7 +45,7 @@ test.describe('Session Navigation', () => {
     // Navigate back to home - either via Back button or clicking VibeTunnel logo
     const backButton = page.locator('button:has-text("Back")');
     const vibeTunnelLogo = page.locator('button:has(h1:has-text("VibeTunnel"))').first();
-    
+
     if (await backButton.isVisible({ timeout: 1000 })) {
       await backButton.click();
     } else if (await vibeTunnelLogo.isVisible({ timeout: 1000 })) {
