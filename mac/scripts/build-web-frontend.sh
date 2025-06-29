@@ -1,5 +1,6 @@
 #!/bin/zsh
 set -e  # Exit on any error
+set -o pipefail  # Exit if any command in a pipeline fails
 
 # Get the project directory
 if [ -z "${SRCROOT}" ]; then
