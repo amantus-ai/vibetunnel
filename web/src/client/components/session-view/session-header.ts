@@ -8,7 +8,6 @@ import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import type { Session } from '../session-list.js';
 import '../clickable-path.js';
-import './width-selector.js';
 import '../inline-edit.js';
 
 @customElement('session-header')
@@ -24,19 +23,12 @@ export class SessionHeader extends LitElement {
   @property({ type: Boolean }) sidebarCollapsed = false;
   @property({ type: Number }) terminalCols = 0;
   @property({ type: Number }) terminalRows = 0;
-  @property({ type: Number }) terminalMaxCols = 0;
   @property({ type: Number }) terminalFontSize = 14;
-  @property({ type: String }) customWidth = '';
-  @property({ type: Boolean }) showWidthSelector = false;
-  @property({ type: String }) widthLabel = '';
-  @property({ type: String }) widthTooltip = '';
   @property({ type: Function }) onBack?: () => void;
   @property({ type: Function }) onSidebarToggle?: () => void;
   @property({ type: Function }) onOpenFileBrowser?: () => void;
   @property({ type: Function }) onCreateSession?: () => void;
   @property({ type: Function }) onOpenImagePicker?: () => void;
-  @property({ type: Function }) onMaxWidthToggle?: () => void;
-  @property({ type: Function }) onWidthSelect?: (width: number) => void;
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
 
   private getStatusText(): string {
@@ -61,15 +53,6 @@ export class SessionHeader extends LitElement {
       return 'bg-dark-text-muted';
     }
     return this.session.status === 'running' ? 'bg-status-success' : 'bg-status-warning';
-  }
-
-  private handleCloseWidthSelector() {
-    this.dispatchEvent(
-      new CustomEvent('close-width-selector', {
-        bubbles: true,
-        composed: true,
-      })
-    );
   }
 
   render() {
@@ -175,22 +158,6 @@ export class SessionHeader extends LitElement {
               <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2"/>
             </svg>
           </button>
-          <button
-            class="bg-dark-bg-elevated border border-dark-border rounded-lg px-3 py-2 font-mono text-xs text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0 width-selector-button"
-            @click=${() => this.onMaxWidthToggle?.()}
-            title="${this.widthTooltip}"
-          >
-            ${this.widthLabel}
-          </button>
-          <width-selector
-            .visible=${this.showWidthSelector}
-            .terminalMaxCols=${this.terminalMaxCols}
-            .terminalFontSize=${this.terminalFontSize}
-            .customWidth=${this.customWidth}
-            .onWidthSelect=${(width: number) => this.onWidthSelect?.(width)}
-            .onFontSizeChange=${(size: number) => this.onFontSizeChange?.(size)}
-            .onClose=${() => this.handleCloseWidthSelector()}
-          ></width-selector>
           <div class="flex flex-col items-end gap-0">
             <span class="text-xs flex items-center gap-2 font-medium ${
               this.getStatusText() === 'running' ? 'text-status-success' : 'text-status-warning'

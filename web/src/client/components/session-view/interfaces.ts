@@ -15,9 +15,6 @@ export interface StateCallbacks {
   setUseDirectKeyboard(value: boolean): void;
   setShowQuickKeys(value: boolean): void;
   setShowFileBrowser(value: boolean): void;
-  getShowWidthSelector(): boolean;
-  setShowWidthSelector(value: boolean): void;
-  setCustomWidth(value: string): void;
   setKeyboardHeight(value: number): void;
   setConnected(connected: boolean): void;
 }

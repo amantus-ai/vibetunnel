@@ -31,7 +31,6 @@ export class TerminalLifecycleManager {
   private inputManager: InputManager | null = null;
   private connected = false;
   private terminalFontSize = 14;
-  private terminalMaxCols = 0;
   private resizeTimeout: number | null = null;
   private lastResizeWidth = 0;
   private lastResizeHeight = 0;
@@ -61,10 +60,6 @@ export class TerminalLifecycleManager {
 
   setTerminalFontSize(fontSize: number) {
     this.terminalFontSize = fontSize;
-  }
-
-  setTerminalMaxCols(maxCols: number) {
-    this.terminalMaxCols = maxCols;
   }
 
   getTerminal(): Terminal | null {
@@ -113,7 +108,6 @@ export class TerminalLifecycleManager {
     this.terminal.rows = 24;
     this.terminal.fontSize = this.terminalFontSize; // Apply saved font size preference
     this.terminal.fitHorizontally = false; // Allow natural terminal sizing
-    this.terminal.maxCols = this.terminalMaxCols; // Apply saved max width preference
 
     if (this.eventHandlers) {
       // Listen for session exit events
