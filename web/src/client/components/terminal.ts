@@ -43,6 +43,7 @@ export class Terminal extends LitElement {
   private isSessionSwitching = false; // Block writes during session switch
   private terminalInstanceId = Math.random().toString(36).substr(2, 9); // Unique ID for this terminal instance
   private cleanupInProgress = false; // Track if cleanup is in progress
+  private expectedSessionId = ''; // The session ID we expect to receive data for
 
   @state() private terminal: XtermTerminal | null = null;
   private _viewportY = 0; // Current scroll position in pixels
@@ -149,11 +150,11 @@ export class Terminal extends LitElement {
         this.isSessionSwitching = true;
         this.cleanupInProgress = true;
 
-        // Update the current render session ID
+        // Update tracking IDs for the new session
         this.currentRenderSessionId = this.sessionId;
-
-        // Reset last write session ID to force clear on next write
-        this.lastWriteSessionId = '';
+        this.expectedSessionId = this.sessionId;
+        // CRITICAL: Do NOT reset lastWriteSessionId here - we need it to reject old writes
+        // It will be updated when the first write from the new session arrives
 
         // CRITICAL: Clear everything immediately
         if (this.container) {
@@ -171,16 +172,49 @@ export class Terminal extends LitElement {
           this.terminal.clear();
           this.terminal.reset();
 
-          // CRITICAL: Create a completely new buffer to ensure no content leaks
-          // This is the key to preventing old content from persisting
-          // Access internal buffer through the private API
+          // CRITICAL: Access internal buffer service to completely clear all buffers
+          // This ensures no content from previous sessions can persist
           // @ts-expect-error - accessing private xterm internals
           const core = this.terminal._core;
-          const newBuffer = core?._bufferService?.buffer;
-          if (newBuffer) {
-            // Clear all lines in the buffer
-            for (let i = 0; i < newBuffer.lines.length; i++) {
-              newBuffer.lines.get(i)?.fill(newBuffer.getNullCell());
+          if (core?._bufferService) {
+            // Clear the active buffer
+            const activeBuffer = core._bufferService.buffer;
+            if (activeBuffer) {
+              // Reset cursor position
+              activeBuffer.x = 0;
+              activeBuffer.y = 0;
+              activeBuffer.ybase = 0;
+              activeBuffer.ydisp = 0;
+
+              // Clear all lines in the buffer
+              for (let i = 0; i < activeBuffer.lines.length; i++) {
+                const line = activeBuffer.lines.get(i);
+                if (line) {
+                  line.fill(activeBuffer.getNullCell());
+                  line.isWrapped = false;
+                }
+              }
+
+              // Reset scrollback
+              activeBuffer.scrollTop = 0;
+              activeBuffer.scrollBottom = activeBuffer.lines.length - 1;
+            }
+
+            // Clear the alternate buffer too if it exists
+            const altBuffer = core._bufferService?.buffers?.get(1);
+            if (altBuffer) {
+              altBuffer.x = 0;
+              altBuffer.y = 0;
+              altBuffer.ybase = 0;
+              altBuffer.ydisp = 0;
+
+              for (let i = 0; i < altBuffer.lines.length; i++) {
+                const line = altBuffer.lines.get(i);
+                if (line) {
+                  line.fill(altBuffer.getNullCell());
+                  line.isWrapped = false;
+                }
+              }
             }
           }
 
@@ -301,6 +335,8 @@ export class Terminal extends LitElement {
   firstUpdated() {
     // Store the initial font size as original
     this.originalFontSize = this.fontSize;
+    // Initialize expectedSessionId to current sessionId
+    this.expectedSessionId = this.sessionId;
     logger.log(
       `[${this.terminalInstanceId}] Terminal firstUpdated called for sessionId: ${this.sessionId}`
     );
@@ -311,10 +347,11 @@ export class Terminal extends LitElement {
   }
 
   private async initializeTerminal() {
-    // Don't initialize if cleanup is in progress
+    // Allow initialization even during cleanup - the terminal will be properly cleared
     if (this.cleanupInProgress) {
-      logger.warn(`[${this.terminalInstanceId}] Skipping initialization - cleanup in progress`);
-      return;
+      logger.log(
+        `[${this.terminalInstanceId}] Initializing during cleanup - terminal will be cleared`
+      );
     }
 
     try {
@@ -1146,19 +1183,22 @@ export class Terminal extends LitElement {
       return;
     }
 
-    // Initialize lastWriteSessionId if this is the first write
-    if (!this.lastWriteSessionId) {
-      this.lastWriteSessionId = this.sessionId;
+    // CRITICAL: Check if we're receiving data for the expected session
+    // Initialize expectedSessionId if this is the first write for this session
+    if (!this.expectedSessionId || this.expectedSessionId !== this.sessionId) {
+      if (this.lastWriteSessionId && this.lastWriteSessionId !== this.sessionId) {
+        // This is data from a different session than what we last wrote
+        logger.warn(
+          `[terminal] Rejecting write from old session. Last: ${this.lastWriteSessionId}, Current: ${this.sessionId}, Expected: ${this.expectedSessionId}`
+        );
+        return;
+      }
+      // This is the first write for this session, update expected
+      this.expectedSessionId = this.sessionId;
     }
 
-    // CRITICAL: Check if we're writing data from a different session
-    // This can happen if old SSE streams are still sending data after a session switch
-    if (this.lastWriteSessionId !== this.sessionId) {
-      logger.warn(
-        `[terminal] Rejecting write from old session. Last: ${this.lastWriteSessionId}, Current: ${this.sessionId}`
-      );
-      return; // Don't accept writes from old sessions
-    }
+    // Update lastWriteSessionId to track this session is now active
+    this.lastWriteSessionId = this.sessionId;
 
     // Update tracking variables
     this.currentRenderSessionId = this.sessionId;

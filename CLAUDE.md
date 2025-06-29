@@ -126,3 +126,4 @@ The combined approach executes ~3x faster because it doesn't wait for each comma
 - Architecture Details: `docs/ARCHITECTURE.md`
 - Server Implementation Guide: `web/spec.md`
 - Build Configuration: `web/package.json`, `mac/Package.swift`
+- Large Codebase Analysis: `docs/gemini.md` - Using Gemini CLI for analyzing entire projects
