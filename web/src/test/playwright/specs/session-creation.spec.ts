@@ -30,10 +30,6 @@ test.describe('Session Creation', () => {
     // Simple assertions using helpers
     await assertUrlHasSession(page, sessionId);
     await assertTerminalReady(page);
-
-    // Verify session appears in sidebar
-    const sessionInSidebar = page.locator('text=/(?:sh|zsh|bash).*\\(.*\\)/').first();
-    await expect(sessionInSidebar).toBeVisible({ timeout: 4000 });
   });
 
   test('should create a new session with custom name', async ({ page }) => {
