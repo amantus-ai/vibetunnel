@@ -104,15 +104,15 @@ resolve_command() {
     case "$shell_name" in
         zsh)
             # For zsh, we need interactive mode to get aliases
-            exec "$VIBETUNNEL_BIN" fwd -- "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
             ;;
         bash)
             # For bash, expand aliases in non-interactive mode
-            exec "$VIBETUNNEL_BIN" fwd -- "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
             ;;
         *)
             # Generic shell handling
-            exec "$VIBETUNNEL_BIN" fwd -- "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
             ;;
     esac
 }
@@ -141,7 +141,7 @@ fi
 if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     if [[ "$NO_SHELL_WRAP" == "true" ]]; then
         # Execute directly without shell wrapper
-        exec "$VIBETUNNEL_BIN" fwd -- "$@"
+        exec "$VIBETUNNEL_BIN" fwd "$@"
     else
         # Check if the first argument is a real binary
         if which "$1" >/dev/null 2>&1; then

@@ -64,6 +64,12 @@ export async function startVibeTunnelForward(args: string[]) {
     remainingArgs = args.slice(2);
   }
 
+  // Handle -- separator (used by some shells as end-of-options marker)
+  // This allows commands like: fwd -- command-with-dashes
+  if (remainingArgs[0] === '--' && remainingArgs.length > 1) {
+    remainingArgs = remainingArgs.slice(1);
+  }
+
   const command = remainingArgs;
 
   if (command.length === 0) {

@@ -388,3 +388,39 @@ describe('BufferAggregator', () => {
 **Permission management** - See `mac/VibeTunnel/Core/Services/*PermissionManager.swift`
 **WebSocket reconnection** - Implemented in `ios/VibeTunnel/Services/BufferWebSocketClient.swift`
 **Terminal resizing** - Handled in both Swift and TypeScript terminal components
+
+### VibeTunnel CLI Wrapper (vt)
+
+The `vt` command is a bash wrapper script that allows users to run commands through VibeTunnel's terminal forwarding. It's installed at `/usr/local/bin/vt` when the Mac app is built.
+
+**Source location**: `mac/VibeTunnel/vt`
+
+**Usage**:
+```bash
+# Run a command through VibeTunnel
+vt ls -la
+
+# Run an aliased command (e.g., if 'claude' is an alias)
+vt claude --version
+
+# Launch interactive shell
+vt --shell
+vt -i
+
+# Run command without shell wrapping (bypass alias resolution)
+vt --no-shell-wrap command
+vt -S command
+```
+
+**How it works**:
+1. Locates the VibeTunnel.app bundle (checks standard locations and uses Spotlight if needed)
+2. Finds the `vibetunnel` binary within the app bundle's Resources
+3. Determines if the command is a binary or alias/function
+4. For binaries: executes directly through `vibetunnel fwd`
+5. For aliases/functions: wraps in appropriate shell (`zsh -i -c` or `bash -c`) for proper resolution
+
+**Technical Details**:
+- The `--` separator should not be passed to `fwd` as it was being misinterpreted as a command
+- Aliases require interactive shell mode to be resolved properly
+- The script prevents recursive VibeTunnel sessions by checking `VIBETUNNEL_SESSION_ID`
+- The `fwd` binary now properly handles `--` as an argument separator when needed
