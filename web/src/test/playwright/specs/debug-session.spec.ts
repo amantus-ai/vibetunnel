@@ -59,7 +59,14 @@ test.describe('Debug Session Tests', () => {
 
     // Check hideExitedSessions state
     const hideExited = await page.evaluate(() => localStorage.getItem('hideExitedSessions'));
-    console.log('hideExitedSessions:', hideExited);
+    console.log('localStorage hideExitedSessions:', hideExited);
+    
+    // Check the app component's state
+    const appHideExited = await page.evaluate(() => {
+      const app = document.querySelector('vibetunnel-app') as any;
+      return app?.hideExited;
+    });
+    console.log('App component hideExited:', appHideExited);
 
     // Check what's in the DOM
     const sessionCards = await page.locator('session-card').count();
