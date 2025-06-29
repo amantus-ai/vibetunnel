@@ -30,20 +30,36 @@ export class TestSessionManager {
       await sessionListPage.navigate();
     }
 
-    // Create session - use bash by default for consistency
-    await sessionListPage.createNewSession(name, spawnWindow, command || 'bash');
+    try {
+      // Create session - use bash by default for consistency
+      await sessionListPage.createNewSession(name, spawnWindow, command || 'bash');
 
-    // Get session ID from URL for web sessions
-    let sessionId = '';
-    if (!spawnWindow) {
-      await this.page.waitForURL(/\?session=/, { timeout: 4000 });
-      sessionId = new URL(this.page.url()).searchParams.get('session') || '';
+      // Get session ID from URL for web sessions
+      let sessionId = '';
+      if (!spawnWindow) {
+        await this.page.waitForURL(/\?session=/, { timeout: 4000 });
+        const url = this.page.url();
+
+        if (!url.includes('?session=')) {
+          throw new Error(`Failed to navigate to session after creation. Current URL: ${url}`);
+        }
+
+        sessionId = new URL(url).searchParams.get('session') || '';
+        if (!sessionId) {
+          throw new Error(`No session ID found in URL: ${url}`);
+        }
+      }
+
+      // Track the session
+      this.sessions.set(name, { id: sessionId, spawnWindow });
+
+      return { sessionName: name, sessionId };
+    } catch (error) {
+      console.error(`Failed to create tracked session "${name}":`, error);
+      // Still track it for cleanup attempt
+      this.sessions.set(name, { id: '', spawnWindow });
+      throw error;
     }
-
-    // Track the session
-    this.sessions.set(name, { id: sessionId, spawnWindow });
-
-    return { sessionName: name, sessionId };
   }
 
   /**

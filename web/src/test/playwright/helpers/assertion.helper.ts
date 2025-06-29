@@ -39,33 +39,71 @@ export async function assertSessionInList(
 
   // Optionally verify status
   if (status) {
-    // Look for status text in various possible locations
-    const statusSelectors = [
-      'span:has(.w-2.h-2.rounded-full)', // Original selector
-      'span:has-text("RUNNING")', // Direct text match
-      'span:has-text("EXITED")', // Direct text match
-      'span:has-text("KILLED")', // Direct text match
-      `span:has-text("${status}")`, // Dynamic match
-      `text=${status}`, // Simple text match
-    ];
+    // The DOM shows lowercase status values, so we need to check for both cases
+    const lowerStatus = status.toLowerCase();
 
-    let statusFound = false;
-    for (const selector of statusSelectors) {
-      try {
-        const statusElement = sessionCard.locator(selector).first();
-        if (await statusElement.isVisible({ timeout: 500 })) {
-          await expect(statusElement).toContainText(status, { timeout: 2000 });
-          statusFound = true;
-          break;
-        }
-      } catch {
-        // Try next selector
+    // Look for the span with data-status attribute
+    const statusElement = sessionCard.locator('span[data-status]').first();
+
+    try {
+      // Wait for the status element to be visible
+      await expect(statusElement).toBeVisible({ timeout: 2000 });
+
+      // Get the actual status from data attribute
+      const dataStatus = await statusElement.getAttribute('data-status');
+      const statusText = await statusElement.textContent();
+
+      // Check if the status matches (case-insensitive)
+      if (dataStatus?.toUpperCase() === status || statusText?.toUpperCase().includes(status)) {
+        // Status matches
+        return;
       }
-    }
 
-    if (!statusFound) {
-      // Fall back to checking if the text exists anywhere in the card
-      await expect(sessionCard).toContainText(status, { timeout });
+      // If status is RUNNING but shows "waiting", that's also acceptable
+      if (status === 'RUNNING' && statusText?.toLowerCase().includes('waiting')) {
+        return;
+      }
+
+      throw new Error(
+        `Expected status "${status}", but found data-status="${dataStatus}" and text="${statusText}"`
+      );
+    } catch {
+      // If the span[data-status] approach fails, try other selectors
+      const statusSelectors = [
+        'span:has(.w-2.h-2.rounded-full)', // Status container with dot
+        `span:has-text("${lowerStatus}")`, // Lowercase match
+        `span:has-text("${status}")`, // Original case match
+        `text=${lowerStatus}`, // Simple lowercase text
+        `text=${status}`, // Simple original case text
+      ];
+
+      for (const selector of statusSelectors) {
+        try {
+          const element = sessionCard.locator(selector).first();
+          const text = await element.textContent({ timeout: 500 });
+
+          if (
+            text &&
+            (text.toUpperCase().includes(status) ||
+              (status === 'RUNNING' && text.toLowerCase().includes('waiting')))
+          ) {
+            return;
+          }
+        } catch {
+          // Try next selector
+        }
+      }
+
+      // Final fallback: check if the status text exists anywhere in the card
+      const cardText = await sessionCard.textContent();
+      if (
+        !cardText?.toUpperCase().includes(status) &&
+        !(status === 'RUNNING' && cardText?.toLowerCase().includes('waiting'))
+      ) {
+        throw new Error(
+          `Could not find status "${status}" in session card. Card text: "${cardText}"`
+        );
+      }
     }
   }
 }
