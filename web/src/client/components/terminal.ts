@@ -19,6 +19,20 @@ import { UrlHighlighter } from '../utils/url-highlighter';
 
 const logger = createLogger('terminal');
 
+// Constants for resize and scroll behavior
+const RESIZE_DEBOUNCE_MS = 50;
+const SCROLL_RESIZE_DEBOUNCE_MS = 300;
+const MIN_FONT_SIZE = 4;
+const MAX_FONT_SIZE = 32;
+const DEFAULT_CHAR_WIDTH = 8;
+const LINE_HEIGHT_MULTIPLIER = 1.2;
+const MIN_COLS = 20;
+const MIN_ROWS = 6;
+const DEFAULT_WIDTH = 800;
+const DEFAULT_HEIGHT = 600;
+const DEFAULT_COLS = 80;
+const DEFAULT_ROWS = 24;
+
 @customElement('vibe-terminal')
 export class Terminal extends LitElement {
   // Disable shadow DOM for Tailwind compatibility and native text selection
@@ -306,7 +320,7 @@ export class Terminal extends LitElement {
     if (!this.terminal || !this.container) return;
 
     const _oldActualRows = this.actualRows;
-    const oldLineHeight = this.fontSize * 1.2;
+    const oldLineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
     const wasAtBottom = this.isScrolledToBottom();
 
     // Calculate current scroll position in terms of content lines (before any changes)
@@ -323,12 +337,12 @@ export class Terminal extends LitElement {
       const currentCharWidth = this.measureCharacterWidth();
       const scaleFactor = targetCharWidth / currentCharWidth;
       const calculatedFontSize = this.fontSize * scaleFactor;
-      const newFontSize = Math.max(4, Math.min(32, calculatedFontSize));
+      const newFontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, calculatedFontSize));
 
       this.fontSize = newFontSize;
 
       // Also fit rows to use full container height with the new font size
-      const lineHeight = this.fontSize * 1.2;
+      const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
       const fittedRows = Math.max(1, Math.floor(containerHeight / lineHeight));
 
       // Update both actualRows and the terminal's actual row count
@@ -338,8 +352,8 @@ export class Terminal extends LitElement {
       // Resize the terminal to the new dimensions
       if (this.terminal) {
         // Ensure cols and rows are valid numbers before resizing
-        const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
-        const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
+        const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : DEFAULT_COLS;
+        const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : DEFAULT_ROWS;
         this.terminal.resize(safeCols, safeRows);
 
         // Dispatch resize event for backend synchronization
@@ -352,26 +366,27 @@ export class Terminal extends LitElement {
       }
     } else {
       // Normal mode: calculate both cols and rows based on container size
-      const containerWidth = this.container.clientWidth || 800; // Default width if container not ready
-      const containerHeight = this.container.clientHeight || 600; // Default height if container not ready
-      const lineHeight = this.fontSize * 1.2;
+      const containerWidth = this.container.clientWidth || DEFAULT_WIDTH;
+      const containerHeight = this.container.clientHeight || DEFAULT_HEIGHT;
+      const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
       const charWidth = this.measureCharacterWidth();
 
       // Ensure charWidth is valid before division
-      const safeCharWidth = Number.isFinite(charWidth) && charWidth > 0 ? charWidth : 8; // Default char width
+      const safeCharWidth =
+        Number.isFinite(charWidth) && charWidth > 0 ? charWidth : DEFAULT_CHAR_WIDTH;
       // Subtract 1 to prevent horizontal scrollbar due to rounding/border issues
-      const calculatedCols = Math.max(20, Math.floor(containerWidth / safeCharWidth)) - 1;
+      const calculatedCols = Math.max(MIN_COLS, Math.floor(containerWidth / safeCharWidth)) - 1;
 
       // Simple sizing logic - always use calculated width
       this.cols = calculatedCols;
-      this.rows = Math.max(6, Math.floor(containerHeight / lineHeight));
+      this.rows = Math.max(MIN_ROWS, Math.floor(containerHeight / lineHeight));
       this.actualRows = this.rows;
 
       // Resize the terminal to the new dimensions
       if (this.terminal) {
         // Ensure cols and rows are valid numbers before resizing
-        const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
-        const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
+        const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : DEFAULT_COLS;
+        const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : DEFAULT_ROWS;
         this.terminal.resize(safeCols, safeRows);
 
         // Dispatch resize event for backend synchronization
@@ -387,7 +402,7 @@ export class Terminal extends LitElement {
     // Recalculate viewportY based on new lineHeight and actualRows
     if (this.terminal) {
       const buffer = this.terminal.buffer.active;
-      const newLineHeight = this.fontSize * 1.2;
+      const newLineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
       const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * newLineHeight);
 
       if (wasAtBottom) {
@@ -415,7 +430,7 @@ export class Terminal extends LitElement {
       }
       this.resizeTimeout = setTimeout(() => {
         this.recalculateAndResize();
-      }, 50);
+      }, RESIZE_DEBOUNCE_MS);
     });
     this.resizeObserver.observe(this.container);
 
@@ -433,7 +448,7 @@ export class Terminal extends LitElement {
       (e) => {
         e.preventDefault();
 
-        const lineHeight = this.fontSize * 1.2;
+        const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
         let deltaPixelsY = 0;
         let deltaPixelsX = 0;
 
@@ -584,7 +599,7 @@ export class Terminal extends LitElement {
   private scrollViewport(deltaLines: number) {
     if (!this.terminal) return;
 
-    const lineHeight = this.fontSize * 1.2;
+    const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
     const deltaPixels = deltaLines * lineHeight;
     this.scrollViewportPixels(deltaPixels);
   }
@@ -593,7 +608,7 @@ export class Terminal extends LitElement {
     if (!this.terminal) return;
 
     const buffer = this.terminal.buffer.active;
-    const lineHeight = this.fontSize * 1.2;
+    const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
     const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * lineHeight);
 
     const newViewportY = Math.max(0, Math.min(maxScrollPixels, this.viewportY + deltaPixels));
@@ -612,7 +627,7 @@ export class Terminal extends LitElement {
       }
       this.scrollResizeTimeout = setTimeout(() => {
         this.recalculateAndResize();
-      }, 300); // 300ms debounce to avoid excessive resizing during scrolling
+      }, SCROLL_RESIZE_DEBOUNCE_MS);
     }
   }
 
@@ -644,7 +659,7 @@ export class Terminal extends LitElement {
     if (Math.abs(deltaY) > minVelocity) {
       const buffer = this.terminal?.buffer.active;
       if (buffer) {
-        const lineHeight = this.fontSize * 1.2;
+        const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
         const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * lineHeight);
         const newViewportY = Math.max(0, Math.min(maxScrollPixels, this.viewportY + deltaY));
 
@@ -705,7 +720,7 @@ export class Terminal extends LitElement {
 
     const buffer = this.terminal.buffer.active;
     const bufferLength = buffer.length;
-    const lineHeight = this.fontSize * 1.2;
+    const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
 
     // Convert pixel scroll position to fractional line position
     const startRowFloat = this.viewportY / lineHeight;
@@ -951,7 +966,7 @@ export class Terminal extends LitElement {
       // Follow cursor: scroll to bottom if enabled
       if (followCursor && this.followCursorEnabled) {
         const buffer = this.terminal.buffer.active;
-        const lineHeight = this.fontSize * 1.2;
+        const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
         const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * lineHeight);
 
         // Set programmatic scroll flag and scroll to bottom
@@ -1019,7 +1034,7 @@ export class Terminal extends LitElement {
       this.recalculateAndResize();
 
       const buffer = this.terminal.buffer.active;
-      const lineHeight = this.fontSize * 1.2;
+      const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
       // Use the same maxScrollPixels calculation as scrollViewportPixels
       const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * lineHeight);
 
@@ -1041,7 +1056,7 @@ export class Terminal extends LitElement {
       if (!this.terminal) return;
 
       const buffer = this.terminal.buffer.active;
-      const lineHeight = this.fontSize * 1.2;
+      const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
       const maxScrollLines = Math.max(0, buffer.length - this.actualRows);
 
       // Set programmatic scroll flag
@@ -1102,7 +1117,7 @@ export class Terminal extends LitElement {
    * @note May return stale data if operations are pending. Use queueCallback() for fresh data.
    */
   public getScrollPosition(): number {
-    const lineHeight = this.fontSize * 1.2;
+    const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
     return Math.round(this.viewportY / lineHeight);
   }
 
@@ -1126,7 +1141,7 @@ export class Terminal extends LitElement {
 
     const buffer = this.terminal.buffer.active;
     const cursorY = buffer.cursorY + buffer.viewportY; // Absolute cursor position in buffer
-    const lineHeight = this.fontSize * 1.2;
+    const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
 
     // Calculate what line the cursor is on
     const cursorLine = cursorY;
@@ -1163,7 +1178,7 @@ export class Terminal extends LitElement {
     if (!this.terminal) return true;
 
     const buffer = this.terminal.buffer.active;
-    const lineHeight = this.fontSize * 1.2;
+    const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
     const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * lineHeight);
 
     // Consider "at bottom" if within one line height of the bottom
@@ -1238,7 +1253,7 @@ export class Terminal extends LitElement {
       this.scrollToBottom();
     } else {
       // Restore logical scroll position for non-bottom positions
-      const newLineHeight = this.fontSize * 1.2;
+      const newLineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
       const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * newLineHeight);
       const newViewportY = currentScrollLines * newLineHeight;
       this.viewportY = Math.max(0, Math.min(maxScrollPixels, newViewportY));
