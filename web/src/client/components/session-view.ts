@@ -74,31 +74,28 @@ export class SessionView extends LitElement {
         logger.log('Switching sessions', context);
 
         try {
-          // First, clear the terminal synchronously to prevent race conditions
-          const terminal = this.querySelector('vibe-terminal') as Terminal;
-          if (terminal) {
-            terminal.clear();
-          }
+          // Reset initialization tracking
+          this.terminalInitialized = false;
 
-          // Clean up old connection without flushing buffered data
+          // First update session to trigger terminal clear
+          // This ensures terminal clears BEFORE we disconnect the old stream
+          this.updateManagers(context.toSession);
+          this.requestUpdate();
+          await this.updateComplete;
+
+          // NOW clean up old connection after terminal has cleared
           if (context.fromSession && this.connectionManager) {
+            logger.log('Cleaning up old connection');
             this.connectionManager.cleanupStreamConnection(true); // skipFlush = true
           }
 
-          // Small delay to ensure terminal is fully cleared
-          await new Promise((resolve) => setTimeout(resolve, 50));
-
-          // Update all managers with new session
-          this.updateManagers(context.toSession);
-
-          // Re-initialize terminal to establish new connection
-          if (context.toSession && this.terminalLifecycleManager) {
-            // Use initializeTerminal instead of setupTerminal to establish the SSE connection
-            this.terminalLifecycleManager.initializeTerminal();
+          // Clear terminal reference in lifecycle manager to force re-init
+          if (this.terminalLifecycleManager) {
+            this.terminalLifecycleManager.setTerminal(null);
           }
 
-          // Trigger UI update
-          this.requestUpdate();
+          // Terminal will be initialized in the next updated() cycle
+          logger.log('Session switch complete, terminal will initialize in next update');
         } catch (error) {
           logger.error('Error during session switch:', error);
         }
@@ -107,8 +104,18 @@ export class SessionView extends LitElement {
       onEnterLeaving: async (context) => {
         logger.log('Entering leaving state', context);
         this.connected = false;
+
+        // Reset initialization state
+        this.terminalInitialized = false;
+
+        // Clean up connection
         if (this.connectionManager) {
           this.connectionManager.cleanupStreamConnection();
+        }
+
+        // Clear terminal reference
+        if (this.terminalLifecycleManager) {
+          this.terminalLifecycleManager.setTerminal(null);
         }
       },
 
@@ -178,6 +185,10 @@ export class SessionView extends LitElement {
   private createHiddenInputTimeout: ReturnType<typeof setTimeout> | null = null;
   private sessionSwitchDebounce?: ReturnType<typeof setTimeout>;
   private stateMachine: SessionStateMachine;
+
+  // Terminal initialization tracking
+  private terminalInitialized = false;
+  private lastInitializedSessionId: string | null = null;
 
   // Removed methods that are now in LifecycleEventManager:
   // - handlePreferencesChanged
@@ -472,6 +483,9 @@ export class SessionView extends LitElement {
       const sessionChanged = oldSession?.id !== this.session?.id;
 
       if (sessionChanged) {
+        // Reset terminal initialization state when session changes
+        this.terminalInitialized = false;
+
         // Clear any pending debounce
         if (this.sessionSwitchDebounce) {
           clearTimeout(this.sessionSwitchDebounce);
@@ -509,34 +523,8 @@ export class SessionView extends LitElement {
       this.terminalLifecycleManager.setupTerminal();
     }
 
-    // Initialize terminal after first render when terminal element exists
-    // Also re-initialize when session changes (including from null to valid session)
-    if (this.session && !this.loadingAnimationManager.isLoading() && this.connected) {
-      const terminalElement = this.querySelector('vibe-terminal') as Terminal;
-      const oldSession = changedProperties.get('session') as Session | null | undefined;
-      const sessionIdChanged =
-        changedProperties.has('session') && oldSession?.id !== this.session.id;
-
-      const needsInit = !this.terminalLifecycleManager.getTerminal() || sessionIdChanged;
-
-      logger.log('Terminal init check:', {
-        hasSession: !!this.session,
-        isLoading: this.loadingAnimationManager.isLoading(),
-        connected: this.connected,
-        hasTerminalElement: !!terminalElement,
-        needsInit,
-        sessionIdChanged,
-      });
-
-      if (terminalElement && needsInit) {
-        // Ensure loading is stopped before initializing terminal
-        if (this.loadingAnimationManager.isLoading()) {
-          logger.log('Force stopping loading animation before terminal init');
-          this.loadingAnimationManager.stopLoading();
-        }
-        this.terminalLifecycleManager.initializeTerminal();
-      }
-    }
+    // Handle terminal initialization with proper guards
+    this.handleTerminalInitialization(changedProperties);
 
     // Create hidden input if direct keyboard is enabled on mobile
     if (
@@ -957,6 +945,53 @@ export class SessionView extends LitElement {
       // Execute the switch
       await this.stateMachine.transition({ type: 'SWITCH', session });
     }, SESSION_SWITCH_DEBOUNCE_MS);
+  }
+
+  private handleTerminalInitialization(changedProperties: Map<string, unknown>): void {
+    // Early exit if basic requirements aren't met
+    if (!this.session || this.loadingAnimationManager.isLoading() || !this.connected) {
+      return;
+    }
+
+    const terminalElement = this.querySelector('vibe-terminal') as Terminal;
+    if (!terminalElement) {
+      return;
+    }
+
+    // Check if session changed
+    const oldSession = changedProperties.get('session') as Session | null | undefined;
+    const sessionChanged = changedProperties.has('session') && oldSession?.id !== this.session.id;
+
+    // Determine if we need to initialize
+    const needsInit =
+      !this.terminalInitialized ||
+      this.lastInitializedSessionId !== this.session.id ||
+      sessionChanged ||
+      !this.terminalLifecycleManager.getTerminal();
+
+    if (!needsInit) {
+      return;
+    }
+
+    logger.log('Initializing terminal', {
+      sessionId: this.session.id,
+      previousSessionId: this.lastInitializedSessionId,
+      sessionChanged,
+      terminalInitialized: this.terminalInitialized,
+    });
+
+    // Mark as initialized before starting to prevent re-entry
+    this.terminalInitialized = true;
+    this.lastInitializedSessionId = this.session.id;
+
+    // Ensure loading is stopped
+    if (this.loadingAnimationManager.isLoading()) {
+      logger.log('Force stopping loading animation before terminal init');
+      this.loadingAnimationManager.stopLoading();
+    }
+
+    // Initialize the terminal
+    this.terminalLifecycleManager.initializeTerminal();
   }
 
   private updateManagers(session: Session | null): void {

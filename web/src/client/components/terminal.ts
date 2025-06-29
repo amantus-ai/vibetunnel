@@ -38,6 +38,8 @@ export class Terminal extends LitElement {
 
   private originalFontSize: number = 14;
   private userOverrideWidth = false; // Track if user has manually set a width preference
+  private currentRenderSessionId = ''; // Track which session's content we're rendering
+  private lastWriteSessionId = ''; // Track the last session that wrote data
 
   @state() private terminal: XtermTerminal | null = null;
   private _viewportY = 0; // Current scroll position in pixels
@@ -124,26 +126,51 @@ export class Terminal extends LitElement {
   updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
 
-    // Load preference when sessionId changes
-    if (changedProperties.has('sessionId') && this.sessionId) {
-      try {
-        const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
-        if (stored !== null) {
-          const newValue = stored === 'true';
-          // Only update if the value actually changed
-          if (this.userOverrideWidth !== newValue) {
-            this.userOverrideWidth = newValue;
-            // Apply preference if terminal is already initialized
-            if (this.terminal && this.userOverrideWidth) {
-              // Use queueRenderOperation to avoid immediate update
-              this.queueRenderOperation(() => {
-                this.fitTerminal();
-              });
+    // Handle sessionId changes
+    if (changedProperties.has('sessionId')) {
+      const oldSessionId = changedProperties.get('sessionId') as string;
+
+      // Clear terminal when sessionId changes (including to empty string)
+      if (oldSessionId !== this.sessionId && this.terminal) {
+        logger.log(
+          `Session ID changed from ${oldSessionId} to ${this.sessionId}, clearing terminal`
+        );
+
+        // Update the current render session ID
+        this.currentRenderSessionId = this.sessionId;
+
+        // CRITICAL: Clear the DOM container first to remove ALL old content
+        // This ensures content from sessions with more lines doesn't persist
+        if (this.container) {
+          this.container.innerHTML = '';
+        }
+
+        // Clear the terminal AND force immediate render
+        this.clear();
+        this.renderBuffer();
+      }
+
+      // Load preference when sessionId changes and is not empty
+      if (this.sessionId) {
+        try {
+          const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
+          if (stored !== null) {
+            const newValue = stored === 'true';
+            // Only update if the value actually changed
+            if (this.userOverrideWidth !== newValue) {
+              this.userOverrideWidth = newValue;
+              // Apply preference if terminal is already initialized
+              if (this.terminal && this.userOverrideWidth) {
+                // Use queueRenderOperation to avoid immediate update
+                this.queueRenderOperation(() => {
+                  this.fitTerminal();
+                });
+              }
             }
           }
+        } catch (error) {
+          logger.warn('Failed to load width preference from localStorage:', error);
         }
-      } catch (error) {
-        logger.warn('Failed to load width preference from localStorage:', error);
       }
     }
 
@@ -290,6 +317,9 @@ export class Terminal extends LitElement {
 
       // Set terminal size - don't call .open() to keep it headless
       this.terminal.resize(this.cols, this.rows);
+
+      // Initialize current render session ID
+      this.currentRenderSessionId = this.sessionId;
     } catch (error) {
       logger.error('failed to create terminal:', error);
       throw error;
@@ -711,6 +741,15 @@ export class Terminal extends LitElement {
   private renderBuffer() {
     if (!this.terminal || !this.container) return;
 
+    // CRITICAL: Check if this render is for the current session
+    // This prevents render operations from old sessions from executing
+    if (this.currentRenderSessionId !== this.sessionId) {
+      logger.log(
+        `Skipping render for old session ${this.currentRenderSessionId}, current is ${this.sessionId}`
+      );
+      return;
+    }
+
     const startTime = this.debugMode ? performance.now() : 0;
 
     // Increment render count immediately
@@ -943,6 +982,27 @@ export class Terminal extends LitElement {
   public write(data: string, followCursor: boolean = true) {
     if (!this.terminal) return;
 
+    // Don't accept writes when sessionId is empty or undefined
+    // This prevents data from old sessions bleeding into new ones
+    if (!this.sessionId) {
+      logger.warn('Rejecting write - no active sessionId');
+      return;
+    }
+
+    // CRITICAL: Check if we're writing data from a different session
+    // This can happen if old SSE streams are still sending data after a session switch
+    if (this.lastWriteSessionId && this.lastWriteSessionId !== this.sessionId) {
+      logger.log(
+        `Detected write from different session. Last: ${this.lastWriteSessionId}, Current: ${this.sessionId}. Clearing terminal.`
+      );
+      // Clear the terminal completely to prevent mixed content
+      this.clear();
+    }
+
+    // Update tracking variables
+    this.lastWriteSessionId = this.sessionId;
+    this.currentRenderSessionId = this.sessionId;
+
     // Check for cursor visibility sequences
     if (data.includes('\x1b[?25l')) {
       this.cursorVisible = false;
@@ -983,14 +1043,30 @@ export class Terminal extends LitElement {
   public clear() {
     if (!this.terminal) return;
 
+    // CRITICAL: Clear the DOM container immediately to remove ALL visible content
+    // This prevents old content from persisting when the new content is shorter
+    if (this.container) {
+      this.container.innerHTML = '';
+    }
+
     // Clear immediately and synchronously to avoid race conditions
     this.terminal.clear();
     this.terminal.reset();
+
     this.viewportY = 0;
+
+    // Reset cursor visibility
+    this.cursorVisible = true;
 
     // Also clear the render queue to prevent any pending operations
     this.operationQueue = [];
     this.renderPending = false;
+
+    // Cancel any pending animations
+    if (this.momentumAnimation) {
+      cancelAnimationFrame(this.momentumAnimation);
+      this.momentumAnimation = null;
+    }
 
     // Force immediate render update
     this.requestRenderBuffer();
