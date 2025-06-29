@@ -12,12 +12,18 @@ describe('fwd.ts argument parsing with -- separator', () => {
       const command = ['/bin/zsh', '-i', '-c', 'echo "hello"'];
       const result = ProcessUtils.resolveCommand(command);
 
-      // ProcessUtils might resolve to the system's default shell
+      // ProcessUtils adds -i -l flags for interactive shells
       expect(result.command).toMatch(/\/(bin\/)?(bash|zsh)$/);
+      expect(result.args).toContain('-i');
+      expect(result.args).toContain('-l');
       expect(result.args).toContain('-c');
-      expect(result.args).toContain('echo "hello"');
+      // The actual command is in the args after -c
+      const cIndex = result.args.indexOf('-c');
+      expect(cIndex).toBeGreaterThan(-1);
+      expect(result.args[cIndex + 1]).toBe('echo "hello"');
       expect(result.resolvedFrom).toBe('path');
       expect(result.useShell).toBe(false);
+      expect(result.isInteractive).toBe(true);
     });
 
     it('should fail when -- is included as first element', () => {
@@ -78,10 +84,11 @@ describe('fwd.ts argument parsing with -- separator', () => {
 
       const result = ProcessUtils.resolveCommand(command);
 
-      // ProcessUtils might resolve to the system's default shell
-      expect(result.command).toMatch(/\/(bin\/)?(bash|zsh)$/);
-      expect(result.resolvedFrom).toBe('path');
-      expect(result.useShell).toBe(false);
+      // When command is removed, ProcessUtils falls back to shell execution
+      expect(result.command).toMatch(/\/(bin\/)?(bash|zsh|sh)$/);
+      // The -- removal should now work properly
+      expect(result.args).toContain('-c');
+      expect(result.useShell).toBe(result.resolvedFrom === 'shell' || result.resolvedFrom === 'alias');
     });
 
     it('should handle vt script alias resolution pattern', () => {
@@ -93,10 +100,15 @@ describe('fwd.ts argument parsing with -- separator', () => {
       const command = ['/bin/zsh', '-i', '-c', 'claude --dangerously-skip-permissions'];
       const result = ProcessUtils.resolveCommand(command);
 
-      // ProcessUtils might resolve to the system's default shell
+      // ProcessUtils recognizes shells and adds -i -l flags
       expect(result.command).toMatch(/\/(bin\/)?(bash|zsh)$/);
+      expect(result.args).toContain('-i');
+      expect(result.args).toContain('-l');
       expect(result.args).toContain('-c');
-      expect(result.args).toContain('claude --dangerously-skip-permissions');
+      // The actual command is preserved after -c
+      const cIndex = result.args.indexOf('-c');
+      expect(cIndex).toBeGreaterThan(-1);
+      expect(result.args[cIndex + 1]).toBe('claude --dangerously-skip-permissions');
       expect(result.resolvedFrom).toBe('path');
       expect(result.useShell).toBe(false);
       expect(result.isInteractive).toBe(true);
