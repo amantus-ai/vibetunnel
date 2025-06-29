@@ -465,9 +465,9 @@ export class SessionView extends LitElement {
           // Session became null - disconnect immediately
           this.stateMachine.transition({ type: 'DISCONNECT' });
           // Complete disconnect after cleanup
-          requestAnimationFrame(() => {
+          setTimeout(() => {
             this.stateMachine.transition({ type: 'DISCONNECTED' });
-          });
+          }, 10);
         } else if (!oldSession) {
           // Initial session (null → session)
           this.handleNewSession(this.session);
@@ -934,7 +934,15 @@ export class SessionView extends LitElement {
       // Start the switch
       await this.stateMachine.transition({ type: 'SWITCH', session });
       
-      // Complete the switch after cleanup and setup
+      // Wait for cleanup and initial setup to complete
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      
+      // Ensure terminal is set up for the new session
+      if (this.session?.id === session.id && this.terminalLifecycleManager) {
+        this.terminalLifecycleManager.setupTerminal();
+      }
+      
+      // Complete the switch after a short delay
       setTimeout(() => {
         if (this.session?.id === session.id) {
           this.stateMachine.transition({ type: 'SWITCHED' });
