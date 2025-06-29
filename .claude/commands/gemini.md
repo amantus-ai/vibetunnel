@@ -16,12 +16,12 @@ This command reads the `docs/gemini.md` file which contains best practices for u
 
 ### Analyze a single file
 ```
-/gemini @src/main.py Explain this file's purpose and structure
+/gemini @web/src/server/server.ts Explain this file's purpose and structure
 ```
 
 ### Check feature implementation
 ```
-/gemini @src/ Has dark mode been implemented in this codebase?
+/gemini @web/src/ Has dark mode been implemented in this codebase?
 ```
 
 ### Analyze entire project
@@ -31,16 +31,23 @@ This command reads the `docs/gemini.md` file which contains best practices for u
 
 ### Verify security measures
 ```
-/gemini @src/ @api/ Are SQL injection protections implemented?
+/gemini @web/src/ @web/src/api/ Are SQL injection protections implemented?
 ```
 
 ## Implementation
 
 When you use this command, I will:
-1. Read the contents of `docs/gemini.md` to understand Gemini CLI usage patterns
-2. Analyze your prompt to determine the appropriate Gemini command structure
-3. Execute the gemini command with the proper flags and file inclusions
-4. Return the results to help with your codebase analysis
+1. Check if Gemini CLI is installed and accessible
+2. Read the contents of `docs/gemini.md` to understand Gemini CLI usage patterns (provide helpful error if missing)
+3. Analyze your prompt to determine the appropriate Gemini command structure
+4. Execute the gemini command with the proper flags and file inclusions
+5. Return the results to help with your codebase analysis
+
+## Error Handling
+
+- If Gemini CLI is not installed, provide installation instructions
+- If `docs/gemini.md` is missing, use built-in knowledge of Gemini CLI best practices
+- Handle command execution errors gracefully with helpful messages
 
 ## Note
 

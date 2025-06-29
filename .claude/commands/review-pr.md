@@ -14,7 +14,7 @@ Options:
 
 ## Description
 
-This command performs a thorough code review of the current branch's changes compared to the main branch. It runs two parallel sub-agents - one using Claude and another using Gemini - to perform independent comprehensive reviews. The results from both AI models are then intelligently merged provide a complete multi-perspective analysis.
+This command performs a thorough code review of the current branch's changes compared to the main branch. It runs two parallel sub-agents - one using Claude and another using Gemini - to perform independent comprehensive reviews. The results from both AI models are then intelligently merged to provide a complete multi-perspective analysis.
 
 ## Examples
 
@@ -38,15 +38,17 @@ This command performs a thorough code review of the current branch's changes com
 When you use this command, I will:
 
 1. **Initial PR Context Gathering**
-   - Run `gh pr view` to check PR description and any existing comments
-   - Run `git log main..HEAD --oneline` to see all commits in this PR
-   - Run `git diff main...HEAD --stat` to get an overview of changed files
-   - Generate comprehensive diff with `git diff main...HEAD` and exact line numbers
+   - Check if required tools are available: `gh`, `git`, and `gemini`
+   - Run `gh pr view` to check PR description and any existing comments (handle errors gracefully)
+   - Run `git log "main..HEAD" --oneline` to see all commits in this PR (with proper shell escaping)
+   - Run `git diff "main...HEAD" --stat` to get an overview of changed files (with proper shell escaping)
+   - Generate comprehensive diff with `git diff "main...HEAD"` and exact line numbers
+   - If any git commands fail, provide helpful error messages and guidance
 
 2. **Launch Two Parallel Sub-Agents**
 
    **Sub-Agent 1: Claude Review**
-   - WARNING: This skep must be skipped when `--gemini-only` has been passed
+   - WARNING: This step must be skipped when `--gemini-only` has been passed
    - Performs complete multi-aspect code review using Claude
    - Analyzes all aspects below independently
    
@@ -102,10 +104,12 @@ When you use this command, I will:
    - Ensure README/docs are updated if needed
 
    **Automated Checks**
-   - Execute `pnpm run lint` and `pnpm run typecheck` (for web/)
-   - Run `./scripts/lint.sh` (for mac/)
+   - Execute `pnpm run check` (for web/) if available
+   - Run `./scripts/lint.sh` (for mac/) if the script exists
+   - Run `./lint.sh` (for tauri/) if the script exists
    - Check if tests pass with appropriate test commands
    - Verify build succeeds
+   - If any checks fail, continue with review but note the failures
 
 3. **Merge Results**
    - Intelligently combine findings from both Claude and Gemini
@@ -176,7 +180,7 @@ When you use this command, I will:
 
 This command emphasizes:
 - **Parallel Sub-Agent Architecture**: Two independent sub-agents perform complete reviews - one using Claude, another using Gemini CLI
-- **Integration**: Final step uses to intelligently merge findings from both AI models
+- **Intelligent Merging**: Final step combines findings from both AI models by identifying common issues (high confidence), highlighting unique insights, and resolving conflicting assessments
 - **Accountability**: Approving means you own the outcome
 - **Mentorship**: Every comment is a teaching opportunity
 - **Thoroughness**: Multiple passes from different angles by both AI models
@@ -194,3 +198,16 @@ This command emphasizes:
 - Both sub-agents work in parallel for efficiency
 
 For large PRs, consider reviewing incrementally and suggesting the author break it into smaller PRs for more effective review.
+
+## Prerequisites
+
+- Git and GitHub CLI (`gh`) must be installed
+- For full functionality: Gemini CLI must be installed (see Gemini documentation)
+- For `--gemini-only` mode: Only Gemini CLI is required
+
+## Error Handling
+
+- If required tools are missing, the command will provide installation instructions
+- Git command failures are handled gracefully with helpful error messages
+- If automated checks fail, the review continues but notes the failures
+- Timeout protection: Gemini sub-agent has a 10-minute timeout

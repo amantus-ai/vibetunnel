@@ -1,6 +1,10 @@
 # Using Gemini CLI for Large Codebase Analysis
 
-When analyzing large codebases or multiple files that might exceed context limits, use the Gemini CLI with its massive context window. Use `gemini -p` to leverage Google Gemini's large context capacity.
+When analyzing large codebases or multiple files that might exceed context limits, use the Gemini CLI with its massive context window (up to 2 million tokens). Use `gemini -p` to leverage Google Gemini's large context capacity.
+
+## Prerequisites
+
+Ensure Gemini CLI is installed before using these commands. Installation instructions: [link to Gemini CLI setup]
 
 ## File and Directory Inclusion Syntax
 
@@ -10,12 +14,12 @@ Use the `@` syntax to include files and directories in your Gemini prompts. The 
 
 **Single file analysis:**
 ```bash
-gemini -p "@src/main.py Explain this file's purpose and structure"
+gemini -p "@web/src/server/server.ts Explain this file's purpose and structure"
 ```
 
 **Multiple files:**
 ```bash
-gemini -p "@package.json @src/index.js Analyze the dependencies used in the code"
+gemini -p "@package.json @web/src/client/app.ts Analyze the dependencies used in the code"
 ```
 
 **Entire directory:**
@@ -34,6 +38,8 @@ gemini -p "@./ Give me an overview of this entire project"
 # Or use --all_files flag:
 gemini --all_files -p "Analyze the project structure and dependencies"
 ```
+
+**⚠️ Security Warning:** Using `@./` may include sensitive files like `.env`, `.git/`, or API keys. Consider using specific directories or exclusion patterns.
 
 ## Implementation Verification Examples
 
@@ -92,6 +98,15 @@ Use `gemini -p` when:
 
 - Paths in @ syntax are relative to your current working directory when invoking gemini
 - The CLI will include file contents directly in the context
-- No need for --yolo flag for read-only analysis
+- The --yolo flag bypasses confirmation prompts (use cautiously)
 - Gemini's context window can handle entire codebases that would overflow Claude's context
 - When checking implementations, be specific about what you're looking for to get accurate results
+- Symlinks are followed by default - be cautious with circular references
+- Binary files are automatically excluded from analysis
+- Use `.geminiignore` file to exclude specific patterns (similar to `.gitignore`)
+
+## Error Handling
+
+- If paths don't exist, Gemini will report an error and continue with valid paths
+- File encoding issues are handled gracefully (non-UTF8 files are skipped)
+- For large repositories, consider using specific subdirectories to avoid timeouts
