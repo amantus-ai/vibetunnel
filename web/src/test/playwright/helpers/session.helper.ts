@@ -69,22 +69,18 @@ export async function createSession(
 
   // Fill in the form
   if (options.name) {
-    await page.fill('input[placeholder="My Session"]', options.name);
+    const nameInput = page.locator('[data-testid="session-name-input"]');
+    await nameInput.clear();
+    await nameInput.fill(options.name);
   }
 
-  if (options.command) {
-    const commandInput = page.locator('input[placeholder*="command"]');
-    await commandInput.clear();
-    await commandInput.fill(options.command);
-  } else {
-    // Default to bash which should exist in CI
-    const commandInput = page.locator('input[placeholder*="command"]');
-    await commandInput.clear();
-    await commandInput.fill('bash');
-  }
+  // Fill command input
+  const commandInput = page.locator('[data-testid="command-input"]');
+  await commandInput.clear();
+  await commandInput.fill(options.command || 'bash'); // Default to bash which should exist in CI
 
   if (options.workingDir) {
-    const workingDirInput = page.locator('input[placeholder*="directory"]');
+    const workingDirInput = page.locator('[data-testid="working-dir-input"]');
     await workingDirInput.clear();
     await workingDirInput.fill(options.workingDir);
   }
