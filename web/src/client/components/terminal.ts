@@ -42,19 +42,12 @@ export class Terminal extends LitElement {
   private lastWriteSessionId = ''; // Track the last session that wrote data
   private isSessionSwitching = false; // Block writes during session switch
   private terminalInstanceId = Math.random().toString(36).substr(2, 9); // Unique ID for this terminal instance
-  private cleanupInProgress = false; // Track if cleanup is in progress
   private expectedSessionId = ''; // The session ID we expect to receive data for
 
   @state() private terminal: XtermTerminal | null = null;
   private _viewportY = 0; // Current scroll position in pixels
   @state() private followCursorEnabled = true; // Whether to follow cursor on writes
   private programmaticScroll = false; // Flag to prevent state updates during programmatic scrolling
-
-  // Debug performance tracking
-  private debugMode = false;
-  private renderCount = 0;
-  private totalRenderTime = 0;
-  private lastRenderTime = 0;
 
   get viewportY() {
     return this._viewportY;
@@ -117,9 +110,6 @@ export class Terminal extends LitElement {
   connectedCallback() {
     super.connectedCallback();
 
-    // Check for debug mode
-    this.debugMode = new URLSearchParams(window.location.search).has('debug');
-
     // Load user width preference with error handling
     if (this.sessionId) {
       try {
@@ -142,13 +132,8 @@ export class Terminal extends LitElement {
 
       // Clear terminal when sessionId changes (including to empty string)
       if (oldSessionId !== this.sessionId) {
-        logger.log(
-          `[${this.terminalInstanceId}] Session ID changed from ${oldSessionId} to ${this.sessionId}, clearing terminal`
-        );
-
-        // CRITICAL: Set switching flag to block any writes during the transition
+        // Block writes during the transition
         this.isSessionSwitching = true;
-        this.cleanupInProgress = true;
 
         // Update tracking IDs for the new session
         this.currentRenderSessionId = this.sessionId;
@@ -156,7 +141,7 @@ export class Terminal extends LitElement {
         // Reset lastWriteSessionId to ensure old session data is rejected
         this.lastWriteSessionId = '';
 
-        // CRITICAL: Clear everything immediately
+        // Clear DOM immediately
         if (this.container) {
           // Remove all child nodes to ensure complete cleanup
           while (this.container.firstChild) {
@@ -168,11 +153,9 @@ export class Terminal extends LitElement {
         }
 
         if (this.terminal) {
-          // CRITICAL: Dispose of the old terminal completely to ensure no content leaks
-          // Creating a new terminal instance is the only way to guarantee complete isolation
+          // Dispose terminal completely to ensure isolation between sessions
           this.terminal.dispose();
           this.terminal = null;
-          logger.log(`[${this.terminalInstanceId}] Disposed old terminal for complete isolation`);
 
           // Clear any pending operations
           this.operationQueue = [];
@@ -192,18 +175,11 @@ export class Terminal extends LitElement {
         requestAnimationFrame(() => {
           // Single RAF is enough - we just need to ensure the DOM clear happened
           this.isSessionSwitching = false;
-          this.cleanupInProgress = false;
-          logger.log(`[${this.terminalInstanceId}] Session switch complete, writes enabled`);
-
-          // CRITICAL: Re-initialize terminal after disposal for the new session
-          // Add a small delay to ensure all cleanup is complete and no stale data is in flight
+          // Re-initialize terminal after disposal for the new session
           if (!this.terminal && this.sessionId) {
             setTimeout(() => {
-              logger.log(
-                `[${this.terminalInstanceId}] Re-initializing terminal for new session ${this.sessionId}`
-              );
               this.initializeTerminal();
-            }, 50); // 50ms delay to ensure cleanup is complete
+            }, 50); // Small delay to ensure cleanup is complete
           }
         });
       }
@@ -290,9 +266,6 @@ export class Terminal extends LitElement {
     this.originalFontSize = this.fontSize;
     // Initialize expectedSessionId to current sessionId
     this.expectedSessionId = this.sessionId;
-    logger.log(
-      `[${this.terminalInstanceId}] Terminal firstUpdated called for sessionId: ${this.sessionId}`
-    );
     // Defer terminal initialization to avoid update warnings
     requestAnimationFrame(() => {
       this.initializeTerminal();
@@ -300,37 +273,11 @@ export class Terminal extends LitElement {
   }
 
   private async initializeTerminal() {
-    // Allow initialization even during cleanup - the terminal will be properly cleared
-    if (this.cleanupInProgress) {
-      logger.log(
-        `[${this.terminalInstanceId}] Initializing during cleanup - terminal will be cleared`
-      );
-    }
-
     try {
-      logger.log(
-        `[${this.terminalInstanceId}] initializeTerminal called for sessionId: ${this.sessionId}, terminal exists: ${!!this.terminal}`
-      );
-
       // Use shadowRoot if available, otherwise use this for light DOM
       const root = this.shadowRoot || this;
 
-      // Check for multiple containers (debugging)
       const containerId = `terminal-container-${this.sessionId}`;
-
-      // First, clean up any stale containers from old sessions
-      const allContainers = document.querySelectorAll('[id^="terminal-container-"]');
-      logger.log(`Found ${allContainers.length} total terminal containers in DOM`);
-
-      // Log all container IDs for debugging
-      allContainers.forEach((container) => {
-        logger.log(`Container found: ${container.id}`);
-      });
-
-      const targetContainers = root.querySelectorAll(`#${containerId}`);
-      logger.log(
-        `Found ${targetContainers.length} terminal containers for session ${this.sessionId}`
-      );
 
       this.container = root.querySelector(`#${containerId}`) as HTMLElement;
 
@@ -346,10 +293,6 @@ export class Terminal extends LitElement {
         await this.setupTerminal();
         this.setupResize();
         this.setupScrolling();
-      } else {
-        logger.log(
-          `[${this.terminalInstanceId}] Terminal already initialized, cleared for new session`
-        );
       }
     } catch (error: unknown) {
       logger.error('failed to initialize terminal:', error);
@@ -377,16 +320,11 @@ export class Terminal extends LitElement {
     try {
       // Only create a new terminal if we don't have one
       if (this.terminal) {
-        logger.log(`[${this.terminalInstanceId}] Clearing existing terminal for new session`);
         // Clear the terminal completely for the new session
         this.terminal.clear();
         this.terminal.reset();
         return;
       }
-
-      logger.log(
-        `[${this.terminalInstanceId}] Creating new XtermTerminal instance for session ${this.sessionId}`
-      );
       // Create regular terminal but don't call .open() to make it headless
       this.terminal = new XtermTerminal({
         cursorBlink: true,
@@ -432,8 +370,7 @@ export class Terminal extends LitElement {
       // Set terminal size - don't call .open() to keep it headless
       this.terminal.resize(this.cols, this.rows);
 
-      // CRITICAL: Clear the buffer immediately after creation to ensure it's empty
-      // Some terminals might have default content or preserved state
+      // Clear the buffer immediately after creation to ensure it's empty
       this.terminal.clear();
       this.terminal.reset();
 
@@ -863,43 +800,19 @@ export class Terminal extends LitElement {
   private renderBuffer() {
     if (!this.terminal || !this.container) return;
 
-    // Debug: Log which terminal instance is rendering
-    logger.log(`[${this.terminalInstanceId}] renderBuffer for session ${this.sessionId}`);
-
-    // CRITICAL: Check if this render is for the current session
-    // This prevents render operations from old sessions from executing
+    // Check if this render is for the current session
     if (this.currentRenderSessionId !== this.sessionId) {
-      logger.log(
-        `Skipping render for old session ${this.currentRenderSessionId}, current is ${this.sessionId}`
-      );
       return;
-    }
-
-    const startTime = this.debugMode ? performance.now() : 0;
-
-    // Increment render count immediately
-    if (this.debugMode) {
-      this.renderCount++;
     }
 
     const buffer = this.terminal.buffer.active;
     const bufferLength = buffer.length;
     const lineHeight = this.fontSize * 1.2;
 
-    // CRITICAL: Double-check we're not in the middle of a session switch
+    // Skip render during session switch
     if (this.isSessionSwitching) {
-      logger.warn(`[${this.terminalInstanceId}] Skipping render during session switch`);
       return;
     }
-
-    // Debug logging
-    logger.log(
-      `Rendering buffer for session ${this.sessionId}, bufferLength: ${bufferLength}, actualRows: ${this.actualRows}`
-    );
-
-    // Check current DOM state before rendering
-    const currentChildCount = this.container.childElementCount;
-    logger.log(`Container has ${currentChildCount} child elements before render`);
 
     // Convert pixel scroll position to fractional line position
     const startRowFloat = this.viewportY / lineHeight;
@@ -914,8 +827,7 @@ export class Terminal extends LitElement {
     const cursorX = this.terminal.buffer.active.cursorX;
     const cursorY = this.terminal.buffer.active.cursorY + this.terminal.buffer.active.viewportY;
 
-    // CRITICAL: Always render exactly actualRows to ensure old content is replaced
-    // This is especially important when switching to sessions with less content
+    // Always render exactly actualRows to ensure old content is replaced
     for (let i = 0; i < this.actualRows; i++) {
       const row = startRow + i;
 
@@ -949,36 +861,13 @@ export class Terminal extends LitElement {
     }
 
     // Set the complete innerHTML at once
-    logger.log(`Setting container innerHTML, html length: ${html.length} chars`);
     this.container.innerHTML = html;
-
-    // Verify the DOM was updated
-    const afterChildCount = this.container.childElementCount;
-    logger.log(`Container has ${afterChildCount} child elements after render`);
-
-    // Log first and last lines for debugging
-    if (afterChildCount > 0) {
-      const firstLine = this.container.firstElementChild?.textContent || '';
-      const lastLine = this.container.lastElementChild?.textContent || '';
-      logger.log(`First line: "${firstLine.slice(0, 50)}..."`);
-      logger.log(`Last line: "${lastLine.slice(0, 50)}..."`);
-    }
 
     // Process links after rendering
     UrlHighlighter.processLinks(this.container);
 
     // Process keyboard shortcuts after rendering
     processKeyboardShortcuts(this.container, this.handleShortcutClick);
-
-    // Track render performance in debug mode
-    if (this.debugMode) {
-      const endTime = performance.now();
-      this.lastRenderTime = endTime - startTime;
-      this.totalRenderTime += this.lastRenderTime;
-
-      // Force component re-render to update debug overlay
-      this.requestUpdate();
-    }
   }
 
   private renderLine(line: IBufferLine, cell: IBufferCell, cursorCol: number = -1): string {
@@ -1140,32 +1029,8 @@ export class Terminal extends LitElement {
   public write(data: string, followCursor: boolean = true) {
     if (!this.terminal) return;
 
-    // Don't accept writes when sessionId is empty or undefined
-    // This prevents data from old sessions bleeding into new ones
-    if (!this.sessionId) {
-      logger.warn('[terminal] Rejecting write - no active sessionId');
-      return;
-    }
-
-    // CRITICAL: During session switching, only accept writes for the expected session
-    // This prevents old session data from being written while allowing new session data
-    if (this.isSessionSwitching && this.sessionId !== this.expectedSessionId) {
-      logger.warn(
-        `[terminal] Rejecting write during switch - expected ${this.expectedSessionId}, got ${this.sessionId}`
-      );
-      return;
-    }
-
-    // CRITICAL: Check if we're receiving data for the expected session
-    // Reject writes from old sessions
-    if (
-      this.lastWriteSessionId &&
-      this.lastWriteSessionId !== this.sessionId &&
-      this.lastWriteSessionId !== ''
-    ) {
-      logger.warn(
-        `[terminal] Rejecting write from old session. Last: ${this.lastWriteSessionId}, Current: ${this.sessionId}, Expected: ${this.expectedSessionId}`
-      );
+    // Reject writes if no session, switching sessions, or from wrong session
+    if (!this.sessionId || this.isSessionSwitching || this.sessionId !== this.expectedSessionId) {
       return;
     }
 
@@ -1220,10 +1085,7 @@ export class Terminal extends LitElement {
   public clear() {
     if (!this.terminal) return;
 
-    logger.log(`Clearing terminal for sessionId: ${this.sessionId}`);
-
-    // CRITICAL: Clear the DOM container immediately to remove ALL visible content
-    // This prevents old content from persisting when the new content is shorter
+    // Clear the DOM container immediately to remove ALL visible content
     if (this.container) {
       this.container.innerHTML = '';
     }
@@ -1610,32 +1472,6 @@ export class Terminal extends LitElement {
                 title="Scroll to bottom"
               >
                 ↓
-              </div>
-            `
-            : ''
-        }
-        ${
-          this.debugMode
-            ? html`
-              <div class="debug-overlay">
-                <div class="metric">
-                  <span class="metric-label">Renders:</span>
-                  <span class="metric-value">${this.renderCount}</span>
-                </div>
-                <div class="metric">
-                  <span class="metric-label">Avg:</span>
-                  <span class="metric-value"
-                    >${
-                      this.renderCount > 0
-                        ? (this.totalRenderTime / this.renderCount).toFixed(2)
-                        : '0.00'
-                    }ms</span
-                  >
-                </div>
-                <div class="metric">
-                  <span class="metric-label">Last:</span>
-                  <span class="metric-value">${this.lastRenderTime.toFixed(2)}ms</span>
-                </div>
               </div>
             `
             : ''
