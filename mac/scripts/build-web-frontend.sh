@@ -110,7 +110,7 @@ export CC="${CC:-clang}"
 # Function to filter warnings from build output
 filter_build_output() {
     grep -v -E '(missing field .* initializer|is deprecated.*Use.*instead|expanded from macro|has been explicitly marked deprecated|converts to incompatible function type|instantiation of function template|npm warn Unknown.*config|warn - Your.*content.*configuration|warn - Pattern:.*\*\.js|warn - See our documentation)' | \
-    grep -v -E '(gyp info spawn args|\.\.\.\/node_modules\/.*install:)'
+    grep -v -E '(gyp info spawn args|\.\.\.\/node_modules\/.*install:)' || true
 }
 
 # Run pnpm install with filtered output
