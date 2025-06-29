@@ -37,8 +37,21 @@ test.describe('Session Navigation', () => {
       }
     }
 
-    // Verify we can see session cards
-    await page.waitForSelector('session-card', { state: 'visible' });
+    // Verify we can see session cards - wait for session list to load
+    await page.waitForFunction(
+      () => {
+        const cards = document.querySelectorAll('session-card');
+        const noSessionsMsg = document.querySelector('.text-dark-text-muted');
+        return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
+      },
+      { timeout: 10000 }
+    );
+
+    // Ensure our specific session card is visible
+    await page.waitForSelector(`session-card:has-text("${sessionName}")`, {
+      state: 'visible',
+      timeout: 10000,
+    });
 
     // Click on the session card to navigate back
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();

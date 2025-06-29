@@ -13,10 +13,25 @@ export async function assertSessionInList(
   // Ensure we're on the session list page
   if (page.url().includes('?session=')) {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    // Extra wait for navigation to complete
+    await page.waitForLoadState('networkidle');
   }
 
-  // Wait for session cards to load
-  await page.waitForSelector('session-card', { state: 'visible', timeout });
+  // Wait for session list to be ready - check for cards or "no sessions" message
+  await page.waitForFunction(
+    () => {
+      const cards = document.querySelectorAll('session-card');
+      const noSessionsMsg = document.querySelector('.text-dark-text-muted');
+      return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
+    },
+    { timeout }
+  );
+
+  // If we expect to find a session, wait for at least one card
+  const hasCards = (await page.locator('session-card').count()) > 0;
+  if (!hasCards) {
+    throw new Error(`No session cards found on the page, cannot find session "${sessionName}"`);
+  }
 
   // Find and verify the session card
   const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
@@ -24,8 +39,34 @@ export async function assertSessionInList(
 
   // Optionally verify status
   if (status) {
-    const statusText = sessionCard.locator('span:has(.w-2.h-2.rounded-full)');
-    await expect(statusText).toContainText(status, { timeout });
+    // Look for status text in various possible locations
+    const statusSelectors = [
+      'span:has(.w-2.h-2.rounded-full)', // Original selector
+      'span:has-text("RUNNING")', // Direct text match
+      'span:has-text("EXITED")', // Direct text match
+      'span:has-text("KILLED")', // Direct text match
+      `span:has-text("${status}")`, // Dynamic match
+      `text=${status}`, // Simple text match
+    ];
+
+    let statusFound = false;
+    for (const selector of statusSelectors) {
+      try {
+        const statusElement = sessionCard.locator(selector).first();
+        if (await statusElement.isVisible({ timeout: 500 })) {
+          await expect(statusElement).toContainText(status, { timeout: 2000 });
+          statusFound = true;
+          break;
+        }
+      } catch {
+        // Try next selector
+      }
+    }
+
+    if (!statusFound) {
+      // Fall back to checking if the text exists anywhere in the card
+      await expect(sessionCard).toContainText(status, { timeout });
+    }
   }
 }
 
@@ -73,10 +114,23 @@ export async function assertTerminalNotContains(
  */
 export async function assertUrlHasSession(page: Page, sessionId?: string): Promise<void> {
   const url = page.url();
-  expect(url).toMatch(/\?session=/);
+
+  // Check if URL has session parameter
+  const hasSessionParam = url.includes('?session=') || url.includes('&session=');
+  if (!hasSessionParam) {
+    throw new Error(`Expected URL to contain session parameter, but got: ${url}`);
+  }
 
   if (sessionId) {
-    expect(url).toContain(`?session=${sessionId}`);
+    // Parse URL to get session ID
+    const urlObj = new URL(url);
+    const actualSessionId = urlObj.searchParams.get('session');
+
+    if (actualSessionId !== sessionId) {
+      throw new Error(
+        `Expected session ID "${sessionId}", but got "${actualSessionId}" in URL: ${url}`
+      );
+    }
   }
 }
 

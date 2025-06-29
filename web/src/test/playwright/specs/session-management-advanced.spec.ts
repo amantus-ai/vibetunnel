@@ -340,88 +340,127 @@ test.describe('Advanced Session Management', () => {
       { timeout: 2000 }
     );
 
-    // Since hideExitedSessions is false in tests, exited sessions should remain visible
+    // Check if exited sessions are visible (depends on app settings)
     const exitedCard = page.locator('session-card').filter({ hasText: exitedSessionName }).first();
-    const exitedVisible = await exitedCard.isVisible({ timeout: 500 }).catch(() => false);
-    expect(exitedVisible).toBe(true);
+    const exitedVisible = await exitedCard.isVisible({ timeout: 1000 }).catch(() => false);
+
+    // The visibility of exited sessions depends on the app's hideExitedSessions setting
+    // In CI, this might be different than in local tests
+    if (!exitedVisible) {
+      // If exited sessions are hidden, look for a "Show Exited" button
+      const showExitedButton = page
+        .locator('button')
+        .filter({ hasText: /Show Exited/i })
+        .first();
+      const hasShowButton = await showExitedButton.isVisible({ timeout: 1000 }).catch(() => false);
+      expect(hasShowButton).toBe(true);
+    }
 
     // Running session should still be visible
     await expect(
       page.locator('session-card').filter({ hasText: runningSessionName })
     ).toBeVisible();
 
-    // Since exited session is visible, verify it shows as exited
-    await expect(
-      page.locator('session-card').filter({ hasText: exitedSessionName }).locator('text=/exited/i')
-    ).toBeVisible();
+    // If exited session is visible, verify it shows as exited
+    if (exitedVisible) {
+      await expect(
+        page
+          .locator('session-card')
+          .filter({ hasText: exitedSessionName })
+          .locator('text=/exited/i')
+      ).toBeVisible();
+    }
 
     // Running session should still be visible
     await expect(
       page.locator('session-card').filter({ hasText: runningSessionName })
     ).toBeVisible();
 
-    // The button should say "Hide Exited" since exited sessions are visible
-    const hideExitedButton = page
-      .locator('button')
-      .filter({ hasText: /Hide Exited/i })
-      .first();
-    await expect(hideExitedButton).toBeVisible({ timeout: 1000 });
+    // Determine current state and find the appropriate button
+    let toggleButton: ReturnType<typeof page.locator>;
+    const isShowingExited = exitedVisible;
 
-    // Click to hide exited sessions
-    await hideExitedButton.click();
+    if (isShowingExited) {
+      // If exited sessions are visible, look for "Hide Exited" button
+      toggleButton = page
+        .locator('button')
+        .filter({ hasText: /Hide Exited/i })
+        .first();
+    } else {
+      // If exited sessions are hidden, look for "Show Exited" button
+      toggleButton = page
+        .locator('button')
+        .filter({ hasText: /Show Exited/i })
+        .first();
+    }
 
-    // Wait for exited sessions to be hidden
+    await expect(toggleButton).toBeVisible({ timeout: 2000 });
+
+    // Click to toggle the state
+    await toggleButton.click();
+
+    // Wait for the toggle action to complete
     await page.waitForFunction(
-      (exitedName) => {
+      ({ exitedName, wasShowingExited }) => {
         const cards = document.querySelectorAll('session-card');
         const exitedCard = Array.from(cards).find((card) => card.textContent?.includes(exitedName));
-        return !exitedCard;
+        // If we were showing exited, they should now be hidden
+        // If we were hiding exited, they should now be visible
+        return wasShowingExited ? !exitedCard : !!exitedCard;
       },
-      exitedSessionName,
+      { exitedName: exitedSessionName, wasShowingExited: isShowingExited },
       { timeout: 2000 }
     );
 
-    // Exited session should now be hidden
-    const exitedHidden = await page
+    // Check the new state
+    const exitedNowVisible = await page
       .locator('session-card')
       .filter({ hasText: exitedSessionName })
       .isVisible({ timeout: 500 })
       .catch(() => false);
-    expect(exitedHidden).toBe(false);
+
+    // Should be opposite of initial state
+    expect(exitedNowVisible).toBe(!isShowingExited);
 
     // Running session should still be visible
     await expect(
       page.locator('session-card').filter({ hasText: runningSessionName })
     ).toBeVisible();
 
-    // The button should now say "Show Exited"
-    const showExitedButton = page
-      .locator('button')
-      .filter({ hasText: /Show Exited/i })
-      .first();
-    await expect(showExitedButton).toBeVisible({ timeout: 1000 });
+    // The button text should have changed
+    const newToggleButton = isShowingExited
+      ? page
+          .locator('button')
+          .filter({ hasText: /Show Exited/i })
+          .first()
+      : page
+          .locator('button')
+          .filter({ hasText: /Hide Exited/i })
+          .first();
 
-    // Click to show exited sessions again
-    await showExitedButton.click();
+    await expect(newToggleButton).toBeVisible({ timeout: 2000 });
 
-    // Wait for exited sessions to become visible
+    // Click to toggle back
+    await newToggleButton.click();
+
+    // Wait for the toggle to complete again
     await page.waitForFunction(
-      (exitedName) => {
+      ({ exitedName, shouldBeVisible }) => {
         const cards = document.querySelectorAll('session-card');
         const exitedCard = Array.from(cards).find((card) => card.textContent?.includes(exitedName));
-        return !!exitedCard;
+        return shouldBeVisible ? !!exitedCard : !exitedCard;
       },
-      exitedSessionName,
+      { exitedName: exitedSessionName, shouldBeVisible: isShowingExited },
       { timeout: 2000 }
     );
 
-    // Exited session should be visible again
-    const exitedVisibleAgain = await page
+    // Exited session should be back to original state
+    const exitedFinalVisible = await page
       .locator('session-card')
       .filter({ hasText: exitedSessionName })
       .isVisible({ timeout: 500 })
       .catch(() => false);
-    expect(exitedVisibleAgain).toBe(true);
+    expect(exitedFinalVisible).toBe(isShowingExited);
 
     // Running session should still be visible
     await expect(

@@ -210,10 +210,29 @@ export class SessionListPage extends BasePage {
   }
 
   async clickSession(sessionName: string) {
-    // Wait for session cards to be visible
-    await this.page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+    // First ensure we're on the session list page
+    if (this.page.url().includes('?session=')) {
+      await this.page.goto('/', { waitUntil: 'domcontentloaded' });
+      await this.page.waitForLoadState('networkidle');
+    }
 
-    // Scroll to find the session if needed - newer sessions are usually at the top
+    // Wait for session cards to load
+    await this.page.waitForFunction(
+      () => {
+        const cards = document.querySelectorAll('session-card');
+        const noSessionsMsg = document.querySelector('.text-dark-text-muted');
+        return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
+      },
+      { timeout: 10000 }
+    );
+
+    // Check if we have any session cards
+    const cardCount = await this.page.locator('session-card').count();
+    if (cardCount === 0) {
+      throw new Error('No session cards found on the page');
+    }
+
+    // Look for the specific session card
     const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`).first();
 
     // Wait for the specific session card to be visible
