@@ -41,6 +41,8 @@ export class Terminal extends LitElement {
   private currentRenderSessionId = ''; // Track which session's content we're rendering
   private lastWriteSessionId = ''; // Track the last session that wrote data
   private isSessionSwitching = false; // Block writes during session switch
+  private terminalInstanceId = Math.random().toString(36).substr(2, 9); // Unique ID for this terminal instance
+  private cleanupInProgress = false; // Track if cleanup is in progress
 
   @state() private terminal: XtermTerminal | null = null;
   private _viewportY = 0; // Current scroll position in pixels
@@ -75,15 +77,21 @@ export class Terminal extends LitElement {
 
   // Operation queue for batching buffer modifications
   private operationQueue: (() => void | Promise<void>)[] = [];
+  private renderAnimationFrame: number | null = null; // Track the current animation frame
 
   private queueRenderOperation(operation: () => void | Promise<void>) {
     this.operationQueue.push(operation);
 
     if (!this.renderPending) {
       this.renderPending = true;
-      requestAnimationFrame(() => {
+      // Cancel any existing animation frame
+      if (this.renderAnimationFrame) {
+        cancelAnimationFrame(this.renderAnimationFrame);
+      }
+      this.renderAnimationFrame = requestAnimationFrame(() => {
         this.processOperationQueue();
         this.renderPending = false;
+        this.renderAnimationFrame = null;
       });
     }
   }
@@ -134,11 +142,12 @@ export class Terminal extends LitElement {
       // Clear terminal when sessionId changes (including to empty string)
       if (oldSessionId !== this.sessionId) {
         logger.log(
-          `Session ID changed from ${oldSessionId} to ${this.sessionId}, clearing terminal`
+          `[${this.terminalInstanceId}] Session ID changed from ${oldSessionId} to ${this.sessionId}, clearing terminal`
         );
 
         // CRITICAL: Set switching flag to block any writes during the transition
         this.isSessionSwitching = true;
+        this.cleanupInProgress = true;
 
         // Update the current render session ID
         this.currentRenderSessionId = this.sessionId;
@@ -148,7 +157,13 @@ export class Terminal extends LitElement {
 
         // CRITICAL: Clear everything immediately
         if (this.container) {
-          this.container.innerHTML = '';
+          // Remove all child nodes to ensure complete cleanup
+          while (this.container.firstChild) {
+            this.container.removeChild(this.container.firstChild);
+          }
+
+          // Force a reflow to ensure DOM updates are applied
+          void this.container.offsetHeight;
         }
 
         if (this.terminal) {
@@ -165,17 +180,32 @@ export class Terminal extends LitElement {
           this.operationQueue = [];
           this.renderPending = false;
 
+          // Cancel any pending render animation frame
+          if (this.renderAnimationFrame) {
+            cancelAnimationFrame(this.renderAnimationFrame);
+            this.renderAnimationFrame = null;
+          }
+
           // Reset viewport to top
           this.viewportY = 0;
 
-          // Force synchronous render of empty viewport
+          // Force immediate synchronous render of empty viewport
           this.renderBuffer();
+
+          // Force another reflow after render
+          if (this.container) {
+            void this.container.offsetHeight;
+          }
         }
 
         // Allow writes again after ensuring DOM is updated
         requestAnimationFrame(() => {
-          this.isSessionSwitching = false;
-          logger.log('Session switch complete, writes enabled');
+          requestAnimationFrame(() => {
+            // Double RAF to ensure all DOM updates are complete
+            this.isSessionSwitching = false;
+            this.cleanupInProgress = false;
+            logger.log(`[${this.terminalInstanceId}] Session switch complete, writes enabled`);
+          });
         });
       }
 
@@ -259,7 +289,9 @@ export class Terminal extends LitElement {
   firstUpdated() {
     // Store the initial font size as original
     this.originalFontSize = this.fontSize;
-    logger.log(`Terminal firstUpdated called for sessionId: ${this.sessionId}`);
+    logger.log(
+      `[${this.terminalInstanceId}] Terminal firstUpdated called for sessionId: ${this.sessionId}`
+    );
     // Defer terminal initialization to avoid update warnings
     requestAnimationFrame(() => {
       this.initializeTerminal();
@@ -267,9 +299,15 @@ export class Terminal extends LitElement {
   }
 
   private async initializeTerminal() {
+    // Don't initialize if cleanup is in progress
+    if (this.cleanupInProgress) {
+      logger.warn(`[${this.terminalInstanceId}] Skipping initialization - cleanup in progress`);
+      return;
+    }
+
     try {
       logger.log(
-        `initializeTerminal called for sessionId: ${this.sessionId}, terminal exists: ${!!this.terminal}`
+        `[${this.terminalInstanceId}] initializeTerminal called for sessionId: ${this.sessionId}, terminal exists: ${!!this.terminal}`
       );
 
       // Use shadowRoot if available, otherwise use this for light DOM
@@ -277,8 +315,20 @@ export class Terminal extends LitElement {
 
       // Check for multiple containers (debugging)
       const containerId = `terminal-container-${this.sessionId}`;
-      const allContainers = root.querySelectorAll(`#${containerId}`);
-      logger.log(`Found ${allContainers.length} terminal containers for session ${this.sessionId}`);
+
+      // First, clean up any stale containers from old sessions
+      const allContainers = document.querySelectorAll('[id^="terminal-container-"]');
+      logger.log(`Found ${allContainers.length} total terminal containers in DOM`);
+
+      // Log all container IDs for debugging
+      allContainers.forEach((container) => {
+        logger.log(`Container found: ${container.id}`);
+      });
+
+      const targetContainers = root.querySelectorAll(`#${containerId}`);
+      logger.log(
+        `Found ${targetContainers.length} terminal containers for session ${this.sessionId}`
+      );
 
       this.container = root.querySelector(`#${containerId}`) as HTMLElement;
 
@@ -798,6 +848,9 @@ export class Terminal extends LitElement {
 
   private renderBuffer() {
     if (!this.terminal || !this.container) return;
+
+    // Debug: Log which terminal instance is rendering
+    logger.log(`[${this.terminalInstanceId}] renderBuffer for session ${this.sessionId}`);
 
     // CRITICAL: Check if this render is for the current session
     // This prevents render operations from old sessions from executing
