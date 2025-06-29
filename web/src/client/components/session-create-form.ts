@@ -478,13 +478,13 @@ export class SessionCreateForm extends LitElement {
               <select
                 .value=${this.titleMode}
                 @change=${this.handleTitleModeChange}
-                class="form-input w-full mt-1 bg-dark-input"
+                class="w-full mt-1 bg-[#121212] border border-dark-border rounded-lg px-4 py-3 text-dark-text transition-all duration-200 hover:border-accent-green-darker focus:border-accent-green focus:outline-none appearance-none cursor-pointer"
                 ?disabled=${this.disabled || this.isCreating}
               >
-                <option value="${TitleMode.NONE}">None - No title management</option>
-                <option value="${TitleMode.FILTER}">Filter - Block title changes</option>
-                <option value="${TitleMode.STATIC}">Static - Show path & command</option>
-                <option value="${TitleMode.DYNAMIC}">Dynamic - Show path, command & activity</option>
+                <option value="${TitleMode.NONE}" class="bg-[#121212] text-dark-text">None - No title management</option>
+                <option value="${TitleMode.FILTER}" class="bg-[#121212] text-dark-text">Filter - Block title changes</option>
+                <option value="${TitleMode.STATIC}" class="bg-[#121212] text-dark-text">Static - Show path & command</option>
+                <option value="${TitleMode.DYNAMIC}" class="bg-[#121212] text-dark-text">Dynamic - Show path, command & activity</option>
               </select>
               <p class="text-xs text-dark-text-muted mt-1">
                 ${this.getTitleModeDescription()}
