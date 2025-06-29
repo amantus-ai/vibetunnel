@@ -109,3 +109,7 @@ server/vibetunnel-fwd
 # Bun prebuilt executables (should be built during build process)
 mac/Resources/BunPrebuilts/
 /ios/TestResults.xcresult
+
+# Playwright test results
+web/playwright-report/
+web/test-results/
