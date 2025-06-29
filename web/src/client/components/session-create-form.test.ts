@@ -217,7 +217,7 @@ describe('SessionCreateForm', () => {
         name: 'Test Session',
         command: ['npm', 'run', 'dev'],
         workingDir: '/home/user/project',
-        spawn_terminal: true,
+        spawn_terminal: false,
         cols: 120,
         rows: 30,
       });
