@@ -123,7 +123,7 @@ export class Terminal extends LitElement {
       }
       // Recalculate terminal dimensions when font size changes
       if (this.terminal && this.container) {
-        this.fitTerminal();
+        this.recalculateAndResize();
       }
     }
     if (changedProperties.has('fitHorizontally')) {
@@ -131,7 +131,7 @@ export class Terminal extends LitElement {
         // Restore original font size when turning off horizontal fitting
         this.fontSize = this.originalFontSize;
       }
-      this.fitTerminal();
+      this.recalculateAndResize();
     }
   }
 
@@ -205,7 +205,7 @@ export class Terminal extends LitElement {
       const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
       const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
       this.terminal.resize(safeCols, safeRows);
-      this.fitTerminal();
+      this.recalculateAndResize();
     }
   }
 
@@ -291,7 +291,7 @@ export class Terminal extends LitElement {
     return Number.isFinite(actualCharWidth) && actualCharWidth > 0 ? actualCharWidth : 8;
   }
 
-  private fitTerminal() {
+  public recalculateAndResize(): void {
     if (!this.terminal || !this.container) return;
 
     const _oldActualRows = this.actualRows;
@@ -403,13 +403,13 @@ export class Terminal extends LitElement {
         clearTimeout(this.resizeTimeout);
       }
       this.resizeTimeout = setTimeout(() => {
-        this.fitTerminal();
+        this.recalculateAndResize();
       }, 50);
     });
     this.resizeObserver.observe(this.container);
 
     window.addEventListener('resize', () => {
-      this.fitTerminal();
+      this.recalculateAndResize();
     });
   }
 
@@ -980,7 +980,7 @@ export class Terminal extends LitElement {
       if (!this.terminal) return;
 
       this.terminal.resize(cols, rows);
-      // Don't call fitTerminal here - when explicitly setting size,
+      // Don't call recalculateAndResize here - when explicitly setting size,
       // we shouldn't recalculate based on container dimensions
       this.requestUpdate();
     });
@@ -997,7 +997,7 @@ export class Terminal extends LitElement {
     this.queueRenderOperation(() => {
       if (!this.terminal) return;
 
-      this.fitTerminal();
+      this.recalculateAndResize();
 
       const buffer = this.terminal.buffer.active;
       const lineHeight = this.fontSize * 1.2;
@@ -1211,7 +1211,7 @@ export class Terminal extends LitElement {
     }
 
     // Recalculate fit
-    this.fitTerminal();
+    this.recalculateAndResize();
 
     // Restore scroll position - prioritize staying at bottom if we were there
     if (wasAtBottom) {
