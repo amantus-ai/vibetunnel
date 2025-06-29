@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import type { Response as ExpressResponse } from 'express';
 import express from 'express';
 import * as fs from 'fs';
+import type * as http from 'http';
 import { createServer } from 'http';
 import * as os from 'os';
 import * as path from 'path';
@@ -30,6 +31,14 @@ import { TerminalManager } from './services/terminal-manager.js';
 import { closeLogger, createLogger, initLogger, setDebugMode } from './utils/logger.js';
 import { VapidManager } from './utils/vapid-manager.js';
 import { getVersionInfo, printVersionBanner } from './version.js';
+
+// Extended WebSocket request with authentication and routing info
+interface WebSocketRequest extends http.IncomingMessage {
+  pathname?: string;
+  searchParams?: URLSearchParams;
+  userId?: string;
+  authMethod?: string;
+}
 
 const logger = createLogger('server');
 
@@ -688,18 +697,20 @@ export async function createApp(): Promise<AppInstance> {
     // Handle the upgrade
     wss.handleUpgrade(request, socket, head, (ws) => {
       // Add path and auth information to the request for routing
-      (request as any).pathname = parsedUrl.pathname;
-      (request as any).searchParams = parsedUrl.searchParams;
-      (request as any).userId = authResult.userId;
-      (request as any).authMethod = authResult.authMethod;
-      wss.emit('connection', ws, request);
+      const wsRequest = request as WebSocketRequest;
+      wsRequest.pathname = parsedUrl.pathname;
+      wsRequest.searchParams = parsedUrl.searchParams;
+      wsRequest.userId = authResult.userId;
+      wsRequest.authMethod = authResult.authMethod;
+      wss.emit('connection', ws, wsRequest);
     });
   });
 
   // WebSocket connection router
   wss.on('connection', (ws, req) => {
-    const pathname = (req as any).pathname;
-    const searchParams = (req as any).searchParams;
+    const wsReq = req as WebSocketRequest;
+    const pathname = wsReq.pathname;
+    const searchParams = wsReq.searchParams;
 
     if (pathname === '/buffers') {
       // Handle buffer updates WebSocket
@@ -720,7 +731,7 @@ export async function createApp(): Promise<AppInstance> {
       }
 
       // Extract user ID from the authenticated request
-      const userId = (req as any).userId || 'unknown';
+      const userId = wsReq.userId || 'unknown';
 
       websocketInputHandler.handleConnection(ws, sessionId, userId);
     } else {
