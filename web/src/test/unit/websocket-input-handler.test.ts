@@ -1,26 +1,29 @@
 /**
  * Tests for WebSocket Input Handler
- * 
+ *
  * This tests the low-latency WebSocket input protocol for VibeTunnel,
  * focusing on special key handling, text input, and HQ mode support.
  */
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WebSocket as WSWebSocket } from 'ws';
-import { WebSocketInputHandler } from '../../server/routes/websocket-input';
 import type { PtyManager } from '../../server/pty/pty-manager';
-import type { TerminalManager } from '../../server/services/terminal-manager';
+import { WebSocketInputHandler } from '../../server/routes/websocket-input';
 import type { ActivityMonitor } from '../../server/services/activity-monitor';
 import type { AuthService } from '../../server/services/auth-service';
 import type { RemoteRegistry } from '../../server/services/remote-registry';
-import type { SessionInput, SpecialKey } from '../../shared/types';
+import type { TerminalManager } from '../../server/services/terminal-manager';
+import type { SpecialKey } from '../../shared/types';
+
+// Type definitions for mock objects
+type MockEventListener = (...args: unknown[]) => void;
 
 // Mock WebSocket
 const mockWebSocket = () => {
-  const listeners: Record<string, Function[]> = {};
+  const listeners: Record<string, MockEventListener[]> = {};
   const ws = {
     readyState: 1, // OPEN
-    on: vi.fn((event: string, listener: Function) => {
+    on: vi.fn((event: string, listener: MockEventListener) => {
       if (!listeners[event]) listeners[event] = [];
       listeners[event].push(listener);
     }),
@@ -28,34 +31,34 @@ const mockWebSocket = () => {
     close: vi.fn(),
     send: vi.fn(),
     // Helper to emit events
-    emit: (event: string, ...args: any[]) => {
+    emit: (event: string, ...args: unknown[]) => {
       if (listeners[event]) {
-        listeners[event].forEach(listener => listener(...args));
+        listeners[event].forEach((listener) => listener(...args));
       }
-    }
+    },
   };
-  return ws as any as WSWebSocket;
+  return ws as unknown as WSWebSocket;
 };
 
 // Mock remote WebSocket for HQ mode testing
 const mockRemoteWebSocket = () => {
-  const listeners: Record<string, Function[]> = {};
+  const listeners: Record<string, MockEventListener[]> = {};
   const remoteWs = {
     readyState: 1, // OPEN
-    addEventListener: vi.fn((event: string, listener: Function) => {
+    addEventListener: vi.fn((event: string, listener: MockEventListener) => {
       if (!listeners[event]) listeners[event] = [];
       listeners[event].push(listener);
     }),
     close: vi.fn(),
     send: vi.fn(),
     // Helper to emit events
-    emit: (event: string, ...args: any[]) => {
+    emit: (event: string, ...args: unknown[]) => {
       if (listeners[event]) {
-        listeners[event].forEach(listener => listener(...args));
+        listeners[event].forEach((listener) => listener(...args));
       }
-    }
+    },
   };
-  
+
   // Mock global WebSocket constructor for remote connections
   global.WebSocket = vi.fn(() => {
     // Immediately emit 'open' event to simulate successful connection
@@ -63,11 +66,13 @@ const mockRemoteWebSocket = () => {
       remoteWs.emit('open');
     }, 0);
     return remoteWs;
-  }) as any;
-  
+  }) as unknown as new (
+    url: string
+  ) => WebSocket;
+
   // Mock WebSocket constants
-  global.WebSocket.OPEN = 1;
-  
+  (global.WebSocket as unknown as { OPEN: number }).OPEN = 1;
+
   return remoteWs;
 };
 
@@ -83,11 +88,11 @@ describe('WebSocketInputHandler', () => {
     // Create mocks
     mockPtyManager = {
       sendInput: vi.fn(),
-    } as any;
+    } as unknown as PtyManager;
 
-    mockTerminalManager = {} as any;
-    mockActivityMonitor = {} as any;
-    mockAuthService = {} as any;
+    mockTerminalManager = {} as unknown as TerminalManager;
+    mockActivityMonitor = {} as unknown as ActivityMonitor;
+    mockAuthService = {} as unknown as AuthService;
   });
 
   beforeEach(() => {
@@ -119,7 +124,7 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-1';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Send regular text
@@ -127,7 +132,7 @@ describe('WebSocketInputHandler', () => {
       ws.emit('message', Buffer.from(inputText));
 
       expect(mockPtyManager.sendInput).toHaveBeenCalledWith(sessionId, {
-        text: inputText
+        text: inputText,
       });
     });
 
@@ -135,7 +140,7 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-2';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Text that contains key names but isn't wrapped in null bytes
@@ -143,7 +148,7 @@ describe('WebSocketInputHandler', () => {
       ws.emit('message', Buffer.from(inputText));
 
       expect(mockPtyManager.sendInput).toHaveBeenCalledWith(sessionId, {
-        text: inputText
+        text: inputText,
       });
     });
 
@@ -151,15 +156,38 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-3';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Test various special keys
       const specialKeys: SpecialKey[] = [
-        'enter', 'escape', 'backspace', 'tab', 'arrow_up', 'arrow_down',
-        'arrow_left', 'arrow_right', 'ctrl_enter', 'shift_enter',
-        'page_up', 'page_down', 'home', 'end', 'delete',
-        'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12'
+        'enter',
+        'escape',
+        'backspace',
+        'tab',
+        'arrow_up',
+        'arrow_down',
+        'arrow_left',
+        'arrow_right',
+        'ctrl_enter',
+        'shift_enter',
+        'page_up',
+        'page_down',
+        'home',
+        'end',
+        'delete',
+        'f1',
+        'f2',
+        'f3',
+        'f4',
+        'f5',
+        'f6',
+        'f7',
+        'f8',
+        'f9',
+        'f10',
+        'f11',
+        'f12',
       ];
 
       for (const key of specialKeys) {
@@ -167,7 +195,7 @@ describe('WebSocketInputHandler', () => {
         ws.emit('message', Buffer.from(wrappedKey));
 
         expect(mockPtyManager.sendInput).toHaveBeenCalledWith(sessionId, {
-          key: key
+          key: key,
         });
       }
 
@@ -178,7 +206,7 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-4';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Unknown key wrapped in null bytes should be treated as text
@@ -186,7 +214,7 @@ describe('WebSocketInputHandler', () => {
       ws.emit('message', Buffer.from(unknownKey));
 
       expect(mockPtyManager.sendInput).toHaveBeenCalledWith(sessionId, {
-        key: 'unknown_key'
+        key: 'unknown_key',
       });
     });
 
@@ -194,23 +222,23 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-5';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Test malformed markers
       const malformedInputs = [
-        '\x00enter',        // Missing closing null byte
-        'escape\x00',       // Missing opening null byte
-        '\x00\x00',         // Empty key name
-        '\x00',             // Just opening null byte
+        '\x00enter', // Missing closing null byte
+        'escape\x00', // Missing opening null byte
+        '\x00\x00', // Empty key name
+        '\x00', // Just opening null byte
         '\x00enter\x00extra', // Extra content after
       ];
 
       for (const input of malformedInputs) {
         ws.emit('message', Buffer.from(input));
-        
+
         expect(mockPtyManager.sendInput).toHaveBeenCalledWith(sessionId, {
-          text: input
+          text: input,
         });
       }
     });
@@ -219,7 +247,7 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-6';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Send empty message
@@ -232,12 +260,12 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-7';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Send multiple rapid inputs
       const inputs = ['a', 'b', 'c', '\x00enter\x00', 'hello', '\x00escape\x00'];
-      
+
       for (const input of inputs) {
         ws.emit('message', Buffer.from(input));
       }
@@ -255,30 +283,30 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-8';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Send binary data that doesn't match special key pattern
-      const binaryData = Buffer.from([0xFF, 0xFE, 0xFD]);
+      const binaryData = Buffer.from([0xff, 0xfe, 0xfd]);
       ws.emit('message', binaryData);
 
       // Should be converted to string and treated as text
       expect(mockPtyManager.sendInput).toHaveBeenCalledWith(sessionId, {
-        text: binaryData.toString()
+        text: binaryData.toString(),
       });
     });
   });
 
   describe('HQ Mode Remote Session Handling', () => {
     let mockRemoteRegistry: RemoteRegistry;
-    let mockRemoteWs: any;
+    let mockRemoteWs: ReturnType<typeof mockRemoteWebSocket>;
 
     beforeEach(() => {
       mockRemoteWs = mockRemoteWebSocket();
-      
+
       mockRemoteRegistry = {
-        getRemoteBySessionId: vi.fn()
-      } as any;
+        getRemoteBySessionId: vi.fn(),
+      } as unknown as RemoteRegistry;
 
       handler = new WebSocketInputHandler({
         ptyManager: mockPtyManager,
@@ -299,7 +327,7 @@ describe('WebSocketInputHandler', () => {
       const mockRemote = {
         name: 'remote-server',
         url: 'https://remote.example.com',
-        token: 'remote-token'
+        token: 'remote-token',
       };
       vi.mocked(mockRemoteRegistry.getRemoteBySessionId).mockReturnValue(mockRemote);
 
@@ -330,7 +358,7 @@ describe('WebSocketInputHandler', () => {
 
       // Should use ptyManager for local sessions
       expect(mockPtyManager.sendInput).toHaveBeenCalledWith(sessionId, {
-        text: inputText
+        text: inputText,
       });
       expect(mockRemoteWs.send).not.toHaveBeenCalled();
     });
@@ -343,7 +371,7 @@ describe('WebSocketInputHandler', () => {
       const mockRemote = {
         name: 'remote-server',
         url: 'https://remote.example.com',
-        token: 'remote-token'
+        token: 'remote-token',
       };
       vi.mocked(mockRemoteRegistry.getRemoteBySessionId).mockReturnValue(mockRemote);
 
@@ -353,7 +381,9 @@ describe('WebSocketInputHandler', () => {
           mockRemoteWs.emit('error', new Error('Connection failed'));
         }, 0);
         return mockRemoteWs;
-      }) as any;
+      }) as unknown as new (
+        url: string
+      ) => WebSocket;
 
       await handler.handleConnection(ws, sessionId, userId);
 
@@ -369,7 +399,7 @@ describe('WebSocketInputHandler', () => {
       const mockRemote = {
         name: 'remote-server',
         url: 'https://remote.example.com',
-        token: 'remote-token'
+        token: 'remote-token',
       };
       vi.mocked(mockRemoteRegistry.getRemoteBySessionId).mockReturnValue(mockRemote);
 
@@ -389,7 +419,7 @@ describe('WebSocketInputHandler', () => {
       const mockRemote = {
         name: 'remote-server',
         url: 'https://remote.example.com',
-        token: 'remote-token'
+        token: 'remote-token',
       };
       vi.mocked(mockRemoteRegistry.getRemoteBySessionId).mockReturnValue(mockRemote);
 
@@ -428,7 +458,7 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-close';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Simulate close event
@@ -442,7 +472,7 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-error';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Simulate error event
@@ -456,7 +486,7 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-pty-error';
       const userId = 'test-user';
-      
+
       // Mock ptyManager to throw error
       vi.mocked(mockPtyManager.sendInput).mockImplementation(() => {
         throw new Error('PTY error');
@@ -488,7 +518,7 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-large';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Send large text input
@@ -496,7 +526,7 @@ describe('WebSocketInputHandler', () => {
       ws.emit('message', Buffer.from(largeText));
 
       expect(mockPtyManager.sendInput).toHaveBeenCalledWith(sessionId, {
-        text: largeText
+        text: largeText,
       });
     });
 
@@ -504,7 +534,7 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-nulls';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Text with embedded null bytes (not at start/end)
@@ -512,7 +542,7 @@ describe('WebSocketInputHandler', () => {
       ws.emit('message', Buffer.from(textWithNulls));
 
       expect(mockPtyManager.sendInput).toHaveBeenCalledWith(sessionId, {
-        text: textWithNulls
+        text: textWithNulls,
       });
     });
 
@@ -520,7 +550,7 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-unicode';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Unicode text
@@ -528,7 +558,7 @@ describe('WebSocketInputHandler', () => {
       ws.emit('message', Buffer.from(unicodeText));
 
       expect(mockPtyManager.sendInput).toHaveBeenCalledWith(sessionId, {
-        text: unicodeText
+        text: unicodeText,
       });
     });
 
@@ -536,22 +566,22 @@ describe('WebSocketInputHandler', () => {
       const ws = mockWebSocket();
       const sessionId = 'test-session-concurrent';
       const userId = 'test-user';
-      
+
       await handler.handleConnection(ws, sessionId, userId);
 
       // Send many messages in quick succession
       const messages = Array.from({ length: 100 }, (_, i) => `msg${i}`);
-      
-      messages.forEach(msg => {
+
+      messages.forEach((msg) => {
         ws.emit('message', Buffer.from(msg));
       });
 
       expect(mockPtyManager.sendInput).toHaveBeenCalledTimes(100);
-      
+
       // Verify all messages were processed
       messages.forEach((msg, i) => {
         expect(mockPtyManager.sendInput).toHaveBeenNthCalledWith(i + 1, sessionId, {
-          text: msg
+          text: msg,
         });
       });
     });
