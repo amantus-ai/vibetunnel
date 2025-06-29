@@ -304,6 +304,7 @@ export function connectToStream(
 ): {
   eventSource: EventSource;
   disconnect: () => void;
+  clearPendingOutput: () => void;
 } {
   const eventSource = new EventSource(streamUrl);
 
@@ -327,6 +328,14 @@ export function connectToStream(
     if (batchTimeout === null) {
       batchTimeout = window.setTimeout(flushOutputBuffer, batchDelay);
     }
+  };
+
+  const clearPendingOutput = () => {
+    if (batchTimeout !== null) {
+      clearTimeout(batchTimeout);
+      batchTimeout = null;
+    }
+    outputBuffer = '';
   };
 
   const disconnect = () => {
@@ -428,6 +437,7 @@ export function connectToStream(
   return {
     eventSource,
     disconnect,
+    clearPendingOutput,
   };
 }
 

@@ -74,16 +74,19 @@ export class SessionView extends LitElement {
         logger.log('Switching sessions', context);
 
         try {
-          // Clean up old connection
-          if (context.fromSession && this.connectionManager) {
-            this.connectionManager.cleanupStreamConnection();
-          }
-
-          // Clear terminal for clean switch
+          // First, clear the terminal synchronously to prevent race conditions
           const terminal = this.querySelector('vibe-terminal') as Terminal;
           if (terminal) {
             terminal.clear();
           }
+
+          // Clean up old connection without flushing buffered data
+          if (context.fromSession && this.connectionManager) {
+            this.connectionManager.cleanupStreamConnection(true); // skipFlush = true
+          }
+
+          // Small delay to ensure terminal is fully cleared
+          await new Promise((resolve) => setTimeout(resolve, 50));
 
           // Update all managers with new session
           this.updateManagers(context.toSession);
@@ -244,7 +247,8 @@ export class SessionView extends LitElement {
         this.connectionManager
           ? {
               setConnected: (connected: boolean) => this.connectionManager.setConnected(connected),
-              cleanupStreamConnection: () => this.connectionManager.cleanupStreamConnection(),
+              cleanupStreamConnection: (skipFlush?: boolean) =>
+                this.connectionManager.cleanupStreamConnection(skipFlush),
             }
           : null,
       setConnected: (connected: boolean) => {

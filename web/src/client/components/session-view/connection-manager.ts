@@ -17,6 +17,7 @@ export interface StreamConnection {
   eventSource: EventSource;
   disconnect: () => void;
   errorHandler?: EventListener;
+  clearPendingOutput?: () => void;
 }
 
 export class ConnectionManager {
@@ -121,10 +122,24 @@ export class ConnectionManager {
     };
   }
 
-  cleanupStreamConnection(): void {
+  cleanupStreamConnection(skipFlush = false): void {
     if (this.streamConnection) {
-      logger.log('Cleaning up stream connection');
-      this.streamConnection.disconnect();
+      logger.log('Cleaning up stream connection', { skipFlush });
+
+      if (skipFlush && this.streamConnection.eventSource) {
+        // Close the EventSource directly without triggering disconnect's flush
+        this.streamConnection.eventSource.close();
+
+        // Clear any pending batch timeouts if we have access to them
+        // This prevents buffered data from being flushed
+        if (this.streamConnection.clearPendingOutput) {
+          this.streamConnection.clearPendingOutput();
+        }
+      } else {
+        // Normal disconnect with flush
+        this.streamConnection.disconnect();
+      }
+
       this.streamConnection = null;
     }
   }

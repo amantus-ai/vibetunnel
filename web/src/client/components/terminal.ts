@@ -983,12 +983,17 @@ export class Terminal extends LitElement {
   public clear() {
     if (!this.terminal) return;
 
-    this.queueRenderOperation(() => {
-      if (!this.terminal) return;
+    // Clear immediately and synchronously to avoid race conditions
+    this.terminal.clear();
+    this.terminal.reset();
+    this.viewportY = 0;
 
-      this.terminal.clear();
-      this.viewportY = 0;
-    });
+    // Also clear the render queue to prevent any pending operations
+    this.operationQueue = [];
+    this.renderPending = false;
+
+    // Force immediate render update
+    this.requestRenderBuffer();
   }
 
   /**
