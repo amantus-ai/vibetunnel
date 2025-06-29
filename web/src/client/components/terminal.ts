@@ -319,106 +319,102 @@ export class Terminal extends LitElement {
   public recalculateAndResize(): void {
     if (!this.terminal || !this.container) return;
 
-    const _oldActualRows = this.actualRows;
     const oldLineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
     const wasAtBottom = this.isScrolledToBottom();
-
-    // Calculate current scroll position in terms of content lines (before any changes)
     const currentScrollLines = oldLineHeight > 0 ? this.viewportY / oldLineHeight : 0;
 
     if (this.fitHorizontally) {
-      // Horizontal fitting: calculate fontSize to fit this.cols characters in container width
-      const containerWidth = this.container.clientWidth;
-      const containerHeight = this.container.clientHeight;
-      const targetCharWidth = containerWidth / this.cols;
-
-      // Calculate fontSize needed for target character width
-      // Use current font size as starting point and measure actual character width
-      const currentCharWidth = this.measureCharacterWidth();
-      const scaleFactor = targetCharWidth / currentCharWidth;
-      const calculatedFontSize = this.fontSize * scaleFactor;
-      const newFontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, calculatedFontSize));
-
-      this.fontSize = newFontSize;
-
-      // Also fit rows to use full container height with the new font size
-      const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
-      const fittedRows = Math.max(1, Math.floor(containerHeight / lineHeight));
-
-      // Update both actualRows and the terminal's actual row count
-      this.actualRows = fittedRows;
-      this.rows = fittedRows;
-
-      // Resize the terminal to the new dimensions
-      if (this.terminal) {
-        // Ensure cols and rows are valid numbers before resizing
-        const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : DEFAULT_COLS;
-        const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : DEFAULT_ROWS;
-        this.terminal.resize(safeCols, safeRows);
-
-        // Dispatch resize event for backend synchronization
-        this.dispatchEvent(
-          new CustomEvent('terminal-resize', {
-            detail: { cols: this.cols, rows: this.rows },
-            bubbles: true,
-          })
-        );
-      }
+      this.handleHorizontalFitResize();
     } else {
-      // Normal mode: calculate both cols and rows based on container size
-      const containerWidth = this.container.clientWidth || DEFAULT_WIDTH;
-      const containerHeight = this.container.clientHeight || DEFAULT_HEIGHT;
-      const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
-      const charWidth = this.measureCharacterWidth();
-
-      // Ensure charWidth is valid before division
-      const safeCharWidth =
-        Number.isFinite(charWidth) && charWidth > 0 ? charWidth : DEFAULT_CHAR_WIDTH;
-      // Subtract 1 to prevent horizontal scrollbar due to rounding/border issues
-      const calculatedCols = Math.max(MIN_COLS, Math.floor(containerWidth / safeCharWidth)) - 1;
-
-      // Simple sizing logic - always use calculated width
-      this.cols = calculatedCols;
-      this.rows = Math.max(MIN_ROWS, Math.floor(containerHeight / lineHeight));
-      this.actualRows = this.rows;
-
-      // Resize the terminal to the new dimensions
-      if (this.terminal) {
-        // Ensure cols and rows are valid numbers before resizing
-        const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : DEFAULT_COLS;
-        const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : DEFAULT_ROWS;
-        this.terminal.resize(safeCols, safeRows);
-
-        // Dispatch resize event for backend synchronization
-        this.dispatchEvent(
-          new CustomEvent('terminal-resize', {
-            detail: { cols: this.cols, rows: this.rows },
-            bubbles: true,
-          })
-        );
-      }
+      this.handleNormalResize();
     }
 
-    // Recalculate viewportY based on new lineHeight and actualRows
-    if (this.terminal) {
-      const buffer = this.terminal.buffer.active;
-      const newLineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
-      const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * newLineHeight);
-
-      if (wasAtBottom) {
-        // If we were at bottom, stay at bottom with new constraints
-        this.viewportY = maxScrollPixels;
-      } else {
-        // Convert the scroll position from old lineHeight to new lineHeight
-        const newViewportY = currentScrollLines * newLineHeight;
-        const clampedY = Math.max(0, Math.min(maxScrollPixels, newViewportY));
-        this.viewportY = clampedY;
-      }
-    }
+    this.updateScrollPosition(wasAtBottom, currentScrollLines);
 
     // Always trigger a render after fit changes
     this.requestRenderBuffer();
     this.requestUpdate();
+  }
+
+  private handleHorizontalFitResize(): void {
+    if (!this.container) return;
+
+    const containerWidth = this.container.clientWidth;
+    const containerHeight = this.container.clientHeight;
+    const targetCharWidth = containerWidth / this.cols;
+
+    // Calculate fontSize needed for target character width
+    const currentCharWidth = this.measureCharacterWidth();
+    const scaleFactor = targetCharWidth / currentCharWidth;
+    const calculatedFontSize = this.fontSize * scaleFactor;
+    const newFontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, calculatedFontSize));
+
+    this.fontSize = newFontSize;
+
+    // Also fit rows to use full container height with the new font size
+    const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
+    const fittedRows = Math.max(1, Math.floor(containerHeight / lineHeight));
+
+    this.actualRows = fittedRows;
+    this.rows = fittedRows;
+
+    this.resizeTerminal();
+  }
+
+  private handleNormalResize(): void {
+    if (!this.container) return;
+
+    const containerWidth = this.container.clientWidth || DEFAULT_WIDTH;
+    const containerHeight = this.container.clientHeight || DEFAULT_HEIGHT;
+    const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
+    const charWidth = this.measureCharacterWidth();
+
+    // Ensure charWidth is valid before division
+    const safeCharWidth =
+      Number.isFinite(charWidth) && charWidth > 0 ? charWidth : DEFAULT_CHAR_WIDTH;
+    // Subtract 1 to prevent horizontal scrollbar due to rounding/border issues
+    const calculatedCols = Math.max(MIN_COLS, Math.floor(containerWidth / safeCharWidth)) - 1;
+
+    this.cols = calculatedCols;
+    this.rows = Math.max(MIN_ROWS, Math.floor(containerHeight / lineHeight));
+    this.actualRows = this.rows;
+
+    this.resizeTerminal();
+  }
+
+  private resizeTerminal(): void {
+    if (!this.terminal) return;
+
+    // Ensure cols and rows are valid numbers before resizing
+    const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : DEFAULT_COLS;
+    const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : DEFAULT_ROWS;
+    this.terminal.resize(safeCols, safeRows);
+
+    // Dispatch resize event for backend synchronization
+    this.dispatchEvent(
+      new CustomEvent('terminal-resize', {
+        detail: { cols: this.cols, rows: this.rows },
+        bubbles: true,
+      })
+    );
+  }
+
+  private updateScrollPosition(wasAtBottom: boolean, currentScrollLines: number): void {
+    if (!this.terminal) return;
+
+    const buffer = this.terminal.buffer.active;
+    const newLineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
+    const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * newLineHeight);
+
+    if (wasAtBottom) {
+      // If we were at bottom, stay at bottom with new constraints
+      this.viewportY = maxScrollPixels;
+    } else {
+      // Convert the scroll position from old lineHeight to new lineHeight
+      const newViewportY = currentScrollLines * newLineHeight;
+      const clampedY = Math.max(0, Math.min(maxScrollPixels, newViewportY));
+      this.viewportY = clampedY;
+    }
   }
 
   private setupResize() {
