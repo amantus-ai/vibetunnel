@@ -372,6 +372,169 @@ describe('Terminal', () => {
     });
   });
 
+  describe('last client wins behavior', () => {
+    beforeEach(async () => {
+      await element.firstUpdated();
+      mockTerminal = (element as unknown as { terminal: MockTerminal }).terminal;
+    });
+
+    it('should trigger resize on scroll with debounce', async () => {
+      const container = element.querySelector('.terminal-container') as HTMLElement;
+      if (!container) return;
+
+      // Spy on recalculateAndResize
+      const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
+
+      // Trigger scroll event
+      const scrollEvent = new Event('scroll', { bubbles: true });
+      container.dispatchEvent(scrollEvent);
+
+      // Should not resize immediately
+      expect(resizeSpy).not.toHaveBeenCalled();
+
+      // Wait for debounce (300ms)
+      await new Promise((resolve) => setTimeout(resolve, 350));
+
+      // Now resize should have been called
+      expect(resizeSpy).toHaveBeenCalledTimes(1);
+
+      // Multiple scrolls within debounce period should only trigger one resize
+      resizeSpy.mockClear();
+      container.dispatchEvent(scrollEvent);
+      container.dispatchEvent(scrollEvent);
+      container.dispatchEvent(scrollEvent);
+
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      expect(resizeSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should resize when terminal becomes visible', async () => {
+      const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
+
+      // Simulate tab visibility change
+      element.handleVisibilityChange();
+
+      // Should trigger resize
+      expect(resizeSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should always use calculated width (no user overrides)', async () => {
+      // Get initial calculated width
+      const initialCols = element.cols;
+      expect(initialCols).toBeGreaterThan(0);
+
+      // Try to set a different width
+      element.setTerminalSize(200, 30);
+      await element.updateComplete;
+
+      // Width should be set immediately
+      expect(element.cols).toBe(200);
+
+      // But on next resize, it should recalculate based on container
+      element.recalculateAndResize();
+      await element.updateComplete;
+
+      // Should have recalculated based on container width, not user preference
+      // In test environment with fixed viewport, this should be consistent
+      expect(element.cols).toBeLessThan(200);
+    });
+  });
+
+  describe('scroll-triggered resizing', () => {
+    beforeEach(async () => {
+      await element.firstUpdated();
+      mockTerminal = (element as unknown as { terminal: MockTerminal }).terminal;
+
+      // Set up buffer with scrollable content
+      if (mockTerminal) {
+        mockTerminal.buffer.active.length = 100;
+      }
+    });
+
+    it('should clean up scroll resize timeout on disconnect', async () => {
+      const container = element.querySelector('.terminal-container') as HTMLElement;
+      if (!container) return;
+
+      // Trigger scroll to create timeout
+      const scrollEvent = new Event('scroll', { bubbles: true });
+      container.dispatchEvent(scrollEvent);
+
+      // Get reference to timeout (cast to access private property)
+      const terminalWithTimeout = element as unknown as {
+        scrollResizeTimeout: NodeJS.Timeout | null;
+      };
+      expect(terminalWithTimeout.scrollResizeTimeout).not.toBeNull();
+
+      // Disconnect should clear timeout
+      element.disconnectedCallback();
+
+      // Timeout should be cleared
+      expect(terminalWithTimeout.scrollResizeTimeout).toBeNull();
+    });
+
+    it('should handle rapid scrolling without excessive resizes', async () => {
+      const container = element.querySelector('.terminal-container') as HTMLElement;
+      if (!container) return;
+
+      const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
+
+      // Simulate rapid scrolling
+      for (let i = 0; i < 10; i++) {
+        const scrollEvent = new Event('scroll', { bubbles: true });
+        container.dispatchEvent(scrollEvent);
+        await new Promise((resolve) => setTimeout(resolve, 50)); // 50ms between scrolls
+      }
+
+      // Should still be debouncing
+      expect(resizeSpy).not.toHaveBeenCalled();
+
+      // Wait for final debounce
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Should have only resized once
+      expect(resizeSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('tab switching behavior', () => {
+    beforeEach(async () => {
+      await element.firstUpdated();
+      mockTerminal = (element as unknown as { terminal: MockTerminal }).terminal;
+    });
+
+    it('should handle rapid tab switches gracefully', async () => {
+      const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
+
+      // Simulate rapid tab switching
+      for (let i = 0; i < 5; i++) {
+        element.handleVisibilityChange();
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // Each visibility change should trigger a resize
+      expect(resizeSpy).toHaveBeenCalledTimes(5);
+
+      // Terminal should still be functional
+      element.write('Test after rapid switches');
+      expect(element.querySelector('.terminal-container')).toBeTruthy();
+    });
+
+    it('should maintain correct dimensions after tab switch', async () => {
+      // Get initial dimensions
+      const initialCols = element.cols;
+      const initialRows = element.rows;
+
+      // Simulate tab switch
+      element.handleVisibilityChange();
+      await element.updateComplete;
+
+      // Dimensions should be recalculated but consistent
+      // (in test environment with fixed viewport)
+      expect(element.cols).toBe(initialCols);
+      expect(element.rows).toBe(initialRows);
+    });
+  });
+
   describe('cleanup', () => {
     it('should clean up on disconnect', async () => {
       await element.firstUpdated();
