@@ -13,6 +13,7 @@
 import { type IBufferCell, type IBufferLine, Terminal as XtermTerminal } from '@xterm/headless';
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { debounce } from '../utils/debounce.js';
 import { processKeyboardShortcuts } from '../utils/keyboard-shortcut-highlighter.js';
 import { createLogger } from '../utils/logger.js';
 import { UrlHighlighter } from '../utils/url-highlighter';
@@ -73,8 +74,8 @@ export class Terminal extends LitElement {
   @state() private cursorVisible = true; // Track cursor visibility state
 
   private container: HTMLElement | null = null;
-  private resizeTimeout: NodeJS.Timeout | null = null;
-  private scrollResizeTimeout: NodeJS.Timeout | null = null;
+  private debouncedResize: ReturnType<typeof debounce> | null = null;
+  private debouncedScrollResize: ReturnType<typeof debounce> | null = null;
   private cachedCharWidth: number | null = null;
   private cachedFontSizeForCharWidth: number | null = null;
   private explicitSizeSet = false; // Flag to prevent auto-resize when size is explicitly set
@@ -168,14 +169,12 @@ export class Terminal extends LitElement {
     this.cachedCharWidth = null;
     this.cachedFontSizeForCharWidth = null;
 
-    // Clear resize timeouts
-    if (this.resizeTimeout) {
-      clearTimeout(this.resizeTimeout);
-      this.resizeTimeout = null;
+    // Cancel pending resize operations
+    if (this.debouncedResize) {
+      this.debouncedResize.cancel();
     }
-    if (this.scrollResizeTimeout) {
-      clearTimeout(this.scrollResizeTimeout);
-      this.scrollResizeTimeout = null;
+    if (this.debouncedScrollResize) {
+      this.debouncedScrollResize.cancel();
     }
 
     if (this.resizeObserver) {
@@ -190,6 +189,13 @@ export class Terminal extends LitElement {
   }
 
   firstUpdated() {
+    // Initialize debounced functions
+    this.debouncedResize = debounce(() => this.recalculateAndResize(), RESIZE_DEBOUNCE_MS);
+    this.debouncedScrollResize = debounce(
+      () => this.recalculateAndResize(),
+      SCROLL_RESIZE_DEBOUNCE_MS
+    );
+
     // Store the initial font size as original
     this.originalFontSize = this.fontSize;
     this.initializeTerminal();
@@ -441,12 +447,9 @@ export class Terminal extends LitElement {
     if (!this.container) return;
 
     this.resizeObserver = new ResizeObserver(() => {
-      if (this.resizeTimeout) {
-        clearTimeout(this.resizeTimeout);
+      if (this.debouncedResize) {
+        this.debouncedResize();
       }
-      this.resizeTimeout = setTimeout(() => {
-        this.recalculateAndResize();
-      }, RESIZE_DEBOUNCE_MS);
     });
     this.resizeObserver.observe(this.container);
 
@@ -638,12 +641,9 @@ export class Terminal extends LitElement {
       this.requestRenderBuffer();
 
       // Trigger resize on scroll (debounced) - part of "last client wins" behavior
-      if (this.scrollResizeTimeout) {
-        clearTimeout(this.scrollResizeTimeout);
+      if (this.debouncedScrollResize) {
+        this.debouncedScrollResize();
       }
-      this.scrollResizeTimeout = setTimeout(() => {
-        this.recalculateAndResize();
-      }, SCROLL_RESIZE_DEBOUNCE_MS);
     }
   }
 

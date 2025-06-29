@@ -459,17 +459,24 @@ describe('Terminal', () => {
       const scrollEvent = new Event('scroll', { bubbles: true });
       container.dispatchEvent(scrollEvent);
 
-      // Get reference to timeout (cast to access private property)
-      const terminalWithTimeout = element as unknown as {
-        scrollResizeTimeout: NodeJS.Timeout | null;
+      // Get reference to debounced function (cast to access private property)
+      const terminalWithDebounce = element as unknown as {
+        debouncedScrollResize: { cancel: () => void } | null;
       };
-      expect(terminalWithTimeout.scrollResizeTimeout).not.toBeNull();
+      expect(terminalWithDebounce.debouncedScrollResize).not.toBeNull();
 
-      // Disconnect should clear timeout
+      // Spy on cancel method
+      const debouncedFunc = terminalWithDebounce.debouncedScrollResize;
+      if (!debouncedFunc) {
+        throw new Error('debouncedScrollResize should not be null');
+      }
+      const cancelSpy = vi.spyOn(debouncedFunc, 'cancel');
+
+      // Disconnect should cancel debounced operation
       element.disconnectedCallback();
 
-      // Timeout should be cleared
-      expect(terminalWithTimeout.scrollResizeTimeout).toBeNull();
+      // Cancel should have been called
+      expect(cancelSpy).toHaveBeenCalled();
     });
 
     it('should handle rapid scrolling without excessive resizes', async () => {
