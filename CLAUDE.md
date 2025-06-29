@@ -144,3 +144,22 @@ pnpm run logs
 ```
 
 Log file location: `~/.vibetunnel/log.txt`
+
+## Using Gemini CLI for Large Codebase Analysis
+
+When analyzing large codebases or multiple files that might exceed context limits, use the Gemini CLI with its massive context window.
+
+Use `gemini -p` when:
+- Analyzing entire codebases or large directories
+- Comparing multiple large files
+- Need to understand project-wide patterns or architecture
+- Checking for the presence of certain coding patterns across the entire codebase
+
+Examples:
+```bash
+gemini -p "@src/main.py Explain this file's purpose and structure"
+gemini -p "@src/ Summarize the architecture of this codebase"
+gemini -p "@src/ Are there any React hooks that handle WebSocket connections? List them with file paths"
+```
+
+See `docs/gemini.md` for detailed usage instructions.

@@ -59,7 +59,11 @@ export class ConnectionManager {
     // Don't connect if we already have an active connection
     if (this.streamConnection) {
       logger.warn(`Already have an active stream connection, cleaning up first`);
-      this.cleanupStreamConnection();
+      try {
+        this.cleanupStreamConnection();
+      } catch (error) {
+        logger.error('[connection-manager] Error during cleanup:', error);
+      }
     }
 
     // Capture session ID at connection time to ensure we're using the right one
@@ -68,7 +72,11 @@ export class ConnectionManager {
     logger.log(`[connection-manager] Connecting to stream for session ${sessionId}`);
 
     // Clean up existing connection
-    this.cleanupStreamConnection();
+    try {
+      this.cleanupStreamConnection();
+    } catch (error) {
+      logger.error('[connection-manager] Error during cleanup:', error);
+    }
 
     // Get auth client from the main app
     const user = authClient.getCurrentUser();
@@ -111,7 +119,11 @@ export class ConnectionManager {
           this.onSessionUpdate(exitedSession);
 
           // Disconnect the stream and load final snapshot
-          this.cleanupStreamConnection();
+          try {
+            this.cleanupStreamConnection();
+          } catch (error) {
+            logger.error('[connection-manager] Error during cleanup:', error);
+          }
 
           // Load final snapshot
           requestAnimationFrame(() => {

@@ -342,7 +342,11 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     // Cleanup stream connection if it exists
     if (connectionManager) {
-      connectionManager.cleanupStreamConnection();
+      try {
+        connectionManager.cleanupStreamConnection();
+      } catch (error) {
+        logger.error('[lifecycle-event-manager] Error during cleanup:', error);
+      }
     }
   }
 

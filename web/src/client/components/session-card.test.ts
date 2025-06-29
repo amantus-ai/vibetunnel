@@ -302,6 +302,8 @@ describe('SessionCard', () => {
       element.session = createMockSession({ status: 'exited' });
       await element.updateComplete;
 
+      // Mock both auth config (for logger) and cleanup endpoint
+      fetchMock.mockResponse('/api/auth/config', { noAuth: true });
       fetchMock.mockResponse(`/api/sessions/${element.session.id}/cleanup`, { success: true });
 
       const killedHandler = vi.fn();
@@ -311,7 +313,8 @@ describe('SessionCard', () => {
 
       // Should use cleanup endpoint for exited sessions
       const calls = fetchMock.getCalls();
-      expect(calls[0][0]).toContain('/cleanup');
+      const cleanupCall = calls.find((call) => call[0].includes('/cleanup'));
+      expect(cleanupCall).toBeTruthy();
       expect(killedHandler).toHaveBeenCalled();
     });
   });

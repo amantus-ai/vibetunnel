@@ -153,6 +153,10 @@ export function cleanupManagers(managers: ManagerInstances): void {
   managers.directKeyboardManager.cleanup();
   managers.mobileInputManager.cleanup();
   managers.inputManager.cleanup();
-  managers.connectionManager.cleanupStreamConnection();
+  try {
+    managers.connectionManager.cleanupStreamConnection();
+  } catch (error) {
+    console.error('[manager-factory] Error during connection cleanup:', error);
+  }
   managers.loadingAnimationManager.cleanup();
 }

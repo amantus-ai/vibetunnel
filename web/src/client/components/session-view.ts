@@ -74,23 +74,26 @@ export class SessionView extends LitElement {
         logger.log('Switching sessions', context);
 
         try {
-          // Show switching overlay
+          // Show switching overlay and reset initialization tracking
           this.isSwitchingSessions = true;
-          this.requestUpdate();
-
-          // Reset initialization tracking
           this.terminalInitialized = false;
 
           // First update session to trigger terminal clear
           // This ensures terminal clears BEFORE we disconnect the old stream
           this.updateManagers(context.toSession);
+
+          // Single update request for all the state changes
           this.requestUpdate();
           await this.updateComplete;
 
           // NOW clean up old connection after terminal has cleared
           if (context.fromSession && this.connectionManager) {
             logger.log('Cleaning up old connection');
-            this.connectionManager.cleanupStreamConnection(true); // skipFlush = true
+            try {
+              this.connectionManager.cleanupStreamConnection(true); // skipFlush = true
+            } catch (error) {
+              logger.error('Error during connection cleanup:', error);
+            }
           }
 
           // Clear terminal reference in lifecycle manager to force re-init
@@ -480,8 +483,8 @@ export class SessionView extends LitElement {
       this.loadingAnimationManager.stopLoading();
       this.terminalLifecycleManager.setupTerminal();
 
-      // Force an update to ensure the terminal is rendered
-      this.requestUpdate();
+      // Terminal initialization will happen in the next update cycle
+      // No need to force another update here
     }
   }
 
