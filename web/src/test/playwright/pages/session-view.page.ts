@@ -82,17 +82,33 @@ export class SessionViewPage extends BasePage {
   }
 
   async navigateBack() {
-    // Click the back button in the header or sidebar
+    // Try multiple ways to navigate back to the session list
+
+    // 1. Try the back button in the header
     const backButton = this.page
       .locator('button')
       .filter({ hasText: /back|×/i })
       .first();
-    if (await backButton.isVisible()) {
+    if (await backButton.isVisible({ timeout: 1000 })) {
       await backButton.click();
-    } else {
-      // If no back button, navigate to root
-      await this.page.goto('/');
+      return;
     }
+
+    // 2. Try clicking on the app title/logo to go home
+    const appTitle = this.page
+      .locator('h1, a')
+      .filter({ hasText: /VibeTunnel/i })
+      .first();
+    if (await appTitle.isVisible({ timeout: 1000 })) {
+      await appTitle.click();
+      return;
+    }
+
+    // 3. As last resort, use browser back button
+    await this.page.goBack().catch(() => {
+      // If browser back fails, we have to use goto
+      return this.page.goto('/');
+    });
   }
 
   async isTerminalActive(): Promise<boolean> {
