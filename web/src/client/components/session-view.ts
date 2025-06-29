@@ -130,11 +130,15 @@ export class SessionView extends LitElement {
         if (context.toSession) {
           this.terminalLifecycleManager.setupTerminal();
         }
+        
+        // CRITICAL: Update the UI to hide the switching overlay
+        this.requestUpdate();
       },
       
       onEnterIdle: async (context) => {
         logger.log('Entering idle state', context);
         this.connected = false;
+        this.requestUpdate();
       },
       
       onError: (error) => {
