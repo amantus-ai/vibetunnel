@@ -949,10 +949,7 @@ export class SessionView extends LitElement {
       const terminal = this.querySelector('vibe-terminal') as Terminal;
       if (terminal) {
         // Notify terminal of size change
-        const terminalElement = terminal as unknown as { fitTerminal?: () => void };
-        if (typeof terminalElement.fitTerminal === 'function') {
-          terminalElement.fitTerminal();
-        }
+        terminal.recalculateAndResize();
 
         // If height was reduced, scroll to keep cursor visible
         if (heightReduction > 0) {
