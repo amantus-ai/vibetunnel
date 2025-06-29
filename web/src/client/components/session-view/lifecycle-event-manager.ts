@@ -30,6 +30,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
   private touchListenersAdded = false;
   private visualViewportHandler: (() => void) | null = null;
   private clickHandler: (() => void) | null = null;
+  private visibilityChangeHandler: (() => void) | null = null;
 
   constructor() {
     super();
@@ -135,22 +136,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     }
   };
 
-  handleClickOutside = (e: Event): void => {
-    if (!this.callbacks) return;
-
-    const showWidthSelector = this.callbacks.getShowWidthSelector();
-    if (showWidthSelector) {
-      const target = e.target as HTMLElement;
-      const widthSelector = this.callbacks.querySelector('.width-selector-container');
-      const widthButton = this.callbacks.querySelector('.width-selector-button');
-
-      if (!widthSelector?.contains(target) && !widthButton?.contains(target)) {
-        this.callbacks.setShowWidthSelector(false);
-        this.callbacks.setCustomWidth('');
-      }
-    }
-  };
-
   setupLifecycle(): void {
     if (!this.callbacks) return;
 
@@ -165,9 +150,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     };
     this.callbacks.addEventListener('click', this.clickHandler);
 
-    // Add click outside handler for width selector
-    document.addEventListener('click', this.handleClickOutside);
-
     // Show loading animation if no session yet
     if (!this.session) {
       this.callbacks.startLoading();
@@ -181,6 +163,15 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     // Listen for preference changes
     window.addEventListener('app-preferences-changed', this.handlePreferencesChanged);
+
+    // Set up tab visibility listener for "last client wins" behavior
+    this.visibilityChangeHandler = () => {
+      if (document.visibilityState === 'visible') {
+        logger.log('Tab became visible, proposing optimal terminal width.');
+        this.callbacks?.proposeOptimalWidth();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityChangeHandler);
 
     this.setupMobileFeatures(isMobile);
     this.setupEventListeners(isMobile);
@@ -301,9 +292,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       terminalLifecycleManager.cleanup();
     }
 
-    // Remove click outside handler
-    document.removeEventListener('click', this.handleClickOutside);
-
     // Remove click handler
     if (this.clickHandler) {
       this.callbacks.removeEventListener('click', this.clickHandler);
@@ -337,6 +325,12 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     // Remove preference change listener
     window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
 
+    // Remove visibility change listener
+    if (this.visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeHandler = null;
+    }
+
     // Stop loading animation
     this.callbacks.stopLoading();
 
@@ -350,8 +344,13 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     logger.log('LifecycleEventManager cleanup');
 
     // Clean up event listeners
-    document.removeEventListener('click', this.handleClickOutside);
     window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
+
+    // Remove visibility change listener
+    if (this.visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeHandler = null;
+    }
 
     // Remove global keyboard event listener
     if (!this.callbacks?.getIsMobile() && this.keyboardListenerAdded) {

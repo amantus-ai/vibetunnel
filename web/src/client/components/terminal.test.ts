@@ -179,90 +179,20 @@ describe('Terminal', () => {
       expect(element.fitHorizontally).toBe(true);
     });
 
-    it('should respect maxCols constraint', async () => {
-      element.maxCols = 100;
-      await element.updateComplete;
+    // Removed test: 'should respect maxCols constraint' - maxCols removed in Phase 1
 
-      // maxCols is only applied during fitTerminal, not setTerminalSize
-      // So this test should verify the property is set
-      expect(element.maxCols).toBe(100);
-    });
+    // Removed test: 'should respect initial dimensions when no user override' - initialCols/Rows removed in Phase 1
 
-    it('should respect initial dimensions when no user override', async () => {
-      element.initialCols = 120;
-      element.initialRows = 30;
-      await element.updateComplete;
+    // Removed test: 'should allow user override with setUserOverrideWidth' - setUserOverrideWidth removed in Phase 1
 
-      // Verify properties are set
-      expect(element.initialCols).toBe(120);
-      expect(element.initialRows).toBe(30);
-    });
+    // Removed test: 'should handle different width constraint scenarios' - width constraints removed in Phase 1
 
-    it('should allow user override with setUserOverrideWidth', async () => {
-      element.initialCols = 120;
-      element.setUserOverrideWidth(true);
-      await element.updateComplete;
-
-      // Verify the method exists and can be called
-      expect(element.setUserOverrideWidth).toBeDefined();
-      expect(typeof element.setUserOverrideWidth).toBe('function');
-    });
-
-    it('should handle different width constraint scenarios', async () => {
-      // Test scenario 1: User sets specific width
-      element.maxCols = 80;
-      element.initialCols = 120;
-      await element.updateComplete;
-      expect(element.maxCols).toBe(80);
-
-      // Test scenario 2: User selects unlimited with override
-      element.maxCols = 0;
-      element.setUserOverrideWidth(true);
-      await element.updateComplete;
-      expect(element.maxCols).toBe(0);
-
-      // Test scenario 3: Initial dimensions with no override
-      element.maxCols = 0;
-      element.setUserOverrideWidth(false);
-      element.initialCols = 100;
-      await element.updateComplete;
-      expect(element.initialCols).toBe(100);
-    });
-
-    it('should only apply width restrictions to tunneled sessions', async () => {
-      // Setup initial conditions
-      element.initialCols = 80;
-      element.maxCols = 0;
-      element.setUserOverrideWidth(false);
-
-      // Test frontend-created session (UUID format) - should NOT be limited
-      element.sessionId = '123e4567-e89b-12d3-a456-426614174000';
-      await element.updateComplete;
-
-      // The terminal should use full calculated width, not limited by initialCols
-      // Since we can't directly test the internal fitTerminal logic in this test environment,
-      // we verify the setup is correct
-      expect(element.sessionId).not.toMatch(/^fwd_/);
-      expect(element.initialCols).toBe(80);
-      expect(element.userOverrideWidth).toBe(false);
-
-      // Test tunneled session (fwd_ prefix) - should be limited
-      element.sessionId = 'fwd_1234567890';
-      await element.updateComplete;
-
-      // The terminal should be limited by initialCols for tunneled sessions
-      expect(element.sessionId).toMatch(/^fwd_/);
-      expect(element.initialCols).toBe(80);
-      expect(element.userOverrideWidth).toBe(false);
-    });
+    // Removed test: 'should only apply width restrictions to tunneled sessions' - width restrictions removed in Phase 1
 
     it('should handle undefined initial dimensions gracefully', async () => {
-      element.initialCols = undefined as unknown as number;
-      element.initialRows = undefined as unknown as number;
       await element.updateComplete;
 
-      // When initial dimensions are undefined, the terminal will use calculated dimensions
-      // based on container size, not the default 80x24
+      // Terminal will use calculated dimensions based on container size
       expect(element.cols).toBeGreaterThan(0);
       expect(element.rows).toBeGreaterThan(0);
 
@@ -274,9 +204,6 @@ describe('Terminal', () => {
     });
 
     it('should handle zero initial dimensions gracefully', async () => {
-      element.initialCols = 0;
-      element.initialRows = 0;
-      element.maxCols = 0;
       await element.updateComplete;
 
       // Should fall back to calculated width based on container
@@ -289,108 +216,13 @@ describe('Terminal', () => {
       expect(element.querySelector('.terminal-container')).toBeTruthy();
     });
 
-    it('should persist user override preference to localStorage', async () => {
-      // Set sessionId directly since attribute binding might not work in tests
-      element.sessionId = 'test-123';
-      await element.updateComplete;
+    // Removed test: 'should persist user override preference to localStorage' - userOverrideWidth removed in Phase 1
 
-      // Clear any existing value
-      localStorage.removeItem('terminal-width-override-test-123');
+    // Removed test: 'should restore user override preference from localStorage' - userOverrideWidth removed in Phase 1
 
-      // Set user override
-      element.setUserOverrideWidth(true);
+    // Removed test: 'should restore user override preference when sessionId changes' - userOverrideWidth removed in Phase 1
 
-      // Check localStorage
-      const stored = localStorage.getItem('terminal-width-override-test-123');
-      expect(stored).toBe('true');
-
-      // Set to false
-      element.setUserOverrideWidth(false);
-      const storedFalse = localStorage.getItem('terminal-width-override-test-123');
-      expect(storedFalse).toBe('false');
-
-      // Clean up
-      localStorage.removeItem('terminal-width-override-test-123');
-    });
-
-    it('should restore user override preference from localStorage', async () => {
-      // Pre-set localStorage value
-      localStorage.setItem('terminal-width-override-test-456', 'true');
-
-      // Create new element with sessionId
-      const newElement = await fixture<Terminal>(html`
-        <vibe-terminal></vibe-terminal>
-      `);
-      newElement.sessionId = 'test-456';
-
-      // Trigger connectedCallback by removing and re-adding to DOM
-      newElement.remove();
-      document.body.appendChild(newElement);
-      await newElement.updateComplete;
-
-      // Verify override was restored
-      expect(newElement.userOverrideWidth).toBe(true);
-
-      // Clean up
-      newElement.remove();
-      localStorage.removeItem('terminal-width-override-test-456');
-    });
-
-    it('should restore user override preference when sessionId changes', async () => {
-      // Pre-set localStorage value for the new sessionId
-      localStorage.setItem('terminal-width-override-new-session-789', 'true');
-
-      // Create element with initial sessionId
-      element.sessionId = 'old-session-123';
-      await element.updateComplete;
-
-      // Verify initial state (no override for old session)
-      expect(element.userOverrideWidth).toBe(false);
-
-      // Change sessionId - this should trigger loading the preference
-      element.sessionId = 'new-session-789';
-      await element.updateComplete;
-
-      // The updated() lifecycle method should have loaded the preference
-      expect(element.userOverrideWidth).toBe(true);
-
-      // Clean up
-      localStorage.removeItem('terminal-width-override-new-session-789');
-    });
-
-    it('should handle localStorage errors gracefully', async () => {
-      // Mock localStorage to throw errors
-      const originalGetItem = localStorage.getItem;
-      const originalSetItem = localStorage.setItem;
-
-      // Test getItem error handling
-      localStorage.getItem = vi.fn().mockImplementation(() => {
-        throw new Error('localStorage unavailable');
-      });
-
-      // Create element - should not crash despite localStorage error
-      const errorElement = await fixture<Terminal>(html`
-        <vibe-terminal session-id="error-test"></vibe-terminal>
-      `);
-      await errorElement.updateComplete;
-
-      // Should default to false when localStorage fails
-      expect(errorElement.userOverrideWidth).toBe(false);
-
-      // Test setItem error handling
-      localStorage.setItem = vi.fn().mockImplementation(() => {
-        throw new Error('Quota exceeded');
-      });
-
-      // Should not crash when saving preference fails
-      errorElement.setUserOverrideWidth(true);
-      expect(errorElement.userOverrideWidth).toBe(true); // State should still update
-
-      // Clean up
-      errorElement.remove();
-      localStorage.getItem = originalGetItem;
-      localStorage.setItem = originalSetItem;
-    });
+    // Removed test: 'should handle localStorage errors gracefully' - userOverrideWidth removed in Phase 1
 
     it('should not set explicitSizeSet flag if terminal is not ready', async () => {
       // Create a new terminal component instance without rendering
@@ -534,6 +366,198 @@ describe('Terminal', () => {
       element.fontSize = 20;
       await element.updateComplete;
       expect(element.fontSize).toBe(20);
+    });
+  });
+
+  describe('last client wins behavior', () => {
+    beforeEach(async () => {
+      await element.firstUpdated();
+      mockTerminal = (element as unknown as { terminal: MockTerminal }).terminal;
+    });
+
+    it('should trigger resize on scroll with debounce', async () => {
+      const container = element.querySelector('.terminal-container') as HTMLElement;
+      if (!container) return;
+
+      // Add enough content to make terminal scrollable
+      if (mockTerminal?.buffer.active) {
+        mockTerminal.buffer.active.length = 100; // Make buffer longer than visible rows
+      }
+
+      // Set element properties to ensure scrolling can happen
+      const terminalWithProps = element as unknown as {
+        actualRows: number;
+        viewportY: number;
+        scrollViewportPixels: (delta: number) => void;
+      };
+      terminalWithProps.actualRows = 24; // Set visible rows
+
+      // Spy on recalculateAndResize
+      const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
+
+      // Simulate scrolling via the terminal's scroll method
+      if (terminalWithProps.scrollViewportPixels) {
+        terminalWithProps.scrollViewportPixels(10);
+      }
+
+      // Should not resize immediately
+      expect(resizeSpy).not.toHaveBeenCalled();
+
+      // Wait for debounce (300ms)
+      await new Promise((resolve) => setTimeout(resolve, 350));
+
+      // Now resize should have been called
+      expect(resizeSpy).toHaveBeenCalledTimes(1);
+
+      // Multiple scrolls within debounce period should only trigger one resize
+      resizeSpy.mockClear();
+      if (terminalWithProps.scrollViewportPixels) {
+        terminalWithProps.scrollViewportPixels(10);
+        terminalWithProps.scrollViewportPixels(10);
+        terminalWithProps.scrollViewportPixels(10);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      expect(resizeSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should resize when terminal becomes visible', async () => {
+      const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
+
+      // Simulate tab visibility change by triggering resize
+      element.recalculateAndResize();
+
+      // Should trigger resize
+      expect(resizeSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should always use calculated width (no user overrides)', async () => {
+      // Get initial calculated width
+      const initialCols = element.cols;
+      expect(initialCols).toBeGreaterThan(0);
+
+      // Try to set a different width
+      element.setTerminalSize(200, 30);
+      await element.updateComplete;
+
+      // Width should be set immediately
+      expect(element.cols).toBe(200);
+
+      // But on next resize, it should recalculate based on container
+      element.recalculateAndResize();
+      await element.updateComplete;
+
+      // Should have recalculated based on container width, not user preference
+      // In test environment with fixed viewport, this should be consistent
+      expect(element.cols).toBeLessThan(200);
+    });
+  });
+
+  describe('scroll-triggered resizing', () => {
+    beforeEach(async () => {
+      await element.firstUpdated();
+      mockTerminal = (element as unknown as { terminal: MockTerminal }).terminal;
+
+      // Set up buffer with scrollable content
+      if (mockTerminal) {
+        mockTerminal.buffer.active.length = 100;
+      }
+    });
+
+    it('should clean up scroll resize timeout on disconnect', async () => {
+      const container = element.querySelector('.terminal-container') as HTMLElement;
+      if (!container) return;
+
+      // Trigger scroll to create timeout
+      const scrollEvent = new Event('scroll', { bubbles: true });
+      container.dispatchEvent(scrollEvent);
+
+      // Get reference to debounced function (cast to access private property)
+      const terminalWithDebounce = element as unknown as {
+        debouncedScrollResize: { cancel: () => void } | null;
+      };
+      expect(terminalWithDebounce.debouncedScrollResize).not.toBeNull();
+
+      // Spy on cancel method
+      const debouncedFunc = terminalWithDebounce.debouncedScrollResize;
+      if (!debouncedFunc) {
+        throw new Error('debouncedScrollResize should not be null');
+      }
+      const cancelSpy = vi.spyOn(debouncedFunc, 'cancel');
+
+      // Disconnect should cancel debounced operation
+      element.disconnectedCallback();
+
+      // Cancel should have been called
+      expect(cancelSpy).toHaveBeenCalled();
+    });
+
+    it('should handle rapid scrolling without excessive resizes', async () => {
+      const container = element.querySelector('.terminal-container') as HTMLElement;
+      if (!container) return;
+
+      const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
+
+      // Simulate rapid scrolling via the terminal's scroll method
+      const terminalWithScroll = element as unknown as {
+        scrollViewportPixels: (delta: number) => void;
+      };
+
+      // Simulate rapid scrolling
+      for (let i = 0; i < 10; i++) {
+        if (terminalWithScroll.scrollViewportPixels) {
+          terminalWithScroll.scrollViewportPixels(5);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50)); // 50ms between scrolls
+      }
+
+      // Should still be debouncing
+      expect(resizeSpy).not.toHaveBeenCalled();
+
+      // Wait for final debounce
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Should have only resized once
+      expect(resizeSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('tab switching behavior', () => {
+    beforeEach(async () => {
+      await element.firstUpdated();
+      mockTerminal = (element as unknown as { terminal: MockTerminal }).terminal;
+    });
+
+    it('should handle rapid tab switches gracefully', async () => {
+      const resizeSpy = vi.spyOn(element, 'recalculateAndResize');
+
+      // Simulate rapid tab switching by triggering resize events
+      for (let i = 0; i < 5; i++) {
+        element.recalculateAndResize();
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // Each call should trigger a resize
+      expect(resizeSpy).toHaveBeenCalledTimes(5);
+
+      // Terminal should still be functional
+      element.write('Test after rapid switches');
+      expect(element.querySelector('.terminal-container')).toBeTruthy();
+    });
+
+    it('should maintain correct dimensions after tab switch', async () => {
+      // Get initial dimensions
+      const initialCols = element.cols;
+      const initialRows = element.rows;
+
+      // Simulate tab switch by triggering resize
+      element.recalculateAndResize();
+      await element.updateComplete;
+
+      // Dimensions should be recalculated but consistent
+      // (in test environment with fixed viewport)
+      expect(element.cols).toBe(initialCols);
+      expect(element.rows).toBe(initialRows);
     });
   });
 
