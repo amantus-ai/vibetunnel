@@ -45,6 +45,15 @@ export const test = base.extend<TestFixtures>({
       // Reload the page so the app picks up the localStorage settings
       await page.reload({ waitUntil: 'domcontentloaded' });
 
+      // Wait for the app to fully initialize
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
+      
+      // Wait for either create button or auth form to be visible
+      await page.waitForSelector('button[title="Create New Session"], auth-login', { 
+        state: 'visible', 
+        timeout: 10000 
+      });
+
       // Skip session cleanup during tests to avoid interfering with test scenarios
       // Tests should manage their own session state
       console.log('Skipping automatic session cleanup in test fixture');

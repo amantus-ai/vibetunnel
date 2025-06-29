@@ -131,7 +131,16 @@ test.describe('Session Navigation', () => {
     if (sidebarToggleVisible) {
       // Click to expand sidebar
       await sidebarToggle.click();
-      await page.waitForTimeout(300); // Wait for animation
+      // Wait for sidebar to become visible
+      await page
+        .waitForSelector(
+          'aside session-card, [role="navigation"] session-card, .sidebar session-card',
+          {
+            state: 'visible',
+            timeout: 2000,
+          }
+        )
+        .catch(() => {});
     }
 
     // Look for session list in sidebar or a session switcher component

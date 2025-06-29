@@ -256,8 +256,11 @@ test.describe('Advanced Session Management', () => {
   test('should copy session information', async ({ page }) => {
     test.setTimeout(20000); // Increase timeout
 
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
+    // Wait for page to be ready by checking for create button
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
 
     // Create a session
     await page.waitForSelector('button[title="Create New Session"]', {
@@ -302,8 +305,11 @@ test.describe('Advanced Session Management', () => {
   test('should display session metadata correctly', async ({ page }) => {
     test.setTimeout(20000); // Increase timeout
 
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
+    // Wait for page to be ready by checking for create button
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
 
     // Create a session with specific working directory
     await page.waitForSelector('button[title="Create New Session"]', {
@@ -340,8 +346,11 @@ test.describe('Advanced Session Management', () => {
   test('should filter sessions by status', async ({ page }) => {
     test.setTimeout(40000); // Give more time for multiple operations
 
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
+    // Wait for page to be ready by checking for create button
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
 
     // Create just 1 running session first
     await page.waitForSelector('button[title="Create New Session"]', {
