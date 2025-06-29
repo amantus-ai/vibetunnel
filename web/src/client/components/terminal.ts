@@ -276,10 +276,11 @@ export class Terminal extends LitElement {
       const root = this.shadowRoot || this;
 
       // Check for multiple containers (debugging)
-      const allContainers = root.querySelectorAll('#terminal-container');
-      logger.log(`Found ${allContainers.length} terminal containers`);
+      const containerId = `terminal-container-${this.sessionId}`;
+      const allContainers = root.querySelectorAll(`#${containerId}`);
+      logger.log(`Found ${allContainers.length} terminal containers for session ${this.sessionId}`);
 
-      this.container = root.querySelector('#terminal-container') as HTMLElement;
+      this.container = root.querySelector(`#${containerId}`) as HTMLElement;
 
       if (!this.container) {
         const error = new Error('Terminal container not found');
@@ -1069,28 +1070,31 @@ export class Terminal extends LitElement {
     // Don't accept writes when sessionId is empty or undefined
     // This prevents data from old sessions bleeding into new ones
     if (!this.sessionId) {
-      logger.warn('Rejecting write - no active sessionId');
+      logger.warn('[terminal] Rejecting write - no active sessionId');
       return;
     }
 
     // CRITICAL: Block writes during session switching to prevent content mixing
     if (this.isSessionSwitching) {
-      logger.warn('Rejecting write - session switch in progress');
+      logger.warn(`[terminal] Rejecting write during switch - data for session ${this.sessionId}`);
       return;
+    }
+
+    // Initialize lastWriteSessionId if this is the first write
+    if (!this.lastWriteSessionId) {
+      this.lastWriteSessionId = this.sessionId;
     }
 
     // CRITICAL: Check if we're writing data from a different session
     // This can happen if old SSE streams are still sending data after a session switch
-    if (this.lastWriteSessionId && this.lastWriteSessionId !== this.sessionId) {
-      logger.log(
-        `Detected write from different session. Last: ${this.lastWriteSessionId}, Current: ${this.sessionId}. Clearing terminal.`
+    if (this.lastWriteSessionId !== this.sessionId) {
+      logger.warn(
+        `[terminal] Rejecting write from old session. Last: ${this.lastWriteSessionId}, Current: ${this.sessionId}`
       );
-      // Clear the terminal completely to prevent mixed content
-      this.clear();
+      return; // Don't accept writes from old sessions
     }
 
     // Update tracking variables
-    this.lastWriteSessionId = this.sessionId;
     this.currentRenderSessionId = this.sessionId;
 
     // Check for cursor visibility sequences
@@ -1507,7 +1511,7 @@ export class Terminal extends LitElement {
       </style>
       <div class="relative w-full h-full p-0 m-0">
         <div
-          id="terminal-container"
+          id="terminal-container-${this.sessionId}"
           class="terminal-container w-full h-full overflow-hidden p-0 m-0"
           tabindex="0"
           contenteditable="false"

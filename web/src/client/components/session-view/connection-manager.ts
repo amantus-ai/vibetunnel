@@ -56,7 +56,16 @@ export class ConnectionManager {
       return;
     }
 
-    logger.log(`Connecting to stream for session ${this.session.id}`);
+    // Don't connect if we already have an active connection
+    if (this.streamConnection) {
+      logger.warn(`Already have an active stream connection, cleaning up first`);
+      this.cleanupStreamConnection();
+    }
+
+    // Capture session ID at connection time to ensure we're using the right one
+    const sessionId = this.session.id;
+    const terminalElement = this.terminal;
+    logger.log(`[connection-manager] Connecting to stream for session ${sessionId}`);
 
     // Clean up existing connection
     this.cleanupStreamConnection();
@@ -65,13 +74,13 @@ export class ConnectionManager {
     const user = authClient.getCurrentUser();
 
     // Build stream URL with auth token as query parameter (EventSource doesn't support headers)
-    let streamUrl = `/api/sessions/${this.session.id}/stream`;
+    let streamUrl = `/api/sessions/${sessionId}/stream`;
     if (user?.token) {
       streamUrl += `?token=${encodeURIComponent(user.token)}`;
     }
 
     // Use CastConverter to connect terminal to stream with reconnection tracking
-    const connection = CastConverter.connectToStream(this.terminal, streamUrl);
+    const connection = CastConverter.connectToStream(terminalElement, streamUrl);
 
     // Wrap the connection to track reconnections
     const originalEventSource = connection.eventSource;

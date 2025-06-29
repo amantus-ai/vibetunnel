@@ -135,15 +135,19 @@ export class TerminalLifecycleManager {
       );
     }
 
-    // Connect to stream directly without artificial delays
-    // Use setTimeout to ensure we're still connected after all synchronous updates
-    setTimeout(() => {
-      if (this.connected && this.connectionManager) {
-        this.connectionManager.connectToStream();
-      } else {
-        logger.warn(`Component disconnected before stream connection`);
-      }
-    }, 0);
+    // Connect to stream immediately if we're connected
+    // No setTimeout needed - we've already verified session and connection state
+    if (this.connected && this.connectionManager && this.session) {
+      // Double-check session matches before connecting
+      const currentSession = this.session;
+      this.connectionManager.setSession(currentSession);
+      logger.log(`Connecting to stream for session ${currentSession.id}`);
+      this.connectionManager.connectToStream();
+    } else {
+      logger.warn(
+        `Not connecting to stream - connected: ${this.connected}, connectionManager: ${!!this.connectionManager}, session: ${this.session?.id}`
+      );
+    }
   }
 
   async handleTerminalResize(event: Event) {
