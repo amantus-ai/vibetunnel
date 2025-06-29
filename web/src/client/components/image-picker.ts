@@ -87,6 +87,16 @@ export class ImagePicker extends LitElement {
     input.value = '';
   }
 
+  /**
+   * Public method to upload a file programmatically (for drag & drop, paste)
+   */
+  async uploadFile(file: File): Promise<void> {
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Only image files are allowed');
+    }
+    return this.uploadImage(file);
+  }
+
   private async uploadImage(file: File): Promise<void> {
     this.uploading = true;
     this.uploadProgress = 0;

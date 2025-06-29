@@ -13,18 +13,17 @@ describe('Image Upload API', () => {
 
   beforeAll(async () => {
     // Wait for server to be ready
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   });
 
   it('should upload an image successfully', async () => {
     // Create a simple test image buffer (1x1 PNG)
     const testImageBuffer = Buffer.from([
-      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-      0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, 0x00, 0x00, 0x00,
-      0x0C, 0x49, 0x44, 0x41, 0x54, 0x08, 0xD7, 0x63, 0xF8, 0x00, 0x00, 0x00,
-      0x01, 0x00, 0x01, 0x5C, 0xC2, 0x88, 0x05, 0x00, 0x00, 0x00, 0x00, 0x49,
-      0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+      0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
+      0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x5c, 0xc2, 0x88, 0x05, 0x00, 0x00, 0x00, 0x00, 0x49,
+      0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
     ]);
 
     const formData = new FormData();
@@ -34,14 +33,14 @@ describe('Image Upload API', () => {
     const response = await fetch(`${baseUrl}/api/images/upload`, {
       method: 'POST',
       headers: {
-        'Authorization': authHeader,
+        Authorization: authHeader,
       },
       body: formData,
     });
 
     expect(response.ok).toBe(true);
     const result = await response.json();
-    
+
     expect(result).toMatchObject({
       success: true,
       filename: expect.stringMatching(/^[a-f0-9-]+\.png$/),
@@ -62,7 +61,7 @@ describe('Image Upload API', () => {
     const response = await fetch(`${baseUrl}/api/images/upload`, {
       method: 'POST',
       headers: {
-        'Authorization': authHeader,
+        Authorization: authHeader,
       },
       body: formData,
     });
@@ -72,9 +71,7 @@ describe('Image Upload API', () => {
   });
 
   it('should require authentication', async () => {
-    const testImageBuffer = Buffer.from([
-      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-    ]);
+    const testImageBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
     const formData = new FormData();
     const blob = new Blob([testImageBuffer], { type: 'image/png' });
@@ -94,7 +91,7 @@ describe('Image Upload API', () => {
     const response = await fetch(`${baseUrl}/api/images/upload`, {
       method: 'POST',
       headers: {
-        'Authorization': authHeader,
+        Authorization: authHeader,
       },
       body: formData,
     });
@@ -107,18 +104,18 @@ describe('Image Upload API', () => {
   it('should list uploaded images', async () => {
     const response = await fetch(`${baseUrl}/api/images`, {
       headers: {
-        'Authorization': authHeader,
+        Authorization: authHeader,
       },
     });
 
     expect(response.ok).toBe(true);
     const result = await response.json();
-    
+
     expect(result).toHaveProperty('images');
     expect(result).toHaveProperty('count');
     expect(Array.isArray(result.images)).toBe(true);
     expect(typeof result.count).toBe('number');
-    
+
     if (result.images.length > 0) {
       const image = result.images[0];
       expect(image).toHaveProperty('filename');
@@ -132,12 +129,11 @@ describe('Image Upload API', () => {
   it('should serve uploaded images', async () => {
     // First upload an image
     const testImageBuffer = Buffer.from([
-      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-      0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, 0x00, 0x00, 0x00,
-      0x0C, 0x49, 0x44, 0x41, 0x54, 0x08, 0xD7, 0x63, 0xF8, 0x00, 0x00, 0x00,
-      0x01, 0x00, 0x01, 0x5C, 0xC2, 0x88, 0x05, 0x00, 0x00, 0x00, 0x00, 0x49,
-      0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+      0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
+      0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x5c, 0xc2, 0x88, 0x05, 0x00, 0x00, 0x00, 0x00, 0x49,
+      0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
     ]);
 
     const formData = new FormData();
@@ -147,7 +143,7 @@ describe('Image Upload API', () => {
     const uploadResponse = await fetch(`${baseUrl}/api/images/upload`, {
       method: 'POST',
       headers: {
-        'Authorization': authHeader,
+        Authorization: authHeader,
       },
       body: formData,
     });
@@ -157,10 +153,10 @@ describe('Image Upload API', () => {
 
     // Now try to serve the image
     const serveResponse = await fetch(`${baseUrl}/api/images/${filename}`);
-    
+
     expect(serveResponse.ok).toBe(true);
     expect(serveResponse.headers.get('content-type')).toBe('image/png');
-    
+
     const imageBuffer = await serveResponse.arrayBuffer();
     expect(imageBuffer.byteLength).toBe(testImageBuffer.length);
   });
@@ -173,7 +169,7 @@ describe('Image Upload API', () => {
   it('should prevent path traversal attacks', async () => {
     const response = await fetch(`${baseUrl}/api/images/../../../etc/passwd`);
     expect(response.status).toBe(400);
-    
+
     const result = await response.json();
     expect(result.error).toBe('Invalid filename');
   });

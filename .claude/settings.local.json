@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }
