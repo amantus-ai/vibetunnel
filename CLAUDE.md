@@ -13,6 +13,7 @@ VibeTunnel is a macOS application that allows users to access their terminal ses
 
 - **Never commit and/or push before the user has tested your changes!**
 - **ABSOLUTELY SUPER IMPORTANT & CRITICAL**: NEVER USE git rebase --skip EVER
+- **Never create a new branch/PR automatically when you are already on a branch**, even if the changes do not seem to fit into the existing PR. Only do that when explicitly asked. Our workflow is always start from main, make branch, make PR, merge. Then we go back to main and start something else. PRs sometimes contain different features and that's okay.
 
 ## Web Development Commands
 
