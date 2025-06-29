@@ -21,6 +21,8 @@ export async function createAndNavigateToSession(
 
   const sessionName = options.name || generateTestSessionName();
   const spawnWindow = options.spawnWindow ?? false;
+  // Always use bash for tests for consistency
+  const command = options.command || 'bash';
 
   // Navigate to list if not already there
   if (!page.url().endsWith('/')) {
@@ -28,7 +30,7 @@ export async function createAndNavigateToSession(
   }
 
   // Create the session
-  await sessionListPage.createNewSession(sessionName, spawnWindow, options.command);
+  await sessionListPage.createNewSession(sessionName, spawnWindow, command);
 
   // For web sessions, wait for navigation and get session ID
   if (!spawnWindow) {

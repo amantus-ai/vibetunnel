@@ -30,8 +30,8 @@ export class TestSessionManager {
       await sessionListPage.navigate();
     }
 
-    // Create session
-    await sessionListPage.createNewSession(name, spawnWindow, command);
+    // Create session - use bash by default for consistency
+    await sessionListPage.createNewSession(name, spawnWindow, command || 'bash');
 
     // Get session ID from URL for web sessions
     let sessionId = '';

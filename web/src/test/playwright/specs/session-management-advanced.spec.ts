@@ -290,6 +290,9 @@ test.describe('Advanced Session Management', () => {
     // Change working directory
     await page.fill('input[placeholder="~/"]', '/tmp');
 
+    // Use bash for consistency in tests
+    await page.fill('input[placeholder="zsh"]', 'bash');
+
     await page.locator('button').filter({ hasText: 'Create' }).first().click();
     await page.waitForURL(/\?session=/);
 
