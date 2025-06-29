@@ -141,9 +141,6 @@ pnpm run logs:error
 
 # Follow logs in real-time
 pnpm run logs
-
-# Using make command
-make tail-logs
 ```
 
 Log file location: `~/.vibetunnel/log.txt`

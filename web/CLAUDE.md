@@ -76,16 +76,11 @@ pnpm run logs         # Follow logs in real-time
 pnpm run logs:error   # Show recent errors
 pnpm run logs:warn    # Show recent warnings
 
-# Make commands
-make tail-logs        # Follow logs (last 50 lines)
-make logs            # Show last 100 lines
-make logs-error      # Show errors only
-make logs-grep filter="session"  # Search for pattern
-
-# Direct script
+# Shell script for advanced options
 ./logs.sh            # Show last 50 lines
 ./logs.sh tail       # Follow logs
 ./logs.sh error 100  # Show last 100 errors
+./logs.sh search "pattern"  # Search for pattern
 ./logs.sh help       # Show all options
 ```
 
