@@ -20,6 +20,8 @@ export interface SessionInfo {
   exitCode?: number;
   startedAt: string;
   pid?: number;
+  initialCols?: number;
+  initialRows?: number;
 }
 
 /**

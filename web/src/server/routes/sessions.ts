@@ -125,9 +125,9 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
   // Create new session (local or on remote)
   router.post('/sessions', async (req, res) => {
-    const { command, workingDir, name, remoteId, spawn_terminal } = req.body;
+    const { command, workingDir, name, remoteId, spawn_terminal, cols, rows } = req.body;
     logger.debug(
-      `creating new session: command=${JSON.stringify(command)}, remoteId=${remoteId || 'local'}`
+      `creating new session: command=${JSON.stringify(command)}, remoteId=${remoteId || 'local'}, cols=${cols}, rows=${rows}`
     );
 
     if (!command || !Array.isArray(command) || command.length === 0) {
@@ -159,6 +159,8 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
             workingDir,
             name,
             spawn_terminal,
+            cols,
+            rows,
             // Don't forward remoteId to avoid recursion
           }),
           signal: AbortSignal.timeout(10000), // 10 second timeout
@@ -246,6 +248,8 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       const result = await ptyManager.createSession(command, {
         name: sessionName,
         workingDir: cwd,
+        cols,
+        rows,
       });
 
       const { sessionId, sessionInfo } = result;

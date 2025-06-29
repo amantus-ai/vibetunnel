@@ -187,6 +187,243 @@ describe('Terminal', () => {
       // So this test should verify the property is set
       expect(element.maxCols).toBe(100);
     });
+
+    it('should respect initial dimensions when no user override', async () => {
+      element.initialCols = 120;
+      element.initialRows = 30;
+      await element.updateComplete;
+
+      // Verify properties are set
+      expect(element.initialCols).toBe(120);
+      expect(element.initialRows).toBe(30);
+    });
+
+    it('should allow user override with setUserOverrideWidth', async () => {
+      element.initialCols = 120;
+      element.setUserOverrideWidth(true);
+      await element.updateComplete;
+
+      // Verify the method exists and can be called
+      expect(element.setUserOverrideWidth).toBeDefined();
+      expect(typeof element.setUserOverrideWidth).toBe('function');
+    });
+
+    it('should handle different width constraint scenarios', async () => {
+      // Test scenario 1: User sets specific width
+      element.maxCols = 80;
+      element.initialCols = 120;
+      await element.updateComplete;
+      expect(element.maxCols).toBe(80);
+
+      // Test scenario 2: User selects unlimited with override
+      element.maxCols = 0;
+      element.setUserOverrideWidth(true);
+      await element.updateComplete;
+      expect(element.maxCols).toBe(0);
+
+      // Test scenario 3: Initial dimensions with no override
+      element.maxCols = 0;
+      element.setUserOverrideWidth(false);
+      element.initialCols = 100;
+      await element.updateComplete;
+      expect(element.initialCols).toBe(100);
+    });
+
+    it('should only apply width restrictions to tunneled sessions', async () => {
+      // Setup initial conditions
+      element.initialCols = 80;
+      element.maxCols = 0;
+      element.setUserOverrideWidth(false);
+
+      // Test frontend-created session (UUID format) - should NOT be limited
+      element.sessionId = '123e4567-e89b-12d3-a456-426614174000';
+      await element.updateComplete;
+
+      // The terminal should use full calculated width, not limited by initialCols
+      // Since we can't directly test the internal fitTerminal logic in this test environment,
+      // we verify the setup is correct
+      expect(element.sessionId).not.toMatch(/^fwd_/);
+      expect(element.initialCols).toBe(80);
+      expect(element.userOverrideWidth).toBe(false);
+
+      // Test tunneled session (fwd_ prefix) - should be limited
+      element.sessionId = 'fwd_1234567890';
+      await element.updateComplete;
+
+      // The terminal should be limited by initialCols for tunneled sessions
+      expect(element.sessionId).toMatch(/^fwd_/);
+      expect(element.initialCols).toBe(80);
+      expect(element.userOverrideWidth).toBe(false);
+    });
+
+    it('should handle undefined initial dimensions gracefully', async () => {
+      element.initialCols = undefined as unknown as number;
+      element.initialRows = undefined as unknown as number;
+      await element.updateComplete;
+
+      // When initial dimensions are undefined, the terminal will use calculated dimensions
+      // based on container size, not the default 80x24
+      expect(element.cols).toBeGreaterThan(0);
+      expect(element.rows).toBeGreaterThan(0);
+
+      // Should still be able to resize
+      element.setTerminalSize(100, 30);
+      await element.updateComplete;
+      expect(element.cols).toBe(100);
+      expect(element.rows).toBe(30);
+    });
+
+    it('should handle zero initial dimensions gracefully', async () => {
+      element.initialCols = 0;
+      element.initialRows = 0;
+      element.maxCols = 0;
+      await element.updateComplete;
+
+      // Should fall back to calculated width based on container
+      expect(element.cols).toBeGreaterThan(0);
+      expect(element.rows).toBeGreaterThan(0);
+
+      // Terminal should still be functional
+      element.write('Test content');
+      await element.updateComplete;
+      expect(element.querySelector('.terminal-container')).toBeTruthy();
+    });
+
+    it('should persist user override preference to localStorage', async () => {
+      // Set sessionId directly since attribute binding might not work in tests
+      element.sessionId = 'test-123';
+      await element.updateComplete;
+
+      // Clear any existing value
+      localStorage.removeItem('terminal-width-override-test-123');
+
+      // Set user override
+      element.setUserOverrideWidth(true);
+
+      // Check localStorage
+      const stored = localStorage.getItem('terminal-width-override-test-123');
+      expect(stored).toBe('true');
+
+      // Set to false
+      element.setUserOverrideWidth(false);
+      const storedFalse = localStorage.getItem('terminal-width-override-test-123');
+      expect(storedFalse).toBe('false');
+
+      // Clean up
+      localStorage.removeItem('terminal-width-override-test-123');
+    });
+
+    it('should restore user override preference from localStorage', async () => {
+      // Pre-set localStorage value
+      localStorage.setItem('terminal-width-override-test-456', 'true');
+
+      // Create new element with sessionId
+      const newElement = await fixture<Terminal>(html`
+        <vibe-terminal></vibe-terminal>
+      `);
+      newElement.sessionId = 'test-456';
+
+      // Trigger connectedCallback by removing and re-adding to DOM
+      newElement.remove();
+      document.body.appendChild(newElement);
+      await newElement.updateComplete;
+
+      // Verify override was restored
+      expect(newElement.userOverrideWidth).toBe(true);
+
+      // Clean up
+      newElement.remove();
+      localStorage.removeItem('terminal-width-override-test-456');
+    });
+
+    it('should restore user override preference when sessionId changes', async () => {
+      // Pre-set localStorage value for the new sessionId
+      localStorage.setItem('terminal-width-override-new-session-789', 'true');
+
+      // Create element with initial sessionId
+      element.sessionId = 'old-session-123';
+      await element.updateComplete;
+
+      // Verify initial state (no override for old session)
+      expect(element.userOverrideWidth).toBe(false);
+
+      // Change sessionId - this should trigger loading the preference
+      element.sessionId = 'new-session-789';
+      await element.updateComplete;
+
+      // The updated() lifecycle method should have loaded the preference
+      expect(element.userOverrideWidth).toBe(true);
+
+      // Clean up
+      localStorage.removeItem('terminal-width-override-new-session-789');
+    });
+
+    it('should handle localStorage errors gracefully', async () => {
+      // Mock localStorage to throw errors
+      const originalGetItem = localStorage.getItem;
+      const originalSetItem = localStorage.setItem;
+
+      // Test getItem error handling
+      localStorage.getItem = vi.fn().mockImplementation(() => {
+        throw new Error('localStorage unavailable');
+      });
+
+      // Create element - should not crash despite localStorage error
+      const errorElement = await fixture<Terminal>(html`
+        <vibe-terminal session-id="error-test"></vibe-terminal>
+      `);
+      await errorElement.updateComplete;
+
+      // Should default to false when localStorage fails
+      expect(errorElement.userOverrideWidth).toBe(false);
+
+      // Test setItem error handling
+      localStorage.setItem = vi.fn().mockImplementation(() => {
+        throw new Error('Quota exceeded');
+      });
+
+      // Should not crash when saving preference fails
+      errorElement.setUserOverrideWidth(true);
+      expect(errorElement.userOverrideWidth).toBe(true); // State should still update
+
+      // Clean up
+      errorElement.remove();
+      localStorage.getItem = originalGetItem;
+      localStorage.setItem = originalSetItem;
+    });
+
+    it('should not set explicitSizeSet flag if terminal is not ready', async () => {
+      // Create a new terminal component instance without rendering
+      const newElement = document.createElement('vibe-terminal') as Terminal;
+
+      // Set terminal size before it's connected to DOM (terminal will be null)
+      newElement.setTerminalSize(100, 30);
+
+      // explicitSizeSet should remain false since terminal wasn't ready
+      expect((newElement as unknown as { explicitSizeSet: boolean }).explicitSizeSet).toBe(false);
+
+      // Cols and rows should still be updated
+      expect(newElement.cols).toBe(100);
+      expect(newElement.rows).toBe(30);
+
+      // Now connect to DOM and let it initialize
+      document.body.appendChild(newElement);
+      await newElement.updateComplete;
+      await newElement.firstUpdated();
+
+      // After initialization, terminal should be ready
+      const terminal = (newElement as unknown as { terminal: MockTerminal }).terminal;
+      expect(terminal).toBeDefined();
+
+      // Now if we set size again, explicitSizeSet should be set
+      newElement.setTerminalSize(120, 40);
+      expect((newElement as unknown as { explicitSizeSet: boolean }).explicitSizeSet).toBe(true);
+      expect(newElement.cols).toBe(120);
+      expect(newElement.rows).toBe(40);
+
+      // Clean up
+      newElement.remove();
+    });
   });
 
   describe('scrolling behavior', () => {

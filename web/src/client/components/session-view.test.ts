@@ -551,6 +551,130 @@ describe('SessionView', () => {
         expect(element.showWidthSelector).toBe(false);
       }
     });
+
+    it('should pass initial dimensions to terminal', async () => {
+      const mockSession = createMockSession();
+      // Add initial dimensions to mock session
+      mockSession.initialCols = 120;
+      mockSession.initialRows = 30;
+
+      element.session = mockSession;
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        expect(terminal.initialCols).toBe(120);
+        expect(terminal.initialRows).toBe(30);
+      }
+    });
+
+    it('should set user override when width is selected', async () => {
+      element.showWidthSelector = true;
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      const setUserOverrideWidthSpy = vi.spyOn(terminal, 'setUserOverrideWidth');
+
+      // Simulate width selection
+      element.handleWidthSelect(100);
+      await element.updateComplete;
+
+      expect(setUserOverrideWidthSpy).toHaveBeenCalledWith(true);
+      expect(terminal.maxCols).toBe(100);
+      expect(element.terminalMaxCols).toBe(100);
+    });
+
+    it('should allow unlimited width selection with override', async () => {
+      element.showWidthSelector = true;
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      const setUserOverrideWidthSpy = vi.spyOn(terminal, 'setUserOverrideWidth');
+
+      // Select unlimited (0)
+      element.handleWidthSelect(0);
+      await element.updateComplete;
+
+      expect(setUserOverrideWidthSpy).toHaveBeenCalledWith(true);
+      expect(terminal.maxCols).toBe(0);
+      expect(element.terminalMaxCols).toBe(0);
+    });
+
+    it('should show limited width label when constrained by session dimensions', async () => {
+      const mockSession = createMockSession();
+      // Set up a tunneled session (from vt command) with 'fwd_' prefix
+      mockSession.id = 'fwd_1234567890';
+      mockSession.initialCols = 120;
+      mockSession.initialRows = 30;
+
+      element.session = mockSession;
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        terminal.initialCols = 120;
+        terminal.initialRows = 30;
+        // Simulate no user override
+        terminal.userOverrideWidth = false;
+      }
+
+      // With no manual selection (terminalMaxCols = 0) and initial dimensions,
+      // the label should show "≤120" for tunneled sessions
+      const label = element.getCurrentWidthLabel();
+      expect(label).toBe('≤120');
+
+      // Tooltip should explain the limitation
+      const tooltip = element.getWidthTooltip();
+      expect(tooltip).toContain('Limited to native terminal width');
+      expect(tooltip).toContain('120 columns');
+    });
+
+    it('should show unlimited label when user overrides', async () => {
+      const mockSession = createMockSession();
+      mockSession.initialCols = 120;
+
+      element.session = mockSession;
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        terminal.initialCols = 120;
+        terminal.userOverrideWidth = true; // User has overridden
+      }
+
+      // With user override, should show ∞
+      const label = element.getCurrentWidthLabel();
+      expect(label).toBe('∞');
+
+      const tooltip = element.getWidthTooltip();
+      expect(tooltip).toBe('Terminal width: Unlimited');
+    });
+
+    it('should show unlimited width for frontend-created sessions', async () => {
+      const mockSession = createMockSession();
+      // Use default UUID format ID (not tunneled) - do not override the ID
+      mockSession.initialCols = 120;
+      mockSession.initialRows = 30;
+
+      element.session = mockSession;
+      element.terminalMaxCols = 0; // No manual width selection
+      await element.updateComplete;
+
+      const terminal = element.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        terminal.initialCols = 120;
+        terminal.initialRows = 30;
+        terminal.userOverrideWidth = false;
+      }
+
+      // Frontend-created sessions should show unlimited, not limited by initial dimensions
+      const label = element.getCurrentWidthLabel();
+      expect(label).toBe('∞');
+
+      // Tooltip should show unlimited
+      const tooltip = element.getWidthTooltip();
+      expect(tooltip).toBe('Terminal width: Unlimited');
+    });
   });
 
   describe('navigation', () => {

@@ -216,6 +216,8 @@ export class PtyManager extends EventEmitter {
         workingDir: workingDir,
         status: 'starting',
         startedAt: new Date().toISOString(),
+        initialCols: cols,
+        initialRows: rows,
       };
 
       // Save initial session info
