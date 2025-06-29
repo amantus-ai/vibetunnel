@@ -32,7 +32,8 @@ export const test = base.extend<TestFixtures>({
           sessionStorage.clear();
 
           // Reset critical UI state to defaults
-          localStorage.setItem('hideExitedSessions', String(testConfig.hideExitedSessions)); // Default: hide exited sessions
+          // For tests, we want to see exited sessions since commands might exit quickly
+          localStorage.setItem('hideExitedSessions', 'false'); // Show exited sessions in tests
 
           // Clear IndexedDB if present
           if (typeof indexedDB !== 'undefined' && indexedDB.deleteDatabase) {

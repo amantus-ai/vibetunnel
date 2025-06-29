@@ -76,6 +76,11 @@ export async function createSession(
     const commandInput = page.locator('input[placeholder*="command"]');
     await commandInput.clear();
     await commandInput.fill(options.command);
+  } else {
+    // Default to bash which should exist in CI
+    const commandInput = page.locator('input[placeholder*="command"]');
+    await commandInput.clear();
+    await commandInput.fill('bash');
   }
 
   if (options.workingDir) {

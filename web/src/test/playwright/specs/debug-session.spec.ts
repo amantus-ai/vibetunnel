@@ -57,6 +57,10 @@ test.describe('Debug Session Tests', () => {
     // Wait a bit for sessions to load
     await page.waitForTimeout(2000);
 
+    // Check hideExitedSessions state
+    const hideExited = await page.evaluate(() => localStorage.getItem('hideExitedSessions'));
+    console.log('hideExitedSessions:', hideExited);
+
     // Check what's in the DOM
     const sessionCards = await page.locator('session-card').count();
     console.log(`Found ${sessionCards} session cards in DOM`);
@@ -66,7 +70,9 @@ test.describe('Debug Session Tests', () => {
     console.log(`Found ${errorElements} error elements`);
 
     // Check the session list container
-    const listContainer = await page.locator('[data-testid="session-list-container"]').textContent();
+    const listContainer = await page
+      .locator('[data-testid="session-list-container"]')
+      .textContent();
     console.log('Session list container content:', listContainer?.substring(0, 200));
 
     // Try to fetch sessions directly
@@ -76,5 +82,17 @@ test.describe('Debug Session Tests', () => {
       return { status: response.status, count: data.length, sessions: data };
     });
     console.log('Direct API call:', JSON.stringify(sessionsResponse));
+
+    // If we have sessions but no cards, it's likely due to filtering
+    if (sessionsResponse.count > 0 && sessionCards === 0) {
+      console.log('Sessions exist in API but not showing in UI - likely filtered out');
+
+      // Check if all sessions are exited
+      const exitedCount = sessionsResponse.sessions.filter(
+        (s: any) => s.status === 'exited'
+      ).length;
+      console.log(`Exited sessions: ${exitedCount} out of ${sessionsResponse.count}`);
+    }
   });
 });
+
