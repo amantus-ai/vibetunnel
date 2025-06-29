@@ -156,13 +156,21 @@ export class Terminal extends LitElement {
           this.terminal.clear();
           this.terminal.reset();
 
+          // CRITICAL: Write a single space to ensure the buffer has at least one line
+          // This forces xterm to have content that we can render
+          this.terminal.write(' ');
+          this.terminal.write('\r'); // Return to start of line
+
           // Clear any pending operations
           this.operationQueue = [];
           this.renderPending = false;
-        }
 
-        // Force immediate render of empty state
-        this.requestRenderBuffer();
+          // Reset viewport to top
+          this.viewportY = 0;
+
+          // Force synchronous render of empty viewport
+          this.renderBuffer();
+        }
 
         // Allow writes again after ensuring DOM is updated
         requestAnimationFrame(() => {
@@ -251,6 +259,7 @@ export class Terminal extends LitElement {
   firstUpdated() {
     // Store the initial font size as original
     this.originalFontSize = this.fontSize;
+    logger.log(`Terminal firstUpdated called for sessionId: ${this.sessionId}`);
     // Defer terminal initialization to avoid update warnings
     requestAnimationFrame(() => {
       this.initializeTerminal();
@@ -259,6 +268,10 @@ export class Terminal extends LitElement {
 
   private async initializeTerminal() {
     try {
+      logger.log(
+        `initializeTerminal called for sessionId: ${this.sessionId}, terminal exists: ${!!this.terminal}`
+      );
+
       // Use shadowRoot if available, otherwise use this for light DOM
       const root = this.shadowRoot || this;
       this.container = root.querySelector('#terminal-container') as HTMLElement;
@@ -269,9 +282,17 @@ export class Terminal extends LitElement {
         throw error;
       }
 
-      await this.setupTerminal();
-      this.setupResize();
-      this.setupScrolling();
+      // Only setup terminal if we don't have one already
+      // This prevents unnecessary re-initialization on session switches
+      if (!this.terminal) {
+        await this.setupTerminal();
+        this.setupResize();
+        this.setupScrolling();
+      } else {
+        logger.log('Terminal already initialized, skipping setup');
+        // Clear the terminal when re-initialized with a different session
+        this.clear();
+      }
     } catch (error: unknown) {
       logger.error('failed to initialize terminal:', error);
       this.requestUpdate();
@@ -296,6 +317,14 @@ export class Terminal extends LitElement {
 
   private async setupTerminal() {
     try {
+      // Only create a new terminal if we don't have one
+      // We want to reuse the same terminal instance across session switches
+      if (this.terminal) {
+        logger.log('Reusing existing terminal instance');
+        return;
+      }
+
+      logger.log('Creating new XtermTerminal instance');
       // Create regular terminal but don't call .open() to make it headless
       this.terminal = new XtermTerminal({
         cursorBlink: true,
@@ -1082,6 +1111,8 @@ export class Terminal extends LitElement {
   public clear() {
     if (!this.terminal) return;
 
+    logger.log(`Clearing terminal for sessionId: ${this.sessionId}`);
+
     // CRITICAL: Clear the DOM container immediately to remove ALL visible content
     // This prevents old content from persisting when the new content is shorter
     if (this.container) {
@@ -1091,6 +1122,9 @@ export class Terminal extends LitElement {
     // Clear immediately and synchronously to avoid race conditions
     this.terminal.clear();
     this.terminal.reset();
+
+    // Write a single space to ensure buffer has content
+    this.terminal.write(' \r');
 
     this.viewportY = 0;
 
