@@ -167,9 +167,26 @@ export class Terminal extends LitElement {
         }
 
         if (this.terminal) {
-          // CRITICAL: Dispose of the old terminal completely to ensure no content leaks
-          this.terminal.dispose();
-          this.terminal = null;
+          // Clear the terminal buffer completely
+          this.terminal.clear();
+          this.terminal.reset();
+
+          // CRITICAL: Create a completely new buffer to ensure no content leaks
+          // This is the key to preventing old content from persisting
+          // Access internal buffer through the private API
+          // @ts-expect-error - accessing private xterm internals
+          const core = this.terminal._core;
+          const newBuffer = core?._bufferService?.buffer;
+          if (newBuffer) {
+            // Clear all lines in the buffer
+            for (let i = 0; i < newBuffer.lines.length; i++) {
+              newBuffer.lines.get(i)?.fill(newBuffer.getNullCell());
+            }
+          }
+
+          // Write a single space to ensure the buffer has at least one line
+          this.terminal.write(' ');
+          this.terminal.write('\r'); // Return to start of line
 
           // Clear any pending operations
           this.operationQueue = [];
@@ -184,8 +201,13 @@ export class Terminal extends LitElement {
           // Reset viewport to top
           this.viewportY = 0;
 
-          // Force the terminal to be recreated on next initialization
-          logger.log(`[${this.terminalInstanceId}] Disposed terminal for session switch`);
+          // Force immediate synchronous render of empty viewport
+          this.renderBuffer();
+
+          // Force another reflow after render
+          if (this.container) {
+            void this.container.offsetHeight;
+          }
         }
 
         // Allow writes again after ensuring DOM is updated
@@ -328,11 +350,17 @@ export class Terminal extends LitElement {
         throw error;
       }
 
-      // Always create a new terminal when session changes to ensure clean state
-      // This prevents content from bleeding between sessions
-      await this.setupTerminal();
-      this.setupResize();
-      this.setupScrolling();
+      // Only setup terminal if we don't have one already
+      // We'll clear it properly when session changes
+      if (!this.terminal) {
+        await this.setupTerminal();
+        this.setupResize();
+        this.setupScrolling();
+      } else {
+        logger.log(
+          `[${this.terminalInstanceId}] Terminal already initialized, cleared for new session`
+        );
+      }
     } catch (error: unknown) {
       logger.error('failed to initialize terminal:', error);
       this.requestUpdate();
@@ -357,13 +385,10 @@ export class Terminal extends LitElement {
 
   private async setupTerminal() {
     try {
-      // Dispose of any existing terminal first
+      // Only create a new terminal if we don't have one
       if (this.terminal) {
-        logger.log(
-          `[${this.terminalInstanceId}] Disposing existing terminal before creating new one`
-        );
-        this.terminal.dispose();
-        this.terminal = null;
+        logger.log(`[${this.terminalInstanceId}] Reusing existing terminal instance`);
+        return;
       }
 
       logger.log(
