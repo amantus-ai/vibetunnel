@@ -449,6 +449,8 @@ export class SessionView extends LitElement {
           // Check if already transitioning
           if (this.isTransitioning) {
             logger.warn('Transition already in progress, skipping');
+            // Clear the transition UI state since we're not proceeding
+            this.isTransitioningSession = false;
             return;
           }
           this.isTransitioning = true;
@@ -477,7 +479,7 @@ export class SessionView extends LitElement {
             await new Promise((resolve) => requestAnimationFrame(resolve));
 
             // If we have a new session, re-initialize the terminal connection
-            if (this.session && !this.cleanupInProgress) {
+            if (this.session) {
               // CRITICAL: Stop any loading state before setting connected
               if (this.loadingAnimationManager.isLoading()) {
                 logger.log('Stopping loading animation during session transition');
