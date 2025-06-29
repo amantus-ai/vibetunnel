@@ -317,9 +317,14 @@ export class PtyManager extends EventEmitter {
       // Create session object
       // Auto-detect Claude commands and set dynamic mode if no title mode specified
       let titleMode = options.titleMode;
-      if (!titleMode && command[0] && command[0].toLowerCase().includes('claude')) {
-        titleMode = TitleMode.DYNAMIC;
-        logger.log(chalk.cyan('✓ Auto-selected dynamic title mode for Claude'));
+      if (!titleMode) {
+        // Check all command arguments for Claude
+        const isClaudeCommand = command.some((arg) => arg.toLowerCase().includes('claude'));
+        if (isClaudeCommand) {
+          titleMode = TitleMode.DYNAMIC;
+          logger.log(chalk.cyan('✓ Auto-selected dynamic title mode for Claude'));
+          logger.debug(`Detected Claude in command: ${command.join(' ')}`);
+        }
       }
 
       const session: PtySession = {
@@ -550,6 +555,36 @@ export class PtyManager extends EventEmitter {
         logger.error(`Failed to handle exit for session ${session.id}:`, error);
       }
     });
+
+    // Send initial title for static and dynamic modes
+    if (
+      forwardToStdout &&
+      (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
+    ) {
+      const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+      let initialTitle: string;
+
+      if (session.titleMode === TitleMode.STATIC) {
+        initialTitle = generateTitleSequence(
+          currentDir,
+          session.sessionInfo.command,
+          session.sessionInfo.name
+        );
+      } else {
+        // For dynamic mode, start with idle state
+        initialTitle = generateDynamicTitle(
+          currentDir,
+          session.sessionInfo.command,
+          { isActive: false, lastActivityTime: Date.now() },
+          session.sessionInfo.name
+        );
+      }
+
+      // Write initial title directly to stdout
+      process.stdout.write(initialTitle);
+      session.initialTitleSent = true;
+      logger.debug(`Sent initial ${session.titleMode} title for session ${session.id}`);
+    }
 
     // Monitor stdin file for input
     this.monitorStdinFile(session);

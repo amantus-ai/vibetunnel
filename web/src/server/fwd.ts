@@ -43,6 +43,7 @@ function showUsage() {
   console.log('');
   console.log('Environment Variables:');
   console.log('  VIBETUNNEL_TITLE_MODE=<mode>         Set default title mode');
+  console.log('  VIBETUNNEL_CLAUDE_DYNAMIC_TITLE=1    Force dynamic title for Claude');
   console.log('');
   console.log('Examples:');
   console.log('  pnpm exec tsx src/fwd.ts claude --resume');
@@ -68,6 +69,7 @@ export async function startVibeTunnelForward(args: string[]) {
   }
 
   logger.log(chalk.blue(`VibeTunnel Forward v${VERSION}`) + chalk.gray(` (${BUILD_DATE})`));
+  logger.debug(`Full command: ${args.join(' ')}`);
 
   // Parse command line arguments
   let sessionId: string | undefined;
@@ -79,7 +81,17 @@ export async function startVibeTunnelForward(args: string[]) {
     const envMode = process.env.VIBETUNNEL_TITLE_MODE.toLowerCase();
     if (Object.values(TitleMode).includes(envMode as TitleMode)) {
       titleMode = envMode as TitleMode;
+      logger.debug(`Title mode set from environment: ${titleMode}`);
     }
+  }
+
+  // Force dynamic mode for Claude via environment variable
+  if (
+    process.env.VIBETUNNEL_CLAUDE_DYNAMIC_TITLE === '1' ||
+    process.env.VIBETUNNEL_CLAUDE_DYNAMIC_TITLE === 'true'
+  ) {
+    titleMode = TitleMode.DYNAMIC;
+    logger.debug('Forced dynamic title mode for Claude via environment variable');
   }
 
   // Parse flags
@@ -120,9 +132,14 @@ export async function startVibeTunnelForward(args: string[]) {
   }
 
   // Auto-select dynamic mode for Claude if no mode was explicitly set
-  if (titleMode === TitleMode.NONE && command[0] && command[0].toLowerCase().includes('claude')) {
-    titleMode = TitleMode.DYNAMIC;
-    logger.log(chalk.cyan('✓ Auto-selected dynamic title mode for Claude'));
+  if (titleMode === TitleMode.NONE) {
+    // Check all command arguments for Claude
+    const isClaudeCommand = command.some((arg) => arg.toLowerCase().includes('claude'));
+    if (isClaudeCommand) {
+      titleMode = TitleMode.DYNAMIC;
+      logger.log(chalk.cyan('✓ Auto-selected dynamic title mode for Claude'));
+      logger.debug(`Detected Claude in command: ${command.join(' ')}`);
+    }
   }
 
   const cwd = process.cwd();
