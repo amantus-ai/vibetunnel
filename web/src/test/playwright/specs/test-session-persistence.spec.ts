@@ -40,13 +40,13 @@ test.describe('Session Persistence Tests', () => {
     if (!isVisible) {
       const allSessionTexts = await page.locator('session-card').allTextContents();
       console.log('All session cards:', allSessionTexts);
-      
+
       // Check if the API returns our session
       const apiSessions = await page.evaluate(async () => {
         const response = await fetch('/api/sessions');
         return await response.json();
       });
-      
+
       const ourApiSession = apiSessions.find((s: any) => s.name === sessionName);
       console.log('Our session from API:', ourApiSession);
     }
@@ -91,3 +91,4 @@ test.describe('Session Persistence Tests', () => {
     expect(sessionText).toContain('exited');
   });
 });
+

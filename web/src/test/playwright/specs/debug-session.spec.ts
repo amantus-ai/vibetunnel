@@ -60,7 +60,7 @@ test.describe('Debug Session Tests', () => {
     // Check hideExitedSessions state
     const hideExited = await page.evaluate(() => localStorage.getItem('hideExitedSessions'));
     console.log('localStorage hideExitedSessions:', hideExited);
-    
+
     // Check the app component's state
     const appHideExited = await page.evaluate(() => {
       const app = document.querySelector('vibetunnel-app') as any;
@@ -102,4 +102,3 @@ test.describe('Debug Session Tests', () => {
     }
   });
 });
-

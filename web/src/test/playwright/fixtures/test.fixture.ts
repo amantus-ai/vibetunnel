@@ -42,6 +42,9 @@ export const test = base.extend<TestFixtures>({
         })
         .catch(() => {});
 
+      // Reload the page so the app picks up the localStorage settings
+      await page.reload({ waitUntil: 'domcontentloaded' });
+
       // Skip session cleanup during tests to avoid interfering with test scenarios
       // Tests should manage their own session state
       console.log('Skipping automatic session cleanup in test fixture');
