@@ -13,16 +13,59 @@ permissions:
   issues: write
 
 jobs:
+  # Check which parts of the codebase have changed
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      mac: ${{ steps.filter.outputs.mac }}
+      ios: ${{ steps.filter.outputs.ios }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          web:
+            - 'web/**'
+            - '.github/workflows/node.yml'
+            - '.github/workflows/web-ci.yml'
+            - 'package.json'
+            - 'pnpm-workspace.yaml'
+          mac:
+            - 'mac/**'
+            - '.github/workflows/mac.yml'
+            - 'VibeTunnel.xcworkspace/**'
+            - 'Package.swift'
+            - 'Package.resolved'
+          ios:
+            - 'ios/**'
+            - '.github/workflows/ios.yml'
+            - 'VibeTunnel.xcworkspace/**'
+
   node:
     name: Node.js CI
+    needs: changes
+    if: ${{ needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch' }}
     uses: ./.github/workflows/node.yml
 
   mac:
     name: Mac CI
-    needs: node
+    needs: [changes, node]
+    if: |
+      always() && 
+      !contains(needs.*.result, 'failure') && 
+      !contains(needs.*.result, 'cancelled') &&
+      (needs.changes.outputs.mac == 'true' || needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch')
     uses: ./.github/workflows/mac.yml
     
   ios:
     name: iOS CI
-    needs: node
+    needs: [changes, node]
+    if: |
+      always() && 
+      !contains(needs.*.result, 'failure') && 
+      !contains(needs.*.result, 'cancelled') &&
+      (needs.changes.outputs.ios == 'true' || needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch')
     uses: ./.github/workflows/ios.yml
