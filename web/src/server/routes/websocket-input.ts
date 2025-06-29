@@ -37,38 +37,6 @@ export class WebSocketInputHandler {
   private isHQMode: boolean;
   private remoteConnections: Map<string, WebSocket> = new Map();
 
-  // Special key names that need mapping (same as HTTP /input endpoint)
-  private readonly specialKeys = new Set([
-    'enter',
-    'escape',
-    'backspace',
-    'tab',
-    'shift_tab',
-    'arrow_up',
-    'arrow_down',
-    'arrow_left',
-    'arrow_right',
-    'ctrl_enter',
-    'shift_enter',
-    'page_up',
-    'page_down',
-    'home',
-    'end',
-    'delete',
-    'f1',
-    'f2',
-    'f3',
-    'f4',
-    'f5',
-    'f6',
-    'f7',
-    'f8',
-    'f9',
-    'f10',
-    'f11',
-    'f12',
-  ]);
-
   constructor(options: WebSocketInputHandlerOptions) {
     this.ptyManager = options.ptyManager;
     this.terminalManager = options.terminalManager;
@@ -76,10 +44,6 @@ export class WebSocketInputHandler {
     this.remoteRegistry = options.remoteRegistry;
     this.authService = options.authService;
     this.isHQMode = options.isHQMode;
-  }
-
-  private isSpecialKey(input: string): boolean {
-    return this.specialKeys.has(input);
   }
 
   private async connectToRemote(
@@ -197,14 +161,8 @@ export class WebSocketInputHandler {
             // Special key wrapped in null bytes
             const keyName = inputReceived.slice(1, -1); // Remove null byte markers
             logger.debug(`Detected special key: "${keyName}"`);
-            if (this.isSpecialKey(keyName)) {
-              input = { key: keyName as SpecialKey };
-              logger.debug(`Mapped to special key: ${JSON.stringify(input)}`);
-            } else {
-              // Unknown special key, treat as text
-              input = { text: inputReceived };
-              logger.debug(`Unknown special key, treating as text: ${JSON.stringify(input)}`);
-            }
+            input = { key: keyName as SpecialKey };
+            logger.debug(`Mapped to special key: ${JSON.stringify(input)}`);
           } else {
             // Regular text (including literal words like "enter", "escape", etc.)
             input = { text: inputReceived };
