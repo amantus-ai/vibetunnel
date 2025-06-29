@@ -357,6 +357,73 @@ describe('Terminal', () => {
       // Clean up
       localStorage.removeItem('terminal-width-override-new-session-789');
     });
+
+    it('should handle localStorage errors gracefully', async () => {
+      // Mock localStorage to throw errors
+      const originalGetItem = localStorage.getItem;
+      const originalSetItem = localStorage.setItem;
+
+      // Test getItem error handling
+      localStorage.getItem = vi.fn().mockImplementation(() => {
+        throw new Error('localStorage unavailable');
+      });
+
+      // Create element - should not crash despite localStorage error
+      const errorElement = await fixture<Terminal>(html`
+        <vibe-terminal session-id="error-test"></vibe-terminal>
+      `);
+      await errorElement.updateComplete;
+
+      // Should default to false when localStorage fails
+      expect(errorElement.userOverrideWidth).toBe(false);
+
+      // Test setItem error handling
+      localStorage.setItem = vi.fn().mockImplementation(() => {
+        throw new Error('Quota exceeded');
+      });
+
+      // Should not crash when saving preference fails
+      errorElement.setUserOverrideWidth(true);
+      expect(errorElement.userOverrideWidth).toBe(true); // State should still update
+
+      // Clean up
+      errorElement.remove();
+      localStorage.getItem = originalGetItem;
+      localStorage.setItem = originalSetItem;
+    });
+
+    it('should not set explicitSizeSet flag if terminal is not ready', async () => {
+      // Create a new terminal component instance without rendering
+      const newElement = document.createElement('vibe-terminal') as Terminal;
+
+      // Set terminal size before it's connected to DOM (terminal will be null)
+      newElement.setTerminalSize(100, 30);
+
+      // explicitSizeSet should remain false since terminal wasn't ready
+      expect((newElement as unknown as { explicitSizeSet: boolean }).explicitSizeSet).toBe(false);
+
+      // Cols and rows should still be updated
+      expect(newElement.cols).toBe(100);
+      expect(newElement.rows).toBe(30);
+
+      // Now connect to DOM and let it initialize
+      document.body.appendChild(newElement);
+      await newElement.updateComplete;
+      await newElement.firstUpdated();
+
+      // After initialization, terminal should be ready
+      const terminal = (newElement as unknown as { terminal: MockTerminal }).terminal;
+      expect(terminal).toBeDefined();
+
+      // Now if we set size again, explicitSizeSet should be set
+      newElement.setTerminalSize(120, 40);
+      expect((newElement as unknown as { explicitSizeSet: boolean }).explicitSizeSet).toBe(true);
+      expect(newElement.cols).toBe(120);
+      expect(newElement.rows).toBe(40);
+
+      // Clean up
+      newElement.remove();
+    });
   });
 
   describe('scrolling behavior', () => {

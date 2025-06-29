@@ -113,9 +113,14 @@ export class Terminal extends LitElement {
 
     // Restore user override preference if we have a sessionId
     if (this.sessionId) {
-      const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
-      if (stored !== null) {
-        this.userOverrideWidth = stored === 'true';
+      try {
+        const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
+        if (stored !== null) {
+          this.userOverrideWidth = stored === 'true';
+        }
+      } catch (error) {
+        // localStorage might be unavailable (e.g., private browsing mode)
+        logger.warn('Failed to load terminal width preference from localStorage:', error);
       }
     }
   }
@@ -123,9 +128,18 @@ export class Terminal extends LitElement {
   updated(changedProperties: PropertyValues) {
     // Load user width override preference when sessionId changes
     if (changedProperties.has('sessionId') && this.sessionId) {
-      const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
-      if (stored !== null) {
-        this.userOverrideWidth = stored === 'true';
+      try {
+        const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
+        if (stored !== null) {
+          this.userOverrideWidth = stored === 'true';
+          // Apply the loaded preference immediately
+          if (this.container) {
+            this.fitTerminal();
+          }
+        }
+      } catch (error) {
+        // localStorage might be unavailable (e.g., private browsing mode)
+        logger.warn('Failed to load terminal width preference from localStorage:', error);
       }
     }
 
@@ -171,7 +185,12 @@ export class Terminal extends LitElement {
     this.userOverrideWidth = override;
     // Persist the preference
     if (this.sessionId) {
-      localStorage.setItem(`terminal-width-override-${this.sessionId}`, String(override));
+      try {
+        localStorage.setItem(`terminal-width-override-${this.sessionId}`, String(override));
+      } catch (error) {
+        // localStorage might be unavailable or quota exceeded
+        logger.warn('Failed to save terminal width preference to localStorage:', error);
+      }
     }
     // Trigger a resize to apply the new setting
     if (this.container) {
@@ -1016,12 +1035,18 @@ export class Terminal extends LitElement {
    * @param rows - Number of rows
    */
   public setTerminalSize(cols: number, rows: number) {
-    // Set flag to prevent auto-resize in updated() lifecycle
-    this.explicitSizeSet = true;
     this.cols = cols;
     this.rows = rows;
 
-    if (!this.terminal) return;
+    if (!this.terminal) {
+      // Don't set explicitSizeSet if terminal isn't ready
+      // This allows reinitializeTerminal to run later when terminal is available
+      return;
+    }
+
+    // Set flag to prevent auto-resize in updated() lifecycle
+    // Only set this AFTER confirming terminal exists
+    this.explicitSizeSet = true;
 
     this.queueRenderOperation(() => {
       if (!this.terminal) return;
