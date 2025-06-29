@@ -33,7 +33,7 @@ run_test() {
     
     # Run the command
     if output=$(eval "$test_command" 2>&1); then
-        if echo "$output" | grep -q "$expected_output"; then
+        if echo "$output" | grep -q -- "$expected_output"; then
             echo -e "${GREEN}PASSED${NC}"
             TESTS_PASSED=$((TESTS_PASSED + 1))
         else
@@ -78,39 +78,39 @@ run_test "Command with -- as argument" \
     "-- test"
 
 # Test 4: Complex shell command (simulates alias resolution)
-TEMP_ZSHRC=$(mktemp)
-cat > "$TEMP_ZSHRC" << 'EOF'
+TEMP_DIR=$(mktemp -d)
+cat > "$TEMP_DIR/.zshrc" << 'EOF'
 alias myalias="echo 'real alias output'"
 EOF
 
 run_test "Zsh alias resolution" \
-    "ZDOTDIR=$(dirname $TEMP_ZSHRC) $VIBETUNNEL_BIN fwd /bin/zsh -i -c 'myalias'" \
+    "ZDOTDIR=$TEMP_DIR $VIBETUNNEL_BIN fwd /bin/zsh -i -c 'myalias'" \
     "real alias output"
 
 # Test 5: Bash alias resolution
-TEMP_BASHRC=$(mktemp)
-cat > "$TEMP_BASHRC" << 'EOF'
+TEMP_DIR_BASH=$(mktemp -d)
+cat > "$TEMP_DIR_BASH/.bashrc" << 'EOF'
 alias myalias="echo 'bash alias output'"
 EOF
 
 run_test "Bash alias resolution" \
-    "HOME=$(dirname $TEMP_BASHRC) $VIBETUNNEL_BIN fwd /bin/bash -c 'shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || true; myalias'" \
+    "HOME=$TEMP_DIR_BASH $VIBETUNNEL_BIN fwd /bin/bash -c 'shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || true; myalias'" \
     "bash alias output"
 
 # Test 6: Shell function
-TEMP_FUNC_RC=$(mktemp)
-cat > "$TEMP_FUNC_RC" << 'EOF'
+TEMP_DIR_FUNC=$(mktemp -d)
+cat > "$TEMP_DIR_FUNC/.zshrc" << 'EOF'
 myfunc() {
     echo "function output: $1"
 }
 EOF
 
 run_test "Zsh function resolution" \
-    "ZDOTDIR=$(dirname $TEMP_FUNC_RC) $VIBETUNNEL_BIN fwd /bin/zsh -i -c 'myfunc testarg'" \
+    "ZDOTDIR=$TEMP_DIR_FUNC $VIBETUNNEL_BIN fwd /bin/zsh -i -c 'myfunc testarg'" \
     "function output: testarg"
 
 # Cleanup
-rm -f "$TEMP_ZSHRC" "$TEMP_BASHRC" "$TEMP_FUNC_RC"
+rm -rf "$TEMP_DIR" "$TEMP_DIR_BASH" "$TEMP_DIR_FUNC"
 
 # Summary
 echo ""

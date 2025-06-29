@@ -77,37 +77,37 @@ run_test "Command with flags (ls)" \
     "total"
 
 # Test 3: Test zsh alias
-# Create a temporary zsh config with an alias
-TEMP_ZSHRC=$(mktemp)
-cat > "$TEMP_ZSHRC" << 'EOF'
+# Create a temporary directory with zsh config
+TEMP_ZSH_DIR=$(mktemp -d)
+cat > "$TEMP_ZSH_DIR/.zshrc" << 'EOF'
 alias testalias="echo 'zsh alias works'"
 EOF
 
 run_test "Zsh alias" \
-    "ZDOTDIR=$(dirname $TEMP_ZSHRC) HOME=$(dirname $TEMP_ZSHRC) $VT_PATH testalias" \
+    "ZDOTDIR=$TEMP_ZSH_DIR HOME=$TEMP_ZSH_DIR $VT_PATH testalias" \
     "zsh alias works"
 
 # Test 4: Test bash alias
-# Create a temporary bash config with an alias
-TEMP_BASHRC=$(mktemp)
-cat > "$TEMP_BASHRC" << 'EOF'
+# Create a temporary directory with bash config
+TEMP_BASH_DIR=$(mktemp -d)
+cat > "$TEMP_BASH_DIR/.bashrc" << 'EOF'
 alias testalias="echo 'bash alias works'"
 EOF
 
 run_test "Bash alias" \
-    "SHELL=/bin/bash HOME=$(dirname $TEMP_BASHRC) $VT_PATH testalias" \
+    "SHELL=/bin/bash HOME=$TEMP_BASH_DIR $VT_PATH testalias" \
     "bash alias works"
 
 # Test 5: Test shell function
-TEMP_FUNC_RC=$(mktemp)
-cat > "$TEMP_FUNC_RC" << 'EOF'
+TEMP_FUNC_DIR=$(mktemp -d)
+cat > "$TEMP_FUNC_DIR/.zshrc" << 'EOF'
 testfunc() {
     echo "shell function works: $1"
 }
 EOF
 
 run_test "Zsh function" \
-    "ZDOTDIR=$(dirname $TEMP_FUNC_RC) HOME=$(dirname $TEMP_FUNC_RC) $VT_PATH testfunc argument" \
+    "ZDOTDIR=$TEMP_FUNC_DIR HOME=$TEMP_FUNC_DIR $VT_PATH testfunc argument" \
     "shell function works: argument"
 
 # Test 6: Test command with special characters
@@ -146,7 +146,7 @@ run_test "Shell flag (--shell)" \
     "vibetunnel"
 
 # Cleanup
-rm -f "$TEMP_ZSHRC" "$TEMP_BASHRC" "$TEMP_FUNC_RC"
+rm -rf "$TEMP_ZSH_DIR" "$TEMP_BASH_DIR" "$TEMP_FUNC_DIR"
 
 # Summary
 echo ""
