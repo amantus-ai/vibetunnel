@@ -107,10 +107,41 @@ export CXXFLAGS="-std=c++20 -stdlib=libc++ -mmacosx-version-min=14.0"
 export CXX="${CXX:-clang++}"
 export CC="${CC:-clang}"
 
-# Function to filter warnings from build output
+# Filter common non-actionable warnings from build output
 filter_build_output() {
-    grep -v -E '(missing field .* initializer|is deprecated.*Use.*instead|expanded from macro|has been explicitly marked deprecated|converts to incompatible function type|instantiation of function template|npm warn Unknown.*config|warn - Your.*content.*configuration|warn - Pattern:.*\*\.js|warn - See our documentation)' | \
-    grep -v -E '(gyp info spawn args|\.\.\.\/node_modules\/.*install:)' || true
+    # Allow bypassing filter with VERBOSE_BUILD environment variable
+    if [ "${VERBOSE_BUILD:-false}" = "true" ]; then
+        cat  # Pass through unfiltered
+        return
+    fi
+    
+    local patterns=(
+        # C++ compiler warnings from node-gyp builds
+        'missing field .* initializer'
+        'expanded from macro'
+        'converts to incompatible function type'
+        'instantiation of function template'
+        
+        # Deprecation warnings
+        'is deprecated.*Use.*instead'
+        'has been explicitly marked deprecated'
+        
+        # npm/pnpm configuration warnings
+        'npm warn Unknown.*config'
+        
+        # Tailwind CSS content configuration warnings
+        'warn - Your.*content.*configuration'
+        'warn - Pattern:.*\*\.js'
+        'warn - See our documentation'
+        
+        # Build tool information messages
+        'gyp info spawn args'
+        '\.\.\.\/node_modules\/.*install:'
+    )
+    
+    # Combine patterns with OR operator
+    local pattern=$(IFS='|'; echo "${patterns[*]}")
+    grep -v -E "$pattern" || true
 }
 
 # Run pnpm install with filtered output
