@@ -27,13 +27,14 @@ describe('fwd.ts argument parsing with -- separator', () => {
       expect(result.isInteractive).toBe(true);
     });
 
-    it('should fail when -- is included as first element', () => {
-      // This is the bug: when vt script includes --, it becomes part of the command array
+    it('should handle fallback behavior when -- is incorrectly passed (legacy test)', () => {
+      // This documents the old behavior before fwd.ts was fixed to strip --
+      // In practice, this scenario should no longer occur as fwd.ts removes -- before calling ProcessUtils
       const command = ['--', '/bin/zsh', '-i', '-c', 'echo "hello"'];
       const result = ProcessUtils.resolveCommand(command);
 
-      // Currently, this tries to resolve '--' as a command, which fails
-      // and falls back to shell execution with incorrect parameters
+      // When -- was passed as first element, ProcessUtils would try to resolve it as a command
+      // This would fail and fall back to shell/alias resolution
       expect(result.command).not.toBe('--'); // Should not treat -- as command
       expect(result.resolvedFrom).toBe('alias'); // Falls back to alias resolution
       expect(result.useShell).toBe(true);
@@ -89,7 +90,9 @@ describe('fwd.ts argument parsing with -- separator', () => {
       expect(result.command).toMatch(/\/(bin\/)?(bash|zsh|sh)$/);
       // The -- removal should now work properly
       expect(result.args).toContain('-c');
-      expect(result.useShell).toBe(result.resolvedFrom === 'shell' || result.resolvedFrom === 'alias');
+      expect(result.useShell).toBe(
+        result.resolvedFrom === 'shell' || result.resolvedFrom === 'alias'
+      );
     });
 
     it('should handle vt script alias resolution pattern', () => {

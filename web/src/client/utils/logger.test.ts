@@ -12,7 +12,7 @@ vi.mock('../services/auth-client.js', () => ({
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-describe('Frontend Logger', () => {
+describe.sequential('Frontend Logger', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
@@ -117,8 +117,14 @@ describe('Frontend Logger', () => {
 
       await vi.waitFor(() => expect(mockFetch).toHaveBeenCalled());
 
-      const lastCall = mockFetch.mock.calls[mockFetch.mock.calls.length - 1];
-      const body = JSON.parse(lastCall[1].body);
+      // Find the specific log call we're looking for
+      const logCall = mockFetch.mock.calls.find(
+        (call) => call[0] === '/api/logs/client' && call[1].body.includes('"message"')
+      );
+
+      expect(logCall).toBeDefined();
+      if (!logCall) throw new Error('Expected logCall to be defined');
+      const body = JSON.parse(logCall[1].body);
       expect(body.args).toEqual(['message', JSON.stringify(testObj, null, 2)]);
     });
 
