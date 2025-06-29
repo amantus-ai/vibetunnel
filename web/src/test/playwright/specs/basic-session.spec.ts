@@ -53,10 +53,10 @@ test.describe('Basic Session Tests', () => {
 
     // Go back to session list
     await page.goto('/');
-    
+
     // Wait for the page to fully load
     await page.waitForLoadState('networkidle');
-    
+
     // Wait for session cards with increased timeout for CI
     await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
 
@@ -108,10 +108,10 @@ test.describe('Basic Session Tests', () => {
 
     // Go back to session list
     await page.goto('/');
-    
+
     // Wait for the page to fully load
     await page.waitForLoadState('networkidle');
-    
+
     // Wait for session cards with increased timeout for CI
     await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
 
