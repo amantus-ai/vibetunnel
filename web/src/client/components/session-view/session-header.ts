@@ -20,8 +20,6 @@ export class SessionHeader extends LitElement {
   @property({ type: Boolean }) showBackButton = true;
   @property({ type: Boolean }) showSidebarToggle = false;
   @property({ type: Boolean }) sidebarCollapsed = false;
-  @property({ type: Number }) terminalCols = 0;
-  @property({ type: Number }) terminalRows = 0;
   @property({ type: Number }) terminalFontSize = 14;
   @property({ type: Function }) onBack?: () => void;
   @property({ type: Function }) onSidebarToggle?: () => void;
@@ -139,24 +137,10 @@ export class SessionHeader extends LitElement {
               />
             </svg>
           </button>
-          <div class="flex flex-col items-end gap-0">
-            <span class="${this.getStatusColor()} text-xs flex items-center gap-1">
-              <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
-              ${this.getStatusText().toUpperCase()}
-            </span>
-            ${
-              this.terminalCols > 0 && this.terminalRows > 0
-                ? html`
-                  <span
-                    class="text-dark-text-muted text-xs opacity-60"
-                    style="font-size: 10px; line-height: 1;"
-                  >
-                    ${this.terminalCols}×${this.terminalRows}
-                  </span>
-                `
-                : ''
-            }
-          </div>
+          <span class="${this.getStatusColor()} text-xs flex items-center gap-1">
+            <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
+            ${this.getStatusText().toUpperCase()}
+          </span>
         </div>
       </div>
     `;
