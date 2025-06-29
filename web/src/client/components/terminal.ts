@@ -60,6 +60,7 @@ export class Terminal extends LitElement {
 
   private container: HTMLElement | null = null;
   private resizeTimeout: NodeJS.Timeout | null = null;
+  private scrollResizeTimeout: NodeJS.Timeout | null = null;
   private explicitSizeSet = false; // Flag to prevent auto-resize when size is explicitly set
 
   // Virtual scrolling optimization
@@ -145,6 +146,16 @@ export class Terminal extends LitElement {
     if (this.momentumAnimation) {
       cancelAnimationFrame(this.momentumAnimation);
       this.momentumAnimation = null;
+    }
+
+    // Clear resize timeouts
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+      this.resizeTimeout = null;
+    }
+    if (this.scrollResizeTimeout) {
+      clearTimeout(this.scrollResizeTimeout);
+      this.scrollResizeTimeout = null;
     }
 
     if (this.resizeObserver) {
@@ -594,6 +605,14 @@ export class Terminal extends LitElement {
       // Update follow cursor state based on scroll position
       this.updateFollowCursorState();
       this.requestRenderBuffer();
+
+      // Trigger resize on scroll (debounced) - part of "last client wins" behavior
+      if (this.scrollResizeTimeout) {
+        clearTimeout(this.scrollResizeTimeout);
+      }
+      this.scrollResizeTimeout = setTimeout(() => {
+        this.recalculateAndResize();
+      }, 300); // 300ms debounce to avoid excessive resizing during scrolling
     }
   }
 
