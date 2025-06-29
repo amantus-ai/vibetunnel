@@ -33,7 +33,7 @@ export async function withRetry<T>(
     onRetry?: (attempt: number, error: Error) => void;
   } = {}
 ): Promise<T> {
-  const { retries = 3, delay = 1000, timeout = 30000, onRetry } = options;
+  const { retries = 3, delay = 1000, timeout = 4000, onRetry } = options;
   const startTime = Date.now();
 
   for (let i = 0; i < retries; i++) {
@@ -99,7 +99,7 @@ export class WaitUtils {
       terminalSelector?: string;
     } = {}
   ): Promise<void> {
-    const { timeout = 5000, customPrompts = [], terminalSelector = '.xterm-screen' } = options;
+    const { timeout = 4000, customPrompts = [], terminalSelector = '.xterm-screen' } = options;
 
     const defaultPrompts = [
       /\$\s*/, // Bash prompt (removed $ anchor to handle trailing spaces)
@@ -141,7 +141,7 @@ export class WaitUtils {
       terminalSelector?: string;
     } = {}
   ): Promise<void> {
-    const { timeout = 5000, terminalSelector = '.xterm-screen' } = options;
+    const { timeout = 4000, terminalSelector = '.xterm-screen' } = options;
 
     await page.waitForFunction(
       ({ selector, expected, isRegex }) => {
@@ -171,7 +171,7 @@ export class WaitUtils {
     sessionName: string,
     options: { timeout?: number } = {}
   ): Promise<void> {
-    const { timeout = 15000 } = options;
+    const { timeout = 4000 } = options;
 
     // Wait for session card to appear
     await page.waitForSelector(`session-card:has-text("${sessionName}")`, {
@@ -204,7 +204,7 @@ export class WaitUtils {
     locator: Locator,
     options: { timeout?: number; checkInterval?: number } = {}
   ): Promise<void> {
-    const { timeout = 5000, checkInterval = 100 } = options;
+    const { timeout = 4000, checkInterval = 100 } = options;
     const startTime = Date.now();
 
     let previousBox: { x: number; y: number; width: number; height: number } | null = null;
@@ -254,7 +254,7 @@ export class WaitUtils {
     page: Page,
     options: { timeout?: number; maxInflightRequests?: number } = {}
   ): Promise<void> {
-    const { timeout = 10000, maxInflightRequests = 0 } = options;
+    const { timeout = 4000, maxInflightRequests = 0 } = options;
 
     await page.waitForLoadState('networkidle', { timeout });
 
@@ -287,7 +287,7 @@ export class AssertionUtils {
     expectedText: string,
     options: { terminalSelector?: string; timeout?: number } = {}
   ): Promise<void> {
-    const { terminalSelector = '.xterm-screen', timeout = 5000 } = options;
+    const { terminalSelector = '.xterm-screen', timeout = 4000 } = options;
 
     await WaitUtils.waitForCommandOutput(page, expectedText, {
       terminalSelector,
@@ -370,7 +370,7 @@ export class TerminalUtils {
       timeout?: number;
     } = {}
   ): Promise<void> {
-    const { waitForPrompt = true, timeout = 10000 } = options;
+    const { waitForPrompt = true, timeout = 4000 } = options;
 
     await TerminalUtils.typeCommand(page, command);
 

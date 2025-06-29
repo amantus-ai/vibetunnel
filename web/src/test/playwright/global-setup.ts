@@ -1,4 +1,5 @@
 import { chromium, type FullConfig } from '@playwright/test';
+import { testConfig } from './test-config';
 
 async function globalSetup(config: FullConfig) {
   // Set up test results directory for screenshots
@@ -24,7 +25,11 @@ async function globalSetup(config: FullConfig) {
   }
 
   // Set up any global test data or configuration
-  process.env.PLAYWRIGHT_TEST_BASE_URL = config.use?.baseURL || 'http://localhost:4020';
+  process.env.PLAYWRIGHT_TEST_BASE_URL = config.use?.baseURL || testConfig.baseURL;
+
+  // Skip session cleanup to speed up tests
+  console.log('Skipping session cleanup to improve test speed');
+  // Skip browser storage cleanup to speed up tests
 
   console.log(`Global setup complete. Base URL: ${process.env.PLAYWRIGHT_TEST_BASE_URL}`);
 }

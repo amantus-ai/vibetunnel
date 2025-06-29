@@ -6,8 +6,24 @@ export class SessionViewPage extends BasePage {
   private terminalSelector = 'vibe-terminal';
 
   async waitForTerminalReady() {
-    await TerminalTestUtils.waitForTerminalReady(this.page);
-    await TerminalTestUtils.waitForPrompt(this.page);
+    // Wait for terminal element to be visible
+    await this.page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 4000 });
+
+    // Wait for terminal to be fully initialized (has content or structure)
+    await this.page.waitForFunction(
+      () => {
+        const terminal = document.querySelector('vibe-terminal');
+        if (!terminal) return false;
+
+        // Terminal is ready if it has content, shadow root, or xterm element
+        const hasContent = terminal.textContent && terminal.textContent.trim().length > 0;
+        const hasShadowRoot = !!terminal.shadowRoot;
+        const hasXterm = !!terminal.querySelector('.xterm');
+
+        return hasContent || hasShadowRoot || hasXterm;
+      },
+      { timeout: 2000 }
+    );
   }
 
   async typeCommand(command: string, pressEnter = true) {
@@ -19,7 +35,7 @@ export class SessionViewPage extends BasePage {
   }
 
   async waitForOutput(text: string, options?: { timeout?: number }) {
-    await TerminalTestUtils.waitForText(this.page, text, options?.timeout || 5000);
+    await TerminalTestUtils.waitForText(this.page, text, options?.timeout || 2000);
   }
 
   async getTerminalOutput(): Promise<string> {

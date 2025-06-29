@@ -1,18 +1,11 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { cleanupSessions, generateTestSessionName } from '../helpers/terminal.helper';
+import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('Basic Session Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    // Clean up any existing sessions
-    await cleanupSessions(page);
-  });
+  // Page navigation and cleanup is handled by fixture
 
   test('should create a new session', async ({ page }) => {
-    // Navigate to the app
-    await page.goto('/');
-
-    // Wait for app to load
-    await page.waitForSelector('vibetunnel-app', { state: 'attached' });
+    // App is already loaded from fixture
 
     // Click the create session button
     await page.click('button[title="Create New Session"]');

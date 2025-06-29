@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { testConfig } from './src/test/playwright/test-config';
 
 /**
  * Read environment variables from file.
@@ -23,7 +24,9 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1, // Force single worker to avoid race conditions
+  /* Test timeout */
+  timeout: 10 * 1000, // 10 seconds per test
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { open: 'never' }],
@@ -32,7 +35,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:4020',
+    baseURL: testConfig.baseURL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -44,10 +47,10 @@ export default defineConfig({
     video: 'on-first-retry',
 
     /* Maximum time each action can take */
-    actionTimeout: 10000,
+    actionTimeout: testConfig.actionTimeout,
 
     /* Give browser more time to start on CI */
-    navigationTimeout: process.env.CI ? 30000 : 15000,
+    navigationTimeout: testConfig.actionTimeout,
   },
 
   /* Configure projects for major browsers */
@@ -60,8 +63,8 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'node dist/vibetunnel-cli --no-auth --port 4020',
-    port: 4020,
+    command: `node dist/vibetunnel-cli --no-auth --port ${testConfig.port}`,
+    port: testConfig.port,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
     stderr: 'pipe',

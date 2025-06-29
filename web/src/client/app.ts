@@ -10,6 +10,7 @@ import { BREAKPOINTS, SIDEBAR, TIMING, TRANSITIONS, Z_INDEX } from './utils/cons
 import { createLogger } from './utils/logger.js';
 import { type MediaQueryState, responsiveObserver } from './utils/responsive-utils.js';
 import { triggerTerminalResize } from './utils/terminal-utils.js';
+import { initTitleUpdater } from './utils/title-updater.js';
 // Import version
 import { VERSION } from './version.js';
 
@@ -84,6 +85,8 @@ export class VibeTunnelApp extends LitElement {
     this.setupNotificationHandlers();
     this.setupResponsiveObserver();
     this.setupPreferences();
+    // Initialize title updater
+    initTitleUpdater();
     // Initialize authentication and routing together
     this.initializeApp();
   }
@@ -214,6 +217,11 @@ export class VibeTunnelApp extends LitElement {
         this.userInitiatedSessionChange = false;
         this.selectedSessionId = sessionId;
         this.currentView = 'session';
+
+        // Update page title with session name
+        const sessionName = session.name || session.command.join(' ');
+        console.log('[App] Setting title from checkUrlParams:', sessionName);
+        document.title = `${sessionName} - VibeTunnel`;
       }
     }
   }
@@ -310,6 +318,12 @@ export class VibeTunnelApp extends LitElement {
         if (response.ok) {
           this.sessions = (await response.json()) as Session[];
           this.clearError();
+
+          // Update page title if we're in list view
+          if (this.currentView === 'list') {
+            const sessionCount = this.sessions.length;
+            document.title = `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`;
+          }
 
           // Check if currently selected session still exists after refresh
           if (this.selectedSessionId && this.currentView === 'session') {
@@ -432,6 +446,7 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private async waitForSessionAndSwitch(sessionId: string) {
+    console.log('[App] waitForSessionAndSwitch called with:', sessionId);
     const maxAttempts = 10;
     const delay = TIMING.SESSION_SEARCH_DELAY; // Configured delay between attempts
 
@@ -579,6 +594,7 @@ export class VibeTunnelApp extends LitElement {
 
   private async handleNavigateToSession(e: CustomEvent): Promise<void> {
     const { sessionId } = e.detail;
+    console.log('[App] handleNavigateToSession called with:', sessionId);
 
     // Clean up any existing session view stream before switching
     if (this.selectedSessionId !== sessionId) {
@@ -611,6 +627,16 @@ export class VibeTunnelApp extends LitElement {
         this.selectedSessionId = sessionId;
         this.currentView = 'session';
         this.updateUrl(sessionId);
+
+        // Update page title with session name
+        const session = this.sessions.find((s) => s.id === sessionId);
+        if (session) {
+          const sessionName = session.name || session.command.join(' ');
+          console.log('[App] Setting title from view transition:', sessionName);
+          document.title = `${sessionName} - VibeTunnel`;
+        } else {
+          console.log('[App] No session found for view transition:', sessionId);
+        }
 
         // Collapse sidebar on mobile after selecting a session
         if (this.mediaState.isMobile) {
@@ -645,6 +671,16 @@ export class VibeTunnelApp extends LitElement {
       this.currentView = 'session';
       this.updateUrl(sessionId);
 
+      // Update page title with session name
+      const session = this.sessions.find((s) => s.id === sessionId);
+      if (session) {
+        const sessionName = session.name || session.command.join(' ');
+        console.log('[App] Setting title from fallback:', sessionName);
+        document.title = `${sessionName} - VibeTunnel`;
+      } else {
+        console.log('[App] No session found for fallback:', sessionId);
+      }
+
       // Collapse sidebar on mobile after selecting a session
       if (this.mediaState.isMobile) {
         this.sidebarCollapsed = true;
@@ -661,6 +697,10 @@ export class VibeTunnelApp extends LitElement {
   private handleNavigateToList(): void {
     // Clean up the session view before navigating away
     this.cleanupSessionViewStream();
+
+    // Update document title with session count
+    const sessionCount = this.sessions.length;
+    document.title = `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`;
 
     // Check if View Transitions API is supported
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {

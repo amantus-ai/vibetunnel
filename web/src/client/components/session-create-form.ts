@@ -42,7 +42,7 @@ export class SessionCreateForm extends LitElement {
   @property({ type: Boolean }) disabled = false;
   @property({ type: Boolean }) visible = false;
   @property({ type: Object }) authClient!: AuthClient;
-  @property({ type: Boolean }) spawnWindow = true;
+  @property({ type: Boolean }) spawnWindow = false;
 
   @state() private isCreating = false;
   @state() private showFileBrowser = false;
