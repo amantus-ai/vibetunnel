@@ -42,7 +42,7 @@ When you use this command, I will:
    - Run `gh pr view` to check PR description and any existing comments (handle errors gracefully)
    - Run `git log "main..HEAD" --oneline` to see all commits in this PR (with proper shell escaping)
    - Run `git diff "main...HEAD" --stat` to get an overview of changed files (with proper shell escaping)
-   - Generate comprehensive diff with `git diff "main...HEAD"` and exact line numbers
+   - Generate comprehensive diff with `git diff "main...HEAD"` and save to `.pr_review_diff.tmp` in project root for Gemini access
    - If any git commands fail, provide helpful error messages and guidance
 
 2. **Launch Two Parallel Sub-Agents**
@@ -58,6 +58,10 @@ When you use this command, I will:
    - Form the prompt to the Gemini CLI in a way that it only returns the final output of its findings, to save tokens
    - Analyzes all aspects below independently
    - Use a timeout of 10 minutes for the gemini CLI command
+   - **IMPORTANT**: Gemini CLI can only access files within the project directory
+     - Create temporary diff file in project root (e.g., `.pr_review_diff.tmp`)
+     - Use `@.pr_review_diff.tmp` syntax to include the diff in Gemini prompt
+     - Clean up temporary file after review completes
 
    **Both sub-agents analyze:**
 
@@ -130,6 +134,10 @@ When you use this command, I will:
    - **CRITICAL**: Always include exact line numbers for every issue found
    - Use format: `filename:line_number` (e.g., `src/server.ts:142`)
    - For multi-line issues, use ranges: `filename:start_line-end_line`
+
+5. **Cleanup**
+   - Remove temporary diff file `.pr_review_diff.tmp` from project root
+   - Ensure no sensitive data remains in temporary files
 
 ## Review Checklist
 
@@ -211,3 +219,26 @@ For large PRs, consider reviewing incrementally and suggesting the author break 
 - Git command failures are handled gracefully with helpful error messages
 - If automated checks fail, the review continues but notes the failures
 - Timeout protection: Gemini sub-agent has a 10-minute timeout
+
+## Implementation Notes
+
+**Gemini CLI File Access:**
+- Gemini CLI can only access files within the project directory
+- Always save temporary files in the project root with `.tmp` extension
+- Use `.gitignore` patterns for temporary files (e.g., `.pr_review_*.tmp`)
+- Example workflow:
+  ```bash
+  # Save diff to project-accessible location
+  git diff main...HEAD > .pr_review_diff.tmp
+  
+  # Use with Gemini
+  gemini -p "@.pr_review_diff.tmp Your review prompt here"
+  
+  # Clean up
+  rm -f .pr_review_diff.tmp
+  ```
+
+**Handling Large Diffs:**
+- For very large PRs, consider splitting the diff by file type or directory
+- Use Gemini's 2M token context window advantage for comprehensive analysis
+- If diff exceeds reasonable size, suggest breaking PR into smaller chunks
