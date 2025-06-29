@@ -150,9 +150,17 @@ export async function startVibeTunnelForward(args: string[]) {
   const ptyManager = new PtyManager(controlPath);
 
   // Store original terminal dimensions
-  const originalCols = process.stdout.columns || 80;
-  const originalRows = process.stdout.rows || 24;
-  logger.debug(`Original terminal size: ${originalCols}x${originalRows}`);
+  // For external spawns, wait a moment for terminal to fully initialize
+  const isExternalSpawn = process.env.VIBETUNNEL_SESSION_ID !== undefined;
+  if (isExternalSpawn) {
+    // Give terminal window time to fully initialize its dimensions
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  // Now read the dimensions - for external spawns, this should be the actual terminal size
+  const originalCols = process.stdout.columns || 120;
+  const originalRows = process.stdout.rows || 40;
+  logger.debug(`Terminal size: ${originalCols}x${originalRows} (external spawn: ${isExternalSpawn})`);
 
   try {
     // Create a human-readable session name

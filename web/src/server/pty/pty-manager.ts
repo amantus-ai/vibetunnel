@@ -180,8 +180,9 @@ export class PtyManager extends EventEmitter {
     const sessionName = options.name || path.basename(command[0]);
     const workingDir = options.workingDir || process.cwd();
     const term = this.defaultTerm;
-    const cols = options.cols || 80;
-    const rows = options.rows || 24;
+    // Use more reasonable defaults for modern terminals, especially for external spawns
+    const cols = options.cols || 120;
+    const rows = options.rows || 40;
 
     // Verify working directory exists
     logger.debug('Session creation parameters:', {
