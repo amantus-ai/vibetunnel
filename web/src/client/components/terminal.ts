@@ -1107,8 +1107,9 @@ export class Terminal extends LitElement {
       this.momentumAnimation = null;
     }
 
-    // Force immediate render update
-    this.requestRenderBuffer();
+    // Force immediate render of empty state by directly calling renderBuffer
+    // This ensures the viewport is filled with empty lines
+    this.renderBuffer();
   }
 
   /**
