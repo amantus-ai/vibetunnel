@@ -71,6 +71,7 @@ export class SessionStateMachine {
   private actions: StateActions;
   private transitionInProgress = false;
   private deferredEvent: TransitionEvent | null = null;
+  private deferredEventTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(actions: StateActions = {}) {
     this.actions = actions;
@@ -150,8 +151,17 @@ export class SessionStateMachine {
         const event = this.deferredEvent;
         this.deferredEvent = null;
         logger.log(`Processing deferred ${event.type} event`);
-        // Use setTimeout to avoid stack overflow
-        setTimeout(() => this.transition(event), 0);
+
+        // Clear any existing timeout
+        if (this.deferredEventTimeout) {
+          clearTimeout(this.deferredEventTimeout);
+        }
+
+        // Set new timeout and track it
+        this.deferredEventTimeout = setTimeout(() => {
+          this.deferredEventTimeout = undefined;
+          this.transition(event);
+        }, 0);
       }
     }
   }
@@ -236,5 +246,11 @@ export class SessionStateMachine {
     };
     this.transitionInProgress = false;
     this.deferredEvent = null;
+
+    // Clear any pending timeout
+    if (this.deferredEventTimeout) {
+      clearTimeout(this.deferredEventTimeout);
+      this.deferredEventTimeout = undefined;
+    }
   }
 }
