@@ -1346,5 +1346,158 @@ describe('SessionView', () => {
       // Clean up
       testEl.remove();
     });
+
+    it('should properly re-initialize terminal after cleanup', async () => {
+      const testEl = await fixture<SessionView>(
+        html`<session-view></session-view>`
+      );
+
+      const testElement = testEl as SessionViewTestInterface;
+
+      // First, set up with an initial session
+      const session1 = createMockSession({ id: 'session-1' });
+      testEl.session = session1;
+      await testEl.updateComplete;
+
+      // Wait for initial setup
+      await waitForAsync(60);
+
+      // Now switch to a new session
+      const session2 = createMockSession({ id: 'session-2' });
+      testEl.session = session2;
+      await testEl.updateComplete;
+
+      // Wait for debounce to start
+      await waitForAsync(60);
+
+      // Wait for async operations
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      await waitForAsync(10);
+
+      // The terminal should be re-initialized (cleanupInProgress should not block it)
+      expect(testElement.connected).toBe(true);
+
+      // Wait for transition to complete
+      await waitForAsync(60);
+
+      // Verify session was updated
+      expect(testEl.session?.id).toBe('session-2');
+
+      // Clean up
+      testEl.remove();
+    });
+
+    it('should clear isTransitioningSession when concurrent transition is attempted', async () => {
+      const testEl = await fixture<SessionView>(
+        html`<session-view></session-view>`
+      );
+
+      const testElement = testEl as SessionViewTestInterface;
+
+      // Start with a session
+      const session1 = createMockSession({ id: 'session-1' });
+      testEl.session = session1;
+      await testEl.updateComplete;
+      await waitForAsync(60);
+
+      // Simulate an ongoing transition by manually setting the flag
+      // This represents a transition that's already in progress
+      testElement.isTransitioning = true;
+      
+      // Now try to change to a new session
+      const session2 = createMockSession({ id: 'session-2' });
+      testEl.session = session2;
+      await testEl.updateComplete;
+
+      // The UI flag should be set initially
+      expect(testElement.isTransitioningSession).toBe(true);
+
+      // Wait for the debounce to fire
+      await waitForAsync(55);
+
+      // The concurrent transition check should have cleared the UI flag
+      // because isTransitioning was already true
+      expect(testElement.isTransitioningSession).toBe(false);
+
+      // Clean up
+      testElement.isTransitioning = false;
+      await waitForAsync(100);
+      testEl.remove();
+    });
+
+    it('should not get stuck with isTransitioning flag on concurrent transitions', async () => {
+      const testEl = await fixture<SessionView>(
+        html`<session-view></session-view>`
+      );
+
+      const testElement = testEl as SessionViewTestInterface;
+
+      // Set up initial session
+      const session1 = createMockSession({ id: 'session-1' });
+      testEl.session = session1;
+      await testEl.updateComplete;
+
+      // Start a transition
+      const session2 = createMockSession({ id: 'session-2' });
+      testEl.session = session2;
+      await testEl.updateComplete;
+
+      // Transition should start
+      expect(testElement.isTransitioningSession).toBe(true);
+
+      // Wait a bit into the debounce
+      await waitForAsync(30);
+
+      // Try to switch to another session while first transition is in progress
+      const session3 = createMockSession({ id: 'session-3' });
+      testEl.session = session3;
+      await testEl.updateComplete;
+
+      // Wait for all transitions to complete
+      await waitForAsync(150);
+
+      // The isTransitioning flag should not be stuck
+      expect(testElement.isTransitioning).toBe(false);
+      expect(testElement.isTransitioningSession).toBe(false);
+
+      // Clean up
+      testEl.remove();
+    });
+
+    it('should handle rapid session switches without stuck flags', async () => {
+      const testEl = await fixture<SessionView>(
+        html`<session-view></session-view>`
+      );
+
+      const testElement = testEl as SessionViewTestInterface;
+
+      // Rapid session switches
+      const sessions = [
+        createMockSession({ id: 'session-1' }),
+        createMockSession({ id: 'session-2' }),
+        createMockSession({ id: 'session-3' }),
+        createMockSession({ id: 'session-4' }),
+      ];
+
+      // Rapidly switch between sessions
+      for (const session of sessions) {
+        testEl.session = session;
+        await testEl.updateComplete;
+        await waitForAsync(10); // Small delay between switches
+      }
+
+      // Wait for all transitions to settle
+      await waitForAsync(150);
+
+      // No flags should be stuck
+      expect(testElement.isTransitioning).toBe(false);
+      expect(testElement.isTransitioningSession).toBe(false);
+
+      // Should end up with the last session
+      expect(testEl.session?.id).toBe('session-4');
+
+      // Clean up
+      testEl.remove();
+    });
   });
 });
