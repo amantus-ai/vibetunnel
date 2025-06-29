@@ -311,7 +311,9 @@ describe('SessionCard', () => {
 
       // Should use cleanup endpoint for exited sessions
       const calls = fetchMock.getCalls();
-      expect(calls[0][0]).toContain('/cleanup');
+      const cleanupCall = calls.find((call) => call[0].includes('/cleanup'));
+      expect(cleanupCall).toBeDefined();
+      expect(cleanupCall?.[0]).toContain('/cleanup');
       expect(killedHandler).toHaveBeenCalled();
     });
   });

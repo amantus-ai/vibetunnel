@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createLogger, setDebugMode } from './logger.js';
+import { clearAuthConfigCache, createLogger, setDebugMode } from './logger.js';
 
 // Mock the auth client module
 vi.mock('../services/auth-client.js', () => ({
@@ -31,6 +31,9 @@ describe('Frontend Logger', () => {
 
     // Reset debug mode
     setDebugMode(false);
+
+    // Clear auth config cache
+    clearAuthConfigCache();
   });
 
   afterEach(() => {
@@ -182,25 +185,44 @@ describe('Frontend Logger', () => {
       });
     });
 
-    it('should check no-auth mode for each log call', async () => {
+    it('should cache auth config to reduce redundant requests', async () => {
       const logger = createLogger('test-module');
 
       logger.log('message 1');
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       logger.log('message 2');
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       logger.log('message 3');
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
-      // The logger checks auth config for each log call (not cached)
+      // The logger should only check auth config once due to caching
       const authConfigCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/auth/config');
-      expect(authConfigCalls.length).toBeGreaterThanOrEqual(3);
+      expect(authConfigCalls).toHaveLength(1);
 
       // Should have sent all 3 log messages
       const logCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client');
       expect(logCalls).toHaveLength(3);
+    });
+
+    it('should refetch auth config after cache expires', async () => {
+      const logger = createLogger('test-module');
+
+      // First log - should fetch auth config
+      logger.log('message 1');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Clear cache to simulate expiration
+      clearAuthConfigCache();
+
+      // Second log - should fetch auth config again
+      logger.log('message 2');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Should have fetched auth config twice
+      const authConfigCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/auth/config');
+      expect(authConfigCalls).toHaveLength(2);
     });
   });
 
