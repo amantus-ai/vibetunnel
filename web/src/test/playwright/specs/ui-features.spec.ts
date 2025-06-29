@@ -23,8 +23,12 @@ test.describe('UI Features', () => {
   test.skip('should navigate directories in file browser', async ({ page }) => {});
 
   test('should use quick start commands', async ({ page }) => {
+    // Wait for page to be ready
+    await page.waitForTimeout(1000);
+    
     // Open create session dialog
-    await page.click('button[title="Create New Session"]');
+    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+    await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
     // Turn off native terminal
