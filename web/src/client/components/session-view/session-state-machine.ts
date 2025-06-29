@@ -78,6 +78,7 @@ export class SessionStateMachine {
   private actions: StateActions;
   private transitionInProgress = false;
   private deferredEvent: TransitionEvent | null = null;
+  private switchingTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(actions: StateActions = {}) {
     this.actions = actions;
@@ -193,6 +194,21 @@ export class SessionStateMachine {
         break;
 
       case 'switching':
+        // Clear any existing timeout
+        if (this.switchingTimeout) {
+          clearTimeout(this.switchingTimeout);
+        }
+        
+        // Set a timeout to prevent being stuck in switching state
+        this.switchingTimeout = setTimeout(() => {
+          logger.warn('Switching state timeout - forcing transition to ready');
+          this.state = 'ready';
+          this.transitionInProgress = false;
+          if (this.actions.onEnterReady) {
+            this.actions.onEnterReady(this.context);
+          }
+        }, 5000); // 5 second timeout
+        
         if (this.actions.onEnterSwitching) {
           await this.actions.onEnterSwitching(this.context);
         }
@@ -205,6 +221,12 @@ export class SessionStateMachine {
         break;
 
       case 'ready':
+        // Clear switching timeout if transitioning to ready
+        if (this.switchingTimeout) {
+          clearTimeout(this.switchingTimeout);
+          this.switchingTimeout = undefined;
+        }
+        
         if (this.actions.onEnterReady) {
           await this.actions.onEnterReady(this.context);
         }

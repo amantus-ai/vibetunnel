@@ -76,19 +76,41 @@ export class SessionView extends LitElement {
         // Show transition overlay via derived state
         this.requestUpdate();
         
-        // Clean up old connection
-        if (context.fromSession && this.connectionManager) {
-          this.connectionManager.cleanupStreamConnection();
+        try {
+          // Clean up old connection
+          if (context.fromSession && this.connectionManager) {
+            this.connectionManager.cleanupStreamConnection();
+          }
+          
+          // Clear terminal
+          const terminal = this.querySelector('vibe-terminal') as Terminal;
+          if (terminal) {
+            terminal.clear();
+          }
+          
+          // Update managers
+          this.updateManagers(context.toSession);
+          
+          // Give DOM time to update
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          
+          // Setup terminal for new session
+          if (context.toSession && this.terminalLifecycleManager) {
+            this.terminalLifecycleManager.setupTerminal();
+          }
+          
+          // Auto-complete the switch after a short delay
+          setTimeout(() => {
+            logger.log('Auto-completing switch transition');
+            this.stateMachine.transition({ type: 'SWITCHED' });
+          }, 100);
+        } catch (error) {
+          logger.error('Error in switching state:', error);
+          // Force transition to ready on error
+          setTimeout(() => {
+            this.stateMachine.transition({ type: 'SWITCHED' });
+          }, 0);
         }
-        
-        // Clear terminal
-        const terminal = this.querySelector('vibe-terminal') as Terminal;
-        if (terminal) {
-          terminal.clear();
-        }
-        
-        // Update managers
-        this.updateManagers(context.toSession);
       },
       
       onEnterLeaving: async (context) => {
@@ -925,29 +947,29 @@ export class SessionView extends LitElement {
   private handleSessionSwitch(session: Session): void {
     // Debounce rapid session switches
     this.sessionSwitchDebounce = setTimeout(async () => {
-      // Check if session is still the same after debounce
-      if (this.session?.id !== session.id) {
-        logger.log('Session changed during debounce, skipping');
-        return;
-      }
-
-      // Start the switch
-      await this.stateMachine.transition({ type: 'SWITCH', session });
-      
-      // Wait for cleanup and initial setup to complete
-      await new Promise(resolve => requestAnimationFrame(resolve));
-      
-      // Ensure terminal is set up for the new session
-      if (this.session?.id === session.id && this.terminalLifecycleManager) {
-        this.terminalLifecycleManager.setupTerminal();
-      }
-      
-      // Complete the switch after a short delay
-      setTimeout(() => {
-        if (this.session?.id === session.id) {
-          this.stateMachine.transition({ type: 'SWITCHED' });
+      try {
+        // Check if session is still the same after debounce
+        if (this.session?.id !== session.id) {
+          logger.log('Session changed during debounce, skipping');
+          return;
         }
-      }, TRANSITION_CLEAR_DELAY_MS);
+
+        logger.log('Starting session switch', { 
+          from: this.stateMachine.getContext().toSession?.id, 
+          to: session.id,
+          currentState: this.stateMachine.getState()
+        });
+
+        // Start the switch - the state machine will handle the rest
+        const switchResult = await this.stateMachine.transition({ type: 'SWITCH', session });
+        if (!switchResult) {
+          logger.error('Failed to start switch transition');
+        }
+      } catch (error) {
+        logger.error('Error during session switch:', error);
+        // Try to recover by transitioning to ready state
+        this.stateMachine.transition({ type: 'ERROR', error: error as Error });
+      }
     }, SESSION_SWITCH_DEBOUNCE_MS);
   }
 
