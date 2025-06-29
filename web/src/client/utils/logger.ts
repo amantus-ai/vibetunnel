@@ -48,10 +48,23 @@ async function sendToServer(level: keyof LogLevel, module: string, args: unknown
     // Import authClient singleton dynamically to avoid circular dependencies
     const { authClient } = await import('../services/auth-client.js');
 
-    // Check if we have authentication before sending logs
+    // Get auth header
     const authHeader = authClient.getAuthHeader();
-    if (!authHeader.Authorization) {
-      // Skip sending logs if not authenticated
+
+    // Check if no-auth mode is enabled
+    let isNoAuthMode = false;
+    try {
+      const configResponse = await fetch('/api/auth/config');
+      if (configResponse.ok) {
+        const authConfig = await configResponse.json();
+        isNoAuthMode = authConfig.noAuth === true;
+      }
+    } catch {
+      // Ignore auth config fetch errors
+    }
+
+    // Skip sending logs if not authenticated AND not in no-auth mode
+    if (!authHeader.Authorization && !isNoAuthMode) {
       return;
     }
 
@@ -59,7 +72,7 @@ async function sendToServer(level: keyof LogLevel, module: string, args: unknown
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...authClient.getAuthHeader(),
+        ...authHeader, // Include auth header if available
       },
       body: JSON.stringify({
         level,

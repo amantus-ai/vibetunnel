@@ -3,18 +3,17 @@
  * Replaces complex boolean flag logic with a single source of truth.
  */
 
-import type { Session } from '../session-list.js';
 import { createLogger } from '../../utils/logger.js';
+import type { Session } from '../session-list.js';
 
 const logger = createLogger('session-state-machine');
 
 // Session state types
-export type SessionState = 
-  | 'idle'           // No session
-  | 'ready'          // Session active and connected
-  | 'connecting'     // Initial connection to session
-  | 'switching'      // Switching between sessions
-  | 'leaving';       // Cleaning up (session → null)
+export type SessionState =
+  | 'idle' // No session
+  | 'ready' // Session active and connected
+  | 'connecting' // Initial connection to session
+  | 'leaving'; // Cleaning up (session → null)
 
 // Context for state transitions
 export interface StateContext {
@@ -29,7 +28,6 @@ export type TransitionEvent =
   | { type: 'CONNECT'; session: Session }
   | { type: 'CONNECTED' }
   | { type: 'SWITCH'; session: Session }
-  | { type: 'SWITCHED' }
   | { type: 'DISCONNECT' }
   | { type: 'DISCONNECTED' }
   | { type: 'ERROR'; error: Error };
@@ -37,10 +35,10 @@ export type TransitionEvent =
 // Callbacks for state actions
 export interface StateActions {
   onEnterConnecting?: (context: StateContext) => void | Promise<void>;
-  onEnterSwitching?: (context: StateContext) => void | Promise<void>;
   onEnterLeaving?: (context: StateContext) => void | Promise<void>;
   onEnterReady?: (context: StateContext) => void | Promise<void>;
   onEnterIdle?: (context: StateContext) => void | Promise<void>;
+  onSwitch?: (context: StateContext) => void | Promise<void>;
   onError?: (error: Error) => void;
 }
 
@@ -55,12 +53,7 @@ const TRANSITIONS: Record<SessionState, Partial<Record<TransitionEvent['type'], 
     DISCONNECT: 'idle',
   },
   ready: {
-    SWITCH: 'switching',
-    DISCONNECT: 'leaving',
-  },
-  switching: {
-    SWITCHED: 'ready',
-    ERROR: 'ready',
+    SWITCH: 'ready', // Stay in ready state during switch
     DISCONNECT: 'leaving',
   },
   leaving: {
@@ -78,7 +71,6 @@ export class SessionStateMachine {
   private actions: StateActions;
   private transitionInProgress = false;
   private deferredEvent: TransitionEvent | null = null;
-  private switchingTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(actions: StateActions = {}) {
     this.actions = actions;
@@ -122,6 +114,15 @@ export class SessionStateMachine {
       // Update context based on event
       this.updateContext(event);
 
+      // Special handling for SWITCH event - stay in ready but run switch action
+      if (event.type === 'SWITCH' && this.state === 'ready') {
+        if (this.actions.onSwitch) {
+          await this.actions.onSwitch(this.context);
+        }
+        this.transitionInProgress = false; // Complete immediately
+        return true;
+      }
+
       // Update state
       this.state = nextState;
 
@@ -135,7 +136,7 @@ export class SessionStateMachine {
         this.actions.onError(error as Error);
       }
       // On error, try to recover to a stable state
-      if (this.state === 'switching' || this.state === 'connecting') {
+      if (this.state === 'connecting') {
         this.state = 'ready';
       } else if (this.state === 'leaving') {
         this.state = 'idle';
@@ -193,27 +194,6 @@ export class SessionStateMachine {
         }
         break;
 
-      case 'switching':
-        // Clear any existing timeout
-        if (this.switchingTimeout) {
-          clearTimeout(this.switchingTimeout);
-        }
-        
-        // Set a timeout to prevent being stuck in switching state
-        this.switchingTimeout = setTimeout(() => {
-          logger.warn('Switching state timeout - forcing transition to ready');
-          this.state = 'ready';
-          this.transitionInProgress = false;
-          if (this.actions.onEnterReady) {
-            this.actions.onEnterReady(this.context);
-          }
-        }, 5000); // 5 second timeout
-        
-        if (this.actions.onEnterSwitching) {
-          await this.actions.onEnterSwitching(this.context);
-        }
-        break;
-
       case 'leaving':
         if (this.actions.onEnterLeaving) {
           await this.actions.onEnterLeaving(this.context);
@@ -221,12 +201,6 @@ export class SessionStateMachine {
         break;
 
       case 'ready':
-        // Clear switching timeout if transitioning to ready
-        if (this.switchingTimeout) {
-          clearTimeout(this.switchingTimeout);
-          this.switchingTimeout = undefined;
-        }
-        
         if (this.actions.onEnterReady) {
           await this.actions.onEnterReady(this.context);
         }
@@ -242,7 +216,7 @@ export class SessionStateMachine {
 
   // Helper methods for common checks
   isTransitioning(): boolean {
-    return this.state === 'connecting' || this.state === 'switching';
+    return this.state === 'connecting';
   }
 
   isConnected(): boolean {

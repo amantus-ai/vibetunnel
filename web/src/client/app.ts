@@ -166,10 +166,10 @@ export class VibeTunnelApp extends LitElement {
       const configResponse = await fetch('/api/auth/config');
       if (configResponse.ok) {
         const authConfig = await configResponse.json();
-        console.log('🔧 Auth config:', authConfig);
+        logger.log('🔧 Auth config:', authConfig);
 
         if (authConfig.noAuth) {
-          console.log('🔓 No auth required, bypassing authentication');
+          logger.log('🔓 No auth required, bypassing authentication');
           this.isAuthenticated = true;
           this.currentView = 'list';
           await this.initializeServices(); // Initialize services after auth
@@ -179,11 +179,11 @@ export class VibeTunnelApp extends LitElement {
         }
       }
     } catch (error) {
-      console.warn('⚠️ Could not fetch auth config:', error);
+      logger.warn('⚠️ Could not fetch auth config:', error);
     }
 
     this.isAuthenticated = authClient.isAuthenticated();
-    console.log('🔐 Authentication status:', this.isAuthenticated);
+    logger.log('🔐 Authentication status:', this.isAuthenticated);
 
     if (this.isAuthenticated) {
       this.currentView = 'list';
@@ -196,7 +196,7 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private async handleAuthSuccess() {
-    console.log('✅ Authentication successful');
+    logger.log('✅ Authentication successful');
     this.isAuthenticated = true;
     this.currentView = 'list';
     await this.initializeServices(); // Initialize services after auth
@@ -218,7 +218,7 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private async initializeServices() {
-    console.log('🚀 Initializing services...');
+    logger.log('🚀 Initializing services...');
     try {
       // Initialize buffer subscription service for WebSocket connections
       await bufferSubscriptionService.initialize();
@@ -226,16 +226,16 @@ export class VibeTunnelApp extends LitElement {
       // Initialize push notification service
       await pushNotificationService.initialize();
 
-      console.log('✅ Services initialized successfully');
+      logger.log('✅ Services initialized successfully');
     } catch (error) {
-      console.error('❌ Failed to initialize services:', error);
+      logger.error('❌ Failed to initialize services:', error);
       // Don't fail the whole app if services fail to initialize
       // These are optional features
     }
   }
 
   private async handleLogout() {
-    console.log('👋 Logging out');
+    logger.log('👋 Logging out');
     await authClient.logout();
     this.isAuthenticated = false;
     this.currentView = 'auth';
@@ -315,7 +315,7 @@ export class VibeTunnelApp extends LitElement {
             const sessionExists = this.sessions.find((s) => s.id === this.selectedSessionId);
             if (!sessionExists) {
               // Session no longer exists, redirect to dashboard
-              console.warn(
+              logger.warn(
                 `Selected session ${this.selectedSessionId} no longer exists, redirecting to dashboard`
               );
               this.selectedSessionId = null;
@@ -473,7 +473,7 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private async handleHideExitedChange(e: CustomEvent) {
-    console.log('handleHideExitedChange', {
+    logger.log('handleHideExitedChange', {
       currentHideExited: this.hideExited,
       newHideExited: e.detail,
     });
@@ -490,7 +490,7 @@ export class VibeTunnelApp extends LitElement {
 
     // Add pre-animation class
     document.body.classList.add('sessions-animating');
-    console.log('Added sessions-animating class');
+    logger.log('Added sessions-animating class');
 
     // Update state
     this.hideExited = e.detail;
@@ -498,17 +498,17 @@ export class VibeTunnelApp extends LitElement {
 
     // Wait for render and trigger animations
     await this.updateComplete;
-    console.log('Update complete, scheduling animation');
+    logger.log('Update complete, scheduling animation');
 
     requestAnimationFrame(() => {
       // Add specific animation direction
       const animationClass = wasHidingExited ? 'sessions-showing' : 'sessions-hiding';
       document.body.classList.add(animationClass);
-      console.log('Added animation class:', animationClass);
+      logger.log('Added animation class:', animationClass);
 
       // Check what elements will be animated
       const cards = document.querySelectorAll('.session-flex-responsive > session-card');
-      console.log('Found session cards to animate:', cards.length);
+      logger.log('Found session cards to animate:', cards.length);
 
       // If we were near the bottom, maintain that position
       if (isNearBottom) {
@@ -524,7 +524,7 @@ export class VibeTunnelApp extends LitElement {
       // Clean up after animation
       setTimeout(() => {
         document.body.classList.remove('sessions-animating', 'sessions-showing', 'sessions-hiding');
-        console.log('Cleaned up animation classes');
+        logger.log('Cleaned up animation classes');
 
         // Final scroll adjustment after animation completes
         if (isNearBottom) {
@@ -889,12 +889,12 @@ export class VibeTunnelApp extends LitElement {
     window.addEventListener('popstate', this.handlePopState.bind(this));
 
     // Parse initial URL and set state
-    this.parseUrlAndSetState().catch(console.error);
+    this.parseUrlAndSetState().catch((error) => logger.error('Failed to parse URL state:', error));
   }
 
   private handlePopState = (_event: PopStateEvent) => {
     // Handle browser back/forward navigation
-    this.parseUrlAndSetState().catch(console.error);
+    this.parseUrlAndSetState().catch((error) => logger.error('Failed to parse URL state:', error));
   };
 
   private async parseUrlAndSetState() {
@@ -911,17 +911,20 @@ export class VibeTunnelApp extends LitElement {
         } else if (!authClient.isAuthenticated()) {
           this.currentView = 'auth';
           this.selectedSessionId = null;
+          // Preserve the session parameter in the URL so we can navigate to it after auth
           return;
         }
       } else if (!authClient.isAuthenticated()) {
         this.currentView = 'auth';
         this.selectedSessionId = null;
+        // Preserve the session parameter in the URL so we can navigate to it after auth
         return;
       }
     } catch (_error) {
       if (!authClient.isAuthenticated()) {
         this.currentView = 'auth';
         this.selectedSessionId = null;
+        // Preserve the session parameter in the URL so we can navigate to it after auth
         return;
       }
     }
@@ -940,13 +943,16 @@ export class VibeTunnelApp extends LitElement {
         this.currentView = 'session';
       } else {
         // Session not found, go to list view
-        console.warn(`Session ${sessionId} not found in sessions list`);
+        logger.warn(`Session ${sessionId} not found in sessions list`);
         this.selectedSessionId = null;
         this.currentView = 'list';
-        // Clear the session param from URL
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.delete('session');
-        window.history.replaceState({}, '', newUrl.toString());
+        // Only clear the session param from URL if we've actually loaded sessions
+        // Otherwise, preserve it for after authentication
+        if (this.initialLoadComplete) {
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('session');
+          window.history.replaceState({}, '', newUrl.toString());
+        }
       }
     } else {
       this.selectedSessionId = null;
@@ -999,7 +1005,7 @@ export class VibeTunnelApp extends LitElement {
         this.showLogLink = preferences.showLogLink || false;
       }
     } catch (error) {
-      console.error('Failed to load app preferences', error);
+      logger.error('Failed to load app preferences', error);
     }
 
     // Listen for preference changes
@@ -1010,7 +1016,7 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private handleOpenSettings = () => {
-    console.log('🎯 handleOpenSettings called in app.ts');
+    logger.log('🎯 handleOpenSettings called in app.ts');
     this.showSettings = true;
   };
 

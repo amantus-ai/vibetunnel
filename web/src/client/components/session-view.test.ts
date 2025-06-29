@@ -18,8 +18,8 @@ global.EventSource = MockEventSource as unknown as typeof EventSource;
 import type { Session } from '@/types/session';
 // Import component type
 import type { SessionView } from './session-view';
-import type { Terminal } from './terminal';
 import type { SessionStateMachine } from './session-view/session-state-machine';
+import type { Terminal } from './terminal';
 
 // Test interface for SessionView private properties
 interface SessionViewTestInterface extends SessionView {
@@ -717,7 +717,7 @@ describe('SessionView', () => {
 
       // Wait for debounce (50ms)
       await waitForAsync(60);
-      
+
       // Now should be in switching state
       expect(testElement.stateMachine.getState()).toBe('switching');
 
@@ -1160,15 +1160,15 @@ describe('SessionView', () => {
       // Start switching to session2
       element.session = session2;
       await element.updateComplete;
-      
+
       // Quickly switch to session3 before debounce completes
       await waitForAsync(30);
       element.session = session3;
       await element.updateComplete;
-      
+
       // Wait for debounce to kick in
       await waitForAsync(30);
-      
+
       // Should be in switching state
       expect(testElement.stateMachine.getState()).toBe('switching');
 
@@ -1377,7 +1377,7 @@ describe('SessionView', () => {
 
       // Wait for debounce to start the switch
       await waitForAsync(55);
-      
+
       // Should be in switching state
       expect(testElement.stateMachine.getState()).toBe('switching');
 
@@ -1419,7 +1419,7 @@ describe('SessionView', () => {
 
       // Wait for initial connection to stabilize
       await waitForAsync(20);
-      
+
       // Should be in ready state initially
       expect(testElement.stateMachine.getState()).toBe('ready');
 
