@@ -22,13 +22,9 @@ import './clickable-path.js';
 import './terminal-quick-keys.js';
 import './session-view/mobile-input-overlay.js';
 import './session-view/ctrl-alpha-overlay.js';
-import './session-view/width-selector.js';
 import './session-view/session-header.js';
 import { createLogger } from '../utils/logger.js';
-import {
-  COMMON_TERMINAL_WIDTHS,
-  TerminalPreferencesManager,
-} from '../utils/terminal-preferences.js';
+import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import { ConnectionManager } from './session-view/connection-manager.js';
 import {
   type DirectKeyboardCallbacks,
@@ -70,9 +66,6 @@ export class SessionView extends LitElement {
   @state() private terminalRows = 0;
   @state() private showCtrlAlpha = false;
   @state() private terminalFitHorizontally = false;
-  @state() private terminalMaxCols = 0;
-  @state() private showWidthSelector = false;
-  @state() private customWidth = '';
   @state() private showFileBrowser = false;
   @state() private terminalFontSize = 14;
   @state() private terminalContainerHeight = '100%';
@@ -127,13 +120,6 @@ export class SessionView extends LitElement {
         this.showFileBrowser = value;
       },
       getInputManager: () => this.inputManager,
-      getShowWidthSelector: () => this.showWidthSelector,
-      setShowWidthSelector: (value: boolean) => {
-        this.showWidthSelector = value;
-      },
-      setCustomWidth: (value: string) => {
-        this.customWidth = value;
-      },
       querySelector: (selector: string) => this.querySelector(selector),
       setTabIndex: (value: number) => {
         this.tabIndex = value;
@@ -308,10 +294,8 @@ export class SessionView extends LitElement {
     }
 
     // Load terminal preferences
-    this.terminalMaxCols = this.preferencesManager.getMaxCols();
     this.terminalFontSize = this.preferencesManager.getFontSize();
     this.terminalLifecycleManager.setTerminalFontSize(this.terminalFontSize);
-    this.terminalLifecycleManager.setTerminalMaxCols(this.terminalMaxCols);
 
     // Initialize lifecycle event manager
     this.lifecycleEventManager = new LifecycleEventManager();
@@ -645,71 +629,6 @@ export class SessionView extends LitElement {
     }
   }
 
-  private handleMaxWidthToggle() {
-    this.showWidthSelector = !this.showWidthSelector;
-  }
-
-  private handleWidthSelect(newMaxCols: number) {
-    this.terminalMaxCols = newMaxCols;
-    this.preferencesManager.setMaxCols(newMaxCols);
-    this.showWidthSelector = false;
-
-    // Update the terminal lifecycle manager
-    this.terminalLifecycleManager.setTerminalMaxCols(newMaxCols);
-
-    // Update the terminal component
-    const terminal = this.querySelector('vibe-terminal') as Terminal;
-    if (terminal) {
-      terminal.maxCols = newMaxCols;
-      // Mark that user has manually selected a width
-      terminal.setUserOverrideWidth(true);
-      // Trigger a resize to apply the new constraint
-      terminal.requestUpdate();
-    } else {
-      logger.warn('Terminal component not found when setting width');
-    }
-  }
-
-  private getCurrentWidthLabel(): string {
-    const terminal = this.querySelector('vibe-terminal') as Terminal;
-
-    // Only apply width restrictions to tunneled sessions (those with 'fwd_' prefix)
-    const isTunneledSession = this.session?.id?.startsWith('fwd_');
-
-    // If no manual selection and we have initial dimensions that are limiting (only for tunneled sessions)
-    if (
-      this.terminalMaxCols === 0 &&
-      terminal?.initialCols > 0 &&
-      !terminal.userOverrideWidth &&
-      isTunneledSession
-    ) {
-      return `≤${terminal.initialCols}`; // Shows "≤120" to indicate limited to session width
-    }
-
-    if (this.terminalMaxCols === 0) return '∞';
-    const commonWidth = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
-    return commonWidth ? commonWidth.label : this.terminalMaxCols.toString();
-  }
-
-  private getWidthTooltip(): string {
-    const terminal = this.querySelector('vibe-terminal') as Terminal;
-
-    // Only apply width restrictions to tunneled sessions (those with 'fwd_' prefix)
-    const isTunneledSession = this.session?.id?.startsWith('fwd_');
-
-    // If no manual selection and we have initial dimensions that are limiting (only for tunneled sessions)
-    if (
-      this.terminalMaxCols === 0 &&
-      terminal?.initialCols > 0 &&
-      !terminal.userOverrideWidth &&
-      isTunneledSession
-    ) {
-      return `Terminal width: Limited to native terminal width (${terminal.initialCols} columns)`;
-    }
-
-    return `Terminal width: ${this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`}`;
-  }
-
   private handleFontSizeChange(newSize: number) {
     // Clamp to reasonable bounds
     const clampedSize = Math.max(8, Math.min(32, newSize));
@@ -888,22 +807,11 @@ export class SessionView extends LitElement {
           .sidebarCollapsed=${this.sidebarCollapsed}
           .terminalCols=${this.terminalCols}
           .terminalRows=${this.terminalRows}
-          .terminalMaxCols=${this.terminalMaxCols}
           .terminalFontSize=${this.terminalFontSize}
-          .customWidth=${this.customWidth}
-          .showWidthSelector=${this.showWidthSelector}
-          .widthLabel=${this.getCurrentWidthLabel()}
-          .widthTooltip=${this.getWidthTooltip()}
           .onBack=${() => this.handleBack()}
           .onSidebarToggle=${() => this.handleSidebarToggle()}
           .onOpenFileBrowser=${() => this.handleOpenFileBrowser()}
-          .onMaxWidthToggle=${() => this.handleMaxWidthToggle()}
-          .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
-          @close-width-selector=${() => {
-            this.showWidthSelector = false;
-            this.customWidth = '';
-          }}
         ></session-header>
 
         <!-- Terminal Container -->
@@ -937,9 +845,6 @@ export class SessionView extends LitElement {
             .rows=${24}
             .fontSize=${this.terminalFontSize}
             .fitHorizontally=${false}
-            .maxCols=${this.terminalMaxCols}
-            .initialCols=${this.session?.initialCols || 0}
-            .initialRows=${this.session?.initialRows || 0}
             .disableClick=${this.isMobile && this.useDirectKeyboard}
             .hideScrollButton=${this.showQuickKeys}
             class="w-full h-full p-0 m-0"

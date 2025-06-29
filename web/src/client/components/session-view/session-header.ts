@@ -8,7 +8,6 @@ import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import type { Session } from '../session-list.js';
 import '../clickable-path.js';
-import './width-selector.js';
 
 @customElement('session-header')
 export class SessionHeader extends LitElement {
@@ -23,17 +22,10 @@ export class SessionHeader extends LitElement {
   @property({ type: Boolean }) sidebarCollapsed = false;
   @property({ type: Number }) terminalCols = 0;
   @property({ type: Number }) terminalRows = 0;
-  @property({ type: Number }) terminalMaxCols = 0;
   @property({ type: Number }) terminalFontSize = 14;
-  @property({ type: String }) customWidth = '';
-  @property({ type: Boolean }) showWidthSelector = false;
-  @property({ type: String }) widthLabel = '';
-  @property({ type: String }) widthTooltip = '';
   @property({ type: Function }) onBack?: () => void;
   @property({ type: Function }) onSidebarToggle?: () => void;
   @property({ type: Function }) onOpenFileBrowser?: () => void;
-  @property({ type: Function }) onMaxWidthToggle?: () => void;
-  @property({ type: Function }) onWidthSelect?: (width: number) => void;
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
 
   private getStatusText(): string {
@@ -58,15 +50,6 @@ export class SessionHeader extends LitElement {
       return 'bg-dark-text-muted';
     }
     return this.session.status === 'running' ? 'bg-status-success' : 'bg-status-warning';
-  }
-
-  private handleCloseWidthSelector() {
-    this.dispatchEvent(
-      new CustomEvent('close-width-selector', {
-        bubbles: true,
-        composed: true,
-      })
-    );
   }
 
   render() {
@@ -156,22 +139,6 @@ export class SessionHeader extends LitElement {
               />
             </svg>
           </button>
-          <button
-            class="btn-secondary font-mono text-xs px-2 py-1 flex-shrink-0 width-selector-button"
-            @click=${() => this.onMaxWidthToggle?.()}
-            title="${this.widthTooltip}"
-          >
-            ${this.widthLabel}
-          </button>
-          <width-selector
-            .visible=${this.showWidthSelector}
-            .terminalMaxCols=${this.terminalMaxCols}
-            .terminalFontSize=${this.terminalFontSize}
-            .customWidth=${this.customWidth}
-            .onWidthSelect=${(width: number) => this.onWidthSelect?.(width)}
-            .onFontSizeChange=${(size: number) => this.onFontSizeChange?.(size)}
-            .onClose=${() => this.handleCloseWidthSelector()}
-          ></width-selector>
           <div class="flex flex-col items-end gap-0">
             <span class="${this.getStatusColor()} text-xs flex items-center gap-1">
               <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>

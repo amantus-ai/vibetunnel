@@ -135,22 +135,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     }
   };
 
-  handleClickOutside = (e: Event): void => {
-    if (!this.callbacks) return;
-
-    const showWidthSelector = this.callbacks.getShowWidthSelector();
-    if (showWidthSelector) {
-      const target = e.target as HTMLElement;
-      const widthSelector = this.callbacks.querySelector('.width-selector-container');
-      const widthButton = this.callbacks.querySelector('.width-selector-button');
-
-      if (!widthSelector?.contains(target) && !widthButton?.contains(target)) {
-        this.callbacks.setShowWidthSelector(false);
-        this.callbacks.setCustomWidth('');
-      }
-    }
-  };
-
   setupLifecycle(): void {
     if (!this.callbacks) return;
 
@@ -164,9 +148,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       }
     };
     this.callbacks.addEventListener('click', this.clickHandler);
-
-    // Add click outside handler for width selector
-    document.addEventListener('click', this.handleClickOutside);
 
     // Show loading animation if no session yet
     if (!this.session) {
@@ -301,9 +282,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       terminalLifecycleManager.cleanup();
     }
 
-    // Remove click outside handler
-    document.removeEventListener('click', this.handleClickOutside);
-
     // Remove click handler
     if (this.clickHandler) {
       this.callbacks.removeEventListener('click', this.clickHandler);
@@ -350,7 +328,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     logger.log('LifecycleEventManager cleanup');
 
     // Clean up event listeners
-    document.removeEventListener('click', this.handleClickOutside);
     window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
 
     // Remove global keyboard event listener
