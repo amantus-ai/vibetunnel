@@ -40,6 +40,7 @@ export class Terminal extends LitElement {
   private userOverrideWidth = false; // Track if user has manually set a width preference
   private currentRenderSessionId = ''; // Track which session's content we're rendering
   private lastWriteSessionId = ''; // Track the last session that wrote data
+  private isSessionSwitching = false; // Block writes during session switch
 
   @state() private terminal: XtermTerminal | null = null;
   private _viewportY = 0; // Current scroll position in pixels
@@ -131,23 +132,43 @@ export class Terminal extends LitElement {
       const oldSessionId = changedProperties.get('sessionId') as string;
 
       // Clear terminal when sessionId changes (including to empty string)
-      if (oldSessionId !== this.sessionId && this.terminal) {
+      if (oldSessionId !== this.sessionId) {
         logger.log(
           `Session ID changed from ${oldSessionId} to ${this.sessionId}, clearing terminal`
         );
 
+        // CRITICAL: Set switching flag to block any writes during the transition
+        this.isSessionSwitching = true;
+
         // Update the current render session ID
         this.currentRenderSessionId = this.sessionId;
 
-        // CRITICAL: Clear the DOM container first to remove ALL old content
-        // This ensures content from sessions with more lines doesn't persist
+        // Reset last write session ID to force clear on next write
+        this.lastWriteSessionId = '';
+
+        // CRITICAL: Clear everything immediately
         if (this.container) {
           this.container.innerHTML = '';
         }
 
-        // Clear the terminal AND force immediate render
-        this.clear();
-        this.renderBuffer();
+        if (this.terminal) {
+          // Clear the terminal buffer completely
+          this.terminal.clear();
+          this.terminal.reset();
+
+          // Clear any pending operations
+          this.operationQueue = [];
+          this.renderPending = false;
+        }
+
+        // Force immediate render of empty state
+        this.requestRenderBuffer();
+
+        // Allow writes again after ensuring DOM is updated
+        requestAnimationFrame(() => {
+          this.isSessionSwitching = false;
+          logger.log('Session switch complete, writes enabled');
+        });
       }
 
       // Load preference when sessionId changes and is not empty
@@ -986,6 +1007,12 @@ export class Terminal extends LitElement {
     // This prevents data from old sessions bleeding into new ones
     if (!this.sessionId) {
       logger.warn('Rejecting write - no active sessionId');
+      return;
+    }
+
+    // CRITICAL: Block writes during session switching to prevent content mixing
+    if (this.isSessionSwitching) {
+      logger.warn('Rejecting write - session switch in progress');
       return;
     }
 
