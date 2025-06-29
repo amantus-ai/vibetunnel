@@ -45,6 +45,7 @@ import {
   type TerminalStateCallbacks,
 } from './session-view/terminal-lifecycle-manager.js';
 import type { Terminal } from './terminal.js';
+import { SessionStateMachine, type StateContext } from './session-view/session-state-machine.js';
 
 const logger = createLogger('session-view');
 
@@ -57,6 +58,68 @@ export class SessionView extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;
+  }
+
+  constructor() {
+    super();
+    
+    // Initialize state machine with action handlers
+    this.stateMachine = new SessionStateMachine({
+      onEnterConnecting: async (context) => {
+        logger.log('Entering connecting state', context);
+        this.loadingAnimationManager.startLoading(() => this.requestUpdate());
+        this.connected = false;
+      },
+      
+      onEnterSwitching: async (context) => {
+        logger.log('Entering switching state', context);
+        // Show transition overlay via derived state
+        this.requestUpdate();
+        
+        // Clean up old connection
+        if (context.fromSession && this.connectionManager) {
+          this.connectionManager.cleanupStreamConnection();
+        }
+        
+        // Clear terminal
+        const terminal = this.querySelector('vibe-terminal') as Terminal;
+        if (terminal) {
+          terminal.clear();
+        }
+        
+        // Update managers
+        this.updateManagers(context.toSession);
+      },
+      
+      onEnterLeaving: async (context) => {
+        logger.log('Entering leaving state', context);
+        this.connected = false;
+        if (this.connectionManager) {
+          this.connectionManager.cleanupStreamConnection();
+        }
+      },
+      
+      onEnterReady: async (context) => {
+        logger.log('Entering ready state', context);
+        this.loadingAnimationManager.stopLoading();
+        this.connected = true;
+        
+        // Setup terminal for new session
+        if (context.toSession) {
+          this.terminalLifecycleManager.setupTerminal();
+        }
+      },
+      
+      onEnterIdle: async (context) => {
+        logger.log('Entering idle state', context);
+        this.connected = false;
+      },
+      
+      onError: (error) => {
+        logger.error('State machine error:', error);
+        this.loadingAnimationManager.stopLoading();
+      }
+    });
   }
 
   @property({ type: Object }) session: Session | null = null;
@@ -93,14 +156,11 @@ export class SessionView extends LitElement {
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
   @state() private keyboardHeight = 0;
-  @state() private isTransitioningSession = false;
 
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private createHiddenInputTimeout: ReturnType<typeof setTimeout> | null = null;
   private sessionSwitchDebounce?: ReturnType<typeof setTimeout>;
-  private transitionClearTimeout?: ReturnType<typeof setTimeout>;
-  private cleanupInProgress = false;
-  private isTransitioning = false;
+  private stateMachine: SessionStateMachine;
 
   // Removed methods that are now in LifecycleEventManager:
   // - handlePreferencesChanged
@@ -358,14 +418,10 @@ export class SessionView extends LitElement {
     if (this.sessionSwitchDebounce) {
       clearTimeout(this.sessionSwitchDebounce);
       this.sessionSwitchDebounce = undefined;
-      // Reset transition state in case component is unmounted during transition
-      this.isTransitioningSession = false;
     }
 
-    if (this.transitionClearTimeout) {
-      clearTimeout(this.transitionClearTimeout);
-      this.transitionClearTimeout = undefined;
-    }
+    // Reset state machine
+    this.stateMachine.reset();
 
     // Use lifecycle event manager for teardown
     if (this.lifecycleEventManager) {
@@ -392,138 +448,34 @@ export class SessionView extends LitElement {
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
 
-    // If session changed, clean up old stream connection
+    // Handle session changes with state machine
     if (changedProperties.has('session')) {
       const oldSession = changedProperties.get('session') as Session | null;
-      // Handle session changes including null to valid transitions
       const sessionChanged = oldSession?.id !== this.session?.id;
 
       if (sessionChanged) {
-        // Clear any pending session switch debounce
+        // Clear any pending debounce
         if (this.sessionSwitchDebounce) {
           clearTimeout(this.sessionSwitchDebounce);
           this.sessionSwitchDebounce = undefined;
         }
 
-        // Clear any pending transition clear timeout to prevent race condition
-        if (this.transitionClearTimeout) {
-          clearTimeout(this.transitionClearTimeout);
-          this.transitionClearTimeout = undefined;
-        }
-
-        // Handle session becoming null (navigation away)
+        // Handle different session change scenarios
         if (!this.session) {
-          // Clear transition state if it was already set
-          if (this.isTransitioningSession) {
-            this.isTransitioningSession = false;
-          }
-          this.isTransitioning = false;
-          this.connected = false;
-          if (this.connectionManager) {
-            this.connectionManager.cleanupStreamConnection();
-          }
-          return;
+          // Session became null - disconnect immediately
+          this.stateMachine.transition({ type: 'DISCONNECT' });
+          // Complete disconnect after cleanup
+          requestAnimationFrame(() => {
+            this.stateMachine.transition({ type: 'DISCONNECTED' });
+          });
+        } else if (!oldSession) {
+          // Initial session (null → session)
+          this.handleNewSession(this.session);
+        } else {
+          // Switching between sessions
+          this.handleSessionSwitch(this.session);
         }
-
-        // For null to valid session transitions, we need to ensure proper setup
-        if (!oldSession) {
-          logger.log('Transitioning from null to valid session');
-        }
-
-        // Start transition state
-        this.isTransitioningSession = true;
-
-        // Capture the session ID before the debounce to detect changes during the delay
-        const expectedSessionId = this.session?.id;
-
-        // Debounce rapid session switches to prevent multiple connection attempts
-        this.sessionSwitchDebounce = setTimeout(async () => {
-          // Exit early if session changed during debounce
-          if (this.session?.id !== expectedSessionId) {
-            logger.log('Session changed during debounce, skipping transition');
-            this.isTransitioningSession = false;
-            this.isTransitioning = false;
-            return;
-          }
-
-          // Check if already transitioning
-          if (this.isTransitioning) {
-            logger.warn('Transition already in progress, skipping');
-            // Clear the transition UI state since we're not proceeding
-            this.isTransitioningSession = false;
-            return;
-          }
-          this.isTransitioning = true;
-
-          logger.log('Session changed, cleaning up old stream connection');
-          this.cleanupInProgress = true;
-          this.connected = false;
-
-          try {
-            // Perform cleanup operations
-            if (this.connectionManager) {
-              this.connectionManager.cleanupStreamConnection();
-            }
-
-            // Clear the terminal for the new session
-            const terminal = this.querySelector('vibe-terminal') as Terminal;
-            if (terminal) {
-              logger.log('Clearing terminal for session switch');
-              terminal.clear();
-            }
-
-            // Update all managers with new session
-            this.updateManagers(this.session);
-
-            // Use a single async point for state updates
-            await new Promise((resolve) => requestAnimationFrame(resolve));
-
-            // If we have a new session, re-initialize the terminal connection
-            if (this.session) {
-              // CRITICAL: Stop any loading state before setting connected
-              if (this.loadingAnimationManager.isLoading()) {
-                logger.log('Stopping loading animation during session transition');
-                this.loadingAnimationManager.stopLoading();
-              }
-
-              this.connected = true;
-              logger.log('Connection state updated after cleanup');
-
-              // Setup terminal immediately after stopping loading
-              this.terminalLifecycleManager.setupTerminal();
-
-              // Clear any existing timeout first to prevent multiple instances
-              if (this.transitionClearTimeout) {
-                clearTimeout(this.transitionClearTimeout);
-                this.transitionClearTimeout = undefined;
-              }
-
-              // Set transition clear timeout with session ID verification
-              this.transitionClearTimeout = setTimeout(() => {
-                // Only clear transition if we're still on the same session
-                if (this.session?.id === expectedSessionId) {
-                  this.isTransitioningSession = false;
-                  this.transitionClearTimeout = undefined;
-                  this.verifyConnectionState();
-                }
-              }, TRANSITION_CLEAR_DELAY_MS);
-            } else {
-              // No new session - clear transition state immediately
-              this.isTransitioningSession = false;
-              this.connected = false;
-            }
-          } catch (error) {
-            logger.error('Error during session transition:', error);
-            // Always clear transition state on error
-            this.isTransitioningSession = false;
-            this.connected = false;
-          } finally {
-            this.cleanupInProgress = false;
-            this.isTransitioning = false;
-            // Remove redundant check - isTransitioningSession is already handled above
-          }
-        }, SESSION_SWITCH_DEBOUNCE_MS);
-      } else {
+      } else if (this.session) {
         // Just update managers if session properties changed but not the ID
         this.updateManagers(this.session);
       }
@@ -812,15 +764,16 @@ export class SessionView extends LitElement {
     // Update the terminal lifecycle manager
     this.terminalLifecycleManager.setTerminalMaxCols(newMaxCols);
 
-    // Update the terminal component
-    const terminal = this.querySelector('vibe-terminal') as Terminal;
-    if (terminal) {
-      terminal.maxCols = newMaxCols;
-      terminal.setUserOverrideWidth(true);
-      terminal.requestUpdate();
-    } else {
-      logger.warn('Terminal component not found when setting width');
-    }
+    // Update the terminal component after the current update cycle
+    requestAnimationFrame(() => {
+      const terminal = this.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        terminal.maxCols = newMaxCols;
+        terminal.setUserOverrideWidth(true);
+      } else {
+        logger.warn('Terminal component not found when setting width');
+      }
+    });
   }
 
   private getCurrentWidthLabel(): string {
@@ -838,12 +791,13 @@ export class SessionView extends LitElement {
     // Update the terminal lifecycle manager
     this.terminalLifecycleManager.setTerminalFontSize(clampedSize);
 
-    // Update the terminal component
-    const terminal = this.querySelector('vibe-terminal') as Terminal;
-    if (terminal) {
-      terminal.fontSize = clampedSize;
-      terminal.requestUpdate();
-    }
+    // Update the terminal component after the current update cycle
+    requestAnimationFrame(() => {
+      const terminal = this.querySelector('vibe-terminal') as Terminal;
+      if (terminal) {
+        terminal.fontSize = clampedSize;
+      }
+    });
   }
 
   private handleOpenFileBrowser() {
@@ -956,6 +910,37 @@ export class SessionView extends LitElement {
       );
     }
     return stateMatches;
+  }
+
+  private handleNewSession(session: Session): void {
+    // For initial connection, transition immediately
+    this.stateMachine.transition({ type: 'CONNECT', session });
+    
+    // Complete the connection after a frame
+    requestAnimationFrame(() => {
+      this.stateMachine.transition({ type: 'CONNECTED' });
+    });
+  }
+
+  private handleSessionSwitch(session: Session): void {
+    // Debounce rapid session switches
+    this.sessionSwitchDebounce = setTimeout(async () => {
+      // Check if session is still the same after debounce
+      if (this.session?.id !== session.id) {
+        logger.log('Session changed during debounce, skipping');
+        return;
+      }
+
+      // Start the switch
+      await this.stateMachine.transition({ type: 'SWITCH', session });
+      
+      // Complete the switch after cleanup and setup
+      setTimeout(() => {
+        if (this.session?.id === session.id) {
+          this.stateMachine.transition({ type: 'SWITCHED' });
+        }
+      }, TRANSITION_CLEAR_DELAY_MS);
+    }, SESSION_SWITCH_DEBOUNCE_MS);
   }
 
   private updateManagers(session: Session | null): void {
@@ -1091,7 +1076,7 @@ export class SessionView extends LitElement {
 
         <!-- Session Transition Overlay -->
         ${
-          this.isTransitioningSession
+          this.stateMachine.getState() === 'switching'
             ? html`
               <div
                 class="fixed inset-0 flex items-center justify-center bg-dark-bg/50 backdrop-blur-sm z-[24]"

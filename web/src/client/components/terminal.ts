@@ -129,10 +129,17 @@ export class Terminal extends LitElement {
       try {
         const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
         if (stored !== null) {
-          this.userOverrideWidth = stored === 'true';
-          // Apply preference if terminal is already initialized
-          if (this.terminal && this.userOverrideWidth) {
-            this.fitTerminal();
+          const newValue = stored === 'true';
+          // Only update if the value actually changed
+          if (this.userOverrideWidth !== newValue) {
+            this.userOverrideWidth = newValue;
+            // Apply preference if terminal is already initialized
+            if (this.terminal && this.userOverrideWidth) {
+              // Use queueRenderOperation to avoid immediate update
+              this.queueRenderOperation(() => {
+                this.fitTerminal();
+              });
+            }
           }
         }
       } catch (error) {
@@ -196,13 +203,14 @@ export class Terminal extends LitElement {
   firstUpdated() {
     // Store the initial font size as original
     this.originalFontSize = this.fontSize;
-    this.initializeTerminal();
+    // Defer terminal initialization to avoid update warnings
+    requestAnimationFrame(() => {
+      this.initializeTerminal();
+    });
   }
 
   private async initializeTerminal() {
     try {
-      this.requestUpdate();
-
       this.container = this.querySelector('#terminal-container') as HTMLElement;
 
       if (!this.container) {
@@ -214,8 +222,6 @@ export class Terminal extends LitElement {
       await this.setupTerminal();
       this.setupResize();
       this.setupScrolling();
-
-      this.requestUpdate();
     } catch (error: unknown) {
       logger.error('failed to initialize terminal:', error);
       this.requestUpdate();
