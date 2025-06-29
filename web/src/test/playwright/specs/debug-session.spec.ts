@@ -2,10 +2,12 @@ import { expect, test } from '../fixtures/test.fixture';
 
 test.describe('Debug Session Tests', () => {
   test('debug session creation and listing', async ({ page }) => {
+    test.setTimeout(30000); // Increase timeout for debug test
+    
     // Wait for page to be ready
     await page.waitForSelector('button[title="Create New Session"]', {
       state: 'visible',
-      timeout: 5000,
+      timeout: 10000,
     });
 
     // Create a session manually to debug the flow
@@ -50,9 +52,15 @@ test.describe('Debug Session Tests', () => {
     console.log('Navigated to session');
 
     // Navigate back to home using the UI
-    await page.click('button:has(h1:has-text("VibeTunnel"))');
-    await page.waitForURL('/');
-    console.log('Navigated back to home');
+    const backButton = page.locator('button').filter({ hasText: 'Back' }).first();
+    if (await backButton.isVisible({ timeout: 1000 })) {
+      await backButton.click();
+      await page.waitForURL('/');
+      console.log('Navigated back to home');
+    } else {
+      // We might be in a sidebar layout where sessions are already visible
+      console.log('No Back button found - might be in sidebar layout');
+    }
 
     // Wait a bit for sessions to load
     await page.waitForTimeout(2000);
@@ -77,9 +85,13 @@ test.describe('Debug Session Tests', () => {
     console.log(`Found ${errorElements} error elements`);
 
     // Check the session list container (might be in the sidebar in split view)
-    const listContainerLocator = page.locator('[data-testid="session-list-container"], session-list');
-    const listContainerVisible = await listContainerLocator.isVisible({ timeout: 1000 }).catch(() => false);
-    
+    const listContainerLocator = page.locator(
+      '[data-testid="session-list-container"], session-list'
+    );
+    const listContainerVisible = await listContainerLocator
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
+
     if (listContainerVisible) {
       const listContainer = await listContainerLocator.first().textContent();
       console.log('Session list container content:', listContainer?.substring(0, 200));

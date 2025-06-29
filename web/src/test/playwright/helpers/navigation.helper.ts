@@ -11,17 +11,22 @@ export async function navigateToHome(page: Page): Promise<void> {
     return;
   }
 
-  // Try to click the VibeTunnel logo/title to go home
-  const appTitle = page.locator('button:has(h1:has-text("VibeTunnel"))').first();
-  if (await appTitle.isVisible({ timeout: 1000 })) {
-    await appTitle.click();
-    await page.waitForURL('/');
+  // Try to click the Back button
+  try {
+    const backButton = page.locator('button').filter({ hasText: 'Back' }).first();
+    if (await backButton.isVisible({ timeout: 1000 })) {
+      await backButton.click();
+      await page.waitForURL('/', { timeout: 5000 });
 
-    // Wait for the session list to load after navigation
-    // This ensures the app has time to fetch and render sessions
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(500); // Give the app time to fetch sessions
-    return;
+      // Wait for the session list to load after navigation
+      // This ensures the app has time to fetch and render sessions
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500); // Give the app time to fetch sessions
+      return;
+    }
+  } catch (error) {
+    // Back button click failed, try fallback methods
+    console.log('Back button click failed:', error);
   }
 
   // Fallback: try browser back button

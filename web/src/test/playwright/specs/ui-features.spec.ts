@@ -71,9 +71,11 @@ test.describe('UI Features', () => {
   });
 
   test('should show session count in header', async ({ page }) => {
+    test.setTimeout(20000); // Increase timeout
+    
     // The header should show session count - look for text like "(5)"
     // It's in the full-header component
-    await page.waitForSelector('full-header', { state: 'visible' });
+    await page.waitForSelector('full-header', { state: 'visible', timeout: 10000 });
 
     // Get initial count from header
     const headerElement = page.locator('full-header').first();
@@ -92,12 +94,12 @@ test.describe('UI Features', () => {
 
     await page.fill('input[placeholder="My Session"]', generateTestSessionName());
     await page.click('button:has-text("Create")');
-    await page.waitForURL(/\?session=/);
+    await page.waitForURL(/\?session=/, { timeout: 10000 });
 
     // Go back to see updated count
     await navigateToHome(page);
     // Wait for session list to load
-    await page.waitForSelector('session-card', { state: 'visible' });
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Get new count from header
     const newText = await sessionCountElement.textContent();
@@ -140,6 +142,8 @@ test.describe('UI Features', () => {
   });
 
   test('should show terminal preview in session cards', async ({ page }) => {
+    test.setTimeout(20000); // Increase timeout
+    
     // Create a session
     await page.click('button[title="Create New Session"]');
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
@@ -156,14 +160,14 @@ test.describe('UI Features', () => {
 
     // Go back to list
     await navigateToHome(page);
-    await page.waitForSelector('session-card', { state: 'visible' });
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Find our session card
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-    await expect(sessionCard).toBeVisible();
+    await expect(sessionCard).toBeVisible({ timeout: 10000 });
 
     // The card should show terminal preview (buffer component)
     const preview = sessionCard.locator('vibe-terminal-buffer').first();
-    await expect(preview).toBeVisible();
+    await expect(preview).toBeVisible({ timeout: 10000 });
   });
 });

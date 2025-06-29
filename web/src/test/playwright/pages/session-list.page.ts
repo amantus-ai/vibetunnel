@@ -197,12 +197,22 @@ export class SessionListPage extends BasePage {
 
   async clickSession(sessionName: string) {
     // Wait for session cards to be visible
-    await this.page.waitForSelector('session-card', { state: 'visible' });
+    await this.page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
 
-    // Click on the specific session card
-    const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`);
-    await sessionCard.waitFor({ state: 'visible', timeout: 4000 });
+    // Scroll to find the session if needed - newer sessions are usually at the top
+    const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`).first();
+    
+    // Wait for the specific session card to be visible
+    await sessionCard.waitFor({ state: 'visible', timeout: 10000 });
+    
+    // Scroll into view if needed
+    await sessionCard.scrollIntoViewIfNeeded();
+    
+    // Click on the session card
     await sessionCard.click();
+    
+    // Wait for navigation to session view
+    await this.page.waitForURL(/\?session=/, { timeout: 5000 });
   }
 
   async isSessionActive(sessionName: string): Promise<boolean> {

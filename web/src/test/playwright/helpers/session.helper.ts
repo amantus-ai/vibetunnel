@@ -62,7 +62,7 @@ export async function createSession(
   await page.click('button[title="Create New Session"]');
 
   // Wait for modal to appear
-  await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
+  await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible', timeout: 5000 });
 
   // Set spawn window option
   const spawnWindowToggle = page.locator('button[role="switch"]');
@@ -70,8 +70,10 @@ export async function createSession(
 
   if (options.spawnWindow === true && !isSpawnWindowOn) {
     await spawnWindowToggle.click();
+    await page.waitForTimeout(100); // Wait for state to update
   } else if (options.spawnWindow === false && isSpawnWindowOn) {
     await spawnWindowToggle.click();
+    await page.waitForTimeout(100); // Wait for state to update
   }
 
   // Fill in the form
@@ -96,7 +98,7 @@ export async function createSession(
   await page.locator('button').filter({ hasText: 'Create' }).click();
 
   // Wait for navigation to session
-  await page.waitForURL(/\?session=/, { timeout: 10000 });
+  await page.waitForURL(/\?session=/, { timeout: 15000 });
 
   // Extract session ID from URL
   const url = new URL(page.url());

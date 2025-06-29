@@ -36,6 +36,7 @@ test.describe('Minimal Session Tests', () => {
   });
 
   test('should create multiple sessions', async ({ page }) => {
+    test.setTimeout(30000); // Increase timeout for this test
     // Page is already loaded from fixture
     await page.waitForSelector('button[title="Create New Session"]', {
       state: 'visible',

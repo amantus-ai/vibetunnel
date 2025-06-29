@@ -125,3 +125,5 @@ bun.lock
 playwright-report/
 test-results/
 playwright/.cache/
+final-test-results.json
+test-results-final.json

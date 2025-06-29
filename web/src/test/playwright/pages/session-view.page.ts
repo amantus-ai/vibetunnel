@@ -87,10 +87,11 @@ export class SessionViewPage extends BasePage {
     // 1. Try the back button in the header
     const backButton = this.page
       .locator('button')
-      .filter({ hasText: /back|×/i })
+      .filter({ hasText: 'Back' })
       .first();
     if (await backButton.isVisible({ timeout: 1000 })) {
       await backButton.click();
+      await this.page.waitForURL('/', { timeout: 5000 });
       return;
     }
 

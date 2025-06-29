@@ -166,17 +166,19 @@ export class VibeTunnelApp extends LitElement {
 
   private async checkAuthenticationStatus() {
     // Check if no-auth is enabled first
+    let noAuthEnabled = false;
     try {
       const configResponse = await fetch('/api/auth/config');
       if (configResponse.ok) {
         const authConfig = await configResponse.json();
         logger.log('🔧 Auth config:', authConfig);
+        noAuthEnabled = authConfig.noAuth;
 
         if (authConfig.noAuth) {
           logger.log('🔓 No auth required, bypassing authentication');
           this.isAuthenticated = true;
           this.currentView = 'list';
-          await this.initializeServices(); // Initialize services after auth
+          await this.initializeServices(noAuthEnabled); // Initialize services with no-auth flag
           await this.loadSessions(); // Wait for sessions to load
           this.startAutoRefresh();
           return;
@@ -191,7 +193,7 @@ export class VibeTunnelApp extends LitElement {
 
     if (this.isAuthenticated) {
       this.currentView = 'list';
-      await this.initializeServices(); // Initialize services after auth
+      await this.initializeServices(noAuthEnabled); // Initialize services with no-auth flag
       await this.loadSessions(); // Wait for sessions to load
       this.startAutoRefresh();
     } else {
@@ -203,7 +205,7 @@ export class VibeTunnelApp extends LitElement {
     logger.log('✅ Authentication successful');
     this.isAuthenticated = true;
     this.currentView = 'list';
-    await this.initializeServices(); // Initialize services after auth
+    await this.initializeServices(false); // Initialize services after auth (auth is enabled)
     await this.loadSessions();
     this.startAutoRefresh();
 
@@ -226,14 +228,18 @@ export class VibeTunnelApp extends LitElement {
     }
   }
 
-  private async initializeServices() {
+  private async initializeServices(noAuthEnabled = false) {
     logger.log('🚀 Initializing services...');
     try {
       // Initialize buffer subscription service for WebSocket connections
       await bufferSubscriptionService.initialize();
 
-      // Initialize push notification service
-      await pushNotificationService.initialize();
+      // Initialize push notification service only if auth is enabled
+      if (!noAuthEnabled) {
+        await pushNotificationService.initialize();
+      } else {
+        logger.log('⏭️ Skipping push notification service initialization (no-auth mode)');
+      }
 
       logger.log('✅ Services initialized successfully');
     } catch (error) {

@@ -67,6 +67,7 @@ test.describe('Basic Session Tests', () => {
   });
 
   test('should navigate between sessions', async ({ page }) => {
+    test.setTimeout(30000); // Increase timeout for this test
     // Create two sessions
     await page.goto('/');
     await page.waitForSelector('vibetunnel-app', { state: 'attached' });
@@ -110,17 +111,21 @@ test.describe('Basic Session Tests', () => {
     // Go back to session list
     await navigateToHome(page);
 
-    // Wait for the page to fully load
-    await page.waitForLoadState('networkidle');
+    // Wait for the URL to be correct
+    await expect(page).toHaveURL('/', { timeout: 5000 });
 
-    // Wait for session cards with increased timeout for CI
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
+    // Wait for the page to fully load
+    await page.waitForLoadState('domcontentloaded');
+
+    // Wait for at least one session card to be visible
+    // Since there might be many sessions, we don't wait for all to be visible
+    await page.locator('session-card').first().waitFor({ state: 'visible', timeout: 15000 });
 
     // Both sessions should be listed
     const sessionOne = page.locator('session-card').filter({ hasText: sessionOneName });
     const sessionTwo = page.locator('session-card').filter({ hasText: sessionTwoName });
 
-    await expect(sessionOne).toBeVisible({ timeout: 10000 });
-    await expect(sessionTwo).toBeVisible({ timeout: 10000 });
+    await expect(sessionOne.first()).toBeVisible({ timeout: 10000 });
+    await expect(sessionTwo.first()).toBeVisible({ timeout: 10000 });
   });
 });

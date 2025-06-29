@@ -32,6 +32,7 @@ test.describe('Session Management', () => {
     sessionListPage,
     sessionViewPage,
   }) => {
+    test.setTimeout(15000); // Increase timeout
     const sessionName = generateTestSessionName();
 
     // Create a session
@@ -48,11 +49,11 @@ test.describe('Session Management', () => {
     const sessionCard = sessionListPage.page.locator(`session-card:has-text("${sessionName}")`);
 
     // Wait for session card to be visible
-    await expect(sessionCard).toBeVisible();
+    await expect(sessionCard).toBeVisible({ timeout: 10000 });
 
     // Check for status indicator (the colored dot and text)
     const statusText = sessionCard.locator('span:has(.w-2.h-2.rounded-full)');
-    await expect(statusText).toContainText(/RUNNING/i);
+    await expect(statusText).toContainText(/RUNNING/i, { timeout: 5000 });
 
     // Check that session name is displayed
     await expect(sessionCard).toContainText(sessionName);

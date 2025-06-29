@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { createSession, waitForSessionsToLoad } from '../helpers/session.helper';
 import { navigateToHome } from '../helpers/navigation.helper';
+import { createSession, waitForSessionsToLoad } from '../helpers/session.helper';
 import { generateTestSessionName } from '../helpers/terminal.helper';
 
 test.describe('Session Persistence Tests', () => {
@@ -85,10 +85,26 @@ test.describe('Session Persistence Tests', () => {
     const ourSession = page.locator('session-card').filter({ hasText: sessionName });
     await expect(ourSession.first()).toBeVisible({ timeout: 5000 });
 
-    // Check if it shows as exited
+    // Wait for the session status to update to exited
+    // Sessions with non-existent commands take a moment to be marked as exited
+    await page.waitForFunction(
+      (name) => {
+        const cards = document.querySelectorAll('session-card');
+        const sessionCard = Array.from(cards).find((card) => card.textContent?.includes(name));
+
+        if (!sessionCard) return false;
+
+        // Check if the session shows as exited
+        const text = sessionCard.textContent?.toLowerCase() || '';
+        return text.includes('exited');
+      },
+      sessionName,
+      { timeout: 10000 } // Give it up to 10 seconds for the status to update
+    );
+
+    // Now verify it shows as exited
     const sessionText = await ourSession.first().textContent();
     console.log('Session card text:', sessionText);
     expect(sessionText).toContain('exited');
   });
 });
-

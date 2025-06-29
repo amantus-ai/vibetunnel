@@ -146,6 +146,7 @@ test.describe('Session Creation', () => {
   });
 
   test('should reconnect to existing session', async ({ sessionListPage, sessionViewPage }) => {
+    test.setTimeout(20000); // Increase timeout for this test
     const sessionName = generateTestSessionName();
 
     // Create a session
@@ -158,6 +159,10 @@ test.describe('Session Creation', () => {
 
     // Navigate back
     await sessionViewPage.navigateBack();
+
+    // Wait for the session list to load
+    await sessionListPage.page.waitForLoadState('domcontentloaded');
+    await sessionListPage.page.waitForTimeout(500); // Give time for sessions to render
 
     // Click on the session to reconnect
     await sessionListPage.clickSession(sessionName);

@@ -232,6 +232,8 @@ export class SessionCard extends LitElement {
         }"
         data-session-id="${this.session.id}"
         data-testid="session-card"
+        data-session-status="${this.session.status}"
+        data-is-killing="${this.killing}"
         @click=${this.handleCardClick}
       >
         <!-- Compact Header -->
@@ -320,7 +322,11 @@ export class SessionCard extends LitElement {
           class="px-3 py-2 text-dark-text-muted text-xs border-t border-dark-border bg-dark-bg-secondary"
         >
           <div class="flex justify-between items-center min-w-0">
-            <span class="${this.getStatusColor()} text-xs flex items-center gap-1 flex-shrink-0">
+            <span 
+              class="${this.getStatusColor()} text-xs flex items-center gap-1 flex-shrink-0"
+              data-status="${this.session.status}"
+              data-killing="${this.killing}"
+            >
               <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
               ${this.getStatusText()}
               ${
