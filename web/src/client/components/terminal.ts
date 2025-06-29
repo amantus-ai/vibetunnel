@@ -259,7 +259,9 @@ export class Terminal extends LitElement {
 
   private async initializeTerminal() {
     try {
-      this.container = this.querySelector('#terminal-container') as HTMLElement;
+      // Use shadowRoot if available, otherwise use this for light DOM
+      const root = this.shadowRoot || this;
+      this.container = root.querySelector('#terminal-container') as HTMLElement;
 
       if (!this.container) {
         const error = new Error('Terminal container not found');
@@ -782,6 +784,11 @@ export class Terminal extends LitElement {
     const bufferLength = buffer.length;
     const lineHeight = this.fontSize * 1.2;
 
+    // Debug logging
+    logger.log(
+      `Rendering buffer for session ${this.sessionId}, bufferLength: ${bufferLength}, actualRows: ${this.actualRows}`
+    );
+
     // Convert pixel scroll position to fractional line position
     const startRowFloat = this.viewportY / lineHeight;
     const startRow = Math.floor(startRowFloat);
@@ -795,21 +802,25 @@ export class Terminal extends LitElement {
     const cursorX = this.terminal.buffer.active.cursorX;
     const cursorY = this.terminal.buffer.active.cursorY + this.terminal.buffer.active.viewportY;
 
-    // Render exactly actualRows
+    // CRITICAL: Always render exactly actualRows to ensure old content is replaced
+    // This is especially important when switching to sessions with less content
     for (let i = 0; i < this.actualRows; i++) {
       const row = startRow + i;
 
       // Apply pixel offset to ALL lines for smooth scrolling
       const style = pixelOffset > 0 ? ` style="transform: translateY(-${pixelOffset}px);"` : '';
 
-      if (row >= bufferLength) {
-        html += `<div class="terminal-line"${style}></div>`;
+      // Always render a line, even if it's empty
+      // This ensures we overwrite any old content with empty lines if needed
+      if (row >= bufferLength || !buffer.getLine(row)) {
+        html += `<div class="terminal-line"${style}>&nbsp;</div>`;
         continue;
       }
 
       const line = buffer.getLine(row);
       if (!line) {
-        html += `<div class="terminal-line"${style}></div>`;
+        // This shouldn't happen since we checked above, but TypeScript needs this
+        html += `<div class="terminal-line"${style}>&nbsp;</div>`;
         continue;
       }
 
@@ -821,7 +832,8 @@ export class Terminal extends LitElement {
         isCursorLine && this.cursorVisible ? cursorX : -1
       );
 
-      html += `<div class="terminal-line"${style}>${lineContent || ''}</div>`;
+      // Ensure we always have content (at least a space) to maintain line height
+      html += `<div class="terminal-line"${style}>${lineContent || '&nbsp;'}</div>`;
     }
 
     // Set the complete innerHTML at once
