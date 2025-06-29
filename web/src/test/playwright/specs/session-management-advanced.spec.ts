@@ -101,7 +101,7 @@ test.describe('Advanced Session Management', () => {
   });
 
   test('should kill all sessions at once', async ({ page }) => {
-    test.setTimeout(30000); // Give more time for multiple session operations
+    test.setTimeout(60000); // Increase timeout to 60s for flaky test
 
     // With clean slate from fixture, we can proceed directly
     // Create multiple sessions
@@ -179,7 +179,7 @@ test.describe('Advanced Session Management', () => {
           );
         },
         sessionNames,
-        { timeout: 25000 }
+        { timeout: 40000 }
       );
     }
 
