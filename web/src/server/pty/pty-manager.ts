@@ -415,19 +415,12 @@ export class PtyManager extends EventEmitter {
     if (session.titleMode === TitleMode.DYNAMIC) {
       session.activityDetector = new ActivityDetector(session.sessionInfo.command);
 
-      // Periodic title updates for activity timeout
+      // Periodic activity state updates
+      // The actual title updates happen in the onData handler when there's output
       session.titleUpdateInterval = setInterval(() => {
-        if (session.activityDetector && session.ptyProcess) {
-          const activity = session.activityDetector.getActivityState();
-          const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-          const titleSequence = generateDynamicTitle(
-            currentDir,
-            session.sessionInfo.command,
-            activity,
-            session.sessionInfo.name
-          );
-          // Write title update directly to PTY output
-          session.ptyProcess.write(titleSequence);
+        if (session.activityDetector) {
+          // Just update the activity state, don't write to PTY
+          session.activityDetector.getActivityState();
         }
       }, 500);
     }
