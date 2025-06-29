@@ -113,3 +113,8 @@ mac/Resources/BunPrebuilts/
 # Playwright test results
 web/playwright-report/
 web/test-results/
+test-results/
+test-results-*.json
+playwright-report/
+*.png
+!src/**/*.png

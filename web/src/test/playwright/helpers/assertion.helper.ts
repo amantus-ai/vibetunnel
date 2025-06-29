@@ -1,0 +1,272 @@
+import { expect, type Page } from '@playwright/test';
+
+/**
+ * Asserts that a session is visible in the session list
+ */
+export async function assertSessionInList(
+  page: Page,
+  sessionName: string,
+  options: { timeout?: number; status?: 'RUNNING' | 'EXITED' | 'KILLED' } = {}
+): Promise<void> {
+  const { timeout = 5000, status } = options;
+
+  // Ensure we're on the session list page
+  if (page.url().includes('?session=')) {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+  }
+
+  // Wait for session cards to load
+  await page.waitForSelector('session-card', { state: 'visible', timeout });
+
+  // Find and verify the session card
+  const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
+  await expect(sessionCard).toBeVisible({ timeout });
+
+  // Optionally verify status
+  if (status) {
+    const statusText = sessionCard.locator('span:has(.w-2.h-2.rounded-full)');
+    await expect(statusText).toContainText(status, { timeout });
+  }
+}
+
+/**
+ * Asserts that terminal contains specific text
+ */
+export async function assertTerminalContains(
+  page: Page,
+  text: string | RegExp,
+  options: { timeout?: number; exact?: boolean } = {}
+): Promise<void> {
+  const { timeout = 5000, exact = false } = options;
+
+  if (typeof text === 'string' && exact) {
+    await page.waitForFunction(
+      ({ searchText }) => {
+        const terminal = document.querySelector('vibe-terminal');
+        return terminal?.textContent === searchText;
+      },
+      { searchText: text },
+      { timeout }
+    );
+  } else {
+    const terminal = page.locator('vibe-terminal');
+    await expect(terminal).toContainText(text, { timeout });
+  }
+}
+
+/**
+ * Asserts that terminal does NOT contain specific text
+ */
+export async function assertTerminalNotContains(
+  page: Page,
+  text: string | RegExp,
+  options: { timeout?: number } = {}
+): Promise<void> {
+  const { timeout = 5000 } = options;
+
+  const terminal = page.locator('vibe-terminal');
+  await expect(terminal).not.toContainText(text, { timeout });
+}
+
+/**
+ * Asserts that URL has session query parameter
+ */
+export async function assertUrlHasSession(page: Page, sessionId?: string): Promise<void> {
+  const url = page.url();
+  expect(url).toMatch(/\?session=/);
+
+  if (sessionId) {
+    expect(url).toContain(`?session=${sessionId}`);
+  }
+}
+
+/**
+ * Asserts element state
+ */
+export async function assertElementState(
+  page: Page,
+  selector: string,
+  state: 'visible' | 'hidden' | 'enabled' | 'disabled' | 'checked' | 'unchecked',
+  timeout = 5000
+): Promise<void> {
+  const element = page.locator(selector);
+
+  switch (state) {
+    case 'visible':
+      await expect(element).toBeVisible({ timeout });
+      break;
+    case 'hidden':
+      await expect(element).toBeHidden({ timeout });
+      break;
+    case 'enabled':
+      await expect(element).toBeEnabled({ timeout });
+      break;
+    case 'disabled':
+      await expect(element).toBeDisabled({ timeout });
+      break;
+    case 'checked':
+      await expect(element).toBeChecked({ timeout });
+      break;
+    case 'unchecked':
+      await expect(element).not.toBeChecked({ timeout });
+      break;
+  }
+}
+
+/**
+ * Asserts session count in list
+ */
+export async function assertSessionCount(
+  page: Page,
+  expectedCount: number,
+  options: { timeout?: number; operator?: 'exact' | 'minimum' | 'maximum' } = {}
+): Promise<void> {
+  const { timeout = 5000, operator = 'exact' } = options;
+
+  // Ensure we're on the session list page
+  if (page.url().includes('?session=')) {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+  }
+
+  await page.waitForFunction(
+    ({ expected, op }) => {
+      const cards = document.querySelectorAll('session-card');
+      const count = cards.length;
+
+      switch (op) {
+        case 'exact':
+          return count === expected;
+        case 'minimum':
+          return count >= expected;
+        case 'maximum':
+          return count <= expected;
+        default:
+          return false;
+      }
+    },
+    { expected: expectedCount, op: operator },
+    { timeout }
+  );
+
+  // Get actual count for better error messages
+  const cards = await page.locator('session-card').all();
+  const actualCount = cards.length;
+
+  switch (operator) {
+    case 'exact':
+      expect(actualCount).toBe(expectedCount);
+      break;
+    case 'minimum':
+      expect(actualCount).toBeGreaterThanOrEqual(expectedCount);
+      break;
+    case 'maximum':
+      expect(actualCount).toBeLessThanOrEqual(expectedCount);
+      break;
+  }
+}
+
+/**
+ * Asserts terminal is ready and responsive
+ */
+export async function assertTerminalReady(page: Page, timeout = 5000): Promise<void> {
+  // Check terminal element exists
+  const terminal = page.locator('vibe-terminal');
+  await expect(terminal).toBeVisible({ timeout });
+
+  // Check for prompt
+  await page.waitForFunction(
+    () => {
+      const term = document.querySelector('vibe-terminal');
+      const content = term?.textContent || '';
+      return /[$>#%❯]\s*$/.test(content);
+    },
+    { timeout }
+  );
+}
+
+/**
+ * Asserts modal is open with specific content
+ */
+export async function assertModalOpen(
+  page: Page,
+  options: { title?: string; content?: string; timeout?: number } = {}
+): Promise<void> {
+  const { title, content, timeout = 5000 } = options;
+
+  const modal = page.locator('.modal-content');
+  await expect(modal).toBeVisible({ timeout });
+
+  if (title) {
+    const modalTitle = modal.locator('h2, h3, [class*="title"]').first();
+    await expect(modalTitle).toContainText(title);
+  }
+
+  if (content) {
+    await expect(modal).toContainText(content);
+  }
+}
+
+/**
+ * Asserts no errors are displayed
+ */
+export async function assertNoErrors(page: Page): Promise<void> {
+  // Check for common error selectors
+  const errorSelectors = [
+    '[class*="error"]:visible',
+    '[class*="alert"]:visible',
+    '[role="alert"]:visible',
+    'text=/error|failed|exception/i',
+  ];
+
+  for (const selector of errorSelectors) {
+    const errors = await page.locator(selector).all();
+    expect(errors).toHaveLength(0);
+  }
+}
+
+/**
+ * Asserts element has specific CSS property
+ */
+export async function assertElementStyle(
+  page: Page,
+  selector: string,
+  property: string,
+  value: string | RegExp
+): Promise<void> {
+  const actualValue = await page
+    .locator(selector)
+    .evaluate((el, prop) => window.getComputedStyle(el).getPropertyValue(prop), property);
+
+  if (typeof value === 'string') {
+    expect(actualValue).toBe(value);
+  } else {
+    expect(actualValue).toMatch(value);
+  }
+}
+
+/**
+ * Asserts network request was made
+ */
+export async function assertRequestMade(
+  page: Page,
+  urlPattern: string | RegExp,
+  options: { method?: string; timeout?: number } = {}
+): Promise<void> {
+  const { method, timeout = 5000 } = options;
+
+  const requestPromise = page.waitForRequest(
+    (request) => {
+      const urlMatches =
+        typeof urlPattern === 'string'
+          ? request.url().includes(urlPattern)
+          : urlPattern.test(request.url());
+
+      const methodMatches = !method || request.method() === method;
+
+      return urlMatches && methodMatches;
+    },
+    { timeout }
+  );
+
+  await requestPromise;
+}

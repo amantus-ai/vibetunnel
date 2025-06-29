@@ -1,176 +1,99 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { navigateToHome } from '../helpers/navigation.helper';
-import { generateTestSessionName } from '../helpers/terminal.helper';
+import {
+  assertSessionInList,
+  assertTerminalReady,
+  assertUrlHasSession,
+} from '../helpers/assertion.helper';
+import {
+  createAndNavigateToSession,
+  createMultipleSessions,
+  reconnectToSession,
+} from '../helpers/session-lifecycle.helper';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { waitForElementStable } from '../helpers/wait-strategies.helper';
 
 test.describe('Session Creation', () => {
-  // Page navigation and cleanup is handled by fixture
+  let sessionManager: TestSessionManager;
 
-  test('should create a new session with default name', async ({
-    sessionListPage,
-    sessionViewPage,
-    page,
-  }) => {
-    // Navigate to session list
-    await sessionListPage.navigate();
+  test.beforeEach(async ({ page }) => {
+    sessionManager = new TestSessionManager(page);
+  });
 
-    // Create a new session without specifying a name (spawn window = false for web session)
-    await sessionListPage.createNewSession(undefined, false);
+  test.afterEach(async () => {
+    await sessionManager.cleanupAllSessions();
+  });
 
-    // Verify we're in the session view (URL should have session query param)
-    await expect(sessionViewPage.page).toHaveURL(/\?session=/, { timeout: 4000 });
+  test('should create a new session with default name', async ({ page }) => {
+    // One line to create and navigate to session
+    const { sessionId } = await createAndNavigateToSession(page);
 
-    // The session view has a dark sidebar on the left showing sessions
-    // Look for the session name in the sidebar (it shows "sh (~)" or "zsh (~)")
+    // Simple assertions using helpers
+    await assertUrlHasSession(page, sessionId);
+    await assertTerminalReady(page);
+
+    // Verify session appears in sidebar
     const sessionInSidebar = page.locator('text=/(?:sh|zsh|bash).*\\(.*\\)/').first();
     await expect(sessionInSidebar).toBeVisible({ timeout: 4000 });
-
-    // The terminal area should be visible (even if black initially)
-    const terminalArea = page.locator('vibe-terminal');
-    await expect(terminalArea).toBeVisible();
   });
 
-  test('should create a new session with custom name', async ({
-    sessionListPage,
-    sessionViewPage,
-  }) => {
-    const sessionName = generateTestSessionName();
+  test('should create a new session with custom name', async ({ page }) => {
+    const customName = sessionManager.generateSessionName('custom');
 
-    // Navigate to session list
-    await sessionListPage.navigate();
+    // Create session with custom name
+    const { sessionName } = await createAndNavigateToSession(page, { name: customName });
 
-    // Create a new session with custom name (spawn window = false for web session)
-    await sessionListPage.createNewSession(sessionName, false);
+    // Verify session is created with correct name
+    await assertUrlHasSession(page);
+    await waitForElementStable(page, 'session-header');
 
-    // Verify we're in the session view (URL should have session query param)
-    await expect(sessionViewPage.page).toHaveURL(/\?session=/);
+    // Check header shows custom name
+    const sessionInHeader = page.locator('session-header').locator(`text="${sessionName}"`);
+    await expect(sessionInHeader).toBeVisible();
+  });
 
-    // Wait for session view to be fully loaded
-    await sessionViewPage.page.waitForSelector('session-view', { state: 'visible' });
+  test('should show created session in session list', async ({ page }) => {
+    // Create tracked session
+    const { sessionName } = await sessionManager.createTrackedSession();
 
-    // Wait for session header to render with the session name
-    await sessionViewPage.page.waitForSelector('session-header', { state: 'visible' });
+    // Navigate back and verify
+    await page.goto('/');
+    await assertSessionInList(page, sessionName, { status: 'RUNNING' });
+  });
 
-    // Debug: Check if session-view exists and what the title is
-    const debugInfo = await sessionViewPage.page.evaluate(() => {
-      const sessionView = document.querySelector('session-view');
-      return {
-        hasSessionView: !!sessionView,
-        sessionViewHTML: sessionView ? sessionView.outerHTML.substring(0, 200) : null,
-        currentTitle: document.title,
-        currentURL: window.location.href,
-        hasSessionParam: window.location.href.includes('?session='),
-        bodyText: document.body.innerText.substring(0, 500),
-      };
+  test('should handle multiple session creation', async ({ page }) => {
+    test.setTimeout(20000);
+
+    // Create multiple sessions in one call
+    const sessions = await createMultipleSessions(page, 2, {
+      name: 'multi-test',
     });
-    console.log('Debug info:', JSON.stringify(debugInfo, null, 2));
 
-    // TODO: Title update feature needs to be properly implemented
-    // For now, verify the session was created and is displayed
-    await expect(sessionViewPage.page).toHaveURL(/\?session=/);
-    // Check that session name is visible in the header (more specific selector)
-    const sessionInHeader = await sessionViewPage.page
-      .locator('session-header')
-      .locator(`text="${sessionName}"`)
-      .isVisible();
-    expect(sessionInHeader).toBe(true);
+    // Track them for cleanup
+    sessions.forEach(
+      (s) => sessionManager.isTracking(s.sessionName) || sessionManager.clearTracking()
+    );
+
+    // Navigate to list and verify all exist
+    await page.goto('/');
+
+    for (const session of sessions) {
+      await assertSessionInList(page, session.sessionName);
+    }
   });
 
-  test('should show created session in session list', async ({
-    sessionListPage,
-    sessionViewPage,
-  }) => {
-    const sessionName = generateTestSessionName();
+  test('should reconnect to existing session', async ({ page }) => {
+    test.setTimeout(20000);
 
-    // Navigate to session list
-    await sessionListPage.navigate();
+    // Create and track session
+    const { sessionName } = await sessionManager.createTrackedSession();
+    await assertTerminalReady(page);
 
-    // Create a new session
-    await sessionListPage.createNewSession(sessionName, false);
+    // Navigate away and back
+    await page.goto('/');
+    await reconnectToSession(page, sessionName);
 
-    // Just verify we're in the session view
-    await expect(sessionViewPage.page).toHaveURL(/\?session=/, { timeout: 4000 });
-
-    // Navigate back to session list
-    await sessionViewPage.navigateBack();
-
-    // Wait for at least one session card to be visible
-    await sessionListPage.page.waitForSelector('session-card', { state: 'visible', timeout: 4000 });
-
-    // Verify the session is listed
-    const sessionCard = sessionListPage.page.locator(`session-card:has-text("${sessionName}")`);
-    await expect(sessionCard).toBeVisible({ timeout: 4000 });
-
-    // Verify session is active
-    const isActive = await sessionListPage.isSessionActive(sessionName);
-    expect(isActive).toBe(true);
-  });
-
-  test('should handle multiple session creation', async ({
-    page,
-    sessionListPage,
-    sessionViewPage,
-  }) => {
-    test.setTimeout(20000); // Increase timeout for this test
-
-    // Just verify we can create 2 sessions and see them in the list
-    const session1 = generateTestSessionName();
-    const session2 = generateTestSessionName();
-
-    // Navigate to session list
-    await sessionListPage.navigate();
-
-    // Create first session
-    await sessionListPage.createNewSession(session1, false);
-    await page.waitForURL(/\?session=/, { timeout: 4000 });
-
-    // Go back to list using browser navigation
-    await navigateToHome(page);
-    await page.waitForSelector('session-card', { state: 'visible' });
-
-    // Create second session
-    await sessionListPage.createNewSession(session2, false);
-    await page.waitForURL(/\?session=/, { timeout: 4000 });
-
-    // Go back to list
-    await navigateToHome(page);
-
-    // Wait for and verify both sessions are visible
-    const cards = await page.locator('session-card').all();
-
-    // Should have at least 2 sessions
-    expect(cards.length).toBeGreaterThanOrEqual(2);
-
-    // Check session names are present on the page
-    await expect(page.locator(`text="${session1}"`).first()).toBeVisible();
-    await expect(page.locator(`text="${session2}"`).first()).toBeVisible();
-  });
-
-  test('should reconnect to existing session', async ({ sessionListPage, sessionViewPage }) => {
-    test.setTimeout(20000); // Increase timeout for this test
-    const sessionName = generateTestSessionName();
-
-    // Create a session
-    await sessionListPage.navigate();
-    await sessionListPage.createNewSession(sessionName, false);
-    await sessionViewPage.waitForTerminalReady();
-
-    // Skip terminal interaction in tests as terminal is not rendering properly
-    // Just verify we can navigate back and reconnect
-
-    // Navigate back
-    await sessionViewPage.navigateBack();
-
-    // Wait for the session list to load
-    await sessionListPage.page.waitForLoadState('domcontentloaded');
-    // Wait for session cards to be visible
-    await sessionListPage.page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
-
-    // Click on the session to reconnect
-    await sessionListPage.clickSession(sessionName);
-
-    // Verify we reconnected to the session
-    await sessionViewPage.waitForTerminalReady();
-    // Just verify we're back in the session view
-    await expect(sessionViewPage.page).toHaveURL(/\?session=/);
+    // Verify reconnected
+    await assertUrlHasSession(page);
+    await assertTerminalReady(page);
   });
 });

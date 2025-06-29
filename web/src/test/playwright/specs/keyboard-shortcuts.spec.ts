@@ -1,36 +1,29 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { generateTestSessionName } from '../helpers/terminal.helper';
-import { testConfig } from '../test-config';
-import { TerminalTestUtils } from '../utils/terminal-test-utils';
+import { assertTerminalReady } from '../helpers/assertion.helper';
+import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
+import { waitForShellPrompt } from '../helpers/terminal.helper';
+import { interruptCommand } from '../helpers/terminal-commands.helper';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe('Keyboard Shortcuts', () => {
+  let sessionManager: TestSessionManager;
+
   test.beforeEach(async ({ page }) => {
-    // Page is already navigated in fixture, just ensure it's ready
-    await page.waitForSelector('button[title="Create New Session"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
+    sessionManager = new TestSessionManager(page);
+  });
+
+  test.afterEach(async () => {
+    await sessionManager.cleanupAllSessions();
   });
 
   test('should open file browser with Cmd+O / Ctrl+O', async ({ page }) => {
-    test.setTimeout(20000); // Increase timeout
+    test.setTimeout(20000);
 
-    // Create a session first
-    await page.click('button[title="Create New Session"]', { timeout: 10000 });
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
-
-    const spawnWindowToggle = page.locator('button[role="switch"]');
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
-    }
-
-    const sessionName = generateTestSessionName();
-    await page.fill('input[placeholder="My Session"]', sessionName);
-    await page.click('button:has-text("Create")');
-    await page.waitForURL(/\?session=/);
-
-    // Wait for terminal to be ready
-    await TerminalTestUtils.waitForTerminalReady(page);
+    // Create a session
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('keyboard-test'),
+    });
+    await assertTerminalReady(page);
 
     // Press Cmd+O (Mac) or Ctrl+O (others)
     const isMac = process.platform === 'darwin';
@@ -80,20 +73,10 @@ test.describe('Keyboard Shortcuts', () => {
 
   test.skip('should navigate back to list with Escape in session view', async ({ page }) => {
     // Create a session
-    await page.click('button[title="Create New Session"]');
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
-
-    const spawnWindowToggle = page.locator('button[role="switch"]');
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
-    }
-
-    const sessionName = generateTestSessionName();
-    await page.fill('input[placeholder="My Session"]', sessionName);
-    await page.click('button:has-text("Create")');
-    await page.waitForURL(/\?session=/);
-    await page.waitForSelector('vibe-terminal', { state: 'visible' });
-    await TerminalTestUtils.waitForTerminalReady(page);
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('escape-test'),
+    });
+    await assertTerminalReady(page);
 
     // Click on terminal to ensure focus
     const terminal = page.locator('vibe-terminal');
@@ -101,11 +84,9 @@ test.describe('Keyboard Shortcuts', () => {
 
     // Press Escape to go back to list
     await page.keyboard.press('Escape');
-    // Wait for navigation to complete
-    await page.waitForURL(`${testConfig.baseURL}/`, { timeout: 2000 });
 
     // Should navigate back to list
-    await expect(page).toHaveURL(`${testConfig.baseURL}/`, { timeout: 4000 });
+    await page.waitForURL('/', { timeout: 2000 });
     await expect(page.locator('session-card')).toBeVisible();
   });
 
@@ -115,7 +96,7 @@ test.describe('Keyboard Shortcuts', () => {
       state: 'visible',
       timeout: 5000,
     });
-    await page.click('button[title="Create New Session"]', { timeout: 10000 });
+    await page.click('button[title="Create New Session"]');
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
     // Press Escape
@@ -140,8 +121,8 @@ test.describe('Keyboard Shortcuts', () => {
       await spawnWindowToggle.click();
     }
 
-    // Fill session name
-    const sessionName = generateTestSessionName();
+    // Fill session name and track it
+    const sessionName = sessionManager.generateSessionName('enter-test');
     await page.fill('input[placeholder="My Session"]', sessionName);
 
     // Press Enter to submit
@@ -149,33 +130,25 @@ test.describe('Keyboard Shortcuts', () => {
 
     // Should create session and navigate
     await expect(page).toHaveURL(/\?session=/, { timeout: 4000 });
+
+    // Track for cleanup
+    sessionManager.clearTracking();
   });
 
   test.skip('should handle terminal-specific shortcuts', async ({ page }) => {
     // Create a session
-    await page.click('button[title="Create New Session"]');
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('terminal-shortcut'),
+    });
+    await assertTerminalReady(page);
 
-    const spawnWindowToggle = page.locator('button[role="switch"]');
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
-    }
-
-    const sessionName = generateTestSessionName();
-    await page.fill('input[placeholder="My Session"]', sessionName);
-    await page.click('button:has-text("Create")');
-    await page.waitForURL(/\?session=/);
-
-    // Wait for terminal to be ready
-    await TerminalTestUtils.waitForTerminalReady(page, 4000);
     const terminal = page.locator('vibe-terminal');
     await terminal.click();
 
-    // Wait for terminal to show prompt
-    await TerminalTestUtils.waitForPrompt(page, 5000);
-
     // Test Ctrl+C (interrupt)
-    await TerminalTestUtils.executeCommand(page, 'sleep 10');
+    await page.keyboard.type('sleep 10');
+    await page.keyboard.press('Enter');
+
     // Wait for sleep command to start
     await page.waitForFunction(
       () => {
@@ -184,23 +157,26 @@ test.describe('Keyboard Shortcuts', () => {
       },
       { timeout: 1000 }
     );
-    await page.keyboard.press('Control+c');
-    await TerminalTestUtils.waitForPrompt(page, 4000);
+
+    await interruptCommand(page);
 
     // Should be back at prompt - type something to verify
-    await TerminalTestUtils.executeCommand(page, 'echo "interrupted"');
+    await page.keyboard.type('echo "interrupted"');
+    await page.keyboard.press('Enter');
     await expect(page.locator('text=interrupted')).toBeVisible({ timeout: 4000 });
 
     // Test Ctrl+L (clear)
     await page.keyboard.press('Control+l');
-    await TerminalTestUtils.waitForPrompt(page, 4000);
+    await waitForShellPrompt(page, 4000);
 
     // Terminal should be cleared - verify it's still functional
-    await TerminalTestUtils.executeCommand(page, 'echo "after clear"');
+    await page.keyboard.type('echo "after clear"');
+    await page.keyboard.press('Enter');
     await expect(page.locator('text=after clear')).toBeVisible({ timeout: 4000 });
 
     // Test exit command
-    await TerminalTestUtils.executeCommand(page, 'exit');
+    await page.keyboard.type('exit');
+    await page.keyboard.press('Enter');
     await page.waitForSelector('text=/exited|EXITED|terminated/', {
       state: 'visible',
       timeout: 4000,
@@ -212,24 +188,13 @@ test.describe('Keyboard Shortcuts', () => {
 
   test.skip('should handle tab completion in terminal', async ({ page }) => {
     // Create a session
-    await page.click('button[title="Create New Session"]');
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('tab-completion'),
+    });
+    await assertTerminalReady(page);
 
-    const spawnWindowToggle = page.locator('button[role="switch"]');
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
-    }
-
-    const sessionName = generateTestSessionName();
-    await page.fill('input[placeholder="My Session"]', sessionName);
-    await page.click('button:has-text("Create")');
-    await page.waitForURL(/\?session=/);
-
-    // Wait for terminal ready and shell prompt
-    await TerminalTestUtils.waitForTerminalReady(page);
     const terminal = page.locator('vibe-terminal');
     await terminal.click();
-    await TerminalTestUtils.waitForPrompt(page);
 
     // Type partial command and press Tab
     await page.keyboard.type('ech');
@@ -250,40 +215,29 @@ test.describe('Keyboard Shortcuts', () => {
     await page.keyboard.press('Enter');
 
     // Should see the output
-    await TerminalTestUtils.waitForText(page, 'tab completed');
+    await page.waitForTimeout(500);
     await expect(page.locator('text=tab completed').first()).toBeVisible({ timeout: 4000 });
   });
 
   test.skip('should handle arrow keys for command history', async ({ page }) => {
     // Create a session
-    await page.click('button[title="Create New Session"]');
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('history-test'),
+    });
+    await assertTerminalReady(page);
 
-    const spawnWindowToggle = page.locator('button[role="switch"]');
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
-    }
-
-    const sessionName = generateTestSessionName();
-    await page.fill('input[placeholder="My Session"]', sessionName);
-    await page.click('button:has-text("Create")');
-    await page.waitForURL(/\?session=/);
-
-    // Wait for terminal ready and shell prompt
-    await TerminalTestUtils.waitForTerminalReady(page, 4000);
     const terminal = page.locator('vibe-terminal');
     await terminal.click();
 
-    // Wait for terminal to show prompt
-    await TerminalTestUtils.waitForPrompt(page, 5000);
-
     // Execute first command
-    await TerminalTestUtils.executeCommand(page, 'echo "first command"');
-    await TerminalTestUtils.waitForText(page, 'first command');
+    await page.keyboard.type('echo "first command"');
+    await page.keyboard.press('Enter');
+    await waitForShellPrompt(page);
 
     // Execute second command
-    await TerminalTestUtils.executeCommand(page, 'echo "second command"');
-    await TerminalTestUtils.waitForText(page, 'second command');
+    await page.keyboard.type('echo "second command"');
+    await page.keyboard.press('Enter');
+    await waitForShellPrompt(page);
 
     // Press up arrow to get previous command
     await page.keyboard.press('ArrowUp');
@@ -301,10 +255,7 @@ test.describe('Keyboard Shortcuts', () => {
 
     // Execute it again
     await page.keyboard.press('Enter');
-    await TerminalTestUtils.waitForPrompt(page);
-
-    // Should see "second command" in output
-    await TerminalTestUtils.waitForText(page, 'second command');
+    await waitForShellPrompt(page);
 
     // Press up arrow twice to get first command
     await page.keyboard.press('ArrowUp');
@@ -323,10 +274,10 @@ test.describe('Keyboard Shortcuts', () => {
 
     // Execute it
     await page.keyboard.press('Enter');
-    await TerminalTestUtils.waitForPrompt(page, 4000);
+    await waitForShellPrompt(page, 4000);
 
     // Should see "first command" in the terminal
-    const output = await TerminalTestUtils.getTerminalText(page);
-    expect(output).toContain('first command');
+    const terminalOutput = await page.locator('vibe-terminal').textContent();
+    expect(terminalOutput).toContain('first command');
   });
 });

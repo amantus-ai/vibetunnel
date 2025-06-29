@@ -1,90 +1,49 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { navigateToHome } from '../helpers/navigation.helper';
-import { createSession, waitForSessionsToLoad } from '../helpers/session.helper';
-import { generateTestSessionName } from '../helpers/terminal.helper';
+import { assertSessionInList } from '../helpers/assertion.helper';
+import { createMultipleSessions } from '../helpers/session-lifecycle.helper';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe('Minimal Session Tests', () => {
+  let sessionManager: TestSessionManager;
+
+  test.beforeEach(async ({ page }) => {
+    sessionManager = new TestSessionManager(page);
+  });
+
+  test.afterEach(async () => {
+    await sessionManager.cleanupAllSessions();
+  });
   test('should create and list a session', async ({ page }) => {
-    // Wait for page to be ready
-    await page.waitForSelector('button[title="Create New Session"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
-
-    // Create a session with spawn_terminal: false
-    const sessionName = generateTestSessionName();
-    const sessionId = await createSession(page, {
-      name: sessionName,
-      spawnWindow: false,
-    });
-
-    console.log(`Created session ${sessionId} with name: ${sessionName}`);
+    // Create a tracked session
+    const { sessionName } = await sessionManager.createTrackedSession();
 
     // Navigate back to home
-    await navigateToHome(page);
+    await page.goto('/');
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Wait for sessions to load
-    await waitForSessionsToLoad(page);
-
-    // Debug: log all session cards found
-    const sessionCount = await page.locator('session-card').count();
-    console.log(`Found ${sessionCount} session cards after navigation`);
-
-    // Check if our session is listed
-    const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-    await expect(sessionCard).toBeVisible({ timeout: 10000 });
+    // Verify session is listed
+    await assertSessionInList(page, sessionName);
   });
 
   test('should create multiple sessions', async ({ page }) => {
-    test.setTimeout(30000); // Increase timeout for this test
-    // Page is already loaded from fixture
-    await page.waitForSelector('button[title="Create New Session"]', {
-      state: 'visible',
-      timeout: 5000,
+    test.setTimeout(30000);
+
+    // Create 3 sessions using helper
+    const sessions = await createMultipleSessions(page, 3, {
+      name: 'minimal-test',
     });
 
-    const sessionNames: string[] = [];
-    const sessionIds: string[] = [];
-
-    // Create 3 sessions
-    for (let i = 0; i < 3; i++) {
-      // Make sure we're on the home page before creating a session
-      const currentUrl = page.url();
-      if (currentUrl.includes('?session=')) {
-        await navigateToHome(page);
-        await waitForSessionsToLoad(page);
-      }
-
-      // Create a session
-      const name = generateTestSessionName();
-      sessionNames.push(name);
-
-      const sessionId = await createSession(page, {
-        name,
-        spawnWindow: false,
-      });
-      sessionIds.push(sessionId);
-
-      console.log(`Created session ${i + 1}: ${sessionId} with name: ${name}`);
-    }
-
     // Navigate back to home
-    await navigateToHome(page);
-
-    // Wait for sessions to load
-    await waitForSessionsToLoad(page);
-
-    // Debug: log session count
-    const totalCards = await page.locator('session-card').count();
-    console.log(`Found ${totalCards} total session cards`);
+    await page.goto('/');
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Verify all sessions are listed
-    for (const sessionName of sessionNames) {
-      const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-      await expect(sessionCard).toBeVisible({ timeout: 10000 });
+    for (const session of sessions) {
+      await assertSessionInList(page, session.sessionName);
     }
 
     // Count total session cards (should be at least our 3)
+    const totalCards = await page.locator('session-card').count();
     expect(totalCards).toBeGreaterThanOrEqual(3);
   });
 });

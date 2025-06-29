@@ -1,8 +1,18 @@
 import { expect, test } from '../fixtures/test.fixture';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe('Debug Session Tests', () => {
+  let sessionManager: TestSessionManager;
+
+  test.beforeEach(async ({ page }) => {
+    sessionManager = new TestSessionManager(page);
+  });
+
+  test.afterEach(async () => {
+    await sessionManager.cleanupAllSessions();
+  });
   test('debug session creation and listing', async ({ page }) => {
-    test.setTimeout(30000); // Increase timeout for debug test
+    test.setTimeout(30000);
 
     // Wait for page to be ready
     await page.waitForSelector('button[title="Create New Session"]', {
@@ -34,7 +44,7 @@ test.describe('Debug Session Tests', () => {
     console.log(`Final spawn window state: ${finalState}`);
 
     // Fill in session name
-    const sessionName = `debug-${Date.now()}`;
+    const sessionName = sessionManager.generateSessionName('debug');
     await page.fill('input[placeholder="My Session"]', sessionName);
 
     // Intercept the API request to see what's being sent
@@ -67,16 +77,20 @@ test.describe('Debug Session Tests', () => {
       console.log('No Back button found - might be in sidebar layout');
     }
 
-    // Wait a moment for the UI to settle after navigation
-    await page.waitForTimeout(1000);
-    
+    // Wait for the page to be fully loaded after navigation
+    await page.waitForLoadState('networkidle');
+
     // Simply verify that the session was created by checking the URL
     const currentUrl = page.url();
     const isInSessionView = currentUrl.includes('session=');
-    
+
     if (!isInSessionView) {
       // We navigated back, check if our session is visible somewhere
-      const sessionVisible = await page.locator(`text="${sessionName}"`).first().isVisible({ timeout: 2000 }).catch(() => false);
+      const sessionVisible = await page
+        .locator(`text="${sessionName}"`)
+        .first()
+        .isVisible({ timeout: 2000 })
+        .catch(() => false);
       expect(sessionVisible).toBe(true);
     }
 

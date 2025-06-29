@@ -31,8 +31,7 @@ export async function waitForSessionsToLoad(
 
       // Either we have session cards or we have the "no sessions" message
       return (
-        sessionCards.length > 0 ||
-        (noSessionsMessage && noSessionsMessage.textContent?.includes('No terminal sessions'))
+        sessionCards.length > 0 || noSessionsMessage?.textContent?.includes('No terminal sessions')
       );
     },
     { timeout }

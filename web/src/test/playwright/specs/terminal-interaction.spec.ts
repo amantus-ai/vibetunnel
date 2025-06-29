@@ -1,215 +1,204 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { generateTestSessionName, waitForShellPrompt } from '../helpers/terminal.helper';
+import { assertTerminalContains, assertTerminalReady } from '../helpers/assertion.helper';
+import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
+import {
+  executeAndVerifyCommand,
+  executeCommandSequence,
+  executeCommandWithRetry,
+  getCommandOutput,
+  interruptCommand,
+} from '../helpers/terminal-commands.helper';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe.skip('Terminal Interaction', () => {
-  // Skip cleanup - tests run too slow
+  let sessionManager: TestSessionManager;
 
-  test.beforeEach(async ({ page, sessionListPage, sessionViewPage }) => {
-    // Create a new session with spawn window = false (server-side terminal)
-    await sessionListPage.navigate();
-    await sessionListPage.createNewSession(generateTestSessionName(), false);
-    await expect(sessionViewPage.page).toHaveURL(/\?session=/);
+  test.beforeEach(async ({ page }) => {
+    sessionManager = new TestSessionManager(page);
 
-    // Wait for terminal to be ready
-    await sessionViewPage.waitForTerminalReady();
-    // Wait for shell prompt to appear
-    await waitForShellPrompt(page);
+    // Create a session for all tests
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('terminal-test'),
+    });
+    await assertTerminalReady(page);
   });
 
-  test('should execute basic commands', async ({ sessionViewPage }) => {
-    // Execute echo command
-    await sessionViewPage.typeCommand('echo "Hello VibeTunnel"');
-    await sessionViewPage.waitForOutput('Hello VibeTunnel');
-
-    // Verify output
-    const output = await sessionViewPage.getTerminalOutput();
-    expect(output).toContain('Hello VibeTunnel');
+  test.afterEach(async () => {
+    await sessionManager.cleanupAllSessions();
   });
 
-  test('should handle command with special characters', async ({ sessionViewPage }) => {
-    // Test command with special characters - use simpler set to avoid typing issues
+  test('should execute basic commands', async ({ page }) => {
+    // Simple one-liner to execute and verify
+    await executeAndVerifyCommand(page, 'echo "Hello VibeTunnel"', 'Hello VibeTunnel');
+
+    // Verify using assertion helper
+    await assertTerminalContains(page, 'Hello VibeTunnel');
+  });
+
+  test('should handle command with special characters', async ({ page }) => {
     const specialText = 'Test with spaces and numbers 123';
-    await sessionViewPage.typeCommand(`echo "${specialText}"`);
-    await sessionViewPage.waitForOutput(specialText, { timeout: 2000 });
 
-    // Verify output
-    const output = await sessionViewPage.getTerminalOutput();
-    expect(output).toContain(specialText);
+    // Execute with automatic output verification
+    await executeAndVerifyCommand(page, `echo "${specialText}"`, specialText);
   });
 
-  test('should execute multiple commands in sequence', async ({ sessionViewPage, page }) => {
-    // Execute a simple sequence
-    await sessionViewPage.typeCommand('echo "Test 1"');
-    await sessionViewPage.waitForOutput('Test 1', { timeout: 2000 });
+  test('should execute multiple commands in sequence', async ({ page }) => {
+    // Execute sequence with expected outputs
+    await executeCommandSequence(page, [
+      { command: 'echo "Test 1"', expectedOutput: 'Test 1' },
+      { command: 'echo "Test 2"', expectedOutput: 'Test 2', waitBetween: 500 },
+    ]);
 
-    await sessionViewPage.typeCommand('echo "Test 2"');
-    await sessionViewPage.waitForOutput('Test 2', { timeout: 2000 });
-
-    // Verify outputs
-    const output = await sessionViewPage.getTerminalOutput();
-    expect(output).toContain('Test 1');
-    expect(output).toContain('Test 2');
+    // Both outputs should be visible
+    await assertTerminalContains(page, 'Test 1');
+    await assertTerminalContains(page, 'Test 2');
   });
 
-  test('should handle long-running commands', async ({ sessionViewPage, page }) => {
-    // Execute a command that takes some time
-    await sessionViewPage.typeCommand('sleep 1 && echo "Done sleeping"');
-
-    // Wait for completion
-    await sessionViewPage.waitForOutput('Done sleeping', { timeout: 3000 });
-
-    // Verify we're back at prompt
-    await waitForShellPrompt(page);
+  test('should handle long-running commands', async ({ page }) => {
+    // Execute and wait for completion
+    await executeAndVerifyCommand(page, 'sleep 1 && echo "Done sleeping"', 'Done sleeping', {
+      timeout: 3000,
+    });
   });
 
-  test('should handle command interruption', async ({ sessionViewPage, page }) => {
-    // Start a long-running command
-    await sessionViewPage.typeCommand('sleep 5');
-    // Wait for command to start executing (cursor should move)
+  test('should handle command interruption', async ({ page }) => {
+    // Start long command
+    await page.keyboard.type('sleep 5');
+    await page.keyboard.press('Enter');
+
+    // Wait a bit then interrupt
+    await page.waitForTimeout(500);
+    await interruptCommand(page);
+
+    // Verify we can execute new command
+    await executeAndVerifyCommand(page, 'echo "After interrupt"', 'After interrupt');
+  });
+
+  test('should clear terminal screen', async ({ page }) => {
+    // Add content
+    await executeAndVerifyCommand(page, 'echo "Test content"', 'Test content');
+
+    // Clear terminal using keyboard shortcut
+    await page.keyboard.press('Control+l');
+
+    // Verify cleared
     await page.waitForFunction(
       () => {
         const terminal = document.querySelector('vibe-terminal');
-        const content = terminal?.textContent || '';
-        return content.includes('sleep 5');
-      },
-      { timeout: 1000 }
-    );
-
-    // Send interrupt signal
-    await sessionViewPage.sendInterrupt();
-    // Wait for interrupt to be processed
-    await page.waitForFunction(
-      () => {
-        const terminal = document.querySelector('vibe-terminal');
-        const content = terminal?.textContent || '';
-        // Look for interrupt indicators like ^C or new prompt
-        return content.includes('^C') || /[$>#%❯]\s*$/.test(content);
+        return (terminal?.textContent?.trim().split('\n').length || 0) < 3;
       },
       { timeout: 2000 }
     );
 
-    // Verify we can execute another command
-    await sessionViewPage.typeCommand('echo "After interrupt"');
-    await sessionViewPage.waitForOutput('After interrupt', { timeout: 2000 });
+    // Should not contain old content
+    const terminal = page.locator('vibe-terminal');
+    const text = await terminal.textContent();
+    expect(text).not.toContain('Test content');
   });
 
-  test('should clear terminal screen', async ({ sessionViewPage, page }) => {
-    // Add some content
-    await sessionViewPage.typeCommand('echo "Test content"');
-    await sessionViewPage.waitForOutput('Test content', { timeout: 2000 });
-
-    // Clear the terminal
-    await sessionViewPage.clearTerminal();
-    // Wait for terminal to be cleared
-    await page.waitForFunction(
-      () => {
-        const terminal = document.querySelector('vibe-terminal');
-        const content = terminal?.textContent || '';
-        // Terminal should be mostly empty after clear
-        return content.trim().split('\n').length < 3;
-      },
-      { timeout: 2000 }
-    );
-
-    // Get output after clear
-    const outputAfter = await sessionViewPage.getTerminalOutput();
-
-    // The terminal should be cleared
-    expect(outputAfter).not.toContain('Test content');
-  });
-
-  test('should handle file system navigation', async ({ sessionViewPage, page }) => {
-    // Get current directory
-    await sessionViewPage.typeCommand('pwd');
-    await waitForShellPrompt(page);
-
-    // Create a test directory
+  test('should handle file system navigation', async ({ page }) => {
     const testDir = `test-dir-${Date.now()}`;
-    await sessionViewPage.typeCommand(`mkdir ${testDir}`);
-    await waitForShellPrompt(page);
 
-    // Navigate into directory
-    await sessionViewPage.typeCommand(`cd ${testDir}`);
-    await waitForShellPrompt(page);
+    // Execute directory operations as a sequence
+    await executeCommandSequence(page, ['pwd', `mkdir ${testDir}`, `cd ${testDir}`, 'pwd']);
 
     // Verify we're in the new directory
-    await sessionViewPage.typeCommand('pwd');
-    await sessionViewPage.waitForOutput(testDir);
+    await assertTerminalContains(page, testDir);
 
-    // Clean up
-    await sessionViewPage.typeCommand('cd ..');
-    await waitForShellPrompt(page);
-    await sessionViewPage.typeCommand(`rmdir ${testDir}`);
-    await waitForShellPrompt(page);
+    // Cleanup
+    await executeCommandSequence(page, ['cd ..', `rmdir ${testDir}`]);
   });
 
-  test('should handle environment variables', async ({ sessionViewPage, page }) => {
-    // Set an environment variable
+  test('should handle environment variables', async ({ page }) => {
     const varName = 'TEST_VAR';
     const varValue = 'VibeTunnel_Test_123';
 
-    await sessionViewPage.typeCommand(`export ${varName}="${varValue}"`);
-    await waitForShellPrompt(page);
+    // Set and verify environment variable
+    await executeCommandSequence(page, [`export ${varName}="${varValue}"`, `echo $${varName}`]);
 
-    // Echo the variable
-    await sessionViewPage.typeCommand(`echo $${varName}`);
-    await sessionViewPage.waitForOutput(varValue);
-
-    // Verify it's in the environment
-    await sessionViewPage.typeCommand('env | grep TEST_VAR');
-    await waitForShellPrompt(page);
-
-    // Just verify the output contains the variable name
-    const output = await sessionViewPage.getTerminalOutput();
+    // Get just the output of the echo command
+    const output = await getCommandOutput(page, 'env | grep TEST_VAR');
     expect(output).toContain(varName);
     expect(output).toContain(varValue);
   });
 
-  test('should handle terminal resize', async ({ sessionViewPage, page }) => {
-    // Get initial viewport size
-    const initialViewport = page.viewportSize();
-    expect(initialViewport).toBeTruthy();
-    const initialWidth = initialViewport?.width || 1280;
-    const _initialHeight = initialViewport?.height || 720;
+  test('should handle terminal resize', async ({ page }) => {
+    // Get initial terminal dimensions
+    const initialDimensions = await page.evaluate(() => {
+      const terminal = document.querySelector('vibe-terminal') as any;
+      return {
+        cols: terminal?.cols || 80,
+        rows: terminal?.rows || 24,
+        actualCols: terminal?.actualCols || terminal?.cols || 80,
+        actualRows: terminal?.actualRows || terminal?.rows || 24,
+      };
+    });
 
     // Type something before resize
-    await sessionViewPage.typeCommand('echo "Before resize"');
-    await sessionViewPage.waitForOutput('Before resize');
+    await executeAndVerifyCommand(page, 'echo "Before resize"', 'Before resize');
 
-    // Resize the terminal to a different size
-    const newWidth = initialWidth === 1280 ? 1600 : 1200;
-    const newHeight = 800;
-    await sessionViewPage.resizeTerminal(newWidth, newHeight);
+    // Get current viewport and calculate a different size that will trigger terminal resize
+    const viewport = page.viewportSize();
+    const currentWidth = viewport?.width || 1280;
+    // Ensure we pick a different width - if current is 1200, use 1600, otherwise use 1200
+    const newWidth = currentWidth === 1200 ? 1600 : 1200;
+    const newHeight = 900;
 
-    // Verify viewport actually changed
-    const newViewport = page.viewportSize();
-    expect(newViewport).toBeTruthy();
-    expect(newViewport?.width).toBe(newWidth);
-    expect(newViewport?.height).toBe(newHeight);
-    expect(newViewport?.width).not.toBe(initialWidth);
+    // Resize the viewport to trigger terminal resize
+    await page.setViewportSize({ width: newWidth, height: newHeight });
 
-    // Verify the terminal element still exists after resize
-    const terminalExists = await page.locator('vibe-terminal').isVisible();
-    expect(terminalExists).toBe(true);
+    // Wait for terminal resize event to be processed
+    await page.waitForTimeout(100);
+
+    // Wait for terminal-resize event or dimension change
+    await page.waitForFunction(
+      ({ initial }) => {
+        const terminal = document.querySelector('vibe-terminal') as any;
+        const currentCols = terminal?.cols || 80;
+        const currentRows = terminal?.rows || 24;
+        const currentActualCols = terminal?.actualCols || currentCols;
+        const currentActualRows = terminal?.actualRows || currentRows;
+
+        // Check if any dimension changed
+        return (
+          currentCols !== initial.cols ||
+          currentRows !== initial.rows ||
+          currentActualCols !== initial.actualCols ||
+          currentActualRows !== initial.actualRows
+        );
+      },
+      { initial: initialDimensions },
+      { timeout: 2000 }
+    );
+
+    // Verify terminal dimensions changed
+    const newDimensions = await page.evaluate(() => {
+      const terminal = document.querySelector('vibe-terminal') as any;
+      return {
+        cols: terminal?.cols || 80,
+        rows: terminal?.rows || 24,
+        actualCols: terminal?.actualCols || terminal?.cols || 80,
+        actualRows: terminal?.actualRows || terminal?.rows || 24,
+      };
+    });
+
+    // At least one dimension should have changed
+    const dimensionsChanged =
+      newDimensions.cols !== initialDimensions.cols ||
+      newDimensions.rows !== initialDimensions.rows ||
+      newDimensions.actualCols !== initialDimensions.actualCols ||
+      newDimensions.actualRows !== initialDimensions.actualRows;
+
+    expect(dimensionsChanged).toBe(true);
 
     // The terminal should still show our previous output
-    const output = await sessionViewPage.getTerminalOutput();
-    expect(output).toContain('Before resize');
+    await assertTerminalContains(page, 'Before resize');
   });
 
-  test('should handle ANSI colors and formatting', async ({ sessionViewPage }) => {
-    // Test color output
-    await sessionViewPage.typeCommand('echo -e "\\033[31mRed Text\\033[0m"');
-    await sessionViewPage.waitForOutput('Red Text');
+  test('should handle ANSI colors and formatting', async ({ page }) => {
+    // Test with retry in case of timing issues
+    await executeCommandWithRetry(page, 'echo -e "\\033[31mRed Text\\033[0m"', 'Red Text');
 
-    // Test bold text
-    await sessionViewPage.typeCommand('echo -e "\\033[1mBold Text\\033[0m"');
-    await sessionViewPage.waitForOutput('Bold Text');
-
-    // The actual rendering verification would require checking computed styles
-    // For now, we just verify the commands execute without error
-    const output = await sessionViewPage.getTerminalOutput();
-    expect(output).toContain('Red Text');
-    expect(output).toContain('Bold Text');
+    await executeAndVerifyCommand(page, 'echo -e "\\033[1mBold Text\\033[0m"', 'Bold Text');
   });
 });

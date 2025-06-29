@@ -47,11 +47,11 @@ export const test = base.extend<TestFixtures>({
 
       // Wait for the app to fully initialize
       await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
-      
+
       // Wait for either create button or auth form to be visible
-      await page.waitForSelector('button[title="Create New Session"], auth-login', { 
-        state: 'visible', 
-        timeout: 10000 
+      await page.waitForSelector('button[title="Create New Session"], auth-login', {
+        state: 'visible',
+        timeout: 10000,
       });
 
       // Skip session cleanup during tests to avoid interfering with test scenarios

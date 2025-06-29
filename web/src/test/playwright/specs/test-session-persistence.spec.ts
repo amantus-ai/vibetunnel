@@ -1,110 +1,51 @@
-import { expect, test } from '../fixtures/test.fixture';
-import { navigateToHome } from '../helpers/navigation.helper';
-import { createSession, waitForSessionsToLoad } from '../helpers/session.helper';
-import { generateTestSessionName } from '../helpers/terminal.helper';
+import { test } from '../fixtures/test.fixture';
+import { assertSessionInList } from '../helpers/assertion.helper';
+import {
+  createAndNavigateToSession,
+  waitForSessionState,
+} from '../helpers/session-lifecycle.helper';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe('Session Persistence Tests', () => {
+  let sessionManager: TestSessionManager;
+
+  test.beforeEach(async ({ page }) => {
+    sessionManager = new TestSessionManager(page);
+  });
+
+  test.afterEach(async () => {
+    await sessionManager.cleanupAllSessions();
+  });
   test('should create and find a long-running session', async ({ page }) => {
-    // Wait for page to be ready
-    await page.waitForSelector('button[title="Create New Session"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
-
     // Create a session with a command that runs longer
-    const sessionName = generateTestSessionName();
-    const sessionId = await createSession(page, {
-      name: sessionName,
+    const { sessionName } = await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('long-running'),
       command: 'bash -c "sleep 30"', // Sleep for 30 seconds to keep session running
-      spawnWindow: false,
     });
-
-    console.log(`Created session ${sessionId} with name: ${sessionName}`);
 
     // Navigate back to home
-    await navigateToHome(page);
+    await page.goto('/');
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Wait for sessions to load
-    await waitForSessionsToLoad(page);
-
-    // Check the session list
-    const sessionCards = await page.locator('session-card').count();
-    console.log(`Found ${sessionCards} session cards`);
-
-    // Look for our specific session
-    const ourSession = page.locator('session-card').filter({ hasText: sessionName });
-    const isVisible = await ourSession.isVisible();
-    console.log(`Our session card is visible: ${isVisible}`);
-
-    // If not visible, check what's in the session list
-    if (!isVisible) {
-      const allSessionTexts = await page.locator('session-card').allTextContents();
-      console.log('All session cards:', allSessionTexts);
-
-      // Check if the API returns our session
-      const apiSessions = await page.evaluate(async () => {
-        const response = await fetch('/api/sessions');
-        return await response.json();
-      });
-
-      const ourApiSession = apiSessions.find((s: any) => s.name === sessionName);
-      console.log('Our session from API:', ourApiSession);
-    }
-
-    // Verify our session is visible
-    await expect(ourSession.first()).toBeVisible({ timeout: 5000 });
+    // Verify session is visible and running
+    await assertSessionInList(page, sessionName, { status: 'RUNNING' });
   });
 
   test('should handle session with error gracefully', async ({ page }) => {
-    // Wait for page to be ready
-    await page.waitForSelector('button[title="Create New Session"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
-
     // Create a session with a command that will fail
-    const sessionName = generateTestSessionName();
-    const sessionId = await createSession(page, {
-      name: sessionName,
+    const { sessionName } = await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('error-test'),
       command: 'this-command-does-not-exist',
-      spawnWindow: false,
     });
-
-    console.log(`Created session ${sessionId} with name: ${sessionName}`);
 
     // Navigate back to home
-    await navigateToHome(page);
-
-    // Wait for sessions to load
-    await waitForSessionsToLoad(page);
-
-    // With hideExitedSessions=false, we should see the exited session
-    const sessionCards = await page.locator('session-card').count();
-    console.log(`Found ${sessionCards} session cards (including exited)`);
-
-    const ourSession = page.locator('session-card').filter({ hasText: sessionName });
-    await expect(ourSession.first()).toBeVisible({ timeout: 5000 });
+    await page.goto('/');
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Wait for the session status to update to exited
-    // Sessions with non-existent commands take a moment to be marked as exited
-    await page.waitForFunction(
-      (name) => {
-        const cards = document.querySelectorAll('session-card');
-        const sessionCard = Array.from(cards).find((card) => card.textContent?.includes(name));
+    await waitForSessionState(page, sessionName, 'EXITED');
 
-        if (!sessionCard) return false;
-
-        // Check if the session shows as exited
-        const text = sessionCard.textContent?.toLowerCase() || '';
-        return text.includes('exited');
-      },
-      sessionName,
-      { timeout: 10000 } // Give it up to 10 seconds for the status to update
-    );
-
-    // Now verify it shows as exited
-    const sessionText = await ourSession.first().textContent();
-    console.log('Session card text:', sessionText);
-    expect(sessionText).toContain('exited');
+    // Verify it shows as exited
+    await assertSessionInList(page, sessionName, { status: 'EXITED' });
   });
 });

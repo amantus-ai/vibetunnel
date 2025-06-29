@@ -138,7 +138,7 @@ export class SessionListPage extends BasePage {
       () => {
         // Find the Create button using standard DOM methods
         const buttons = Array.from(document.querySelectorAll('button'));
-        const submitButton = buttons.find(btn => btn.textContent?.includes('Create'));
+        const submitButton = buttons.find((btn) => btn.textContent?.includes('Create'));
         // The form is ready if the Create button exists and is not disabled
         // Name is optional, so we don't check for it
         return submitButton && !submitButton.hasAttribute('disabled');
@@ -252,11 +252,11 @@ export class SessionListPage extends BasePage {
     // Scroll into view if needed
     await killButton.scrollIntoViewIfNeeded();
 
+    // Set up dialog handler BEFORE clicking
+    this.page.once('dialog', (dialog) => dialog.accept());
+
     // Click the button
     await killButton.click();
-
-    // Confirm in dialog if it appears
-    this.page.on('dialog', (dialog) => dialog.accept());
   }
 
   async waitForEmptyState() {

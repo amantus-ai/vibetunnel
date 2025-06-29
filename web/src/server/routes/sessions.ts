@@ -185,7 +185,6 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
       // Handle spawn_terminal logic
       const socketPath = '/tmp/vibetunnel-terminal.sock';
-      let shouldFallbackToNormalSpawn = false;
 
       if (spawn_terminal) {
         if (fs.existsSync(socketPath)) {
@@ -209,21 +208,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
               workingDir: resolvePath(workingDir, process.cwd()),
             });
 
-            if (!spawnResult.success) {
-              if (spawnResult.error?.includes('ECONNREFUSED')) {
-                logger.debug(
-                  'terminal spawn socket not available (ECONNREFUSED), falling back to normal spawn'
-                );
-                shouldFallbackToNormalSpawn = true;
-              } else {
-                logger.error('terminal spawn failed:', spawnResult.error);
-                res.status(500).json({
-                  error: 'Failed to spawn terminal',
-                  details: spawnResult.error || 'Unknown error',
-                });
-                return;
-              }
-            } else {
+            if (spawnResult.success) {
               // Success - wait a bit for the session to be created
               await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -231,33 +216,23 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
               logger.log(chalk.green(`terminal spawn requested for session ${sessionId}`));
               res.json({ sessionId, message: 'Terminal spawn requested' });
               return;
+            } else {
+              // Log the failure but continue to create a normal web session
+              logger.debug(
+                `terminal spawn failed (${spawnResult.error}), falling back to normal spawn`
+              );
             }
           } catch (error) {
+            // Log the error but continue to create a normal web session
             logger.error('error spawning terminal:', error);
-            res.status(500).json({
-              error: 'Failed to spawn terminal',
-              details: error instanceof Error ? error.message : 'Unknown error',
-            });
-            return;
           }
         } else {
           logger.debug(
             `spawn_terminal is true but socket doesn't exist at ${socketPath}, falling back to normal spawn`
           );
-          shouldFallbackToNormalSpawn = true;
         }
       } else {
         logger.debug('spawn_terminal is false, creating normal web session');
-      }
-
-      // If we should NOT fallback and spawn_terminal was requested, return error
-      if (spawn_terminal && !shouldFallbackToNormalSpawn) {
-        logger.error('spawn_terminal requested but unable to spawn and no fallback allowed');
-        res.status(500).json({
-          error: 'Terminal spawn not available',
-          details: 'Unable to connect to terminal spawn service',
-        });
-        return;
       }
 
       // Create local session

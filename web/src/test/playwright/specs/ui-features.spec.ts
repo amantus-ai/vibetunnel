@@ -1,26 +1,33 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { navigateToHome } from '../helpers/navigation.helper';
-import { generateTestSessionName } from '../helpers/terminal.helper';
+import { assertTerminalReady } from '../helpers/assertion.helper';
+import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { waitForModalClosed } from '../helpers/wait-strategies.helper';
 
 test.describe('UI Features', () => {
-  // Page navigation is handled by fixture
+  let sessionManager: TestSessionManager;
 
-  test.skip('should open and close file browser', async ({ page }) => {
-    // Create a session first
-    await page.click('button[title="Create New Session"]');
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
-
-    const spawnWindowToggle = page.locator('button[role="switch"]');
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
-    }
-
-    await page.fill('input[placeholder="My Session"]', generateTestSessionName());
-    await page.click('button:has-text("Create")');
-    await page.waitForURL(/\?session=/);
+  test.beforeEach(async ({ page }) => {
+    sessionManager = new TestSessionManager(page);
   });
 
-  test.skip('should navigate directories in file browser', async ({ page }) => {});
+  test.afterEach(async () => {
+    await sessionManager.cleanupAllSessions();
+  });
+
+  test.skip('should open and close file browser', async ({ page }) => {
+    // Create a session using helper
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('file-browser'),
+    });
+    await assertTerminalReady(page);
+
+    // Test file browser functionality would go here
+  });
+
+  test.skip('should navigate directories in file browser', async () => {
+    // Skipped test - no implementation
+  });
 
   test('should use quick start commands', async ({ page }) => {
     // Open create session dialog
@@ -56,9 +63,13 @@ test.describe('UI Features', () => {
     }
 
     // Create the session
-    await page.fill('input[placeholder="My Session"]', generateTestSessionName());
+    const sessionName = sessionManager.generateSessionName('quick-start');
+    await page.fill('input[placeholder="My Session"]', sessionName);
     await page.click('button:has-text("Create")');
     await page.waitForURL(/\?session=/);
+
+    // Track for cleanup
+    sessionManager.clearTracking();
   });
 
   test('should display notification options', async ({ page }) => {
@@ -75,10 +86,9 @@ test.describe('UI Features', () => {
   });
 
   test('should show session count in header', async ({ page }) => {
-    test.setTimeout(20000); // Increase timeout
+    test.setTimeout(20000);
 
-    // The header should show session count - look for text like "(5)"
-    // It's in the full-header component
+    // Wait for header to be visible
     await page.waitForSelector('full-header', { state: 'visible', timeout: 10000 });
 
     // Get initial count from header
@@ -87,22 +97,11 @@ test.describe('UI Features', () => {
     const initialText = await sessionCountElement.textContent();
     const initialCount = Number.parseInt(initialText?.match(/\d+/)?.[0] || '0');
 
-    // Create a session
-    await page.click('button[title="Create New Session"]');
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
-
-    const spawnWindowToggle = page.locator('button[role="switch"]');
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
-    }
-
-    await page.fill('input[placeholder="My Session"]', generateTestSessionName());
-    await page.click('button:has-text("Create")');
-    await page.waitForURL(/\?session=/, { timeout: 10000 });
+    // Create a tracked session
+    await sessionManager.createTrackedSession();
 
     // Go back to see updated count
-    await navigateToHome(page);
-    // Wait for session list to load
+    await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Get new count from header
@@ -129,8 +128,7 @@ test.describe('UI Features', () => {
 
     // Close dialog
     await page.keyboard.press('Escape');
-    // Wait for dialog to close
-    await page.locator('[role="dialog"]').waitFor({ state: 'hidden', timeout: 2000 });
+    await waitForModalClosed(page);
 
     // Reopen dialog
     await page.click('button[title="Create New Session"]');
@@ -146,24 +144,13 @@ test.describe('UI Features', () => {
   });
 
   test('should show terminal preview in session cards', async ({ page }) => {
-    test.setTimeout(20000); // Increase timeout
+    test.setTimeout(20000);
 
-    // Create a session
-    await page.click('button[title="Create New Session"]');
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
-
-    const spawnWindowToggle = page.locator('button[role="switch"]');
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
-    }
-
-    const sessionName = generateTestSessionName();
-    await page.fill('input[placeholder="My Session"]', sessionName);
-    await page.click('button:has-text("Create")');
-    await page.waitForURL(/\?session=/);
+    // Create a tracked session
+    const { sessionName } = await sessionManager.createTrackedSession();
 
     // Go back to list
-    await navigateToHome(page);
+    await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Find our session card
