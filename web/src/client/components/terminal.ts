@@ -75,6 +75,8 @@ export class Terminal extends LitElement {
   private container: HTMLElement | null = null;
   private resizeTimeout: NodeJS.Timeout | null = null;
   private scrollResizeTimeout: NodeJS.Timeout | null = null;
+  private cachedCharWidth: number | null = null;
+  private cachedFontSizeForCharWidth: number | null = null;
   private explicitSizeSet = false; // Flag to prevent auto-resize when size is explicitly set
 
   // Virtual scrolling optimization
@@ -161,6 +163,10 @@ export class Terminal extends LitElement {
       cancelAnimationFrame(this.momentumAnimation);
       this.momentumAnimation = null;
     }
+
+    // Clear cached values
+    this.cachedCharWidth = null;
+    this.cachedFontSizeForCharWidth = null;
 
     // Clear resize timeouts
     if (this.resizeTimeout) {
@@ -287,7 +293,12 @@ export class Terminal extends LitElement {
   }
 
   private measureCharacterWidth(): number {
-    if (!this.container) return 8;
+    // Return cached value if font size hasn't changed
+    if (this.cachedCharWidth !== null && this.cachedFontSizeForCharWidth === this.fontSize) {
+      return this.cachedCharWidth;
+    }
+
+    if (!this.container) return DEFAULT_CHAR_WIDTH;
 
     // Create temporary element with same styles as terminal content, attached to container
     const measureEl = document.createElement('div');
@@ -312,8 +323,15 @@ export class Terminal extends LitElement {
     const actualCharWidth = measureRect.width / this.cols;
     this.container.removeChild(measureEl);
 
-    // Ensure we return a valid number
-    return Number.isFinite(actualCharWidth) && actualCharWidth > 0 ? actualCharWidth : 8;
+    // Cache the result
+    const validCharWidth =
+      Number.isFinite(actualCharWidth) && actualCharWidth > 0
+        ? actualCharWidth
+        : DEFAULT_CHAR_WIDTH;
+    this.cachedCharWidth = validCharWidth;
+    this.cachedFontSizeForCharWidth = this.fontSize;
+
+    return validCharWidth;
   }
 
   public recalculateAndResize(): void {
@@ -350,6 +368,8 @@ export class Terminal extends LitElement {
     const newFontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, calculatedFontSize));
 
     this.fontSize = newFontSize;
+    // Invalidate char width cache when font size changes
+    this.cachedCharWidth = null;
 
     // Also fit rows to use full container height with the new font size
     const lineHeight = this.fontSize * LINE_HEIGHT_MULTIPLIER;
