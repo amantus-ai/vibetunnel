@@ -10,7 +10,7 @@ import type { ImagePicker } from '../../client/components/image-picker.js';
 // Mock auth client
 vi.mock('../../client/services/auth-client.js', () => ({
   authClient: {
-    getAuthHeader: () => ({ 'Authorization': 'Bearer test-token' }),
+    getAuthHeader: () => ({ Authorization: 'Bearer test-token' }),
   },
 }));
 
@@ -63,7 +63,7 @@ describe('ImagePicker Component', () => {
 
     const progressText = element.querySelector('span');
     expect(progressText?.textContent).toContain('Uploading...');
-    
+
     const progressBar = element.querySelector('.bg-blue-500');
     expect(progressBar).toBeTruthy();
   });
@@ -74,9 +74,11 @@ describe('ImagePicker Component', () => {
     await element.updateComplete;
 
     const buttons = element.querySelectorAll('button');
-    const cameraButton = Array.from(buttons).find(btn => btn.textContent?.includes('Take Photo'));
-    const galleryButton = Array.from(buttons).find(btn => btn.textContent?.includes('Choose from Gallery'));
-    
+    const cameraButton = Array.from(buttons).find((btn) => btn.textContent?.includes('Take Photo'));
+    const galleryButton = Array.from(buttons).find((btn) =>
+      btn.textContent?.includes('Choose from Gallery')
+    );
+
     expect(cameraButton).toBeTruthy();
     expect(galleryButton).toBeTruthy();
   });
@@ -89,11 +91,11 @@ describe('ImagePicker Component', () => {
     element.addEventListener('image-cancel', cancelEventSpy);
 
     const buttons = element.querySelectorAll('button');
-    const cancelButton = Array.from(buttons).find(btn => btn.textContent?.includes('Cancel'));
-    
+    const cancelButton = Array.from(buttons).find((btn) => btn.textContent?.includes('Cancel'));
+
     expect(cancelButton).toBeTruthy();
     cancelButton?.click();
-    
+
     expect(cancelEventSpy).toHaveBeenCalledOnce();
   });
 
@@ -106,9 +108,9 @@ describe('ImagePicker Component', () => {
 
     const backdrop = element.querySelector('.fixed');
     expect(backdrop).toBeTruthy();
-    
+
     backdrop?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    
+
     expect(cancelEventSpy).toHaveBeenCalledOnce();
   });
 
@@ -121,9 +123,9 @@ describe('ImagePicker Component', () => {
 
     const modal = element.querySelector('.bg-white');
     expect(modal).toBeTruthy();
-    
+
     modal?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    
+
     expect(cancelEventSpy).not.toHaveBeenCalled();
   });
 
@@ -133,8 +135,8 @@ describe('ImagePicker Component', () => {
     await element.updateComplete;
 
     const buttons = element.querySelectorAll('button');
-    const cancelButton = Array.from(buttons).find(btn => btn.textContent?.includes('Cancel'));
-    
+    const cancelButton = Array.from(buttons).find((btn) => btn.textContent?.includes('Cancel'));
+
     expect(cancelButton?.hasAttribute('disabled')).toBe(true);
   });
 
@@ -148,11 +150,12 @@ describe('ImagePicker Component', () => {
     element.visible = true;
     await element.updateComplete;
 
-    const cameraButton = Array.from(element.querySelectorAll('button'))
-      .find(btn => btn.textContent?.includes('Take Photo'));
-    
+    const cameraButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('Take Photo')
+    );
+
     expect(cameraButton).toBeTruthy();
-    
+
     // Mock file input
     const mockFileInput = {
       capture: '',
@@ -170,11 +173,12 @@ describe('ImagePicker Component', () => {
     element.visible = true;
     await element.updateComplete;
 
-    const galleryButton = Array.from(element.querySelectorAll('button'))
-      .find(btn => btn.textContent?.includes('Choose from Gallery'));
-    
+    const galleryButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('Choose from Gallery')
+    );
+
     expect(galleryButton).toBeTruthy();
-    
+
     // Mock file input
     const mockFileInput = {
       removeAttribute: vi.fn(),
@@ -190,10 +194,59 @@ describe('ImagePicker Component', () => {
 
   it('should clean up file input on disconnect', () => {
     const initialInputCount = document.querySelectorAll('input[type="file"]').length;
-    
+
     element.remove();
-    
+
     const finalInputCount = document.querySelectorAll('input[type="file"]').length;
     expect(finalInputCount).toBeLessThan(initialInputCount);
+  });
+
+  it('should have uploadFile method for programmatic uploads', () => {
+    expect(typeof element.uploadFile).toBe('function');
+  });
+
+  it('should reject non-image files in uploadFile method', async () => {
+    const textFile = new File(['test'], 'test.txt', { type: 'text/plain' });
+
+    await expect(element.uploadFile(textFile)).rejects.toThrow('Only image files are allowed');
+  });
+
+  it('should accept image files in uploadFile method', async () => {
+    // Mock the XMLHttpRequest for this test
+    const mockXHR = {
+      upload: { addEventListener: vi.fn() },
+      addEventListener: vi.fn(),
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+      status: 200,
+      responseText: JSON.stringify({
+        success: true,
+        filename: 'test.png',
+        originalName: 'test.png',
+        size: 100,
+        mimetype: 'image/png',
+        path: '/path/to/test.png',
+        relativePath: 'uploads/test.png',
+      }),
+    };
+
+    // @ts-ignore
+    global.XMLHttpRequest = vi.fn(() => mockXHR);
+
+    const imageFile = new File(['fake image'], 'test.png', { type: 'image/png' });
+
+    const imageSelectedSpy = vi.fn();
+    element.addEventListener('image-selected', imageSelectedSpy);
+
+    const uploadPromise = element.uploadFile(imageFile);
+
+    // Simulate successful upload
+    const loadHandler = mockXHR.addEventListener.mock.calls.find((call) => call[0] === 'load')[1];
+    loadHandler();
+
+    await uploadPromise;
+
+    expect(imageSelectedSpy).toHaveBeenCalledOnce();
   });
 });

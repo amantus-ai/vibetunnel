@@ -76,6 +76,7 @@ export class SessionView extends LitElement {
   @state() private customWidth = '';
   @state() private showFileBrowser = false;
   @state() private showImagePicker = false;
+  @state() private isDragOver = false;
   @state() private terminalFontSize = 14;
   @state() private terminalContainerHeight = '100%';
 
@@ -337,10 +338,22 @@ export class SessionView extends LitElement {
 
     // Set up lifecycle (replaces the extracted lifecycle logic)
     this.lifecycleEventManager.setupLifecycle();
+
+    // Add drag & drop and paste event listeners
+    this.addEventListener('dragover', this.handleDragOver.bind(this));
+    this.addEventListener('dragleave', this.handleDragLeave.bind(this));
+    this.addEventListener('drop', this.handleDrop.bind(this));
+    document.addEventListener('paste', this.handlePaste.bind(this));
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+
+    // Remove drag & drop and paste event listeners
+    this.removeEventListener('dragover', this.handleDragOver.bind(this));
+    this.removeEventListener('dragleave', this.handleDragLeave.bind(this));
+    this.removeEventListener('drop', this.handleDrop.bind(this));
+    document.removeEventListener('paste', this.handlePaste.bind(this));
 
     // Clear any pending timeout
     if (this.createHiddenInputTimeout) {
@@ -764,6 +777,92 @@ export class SessionView extends LitElement {
     this.dispatchEvent(new CustomEvent('error', { detail: error }));
   }
 
+  // Drag & Drop handlers
+  private handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Check if the drag contains files
+    if (e.dataTransfer?.types.includes('Files')) {
+      this.isDragOver = true;
+    }
+  }
+
+  private handleDragLeave(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Only hide drag overlay if we're leaving the main container
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      this.isDragOver = false;
+    }
+  }
+
+  private handleDrop(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDragOver = false;
+
+    const files = Array.from(e.dataTransfer?.files || []);
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+
+    if (imageFiles.length === 0) {
+      logger.warn('No image files found in drop');
+      return;
+    }
+
+    // Upload the first image file (or we could upload all of them)
+    this.uploadImageFile(imageFiles[0]);
+  }
+
+  // Paste handler
+  private handlePaste(e: ClipboardEvent) {
+    // Only handle paste if session view is focused and no modal is open
+    if (this.showFileBrowser || this.showImagePicker || this.showMobileInput) {
+      return;
+    }
+
+    const items = Array.from(e.clipboardData?.items || []);
+    const imageItems = items.filter((item) => item.type.startsWith('image/'));
+
+    if (imageItems.length === 0) {
+      return; // Let normal paste handling continue
+    }
+
+    e.preventDefault(); // Prevent default paste behavior for images
+
+    const imageItem = imageItems[0];
+    const file = imageItem.getAsFile();
+
+    if (file) {
+      logger.log('Image pasted from clipboard');
+      this.uploadImageFile(file);
+    }
+  }
+
+  private async uploadImageFile(file: File) {
+    try {
+      // Get the image picker component and use its upload method
+      const imagePicker = this.querySelector('image-picker') as any;
+      if (imagePicker && typeof imagePicker.uploadFile === 'function') {
+        await imagePicker.uploadFile(file);
+      } else {
+        logger.error('Image picker component not found or upload method not available');
+      }
+    } catch (error) {
+      logger.error('Failed to upload dropped/pasted image:', error);
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: error instanceof Error ? error.message : 'Failed to upload image',
+        })
+      );
+    }
+  }
+
   private async handleInsertPath(event: CustomEvent) {
     const { path, type } = event.detail;
     if (!path || !this.session) return;
@@ -1145,6 +1244,22 @@ export class SessionView extends LitElement {
           @image-error=${this.handleImageError}
           @image-cancel=${this.handleCloseImagePicker}
         ></image-picker>
+
+        <!-- Drag & Drop Overlay -->
+        ${
+          this.isDragOver
+            ? html`
+              <div class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 pointer-events-none">
+                <div class="bg-dark-bg-secondary border-2 border-dashed border-terminal-green text-terminal-green rounded-lg p-8 text-center">
+                  <div class="text-6xl mb-4">📁</div>
+                  <div class="text-xl font-semibold mb-2">Drop images here</div>
+                  <div class="text-sm opacity-80">Images will be uploaded and the path sent to terminal</div>
+                  <div class="text-xs opacity-60 mt-2">Or press CMD+V to paste from clipboard</div>
+                </div>
+              </div>
+            `
+            : ''
+        }
       </div>
     `;
   }
