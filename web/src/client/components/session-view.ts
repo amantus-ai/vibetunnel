@@ -661,15 +661,53 @@ export class SessionView extends LitElement {
     const terminal = this.querySelector('vibe-terminal') as Terminal;
     if (terminal) {
       terminal.maxCols = newMaxCols;
+      // Mark that user has manually selected a width
+      terminal.setUserOverrideWidth(true);
       // Trigger a resize to apply the new constraint
       terminal.requestUpdate();
+    } else {
+      logger.warn('Terminal component not found when setting width');
     }
   }
 
   private getCurrentWidthLabel(): string {
+    const terminal = this.querySelector('vibe-terminal') as Terminal;
+
+    // Only apply width restrictions to tunneled sessions (those with 'fwd_' prefix)
+    const isTunneledSession = this.session?.id?.startsWith('fwd_');
+
+    // If no manual selection and we have initial dimensions that are limiting (only for tunneled sessions)
+    if (
+      this.terminalMaxCols === 0 &&
+      terminal?.initialCols > 0 &&
+      !terminal.userOverrideWidth &&
+      isTunneledSession
+    ) {
+      return `≤${terminal.initialCols}`; // Shows "≤120" to indicate limited to session width
+    }
+
     if (this.terminalMaxCols === 0) return '∞';
     const commonWidth = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
     return commonWidth ? commonWidth.label : this.terminalMaxCols.toString();
+  }
+
+  private getWidthTooltip(): string {
+    const terminal = this.querySelector('vibe-terminal') as Terminal;
+
+    // Only apply width restrictions to tunneled sessions (those with 'fwd_' prefix)
+    const isTunneledSession = this.session?.id?.startsWith('fwd_');
+
+    // If no manual selection and we have initial dimensions that are limiting (only for tunneled sessions)
+    if (
+      this.terminalMaxCols === 0 &&
+      terminal?.initialCols > 0 &&
+      !terminal.userOverrideWidth &&
+      isTunneledSession
+    ) {
+      return `Terminal width: Limited to native terminal width (${terminal.initialCols} columns)`;
+    }
+
+    return `Terminal width: ${this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`}`;
   }
 
   private handleFontSizeChange(newSize: number) {
@@ -854,6 +892,8 @@ export class SessionView extends LitElement {
           .terminalFontSize=${this.terminalFontSize}
           .customWidth=${this.customWidth}
           .showWidthSelector=${this.showWidthSelector}
+          .widthLabel=${this.getCurrentWidthLabel()}
+          .widthTooltip=${this.getWidthTooltip()}
           .onBack=${() => this.handleBack()}
           .onSidebarToggle=${() => this.handleSidebarToggle()}
           .onOpenFileBrowser=${() => this.handleOpenFileBrowser()}
@@ -898,6 +938,8 @@ export class SessionView extends LitElement {
             .fontSize=${this.terminalFontSize}
             .fitHorizontally=${false}
             .maxCols=${this.terminalMaxCols}
+            .initialCols=${this.session?.initialCols || 0}
+            .initialRows=${this.session?.initialRows || 0}
             .disableClick=${this.isMobile && this.useDirectKeyboard}
             .hideScrollButton=${this.showQuickKeys}
             class="w-full h-full p-0 m-0"

@@ -35,8 +35,11 @@ export class Terminal extends LitElement {
   @property({ type: Number }) maxCols = 0; // 0 means no limit
   @property({ type: Boolean }) disableClick = false; // Disable click handling (for mobile direct keyboard)
   @property({ type: Boolean }) hideScrollButton = false; // Hide scroll-to-bottom button
+  @property({ type: Number }) initialCols = 0; // Initial terminal width from session creation
+  @property({ type: Number }) initialRows = 0; // Initial terminal height from session creation
 
   private originalFontSize: number = 14;
+  userOverrideWidth = false; // Track if user manually selected a width (public for session-view access)
 
   @state() private terminal: XtermTerminal | null = null;
   private _viewportY = 0; // Current scroll position in pixels
@@ -61,6 +64,7 @@ export class Terminal extends LitElement {
 
   private container: HTMLElement | null = null;
   private resizeTimeout: NodeJS.Timeout | null = null;
+  private explicitSizeSet = false; // Flag to prevent auto-resize when size is explicitly set
 
   // Virtual scrolling optimization
   private renderPending = false;
@@ -106,13 +110,45 @@ export class Terminal extends LitElement {
 
     // Check for debug mode
     this.debugMode = new URLSearchParams(window.location.search).has('debug');
+
+    // Restore user override preference if we have a sessionId
+    if (this.sessionId) {
+      try {
+        const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
+        if (stored !== null) {
+          this.userOverrideWidth = stored === 'true';
+        }
+      } catch (error) {
+        // localStorage might be unavailable (e.g., private browsing mode)
+        logger.warn('Failed to load terminal width preference from localStorage:', error);
+      }
+    }
   }
 
   updated(changedProperties: PropertyValues) {
+    // Load user width override preference when sessionId changes
+    if (changedProperties.has('sessionId') && this.sessionId) {
+      try {
+        const stored = localStorage.getItem(`terminal-width-override-${this.sessionId}`);
+        if (stored !== null) {
+          this.userOverrideWidth = stored === 'true';
+          // Apply the loaded preference immediately
+          if (this.container) {
+            this.fitTerminal();
+          }
+        }
+      } catch (error) {
+        // localStorage might be unavailable (e.g., private browsing mode)
+        logger.warn('Failed to load terminal width preference from localStorage:', error);
+      }
+    }
+
     if (changedProperties.has('cols') || changedProperties.has('rows')) {
-      if (this.terminal) {
+      if (this.terminal && !this.explicitSizeSet) {
         this.reinitializeTerminal();
       }
+      // Reset the flag after processing
+      this.explicitSizeSet = false;
     }
     if (changedProperties.has('fontSize')) {
       // Store original font size when it changes (but not during horizontal fitting)
@@ -142,6 +178,24 @@ export class Terminal extends LitElement {
   disconnectedCallback() {
     this.cleanup();
     super.disconnectedCallback();
+  }
+
+  // Method to set user override when width is manually selected
+  setUserOverrideWidth(override: boolean) {
+    this.userOverrideWidth = override;
+    // Persist the preference
+    if (this.sessionId) {
+      try {
+        localStorage.setItem(`terminal-width-override-${this.sessionId}`, String(override));
+      } catch (error) {
+        // localStorage might be unavailable or quota exceeded
+        logger.warn('Failed to save terminal width preference to localStorage:', error);
+      }
+    }
+    // Trigger a resize to apply the new setting
+    if (this.container) {
+      this.fitTerminal();
+    }
   }
 
   private cleanup() {
@@ -346,9 +400,31 @@ export class Terminal extends LitElement {
 
       // Ensure charWidth is valid before division
       const safeCharWidth = Number.isFinite(charWidth) && charWidth > 0 ? charWidth : 8; // Default char width
-      const calculatedCols = Math.max(20, Math.floor(containerWidth / safeCharWidth)) - 1; // This -1 should not be needed, but it is...
-      // Apply maxCols constraint if set (0 means no limit)
-      this.cols = this.maxCols > 0 ? Math.min(calculatedCols, this.maxCols) : calculatedCols;
+      // Subtract 1 to prevent horizontal scrollbar due to rounding/border issues
+      const calculatedCols = Math.max(20, Math.floor(containerWidth / safeCharWidth)) - 1;
+
+      // Apply constraints in order of priority:
+      // 1. If user has manually selected a specific width (maxCols > 0), use that as the limit
+      // 2. If user has explicitly selected "unlimited" (maxCols = 0 with userOverrideWidth), use full width
+      // 3. For tunneled sessions (fwd_*), if we have initial dimensions and no user override, limit to initial width
+      // 4. Otherwise, use calculated width (unlimited)
+
+      // Check if this is a tunneled session (from vt command)
+      const isTunneledSession = this.sessionId.startsWith('fwd_');
+
+      if (this.maxCols > 0) {
+        // User has manually selected a specific width limit
+        this.cols = Math.min(calculatedCols, this.maxCols);
+      } else if (this.userOverrideWidth) {
+        // User has explicitly selected "unlimited" - use full width
+        this.cols = calculatedCols;
+      } else if (this.initialCols > 0 && isTunneledSession) {
+        // Only apply initial width restriction for tunneled sessions
+        this.cols = Math.min(calculatedCols, this.initialCols);
+      } else {
+        // No constraints - use full width (for frontend-created sessions or sessions without initial dimensions)
+        this.cols = calculatedCols;
+      }
       this.rows = Math.max(6, Math.floor(containerHeight / lineHeight));
       this.actualRows = this.rows;
 
@@ -962,13 +1038,22 @@ export class Terminal extends LitElement {
     this.cols = cols;
     this.rows = rows;
 
-    if (!this.terminal) return;
+    if (!this.terminal) {
+      // Don't set explicitSizeSet if terminal isn't ready
+      // This allows reinitializeTerminal to run later when terminal is available
+      return;
+    }
+
+    // Set flag to prevent auto-resize in updated() lifecycle
+    // Only set this AFTER confirming terminal exists
+    this.explicitSizeSet = true;
 
     this.queueRenderOperation(() => {
       if (!this.terminal) return;
 
       this.terminal.resize(cols, rows);
-      this.fitTerminal();
+      // Don't call fitTerminal here - when explicitly setting size,
+      // we shouldn't recalculate based on container dimensions
       this.requestUpdate();
     });
   }
