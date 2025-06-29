@@ -18,6 +18,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from './session-list.js';
 import './terminal.js';
 import './file-browser.js';
+import './image-picker.js';
 import './clickable-path.js';
 import './terminal-quick-keys.js';
 import './session-view/mobile-input-overlay.js';
@@ -74,6 +75,7 @@ export class SessionView extends LitElement {
   @state() private showWidthSelector = false;
   @state() private customWidth = '';
   @state() private showFileBrowser = false;
+  @state() private showImagePicker = false;
   @state() private terminalFontSize = 14;
   @state() private terminalContainerHeight = '100%';
 
@@ -728,6 +730,40 @@ export class SessionView extends LitElement {
     this.showFileBrowser = false;
   }
 
+  private handleOpenImagePicker() {
+    this.showImagePicker = true;
+  }
+
+  private handleCloseImagePicker() {
+    this.showImagePicker = false;
+  }
+
+  private async handleImageSelected(event: CustomEvent) {
+    const { path } = event.detail;
+    if (!path || !this.session) return;
+
+    // Close the image picker
+    this.showImagePicker = false;
+
+    // Escape the path for shell use (wrap in quotes if it contains spaces)
+    const escapedPath = path.includes(' ') ? `"${path}"` : path;
+
+    // Send the path to the terminal
+    if (this.inputManager) {
+      await this.inputManager.sendInputText(escapedPath);
+    }
+
+    logger.log(`inserted image path into terminal: ${escapedPath}`);
+  }
+
+  private handleImageError(event: CustomEvent) {
+    const error = event.detail;
+    logger.error('Image picker error:', error);
+
+    // Show error to user (you might want to implement a toast notification system)
+    this.dispatchEvent(new CustomEvent('error', { detail: error }));
+  }
+
   private async handleInsertPath(event: CustomEvent) {
     const { path, type } = event.detail;
     if (!path || !this.session) return;
@@ -890,6 +926,7 @@ export class SessionView extends LitElement {
           .onBack=${() => this.handleBack()}
           .onSidebarToggle=${() => this.handleSidebarToggle()}
           .onOpenFileBrowser=${() => this.handleOpenFileBrowser()}
+          .onOpenImagePicker=${() => this.handleOpenImagePicker()}
           .onMaxWidthToggle=${() => this.handleMaxWidthToggle()}
           .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
@@ -1013,6 +1050,13 @@ export class SessionView extends LitElement {
                   </button>
                   <button
                     class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                    @click=${this.handleOpenImagePicker}
+                    title="Upload image"
+                  >
+                    📷
+                  </button>
+                  <button
+                    class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
                     @click=${this.handleCtrlAlphaToggle}
                   >
                     CTRL
@@ -1093,6 +1137,14 @@ export class SessionView extends LitElement {
           @browser-cancel=${this.handleCloseFileBrowser}
           @insert-path=${this.handleInsertPath}
         ></file-browser>
+
+        <!-- Image Picker Modal -->
+        <image-picker
+          .visible=${this.showImagePicker}
+          @image-selected=${this.handleImageSelected}
+          @image-error=${this.handleImageError}
+          @image-cancel=${this.handleCloseImagePicker}
+        ></image-picker>
       </div>
     `;
   }
