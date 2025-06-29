@@ -137,7 +137,7 @@ export class Terminal extends LitElement {
 
     // Handle sessionId changes
     if (changedProperties.has('sessionId')) {
-      const oldSessionId = changedProperties.get('sessionId') as string;
+      const oldSessionId = changedProperties.get('sessionId') as string | undefined;
 
       // Clear terminal when sessionId changes (including to empty string)
       if (oldSessionId !== this.sessionId) {
@@ -167,14 +167,9 @@ export class Terminal extends LitElement {
         }
 
         if (this.terminal) {
-          // Clear the terminal buffer completely
-          this.terminal.clear();
-          this.terminal.reset();
-
-          // CRITICAL: Write a single space to ensure the buffer has at least one line
-          // This forces xterm to have content that we can render
-          this.terminal.write(' ');
-          this.terminal.write('\r'); // Return to start of line
+          // CRITICAL: Dispose of the old terminal completely to ensure no content leaks
+          this.terminal.dispose();
+          this.terminal = null;
 
           // Clear any pending operations
           this.operationQueue = [];
@@ -189,13 +184,8 @@ export class Terminal extends LitElement {
           // Reset viewport to top
           this.viewportY = 0;
 
-          // Force immediate synchronous render of empty viewport
-          this.renderBuffer();
-
-          // Force another reflow after render
-          if (this.container) {
-            void this.container.offsetHeight;
-          }
+          // Force the terminal to be recreated on next initialization
+          logger.log(`[${this.terminalInstanceId}] Disposed terminal for session switch`);
         }
 
         // Allow writes again after ensuring DOM is updated
@@ -338,17 +328,11 @@ export class Terminal extends LitElement {
         throw error;
       }
 
-      // Only setup terminal if we don't have one already
-      // This prevents unnecessary re-initialization on session switches
-      if (!this.terminal) {
-        await this.setupTerminal();
-        this.setupResize();
-        this.setupScrolling();
-      } else {
-        logger.log('Terminal already initialized, skipping setup');
-        // Clear the terminal when re-initialized with a different session
-        this.clear();
-      }
+      // Always create a new terminal when session changes to ensure clean state
+      // This prevents content from bleeding between sessions
+      await this.setupTerminal();
+      this.setupResize();
+      this.setupScrolling();
     } catch (error: unknown) {
       logger.error('failed to initialize terminal:', error);
       this.requestUpdate();
@@ -373,14 +357,18 @@ export class Terminal extends LitElement {
 
   private async setupTerminal() {
     try {
-      // Only create a new terminal if we don't have one
-      // We want to reuse the same terminal instance across session switches
+      // Dispose of any existing terminal first
       if (this.terminal) {
-        logger.log('Reusing existing terminal instance');
-        return;
+        logger.log(
+          `[${this.terminalInstanceId}] Disposing existing terminal before creating new one`
+        );
+        this.terminal.dispose();
+        this.terminal = null;
       }
 
-      logger.log('Creating new XtermTerminal instance');
+      logger.log(
+        `[${this.terminalInstanceId}] Creating new XtermTerminal instance for session ${this.sessionId}`
+      );
       // Create regular terminal but don't call .open() to make it headless
       this.terminal = new XtermTerminal({
         cursorBlink: true,
