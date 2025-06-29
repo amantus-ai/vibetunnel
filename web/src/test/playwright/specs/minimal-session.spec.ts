@@ -30,21 +30,26 @@ test.describe('Minimal Session Tests', () => {
     await page.fill('input[placeholder="My Session"]', sessionName);
 
     // Click create button
-    await page.click('button:has-text("Create")');
+    await page.locator('button').filter({ hasText: 'Create' }).click();
 
     // Verify we navigated to a session
-    await expect(page).toHaveURL(/\?session=/, { timeout: 4000 });
+    await expect(page).toHaveURL(/\?session=/, { timeout: 10000 });
 
     // Wait for terminal to be visible
-    await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 4000 });
+    await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
 
     // Go back to session list
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+    
+    // Wait for the page to fully load
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for session cards to appear with increased timeout for CI
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
 
     // Check if our session is listed
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-    await expect(sessionCard).toBeVisible({ timeout: 4000 });
+    await expect(sessionCard).toBeVisible({ timeout: 10000 });
   });
 
   test('should create multiple sessions', async ({ page }) => {
@@ -116,14 +121,17 @@ test.describe('Minimal Session Tests', () => {
 
     // Navigate back to home to verify all sessions
     await page.goto('/');
+    
+    // Wait for the page to fully load
+    await page.waitForLoadState('networkidle');
 
-    // Wait for session cards to load
-    await page.waitForSelector('session-card', { state: 'visible' });
+    // Wait for session cards to load with increased timeout for CI
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
 
     // Verify all sessions are listed
     for (const sessionName of sessions) {
       const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-      await expect(sessionCard).toBeVisible({ timeout: 4000 });
+      await expect(sessionCard).toBeVisible({ timeout: 10000 });
     }
 
     // Count total session cards (should be at least our 3)

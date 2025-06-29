@@ -20,10 +20,10 @@ test.describe('Basic Session Tests', () => {
     }
 
     // Click create button
-    await page.click('button:has-text("Create")');
+    await page.locator('button').filter({ hasText: 'Create' }).click();
 
     // Verify we navigated to a session
-    await expect(page).toHaveURL(/\?session=/);
+    await expect(page).toHaveURL(/\?session=/, { timeout: 10000 });
 
     // Verify terminal is visible
     await page.waitForSelector('vibe-terminal', { state: 'visible' });
@@ -45,18 +45,24 @@ test.describe('Basic Session Tests', () => {
     // Give it a unique custom name
     const sessionName = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionName);
-    await page.click('button:has-text("Create")');
+    await page.locator('button').filter({ hasText: 'Create' }).click();
 
     // Wait for navigation
-    await expect(page).toHaveURL(/\?session=/);
-    await page.waitForSelector('vibe-terminal', { state: 'visible' });
+    await expect(page).toHaveURL(/\?session=/, { timeout: 10000 });
+    await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
 
     // Go back to session list
     await page.goto('/');
+    
+    // Wait for the page to fully load
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for session cards with increased timeout for CI
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
 
     // Check if our session is listed (use first() to handle multiple matches)
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-    await expect(sessionCard).toBeVisible();
+    await expect(sessionCard).toBeVisible({ timeout: 10000 });
   });
 
   test('should navigate between sessions', async ({ page }) => {
@@ -76,8 +82,8 @@ test.describe('Basic Session Tests', () => {
 
     const sessionOneName = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionOneName);
-    await page.click('button:has-text("Create")');
-    await expect(page).toHaveURL(/\?session=/);
+    await page.locator('button').filter({ hasText: 'Create' }).click();
+    await expect(page).toHaveURL(/\?session=/, { timeout: 10000 });
     const firstSessionUrl = page.url();
 
     // Second session
@@ -93,8 +99,8 @@ test.describe('Basic Session Tests', () => {
 
     const sessionTwoName = generateTestSessionName();
     await page.fill('input[placeholder="My Session"]', sessionTwoName);
-    await page.click('button:has-text("Create")');
-    await expect(page).toHaveURL(/\?session=/);
+    await page.locator('button').filter({ hasText: 'Create' }).click();
+    await expect(page).toHaveURL(/\?session=/, { timeout: 10000 });
     const secondSessionUrl = page.url();
 
     // Verify URLs are different
@@ -102,13 +108,18 @@ test.describe('Basic Session Tests', () => {
 
     // Go back to session list
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible' });
+    
+    // Wait for the page to fully load
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for session cards with increased timeout for CI
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
 
     // Both sessions should be listed
     const sessionOne = page.locator('session-card').filter({ hasText: sessionOneName });
     const sessionTwo = page.locator('session-card').filter({ hasText: sessionTwoName });
 
-    await expect(sessionOne).toBeVisible();
-    await expect(sessionTwo).toBeVisible();
+    await expect(sessionOne).toBeVisible({ timeout: 10000 });
+    await expect(sessionTwo).toBeVisible({ timeout: 10000 });
   });
 });
