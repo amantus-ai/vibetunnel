@@ -196,11 +196,14 @@ export class Terminal extends LitElement {
           logger.log(`[${this.terminalInstanceId}] Session switch complete, writes enabled`);
 
           // CRITICAL: Re-initialize terminal after disposal for the new session
+          // Add a small delay to ensure all cleanup is complete and no stale data is in flight
           if (!this.terminal && this.sessionId) {
-            logger.log(
-              `[${this.terminalInstanceId}] Re-initializing terminal for new session ${this.sessionId}`
-            );
-            this.initializeTerminal();
+            setTimeout(() => {
+              logger.log(
+                `[${this.terminalInstanceId}] Re-initializing terminal for new session ${this.sessionId}`
+              );
+              this.initializeTerminal();
+            }, 50); // 50ms delay to ensure cleanup is complete
           }
         });
       }
@@ -428,6 +431,14 @@ export class Terminal extends LitElement {
 
       // Set terminal size - don't call .open() to keep it headless
       this.terminal.resize(this.cols, this.rows);
+
+      // CRITICAL: Clear the buffer immediately after creation to ensure it's empty
+      // Some terminals might have default content or preserved state
+      this.terminal.clear();
+      this.terminal.reset();
+
+      // Write a single space to ensure buffer exists
+      this.terminal.write(' \r');
 
       // Initialize current render session ID
       this.currentRenderSessionId = this.sessionId;
@@ -874,6 +885,12 @@ export class Terminal extends LitElement {
     const buffer = this.terminal.buffer.active;
     const bufferLength = buffer.length;
     const lineHeight = this.fontSize * 1.2;
+
+    // CRITICAL: Double-check we're not in the middle of a session switch
+    if (this.isSessionSwitching) {
+      logger.warn(`[${this.terminalInstanceId}] Skipping render during session switch`);
+      return;
+    }
 
     // Debug logging
     logger.log(
