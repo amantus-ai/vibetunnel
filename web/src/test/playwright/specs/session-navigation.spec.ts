@@ -59,8 +59,9 @@ test.describe('Session Navigation', () => {
     await page.waitForURL(/\?session=/);
     const session1Url = page.url();
 
-    // Go back to list and create second session
-    await page.goto('/');
+    // Go back to list using UI navigation and create second session
+    await page.click('button:has(h1:has-text("VibeTunnel"))');
+    await page.waitForURL('/');
     await page.waitForSelector('session-card', { state: 'visible' });
 
     await page.click('button[title="Create New Session"]');

@@ -38,11 +38,13 @@ test.describe('Minimal Session Tests', () => {
     // Wait for terminal to be visible
     await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
 
-    // Go back to session list
-    await page.goto('/');
+    // Go back to session list using UI navigation instead of page.goto
+    // This better simulates real user behavior and maintains session state
+    await page.click('button:has(h1:has-text("VibeTunnel"))');
 
-    // Wait for the page to fully load
-    await page.waitForLoadState('networkidle');
+    // Wait for navigation to complete and session list to load
+    await page.waitForURL('/');
+    await page.waitForLoadState('domcontentloaded');
 
     // Wait for session cards to appear with increased timeout for CI
     await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
@@ -66,7 +68,9 @@ test.describe('Minimal Session Tests', () => {
       // Make sure we're on the home page before creating a session
       const currentUrl = page.url();
       if (currentUrl.includes('?session=')) {
-        await page.goto('/');
+        // Navigate back using UI instead of page.goto
+        await page.click('button:has(h1:has-text("VibeTunnel"))');
+        await page.waitForURL('/');
         await page.waitForSelector('button[title="Create New Session"]', {
           state: 'visible',
           timeout: 5000,
@@ -119,11 +123,12 @@ test.describe('Minimal Session Tests', () => {
       );
     }
 
-    // Navigate back to home to verify all sessions
-    await page.goto('/');
+    // Navigate back to home using UI navigation
+    await page.click('button:has(h1:has-text("VibeTunnel"))');
 
-    // Wait for the page to fully load
-    await page.waitForLoadState('networkidle');
+    // Wait for navigation to complete
+    await page.waitForURL('/');
+    await page.waitForLoadState('domcontentloaded');
 
     // Wait for session cards to load with increased timeout for CI
     await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
