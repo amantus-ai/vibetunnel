@@ -8,11 +8,11 @@ test.describe('Session Navigation', () => {
   test('should navigate between session list and session view', async ({ page }) => {
     test.setTimeout(15000); // Increase timeout
 
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
-
-    // Create a new session
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+    // Wait for create button to be visible
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 

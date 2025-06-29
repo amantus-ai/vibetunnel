@@ -41,8 +41,13 @@ test.describe('Advanced Session Management', () => {
     await killButton.click();
 
     // After killing, wait for the session to either be killed or hidden
-    // First wait a bit for the kill operation to start
-    await page.waitForTimeout(500);
+    // Wait for the kill request to complete
+    await page
+      .waitForResponse(
+        (response) => response.url().includes(`/api/sessions/`) && response.url().includes('/kill'),
+        { timeout: 5000 }
+      )
+      .catch(() => {});
 
     // The session might be immediately hidden after killing or still showing as killing
     await page
@@ -113,14 +118,14 @@ test.describe('Advanced Session Management', () => {
   test('should kill all sessions at once', async ({ page }) => {
     test.setTimeout(60000); // Increase timeout to 60s for flaky test
 
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
-
     // With clean slate from fixture, we can proceed directly
     // Create multiple sessions
     const sessionNames = [];
     for (let i = 0; i < 3; i++) {
-      await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+      await page.waitForSelector('button[title="Create New Session"]', {
+        state: 'visible',
+        timeout: 5000,
+      });
       await page.click('button[title="Create New Session"]', { timeout: 10000 });
       await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
@@ -156,8 +161,13 @@ test.describe('Advanced Session Management', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await killAllButton.click();
 
-    // Wait for a bit to let the kill process start
-    await page.waitForTimeout(1000);
+    // Wait for kill all API calls to complete
+    await page
+      .waitForResponse(
+        (response) => response.url().includes('/api/sessions') && response.url().includes('/kill'),
+        { timeout: 5000 }
+      )
+      .catch(() => {});
 
     // Sessions might be hidden immediately or take time to transition
     // Wait for all sessions to either be hidden or show as exited
@@ -250,7 +260,10 @@ test.describe('Advanced Session Management', () => {
     await page.waitForTimeout(1000);
 
     // Create a session
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
@@ -293,7 +306,10 @@ test.describe('Advanced Session Management', () => {
     await page.waitForTimeout(1000);
 
     // Create a session with specific working directory
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
@@ -328,7 +344,10 @@ test.describe('Advanced Session Management', () => {
     await page.waitForTimeout(1000);
 
     // Create just 1 running session first
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
@@ -347,7 +366,10 @@ test.describe('Advanced Session Management', () => {
     await page.waitForSelector('session-card', { state: 'visible' });
 
     // Create a session and kill it
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
@@ -398,7 +420,9 @@ test.describe('Advanced Session Management', () => {
     expect(exitedVisible).toBe(true);
 
     // Running session should still be visible
-    await expect(page.locator('session-card').filter({ hasText: runningSessionName })).toBeVisible();
+    await expect(
+      page.locator('session-card').filter({ hasText: runningSessionName })
+    ).toBeVisible();
 
     // Since exited session is visible, verify it shows as exited
     await expect(
@@ -406,7 +430,9 @@ test.describe('Advanced Session Management', () => {
     ).toBeVisible();
 
     // Running session should still be visible
-    await expect(page.locator('session-card').filter({ hasText: runningSessionName })).toBeVisible();
+    await expect(
+      page.locator('session-card').filter({ hasText: runningSessionName })
+    ).toBeVisible();
 
     // The button should say "Hide Exited" since exited sessions are visible
     const hideExitedButton = page
@@ -438,7 +464,9 @@ test.describe('Advanced Session Management', () => {
     expect(exitedHidden).toBe(false);
 
     // Running session should still be visible
-    await expect(page.locator('session-card').filter({ hasText: runningSessionName })).toBeVisible();
+    await expect(
+      page.locator('session-card').filter({ hasText: runningSessionName })
+    ).toBeVisible();
 
     // The button should now say "Show Exited"
     const showExitedButton = page
@@ -470,6 +498,8 @@ test.describe('Advanced Session Management', () => {
     expect(exitedVisibleAgain).toBe(true);
 
     // Running session should still be visible
-    await expect(page.locator('session-card').filter({ hasText: runningSessionName })).toBeVisible();
+    await expect(
+      page.locator('session-card').filter({ hasText: runningSessionName })
+    ).toBeVisible();
   });
 });

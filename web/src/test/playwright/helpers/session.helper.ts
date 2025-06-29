@@ -73,10 +73,20 @@ export async function createSession(
 
   if (options.spawnWindow === true && !isSpawnWindowOn) {
     await spawnWindowToggle.click();
-    await page.waitForTimeout(100); // Wait for state to update
+    // Wait for toggle state to update
+    await page.waitForFunction(
+      () =>
+        document.querySelector('button[role="switch"]')?.getAttribute('aria-checked') === 'true',
+      { timeout: 1000 }
+    );
   } else if (options.spawnWindow === false && isSpawnWindowOn) {
     await spawnWindowToggle.click();
-    await page.waitForTimeout(100); // Wait for state to update
+    // Wait for toggle state to update
+    await page.waitForFunction(
+      () =>
+        document.querySelector('button[role="switch"]')?.getAttribute('aria-checked') === 'false',
+      { timeout: 1000 }
+    );
   }
 
   // Fill in the form
@@ -113,8 +123,19 @@ export async function createSession(
   // Wait for terminal to be ready
   await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
 
-  // Wait a bit more to ensure session is fully initialized
-  await page.waitForTimeout(1000);
+  // Wait for terminal to have content or structure indicating it's ready
+  await page.waitForFunction(
+    () => {
+      const terminal = document.querySelector('vibe-terminal');
+      return (
+        terminal &&
+        (terminal.textContent?.trim().length > 0 ||
+          !!terminal.shadowRoot ||
+          !!terminal.querySelector('.xterm'))
+      );
+    },
+    { timeout: 5000 }
+  );
 
   return sessionId;
 }

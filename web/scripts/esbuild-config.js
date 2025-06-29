@@ -2,6 +2,7 @@
  * ESBuild configuration for VibeTunnel web client
  */
 const { monacoPlugin } = require('./monaco-plugin.js');
+const { version } = require('../package.json');
 
 const commonOptions = {
   bundle: true,
@@ -19,6 +20,7 @@ const commonOptions = {
   },
   define: {
     'process.env.NODE_ENV': '"production"',
+    '__APP_VERSION__': JSON.stringify(version),
   },
   external: [],
   plugins: [monacoPlugin],
@@ -43,6 +45,7 @@ const devOptions = {
   define: {
     ...commonOptions.define,
     'process.env.NODE_ENV': '"development"',
+    '__APP_VERSION__': JSON.stringify(version),
   },
 };
 

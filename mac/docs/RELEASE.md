@@ -267,16 +267,25 @@ codesign --force --sign "Developer ID Application" --entitlements VibeTunnel.ent
 #### Web Version Out of Sync
 **Problem**: Web server shows different version than macOS app (e.g., "beta.3" when app is "beta.4").
 
-**Cause**: web/package.json was not updated when version.xcconfig was changed.
+**Cause**: web/package.json was not updated when BuildNumber.xcconfig was changed.
 
-**Solution**: Always update both files together:
-```bash
-# Update macOS version
-vim VibeTunnel/version.xcconfig
+**Solution**: 
+1. Update package.json to match BuildNumber.xcconfig:
+   ```bash
+   # Check current versions
+   grep MARKETING_VERSION VibeTunnel/version.xcconfig
+   grep "version" ../web/package.json
+   
+   # Update web version to match
+   vim ../web/package.json
+   ```
 
-# Update web version to match
-vim ../web/package.json
-```
+2. Validate sync before building:
+   ```bash
+   cd ../web && node scripts/validate-version-sync.js
+   ```
+
+**Note**: The web UI automatically displays the version from package.json (injected at build time).
 
 ### Common Sparkle Errors and Solutions
 

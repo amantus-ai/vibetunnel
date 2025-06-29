@@ -1,2 +1,3 @@
-// Client version - matches server version
-export const VERSION = '1.0.0';
+// Client version - injected from package.json at build time
+declare const __APP_VERSION__: string;
+export const VERSION = __APP_VERSION__;

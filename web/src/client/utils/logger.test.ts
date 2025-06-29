@@ -137,7 +137,9 @@ describe.sequential('Frontend Logger', () => {
       mockFetch.mockClear();
 
       // Record the initial number of log calls
-      const initialLogCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client').length;
+      const initialLogCalls = mockFetch.mock.calls.filter(
+        (call) => call[0] === '/api/logs/client'
+      ).length;
 
       logger.log('log message');
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -152,7 +154,7 @@ describe.sequential('Frontend Logger', () => {
       const allLogCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client');
       // Get only the calls made by this test
       const testLogCalls = allLogCalls.slice(initialLogCalls);
-      
+
       expect(testLogCalls).toHaveLength(3);
       expect(JSON.parse(testLogCalls[0][1].body).level).toBe('log');
       expect(JSON.parse(testLogCalls[1][1].body).level).toBe('warn');

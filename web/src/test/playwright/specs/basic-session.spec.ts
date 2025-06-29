@@ -8,11 +8,13 @@ test.describe('Basic Session Tests', () => {
   test('should create a new session', async ({ page }) => {
     // App is already loaded from fixture
 
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
+    // Wait for create button to be visible and ready
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
 
     // Click the create session button
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
 
     // Check if we're already in a session (quick create without modal)
@@ -25,8 +27,11 @@ test.describe('Basic Session Tests', () => {
 
     // Otherwise, wait for the modal
     try {
-      await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible', timeout: 2000 });
-      
+      await page.waitForSelector('input[placeholder="My Session"]', {
+        state: 'visible',
+        timeout: 2000,
+      });
+
       // IMPORTANT: Turn off spawn window to create web session
       const spawnWindowToggle = page.locator('button[role="switch"]');
       if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
@@ -41,7 +46,7 @@ test.describe('Basic Session Tests', () => {
 
       // Verify terminal is visible
       await page.waitForSelector('vibe-terminal', { state: 'visible' });
-    } catch (e) {
+    } catch (_e) {
       // If modal doesn't appear and we're not in a session, fail
       throw new Error('Expected either modal or immediate session creation');
     }
@@ -51,15 +56,16 @@ test.describe('Basic Session Tests', () => {
     // Create a session first
     await page.goto('/');
     await page.waitForSelector('vibetunnel-app', { state: 'attached' });
-    
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
-    
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+
+    // Wait for create button to be visible and ready
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
-    
+
     let sessionName = generateTestSessionName();
-    
+
     // Check if we're already in a session (quick create without modal)
     const currentUrl = page.url();
     if (!currentUrl.includes('?session=')) {
@@ -104,15 +110,15 @@ test.describe('Basic Session Tests', () => {
     await page.goto('/');
     await page.waitForSelector('vibetunnel-app', { state: 'attached' });
 
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
-
-    // First session
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+    // Wait for create button to be visible and ready
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
-    
+
     let sessionOneName = generateTestSessionName();
-    
+
     // Check if we're already in a session (quick create without modal)
     let currentUrl = page.url();
     if (!currentUrl.includes('?session=')) {
@@ -131,18 +137,21 @@ test.describe('Basic Session Tests', () => {
       // Quick create happened
       sessionOneName = 'zsh (~)';
     }
-    
+
     await expect(page).toHaveURL(/\?session=/, { timeout: 10000 });
     const firstSessionUrl = page.url();
 
     // Second session
     await navigateToHome(page);
-    await page.waitForTimeout(1000); // Wait for page to be ready
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+    // Wait for create button to be visible again after navigation
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
-    
+
     let sessionTwoName = generateTestSessionName();
-    
+
     // Check if we're already in a session (quick create without modal)
     currentUrl = page.url();
     if (!currentUrl.includes('?session=')) {
@@ -161,7 +170,7 @@ test.describe('Basic Session Tests', () => {
       // Quick create happened, just get a different identifier
       sessionTwoName = 'test-session';
     }
-    
+
     await expect(page).toHaveURL(/\?session=/, { timeout: 10000 });
     const secondSessionUrl = page.url();
 

@@ -88,11 +88,15 @@ export class SessionListPage extends BasePage {
     if (isSpawnWindowOn !== spawnWindow) {
       await spawnWindowToggle.click();
 
-      // Wait a moment for the UI to update
-      await this.page.waitForTimeout(200);
-
-      // Don't verify - just trust the click worked
-      // Some environments may have issues with the toggle state updating immediately
+      // Wait for the toggle state to update
+      await this.page.waitForFunction(
+        (expectedState) => {
+          const toggle = document.querySelector('button[role="switch"]');
+          return toggle?.getAttribute('aria-checked') === (expectedState ? 'true' : 'false');
+        },
+        spawnWindow,
+        { timeout: 1000 }
+      );
     }
 
     // Fill in the session name if provided
@@ -129,8 +133,19 @@ export class SessionListPage extends BasePage {
       }
     }
 
-    // Ensure form is ready for submission - just wait a moment
-    await this.page.waitForTimeout(200);
+    // Ensure form is ready for submission - wait for all inputs to be filled
+    await this.page.waitForFunction(
+      () => {
+        const nameInput = document.querySelector(
+          'input[placeholder="My Session"]'
+        ) as HTMLInputElement;
+        const submitButton = document.querySelector('button:has-text("Create")');
+        return (
+          nameInput && nameInput.value && submitButton && !submitButton.hasAttribute('disabled')
+        );
+      },
+      { timeout: 2000 }
+    );
 
     // Submit the form - click the Create button
     const submitButton = this.page

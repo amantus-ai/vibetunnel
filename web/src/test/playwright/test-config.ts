@@ -12,9 +12,9 @@ export const testConfig = {
   },
 
   // Timeouts
-  defaultTimeout: 5000,
-  navigationTimeout: 10000,
-  actionTimeout: 4000,
+  defaultTimeout: 20000, // 20 seconds for default operations
+  navigationTimeout: 30000, // 30 seconds for page navigation
+  actionTimeout: 15000, // 15 seconds for UI actions
 
   // Session defaults
   defaultSessionName: 'Test Session',

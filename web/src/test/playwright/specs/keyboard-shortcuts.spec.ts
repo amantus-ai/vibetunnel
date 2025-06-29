@@ -15,9 +15,6 @@ test.describe('Keyboard Shortcuts', () => {
   test('should open file browser with Cmd+O / Ctrl+O', async ({ page }) => {
     test.setTimeout(20000); // Increase timeout
 
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
-
     // Create a session first
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
@@ -113,11 +110,11 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should close modals with Escape', async ({ page }) => {
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
-    
     // Open create session modal
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
@@ -129,11 +126,11 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should submit create form with Enter', async ({ page }) => {
-    // Wait for page to be ready
-    await page.waitForTimeout(1000);
-    
     // Open create session modal
-    await page.waitForSelector('button[title="Create New Session"]', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('button[title="Create New Session"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
@@ -174,9 +171,8 @@ test.describe('Keyboard Shortcuts', () => {
     const terminal = page.locator('vibe-terminal');
     await terminal.click();
 
-    // Give terminal more time to initialize and show prompt
-    await page.waitForTimeout(1000);
-    await TerminalTestUtils.waitForPrompt(page, 4000);
+    // Wait for terminal to show prompt
+    await TerminalTestUtils.waitForPrompt(page, 5000);
 
     // Test Ctrl+C (interrupt)
     await TerminalTestUtils.executeCommand(page, 'sleep 10');
@@ -278,9 +274,8 @@ test.describe('Keyboard Shortcuts', () => {
     const terminal = page.locator('vibe-terminal');
     await terminal.click();
 
-    // Give terminal more time to initialize and show prompt
-    await page.waitForTimeout(1000);
-    await TerminalTestUtils.waitForPrompt(page, 4000);
+    // Wait for terminal to show prompt
+    await TerminalTestUtils.waitForPrompt(page, 5000);
 
     // Execute first command
     await TerminalTestUtils.executeCommand(page, 'echo "first command"');

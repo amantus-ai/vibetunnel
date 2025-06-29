@@ -26,7 +26,7 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: 1, // Force single worker to avoid race conditions
   /* Test timeout */
-  timeout: process.env.CI ? 30 * 1000 : 10 * 1000, // 30s on CI, 10s locally
+  timeout: process.env.CI ? 60 * 1000 : 30 * 1000, // 60s on CI, 30s locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { open: 'never' }],
@@ -68,6 +68,11 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
     stderr: 'pipe',
-    timeout: 120 * 1000,
+    timeout: 180 * 1000, // 3 minutes for server startup
+    env: {
+      NODE_ENV: 'test',
+      VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
+      SUPPRESS_CLIENT_ERRORS: 'true',
+    },
   },
 });

@@ -162,7 +162,8 @@ test.describe('Session Creation', () => {
 
     // Wait for the session list to load
     await sessionListPage.page.waitForLoadState('domcontentloaded');
-    await sessionListPage.page.waitForTimeout(500); // Give time for sessions to render
+    // Wait for session cards to be visible
+    await sessionListPage.page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
 
     // Click on the session to reconnect
     await sessionListPage.clickSession(sessionName);

@@ -5,6 +5,9 @@ const { devOptions } = require('./esbuild-config.js');
 
 console.log('Starting development mode...');
 
+// Validate version sync first
+require('child_process').execSync('node scripts/validate-version-sync.js', { stdio: 'inherit' });
+
 // Determine what to watch based on arguments
 const watchServer = !process.argv.includes('--client-only');
 

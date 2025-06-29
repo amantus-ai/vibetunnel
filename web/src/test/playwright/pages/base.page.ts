@@ -40,20 +40,22 @@ export class BasePage {
         }
       );
     } catch (_error) {
-      // If create button is not immediately visible, wait a bit and check again
-      await this.page.waitForTimeout(1000);
-      const createBtn = await this.page.locator('button[title="Create New Session"]').isVisible();
-      if (!createBtn) {
+      // If create button is not immediately visible, wait for it to appear
+      // The button might be hidden while sessions are loading
+      const createBtn = this.page.locator('button[title="Create New Session"]');
+
+      // Wait for the button to become visible - this automatically retries
+      try {
+        await createBtn.waitFor({ state: 'visible', timeout: 5000 });
+      } catch (_waitError) {
         // Check if we're on auth screen
         const authForm = await this.page.locator('auth-login').isVisible();
         if (authForm) {
           throw new Error('Authentication required but server should be running with --no-auth');
         }
-        // If still no create button, app might be loading sessions
-        await this.page.waitForSelector('button[title="Create New Session"]', {
-          state: 'visible',
-          timeout: 10000,
-        });
+
+        // If still no create button after extended wait, something is wrong
+        throw new Error('Create button did not appear within timeout');
       }
     }
 

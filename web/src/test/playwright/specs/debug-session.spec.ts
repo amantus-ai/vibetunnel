@@ -22,7 +22,12 @@ test.describe('Debug Session Tests', () => {
     // Turn OFF spawn window
     if (initialState === 'true') {
       await spawnWindowToggle.click();
-      await page.waitForTimeout(100);
+      // Wait for toggle state to update
+      await page.waitForFunction(
+        () =>
+          document.querySelector('button[role="switch"]')?.getAttribute('aria-checked') === 'false',
+        { timeout: 1000 }
+      );
     }
 
     const finalState = await spawnWindowToggle.getAttribute('aria-checked');
@@ -62,8 +67,16 @@ test.describe('Debug Session Tests', () => {
       console.log('No Back button found - might be in sidebar layout');
     }
 
-    // Wait a bit for sessions to load
-    await page.waitForTimeout(2000);
+    // Wait for sessions to load - wait for either session cards or empty state
+    await page.waitForFunction(
+      () => {
+        const sessionCards = document.querySelectorAll('session-card');
+        const noSessionsText = document.querySelector('text="No active sessions"');
+        const errorText = document.querySelector('.text-red-500, .error');
+        return sessionCards.length > 0 || !!noSessionsText || !!errorText;
+      },
+      { timeout: 5000 }
+    );
 
     // Check hideExitedSessions state
     const hideExited = await page.evaluate(() => localStorage.getItem('hideExitedSessions'));

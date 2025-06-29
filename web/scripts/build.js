@@ -6,6 +6,10 @@ const { prodOptions } = require('./esbuild-config.js');
 
 async function build() {
   console.log('Starting build process...');
+  
+  // Validate version sync
+  console.log('Validating version sync...');
+  execSync('node scripts/validate-version-sync.js', { stdio: 'inherit' });
 
   // Ensure directories exist
   console.log('Creating directories...');

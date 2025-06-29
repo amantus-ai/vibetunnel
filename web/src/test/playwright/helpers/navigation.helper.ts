@@ -21,7 +21,12 @@ export async function navigateToHome(page: Page): Promise<void> {
       // Wait for the session list to load after navigation
       // This ensures the app has time to fetch and render sessions
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500); // Give the app time to fetch sessions
+
+      // Wait for session list or create button to be visible
+      await page.waitForSelector(
+        'session-card, button[title="Create New Session"], text="No active sessions"',
+        { state: 'visible', timeout: 5000 }
+      );
       return;
     }
   } catch (error) {
@@ -34,7 +39,12 @@ export async function navigateToHome(page: Page): Promise<void> {
     await page.goBack();
     await page.waitForURL('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(500); // Give the app time to fetch sessions
+
+    // Wait for session list or create button to be visible
+    await page.waitForSelector(
+      'session-card, button[title="Create New Session"], text="No active sessions"',
+      { state: 'visible', timeout: 5000 }
+    );
   } catch {
     // Last resort: use page.goto if all else fails
     // This should only happen at the very beginning of tests
