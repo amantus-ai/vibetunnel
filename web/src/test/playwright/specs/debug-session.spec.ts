@@ -76,11 +76,16 @@ test.describe('Debug Session Tests', () => {
     const errorElements = await page.locator('.text-red-500, .error, [class*="error"]').count();
     console.log(`Found ${errorElements} error elements`);
 
-    // Check the session list container
-    const listContainer = await page
-      .locator('[data-testid="session-list-container"]')
-      .textContent();
-    console.log('Session list container content:', listContainer?.substring(0, 200));
+    // Check the session list container (might be in the sidebar in split view)
+    const listContainerLocator = page.locator('[data-testid="session-list-container"], session-list');
+    const listContainerVisible = await listContainerLocator.isVisible({ timeout: 1000 }).catch(() => false);
+    
+    if (listContainerVisible) {
+      const listContainer = await listContainerLocator.first().textContent();
+      console.log('Session list container content:', listContainer?.substring(0, 200));
+    } else {
+      console.log('Session list container not visible - might be in mobile view');
+    }
 
     // Try to fetch sessions directly
     const sessionsResponse = await page.evaluate(async () => {

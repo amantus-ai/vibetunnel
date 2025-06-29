@@ -11,10 +11,17 @@ export async function waitForSessionsToLoad(
   const timeout = options?.timeout || 15000;
 
   // First, wait for the session list container to be visible
-  await page.waitForSelector('[data-testid="session-list-container"]', {
-    state: 'visible',
-    timeout,
-  });
+  // It might be in the sidebar or main content area depending on view mode
+  try {
+    await page.waitForSelector('[data-testid="session-list-container"], session-list', {
+      state: 'visible',
+      timeout,
+    });
+  } catch (error) {
+    // If not found, we might be in a view where the session list is not visible
+    console.log('Session list container not found - might be in mobile/single view mode');
+    throw error;
+  }
 
   // Wait for either session cards to appear OR the "no sessions" message
   await page.waitForFunction(
@@ -69,18 +76,18 @@ export async function createSession(
 
   // Fill in the form
   if (options.name) {
-    const nameInput = page.locator('[data-testid="session-name-input"]');
+    const nameInput = page.locator('input[placeholder="My Session"]');
     await nameInput.clear();
     await nameInput.fill(options.name);
   }
 
   // Fill command input
-  const commandInput = page.locator('[data-testid="command-input"]');
+  const commandInput = page.locator('input[placeholder="zsh"]');
   await commandInput.clear();
   await commandInput.fill(options.command || 'bash'); // Default to bash which should exist in CI
 
   if (options.workingDir) {
-    const workingDirInput = page.locator('[data-testid="working-dir-input"]');
+    const workingDirInput = page.locator('input[placeholder="~/"]');
     await workingDirInput.clear();
     await workingDirInput.fill(options.workingDir);
   }
