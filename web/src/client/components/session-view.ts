@@ -65,8 +65,6 @@ export class SessionView extends LitElement {
   @state() private isMobile = false;
   @state() private touchStartX = 0;
   @state() private touchStartY = 0;
-  @state() private terminalCols = 0;
-  @state() private terminalRows = 0;
   @state() private showCtrlAlpha = false;
   @state() private terminalFitHorizontally = false;
   @state() private showFileBrowser = false;
@@ -292,9 +290,7 @@ export class SessionView extends LitElement {
 
     // Set up state callbacks for terminal lifecycle manager
     const stateCallbacks: TerminalStateCallbacks = {
-      updateTerminalDimensions: (cols: number, rows: number) => {
-        this.terminalCols = cols;
-        this.terminalRows = rows;
+      updateTerminalDimensions: (_cols: number, _rows: number) => {
         this.requestUpdate();
       },
     };
@@ -1027,8 +1023,6 @@ export class SessionView extends LitElement {
           .showBackButton=${this.showBackButton}
           .showSidebarToggle=${this.showSidebarToggle}
           .sidebarCollapsed=${this.sidebarCollapsed}
-          .terminalCols=${this.terminalCols}
-          .terminalRows=${this.terminalRows}
           .terminalFontSize=${this.terminalFontSize}
           .onBack=${() => this.handleBack()}
           .onSidebarToggle=${() => this.handleSidebarToggle()}
