@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { assertSessionCount, assertSessionInList } from '../helpers/assertion.helper';
+import { takeDebugScreenshot } from '../helpers/screenshot.helper';
 import {
   createAndNavigateToSession,
   waitForSessionState,
@@ -74,7 +75,7 @@ test.describe('Session Management', () => {
       await assertSessionInList(page, session2);
     } catch (error) {
       // If error occurs, take a screenshot for debugging
-      await page.screenshot({ path: 'debug-concurrent-sessions.png' });
+      await takeDebugScreenshot(page, 'debug-concurrent-sessions');
       throw error;
     }
   });

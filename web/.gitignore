@@ -127,3 +127,5 @@ test-results/
 playwright/.cache/
 final-test-results.json
 test-results-final.json
+test-results.json
+test-results-quick.json

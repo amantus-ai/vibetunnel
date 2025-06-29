@@ -66,8 +66,17 @@ test.describe.skip('Terminal Interaction', () => {
     await page.keyboard.type('sleep 5');
     await page.keyboard.press('Enter');
 
-    // Wait a bit then interrupt
-    await page.waitForTimeout(500);
+    // Wait for the command to start executing by checking for lack of prompt
+    await page.waitForFunction(
+      () => {
+        const terminal = document.querySelector('vibe-terminal');
+        const text = terminal?.textContent || '';
+        // Command has started if we don't see a prompt at the end
+        return !text.trim().endsWith('$') && !text.trim().endsWith('>');
+      },
+      { timeout: 2000 }
+    );
+    
     await interruptCommand(page);
 
     // Verify we can execute new command
@@ -146,9 +155,6 @@ test.describe.skip('Terminal Interaction', () => {
 
     // Resize the viewport to trigger terminal resize
     await page.setViewportSize({ width: newWidth, height: newHeight });
-
-    // Wait for terminal resize event to be processed
-    await page.waitForTimeout(100);
 
     // Wait for terminal-resize event or dimension change
     await page.waitForFunction(

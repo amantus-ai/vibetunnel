@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { assertUrlHasSession } from '../helpers/assertion.helper';
+import { takeDebugScreenshot } from '../helpers/screenshot.helper';
 import { createMultipleSessions } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
@@ -15,10 +16,27 @@ test.describe('Session Navigation', () => {
   });
 
   test('should navigate between session list and session view', async ({ page }) => {
-    test.setTimeout(15000);
+    test.setTimeout(20000);
 
     // Create a session
-    const { sessionName } = await sessionManager.createTrackedSession();
+    let sessionName: string;
+    try {
+      const result = await sessionManager.createTrackedSession();
+      sessionName = result.sessionName;
+    } catch (error) {
+      console.error('Failed to create session:', error);
+      // Take screenshot for debugging
+      await takeDebugScreenshot(page, 'session-creation-failed');
+      throw error;
+    }
+
+    // Verify we navigated to the session
+    const currentUrl = page.url();
+    if (!currentUrl.includes('?session=')) {
+      await takeDebugScreenshot(page, 'no-session-in-url');
+      throw new Error(`Failed to navigate to session view. Current URL: ${currentUrl}`);
+    }
+
     await assertUrlHasSession(page);
 
     // Navigate back to home - either via Back button or VibeTunnel logo

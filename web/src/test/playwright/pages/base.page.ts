@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
+import { screenshotOnError } from '../helpers/screenshot.helper';
 import { WaitUtils } from '../utils/test-utils';
 
 export class BasePage {
@@ -114,7 +115,11 @@ export class BasePage {
           console.log(`Found open modal with selector: ${selector}`);
 
           // Take a screenshot before closing
-          await this.page.screenshot({ path: 'debug-modal-before-close.png' });
+          await screenshotOnError(
+            this.page,
+            new Error('Modal still open, attempting to close'),
+            'modal-before-close'
+          );
 
           // Try multiple ways to close the modal
           // 1. Try Escape key first (more reliable)
@@ -151,7 +156,11 @@ export class BasePage {
     } catch (error) {
       console.error('Error while closing modals:', error);
       // Take a screenshot for debugging
-      await this.page.screenshot({ path: 'debug-modal-close-error.png' });
+      await screenshotOnError(
+        this.page,
+        error instanceof Error ? error : new Error(String(error)),
+        'modal-close-error'
+      );
     }
   }
 }

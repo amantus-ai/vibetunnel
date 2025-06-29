@@ -1,3 +1,4 @@
+import { screenshotOnError } from '../helpers/screenshot.helper';
 import { BasePage } from './base.page';
 
 export class SessionListPage extends BasePage {
@@ -29,10 +30,9 @@ export class SessionListPage extends BasePage {
     try {
       await this.page.waitForSelector('.modal-content', { state: 'visible', timeout: 4000 });
     } catch (_e) {
-      console.error('Modal did not appear after clicking create button');
-      // Take a screenshot for debugging
-      await this.page.screenshot({ path: 'debug-no-modal-after-click.png' });
-      throw new Error('Modal did not appear after clicking create button');
+      const error = new Error('Modal did not appear after clicking create button');
+      await screenshotOnError(this.page, error, 'no-modal-after-click');
+      throw error;
     }
 
     // Wait for modal to be fully rendered and interactive
@@ -105,9 +105,8 @@ export class SessionListPage extends BasePage {
       try {
         await this.page.fill(inputSelector, sessionName, { timeout: 3000 });
       } catch (e) {
-        console.error('Failed to fill session name:', e);
-        // Take a screenshot for debugging
-        await this.page.screenshot({ path: 'debug-fill-error.png' });
+        const error = new Error(`Could not fill session name field: ${e}`);
+        await screenshotOnError(this.page, error, 'fill-session-name-error');
 
         // Check if the page is still valid
         try {
@@ -119,7 +118,7 @@ export class SessionListPage extends BasePage {
           console.error('Page appears to be closed:', pageError);
         }
 
-        throw new Error(`Could not fill session name field: ${e}`);
+        throw error;
       }
     }
 
@@ -271,11 +270,18 @@ export class SessionListPage extends BasePage {
     // Scroll into view if needed
     await killButton.scrollIntoViewIfNeeded();
 
-    // Set up dialog handler BEFORE clicking
-    this.page.once('dialog', (dialog) => dialog.accept());
+    // Set up dialog handler BEFORE clicking to avoid race condition
+    const dialogPromise = this.page.waitForEvent('dialog');
 
-    // Click the button
-    await killButton.click();
+    // Click the button (this will trigger the dialog)
+    const clickPromise = killButton.click();
+
+    // Handle the dialog when it appears
+    const dialog = await dialogPromise;
+    await dialog.accept();
+
+    // Wait for the click action to complete
+    await clickPromise;
   }
 
   async waitForEmptyState() {
