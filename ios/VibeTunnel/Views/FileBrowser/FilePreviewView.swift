@@ -58,7 +58,6 @@ struct FilePreviewView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .task {
             await loadPreview()
         }
@@ -240,7 +239,6 @@ struct GitDiffView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
 }
 

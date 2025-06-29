@@ -109,7 +109,6 @@ struct FileEditorView: View {
                 Text(error)
             }
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             isTextEditorFocused = true
         }

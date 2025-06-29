@@ -149,7 +149,6 @@ struct SystemLogsView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .task {
             await loadLogs()
             startAutoRefresh()

@@ -81,7 +81,6 @@ struct SettingsView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
 }
 
@@ -97,9 +96,55 @@ struct GeneralSettingsView: View {
     private var enableURLDetection = true
     @AppStorage("enableLivePreviews")
     private var enableLivePreviews = true
+    @AppStorage("colorSchemePreference")
+    private var colorSchemePreferenceRaw = "system"
+    
+    enum ColorSchemePreference: String, CaseIterable {
+        case system = "system"
+        case light = "light"
+        case dark = "dark"
+        
+        var displayName: String {
+            switch self {
+            case .system: return "System"
+            case .light: return "Light"
+            case .dark: return "Dark"
+            }
+        }
+    }
+    
+    private var colorSchemePreference: ColorSchemePreference {
+        ColorSchemePreference(rawValue: colorSchemePreferenceRaw) ?? .system
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.large) {
+            // Appearance Section
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                Text("Appearance")
+                    .font(.headline)
+                    .foregroundColor(Theme.Colors.terminalForeground)
+                
+                VStack(spacing: Theme.Spacing.medium) {
+                    // Color Scheme
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                        Text("Color Scheme")
+                            .font(Theme.Typography.terminalSystem(size: 14))
+                            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
+                        
+                        Picker("Color Scheme", selection: $colorSchemePreferenceRaw) {
+                            ForEach(ColorSchemePreference.allCases, id: \.self) { preference in
+                                Text(preference.displayName).tag(preference.rawValue)
+                            }
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                    }
+                    .padding()
+                    .background(Theme.Colors.cardBackground)
+                    .cornerRadius(Theme.CornerRadius.card)
+                }
+            }
+            
             // Terminal Defaults Section
             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                 Text("Terminal Defaults")

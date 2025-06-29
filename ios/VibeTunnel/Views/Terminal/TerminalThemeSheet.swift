@@ -108,7 +108,6 @@ struct TerminalThemeSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
 }
 

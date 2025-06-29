@@ -51,7 +51,6 @@ struct TerminalView: View {
                     recordingIndicator
                 }
         }
-        .preferredColorScheme(.dark)
         .focusable()
         .onAppear {
             viewModel.connect()
@@ -149,12 +148,103 @@ struct TerminalView: View {
                 showScrollToBottom = !newValue
             }
         }
+        // iPad keyboard shortcuts
         .onKeyPress(keys: ["o"]) { press in
             if press.modifiers.contains(.command) && session.isRunning {
                 showingFileBrowser = true
                 return .handled
             }
             return .ignored
+        }
+        .onKeyPress(keys: ["+"]) { press in
+            if press.modifiers.contains(.command) {
+                // Increase font size
+                withAnimation(Theme.Animation.quick) {
+                    fontSize = min(fontSize + 2, 30)
+                }
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(keys: ["-"]) { press in
+            if press.modifiers.contains(.command) {
+                // Decrease font size
+                withAnimation(Theme.Animation.quick) {
+                    fontSize = max(fontSize - 2, 8)
+                }
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(keys: ["t"]) { press in
+            if press.modifiers.contains(.command) {
+                // Toggle theme
+                let themes = TerminalTheme.allThemes
+                if let currentIndex = themes.firstIndex(where: { $0.id == selectedTheme.id }) {
+                    let nextIndex = (currentIndex + 1) % themes.count
+                    selectedTheme = themes[nextIndex]
+                    TerminalTheme.selected = selectedTheme
+                }
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(keys: ["k"]) { press in
+            if press.modifiers.contains(.command) {
+                // Clear terminal
+                viewModel.sendSpecialKey(.ctrlL)
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(keys: ["c"]) { press in
+            if press.modifiers.contains(.command) && !press.modifiers.contains(.shift) {
+                // Copy to clipboard
+                if let content = viewModel.getBufferContent() {
+                    UIPasteboard.general.string = content
+                    HapticFeedback.notification(.success)
+                }
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(keys: ["r"]) { press in
+            if press.modifiers.contains(.command) {
+                // Start/stop recording
+                if viewModel.castRecorder.isRecording {
+                    viewModel.stopRecording()
+                } else {
+                    viewModel.startRecording()
+                }
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(keys: ["w"]) { press in
+            if press.modifiers.contains(.command) {
+                // Change terminal width
+                showingTerminalWidthSheet = true
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(keys: ["d"]) { press in
+            if press.modifiers.contains(.command) {
+                // Toggle debug menu
+                showingDebugMenu.toggle()
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(keys: [.escape]) { _ in
+            // Send escape key to terminal
+            viewModel.sendSpecialKey(.escape)
+            return .handled
+        }
+        .onKeyPress(keys: [.tab]) { _ in
+            // Send tab key to terminal
+            viewModel.sendSpecialKey(.tab)
+            return .handled
         }
         .sheet(isPresented: $showingExportSheet) {
             if let url = exportedFileURL {

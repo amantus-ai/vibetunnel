@@ -81,7 +81,6 @@ struct EnhancedConnectionView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .preferredColorScheme(.dark)
         .onAppear {
             profilesViewModel.loadProfiles()
         }

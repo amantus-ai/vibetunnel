@@ -274,7 +274,6 @@ struct TerminalWidthSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
 
     private func applyCustomWidth() {

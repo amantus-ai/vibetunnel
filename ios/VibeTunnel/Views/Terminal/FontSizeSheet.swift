@@ -121,6 +121,5 @@ struct FontSizeSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
 }

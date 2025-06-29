@@ -101,7 +101,6 @@ struct CtrlKeyGrid: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
 
     private var currentKeys: [(String, String)] {

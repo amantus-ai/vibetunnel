@@ -172,7 +172,6 @@ struct FullscreenTextInput: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             isFocused = true
         }

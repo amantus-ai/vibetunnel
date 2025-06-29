@@ -46,7 +46,7 @@ struct WelcomeView: View {
                         HStack(spacing: 8) {
                             ForEach(0..<5) { index in
                                 Circle()
-                                    .fill(index == currentPage ? Theme.Colors.primaryAccent : Color.gray.opacity(0.3))
+                                    .fill(index == currentPage ? Theme.Colors.primaryAccent : Theme.Colors.secondaryText.opacity(0.3))
                                     .frame(width: 8, height: 8)
                                     .animation(.easeInOut, value: currentPage)
                             }
