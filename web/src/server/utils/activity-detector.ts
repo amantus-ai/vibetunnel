@@ -56,13 +56,15 @@ export interface AppDetector {
 // Pre-compiled regex for Claude status lines
 // Matches: ✻ Crafting… (205s · ↑ 6.0k tokens · esc to interrupt)
 const CLAUDE_STATUS_REGEX =
-  /^(.)\s+(\w+)…\s*\((\d+)s\s*·\s*([↑↓])\s*([\d.]+)k\s+tokens\s*·\s*esc\s+to\s+interrupt\)\s*$/m;
+  /^(.)\s+(\w+)…\s*\((\d+)s\s*·\s*([↑↓])\s*([\d.]+)k\s+tokens\s*·\s*esc\s+to\s+interrupt\)/gm;
 
 /**
  * Parse Claude-specific status from output
  */
 function parseClaudeStatus(data: string): ActivityStatus | null {
-  const match = data.match(CLAUDE_STATUS_REGEX);
+  // Reset regex lastIndex since we're using global flag
+  CLAUDE_STATUS_REGEX.lastIndex = 0;
+  const match = CLAUDE_STATUS_REGEX.exec(data);
   if (!match) {
     return null;
   }
@@ -70,7 +72,7 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
   const [_fullMatch, indicator, action, duration, direction, tokens] = match;
 
   // Filter out the status line from output
-  const filteredData = data.replace(CLAUDE_STATUS_REGEX, '').replace(/\n\n+/g, '\n');
+  const filteredData = data.replace(CLAUDE_STATUS_REGEX, '');
 
   // Create compact display text for title bar
   const displayText = `${indicator} ${action} (${duration}s, ${direction}${tokens}k)`;
