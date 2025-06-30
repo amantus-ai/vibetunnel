@@ -69,10 +69,8 @@ final class PowerManagementService {
     }
     
     deinit {
-        // Only release if we have an active assertion
-        if isAssertionActive {
-            IOPMAssertionRelease(assertionID)
-            // Note: We don't check success here as the object is being destroyed
-        }
+        // Deinit runs on arbitrary thread, but we need to check MainActor state
+        // Since we can't access MainActor properties directly in deinit,
+        // we handle cleanup in allowSleep() which is called when server stops
     }
 }
