@@ -155,7 +155,11 @@ echo "Build configuration: $BUILD_CONFIG"
 echo "Searching for custom Node.js builds..."
 
 # Find all Node build directories
-ALL_NODE_DIRS=$(find "${WEB_DIR}/.node-builds" -name "node-v*-minimal" -type d 2>/dev/null | sort -V)
+if [ -d "${WEB_DIR}/.node-builds" ]; then
+    ALL_NODE_DIRS=$(find "${WEB_DIR}/.node-builds" -name "node-v*-minimal" -type d 2>/dev/null | sort -V)
+else
+    ALL_NODE_DIRS=""
+fi
 if [ -n "$ALL_NODE_DIRS" ]; then
     echo "Found Node.js build directories:"
     echo "$ALL_NODE_DIRS" | while read -r dir; do
@@ -170,7 +174,11 @@ if [ -n "$ALL_NODE_DIRS" ]; then
 fi
 
 # Find directories with complete builds (containing the actual node binary)
-CUSTOM_NODE_DIR=$(find "${WEB_DIR}/.node-builds" -name "node-v*-minimal" -type d -exec test -f {}/out/Release/node \; -print 2>/dev/null | sort -V | tail -n1)
+if [ -d "${WEB_DIR}/.node-builds" ]; then
+    CUSTOM_NODE_DIR=$(find "${WEB_DIR}/.node-builds" -name "node-v*-minimal" -type d -exec test -f {}/out/Release/node \; -print 2>/dev/null | sort -V | tail -n1)
+else
+    CUSTOM_NODE_DIR=""
+fi
 CUSTOM_NODE_PATH="${CUSTOM_NODE_DIR}/out/Release/node"
 
 if [ -n "$CUSTOM_NODE_DIR" ]; then
@@ -193,7 +201,11 @@ if [ "$BUILD_CONFIG" = "Release" ]; then
         echo "Custom Node.js not found, building it for optimal size..."
         echo "This will take 10-20 minutes on first run but will be cached."
         node build-custom-node.js --latest 2>&1 | filter_build_output
-        CUSTOM_NODE_DIR=$(find "${WEB_DIR}/.node-builds" -name "node-v*-minimal" -type d -exec test -f {}/out/Release/node \; -print 2>/dev/null | sort -V | tail -n1)
+        if [ -d "${WEB_DIR}/.node-builds" ]; then
+            CUSTOM_NODE_DIR=$(find "${WEB_DIR}/.node-builds" -name "node-v*-minimal" -type d -exec test -f {}/out/Release/node \; -print 2>/dev/null | sort -V | tail -n1)
+        else
+            CUSTOM_NODE_DIR=""
+        fi
         CUSTOM_NODE_PATH="${CUSTOM_NODE_DIR}/out/Release/node"
     fi
     
