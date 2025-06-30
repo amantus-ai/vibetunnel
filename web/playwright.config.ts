@@ -63,9 +63,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: process.env.CI 
-      ? `node scripts/test-server-wrapper.js --no-auth --port ${testConfig.port}`  // Use Node.js wrapper in CI
-      : `pnpm exec tsx src/cli.ts --no-auth --port ${testConfig.port}`, // Use tsx locally
+    command: `pnpm exec tsx src/cli.ts --no-auth --port ${testConfig.port}`, // Use tsx everywhere
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: process.env.CI ? 'inherit' : 'pipe', // Show output in CI for debugging
