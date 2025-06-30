@@ -176,9 +176,9 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
   // Create compact display text for title bar
   let displayText: string;
   if (hasTokenInfo) {
-    // Format tokens - add 'k' only if the number is >= 1000 and doesn't already have it
-    const tokenNum = Number.parseFloat(tokens);
-    const formattedTokens = tokenNum >= 1000 ? `${(tokenNum / 1000).toFixed(1)}k` : tokens;
+    // Format tokens - the input already has 'k' suffix in the regex pattern
+    // So "6.0" means 6.0k tokens, not 6.0 tokens
+    const formattedTokens = `${tokens}k`;
     displayText = `${indicator} ${action} (${duration}s, ${direction}${formattedTokens})`;
   } else {
     // Simple format without token info

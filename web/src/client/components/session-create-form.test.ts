@@ -155,7 +155,7 @@ describe('SessionCreateForm', () => {
 
       // The test environment may not render the buttons correctly due to lit-html issues
       // so we'll just verify the data structure exists
-      const expectedCommands = ['claude', 'zsh', 'bash', 'python3', 'node', 'pnpm run dev'];
+      const expectedCommands = ['claude', 'gemini', 'zsh', 'python3', 'node', 'pnpm run dev'];
       const actualCommands = element.quickStartCommands.map((item) => item.command);
 
       expectedCommands.forEach((cmd) => {
@@ -220,8 +220,7 @@ describe('SessionCreateForm', () => {
         workingDir: '/home/user/project',
         spawn_terminal: true,
         titleMode: TitleMode.DYNAMIC, // Default value
-        cols: 120,
-        rows: 30,
+        // cols and rows are not sent when spawn_terminal is true
       });
 
       expect(createdHandler).toHaveBeenCalledWith(

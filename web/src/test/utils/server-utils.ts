@@ -50,14 +50,17 @@ const PROCESS_KILL_TIMEOUT = 5000;
  */
 export function extractPortFromOutput(output: string): number | null {
   const patterns = [
-    /VibeTunnel Server running on http:\/\/localhost:(\d+)/,
+    /VibeTunnel Server running on http:\/\/(?:localhost|[\d.]+):(\d+)/,
     /Server listening on port (\d+)/,
+    // Also match when timestamp is present
+    /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+LOG\s+\[[\w-]+\]\s+VibeTunnel Server running on http:\/\/(?:localhost|[\d.]+):(\d+)/,
   ];
 
   for (const pattern of patterns) {
     const match = output.match(pattern);
     if (match) {
-      return Number.parseInt(match[1], 10);
+      // The port might be in match[1] or match[2] depending on the pattern
+      return Number.parseInt(match[1] || match[2], 10);
     }
   }
 

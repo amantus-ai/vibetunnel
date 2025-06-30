@@ -2,8 +2,18 @@
 
 ## [1.0.0-beta.5] - upcoming
 
-### 🎯 Reliability & Stability
-- **Fixed critical race condition in terminal output** - Terminal sessions now handle high-volume output without corruption or out-of-order text.
+### 🎯 Features
+
+**Real-time Claude Activity Monitoring**
+- **See Claude's live status directly in the VibeTunnel sidebar** - Know exactly what Claude is "Thinking", "Crafting", or "Searching" with real-time progress indicators showing duration and token counts.
+- **Activity status persists across browser refreshes** - Works seamlessly with external terminal sessions.
+- **Faster sidebar updates** - Sidebar now refreshes every second (previously 3 seconds) for more responsive activity tracking.
+
+**Comprehensive Terminal Title Management**
+- **Dynamic, context-aware terminal titles** - Terminal windows display your current directory, running command, and live activity status.
+- **Choose your title mode** - Select between static titles (path + command) or dynamic titles that include real-time activity indicators.
+- **Automatic directory tracking** - Terminal titles update automatically when you change directories with `cd` commands.
+- **Session name integration** - Custom session names are reflected in terminal titles for better organization.
 
 ### 🌏 International Input Support
 - **Fixed Japanese/CJK input duplication on iOS** - Typing Japanese, Chinese, or Korean text on mobile browsers no longer produces duplicate characters. IME composition is now handled correctly.
@@ -11,14 +21,15 @@
 ### ⌨️ Enhanced Terminal Experience
 - **Shell aliases now work properly** - Commands like `claude`, `ll`, and other custom aliases from your `.zshrc`/`.bashrc` are now recognized when launching terminals through VibeTunnel.
 - **Prevented recursive VibeTunnel sessions** - Running `vt` inside a VibeTunnel session now shows a helpful error instead of creating confusing nested sessions.
+- **Fixed critical race condition in terminal output** - Terminal sessions now handle high-volume output without corruption or out-of-order text.
 
 ### 🤖 Claude Code Integration
 - **Added Shift+Tab support** - Full support for Claude Code's mode switching (regular/planning/autoaccept modes) on both desktop and mobile.
 - **Mobile quick keyboard enhancement** - Added dedicated Shift+Tab button (⇤) to the mobile keyboard for easy mode switching.
 - **Fixed keyboard input conflicts** - Typing in Monaco Editor or other code editors no longer triggers unintended shortcuts.
 
-### 🧹 Code Quality
-- **Major codebase cleanup** - Improved code organization and updated technical specifications for contributors.
+### 🚀 Quick Start Enhancements
+- **Added Gemini as quickstart entry** - Google's Gemini AI assistant is now available as a one-click option when creating new terminal sessions, alongside Claude and other common commands.
 
 ## [1.0.0-beta.4] - 2025-06-27
 
@@ -38,11 +49,13 @@
 - **Dedicated terminal keyboard** - Custom on-screen keyboard with Escape, Tab, arrows, function keys, and common terminal shortcuts (Ctrl+C, Ctrl+Z, etc.).
 - **Essential special characters** - Quick access to pipes, backticks, tildes, and brackets without keyboard switching.
 - **Fixed wrapped URL detection** - Long URLs that span multiple lines are now properly clickable on mobile.
+- **Fixed terminal scrolling on mobile** - Touch scrolling now works properly with the QuickKeyboard active. The hidden input no longer blocks scroll gestures ([#129](https://github.com/amantus-ai/vibetunnel/pull/129)).
 
 ### ⚡ Performance & Reliability
 - **Upgraded to Microsoft node-pty v1.1.0** - Latest terminal emulation library for better performance and compatibility.
 - **Fixed large paste operations** - Paste massive logs or code files without the terminal hanging.
 - **Improved backpressure handling** - Terminal gracefully manages data flow during high-volume operations.
+- **Ultra-low-latency WebSocket input** - New WebSocket-based input system eliminates keystroke lag with direct PTY writes. Enable with `?socket_input` URL parameter ([#115](https://github.com/amantus-ai/vibetunnel/pull/115)).
 
 ### 🗂️ File Management
 - **Symlink support in file browser** - Navigate through symbolic links with visual indicators showing link targets.
@@ -54,11 +67,15 @@
 - **Fixed Monaco editor integration** - Code editing now works smoothly within VibeTunnel.
 - **Improved error handling** - Better error messages and recovery from edge cases (including fixes for Terminal.app)
 - **Enhanced test infrastructure** - Comprehensive test suite for improved stability.
+- **Fixed URL detection for numbered lists** - Terminal no longer incorrectly highlights numbered lists (like "1. Item") as clickable URLs ([#122](https://github.com/amantus-ai/vibetunnel/pull/122)).
+- **Fixed mobile header truncation** - Headers now display correctly on mobile devices without being cut off ([#117](https://github.com/amantus-ai/vibetunnel/pull/117)).
 
 ### 🔧 Developer Experience
 - **No-auth mode for development** - Run VibeTunnel without authentication for local development.
 - **Improved logging** - Better debugging information for troubleshooting.
 - **Alias resolution for commands** - Terminal commands resolve through proper shell initialization.
+- **Dynamic home directory display** - Cross-platform path formatting with proper ~/ shorthand for home directories on macOS, Linux, and Windows ([#117](https://github.com/amantus-ai/vibetunnel/pull/117)).
+- **Enhanced CI/CD workflows** - Parallel code quality checks and better handling of external contributor permissions ([#117](https://github.com/amantus-ai/vibetunnel/pull/117)).
 
 ## [1.0.0-beta.3] - 2025-06-23
 

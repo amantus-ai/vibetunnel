@@ -57,8 +57,8 @@ export function generateTitleSequence(
     parts.push(sessionName);
   }
 
-  // Format: path — command — session name
-  const title = parts.join(' — ');
+  // Format: path · command · session name
+  const title = parts.join(' · ');
 
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
   return `\x1B]2;${title}\x07`;

@@ -24,35 +24,35 @@ describe('Terminal Title Utilities', () => {
       const cwd = '/home/user/projects';
       const command = ['vim', 'file.txt'];
       const result = generateTitleSequence(cwd, command);
-      expect(result).toBe('\x1B]2;~/projects — vim\x07');
+      expect(result).toBe('\x1B]2;~/projects · vim\x07');
     });
 
     it('should replace home directory with ~', () => {
       const cwd = '/home/user/Documents';
       const command = ['zsh'];
       const result = generateTitleSequence(cwd, command);
-      expect(result).toBe('\x1B]2;~/Documents — zsh\x07');
+      expect(result).toBe('\x1B]2;~/Documents · zsh\x07');
     });
 
     it('should handle paths not in home directory', () => {
       const cwd = '/usr/local/bin';
       const command = ['ls'];
       const result = generateTitleSequence(cwd, command);
-      expect(result).toBe('\x1B]2;/usr/local/bin — ls\x07');
+      expect(result).toBe('\x1B]2;/usr/local/bin · ls\x07');
     });
 
     it('should handle empty command array', () => {
       const cwd = '/home/user';
       const command: string[] = [];
       const result = generateTitleSequence(cwd, command);
-      expect(result).toBe('\x1B]2;~ — shell\x07');
+      expect(result).toBe('\x1B]2;~ · shell\x07');
     });
 
     it('should use only the first command element', () => {
       const cwd = '/home/user';
       const command = ['git', 'status', '--porcelain'];
       const result = generateTitleSequence(cwd, command);
-      expect(result).toBe('\x1B]2;~ — git\x07');
+      expect(result).toBe('\x1B]2;~ · git\x07');
     });
 
     it('should include session name when provided', () => {
@@ -60,21 +60,21 @@ describe('Terminal Title Utilities', () => {
       const command = ['npm', 'run', 'dev'];
       const sessionName = 'Frontend Dev';
       const result = generateTitleSequence(cwd, command, sessionName);
-      expect(result).toBe('\x1B]2;~/projects — npm — Frontend Dev\x07');
+      expect(result).toBe('\x1B]2;~/projects · npm · Frontend Dev\x07');
     });
 
     it('should handle empty session name', () => {
       const cwd = '/home/user';
       const command = ['vim'];
       const result = generateTitleSequence(cwd, command, '');
-      expect(result).toBe('\x1B]2;~ — vim\x07');
+      expect(result).toBe('\x1B]2;~ · vim\x07');
     });
 
     it('should handle whitespace-only session name', () => {
       const cwd = '/home/user';
       const command = ['bash'];
       const result = generateTitleSequence(cwd, command, '   ');
-      expect(result).toBe('\x1B]2;~ — bash\x07');
+      expect(result).toBe('\x1B]2;~ · bash\x07');
     });
   });
 
@@ -181,7 +181,7 @@ describe('Terminal Title Utilities', () => {
   });
 
   describe('injectTitleIfNeeded', () => {
-    const titleSequence = '\x1B]2;~/projects — vim\x07';
+    const titleSequence = '\x1B]2;~/projects · vim\x07';
 
     it('should inject title when prompt is detected', () => {
       const data = 'user@host:~$ ';
@@ -221,7 +221,7 @@ describe('Terminal Title Utilities', () => {
         'Editor'
       );
 
-      expect(result).toBe('\x1B]2;~/projects — vim — Editor\x07');
+      expect(result).toBe('\x1B]2;~/projects · vim\x07');
     });
 
     it('should generate title with generic activity', () => {
@@ -232,7 +232,7 @@ describe('Terminal Title Utilities', () => {
 
       const result = generateDynamicTitle('/home/user/projects', ['npm', 'run', 'dev'], activity);
 
-      expect(result).toBe('\x1B]2;~/projects — npm — •\x07');
+      expect(result).toBe('\x1B]2;● ~/projects · npm\x07');
     });
 
     it('should generate title with specific status', () => {
@@ -253,7 +253,7 @@ describe('Terminal Title Utilities', () => {
       );
 
       expect(result).toBe(
-        '\x1B]2;~/projects — claude — ✻ Crafting (205s, ↑6.0k) — AI Assistant\x07'
+        '\x1B]2;✻ Crafting (205s, ↑6.0k) · ~/projects · claude\x07'
       );
     });
 
@@ -265,7 +265,7 @@ describe('Terminal Title Utilities', () => {
 
       const result = generateDynamicTitle('/home/user', [], activity);
 
-      expect(result).toBe('\x1B]2;~ — shell\x07');
+      expect(result).toBe('\x1B]2;~ · shell\x07');
     });
 
     it('should show activity without session name', () => {
@@ -280,7 +280,7 @@ describe('Terminal Title Utilities', () => {
 
       const result = generateDynamicTitle('/home/user/app', ['npm', 'install'], activity);
 
-      expect(result).toBe('\x1B]2;~/app — npm — 📦 Installing (45%)\x07');
+      expect(result).toBe('\x1B]2;📦 Installing (45%) · ~/app · npm\x07');
     });
   });
 });
