@@ -1,83 +1,128 @@
 import type { Page } from '@playwright/test';
-import { TerminalTestUtils } from '../utils/terminal-test-utils';
+import { SessionViewPage } from '../pages/session-view.page';
 import { TestDataFactory } from '../utils/test-utils';
 
 /**
- * Wait for shell prompt with improved detection
+ * Consolidated terminal helper functions for Playwright tests
+ * Following best practices: no arbitrary timeouts, using web-first assertions
  */
-export async function waitForShellPrompt(page: Page, timeout = 2000) {
-  // Wait for prompt without extra delay
-  await TerminalTestUtils.waitForPrompt(page, timeout);
-}
 
 /**
- * Execute command and wait for next prompt
+ * Wait for shell prompt to appear
+ * Uses Playwright's auto-waiting instead of arbitrary timeouts
  */
-export async function executeCommandAndWaitForPrompt(page: Page, command: string) {
-  await TerminalTestUtils.executeCommand(page, command);
-  await TerminalTestUtils.waitForPrompt(page);
-}
-
-/**
- * Get output from the last executed command
- */
-export async function getLastCommandOutput(page: Page): Promise<string> {
-  const fullText = await TerminalTestUtils.getTerminalText(page);
-  const lines = fullText.split('\n');
-
-  // Find the last prompt and get everything before it
-  let lastPromptIndex = -1;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (/[$>#%❯]\s*$|@.*[$>#]\s*$/.test(lines[i])) {
-      lastPromptIndex = i;
-      break;
-    }
-  }
-
-  if (lastPromptIndex > 0) {
-    // Find the previous prompt
-    let prevPromptIndex = -1;
-    for (let i = lastPromptIndex - 1; i >= 0; i--) {
-      if (/[$>#%❯]\s*$|@.*[$>#]\s*$/.test(lines[i])) {
-        prevPromptIndex = i;
-        break;
-      }
-    }
-
-    if (prevPromptIndex >= 0) {
-      // Return output between prompts
-      return lines
-        .slice(prevPromptIndex + 1, lastPromptIndex)
-        .join('\n')
-        .trim();
-    }
-  }
-
-  return '';
-}
-
-/**
- * Wait for process to complete with improved detection
- */
-export async function waitForProcessToComplete(page: Page, processName: string, timeout = 2000) {
+export async function waitForShellPrompt(page: Page): Promise<void> {
   await page.waitForFunction(
-    (proc) => {
-      const lines = document.querySelectorAll('.terminal-line');
-      const text = Array.from(lines)
-        .map((l) => l.textContent || '')
-        .join('\n');
-      // Check if process completed
-      return (
-        text.includes(`${proc}: command not found`) ||
-        text.includes('exit code') ||
-        text.includes('Exit') ||
-        /Process exited|terminated|finished/.test(text) ||
-        /[$>#%❯]\s*$/.test(text.split('\n').pop() || '')
-      );
+    () => {
+      const terminal = document.querySelector('vibe-terminal');
+      const content = terminal?.textContent || '';
+      // Match common shell prompts: $, #, >, %, ❯ at end of line
+      return /[$>#%❯]\s*$/.test(content);
     },
-    processName,
-    { timeout }
+    { timeout: 5000 } // Use reasonable timeout from config
   );
+}
+
+/**
+ * Execute a command and verify its output
+ */
+export async function executeAndVerifyCommand(
+  page: Page,
+  command: string,
+  expectedOutput?: string | RegExp
+): Promise<void> {
+  const sessionViewPage = new SessionViewPage(page);
+
+  // Type and send command
+  await sessionViewPage.typeCommand(command);
+
+  // Wait for expected output if provided
+  if (expectedOutput) {
+    if (typeof expectedOutput === 'string') {
+      await sessionViewPage.waitForOutput(expectedOutput);
+    } else {
+      await page.waitForFunction(
+        ({ pattern }) => {
+          const terminal = document.querySelector('vibe-terminal');
+          const content = terminal?.textContent || '';
+          return new RegExp(pattern).test(content);
+        },
+        { pattern: expectedOutput.source }
+      );
+    }
+  }
+
+  // Always wait for next prompt
+  await waitForShellPrompt(page);
+}
+
+/**
+ * Execute multiple commands in sequence
+ */
+export async function executeCommandSequence(page: Page, commands: string[]): Promise<void> {
+  for (const command of commands) {
+    await executeAndVerifyCommand(page, command);
+  }
+}
+
+/**
+ * Get the output of a command
+ */
+export async function getCommandOutput(page: Page, command: string): Promise<string> {
+  const sessionViewPage = new SessionViewPage(page);
+
+  // Mark current position in terminal
+  const markerCommand = `echo "===MARKER-${Date.now()}==="`;
+  await executeAndVerifyCommand(page, markerCommand);
+
+  // Execute the actual command
+  await executeAndVerifyCommand(page, command);
+
+  // Get all terminal content
+  const content = await sessionViewPage.getTerminalOutput();
+
+  // Extract output between marker and next prompt
+  const markerMatch = content.match(/===MARKER-\d+===/);
+  if (!markerMatch) return '';
+
+  const afterMarker = content.substring(content.indexOf(markerMatch[0]) + markerMatch[0].length);
+  const lines = afterMarker.split('\n').slice(1); // Skip marker line
+
+  // Find where our command output ends (next prompt)
+  const outputLines = [];
+  for (const line of lines) {
+    if (/[$>#%❯]\s*$/.test(line)) break;
+    outputLines.push(line);
+  }
+
+  // Remove the command echo line if present
+  if (outputLines.length > 0 && outputLines[0].includes(command)) {
+    outputLines.shift();
+  }
+
+  return outputLines.join('\n').trim();
+}
+
+/**
+ * Interrupt a running command (Ctrl+C)
+ */
+export async function interruptCommand(page: Page): Promise<void> {
+  await page.keyboard.press('Control+c');
+  await waitForShellPrompt(page);
+}
+
+/**
+ * Clear the terminal screen (Ctrl+L)
+ */
+export async function clearTerminal(page: Page): Promise<void> {
+  await page.keyboard.press('Control+l');
+  // Wait for terminal to be cleared
+  await page.waitForFunction(() => {
+    const terminal = document.querySelector('vibe-terminal');
+    const lines = terminal?.textContent?.split('\n') || [];
+    // Terminal is cleared when we have very few lines
+    return lines.length < 5;
+  });
 }
 
 /**
@@ -90,35 +135,62 @@ export function generateTestSessionName(): string {
 /**
  * Clean up all test sessions
  */
-export async function cleanupSessions(page: Page) {
-  // Simple approach - just navigate to root and kill all if available
+export async function cleanupSessions(page: Page): Promise<void> {
   try {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-    // Quick check for Kill All button
     const killAllButton = page.locator('button:has-text("Kill All")');
-    if (await killAllButton.isVisible({ timeout: 2000 })) {
-      page.once('dialog', (dialog) => dialog.accept());
+    if (await killAllButton.isVisible()) {
+      // Set up dialog handler before clicking
+      const dialogPromise = page.waitForEvent('dialog');
       await killAllButton.click();
-      // Wait for sessions to be marked as exited
-      await page
-        .waitForFunction(
-          () => {
-            const cards = document.querySelectorAll('session-card');
-            return Array.from(cards).every(
-              (card) =>
-                card.textContent?.toLowerCase().includes('exited') ||
-                card.textContent?.toLowerCase().includes('exit')
-            );
-          },
-          { timeout: 2000 }
-        )
-        .catch(() => {});
-    }
 
-    // Return quickly - don't wait for complete cleanup
+      const dialog = await dialogPromise;
+      await dialog.accept();
+
+      // Wait for all sessions to be marked as exited
+      await page.waitForFunction(
+        () => {
+          const cards = document.querySelectorAll('session-card');
+          return Array.from(cards).every((card) => {
+            const text = card.textContent?.toLowerCase() || '';
+            return text.includes('exited') || text.includes('exit');
+          });
+        },
+        { timeout: 5000 }
+      );
+    }
   } catch (error) {
-    // Ignore errors in cleanup
-    console.log('Cleanup error (ignored):', error);
+    // Ignore cleanup errors
+    console.log('Session cleanup error (ignored):', error);
   }
+}
+
+/**
+ * Assert that terminal contains specific text
+ */
+export async function assertTerminalContains(page: Page, text: string | RegExp): Promise<void> {
+  const sessionViewPage = new SessionViewPage(page);
+
+  if (typeof text === 'string') {
+    await sessionViewPage.waitForOutput(text);
+  } else {
+    await page.waitForFunction(
+      ({ pattern }) => {
+        const terminal = document.querySelector('vibe-terminal');
+        const content = terminal?.textContent || '';
+        return new RegExp(pattern).test(content);
+      },
+      { pattern: text.source }
+    );
+  }
+}
+
+/**
+ * Type text into the terminal without pressing Enter
+ */
+export async function typeInTerminal(page: Page, text: string): Promise<void> {
+  const terminal = page.locator('vibe-terminal');
+  await terminal.click();
+  await page.keyboard.type(text);
 }

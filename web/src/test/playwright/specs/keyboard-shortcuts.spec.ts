@@ -23,8 +23,6 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should open file browser with Cmd+O / Ctrl+O', async ({ page }) => {
-    test.setTimeout(20000);
-
     // Create a session
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('keyboard-test'),

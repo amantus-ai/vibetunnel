@@ -57,17 +57,17 @@ test.describe('Session Creation', () => {
   });
 
   test('should handle multiple session creation', async ({ page }) => {
-    test.setTimeout(20000);
-
     // Create multiple sessions in one call
     const sessions = await createMultipleSessions(page, 2, {
       name: 'multi-test',
     });
 
     // Track them for cleanup
-    sessions.forEach(
-      (s) => sessionManager.isTracking(s.sessionName) || sessionManager.clearTracking()
-    );
+    sessions.forEach((s) => {
+      if (!sessionManager.isTracking(s.sessionName)) {
+        sessionManager.trackSession(s);
+      }
+    });
 
     // Navigate to list and verify all exist
     await page.goto('/');
@@ -78,8 +78,6 @@ test.describe('Session Creation', () => {
   });
 
   test('should reconnect to existing session', async ({ page }) => {
-    test.setTimeout(20000);
-
     // Create and track session
     const { sessionName } = await sessionManager.createTrackedSession();
     await assertTerminalReady(page);

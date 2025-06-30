@@ -16,14 +16,14 @@ test.describe('Session Navigation', () => {
   });
 
   test('should navigate between session list and session view', async ({ page }) => {
-    test.setTimeout(20000);
-
     // Ensure we start fresh
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
-    // Wait a moment for the app to fully initialize
-    await page.waitForTimeout(1000);
+    // Wait for the app to be ready
+    await page.waitForSelector('body.ready', { state: 'attached', timeout: 5000 }).catch(() => {
+      // Fallback if no ready class
+    });
 
     // Create a session
     let sessionName: string;
@@ -80,7 +80,6 @@ test.describe('Session Navigation', () => {
 
     // Wait for any animations or transitions to complete
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
 
     // Ensure no modals are open that might block clicks
     const modalVisible = await page.locator('.modal-content').isVisible();
@@ -97,8 +96,8 @@ test.describe('Session Navigation', () => {
     await sessionCard.waitFor({ state: 'visible', timeout: 5000 });
     await sessionCard.scrollIntoViewIfNeeded();
 
-    // Add a small delay to ensure UI is stable
-    await page.waitForTimeout(500);
+    // Ensure UI is stable
+    await sessionCard.waitFor({ state: 'stable' });
 
     // Click the card and wait for navigation
     console.log(`Clicking session card for ${sessionName}`);
@@ -134,8 +133,11 @@ test.describe('Session Navigation', () => {
         await clickableArea.waitFor({ state: 'visible', timeout: 2000 });
         await clickableArea.click();
 
-        // Wait briefly
-        await page.waitForTimeout(500);
+        // Wait for potential navigation
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
+        await page
+          .waitForURL((url) => url.includes('?session=') || !url.endsWith('/'), { timeout: 1000 })
+          .catch(() => {});
 
         // Check if navigation happened
         if (!page.url().includes('?session=')) {
@@ -155,8 +157,6 @@ test.describe('Session Navigation', () => {
   });
 
   test('should navigate using sidebar in session view', async ({ page }) => {
-    test.setTimeout(20000);
-
     // Create multiple sessions
     const sessions = await createMultipleSessions(page, 2, {
       name: 'nav-test',

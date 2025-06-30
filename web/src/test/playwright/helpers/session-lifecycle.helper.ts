@@ -129,14 +129,28 @@ export async function waitForSessionState(
   targetState: 'RUNNING' | 'EXITED' | 'KILLED',
   timeout = 5000
 ): Promise<void> {
-  const startTime = Date.now();
+  const _startTime = Date.now();
 
-  while (Date.now() - startTime < timeout) {
-    const hasState = await verifySessionStatus(page, sessionName, targetState);
-    if (hasState) return;
+  // Use waitForFunction instead of polling loop
+  try {
+    await page.waitForFunction(
+      ({ name, state }) => {
+        const cards = document.querySelectorAll('session-card');
+        const sessionCard = Array.from(cards).find((card) => card.textContent?.includes(name));
+        if (!sessionCard) return false;
 
-    await page.waitForTimeout(500);
+        const statusElement = sessionCard.querySelector('span[data-status]');
+        const statusText = statusElement?.textContent?.toLowerCase() || '';
+        const dataStatus = statusElement?.getAttribute('data-status')?.toLowerCase() || '';
+
+        return dataStatus === state.toLowerCase() || statusText.includes(state.toLowerCase());
+      },
+      { name: sessionName, state: targetState },
+      { timeout, polling: 500 }
+    );
+  } catch (_error) {
+    throw new Error(
+      `Session ${sessionName} did not reach ${targetState} state within ${timeout}ms`
+    );
   }
-
-  throw new Error(`Session ${sessionName} did not reach ${targetState} state within ${timeout}ms`);
 }

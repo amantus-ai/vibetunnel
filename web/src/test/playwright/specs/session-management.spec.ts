@@ -44,8 +44,6 @@ test.describe('Session Management', () => {
   });
 
   test('should display session metadata correctly', async ({ page }) => {
-    test.setTimeout(15000);
-
     // Create a session and navigate back
     const { sessionName } = await createAndNavigateToSession(page);
     await page.goto('/');
@@ -59,8 +57,6 @@ test.describe('Session Management', () => {
   });
 
   test('should handle concurrent sessions', async ({ page }) => {
-    test.setTimeout(20000);
-
     try {
       // Create first session
       const { sessionName: session1 } = await sessionManager.createTrackedSession();

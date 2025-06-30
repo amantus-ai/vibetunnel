@@ -26,8 +26,6 @@ test.describe('Minimal Session Tests', () => {
   });
 
   test('should create multiple sessions', async ({ page }) => {
-    test.setTimeout(30000);
-
     // Create 3 sessions using helper
     const sessions = await createMultipleSessions(page, 3, {
       name: 'minimal-test',

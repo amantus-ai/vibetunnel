@@ -13,8 +13,6 @@ test.describe('Advanced Session Management', () => {
   });
 
   test('should kill individual sessions', async ({ page, sessionListPage }) => {
-    test.setTimeout(20000);
-
     // Create a tracked session
     const { sessionName } = await sessionManager.createTrackedSession();
 
@@ -100,8 +98,6 @@ test.describe('Advanced Session Management', () => {
   });
 
   test('should kill all sessions at once', async ({ page, sessionListPage }) => {
-    test.setTimeout(60000);
-
     // Create multiple tracked sessions
     const sessionNames = [];
     for (let i = 0; i < 3; i++) {
@@ -130,15 +126,14 @@ test.describe('Advanced Session Management', () => {
     await expect(killAllButton).toBeVisible({ timeout: 2000 });
 
     // Handle confirmation dialog if it appears
-    const dialogHandler = (dialog: { accept: () => void }) => dialog.accept();
-    page.once('dialog', dialogHandler);
+    const [dialog] = await Promise.all([
+      page.waitForEvent('dialog', { timeout: 1000 }).catch(() => null),
+      killAllButton.click(),
+    ]);
 
-    // Click the button
-    await killAllButton.click();
-
-    // Remove the handler if no dialog appeared
-    await page.waitForTimeout(500);
-    page.removeListener('dialog', dialogHandler);
+    if (dialog) {
+      await dialog.accept();
+    }
 
     // Wait for kill all API calls to complete
     await page
@@ -248,8 +243,6 @@ test.describe('Advanced Session Management', () => {
   });
 
   test('should copy session information', async ({ page }) => {
-    test.setTimeout(20000);
-
     // Create a tracked session
     const { sessionName } = await sessionManager.createTrackedSession();
 
@@ -276,8 +269,6 @@ test.describe('Advanced Session Management', () => {
   });
 
   test('should display session metadata correctly', async ({ page }) => {
-    test.setTimeout(20000);
-
     // Create a session with specific working directory using page object
     await page.waitForSelector('button[title="Create New Session"]', {
       state: 'visible',
@@ -317,8 +308,6 @@ test.describe('Advanced Session Management', () => {
   });
 
   test('should filter sessions by status', async ({ page }) => {
-    test.setTimeout(40000);
-
     // Create a running session
     const { sessionName: runningSessionName } = await sessionManager.createTrackedSession();
 

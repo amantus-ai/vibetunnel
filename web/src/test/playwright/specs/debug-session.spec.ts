@@ -12,8 +12,6 @@ test.describe('Debug Session Tests', () => {
     await sessionManager.cleanupAllSessions();
   });
   test('debug session creation and listing', async ({ page }) => {
-    test.setTimeout(30000);
-
     // Wait for page to be ready
     await page.waitForSelector('button[title="Create New Session"]', {
       state: 'visible',

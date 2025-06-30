@@ -86,8 +86,6 @@ test.describe('UI Features', () => {
   });
 
   test('should show session count in header', async ({ page }) => {
-    test.setTimeout(20000);
-
     // Wait for header to be visible
     await page.waitForSelector('full-header', { state: 'visible', timeout: 10000 });
 
@@ -144,8 +142,6 @@ test.describe('UI Features', () => {
   });
 
   test('should show terminal preview in session cards', async ({ page }) => {
-    test.setTimeout(20000);
-
     // Create a tracked session
     const { sessionName } = await sessionManager.createTrackedSession();
 

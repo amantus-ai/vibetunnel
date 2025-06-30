@@ -66,13 +66,12 @@ export async function waitForNetworkSettled(
 
     page.on('request', requestHandler);
 
-    const startTime = Date.now();
-    while (Date.now() - startTime < timeout) {
-      if (Date.now() - lastRequestTime > idleTime) {
-        break;
-      }
-      await page.waitForTimeout(100);
-    }
+    // Use waitForFunction instead of polling loop
+    await page.waitForFunction(
+      ({ lastReq, idle }) => Date.now() - lastReq > idle,
+      { lastReq: lastRequestTime, idle: idleTime },
+      { timeout, polling: 100 }
+    );
 
     page.off('request', requestHandler);
   }
