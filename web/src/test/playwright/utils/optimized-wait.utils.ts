@@ -22,32 +22,34 @@ export class OptimizedWaitUtils {
     });
 
     // Check for either session list or auth in parallel
-    await Promise.race([
+    const result = await Promise.race([
       page
         .waitForSelector('button[title="Create New Session"]', {
           state: 'visible',
           timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
         })
-        .catch(() => {
-          // Race condition - ignore if not found
-        }),
+        .then(() => 'session-list')
+        .catch(() => null),
       page
         .waitForSelector('session-card', {
           state: 'visible',
           timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
         })
-        .catch(() => {
-          // Race condition - ignore if not found
-        }),
+        .then(() => 'session-card')
+        .catch(() => null),
       page
         .waitForSelector('auth-login', {
           state: 'visible',
           timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
         })
-        .catch(() => {
-          // Race condition - ignore if not found
-        }),
+        .then(() => 'auth-login')
+        .catch(() => null),
     ]);
+
+    // If all promises resolved to null, throw an error
+    if (!result) {
+      throw new Error('App initialization failed: No expected elements found within timeout');
+    }
   }
 
   /**

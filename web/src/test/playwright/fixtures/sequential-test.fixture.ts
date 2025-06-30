@@ -3,7 +3,6 @@ import { CLEANUP_CONFIG, POOL_CONFIG } from '../config/test-constants';
 import { BatchOperations } from '../helpers/batch-operations.helper';
 import { SessionCleanupHelper } from '../helpers/session-cleanup.helper';
 import { SessionPool } from '../helpers/session-pool.helper';
-import { logger } from '../utils/logger';
 import { OptimizedWaitUtils } from '../utils/optimized-wait.utils';
 
 /**

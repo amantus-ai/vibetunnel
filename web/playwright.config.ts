@@ -63,7 +63,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: `node dist/vibetunnel-cli --no-auth --port ${testConfig.port}`,
+    command: `tsx src/server/server.ts --no-auth --port ${testConfig.port}`,
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: 'pipe',

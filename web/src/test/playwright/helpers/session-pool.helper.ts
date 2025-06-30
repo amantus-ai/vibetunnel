@@ -199,7 +199,9 @@ export class SessionPool {
         { url: this.baseUrl, id: sessionId }
       );
 
-      return sessions.length > 0 && sessions[0].active !== false;
+      // Treat sessions as inactive if active is explicitly false or undefined/missing
+      // This aligns with session-cleanup.helper.ts which treats !s.active as inactive
+      return sessions.length > 0 && sessions[0].active === true;
     } catch {
       return false;
     }

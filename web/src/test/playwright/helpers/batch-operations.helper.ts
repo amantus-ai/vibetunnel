@@ -194,7 +194,7 @@ export class BatchOperations {
 
       return sessions.filter((s: SessionInfo) => {
         if (status === 'RUNNING') {
-          return s.active !== false && s.status !== 'EXITED' && s.status !== 'EXIT';
+          return s.active === true && s.status !== 'EXITED' && s.status !== 'EXIT';
         } else {
           return s.active === false || s.status === 'EXITED' || s.status === 'EXIT';
         }
@@ -221,7 +221,7 @@ export class BatchOperations {
       if (targetSessions.length === sessionIds.length) {
         const allMatch = targetSessions.every((s) => {
           if (expectedState === 'RUNNING') {
-            return s.active !== false && s.status !== 'EXITED';
+            return s.active === true && s.status !== 'EXITED';
           } else {
             return s.active === false || s.status === 'EXITED';
           }
