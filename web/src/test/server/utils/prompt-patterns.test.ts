@@ -21,6 +21,19 @@ describe('PromptDetector', () => {
       expect(PromptDetector.isPromptOnly('% ')).toBe(true);
     });
 
+    it('should reject unusually long inputs', () => {
+      const longInput = 'x'.repeat(10001) + '$ ';
+      expect(PromptDetector.isPromptOnly(longInput)).toBe(false);
+
+      // Just under the limit should work
+      const justUnderLimit = 'x'.repeat(9998) + '$ ';
+      expect(PromptDetector.isPromptOnly(justUnderLimit)).toBe(false); // Still false because it's not just a prompt
+
+      // A normal prompt padded with spaces under the limit
+      const paddedPrompt = ' '.repeat(9998) + '$ ';
+      expect(PromptDetector.isPromptOnly(paddedPrompt)).toBe(true);
+    });
+
     it('should detect modern shell prompts', () => {
       expect(PromptDetector.isPromptOnly('❯ ')).toBe(true);
       expect(PromptDetector.isPromptOnly('❯')).toBe(true);

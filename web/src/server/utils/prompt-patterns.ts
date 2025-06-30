@@ -12,15 +12,22 @@ const logger = createLogger('prompt-patterns');
 const ANSI_ESCAPE_REGEX = /\x1b\[[0-9;]*[a-zA-Z]/g;
 
 // Single pre-compiled regex combining all prompt patterns
-// Using non-capturing groups and alternation for efficiency
-// This matches prompts at the end of the string, optionally preceded by bracketed content
-// Excludes Python REPL prompts (>>> and ...) by using negative lookbehind
+// (?<![.>])         - Negative lookbehind: not preceded by . or > (excludes Python)
+// (?:\[[^\]]*\])?   - Optional brackets for user@host, paths, etc
+// [$>#%❯➜]         - Common prompt characters
+// \s*               - Optional trailing whitespace
+// (?:\x1b\[...)?    - Optional ANSI escape sequence
+// $                 - End of string anchor
 // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal prompts may contain escape sequences
 const UNIFIED_PROMPT_END_REGEX = /(?<![.>])(?:\[[^\]]*\])?[$>#%❯➜]\s*(?:\x1b\[[0-9;]*[a-zA-Z])?$/;
 
 // Regex for detecting if entire output is just a prompt (no other content)
-// Matches optional brackets, then prompt characters, then optional whitespace
-// Excludes Python REPL prompts (>>> and ...) by checking they're not preceded by > or .
+// ^                 - Start of string anchor
+// (?:\[[^\]]*\])?   - Optional brackets for user@host, paths, etc
+// (?<!^[.>]{2})     - Negative lookbehind: not preceded by .. or >> at start
+// [$>#%❯➜]         - Common prompt characters
+// \s*               - Optional trailing whitespace
+// $                 - End of string anchor
 const PROMPT_ONLY_REGEX = /^(?:\[[^\]]*\])?(?<!^[.>]{2})[$>#%❯➜]\s*$/;
 
 // More specific patterns for different shells (for future shell-specific optimizations)
@@ -64,6 +71,12 @@ export class PromptDetector {
    * Used by activity detector to determine if output is meaningful
    */
   static isPromptOnly(data: string): boolean {
+    // Input validation
+    if (data.length > 10000) {
+      logger.warn('Unusually long prompt input detected', { length: data.length });
+      return false;
+    }
+
     const trimmed = data.trim();
 
     // Check cache first
