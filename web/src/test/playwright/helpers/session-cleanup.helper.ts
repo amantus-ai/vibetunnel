@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test';
+import { CLEANUP_CONFIG } from '../config/test-constants';
 import type { SessionInfo } from '../types/session.types';
+import { logger } from '../utils/logger';
 
 /**
  * Smart session cleanup helper that efficiently removes test sessions
@@ -44,8 +46,10 @@ export class SessionCleanupHelper {
       // Delete in parallel via API
       await this.page.evaluate(
         async ({ url, sessionIds }) => {
-          const promises = sessionIds.map(
-            (id: string) => fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {}) // Ignore individual failures
+          const promises = sessionIds.map((id: string) =>
+            fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {
+              // Ignore individual failures
+            })
           );
           await Promise.all(promises);
         },
@@ -54,7 +58,7 @@ export class SessionCleanupHelper {
 
       return toDelete.length;
     } catch (error) {
-      console.error('Failed to cleanup sessions by pattern:', error);
+      logger.error('Failed to cleanup sessions by pattern:', error);
       return 0;
     }
   }
@@ -62,7 +66,7 @@ export class SessionCleanupHelper {
   /**
    * Clean up old sessions (older than specified minutes)
    */
-  async cleanupOldSessions(olderThanMinutes = 30): Promise<number> {
+  async cleanupOldSessions(olderThanMinutes = CLEANUP_CONFIG.DEFAULT_AGE_MINUTES): Promise<number> {
     try {
       const cutoffTime = Date.now() - olderThanMinutes * 60 * 1000;
 
@@ -93,7 +97,9 @@ export class SessionCleanupHelper {
       await this.page.evaluate(
         async ({ url, sessionIds }) => {
           const promises = sessionIds.map((id: string) =>
-            fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {})
+            fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {
+              // Ignore individual failures
+            })
           );
           await Promise.all(promises);
         },
@@ -102,7 +108,7 @@ export class SessionCleanupHelper {
 
       return toDelete.length;
     } catch (error) {
-      console.error('Failed to cleanup old sessions:', error);
+      logger.error('Failed to cleanup old sessions:', error);
       return 0;
     }
   }
@@ -129,7 +135,9 @@ export class SessionCleanupHelper {
       await this.page.evaluate(
         async ({ url, sessionIds }) => {
           const promises = sessionIds.map((id: string) =>
-            fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {})
+            fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {
+              // Ignore individual failures
+            })
           );
           await Promise.all(promises);
         },
@@ -138,7 +146,7 @@ export class SessionCleanupHelper {
 
       return toDelete.length;
     } catch (error) {
-      console.error('Failed to cleanup exited sessions:', error);
+      logger.error('Failed to cleanup exited sessions:', error);
       return 0;
     }
   }
@@ -175,7 +183,9 @@ export class SessionCleanupHelper {
         await this.page.evaluate(
           async ({ url, sessionIds }) => {
             const promises = sessionIds.map((id: string) =>
-              fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {})
+              fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {
+                // Ignore individual failures
+              })
             );
             await Promise.all(promises);
           },
@@ -183,7 +193,7 @@ export class SessionCleanupHelper {
         );
       }
     } catch (error) {
-      console.error('Failed to cleanup all sessions:', error);
+      logger.error('Failed to cleanup all sessions:', error);
     }
   }
 

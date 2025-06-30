@@ -1,13 +1,15 @@
 import type { Locator, Page } from '@playwright/test';
+import { TEST_TIMEOUTS } from '../config/test-constants';
+import { logger } from './logger';
 
 /**
  * Optimized wait utilities with reduced timeouts and smarter strategies
  */
 export class OptimizedWaitUtils {
   // Reduced default timeouts for faster test execution
-  private static readonly QUICK_TIMEOUT = 1000;
-  private static readonly DEFAULT_TIMEOUT = 3000;
-  private static readonly LONG_TIMEOUT = 10000;
+  private static readonly QUICK_TIMEOUT = TEST_TIMEOUTS.QUICK;
+  private static readonly DEFAULT_TIMEOUT = TEST_TIMEOUTS.DEFAULT;
+  private static readonly LONG_TIMEOUT = TEST_TIMEOUTS.LONG;
 
   /**
    * Wait for app initialization with optimized checks
@@ -26,19 +28,25 @@ export class OptimizedWaitUtils {
           state: 'visible',
           timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
         })
-        .catch(() => {}),
+        .catch(() => {
+          // Race condition - ignore if not found
+        }),
       page
         .waitForSelector('session-card', {
           state: 'visible',
           timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
         })
-        .catch(() => {}),
+        .catch(() => {
+          // Race condition - ignore if not found
+        }),
       page
         .waitForSelector('auth-login', {
           state: 'visible',
           timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
         })
-        .catch(() => {}),
+        .catch(() => {
+          // Race condition - ignore if not found
+        }),
     ]);
   }
 
@@ -101,7 +109,8 @@ export class OptimizedWaitUtils {
         { timeout }
       );
       return true;
-    } catch {
+    } catch (error) {
+      logger.debug('Session state check failed:', error);
       return false;
     }
   }
@@ -113,11 +122,12 @@ export class OptimizedWaitUtils {
     // Try to wait for URL change
     try {
       await page.waitForURL(url, { timeout });
-    } catch {
+    } catch (error) {
       // Fallback: check if we're already there
       if (!page.url().includes(url)) {
         throw new Error(`Navigation to ${url} failed`);
       }
+      logger.debug('Navigation already at destination or timeout', error);
     }
   }
 
@@ -176,7 +186,8 @@ export class OptimizedWaitUtils {
     try {
       await locator.waitFor({ state: 'visible', timeout });
       return true;
-    } catch {
+    } catch (error) {
+      logger.debug('Element visibility check failed:', error);
       return false;
     }
   }
@@ -185,7 +196,7 @@ export class OptimizedWaitUtils {
    * Wait for network idle with early exit
    */
   static async waitForNetworkQuiet(page: Page, options?: { timeout?: number }): Promise<void> {
-    const { timeout = 2000 } = options || {};
+    const { timeout = TEST_TIMEOUTS.NETWORK_QUIET } = options || {};
 
     // Track pending requests
     let pendingRequests = 0;

@@ -1,4 +1,7 @@
 import type { Page } from '@playwright/test';
+import { POOL_CONFIG } from '../config/test-constants';
+import type { SessionInfo } from '../types/session.types';
+import { logger } from '../utils/logger';
 
 interface SessionPoolInfo {
   id: string;
@@ -7,8 +10,6 @@ interface SessionPoolInfo {
   command: string;
   status: string;
 }
-
-import type { SessionInfo } from '../types/session.types';
 
 /**
  * Session pool for reusing sessions across tests
@@ -34,8 +35,11 @@ export class SessionPool {
   /**
    * Pre-create a pool of sessions for test use
    */
-  async initialize(poolSize = 5, command = 'bash'): Promise<void> {
-    console.log(`Initializing session pool with ${poolSize} sessions`);
+  async initialize(
+    poolSize = POOL_CONFIG.DEFAULT_SIZE,
+    command = POOL_CONFIG.DEFAULT_COMMAND
+  ): Promise<void> {
+    logger.info(`Initializing session pool with ${poolSize} sessions`);
 
     const createPromises = Array(poolSize)
       .fill(0)
@@ -50,18 +54,18 @@ export class SessionPool {
             status: 'available',
           });
         } catch (error) {
-          console.error(`Failed to create pool session ${i}:`, error);
+          logger.error(`Failed to create pool session ${i}:`, error);
         }
       });
 
     await Promise.all(createPromises);
-    console.log(`Session pool initialized with ${this.availableSessions.size} sessions`);
+    logger.info(`Session pool initialized with ${this.availableSessions.size} sessions`);
   }
 
   /**
    * Get a session from the pool
    */
-  async acquire(preferredCommand = 'bash'): Promise<SessionPoolInfo | null> {
+  async acquire(preferredCommand = POOL_CONFIG.DEFAULT_COMMAND): Promise<SessionPoolInfo | null> {
     // Find an available session with matching command
     for (const [id, session] of this.availableSessions) {
       if (session.command === preferredCommand && !this.usedSessions.has(id)) {
@@ -94,7 +98,7 @@ export class SessionPool {
       this.usedSessions.add(session.id);
       return sessionInfo;
     } catch (error) {
-      console.error('Failed to create new pool session:', error);
+      logger.error('Failed to create new pool session:', error);
       return null;
     }
   }
@@ -125,7 +129,9 @@ export class SessionPool {
       await this.page.evaluate(
         async ({ url, ids }) => {
           const promises = ids.map((id) =>
-            fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {})
+            fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {
+              // Ignore individual failures
+            })
           );
           await Promise.all(promises);
         },
@@ -202,9 +208,9 @@ export class SessionPool {
       );
 
       // Brief wait for clear to execute
-      await this.page.waitForTimeout(100);
+      await this.page.waitForTimeout(POOL_CONFIG.CLEAR_DELAY_MS);
     } catch {
-      // Ignore clear failures
+      // Ignore clear failures - session may already be gone
     }
   }
 }

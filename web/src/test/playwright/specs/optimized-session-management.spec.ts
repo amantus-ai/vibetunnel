@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/sequential-test.fixture';
+import { logger } from '../utils/logger';
 
 /**
  * Example of optimized session management tests
@@ -7,11 +8,7 @@ import { expect, test } from '../fixtures/sequential-test.fixture';
 
 test.describe('Optimized Session Management', () => {
   test.describe.configure({ timeout: 20000 }); // Critical tests timeout
-  test('should efficiently create and manage sessions', async ({
-    page,
-    batchOps,
-    waitUtils,
-  }) => {
+  test('should efficiently create and manage sessions', async ({ page, batchOps, waitUtils }) => {
     // Navigate to home
     await page.goto('/');
     await waitUtils.waitForAppReady(page);
@@ -55,7 +52,7 @@ test.describe('Optimized Session Management', () => {
 
     // Check pool stats
     const stats = sessionPool.getStats();
-    console.log(`Pool stats: ${JSON.stringify(stats)}`);
+    logger.info(`Pool stats: ${JSON.stringify(stats)}`);
   });
 });
 
@@ -122,9 +119,9 @@ test.describe('Stress Test with Optimizations', () => {
         command: 'echo "Ready"',
       }));
 
-    console.time('Create 10 sessions');
+    const startTime = Date.now();
     const sessions = await batchOps.createSessions(sessionData);
-    console.timeEnd('Create 10 sessions');
+    logger.info(`Create 10 sessions took ${Date.now() - startTime}ms`);
 
     const successful = sessions.filter((s) => s.success);
     expect(successful.length).toBeGreaterThanOrEqual(8); // Allow some failures
@@ -139,9 +136,9 @@ test.describe('Stress Test with Optimizations', () => {
     });
 
     // Batch cleanup
-    console.time('Cleanup sessions');
+    const cleanStartTime = Date.now();
     const cleaned = await cleanupHelper.cleanupByPattern(/^stress-test-/);
-    console.timeEnd('Cleanup sessions');
+    logger.info(`Cleanup sessions took ${Date.now() - cleanStartTime}ms`);
 
     expect(cleaned).toBeGreaterThanOrEqual(successful.length);
   });

@@ -1,7 +1,9 @@
 import { test as base } from '@playwright/test';
+import { CLEANUP_CONFIG, POOL_CONFIG } from '../config/test-constants';
 import { BatchOperations } from '../helpers/batch-operations.helper';
 import { SessionCleanupHelper } from '../helpers/session-cleanup.helper';
 import { SessionPool } from '../helpers/session-pool.helper';
+import { logger } from '../utils/logger';
 import { OptimizedWaitUtils } from '../utils/optimized-wait.utils';
 
 /**
@@ -20,12 +22,12 @@ export const test = base.extend<SequentialTestFixtures>({
     const helper = new SessionCleanupHelper(page);
 
     // Clean up old test sessions before starting
-    await helper.cleanupByPattern(/^(test-|pool-|batch-)/);
+    await helper.cleanupByPattern(CLEANUP_CONFIG.PATTERN_PREFIX);
 
     await use(helper);
 
     // Clean up after test
-    await helper.cleanupByPattern(/^(test-|pool-|batch-)/);
+    await helper.cleanupByPattern(CLEANUP_CONFIG.PATTERN_PREFIX);
   },
 
   // Batch operations for efficient API calls
@@ -39,7 +41,7 @@ export const test = base.extend<SequentialTestFixtures>({
     const pool = new SessionPool(page);
 
     // Initialize small pool for test use
-    await pool.initialize(3);
+    await pool.initialize(POOL_CONFIG.DEFAULT_SIZE);
 
     await use(pool);
 
@@ -48,7 +50,7 @@ export const test = base.extend<SequentialTestFixtures>({
   },
 
   // Optimized wait utilities
-  waitUtils: async ({}, use) => {
+  waitUtils: async (_, use) => {
     await use(OptimizedWaitUtils);
   },
 });
@@ -63,7 +65,7 @@ test.beforeAll(async ({ browser }) => {
   // Clean up any leftover sessions from previous runs
   const cleaned = await cleanup.cleanupOldSessions(60); // 1 hour old
   if (cleaned > 0) {
-    console.log(`Cleaned up ${cleaned} old sessions before test run`);
+    logger.info(`Cleaned up ${cleaned} old sessions before test run`);
   }
 
   await page.close();
@@ -74,9 +76,9 @@ test.afterAll(async ({ browser }) => {
   const cleanup = new SessionCleanupHelper(page);
 
   // Final cleanup of test sessions
-  const cleaned = await cleanup.cleanupByPattern(/^(test-|pool-|batch-)/);
+  const cleaned = await cleanup.cleanupByPattern(CLEANUP_CONFIG.PATTERN_PREFIX);
   if (cleaned > 0) {
-    console.log(`Cleaned up ${cleaned} test sessions after test run`);
+    logger.info(`Cleaned up ${cleaned} test sessions after test run`);
   }
 
   await page.close();
