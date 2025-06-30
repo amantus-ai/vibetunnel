@@ -63,7 +63,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: `npx tsx src/cli.ts --no-auth --port ${testConfig.port}`,
+    command: `pnpm exec tsx src/cli.ts --no-auth --port ${testConfig.port}`,
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: process.env.CI ? 'inherit' : 'pipe', // Show output in CI for debugging
