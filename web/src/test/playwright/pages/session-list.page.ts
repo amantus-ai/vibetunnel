@@ -154,8 +154,17 @@ export class SessionListPage extends BasePage {
       try {
         await this.page.fill('[data-testid="command-input"]', command);
       } catch {
+        // Check if page is still valid before trying fallback
+        if (this.page.isClosed()) {
+          throw new Error('Page was closed unexpectedly');
+        }
         // Fallback to placeholder selector
-        await this.page.fill('input[placeholder="zsh"]', command);
+        try {
+          await this.page.fill('input[placeholder="zsh"]', command);
+        } catch (fallbackError) {
+          console.error('Failed to fill command input:', fallbackError);
+          throw fallbackError;
+        }
       }
     }
 

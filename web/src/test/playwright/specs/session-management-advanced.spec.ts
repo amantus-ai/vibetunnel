@@ -98,6 +98,8 @@ test.describe('Advanced Session Management', () => {
   });
 
   test('should kill all sessions at once', async ({ page, sessionListPage }) => {
+    // Increase timeout for this test as it involves multiple sessions
+    test.setTimeout(90000);
     // Create multiple tracked sessions
     const sessionNames = [];
     for (let i = 0; i < 3; i++) {
@@ -111,10 +113,14 @@ test.describe('Advanced Session Management', () => {
     // Verify all sessions are visible
     for (const name of sessionNames) {
       const cards = await sessionListPage.getSessionCards();
-      const hasSession = cards.some(async (card) => {
+      let hasSession = false;
+      for (const card of cards) {
         const text = await card.textContent();
-        return text?.includes(name);
-      });
+        if (text?.includes(name)) {
+          hasSession = true;
+          break;
+        }
+      }
       expect(hasSession).toBeTruthy();
     }
 
@@ -135,13 +141,15 @@ test.describe('Advanced Session Management', () => {
       await dialog.accept();
     }
 
-    // Wait for kill all API calls to complete
-    await page
-      .waitForResponse(
+    // Wait for kill all API calls to complete - wait for at least one kill response
+    try {
+      await page.waitForResponse(
         (response) => response.url().includes('/api/sessions') && response.url().includes('/kill'),
         { timeout: 5000 }
-      )
-      .catch(() => {});
+      );
+    } catch {
+      // Continue even if no kill response detected
+    }
 
     // Sessions might be hidden immediately or take time to transition
     // Wait for all sessions to either be hidden or show as exited
@@ -183,7 +191,7 @@ test.describe('Advanced Session Management', () => {
         );
       },
       sessionNames,
-      { timeout: 40000 }
+      { timeout: 30000 }
     );
 
     // Wait for the UI to update after killing sessions

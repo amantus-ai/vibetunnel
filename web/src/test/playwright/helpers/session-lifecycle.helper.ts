@@ -16,6 +16,11 @@ export async function createAndNavigateToSession(
   page: Page,
   options: SessionOptions = {}
 ): Promise<{ sessionName: string; sessionId: string }> {
+  // Check if page is still valid
+  if (page.isClosed()) {
+    throw new Error('Page is closed, cannot create session');
+  }
+
   const sessionListPage = new SessionListPage(page);
   const sessionViewPage = new SessionViewPage(page);
 
@@ -114,6 +119,13 @@ export async function createMultipleSessions(
     // Navigate back to list for next creation (except last one)
     if (i < count - 1) {
       await page.goto('/', { waitUntil: 'domcontentloaded' });
+      // Wait for app to be ready before creating next session
+      await page.waitForSelector('button[title="Create New Session"]', {
+        state: 'visible',
+        timeout: 10000,
+      });
+      // Add a small delay to avoid race conditions
+      await page.waitForTimeout(500);
     }
   }
 
