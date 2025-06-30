@@ -64,7 +64,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command: process.env.CI 
-      ? `node dist/cli.js --no-auth --port ${testConfig.port}`  // Run without env var prefix
+      ? `./scripts/start-test-server.sh ${testConfig.port}`  // Use wrapper script in CI
       : `pnpm exec tsx src/cli.ts --no-auth --port ${testConfig.port}`, // Use tsx locally
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
