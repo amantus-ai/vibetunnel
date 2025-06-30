@@ -1,0 +1,197 @@
+import type { Page } from '@playwright/test';
+import type { SessionInfo } from '../types/session.types';
+
+/**
+ * Smart session cleanup helper that efficiently removes test sessions
+ * Optimized for sequential test execution
+ */
+export class SessionCleanupHelper {
+  private page: Page;
+  private baseUrl: string;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.baseUrl =
+      page
+        .url()
+        .replace(/\/sessions.*$/, '')
+        .replace(/\/$/, '') || 'http://localhost:4022';
+  }
+
+  /**
+   * Clean up all sessions matching a pattern
+   * Uses API for efficiency
+   */
+  async cleanupByPattern(pattern: string | RegExp): Promise<number> {
+    try {
+      // Get all sessions via API
+      const sessions = await this.page.evaluate(async (url) => {
+        const response = await fetch(`${url}/api/sessions`);
+        if (!response.ok) return [];
+        return response.json();
+      }, this.baseUrl);
+
+      // Filter sessions matching pattern
+      const toDelete = sessions.filter((s: SessionInfo) => {
+        if (typeof pattern === 'string') {
+          return s.name.includes(pattern);
+        }
+        return pattern.test(s.name);
+      });
+
+      if (toDelete.length === 0) return 0;
+
+      // Delete in parallel via API
+      await this.page.evaluate(
+        async ({ url, sessionIds }) => {
+          const promises = sessionIds.map(
+            (id: string) => fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {}) // Ignore individual failures
+          );
+          await Promise.all(promises);
+        },
+        { url: this.baseUrl, sessionIds: toDelete.map((s: SessionInfo) => s.id) }
+      );
+
+      return toDelete.length;
+    } catch (error) {
+      console.error('Failed to cleanup sessions by pattern:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Clean up old sessions (older than specified minutes)
+   */
+  async cleanupOldSessions(olderThanMinutes = 30): Promise<number> {
+    try {
+      const cutoffTime = Date.now() - olderThanMinutes * 60 * 1000;
+
+      // Get all sessions via API
+      const sessions = await this.page.evaluate(async (url) => {
+        const response = await fetch(`${url}/api/sessions`);
+        if (!response.ok) return [];
+        return response.json();
+      }, this.baseUrl);
+
+      // Filter old sessions
+      const toDelete = sessions.filter((s: SessionInfo) => {
+        const created = new Date(s.created || s.startTime).getTime();
+        return created < cutoffTime;
+      });
+
+      if (toDelete.length === 0) return 0;
+
+      // Delete old sessions
+      await this.page.evaluate(
+        async ({ url, sessionIds }) => {
+          const promises = sessionIds.map((id: string) =>
+            fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {})
+          );
+          await Promise.all(promises);
+        },
+        { url: this.baseUrl, sessionIds: toDelete.map((s: SessionInfo) => s.id) }
+      );
+
+      return toDelete.length;
+    } catch (error) {
+      console.error('Failed to cleanup old sessions:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Clean up exited sessions only
+   */
+  async cleanupExitedSessions(): Promise<number> {
+    try {
+      const sessions = await this.page.evaluate(async (url) => {
+        const response = await fetch(`${url}/api/sessions`);
+        if (!response.ok) return [];
+        return response.json();
+      }, this.baseUrl);
+
+      // Filter exited sessions
+      const toDelete = sessions.filter(
+        (s: SessionInfo) => s.status === 'EXITED' || s.status === 'EXIT' || !s.active
+      );
+
+      if (toDelete.length === 0) return 0;
+
+      // Delete exited sessions
+      await this.page.evaluate(
+        async ({ url, sessionIds }) => {
+          const promises = sessionIds.map((id: string) =>
+            fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {})
+          );
+          await Promise.all(promises);
+        },
+        { url: this.baseUrl, sessionIds: toDelete.map((s: SessionInfo) => s.id) }
+      );
+
+      return toDelete.length;
+    } catch (error) {
+      console.error('Failed to cleanup exited sessions:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Fast cleanup all sessions (for test teardown)
+   */
+  async cleanupAllSessions(): Promise<void> {
+    try {
+      // First try the UI Kill All button if available
+      if (this.page.url().endsWith('/')) {
+        const killAllButton = this.page.locator('button:has-text("Kill All")');
+        if (await killAllButton.isVisible({ timeout: 500 })) {
+          const [dialog] = await Promise.all([
+            this.page.waitForEvent('dialog'),
+            killAllButton.click(),
+          ]);
+          await dialog.accept();
+
+          // Wait briefly for sessions to exit
+          await this.page.waitForTimeout(500);
+          return;
+        }
+      }
+
+      // Fallback to API cleanup
+      const sessions = await this.page.evaluate(async (url) => {
+        const response = await fetch(`${url}/api/sessions`);
+        if (!response.ok) return [];
+        return response.json();
+      }, this.baseUrl);
+
+      if (sessions.length > 0) {
+        await this.page.evaluate(
+          async ({ url, sessionIds }) => {
+            const promises = sessionIds.map((id: string) =>
+              fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {})
+            );
+            await Promise.all(promises);
+          },
+          { url: this.baseUrl, sessionIds: sessions.map((s: SessionInfo) => s.id) }
+        );
+      }
+    } catch (error) {
+      console.error('Failed to cleanup all sessions:', error);
+    }
+  }
+
+  /**
+   * Get session count for verification
+   */
+  async getSessionCount(): Promise<number> {
+    try {
+      const sessions = await this.page.evaluate(async (url) => {
+        const response = await fetch(`${url}/api/sessions`);
+        if (!response.ok) return [];
+        return response.json();
+      }, this.baseUrl);
+      return sessions.length;
+    } catch {
+      return 0;
+    }
+  }
+}

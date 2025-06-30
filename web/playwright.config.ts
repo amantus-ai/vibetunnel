@@ -65,7 +65,7 @@ export default defineConfig({
   webServer: {
     command: `node dist/vibetunnel-cli --no-auth --port ${testConfig.port}`,
     port: testConfig.port,
-    reuseExistingServer: false, // Always use the configured port 4022
+    reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: 'pipe',
     stderr: 'pipe',
     timeout: 180 * 1000, // 3 minutes for server startup
