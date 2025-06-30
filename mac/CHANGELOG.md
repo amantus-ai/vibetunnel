@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.0-beta.6] - 2025-01-30
+
+### ✨ New Features
+- **Sleep Prevention** - Mac now stays awake when VibeTunnel is running terminal sessions
+- **Dynamic Settings** - Sleep prevention setting updates immediately without server restart
+- **Terminal Title Management** - Enhanced terminal title updates with activity detection
+- **Prompt Pattern Detection** - Optimized prompt detection with unified regex patterns and caching
+
+### 🐛 Bug Fixes
+- **Unicode Cursor Positioning** - Fixed cursor positioning issues with Unicode characters
+- **Race Condition** - Fixed sleep prevention race condition during server startup
+- **Memory Efficiency** - Added input validation to prevent excessive memory usage on long inputs
+
+### 🔧 Technical Improvements
+- **Performance** - 45% faster prompt pattern detection with LRU caching
+- **Code Quality** - Comprehensive test coverage for prompt detection utilities
+- **Documentation** - Improved regex documentation for maintainability
+
 ## [1.0.0-beta.5] - 2025-01-29
 
 ### 🎨 UI Improvements

@@ -92,6 +92,7 @@ class ServerManager {
     private var lastCrashTime: Date?
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ServerManager")
+    private let powerManager = PowerManagementService.shared
 
     private init() {
         // Skip observer setup and monitoring during tests
@@ -113,7 +114,7 @@ class ServerManager {
     }
 
     private func setupObservers() {
-        // Watch for server mode changes when the value actually changes
+        // Watch for UserDefaults changes (e.g., sleep prevention setting)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(userDefaultsDidChange),
@@ -124,7 +125,16 @@ class ServerManager {
 
     @objc
     private nonisolated func userDefaultsDidChange() {
-        // No server-related defaults to monitor
+        Task { @MainActor in
+            // Only update sleep prevention if server is running
+            guard isRunning else { return }
+            
+            // Check if preventSleepWhenRunning setting changed
+            let preventSleep = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+            powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
+            
+            logger.info("Updated sleep prevention setting: \(preventSleep ? "enabled" : "disabled")")
+        }
     }
 
     /// Start the server with current configuration
@@ -212,6 +222,12 @@ class ServerManager {
             bunServer = server
             // Check server state to ensure it's actually running
             if server.getState() == .running {
+                // Update sleep prevention FIRST before updating state
+                // This prevents a race condition where the server could crash after setting isRunning = true
+                let preventSleep = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+                powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
+                
+                // Now update state
                 isRunning = true
                 lastError = nil
                 // Reset crash counter on successful start
@@ -260,6 +276,9 @@ class ServerManager {
 
         // Clear the auth token from SessionMonitor
         SessionMonitor.shared.setLocalAuthToken(nil)
+        
+        // Allow sleep when server is stopped
+        powerManager.updateSleepPrevention(enabled: false, serverRunning: false)
 
         // Reset crash tracking when manually stopped
         consecutiveCrashes = 0
@@ -377,6 +396,9 @@ class ServerManager {
         // Update state immediately
         isRunning = false
         bunServer = nil
+        
+        // Allow sleep when server crashes
+        powerManager.updateSleepPrevention(enabled: false, serverRunning: false)
 
         // Prevent multiple simultaneous crash handlers
         guard !isHandlingCrash else {
@@ -489,6 +511,12 @@ class ServerManager {
     /// Monitor server health periodically
     func startHealthMonitoring() {
         Task {
+            // Check initial state on app launch
+            if let server = bunServer, server.getState() == .running {
+                let preventSleep = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+                powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
+            }
+            
             while true {
                 try? await Task.sleep(for: .seconds(30))
 

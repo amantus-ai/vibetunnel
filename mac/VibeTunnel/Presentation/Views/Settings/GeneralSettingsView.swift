@@ -8,6 +8,8 @@ struct GeneralSettingsView: View {
     private var showNotifications = true
     @AppStorage("updateChannel")
     private var updateChannelRaw = UpdateChannel.stable.rawValue
+    @AppStorage("preventSleepWhenRunning")
+    private var preventSleepWhenRunning = true
 
     @State private var isCheckingForUpdates = false
 
@@ -25,6 +27,14 @@ struct GeneralSettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle("Launch at Login", isOn: launchAtLoginBinding)
                         Text("Automatically start VibeTunnel when you log into your Mac.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    // Prevent Sleep
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Prevent Sleep When Running", isOn: $preventSleepWhenRunning)
+                        Text("Keep your Mac awake while VibeTunnel sessions are active.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
