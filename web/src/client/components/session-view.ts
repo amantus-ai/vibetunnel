@@ -18,7 +18,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from './session-list.js';
 import './terminal.js';
 import './file-browser.js';
-import './image-picker.js';
+import './file-picker.js';
 import './clickable-path.js';
 import './terminal-quick-keys.js';
 import './session-view/mobile-input-overlay.js';
@@ -743,19 +743,19 @@ export class SessionView extends LitElement {
     this.showFileBrowser = false;
   }
 
-  private handleOpenImagePicker() {
+  private handleOpenFilePicker() {
     this.showImagePicker = true;
   }
 
-  private handleCloseImagePicker() {
+  private handleCloseFilePicker() {
     this.showImagePicker = false;
   }
 
-  private async handleImageSelected(event: CustomEvent) {
+  private async handleFileSelected(event: CustomEvent) {
     const { path } = event.detail;
     if (!path || !this.session) return;
 
-    // Close the image picker
+    // Close the file picker
     this.showImagePicker = false;
 
     // Escape the path for shell use (wrap in quotes if it contains spaces)
@@ -766,12 +766,12 @@ export class SessionView extends LitElement {
       await this.inputManager.sendInputText(escapedPath);
     }
 
-    logger.log(`inserted image path into terminal: ${escapedPath}`);
+    logger.log(`inserted file path into terminal: ${escapedPath}`);
   }
 
-  private handleImageError(event: CustomEvent) {
+  private handleFileError(event: CustomEvent) {
     const error = event.detail;
-    logger.error('Image picker error:', error);
+    logger.error('File picker error:', error);
 
     // Show error to user (you might want to implement a toast notification system)
     this.dispatchEvent(new CustomEvent('error', { detail: error }));
@@ -808,15 +808,14 @@ export class SessionView extends LitElement {
     this.isDragOver = false;
 
     const files = Array.from(e.dataTransfer?.files || []);
-    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
 
-    if (imageFiles.length === 0) {
-      logger.warn('No image files found in drop');
+    if (files.length === 0) {
+      logger.warn('No files found in drop');
       return;
     }
 
-    // Upload the first image file (or we could upload all of them)
-    this.uploadImageFile(imageFiles[0]);
+    // Upload the first file (or we could upload all of them)
+    this.uploadFile(files[0]);
   }
 
   // Paste handler
@@ -827,37 +826,37 @@ export class SessionView extends LitElement {
     }
 
     const items = Array.from(e.clipboardData?.items || []);
-    const imageItems = items.filter((item) => item.type.startsWith('image/'));
+    const fileItems = items.filter((item) => item.kind === 'file');
 
-    if (imageItems.length === 0) {
+    if (fileItems.length === 0) {
       return; // Let normal paste handling continue
     }
 
-    e.preventDefault(); // Prevent default paste behavior for images
+    e.preventDefault(); // Prevent default paste behavior for files
 
-    const imageItem = imageItems[0];
-    const file = imageItem.getAsFile();
+    const fileItem = fileItems[0];
+    const file = fileItem.getAsFile();
 
     if (file) {
-      logger.log('Image pasted from clipboard');
-      this.uploadImageFile(file);
+      logger.log('File pasted from clipboard');
+      this.uploadFile(file);
     }
   }
 
-  private async uploadImageFile(file: File) {
+  private async uploadFile(file: File) {
     try {
-      // Get the image picker component and use its upload method
-      const imagePicker = this.querySelector('image-picker') as any;
-      if (imagePicker && typeof imagePicker.uploadFile === 'function') {
-        await imagePicker.uploadFile(file);
+      // Get the file picker component and use its upload method
+      const filePicker = this.querySelector('file-picker') as any;
+      if (filePicker && typeof filePicker.uploadFile === 'function') {
+        await filePicker.uploadFile(file);
       } else {
-        logger.error('Image picker component not found or upload method not available');
+        logger.error('File picker component not found or upload method not available');
       }
     } catch (error) {
-      logger.error('Failed to upload dropped/pasted image:', error);
+      logger.error('Failed to upload dropped/pasted file:', error);
       this.dispatchEvent(
         new CustomEvent('error', {
-          detail: error instanceof Error ? error.message : 'Failed to upload image',
+          detail: error instanceof Error ? error.message : 'Failed to upload file',
         })
       );
     }
@@ -1025,7 +1024,7 @@ export class SessionView extends LitElement {
           .onBack=${() => this.handleBack()}
           .onSidebarToggle=${() => this.handleSidebarToggle()}
           .onOpenFileBrowser=${() => this.handleOpenFileBrowser()}
-          .onOpenImagePicker=${() => this.handleOpenImagePicker()}
+          .onOpenImagePicker=${() => this.handleOpenFilePicker()}
           .onMaxWidthToggle=${() => this.handleMaxWidthToggle()}
           .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
@@ -1149,8 +1148,8 @@ export class SessionView extends LitElement {
                   </button>
                   <button
                     class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
-                    @click=${this.handleOpenImagePicker}
-                    title="Upload image"
+                    @click=${this.handleOpenFilePicker}
+                    title="Upload file"
                   >
                     📷
                   </button>
@@ -1237,13 +1236,13 @@ export class SessionView extends LitElement {
           @insert-path=${this.handleInsertPath}
         ></file-browser>
 
-        <!-- Image Picker Modal -->
-        <image-picker
+        <!-- File Picker Modal -->
+        <file-picker
           .visible=${this.showImagePicker}
-          @image-selected=${this.handleImageSelected}
-          @image-error=${this.handleImageError}
-          @image-cancel=${this.handleCloseImagePicker}
-        ></image-picker>
+          @file-selected=${this.handleFileSelected}
+          @file-error=${this.handleFileError}
+          @file-cancel=${this.handleCloseFilePicker}
+        ></file-picker>
 
         <!-- Drag & Drop Overlay -->
         ${

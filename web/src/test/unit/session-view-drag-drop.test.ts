@@ -126,11 +126,11 @@ describe('SessionView Drag & Drop and Paste', () => {
       expect(element['isDragOver']).toBe(false);
     });
 
-    it('should handle image file drop', async () => {
-      const imageFile = new File(['fake image'], 'test.png', { type: 'image/png' });
+    it('should handle file drop', async () => {
+      const testFile = new File(['fake content'], 'test.txt', { type: 'text/plain' });
       const dataTransfer = new DataTransfer();
       Object.defineProperty(dataTransfer, 'files', {
-        value: [imageFile],
+        value: [testFile],
         writable: false,
       });
 
@@ -139,13 +139,13 @@ describe('SessionView Drag & Drop and Paste', () => {
         dataTransfer,
       });
 
-      // Mock the image picker component
-      const mockImagePicker = {
+      // Mock the file picker component
+      const mockFilePicker = {
         uploadFile: vi.fn().mockResolvedValue(undefined),
       };
       element.querySelector = vi.fn((selector) => {
-        if (selector === 'image-picker') {
-          return mockImagePicker;
+        if (selector === 'file-picker') {
+          return mockFilePicker;
         }
         return null;
       });
@@ -153,15 +153,14 @@ describe('SessionView Drag & Drop and Paste', () => {
       element.dispatchEvent(dropEvent);
       await element.updateComplete;
 
-      expect(mockImagePicker.uploadFile).toHaveBeenCalledWith(imageFile);
+      expect(mockFilePicker.uploadFile).toHaveBeenCalledWith(testFile);
       expect(element['isDragOver']).toBe(false);
     });
 
-    it('should ignore non-image file drops', async () => {
-      const textFile = new File(['text'], 'test.txt', { type: 'text/plain' });
+    it('should handle empty file drops gracefully', async () => {
       const dataTransfer = new DataTransfer();
       Object.defineProperty(dataTransfer, 'files', {
-        value: [textFile],
+        value: [],
         writable: false,
       });
 
@@ -170,25 +169,25 @@ describe('SessionView Drag & Drop and Paste', () => {
         dataTransfer,
       });
 
-      const mockImagePicker = {
+      const mockFilePicker = {
         uploadFile: vi.fn(),
       };
-      element.querySelector = vi.fn(() => mockImagePicker);
+      element.querySelector = vi.fn(() => mockFilePicker);
 
       element.dispatchEvent(dropEvent);
       await element.updateComplete;
 
-      expect(mockImagePicker.uploadFile).not.toHaveBeenCalled();
+      expect(mockFilePicker.uploadFile).not.toHaveBeenCalled();
     });
 
-    it('should handle multiple files and pick the first image', async () => {
+    it('should handle multiple files and pick the first one', async () => {
       const textFile = new File(['text'], 'test.txt', { type: 'text/plain' });
-      const imageFile1 = new File(['image1'], 'test1.png', { type: 'image/png' });
-      const imageFile2 = new File(['image2'], 'test2.jpg', { type: 'image/jpeg' });
+      const jsonFile = new File(['{}'], 'test.json', { type: 'application/json' });
+      const pdfFile = new File(['pdf'], 'test.pdf', { type: 'application/pdf' });
 
       const dataTransfer = new DataTransfer();
       Object.defineProperty(dataTransfer, 'files', {
-        value: [textFile, imageFile1, imageFile2],
+        value: [textFile, jsonFile, pdfFile],
         writable: false,
       });
 
@@ -197,27 +196,28 @@ describe('SessionView Drag & Drop and Paste', () => {
         dataTransfer,
       });
 
-      const mockImagePicker = {
+      const mockFilePicker = {
         uploadFile: vi.fn().mockResolvedValue(undefined),
       };
-      element.querySelector = vi.fn(() => mockImagePicker);
+      element.querySelector = vi.fn(() => mockFilePicker);
 
       element.dispatchEvent(dropEvent);
       await element.updateComplete;
 
-      expect(mockImagePicker.uploadFile).toHaveBeenCalledWith(imageFile1);
-      expect(mockImagePicker.uploadFile).toHaveBeenCalledTimes(1);
+      expect(mockFilePicker.uploadFile).toHaveBeenCalledWith(textFile);
+      expect(mockFilePicker.uploadFile).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('Paste Functionality', () => {
-    it('should handle image paste from clipboard', async () => {
-      const imageFile = new File(['fake image'], 'clipboard.png', { type: 'image/png' });
+    it('should handle file paste from clipboard', async () => {
+      const testFile = new File(['fake content'], 'clipboard.txt', { type: 'text/plain' });
 
       // Mock clipboard item
       const mockClipboardItem = {
-        type: 'image/png',
-        getAsFile: () => imageFile,
+        kind: 'file',
+        type: 'text/plain',
+        getAsFile: () => testFile,
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -231,24 +231,25 @@ describe('SessionView Drag & Drop and Paste', () => {
         writable: false,
       });
 
-      const mockImagePicker = {
+      const mockFilePicker = {
         uploadFile: vi.fn().mockResolvedValue(undefined),
       };
-      element.querySelector = vi.fn(() => mockImagePicker);
+      element.querySelector = vi.fn(() => mockFilePicker);
 
       // Simulate paste event on document
       document.dispatchEvent(pasteEvent);
 
-      expect(mockImagePicker.uploadFile).toHaveBeenCalledWith(imageFile);
+      expect(mockFilePicker.uploadFile).toHaveBeenCalledWith(testFile);
     });
 
     it('should ignore paste when modals are open', async () => {
       element['showFileBrowser'] = true;
 
-      const imageFile = new File(['fake image'], 'clipboard.png', { type: 'image/png' });
+      const testFile = new File(['fake content'], 'clipboard.txt', { type: 'text/plain' });
       const mockClipboardItem = {
-        type: 'image/png',
-        getAsFile: () => imageFile,
+        kind: 'file',
+        type: 'text/plain',
+        getAsFile: () => testFile,
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -261,18 +262,19 @@ describe('SessionView Drag & Drop and Paste', () => {
         writable: false,
       });
 
-      const mockImagePicker = {
+      const mockFilePicker = {
         uploadFile: vi.fn(),
       };
-      element.querySelector = vi.fn(() => mockImagePicker);
+      element.querySelector = vi.fn(() => mockFilePicker);
 
       document.dispatchEvent(pasteEvent);
 
-      expect(mockImagePicker.uploadFile).not.toHaveBeenCalled();
+      expect(mockFilePicker.uploadFile).not.toHaveBeenCalled();
     });
 
-    it('should ignore paste of non-image content', async () => {
+    it('should ignore paste of non-file content', async () => {
       const textItem = {
+        kind: 'string',
         type: 'text/plain',
         getAsFile: () => null,
       };
@@ -287,14 +289,14 @@ describe('SessionView Drag & Drop and Paste', () => {
         writable: false,
       });
 
-      const mockImagePicker = {
+      const mockFilePicker = {
         uploadFile: vi.fn(),
       };
-      element.querySelector = vi.fn(() => mockImagePicker);
+      element.querySelector = vi.fn(() => mockFilePicker);
 
       document.dispatchEvent(pasteEvent);
 
-      expect(mockImagePicker.uploadFile).not.toHaveBeenCalled();
+      expect(mockFilePicker.uploadFile).not.toHaveBeenCalled();
     });
 
     it('should handle paste error gracefully', async () => {
