@@ -8,6 +8,14 @@
 export type SessionStatus = 'starting' | 'running' | 'exited';
 
 /**
+ * Terminal title mode for sessions
+ */
+export enum TitleMode {
+  STATIC = 'static',
+  DYNAMIC = 'dynamic',
+}
+
+/**
  * Core session information stored in session.json
  * Minimal, clean data persisted to disk
  */
@@ -22,6 +30,7 @@ export interface SessionInfo {
   pid?: number;
   initialCols?: number;
   initialRows?: number;
+  titleMode?: TitleMode;
 }
 
 /**
@@ -57,6 +66,7 @@ export interface SessionCreateOptions {
   workingDir?: string;
   cols?: number;
   rows?: number;
+  titleMode?: TitleMode;
 }
 
 /**
