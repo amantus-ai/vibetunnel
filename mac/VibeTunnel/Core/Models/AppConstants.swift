@@ -9,5 +9,6 @@ enum AppConstants {
     /// UserDefaults keys
     enum UserDefaultsKeys {
         static let welcomeVersion = "welcomeVersion"
+        static let preventSleepWhenRunning = "preventSleepWhenRunning"
     }
 }

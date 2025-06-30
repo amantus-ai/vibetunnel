@@ -92,6 +92,7 @@ class ServerManager {
     private var lastCrashTime: Date?
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ServerManager")
+    private let powerManager = PowerManagementService.shared
 
     private init() {
         // Skip observer setup and monitoring during tests
@@ -216,6 +217,10 @@ class ServerManager {
                 lastError = nil
                 // Reset crash counter on successful start
                 consecutiveCrashes = 0
+                
+                // Update sleep prevention based on user preference
+                let preventSleep = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+                powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
             } else {
                 logger.error("Server started but not in running state")
                 isRunning = false
@@ -260,6 +265,9 @@ class ServerManager {
 
         // Clear the auth token from SessionMonitor
         SessionMonitor.shared.setLocalAuthToken(nil)
+        
+        // Allow sleep when server is stopped
+        powerManager.updateSleepPrevention(enabled: false, serverRunning: false)
 
         // Reset crash tracking when manually stopped
         consecutiveCrashes = 0
@@ -377,6 +385,9 @@ class ServerManager {
         // Update state immediately
         isRunning = false
         bunServer = nil
+        
+        // Allow sleep when server crashes
+        powerManager.updateSleepPrevention(enabled: false, serverRunning: false)
 
         // Prevent multiple simultaneous crash handlers
         guard !isHandlingCrash else {
