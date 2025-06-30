@@ -73,6 +73,7 @@ export default defineConfig({
       NODE_ENV: 'test',
       VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
       SUPPRESS_CLIENT_ERRORS: 'true',
+      VIBETUNNEL_SEA: '', // Explicitly unset to ensure regular node-pty loader is used
     },
   },
 });
