@@ -1,11 +1,12 @@
-import { expect, test, testGroups } from '../fixtures/sequential-test.fixture';
+import { expect, test } from '../fixtures/sequential-test.fixture';
 
 /**
  * Example of optimized session management tests
  * Using sequential execution with performance optimizations
  */
 
-testGroups.critical('Optimized Session Management', () => {
+test.describe('Optimized Session Management', () => {
+  test.describe.configure({ timeout: 20000 }); // Critical tests timeout
   test('should efficiently create and manage sessions', async ({
     page,
     batchOps,
@@ -59,7 +60,8 @@ testGroups.critical('Optimized Session Management', () => {
   });
 });
 
-testGroups.light('Fast Session Operations', () => {
+test.describe('Fast Session Operations', () => {
+  test.describe.configure({ timeout: 15000 }); // Light tests timeout
   test('should handle session state changes efficiently', async ({ page, batchOps, waitUtils }) => {
     await page.goto('/');
     await waitUtils.waitForAppReady(page);
@@ -102,7 +104,8 @@ testGroups.light('Fast Session Operations', () => {
   });
 });
 
-testGroups.heavy('Stress Test with Optimizations', () => {
+test.describe('Stress Test with Optimizations', () => {
+  test.describe.configure({ timeout: 30000 }); // Heavy tests timeout
   test('should handle many sessions efficiently', async ({
     page,
     batchOps,

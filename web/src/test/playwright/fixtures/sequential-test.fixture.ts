@@ -55,18 +55,6 @@ export const test = base.extend<SequentialTestFixtures>({
 
 export { expect } from '@playwright/test';
 
-// Test organization helpers
-export const testGroups = {
-  // Light tests that don't create many sessions
-  light: test.describe.configure({ timeout: 15000 }),
-
-  // Heavy tests that create multiple sessions
-  heavy: test.describe.configure({ timeout: 30000 }),
-
-  // Critical path tests that should run first
-  critical: test.describe.configure({ timeout: 20000 }),
-};
-
 // Hook for global setup/teardown
 test.beforeAll(async ({ browser }) => {
   const page = await browser.newPage();
