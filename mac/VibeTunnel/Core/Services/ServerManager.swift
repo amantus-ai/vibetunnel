@@ -213,14 +213,16 @@ class ServerManager {
             bunServer = server
             // Check server state to ensure it's actually running
             if server.getState() == .running {
+                // Update sleep prevention FIRST before updating state
+                // This prevents a race condition where the server could crash after setting isRunning = true
+                let preventSleep = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+                powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
+                
+                // Now update state
                 isRunning = true
                 lastError = nil
                 // Reset crash counter on successful start
                 consecutiveCrashes = 0
-                
-                // Update sleep prevention based on user preference
-                let preventSleep = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
-                powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
             } else {
                 logger.error("Server started but not in running state")
                 isRunning = false
@@ -500,6 +502,12 @@ class ServerManager {
     /// Monitor server health periodically
     func startHealthMonitoring() {
         Task {
+            // Check initial state on app launch
+            if let server = bunServer, server.getState() == .running {
+                let preventSleep = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+                powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
+            }
+            
             while true {
                 try? await Task.sleep(for: .seconds(30))
 

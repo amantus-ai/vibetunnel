@@ -32,6 +32,12 @@ class PowerManagementService: ObservableObject {
             print("Sleep prevention enabled")
         } else {
             print("Failed to prevent sleep: \(success)")
+            // Post notification for UI to handle
+            NotificationCenter.default.post(
+                name: Notification.Name("PowerManagementError"),
+                object: nil,
+                userInfo: ["error": "Failed to prevent system sleep", "code": success]
+            )
         }
     }
     
@@ -61,12 +67,10 @@ class PowerManagementService: ObservableObject {
     }
     
     deinit {
-        // Ensure we release the assertion when the service is deallocated
+        // Only release if we have an active assertion
         if isAssertionActive {
-            let success = IOPMAssertionRelease(assertionID)
-            if success == kIOReturnSuccess {
-                print("Sleep assertion released in deinit")
-            }
+            IOPMAssertionRelease(assertionID)
+            // Note: We don't check success here as the object is being destroyed
         }
     }
 }

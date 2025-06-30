@@ -71,9 +71,7 @@ struct TextShimmer: View {
                     }
                 )
                 .onPreferenceChange(HeightPreferenceKey.self) { height in
-                    Task { @MainActor in
-                        textHeight = height
-                    }
+                    textHeight = height
                 }
 
             ShimmerView(height: textHeight, cornerRadius: 4)
