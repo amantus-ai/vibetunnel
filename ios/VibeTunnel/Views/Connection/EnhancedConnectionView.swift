@@ -79,6 +79,20 @@ struct EnhancedConnectionView: View {
                     }
                 )
             }
+            .sheet(isPresented: $viewModel.showLoginView) {
+                if let config = connectionManager.serverConfig,
+                   let authService = connectionManager.authenticationService
+                {
+                    LoginView(
+                        isPresented: $viewModel.showLoginView,
+                        serverConfig: config,
+                        authenticationService: authService
+                    ) {
+                        // Authentication successful, mark as connected
+                        connectionManager.isConnected = true
+                    }
+                }
+            }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
@@ -217,6 +231,12 @@ struct EnhancedConnectionView: View {
         Task {
             do {
                 try await profilesViewModel.connectToProfile(profile, connectionManager: connectionManager)
+                
+                // Check if we need to show login view for authentication
+                if let authService = connectionManager.authenticationService,
+                   !authService.isAuthenticated {
+                    viewModel.showLoginView = true
+                }
             } catch {
                 viewModel.errorMessage = "Failed to connect: \(error.localizedDescription)"
             }

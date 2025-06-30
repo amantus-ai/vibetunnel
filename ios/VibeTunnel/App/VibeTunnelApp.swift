@@ -90,6 +90,18 @@ class ConnectionManager {
            let config = try? JSONDecoder().decode(ServerConfig.self, from: data)
         {
             self.serverConfig = config
+            
+            // Set up authentication service for restored connection
+            authenticationService = AuthenticationService(
+                apiClient: APIClient.shared,
+                serverConfig: config
+            )
+            
+            // Configure API client and WebSocket client with auth service
+            if let authService = authenticationService {
+                APIClient.shared.setAuthenticationService(authService)
+                BufferWebSocketClient.shared.setAuthenticationService(authService)
+            }
         }
     }
 

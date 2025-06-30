@@ -117,7 +117,11 @@ class APIClient: APIClientProtocol {
         }
 
         let url = baseURL.appendingPathComponent("api/sessions")
-        let (data, response) = try await session.data(from: url)
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        addAuthenticationIfNeeded(&request)
+        
+        let (data, response) = try await session.data(for: request)
 
         try validateResponse(response)
 
@@ -143,7 +147,11 @@ class APIClient: APIClientProtocol {
         }
 
         let url = baseURL.appendingPathComponent("api/sessions/\(sessionId)")
-        let (data, response) = try await session.data(from: url)
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        addAuthenticationIfNeeded(&request)
+        
+        let (data, response) = try await session.data(for: request)
 
         try validateResponse(response)
 

@@ -90,14 +90,24 @@ class ServerProfilesViewModel {
             throw APIError.invalidURL
         }
 
-        // Save connection
+        // Save connection - this sets up the AuthenticationService
         connectionManager.saveConnection(config)
 
-        // Test connection
+        // Check if server requires authentication
         do {
+            let authConfig = try await connectionManager.authenticationService?.getAuthConfig()
+            
+            guard authConfig?.noAuth == true else {
+                // Authentication required - connection config is saved, 
+                // the UI will handle showing the login view
+                // Don't mark as connected yet - that happens after successful authentication
+                return
+            }
+            
+            // No auth required, test connection directly
             _ = try await APIClient.shared.getSessions()
             connectionManager.isConnected = true
-
+            
             // Update last connected time
             ServerProfile.updateLastConnected(for: profile.id)
             loadProfiles()
