@@ -64,14 +64,16 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command: process.env.CI 
-      ? `bash -c "pwd && ls -la dist/cli.js && which node && node --version && VIBETUNNEL_SEA='' node dist/cli.js --no-auth --port ${testConfig.port} 2>&1 || echo 'Server failed with exit code:' $?"`  // Debug and run
+      ? `node dist/cli.js --no-auth --port ${testConfig.port}`  // Run without env var prefix
       : `pnpm exec tsx src/cli.ts --no-auth --port ${testConfig.port}`, // Use tsx locally
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: process.env.CI ? 'inherit' : 'pipe', // Show output in CI for debugging
     stderr: process.env.CI ? 'inherit' : 'pipe', // Show errors in CI for debugging
     timeout: 60 * 1000, // 1 minute for server startup (reduced from 3 minutes)
+    cwd: process.cwd(), // Ensure we're in the right directory
     env: {
+      ...process.env, // Include all existing env vars
       NODE_ENV: 'test',
       VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
       SUPPRESS_CLIENT_ERRORS: 'true',
