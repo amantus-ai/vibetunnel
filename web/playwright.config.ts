@@ -63,7 +63,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: `tsx src/server/server.ts --no-auth --port ${testConfig.port}`,
+    command: `npx tsx src/cli.ts --no-auth --port ${testConfig.port}`,
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: 'pipe',
