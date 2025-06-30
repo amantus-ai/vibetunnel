@@ -206,11 +206,9 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           });
 
           if (!spawnResult.success) {
-            if (spawnResult.error?.includes('ECONNREFUSED')) {
-              logger.debug('terminal spawn socket not available, falling back to normal spawn');
-            } else {
-              throw new Error(spawnResult.error || 'Failed to spawn terminal');
-            }
+            // Log the error but continue with fallback
+            logger.warn('terminal spawn failed:', spawnResult.error || 'Unknown error');
+            logger.debug('falling back to normal web session');
           } else {
             // Wait a bit for the session to be created
             await new Promise((resolve) => setTimeout(resolve, 500));
@@ -221,12 +219,9 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
             return;
           }
         } catch (error) {
+          // Log the error but continue with fallback
           logger.error('error spawning terminal:', error);
-          res.status(500).json({
-            error: 'Failed to spawn terminal',
-            details: error instanceof Error ? error.message : 'Unknown error',
-          });
-          return;
+          logger.debug('falling back to normal web session');
         }
       } else if (spawn_terminal && !fs.existsSync(socketPath)) {
         logger.debug('terminal spawn socket not available, falling back to normal spawn');

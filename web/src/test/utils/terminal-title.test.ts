@@ -252,9 +252,7 @@ describe('Terminal Title Utilities', () => {
         'AI Assistant'
       );
 
-      expect(result).toBe(
-        '\x1B]2;✻ Crafting (205s, ↑6.0k) · ~/projects · claude\x07'
-      );
+      expect(result).toBe('\x1B]2;✻ Crafting (205s, ↑6.0k) · ~/projects · claude\x07');
     });
 
     it('should handle all parts missing', () => {
