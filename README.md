@@ -77,13 +77,47 @@ The server runs as a standalone Bun executable with embedded Node.js modules, pr
 ## Remote Access Options
 
 ### Option 1: Tailscale (Recommended)
-1. Install [Tailscale](https://tailscale.com) on your Mac and remote device
-2. Access VibeTunnel at `http://[your-mac-name]:4020`
+
+[Tailscale](https://tailscale.com) creates a secure peer-to-peer VPN network between your devices. It's the most secure option as traffic stays within your private network without exposing VibeTunnel to the public internet.
+
+**How it works**: Tailscale creates an encrypted WireGuard tunnel between your devices, allowing them to communicate as if they were on the same local network, regardless of their physical location.
+
+**Setup Guide**:
+1. Install Tailscale on your Mac: [Download from Mac App Store](https://apps.apple.com/us/app/tailscale/id1475387142) or [Direct Download](https://tailscale.com/download/macos)
+2. Install Tailscale on your remote device:
+   - **iOS**: [Download from App Store](https://apps.apple.com/us/app/tailscale/id1470499037)
+   - **Android**: [Download from Google Play](https://play.google.com/store/apps/details?id=com.tailscale.ipn)
+   - **Other platforms**: [All Downloads](https://tailscale.com/download)
+3. Sign in to both devices with the same account
+4. Find your Mac's Tailscale hostname in the Tailscale menu bar app (e.g., `my-mac.tailnet-name.ts.net`)
+5. Access VibeTunnel at `http://[your-tailscale-hostname]:4020`
+
+**Benefits**:
+- End-to-end encrypted traffic
+- No public internet exposure
+- Works behind NAT and firewalls
+- Zero configuration after initial setup
 
 ### Option 2: ngrok
-1. Add your ngrok auth token in VibeTunnel settings
-2. Enable ngrok tunneling
-3. Share the generated URL
+
+[ngrok](https://ngrok.com) creates secure tunnels to your localhost, making VibeTunnel accessible via a public URL. Perfect for quick sharing or temporary access.
+
+**How it works**: ngrok establishes a secure tunnel from a public endpoint to your local VibeTunnel server, handling SSL/TLS encryption and providing a unique URL for access.
+
+**Setup Guide**:
+1. Create a free ngrok account: [Sign up for ngrok](https://dashboard.ngrok.com/signup)
+2. Copy your auth token from the [ngrok dashboard](https://dashboard.ngrok.com/get-started/your-authtoken)
+3. Add the token in VibeTunnel settings (Settings → Remote Access → ngrok)
+4. Enable ngrok tunneling in VibeTunnel
+5. Share the generated `https://[random].ngrok-free.app` URL
+
+**Benefits**:
+- Public HTTPS URL with SSL certificate
+- No firewall configuration needed
+- Built-in request inspection and replay
+- Custom domains available (paid plans)
+
+**Note**: Free ngrok URLs change each time you restart the tunnel. Consider a paid plan for persistent URLs.
 
 ### Option 3: Local Network
 1. Set a dashboard password in settings

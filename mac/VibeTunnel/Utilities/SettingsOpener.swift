@@ -69,8 +69,9 @@ enum SettingsOpener {
 
             // Check by title
             if window.isVisible && window.styleMask.contains(.titled) &&
-                (window.title.localizedCaseInsensitiveContains("settings") ||
-                    window.title.localizedCaseInsensitiveContains("preferences")
+                (
+                    window.title.localizedCaseInsensitiveContains("settings") ||
+                        window.title.localizedCaseInsensitiveContains("preferences")
                 )
             {
                 return true

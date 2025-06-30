@@ -11,6 +11,7 @@ struct VibeTunnelApp: App {
     @State var sessionMonitor = SessionMonitor.shared
     @State var serverManager = ServerManager.shared
     @State var ngrokService = NgrokService.shared
+    @State var tailscaleService = TailscaleService.shared
     @State var permissionManager = SystemPermissionManager.shared
     @State var terminalLauncher = TerminalLauncher.shared
 
@@ -36,6 +37,7 @@ struct VibeTunnelApp: App {
                     .environment(sessionMonitor)
                     .environment(serverManager)
                     .environment(ngrokService)
+                    .environment(tailscaleService)
                     .environment(permissionManager)
                     .environment(terminalLauncher)
             }
@@ -52,6 +54,7 @@ struct VibeTunnelApp: App {
                         .environment(sessionMonitor)
                         .environment(serverManager)
                         .environment(ngrokService)
+                        .environment(tailscaleService)
                         .environment(permissionManager)
                         .environment(terminalLauncher)
                 } else {
@@ -66,6 +69,7 @@ struct VibeTunnelApp: App {
                     .environment(sessionMonitor)
                     .environment(serverManager)
                     .environment(ngrokService)
+                    .environment(tailscaleService)
                     .environment(permissionManager)
                     .environment(terminalLauncher)
             }
@@ -90,6 +94,7 @@ struct VibeTunnelApp: App {
                     .environment(sessionMonitor)
                     .environment(serverManager)
                     .environment(ngrokService)
+                    .environment(tailscaleService)
                     .environment(permissionManager)
                     .environment(terminalLauncher)
             } label: {

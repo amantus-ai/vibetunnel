@@ -60,7 +60,8 @@ class ServerManager {
 
     var bindAddress: String {
         get {
-            let mode = DashboardAccessMode(rawValue: UserDefaults.standard.string(forKey: "dashboardAccessMode") ?? ""
+            let mode = DashboardAccessMode(
+                rawValue: UserDefaults.standard.string(forKey: "dashboardAccessMode") ?? ""
             ) ??
                 .localhost
             return mode.bindAddress
@@ -466,7 +467,8 @@ class ServerManager {
             let delay = baseDelay * pow(2.0, Double(consecutiveCrashes - 1))
 
             logger
-                .info("Will restart server after \(delay) seconds (attempt \(self.consecutiveCrashes) of \(maxRetries))"
+                .info(
+                    "Will restart server after \(delay) seconds (attempt \(self.consecutiveCrashes) of \(maxRetries))"
                 )
 
             // Wait with exponential backoff
