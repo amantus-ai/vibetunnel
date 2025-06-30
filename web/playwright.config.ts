@@ -63,7 +63,9 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: `pnpm exec tsx src/cli.ts --no-auth --port ${testConfig.port}`,
+    command: process.env.CI 
+      ? `unset VIBETUNNEL_SEA && node dist/cli.js --no-auth --port ${testConfig.port}`  // Use compiled JS in CI with env var unset
+      : `pnpm exec tsx src/cli.ts --no-auth --port ${testConfig.port}`, // Use tsx locally
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: process.env.CI ? 'inherit' : 'pipe', // Show output in CI for debugging
@@ -73,7 +75,6 @@ export default defineConfig({
       NODE_ENV: 'test',
       VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
       SUPPRESS_CLIENT_ERRORS: 'true',
-      VIBETUNNEL_SEA: '', // Explicitly unset to ensure regular node-pty loader is used
     },
   },
 });
