@@ -296,15 +296,36 @@ export class SessionList extends LitElement {
                               <div class="text-xs text-dark-text-muted truncate">
                                 ${formatPathForDisplay(session.workingDir)}
                               </div>
+                              ${
+                                session.activityStatus?.specificStatus
+                                  ? html`
+                                    <div class="text-xs text-status-warning truncate mt-0.5">
+                                      ${session.activityStatus.specificStatus.status}
+                                    </div>
+                                  `
+                                  : ''
+                              }
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">
                               <div
                                 class="w-2 h-2 rounded-full ${
                                   session.status === 'running'
-                                    ? 'bg-status-success'
+                                    ? session.activityStatus?.specificStatus
+                                      ? 'bg-accent-green animate-pulse' // Claude active
+                                      : session.activityStatus?.isActive
+                                        ? 'bg-status-success' // Generic active
+                                        : 'bg-status-success ring-1 ring-status-success' // Idle (outline)
                                     : 'bg-status-warning'
                                 }"
-                                title="${session.status}"
+                                title="${
+                                  session.status === 'running' && session.activityStatus
+                                    ? session.activityStatus.specificStatus
+                                      ? 'Active: ' + session.activityStatus.specificStatus.app
+                                      : session.activityStatus.isActive
+                                        ? 'Active'
+                                        : 'Idle'
+                                    : session.status
+                                }"
                               ></div>
                               ${
                                 session.status === 'running' || session.status === 'exited'

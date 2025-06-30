@@ -1317,8 +1317,24 @@ export class PtyManager extends EventEmitter {
       }
     }
 
-    // Return all sessions from storage
-    return this.sessionManager.listSessions();
+    // Get all sessions from storage
+    const sessions = this.sessionManager.listSessions();
+
+    // Enhance with activity information for active sessions
+    return sessions.map((session) => {
+      const activeSession = this.sessions.get(session.id);
+      if (activeSession?.activityDetector) {
+        const activityState = activeSession.activityDetector.getActivityState();
+        return {
+          ...session,
+          activityStatus: {
+            isActive: activityState.isActive,
+            specificStatus: activityState.specificStatus,
+          },
+        };
+      }
+      return session;
+    });
   }
 
   /**

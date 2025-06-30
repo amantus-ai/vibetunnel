@@ -32,6 +32,15 @@ export interface Session extends SessionInfo {
   lastModified: string;
   active?: boolean;
 
+  // Activity information (for dynamic title mode)
+  activityStatus?: {
+    isActive: boolean;
+    specificStatus?: {
+      app: string;
+      status: string;
+    };
+  };
+
   // Source information (for HQ mode)
   source?: 'local' | 'remote';
   remoteId?: string;
