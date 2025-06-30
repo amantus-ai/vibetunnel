@@ -211,6 +211,32 @@ export SPARKLE_ACCOUNT="VibeTunnel"
 4. **Test the full update flow** before announcing the release
 5. **Keep credentials secure** but easily accessible for scripts
 6. **Document everything** - future you will thank present you
+7. **Plan for long-running operations** - notarization can take 10+ minutes
+8. **Implement resumable workflows** - scripts should handle interruptions gracefully
+9. **DMG signing is separate from notarization** - DMGs themselves aren't notarized, only the app inside
+
+### Additional Lessons from v1.0.0-beta.5 Release
+
+#### DMG Notarization Confusion
+**Issue**: The DMG shows as "Unnotarized Developer ID" when checked with spctl, but this is normal.
+**Explanation**: 
+- DMGs are not notarized themselves - only the app inside is notarized
+- The app inside the DMG shows correctly as "Notarized Developer ID"
+- This is expected behavior and not an error
+
+#### Release Script Timeout Handling
+**Issue**: Release script timed out during notarization (took ~5 minutes).
+**Solution**: 
+- Run release scripts in a terminal without timeout constraints
+- Consider using `screen` or `tmux` for long operations
+- Add progress indicators to show the script is still running
+
+#### Appcast Generation Failures
+**Issue**: `generate-appcast.sh` failed with GitHub API errors despite valid auth.
+**Workaround**: 
+- Manually create appcast entries when automation fails
+- Always verify the Sparkle signature with `sign_update --account VibeTunnel`
+- Keep a template of appcast entries for quick manual updates
 
 ## References
 
