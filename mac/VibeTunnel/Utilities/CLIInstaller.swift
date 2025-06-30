@@ -48,7 +48,7 @@ final class CLIInstaller {
                     // Verify it's our wrapper script with all expected components
                     isCorrectlyInstalled = content.contains("VibeTunnel CLI wrapper") &&
                         content.contains("$TRY_PATH/Contents/Resources/vibetunnel") &&
-                        content.contains("exec \"$VIBETUNNEL_BIN\" fwd \"$@\"")
+                        content.contains("exec \"$VIBETUNNEL_BIN\" fwd")
                 }
             }
 
