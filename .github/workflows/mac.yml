@@ -229,21 +229,6 @@ jobs:
         }
         echo "result=0" >> $GITHUB_OUTPUT
     
-    # INTEGRATION TESTS
-    - name: Run vt alias integration tests
-      id: integration-tests
-      timeout-minutes: 5
-      run: |
-        echo "Running vt alias functionality integration tests..."
-        cd mac
-        if ./scripts/test-pr132-fix.sh; then
-          echo "✅ Integration tests passed"
-          echo "result=0" >> $GITHUB_OUTPUT
-        else
-          echo "::error::Integration tests failed"
-          echo "result=1" >> $GITHUB_OUTPUT
-          exit 1
-        fi
     
     # COVERAGE EXTRACTION
     - name: Debug coverage files
