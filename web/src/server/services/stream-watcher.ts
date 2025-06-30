@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import type { Response } from 'express';
 import * as fs from 'fs';
+import type { AsciinemaHeader } from '../pty/types.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('stream-watcher');
@@ -126,11 +127,11 @@ export class StreamWatcher {
       // First pass: analyze the stream to find the last clear and track resize events
       const analysisStream = fs.createReadStream(streamPath, { encoding: 'utf8' });
       let lineBuffer = '';
-      const events: any[] = [];
+      const events: Array<[number, string, string | Record<string, number>]> = [];
       let lastClearIndex = -1;
-      let lastResizeBeforeClear: any = null;
-      let currentResize: any = null;
-      let header: any = null;
+      let lastResizeBeforeClear: [number, string, string] | null = null;
+      let currentResize: [number, string, string] | null = null;
+      let header: AsciinemaHeader | null = null;
 
       analysisStream.on('data', (chunk: string | Buffer) => {
         lineBuffer += chunk.toString();
@@ -144,11 +145,11 @@ export class StreamWatcher {
               if (parsed.version && parsed.width && parsed.height) {
                 header = parsed;
               } else if (Array.isArray(parsed) && parsed.length >= 3) {
-                const [timestamp, type, data] = parsed;
+                const [_timestamp, type, data] = parsed;
 
                 // Track resize events
-                if (type === 'r') {
-                  currentResize = parsed;
+                if (type === 'r' && typeof data === 'string') {
+                  currentResize = parsed as [number, string, string];
                 }
 
                 // Check for clear sequence in output events
@@ -160,7 +161,7 @@ export class StreamWatcher {
                   );
                 }
 
-                events.push(parsed);
+                events.push(parsed as [number, string, string | Record<string, number>]);
               }
             } catch (e) {
               logger.debug(`skipping invalid JSON line during analysis: ${e}`);
@@ -175,16 +176,16 @@ export class StreamWatcher {
           try {
             const parsed = JSON.parse(lineBuffer);
             if (Array.isArray(parsed) && parsed.length >= 3) {
-              const [timestamp, type, data] = parsed;
-              if (type === 'r') {
-                currentResize = parsed;
+              const [_timestamp, type, data] = parsed;
+              if (type === 'r' && typeof data === 'string') {
+                currentResize = parsed as [number, string, string];
               }
               if (type === 'o' && typeof data === 'string' && data.includes('\x1b[3J')) {
                 lastClearIndex = events.length;
                 lastResizeBeforeClear = currentResize;
                 logger.debug(`found clear sequence at event index ${lastClearIndex} (last event)`);
               }
-              events.push(parsed);
+              events.push(parsed as [number, string, string | Record<string, number>]);
             }
           } catch (e) {
             logger.debug(`skipping invalid JSON in line buffer during analysis: ${e}`);
@@ -208,8 +209,8 @@ export class StreamWatcher {
           if (lastClearIndex >= 0 && lastResizeBeforeClear) {
             // Update header with last known dimensions before clear
             const dimensions = lastResizeBeforeClear[2].split('x');
-            headerToSend.width = parseInt(dimensions[0], 10);
-            headerToSend.height = parseInt(dimensions[1], 10);
+            headerToSend.width = Number.parseInt(dimensions[0], 10);
+            headerToSend.height = Number.parseInt(dimensions[1], 10);
           }
           client.response.write(`data: ${JSON.stringify(headerToSend)}\n\n`);
         }
@@ -218,7 +219,7 @@ export class StreamWatcher {
         let exitEventFound = false;
         for (let i = startIndex; i < events.length; i++) {
           const event = events[i];
-          if (event[0] === 'exit') {
+          if (event[1] === 'exit') {
             exitEventFound = true;
             client.response.write(`data: ${JSON.stringify(event)}\n\n`);
           } else {

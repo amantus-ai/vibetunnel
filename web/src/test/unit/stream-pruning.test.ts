@@ -1,15 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { Response } from 'express';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StreamWatcher } from '../../server/services/stream-watcher.js';
 import {
-  mockAsciinemaWithClears,
-  mockAsciinemaWithClearMidLine,
   mockAsciinemaNoClears,
-  mockRealWorldAsciinema,
+  mockAsciinemaWithClearMidLine,
+  mockAsciinemaWithClears,
 } from '../fixtures/test-data.js';
-import type { Response } from 'express';
 
 describe('StreamWatcher - Asciinema Stream Pruning', () => {
   let streamWatcher: StreamWatcher;
@@ -41,7 +40,12 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
   });
 
   // Helper to create test asciinema file
-  function createTestFile(filename: string, header: any, events: any[]): string {
+  function createTestFile(
+    filename: string,
+    // biome-ignore lint/suspicious/noExplicitAny: test data headers can have various fields
+    header: Record<string, any>,
+    events: Array<[number, string, string | Record<string, number>]>
+  ): string {
     const filepath = path.join(tempDir, filename);
     const lines = [JSON.stringify(header), ...events.map((event) => JSON.stringify(event))];
     fs.writeFileSync(filepath, lines.join('\n'));
@@ -49,7 +53,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
   }
 
   // Helper to parse SSE data
-  function parseSSEData(data: string[]): any[] {
+  function parseSSEData(data: string[]): Array<[number, string, string | Record<string, number>]> {
     return data
       .filter((line) => line.startsWith('data: '))
       .map((line) => {
@@ -71,6 +75,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
     );
 
     // Use reflection to call private method
+    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
     const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
     sendExistingContent(filepath, { response: mockResponse, startTime: Date.now() / 1000 });
 
@@ -107,6 +112,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
       mockAsciinemaWithClearMidLine.events
     );
 
+    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
     const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
     sendExistingContent(filepath, { response: mockResponse, startTime: Date.now() / 1000 });
 
@@ -127,6 +133,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
       mockAsciinemaNoClears.events
     );
 
+    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
     const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
     sendExistingContent(filepath, { response: mockResponse, startTime: Date.now() / 1000 });
 
@@ -145,6 +152,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
   it('should fall back to non-pruning on read errors', async () => {
     const nonExistentPath = path.join(tempDir, 'does-not-exist.cast');
 
+    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
     const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
     sendExistingContent(nonExistentPath, { response: mockResponse, startTime: Date.now() / 1000 });
 
@@ -158,6 +166,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
     // Use the actual real-world cast file
     const filepath = path.join(__dirname, '../fixtures/asciinema/real-world-claude-session.cast');
 
+    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
     const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
     sendExistingContent(filepath, { response: mockResponse, startTime: Date.now() / 1000 });
 
@@ -171,7 +180,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
     // First event should be header
     const header = events[0];
     expect(header.version).toBe(2);
-    
+
     // Check that we're getting content after the last clear
     const outputEvents = events.filter((e) => Array.isArray(e) && e[1] === 'o');
     expect(outputEvents.length).toBeGreaterThan(0);
@@ -180,10 +189,11 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
     // Check that we have the welcome banner (appears after the last clear)
     const welcomeContent = outputEvents.map((e) => e[2]).join('');
     // Strip ANSI escape sequences for easier testing
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences are necessary for terminal output
     const cleanContent = welcomeContent.replace(/\u001b\[[^m]*m/g, '');
     expect(cleanContent).toContain('Welcome to Claude Code');
     expect(cleanContent).toContain('/help for help');
-    
+
     // We should NOT see content from before the clears
     expect(cleanContent).not.toContain('Some previous Claude output');
     expect(cleanContent).not.toContain('cd workspaces'); // This was at the beginning

@@ -81,7 +81,7 @@ export class PromptDetector {
 
     // Check cache first
     if (PromptDetector.onlyPromptCache.has(trimmed)) {
-      return PromptDetector.onlyPromptCache.get(trimmed)!;
+      return PromptDetector.onlyPromptCache.get(trimmed) ?? false;
     }
 
     const result = PROMPT_ONLY_REGEX.test(trimmed);
@@ -103,7 +103,7 @@ export class PromptDetector {
 
     // Check cache first
     if (PromptDetector.endPromptCache.has(cacheKey)) {
-      return PromptDetector.endPromptCache.get(cacheKey)!;
+      return PromptDetector.endPromptCache.get(cacheKey) ?? false;
     }
 
     // Strip ANSI codes for more reliable detection
