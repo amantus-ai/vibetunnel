@@ -64,7 +64,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command: process.env.CI 
-      ? `unset VIBETUNNEL_SEA && node dist/cli.js --no-auth --port ${testConfig.port}`  // Use compiled JS in CI with env var unset
+      ? `env -u VIBETUNNEL_SEA node dist/cli.js --no-auth --port ${testConfig.port}`  // Use env -u to unset the variable
       : `pnpm exec tsx src/cli.ts --no-auth --port ${testConfig.port}`, // Use tsx locally
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
