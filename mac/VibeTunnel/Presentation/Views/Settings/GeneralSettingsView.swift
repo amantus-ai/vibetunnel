@@ -9,7 +9,7 @@ struct GeneralSettingsView: View {
     @AppStorage("updateChannel")
     private var updateChannelRaw = UpdateChannel.stable.rawValue
     @AppStorage("preventSleepWhenRunning")
-    private var preventSleepWhenRunning = false
+    private var preventSleepWhenRunning = true
 
     @State private var isCheckingForUpdates = false
 

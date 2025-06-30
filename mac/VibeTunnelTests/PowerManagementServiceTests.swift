@@ -10,6 +10,33 @@ struct PowerManagementServiceTests {
     // Since PowerManagementService has a private init, we can only test through the shared instance
     // We need to ensure proper cleanup between tests
     
+    @Test("Default sleep prevention setting is true")
+    func defaultSleepPreventionSetting() async {
+        // Test that @AppStorage default for preventSleepWhenRunning is true
+        // This ensures sleep prevention is enabled by default on first app launch
+        
+        // Save current value
+        let currentValue = UserDefaults.standard.object(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+        defer {
+            // Restore original value
+            if let currentValue = currentValue {
+                UserDefaults.standard.set(currentValue, forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+            } else {
+                UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+            }
+        }
+        
+        // Remove the key to simulate first launch
+        UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+        
+        // Create a GeneralSettingsView to trigger @AppStorage initialization
+        _ = GeneralSettingsView()
+        
+        // The @AppStorage should have set the default to true
+        let defaultValue = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+        #expect(defaultValue == true, "Sleep prevention should be enabled by default on first launch")
+    }
+    
     @Test("Update sleep prevention logic with all combinations")
     func updateSleepPreventionLogic() async {
         let service = PowerManagementService.shared
