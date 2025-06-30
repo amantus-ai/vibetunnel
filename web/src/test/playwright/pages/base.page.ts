@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { screenshotOnError } from '../helpers/screenshot.helper';
-import { WaitUtils } from '../utils/test-utils';
+import { WaitUtils } from '../utils/wait-utils';
 
 export class BasePage {
   readonly page: Page;
@@ -27,27 +27,14 @@ export class BasePage {
   }
 
   async waitForLoadComplete() {
-    // Wait for the main app to be loaded
-    await this.page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
-
-    // Wait for app to be fully initialized
-    try {
-      // Wait for either session list or create button to be visible
-      await this.page.waitForSelector(
-        '[data-testid="create-session-button"], button[title="Create New Session"]',
-        {
-          state: 'visible',
-          timeout: 5000,
-        }
-      );
-    } catch (_error) {
-      // If create button is not immediately visible, wait for it to appear
-      // The button might be hidden while sessions are loading
-      const createBtn = this.page.locator('button[title="Create New Session"]');
-
-      // Wait for the button to become visible - this automatically retries
-      try {
-        await createBtn.waitFor({ state: 'visible', timeout: 5000 });
+    // Use optimized wait utilities
+    await WaitUtils.waitForAll([
+      () => this.page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 }),
+      () => WaitUtils.waitForAny([
+        () => WaitUtils.waitForTestId(this.page, 'create-session-button'),
+        () => this.page.waitForSelector('button[title="Create New Session"]', { state: 'visible' })
+      ])
+    ]);
       } catch (_waitError) {
         // Check if we're on auth screen
         const authForm = await this.page.locator('auth-login').isVisible();

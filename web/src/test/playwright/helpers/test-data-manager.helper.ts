@@ -102,6 +102,38 @@ export class TestSessionManager {
   }
 
   /**
+   * Creates multiple sessions in batch for performance
+   */
+  async createTrackedSessionBatch(count: number, prefix = 'batch'): Promise<Array<{ sessionName: string; sessionId: string }>> {
+    const baseUrl = this.page.url().replace(/\/sessions.*$/, '').replace(/\/$/, '');
+    
+    // Use API for batch creation for better performance
+    const sessions = await this.page.evaluate(async ({ baseUrl, count, prefix }) => {
+      const promises = Array(count).fill(0).map(async (_, i) => {
+        const name = `${prefix}-${i}-${Date.now()}`;
+        const response = await fetch(`${baseUrl}/api/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            name,
+            command: 'bash'
+          })
+        });
+        const data = await response.json();
+        return { sessionName: name, sessionId: data.id };
+      });
+      return Promise.all(promises);
+    }, { baseUrl, count, prefix });
+    
+    // Track all sessions
+    for (const session of sessions) {
+      this.sessions.set(session.sessionName, { id: session.sessionId, spawnWindow: false });
+    }
+    
+    return sessions;
+  }
+
+  /**
    * Cleans up all tracked sessions
    */
   async cleanupAllSessions(): Promise<void> {
@@ -109,6 +141,28 @@ export class TestSessionManager {
 
     console.log(`Cleaning up ${this.sessions.size} tracked sessions`);
 
+    // Use API for batch deletion for better performance
+    const baseUrl = this.page.url().replace(/\/sessions.*$/, '').replace(/\/$/, '');
+    const sessionIds = Array.from(this.sessions.values()).map(s => s.id).filter(id => id);
+    
+    if (sessionIds.length > 0) {
+      try {
+        await this.page.evaluate(async ({ baseUrl, sessionIds }) => {
+          const promises = sessionIds.map(id => 
+            fetch(`${baseUrl}/api/sessions/${id}`, { method: 'DELETE' })
+              .catch(() => {}) // Ignore individual failures
+          );
+          await Promise.all(promises);
+        }, { baseUrl, sessionIds });
+        
+        this.sessions.clear();
+        return;
+      } catch (error) {
+        console.log('Batch API cleanup failed, trying UI cleanup:', error);
+      }
+    }
+
+    // Fallback to UI cleanup
     // Navigate to list
     if (!this.page.url().endsWith('/')) {
       await this.page.goto('/', { waitUntil: 'domcontentloaded' });

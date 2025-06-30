@@ -34,6 +34,13 @@ export const test = base.extend<TestFixtures>({
           // Reset critical UI state to defaults
           // For tests, we want to see exited sessions since commands might exit quickly
           localStorage.setItem('hideExitedSessions', 'false'); // Show exited sessions in tests
+          
+          // Dispatch storage event to notify app of changes
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: 'hideExitedSessions',
+            newValue: 'false',
+            storageArea: localStorage
+          }));
 
           // Clear IndexedDB if present
           if (typeof indexedDB !== 'undefined' && indexedDB.deleteDatabase) {
@@ -41,9 +48,6 @@ export const test = base.extend<TestFixtures>({
           }
         })
         .catch(() => {});
-
-      // Reload the page so the app picks up the localStorage settings
-      await page.reload({ waitUntil: 'domcontentloaded' });
 
       // Wait for the app to fully initialize
       await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });

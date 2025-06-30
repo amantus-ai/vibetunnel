@@ -18,20 +18,29 @@ export default defineConfig({
   /* Global setup */
   globalSetup: require.resolve('./src/test/playwright/global-setup.ts'),
   /* Run tests in files in parallel */
-  fullyParallel: false, // Start with sequential execution for stability
+  fullyParallel: true, // Enable parallel execution for faster tests
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: 1, // Force single worker to avoid race conditions
+  /* Use multiple workers for parallel execution */
+  workers: process.env.CI ? 2 : 4, // 2 workers on CI, 4 locally
   /* Test timeout */
   timeout: process.env.CI ? 60 * 1000 : 30 * 1000, // 60s on CI, 30s locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { open: 'never' }],
     process.env.CI ? ['github'] : ['list'],
+    // Add JSON reporter for test results analysis
+    ['json', { outputFile: 'test-results/results.json' }],
   ],
+  /* Shard tests for distributed execution on CI */
+  ...(process.env.CI && {
+    shard: {
+      total: parseInt(process.env.TOTAL_SHARDS || '1'),
+      current: parseInt(process.env.SHARD_INDEX || '1'),
+    },
+  }),
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -65,7 +74,7 @@ export default defineConfig({
   webServer: {
     command: `node dist/vibetunnel-cli --no-auth --port ${testConfig.port}`,
     port: testConfig.port,
-    reuseExistingServer: false, // Always use the configured port 4022
+    reuseExistingServer: !process.env.CI, // Reuse server locally for faster tests
     stdout: 'pipe',
     stderr: 'pipe',
     timeout: 180 * 1000, // 3 minutes for server startup

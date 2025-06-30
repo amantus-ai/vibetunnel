@@ -1,0 +1,88 @@
+# Example GitHub Actions configuration for sharded Playwright tests
+name: Playwright Tests (Sharded)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  playwright:
+    name: Playwright Tests (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps chromium
+      
+    - name: Build project
+      run: npm run build
+      
+    - name: Run Playwright tests
+      env:
+        SHARD_INDEX: ${{ matrix.shardIndex }}
+        TOTAL_SHARDS: ${{ matrix.shardTotal }}
+        CI: true
+      run: npx playwright test
+      
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report-${{ matrix.shardIndex }}
+        path: playwright-report/
+        retention-days: 30
+        
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.shardIndex }}
+        path: test-results/
+        retention-days: 30
+
+  merge-reports:
+    # Merge reports from all shards
+    if: always()
+    needs: [playwright]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Download all reports
+      uses: actions/download-artifact@v4
+      with:
+        path: all-reports
+        pattern: test-results-*
+        
+    - name: Merge test results
+      run: |
+        npx playwright merge-reports --reporter html ./all-reports
+        
+    - name: Upload merged report
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report-merged
+        path: playwright-report/
+        retention-days: 30
