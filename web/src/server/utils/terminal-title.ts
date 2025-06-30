@@ -164,8 +164,8 @@ export function generateDynamicTitle(
 
   // If we have Claude-specific status, put it first
   if (activity.specificStatus) {
-    // Format: status — path — command
-    const title = `${activity.specificStatus.status} — ${displayPath} — ${cmdName}`;
+    // Format: status · path · command
+    const title = `${activity.specificStatus.status} · ${displayPath} · ${cmdName}`;
     return `\x1B]2;${title}\x07`;
   }
 
@@ -175,8 +175,8 @@ export function generateDynamicTitle(
     indicator = '●'; // active (filled circle)
   }
 
-  // Format: indicator path — command
-  const title = `${indicator} ${displayPath} — ${cmdName}`;
+  // Format: indicator path · command
+  const title = `${indicator} ${displayPath} · ${cmdName}`;
 
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
   return `\x1B]2;${title}\x07`;
