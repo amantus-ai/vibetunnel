@@ -58,10 +58,10 @@ export interface AppDetector {
 
 // Pre-compiled regex for Claude status lines
 // Matches: ✻ Crafting… (205s · ↑ 6.0k tokens · <any text> to interrupt)
-// Also matches: ✻ Measuring… (33s · ↓ 169 tokens · esc to interrupt)
-// Fixed to properly match the exact characters used
+// Also matches: ✻ Measuring… (6s ·  100 tokens · esc to interrupt) - note double space
+// Fixed to handle variable whitespace after middle dot
 const CLAUDE_STATUS_REGEX =
-  /(.)\s+(\w+)…\s*\((\d+)s\s*·\s*([↑↓])\s*([\d.]+)k?\s*tokens\s*·\s*[^)]+to\s+interrupt\)/gi;
+  /([+✻])\s+(\w+)…\s*\((\d+)s\s*·\s*([↑↓]?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt\)/gi;
 
 /**
  * Parse Claude-specific status from output
