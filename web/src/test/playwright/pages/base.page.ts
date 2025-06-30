@@ -64,16 +64,16 @@ export class BasePage {
     await this.dismissErrors();
   }
 
-  async getByTestId(testId: string): Promise<Locator> {
+  getByTestId(testId: string): Locator {
     return this.page.locator(`[data-testid="${testId}"]`);
   }
 
   async clickByTestId(testId: string) {
-    await this.getByTestId(testId).then((el) => el.click());
+    await this.getByTestId(testId).click();
   }
 
   async fillByTestId(testId: string, value: string) {
-    await this.getByTestId(testId).then((el) => el.fill(value));
+    await this.getByTestId(testId).fill(value);
   }
 
   async waitForText(text: string, options?: { timeout?: number }) {

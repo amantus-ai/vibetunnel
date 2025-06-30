@@ -3,11 +3,20 @@ import { WaitUtils } from '../utils/test-utils';
 import { BasePage } from './base.page';
 
 export class SessionViewPage extends BasePage {
-  private terminalSelector = 'vibe-terminal';
+  // Selectors
+  private readonly selectors = {
+    terminal: 'vibe-terminal',
+    terminalBuffer: 'vibe-terminal-buffer',
+    sessionHeader: 'session-header',
+    backButton: 'button:has-text("Back")',
+    vibeTunnelLogo: 'button:has(h1:has-text("VibeTunnel"))',
+  };
+
+  private terminalSelector = this.selectors.terminal;
 
   async waitForTerminalReady() {
     // Wait for terminal element to be visible
-    await this.page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 4000 });
+    await this.page.waitForSelector(this.selectors.terminal, { state: 'visible', timeout: 4000 });
 
     // Wait for terminal to be fully initialized (has content or structure)
     await this.page.waitForFunction(
@@ -59,14 +68,14 @@ export class SessionViewPage extends BasePage {
   }
 
   async copyText() {
-    await this.page.click('vibe-terminal');
+    await this.page.click(this.selectors.terminal);
     // Select all and copy
     await this.page.keyboard.press('Control+a');
     await this.page.keyboard.press('Control+c');
   }
 
   async pasteText(text: string) {
-    await this.page.click('vibe-terminal');
+    await this.page.click(this.selectors.terminal);
     // Use clipboard API if available, otherwise type directly
     const clipboardAvailable = await this.page.evaluate(() => !!navigator.clipboard);
 
@@ -85,7 +94,7 @@ export class SessionViewPage extends BasePage {
     // Try multiple ways to navigate back to the session list
 
     // 1. Try the back button in the header
-    const backButton = this.page.locator('button').filter({ hasText: 'Back' }).first();
+    const backButton = this.page.locator(this.selectors.backButton).first();
     if (await backButton.isVisible({ timeout: 1000 })) {
       await backButton.click();
       await this.page.waitForURL('/', { timeout: 5000 });
@@ -128,5 +137,9 @@ export class SessionViewPage extends BasePage {
   async executeAndWait(command: string, expectedOutput: string) {
     await TerminalTestUtils.executeCommand(this.page, command);
     await this.waitForOutput(expectedOutput);
+  }
+
+  async clickTerminal() {
+    await this.page.click(this.terminalSelector);
   }
 }

@@ -4,12 +4,18 @@ import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper'
 import { waitForShellPrompt } from '../helpers/terminal.helper';
 import { interruptCommand } from '../helpers/terminal-commands.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { SessionListPage } from '../pages/session-list.page';
+import { SessionViewPage } from '../pages/session-view.page';
 
 test.describe('Keyboard Shortcuts', () => {
   let sessionManager: TestSessionManager;
+  let sessionListPage: SessionListPage;
+  let sessionViewPage: SessionViewPage;
 
   test.beforeEach(async ({ page }) => {
     sessionManager = new TestSessionManager(page);
+    sessionListPage = new SessionListPage(page);
+    sessionViewPage = new SessionViewPage(page);
   });
 
   test.afterEach(async () => {
@@ -79,8 +85,7 @@ test.describe('Keyboard Shortcuts', () => {
     await assertTerminalReady(page);
 
     // Click on terminal to ensure focus
-    const terminal = page.locator('vibe-terminal');
-    await terminal.click();
+    await sessionViewPage.clickTerminal();
 
     // Press Escape to go back to list
     await page.keyboard.press('Escape');
@@ -91,29 +96,29 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should close modals with Escape', async ({ page }) => {
-    // Open create session modal
-    await page.waitForSelector('button[title="Create New Session"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
-    await page.click('button[title="Create New Session"]');
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
+    // Navigate to session list
+    await sessionListPage.navigate();
+
+    // Open create session modal using page object method
+    const createButton = page.locator('button[title="Create New Session"]');
+    await createButton.click();
+    await page.waitForSelector('.modal-content', { state: 'visible' });
 
     // Press Escape
     await page.keyboard.press('Escape');
 
     // Modal should close
-    await expect(page.locator('input[placeholder="My Session"]')).toBeHidden({ timeout: 4000 });
+    await expect(page.locator('.modal-content')).toBeHidden({ timeout: 4000 });
   });
 
   test('should submit create form with Enter', async ({ page }) => {
+    // Navigate to session list
+    await sessionListPage.navigate();
+
     // Open create session modal
-    await page.waitForSelector('button[title="Create New Session"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
-    await page.click('button[title="Create New Session"]', { timeout: 10000 });
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
+    const createButton = page.locator('button[title="Create New Session"]');
+    await createButton.click();
+    await page.waitForSelector('.modal-content', { state: 'visible' });
 
     // Turn off native terminal
     const spawnWindowToggle = page.locator('button[role="switch"]');
@@ -142,8 +147,7 @@ test.describe('Keyboard Shortcuts', () => {
     });
     await assertTerminalReady(page);
 
-    const terminal = page.locator('vibe-terminal');
-    await terminal.click();
+    await sessionViewPage.clickTerminal();
 
     // Test Ctrl+C (interrupt)
     await page.keyboard.type('sleep 10');
@@ -193,8 +197,7 @@ test.describe('Keyboard Shortcuts', () => {
     });
     await assertTerminalReady(page);
 
-    const terminal = page.locator('vibe-terminal');
-    await terminal.click();
+    await sessionViewPage.clickTerminal();
 
     // Type partial command and press Tab
     await page.keyboard.type('ech');
@@ -215,7 +218,6 @@ test.describe('Keyboard Shortcuts', () => {
     await page.keyboard.press('Enter');
 
     // Should see the output
-    await page.waitForTimeout(500);
     await expect(page.locator('text=tab completed').first()).toBeVisible({ timeout: 4000 });
   });
 
@@ -226,8 +228,7 @@ test.describe('Keyboard Shortcuts', () => {
     });
     await assertTerminalReady(page);
 
-    const terminal = page.locator('vibe-terminal');
-    await terminal.click();
+    await sessionViewPage.clickTerminal();
 
     // Execute first command
     await page.keyboard.type('echo "first command"');
@@ -277,7 +278,7 @@ test.describe('Keyboard Shortcuts', () => {
     await waitForShellPrompt(page, 4000);
 
     // Should see "first command" in the terminal
-    const terminalOutput = await page.locator('vibe-terminal').textContent();
+    const terminalOutput = await sessionViewPage.getTerminalOutput();
     expect(terminalOutput).toContain('first command');
   });
 });

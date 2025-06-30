@@ -76,7 +76,7 @@ test.describe.skip('Terminal Interaction', () => {
       },
       { timeout: 2000 }
     );
-    
+
     await interruptCommand(page);
 
     // Verify we can execute new command

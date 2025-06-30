@@ -129,9 +129,16 @@ test.describe('Advanced Session Management', () => {
       .first();
     await expect(killAllButton).toBeVisible({ timeout: 2000 });
 
-    // Handle confirmation dialog
-    page.once('dialog', (dialog) => dialog.accept());
+    // Handle confirmation dialog if it appears
+    const dialogHandler = (dialog: { accept: () => void }) => dialog.accept();
+    page.once('dialog', dialogHandler);
+
+    // Click the button
     await killAllButton.click();
+
+    // Remove the handler if no dialog appeared
+    await page.waitForTimeout(500);
+    page.removeListener('dialog', dialogHandler);
 
     // Wait for kill all API calls to complete
     await page

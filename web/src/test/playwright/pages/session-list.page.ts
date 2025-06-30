@@ -2,6 +2,18 @@ import { screenshotOnError } from '../helpers/screenshot.helper';
 import { BasePage } from './base.page';
 
 export class SessionListPage extends BasePage {
+  // Selectors
+  private readonly selectors = {
+    createButton: '[data-testid="create-session-button"]',
+    createButtonFallback: 'button[title="Create New Session"]',
+    sessionNameInput: '[data-testid="session-name-input"]',
+    commandInput: '[data-testid="command-input"]',
+    workingDirInput: '[data-testid="working-dir-input"]',
+    submitButton: '[data-testid="create-session-submit"]',
+    sessionCard: 'session-card',
+    modal: '.modal-content',
+    noSessionsMessage: 'text="No active sessions"',
+  };
   async navigate() {
     await super.navigate('/');
     await this.waitForLoadComplete();
@@ -10,7 +22,9 @@ export class SessionListPage extends BasePage {
     await this.dismissErrors();
 
     // Wait for create button to be clickable
-    const createBtn = this.page.locator('button[title="Create New Session"]');
+    const createBtn = this.page
+      .locator(this.selectors.createButton)
+      .or(this.page.locator(this.selectors.createButtonFallback));
     await createBtn.waitFor({ state: 'visible', timeout: 5000 });
   }
 
@@ -22,13 +36,13 @@ export class SessionListPage extends BasePage {
 
     // Click the create session button
     const createButton = this.page
-      .locator('[data-testid="create-session-button"]')
-      .or(this.page.locator('button[title="Create New Session"]'));
+      .locator(this.selectors.createButton)
+      .or(this.page.locator(this.selectors.createButtonFallback));
     await createButton.click({ timeout: 5000 });
 
     // Wait for the modal to appear and be ready
     try {
-      await this.page.waitForSelector('.modal-content', { state: 'visible', timeout: 4000 });
+      await this.page.waitForSelector(this.selectors.modal, { state: 'visible', timeout: 4000 });
     } catch (_e) {
       const error = new Error('Modal did not appear after clicking create button');
       await screenshotOnError(this.page, error, 'no-modal-after-click');
@@ -203,11 +217,6 @@ export class SessionListPage extends BasePage {
     return cards;
   }
 
-  async getSessionCount(): Promise<number> {
-    const cards = await this.getSessionCards();
-    return cards.length;
-  }
-
   async clickSession(sessionName: string) {
     // First ensure we're on the session list page
     if (this.page.url().includes('?session=')) {
@@ -226,13 +235,13 @@ export class SessionListPage extends BasePage {
     );
 
     // Check if we have any session cards
-    const cardCount = await this.page.locator('session-card').count();
+    const cardCount = await this.getSessionCount();
     if (cardCount === 0) {
       throw new Error('No session cards found on the page');
     }
 
     // Look for the specific session card
-    const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`).first();
+    const sessionCard = (await this.getSessionCard(sessionName)).first();
 
     // Wait for the specific session card to be visible
     await sessionCard.waitFor({ state: 'visible', timeout: 10000 });
@@ -248,7 +257,7 @@ export class SessionListPage extends BasePage {
   }
 
   async isSessionActive(sessionName: string): Promise<boolean> {
-    const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`);
+    const sessionCard = await this.getSessionCard(sessionName);
     // Look for the status text in the footer area
     const statusText = await sessionCard.locator('span:has(.w-2.h-2.rounded-full)').textContent();
     // Sessions show "RUNNING" when active, not "active"
@@ -256,7 +265,7 @@ export class SessionListPage extends BasePage {
   }
 
   async killSession(sessionName: string) {
-    const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`);
+    const sessionCard = await this.getSessionCard(sessionName);
 
     // Wait for the session card to be visible
     await sessionCard.waitFor({ state: 'visible', timeout: 4000 });
@@ -271,21 +280,51 @@ export class SessionListPage extends BasePage {
     await killButton.scrollIntoViewIfNeeded();
 
     // Set up dialog handler BEFORE clicking to avoid race condition
-    const dialogPromise = this.page.waitForEvent('dialog');
+    // But use Promise.race to handle cases where no dialog appears
+    const dialogPromise = this.page.waitForEvent('dialog', { timeout: 2000 });
 
-    // Click the button (this will trigger the dialog)
+    // Click the button (this might or might not trigger a dialog)
     const clickPromise = killButton.click();
 
-    // Handle the dialog when it appears
-    const dialog = await dialogPromise;
-    await dialog.accept();
+    // Wait for either dialog or click to complete
+    try {
+      // Try to handle dialog if it appears
+      const dialog = await Promise.race([
+        dialogPromise,
+        // Also wait a bit to see if dialog will appear
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+      ]);
+
+      if (dialog) {
+        await dialog.accept();
+      }
+    } catch {
+      // No dialog appeared, which is fine
+      console.log('No confirmation dialog appeared for kill action');
+    }
 
     // Wait for the click action to complete
     await clickPromise;
   }
 
   async waitForEmptyState() {
-    await this.page.waitForSelector('text="No active sessions"', { timeout: 4000 });
+    await this.page.waitForSelector(this.selectors.noSessionsMessage, { timeout: 4000 });
+  }
+
+  async getSessionCount(): Promise<number> {
+    const cards = this.page.locator(this.selectors.sessionCard);
+    return cards.count();
+  }
+
+  async waitForSessionCard(sessionName: string, options?: { timeout?: number }) {
+    await this.page.waitForSelector(`${this.selectors.sessionCard}:has-text("${sessionName}")`, {
+      state: 'visible',
+      timeout: options?.timeout || 5000,
+    });
+  }
+
+  async getSessionCard(sessionName: string) {
+    return this.page.locator(`${this.selectors.sessionCard}:has-text("${sessionName}")`);
   }
 
   async closeAnyOpenModal() {
