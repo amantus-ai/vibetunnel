@@ -1,6 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { assertSessionInList } from '../helpers/assertion.helper';
-import { createMultipleSessions } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe('Minimal Session Tests', () => {
@@ -26,18 +25,21 @@ test.describe('Minimal Session Tests', () => {
   });
 
   test('should create multiple sessions', async ({ page }) => {
-    // Create 3 sessions using helper
-    const sessions = await createMultipleSessions(page, 3, {
-      name: 'minimal-test',
-    });
+    const sessionNames = [];
 
-    // Navigate back to home
-    await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    // Create 3 sessions using the session manager
+    for (let i = 0; i < 3; i++) {
+      const { sessionName } = await sessionManager.createTrackedSession(`minimal-test-${i + 1}`);
+      sessionNames.push(sessionName);
+
+      // Navigate back to home after each creation
+      await page.goto('/');
+      await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    }
 
     // Verify all sessions are listed
-    for (const session of sessions) {
-      await assertSessionInList(page, session.sessionName);
+    for (const sessionName of sessionNames) {
+      await assertSessionInList(page, sessionName);
     }
 
     // Count total session cards (should be at least our 3)
