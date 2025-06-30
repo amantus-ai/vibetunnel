@@ -95,7 +95,7 @@ test.describe('Session Navigation', () => {
     // Ensure the card is visible and ready
     await sessionCard.waitFor({ state: 'visible', timeout: 5000 });
     await sessionCard.scrollIntoViewIfNeeded();
-    
+
     // Wait for network to be idle before clicking
     await page.waitForLoadState('networkidle');
 
