@@ -6,6 +6,7 @@
  */
 
 import { createLogger } from './logger.js';
+import { PromptDetector } from './prompt-patterns.js';
 
 const logger = createLogger('activity-detector');
 
@@ -245,8 +246,8 @@ export class ActivityDetector {
    * Check if output is just a prompt
    */
   private isJustPrompt(data: string): boolean {
-    // Common prompt patterns that shouldn't count as activity
-    return /^[$>#%❯➜]\s*$/.test(data) || /^\[.*\][$>#]\s*$/.test(data);
+    // Use unified prompt detector for consistency and performance
+    return PromptDetector.isPromptOnly(data);
   }
 
   /**
