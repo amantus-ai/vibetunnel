@@ -57,17 +57,20 @@ test.describe('Session Creation', () => {
   });
 
   test('should handle multiple session creation', async ({ page }) => {
-    // Create multiple sessions in one call
-    const sessions = await createMultipleSessions(page, 2, {
-      name: 'multi-test',
-    });
-
-    // Track them for cleanup
-    sessions.forEach((s) => {
-      if (!sessionManager.isTracking(s.sessionName)) {
-        sessionManager.trackSession(s);
+    // Create multiple tracked sessions
+    const sessions: Array<{ sessionName: string; sessionId: string }> = [];
+    
+    for (let i = 0; i < 2; i++) {
+      const { sessionName, sessionId } = await sessionManager.createTrackedSession(
+        sessionManager.generateSessionName(`multi-test-${i + 1}`)
+      );
+      sessions.push({ sessionName, sessionId });
+      
+      // Navigate back to list for next creation (except last one)
+      if (i < 1) {
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
       }
-    });
+    }
 
     // Navigate to list and verify all exist
     await page.goto('/');
