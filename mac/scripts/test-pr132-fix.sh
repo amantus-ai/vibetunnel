@@ -6,8 +6,21 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="${PROJECT_DIR}/build/Build/Products/Debug"
-APP_PATH="${BUILD_DIR}/VibeTunnel.app"
+
+# Support both local builds and CI builds
+if [ -n "$CI" ]; then
+    # In CI, use DerivedData path
+    APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d | grep -E "/(Debug|Release)/" | head -1)
+    if [ -z "$APP_PATH" ]; then
+        echo "Error: Could not find VibeTunnel.app in DerivedData"
+        exit 1
+    fi
+else
+    # Local build path
+    BUILD_DIR="${PROJECT_DIR}/build/Build/Products/Debug"
+    APP_PATH="${BUILD_DIR}/VibeTunnel.app"
+fi
+
 VIBETUNNEL_BIN="${APP_PATH}/Contents/Resources/vibetunnel"
 
 # Colors for output  
@@ -21,7 +34,14 @@ echo ""
 # Check if vibetunnel exists
 if [ ! -f "$VIBETUNNEL_BIN" ]; then
     echo -e "${RED}Error: vibetunnel not found at $VIBETUNNEL_BIN${NC}"
-    echo "Please build the Debug configuration first"
+    echo "App path: $APP_PATH"
+    if [ -n "$CI" ]; then
+        echo "Running in CI environment"
+        echo "Available apps in DerivedData:"
+        find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null || echo "No apps found"
+    else
+        echo "Please build the Debug configuration first"
+    fi
     exit 1
 fi
 
