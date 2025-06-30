@@ -236,15 +236,16 @@ struct TerminalView: View {
             }
             return .ignored
         }
-        .onKeyPress(keys: [.escape]) { _ in
-            // Send escape key to terminal
-            viewModel.sendSpecialKey(.escape)
-            return .handled
-        }
-        .onKeyPress(keys: [.tab]) { _ in
-            // Send tab key to terminal
-            viewModel.sendSpecialKey(.tab)
-            return .handled
+        .onKeyPress { press in
+            // Handle escape and tab keys
+            if press.key == .escape {
+                viewModel.sendSpecialKey(.escape)
+                return .handled
+            } else if press.key == .tab {
+                viewModel.sendSpecialKey(.tab)
+                return .handled
+            }
+            return .ignored
         }
         .sheet(isPresented: $showingExportSheet) {
             if let url = exportedFileURL {
@@ -887,6 +888,10 @@ class TerminalViewModel {
                 logger.error("Failed to send input: \(error)")
             }
         }
+    }
+    
+    func sendSpecialKey(_ key: TerminalInput.SpecialKey) {
+        sendInput(key.rawValue)
     }
 
     func resize(cols: Int, rows: Int) {
