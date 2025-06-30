@@ -32,12 +32,6 @@ class PowerManagementService: ObservableObject {
             print("Sleep prevention enabled")
         } else {
             print("Failed to prevent sleep: \(success)")
-            // Post notification for UI to handle
-            NotificationCenter.default.post(
-                name: Notification.Name("PowerManagementError"),
-                object: nil,
-                userInfo: ["error": "Failed to prevent system sleep", "code": success]
-            )
         }
     }
     
