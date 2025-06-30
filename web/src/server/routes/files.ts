@@ -33,11 +33,7 @@ const storage = multer.diskStorage({
 });
 
 // File filter to allow all files
-const fileFilter = (
-  _req: any,
-  file: any,
-  cb: any
-) => {
+const fileFilter = (_req: any, file: any, cb: any) => {
   // Allow all file types
   cb(null, true);
 };
@@ -54,34 +50,38 @@ export function createFileRoutes(): Router {
   const router = Router();
 
   // Upload file endpoint
-  router.post('/files/upload', upload.single('file'), (req: AuthenticatedRequest & { file?: any }, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: 'No file provided' });
+  router.post(
+    '/files/upload',
+    upload.single('file'),
+    (req: AuthenticatedRequest & { file?: any }, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ error: 'No file provided' });
+        }
+
+        // Generate relative path for the terminal
+        const relativePath = path.relative(process.cwd(), req.file.path);
+        const absolutePath = req.file.path;
+
+        logger.log(
+          `File uploaded by user ${req.userId}: ${req.file.filename} (${req.file.size} bytes)`
+        );
+
+        res.json({
+          success: true,
+          filename: req.file.filename,
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mimetype: req.file.mimetype,
+          path: absolutePath,
+          relativePath: relativePath,
+        });
+      } catch (error) {
+        logger.error('File upload error:', error);
+        res.status(500).json({ error: 'Failed to upload file' });
       }
-
-      // Generate relative path for the terminal
-      const relativePath = path.relative(process.cwd(), req.file.path);
-      const absolutePath = req.file.path;
-
-      logger.log(
-        `File uploaded by user ${req.userId}: ${req.file.filename} (${req.file.size} bytes)`
-      );
-
-      res.json({
-        success: true,
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
-        path: absolutePath,
-        relativePath: relativePath,
-      });
-    } catch (error) {
-      logger.error('File upload error:', error);
-      res.status(500).json({ error: 'Failed to upload file' });
     }
-  });
+  );
 
   // Serve uploaded files
   router.get('/files/:filename', (req, res) => {
@@ -92,8 +92,8 @@ export function createFileRoutes(): Router {
       // Security check: ensure filename doesn't contain path traversal
       // Only allow alphanumeric, hyphens, underscores, dots, and standard file extension patterns
       if (
-        filename.includes('..') || 
-        filename.includes('/') || 
+        filename.includes('..') ||
+        filename.includes('/') ||
         filename.includes('\\') ||
         filename.includes('\0') ||
         !/^[a-zA-Z0-9._-]+$/.test(filename) ||
@@ -106,7 +106,10 @@ export function createFileRoutes(): Router {
       // Ensure the resolved path is within the uploads directory
       const resolvedPath = path.resolve(filePath);
       const resolvedUploadsDir = path.resolve(UPLOADS_DIR);
-      if (!resolvedPath.startsWith(resolvedUploadsDir + path.sep) && resolvedPath !== resolvedUploadsDir) {
+      if (
+        !resolvedPath.startsWith(resolvedUploadsDir + path.sep) &&
+        resolvedPath !== resolvedUploadsDir
+      ) {
         return res.status(400).json({ error: 'Invalid file path' });
       }
 
@@ -204,7 +207,6 @@ export function createFileRoutes(): Router {
       res.status(500).json({ error: 'Failed to list files' });
     }
   });
-
 
   return router;
 }
