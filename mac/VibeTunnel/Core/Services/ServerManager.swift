@@ -130,7 +130,7 @@ class ServerManager {
             guard isRunning else { return }
             
             // Check if preventSleepWhenRunning setting changed
-            let preventSleep = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+            let preventSleep = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
             powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
             
             logger.info("Updated sleep prevention setting: \(preventSleep ? "enabled" : "disabled")")
@@ -224,7 +224,7 @@ class ServerManager {
             if server.getState() == .running {
                 // Update sleep prevention FIRST before updating state
                 // This prevents a race condition where the server could crash after setting isRunning = true
-                let preventSleep = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+                let preventSleep = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
                 powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
                 
                 // Now update state
@@ -513,7 +513,7 @@ class ServerManager {
         Task {
             // Check initial state on app launch
             if let server = bunServer, server.getState() == .running {
-                let preventSleep = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+                let preventSleep = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
                 powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
             }
             

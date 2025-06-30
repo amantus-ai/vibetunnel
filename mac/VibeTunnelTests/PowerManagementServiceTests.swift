@@ -10,11 +10,8 @@ struct PowerManagementServiceTests {
     // Since PowerManagementService has a private init, we can only test through the shared instance
     // We need to ensure proper cleanup between tests
     
-    @Test("Default sleep prevention setting is true")
-    func defaultSleepPreventionSetting() async {
-        // Test that @AppStorage default for preventSleepWhenRunning is true
-        // This ensures sleep prevention is enabled by default on first app launch
-        
+    @Test("Sleep prevention defaults to true when key doesn't exist")
+    func sleepPreventionDefaultValue() async {
         // Save current value
         let currentValue = UserDefaults.standard.object(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
         defer {
@@ -29,12 +26,13 @@ struct PowerManagementServiceTests {
         // Remove the key to simulate first launch
         UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
         
-        // Create a GeneralSettingsView to trigger @AppStorage initialization
-        _ = GeneralSettingsView()
+        // Test our helper method returns true for non-existent key
+        let defaultValue = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+        #expect(defaultValue == true, "Sleep prevention should default to true when key doesn't exist")
         
-        // The @AppStorage should have set the default to true
-        let defaultValue = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
-        #expect(defaultValue == true, "Sleep prevention should be enabled by default on first launch")
+        // Verify UserDefaults.standard.bool returns false (the bug we're fixing)
+        let standardDefault = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+        #expect(standardDefault == false, "UserDefaults.standard.bool returns false for non-existent keys")
     }
     
     @Test("Update sleep prevention logic with all combinations")
