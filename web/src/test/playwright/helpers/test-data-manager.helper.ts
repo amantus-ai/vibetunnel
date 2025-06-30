@@ -119,10 +119,12 @@ export class TestSessionManager {
       const killAllButton = this.page.locator('button:has-text("Kill All")');
       if (await killAllButton.isVisible({ timeout: 1000 })) {
         const [dialog] = await Promise.all([
-          this.page.waitForEvent('dialog'),
+          this.page.waitForEvent('dialog', { timeout: 5000 }).catch(() => null),
           killAllButton.click(),
         ]);
-        await dialog.accept();
+        if (dialog) {
+          await dialog.accept();
+        }
 
         // Wait for sessions to be marked as exited
         await this.page.waitForFunction(
