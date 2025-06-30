@@ -114,7 +114,7 @@ class ServerManager {
     }
 
     private func setupObservers() {
-        // Watch for server mode changes when the value actually changes
+        // Watch for UserDefaults changes (e.g., sleep prevention setting)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(userDefaultsDidChange),
@@ -125,7 +125,16 @@ class ServerManager {
 
     @objc
     private nonisolated func userDefaultsDidChange() {
-        // No server-related defaults to monitor
+        Task { @MainActor in
+            // Only update sleep prevention if server is running
+            guard isRunning else { return }
+            
+            // Check if preventSleepWhenRunning setting changed
+            let preventSleep = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
+            powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
+            
+            logger.info("Updated sleep prevention setting: \(preventSleep ? "enabled" : "disabled")")
+        }
     }
 
     /// Start the server with current configuration
