@@ -48,7 +48,7 @@ export const test = base.extend<SequentialTestFixtures>({
   },
 
   // Optimized wait utilities
-  waitUtils: async (_, use) => {
+  waitUtils: async ({}, use) => {
     await use(OptimizedWaitUtils);
   },
 });
