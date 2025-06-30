@@ -66,9 +66,9 @@ export default defineConfig({
     command: `npx tsx src/cli.ts --no-auth --port ${testConfig.port}`,
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
-    stdout: 'pipe',
-    stderr: 'pipe',
-    timeout: 180 * 1000, // 3 minutes for server startup
+    stdout: process.env.CI ? 'inherit' : 'pipe', // Show output in CI for debugging
+    stderr: process.env.CI ? 'inherit' : 'pipe', // Show errors in CI for debugging
+    timeout: 60 * 1000, // 1 minute for server startup (reduced from 3 minutes)
     env: {
       NODE_ENV: 'test',
       VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
