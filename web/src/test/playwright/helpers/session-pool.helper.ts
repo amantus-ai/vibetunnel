@@ -33,6 +33,18 @@ export class SessionPool {
   }
 
   /**
+   * Update the page reference (useful for global pools)
+   */
+  updatePage(page: Page): void {
+    this.page = page;
+    this.baseUrl =
+      page
+        .url()
+        .replace(/\/sessions.*$/, '')
+        .replace(/\/$/, '') || 'http://localhost:4022';
+  }
+
+  /**
    * Pre-create a pool of sessions for test use
    */
   async initialize(
@@ -217,10 +229,17 @@ export class SessionPool {
 
 // Global session pool instance for test suite
 let globalPool: SessionPool | null = null;
+let globalPoolPage: Page | null = null;
 
 export function getGlobalSessionPool(page: Page): SessionPool {
   if (!globalPool) {
     globalPool = new SessionPool(page, 'global-pool');
+    globalPoolPage = page;
+  } else if (globalPoolPage !== page) {
+    // Update the page reference instead of recreating the pool
+    logger.debug('Updating global pool page reference');
+    globalPool.updatePage(page);
+    globalPoolPage = page;
   }
   return globalPool;
 }
@@ -229,5 +248,6 @@ export async function cleanupGlobalPool(): Promise<void> {
   if (globalPool) {
     await globalPool.cleanup();
     globalPool = null;
+    globalPoolPage = null;
   }
 }
