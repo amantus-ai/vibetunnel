@@ -296,15 +296,23 @@ export class SessionList extends LitElement {
                               <div class="text-xs text-dark-text-muted truncate">
                                 ${formatPathForDisplay(session.workingDir)}
                               </div>
-                              ${
-                                session.activityStatus?.specificStatus
+                              ${(() => {
+                                // Debug logging for activity status
+                                if (session.status === 'running' && session.activityStatus) {
+                                  logger.debug(`Session ${session.id} activity:`, {
+                                    isActive: session.activityStatus.isActive,
+                                    specificStatus: session.activityStatus.specificStatus,
+                                  });
+                                }
+
+                                return session.activityStatus?.specificStatus
                                   ? html`
-                                    <div class="text-xs text-status-warning truncate mt-0.5">
-                                      ${session.activityStatus.specificStatus.status}
-                                    </div>
-                                  `
-                                  : ''
-                              }
+                                      <div class="text-xs text-status-warning truncate mt-0.5">
+                                        ${session.activityStatus.specificStatus.status}
+                                      </div>
+                                    `
+                                  : '';
+                              })()}
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">
                               <div
@@ -320,7 +328,7 @@ export class SessionList extends LitElement {
                                 title="${
                                   session.status === 'running' && session.activityStatus
                                     ? session.activityStatus.specificStatus
-                                      ? 'Active: ' + session.activityStatus.specificStatus.app
+                                      ? `Active: ${session.activityStatus.specificStatus.app}`
                                       : session.activityStatus.isActive
                                         ? 'Active'
                                         : 'Idle'

@@ -6,6 +6,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
 import type { Session, SessionActivity } from '../../shared/types.js';
+import { TitleMode } from '../../shared/types.js';
 import { PtyError, type PtyManager } from '../pty/index.js';
 import type { ActivityMonitor } from '../services/activity-monitor.js';
 import type { RemoteRegistry } from '../services/remote-registry.js';
@@ -202,6 +203,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
             sessionName,
             command,
             workingDir: resolvePath(workingDir, process.cwd()),
+            titleMode,
           });
 
           if (!spawnResult.success) {
@@ -1120,6 +1122,7 @@ async function requestTerminalSpawn(params: {
   sessionName: string;
   command: string[];
   workingDir: string;
+  titleMode?: TitleMode;
 }): Promise<{ success: boolean; error?: string }> {
   const socketPath = '/tmp/vibetunnel-terminal.sock';
 
@@ -1136,6 +1139,7 @@ async function requestTerminalSpawn(params: {
     sessionId: params.sessionId,
     command: params.command.join(' '),
     terminal: null, // Let Mac app use default terminal
+    titleMode: params.titleMode,
   };
 
   return new Promise((resolve) => {

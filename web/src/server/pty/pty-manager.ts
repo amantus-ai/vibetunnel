@@ -436,18 +436,34 @@ export class PtyManager extends EventEmitter {
       // Periodic activity state updates
       // This ensures the title shows idle state when there's no output
       session.titleUpdateInterval = setInterval(() => {
-        if (session.activityDetector && forwardToStdout) {
+        if (session.activityDetector) {
           const activityState = session.activityDetector.getActivityState();
-          const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-          const titleSequence = generateDynamicTitle(
-            dynamicDir,
-            session.sessionInfo.command,
-            activityState,
-            session.sessionInfo.name
-          );
 
-          // Write title update directly to stdout
-          process.stdout.write(titleSequence);
+          // Write activity state to file for persistence
+          const activityPath = path.join(session.controlDir, 'activity.json');
+          const activityData = {
+            isActive: activityState.isActive,
+            specificStatus: activityState.specificStatus,
+            timestamp: new Date().toISOString(),
+          };
+          try {
+            fs.writeFileSync(activityPath, JSON.stringify(activityData, null, 2));
+          } catch (error) {
+            logger.error(`Failed to write activity state for session ${session.id}:`, error);
+          }
+
+          if (forwardToStdout) {
+            const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+            const titleSequence = generateDynamicTitle(
+              dynamicDir,
+              session.sessionInfo.command,
+              activityState,
+              session.sessionInfo.name
+            );
+
+            // Write title update directly to stdout
+            process.stdout.write(titleSequence);
+          }
         }
       }, 500);
     }
@@ -1320,8 +1336,9 @@ export class PtyManager extends EventEmitter {
     // Get all sessions from storage
     const sessions = this.sessionManager.listSessions();
 
-    // Enhance with activity information for active sessions
+    // Enhance with activity information
     return sessions.map((session) => {
+      // First try to get activity from active session
       const activeSession = this.sessions.get(session.id);
       if (activeSession?.activityDetector) {
         const activityState = activeSession.activityDetector.getActivityState();
@@ -1333,6 +1350,35 @@ export class PtyManager extends EventEmitter {
           },
         };
       }
+
+      // Otherwise, try to read from activity file (for external sessions)
+      try {
+        const sessionPaths = this.sessionManager.getSessionPaths(session.id);
+        if (!sessionPaths) {
+          return session;
+        }
+        const activityPath = path.join(sessionPaths.controlDir, 'activity.json');
+
+        if (fs.existsSync(activityPath)) {
+          const activityData = JSON.parse(fs.readFileSync(activityPath, 'utf-8'));
+          // Check if activity is recent (within last 10 seconds)
+          const isRecent = Date.now() - new Date(activityData.timestamp).getTime() < 10000;
+
+          if (isRecent) {
+            return {
+              ...session,
+              activityStatus: {
+                isActive: activityData.isActive,
+                specificStatus: activityData.specificStatus,
+              },
+            };
+          }
+        }
+      } catch (error) {
+        // Ignore errors reading activity file
+        logger.debug(`Failed to read activity file for session ${session.id}:`, error);
+      }
+
       return session;
     });
   }
