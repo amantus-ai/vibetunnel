@@ -64,7 +64,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command: process.env.CI 
-      ? `env -u VIBETUNNEL_SEA node dist/cli.js --no-auth --port ${testConfig.port}`  // Use env -u to unset the variable
+      ? `node dist/cli.js --no-auth --port ${testConfig.port}`  // Run compiled JS directly
       : `pnpm exec tsx src/cli.ts --no-auth --port ${testConfig.port}`, // Use tsx locally
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
@@ -75,6 +75,7 @@ export default defineConfig({
       NODE_ENV: 'test',
       VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
       SUPPRESS_CLIENT_ERRORS: 'true',
+      VIBETUNNEL_SEA: '', // Explicitly set to empty to disable SEA loader
     },
   },
 });
