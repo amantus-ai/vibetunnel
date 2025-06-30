@@ -60,6 +60,7 @@ export class PtyManager extends EventEmitter {
   private lastBellTime = new Map<string, number>(); // Track last bell time per session
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
+  private activityFileWarningsLogged = new Set<string>(); // Track which sessions we've logged warnings for
 
   constructor(controlPath?: string) {
     super();
@@ -440,7 +441,8 @@ export class PtyManager extends EventEmitter {
           const activityState = session.activityDetector.getActivityState();
 
           // Write activity state to file for persistence
-          const activityPath = path.join(session.controlDir, 'activity.json');
+          // Use a different filename to avoid conflicts with ActivityMonitor service
+          const activityPath = path.join(session.controlDir, 'claude-activity.json');
           const activityData = {
             isActive: activityState.isActive,
             specificStatus: activityState.specificStatus,
@@ -451,7 +453,10 @@ export class PtyManager extends EventEmitter {
             // Debug log first write
             if (!session.activityFileWritten) {
               session.activityFileWritten = true;
-              logger.debug(`Writing activity state to ${activityPath} for session ${session.id}`);
+              logger.debug(`Writing activity state to ${activityPath} for session ${session.id}`, {
+                activityState,
+                timestamp: activityData.timestamp,
+              });
             }
           } catch (error) {
             logger.error(`Failed to write activity state for session ${session.id}:`, error);
@@ -1362,12 +1367,14 @@ export class PtyManager extends EventEmitter {
         if (!sessionPaths) {
           return session;
         }
-        const activityPath = path.join(sessionPaths.controlDir, 'activity.json');
+        const activityPath = path.join(sessionPaths.controlDir, 'claude-activity.json');
 
         if (fs.existsSync(activityPath)) {
           const activityData = JSON.parse(fs.readFileSync(activityPath, 'utf-8'));
-          // Check if activity is recent (within last 10 seconds)
-          const isRecent = Date.now() - new Date(activityData.timestamp).getTime() < 10000;
+          // Check if activity is recent (within last 60 seconds)
+          // Use Math.abs to handle future timestamps from system clock issues
+          const timeDiff = Math.abs(Date.now() - new Date(activityData.timestamp).getTime());
+          const isRecent = timeDiff < 60000;
 
           if (isRecent) {
             logger.debug(`Found recent activity for external session ${session.id}:`, {
@@ -1382,7 +1389,17 @@ export class PtyManager extends EventEmitter {
               },
             };
           } else {
-            logger.debug(`Activity file for session ${session.id} is stale (older than 10s)`);
+            logger.debug(
+              `Activity file for session ${session.id} is stale (time diff: ${timeDiff}ms)`
+            );
+          }
+        } else {
+          // Only log once per session to avoid spam
+          if (!this.activityFileWarningsLogged.has(session.id)) {
+            this.activityFileWarningsLogged.add(session.id);
+            logger.debug(
+              `No claude-activity.json found for session ${session.id} at ${activityPath}`
+            );
           }
         }
       } catch (error) {
