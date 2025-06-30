@@ -20,6 +20,7 @@ function superDebug(message: string, ...args: unknown[]): void {
 }
 
 // ANSI escape code removal regex
+// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes need control characters
 const ANSI_REGEX = /\x1b\[[0-9;]*[a-zA-Z]/g;
 
 /**
@@ -147,6 +148,7 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
     while (cleanPos < matchIndex && originalPos < data.length) {
       if (data.startsWith('\x1b[', originalPos)) {
         // Skip ANSI sequence
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes need control characters
         const endMatch = /^\x1b\[[0-9;]*[a-zA-Z]/.exec(data.substring(originalPos));
         if (endMatch) {
           originalPos += endMatch[0].length;

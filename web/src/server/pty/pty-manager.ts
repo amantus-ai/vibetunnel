@@ -493,7 +493,11 @@ export class PtyManager extends EventEmitter {
                 console.log('[PtyManager] Detected potential Claude output');
                 console.log(
                   '[PtyManager] Raw data sample:',
-                  data.substring(0, 200).replace(/\n/g, '\\n').replace(/\x1b/g, '\\x1b')
+                  data
+                    .substring(0, 200)
+                    .replace(/\n/g, '\\n')
+                    // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes need control characters
+                    .replace(/\x1b/g, '\\x1b')
                 );
 
                 // Also log to file for analysis
