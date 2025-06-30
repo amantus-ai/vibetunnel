@@ -1,6 +1,6 @@
 {
   "name": "@vibetunnel/vibetunnel-cli",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.5",
   "description": "Web frontend for terminal multiplexer",
   "main": "dist/server.js",
   "bin": {
@@ -31,7 +31,12 @@
     "prettier:check": "prettier --check src --experimental-cli",
     "prettier:fast": "PRETTIER_EXPERIMENTAL_CLI=1 prettier --write src",
     "check": "./scripts/check-all.sh",
-    "check:fix": "./scripts/check-fix-sequential.sh"
+    "check:fix": "./scripts/check-fix-sequential.sh",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -69,6 +74,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.0.5",
     "@open-wc/testing": "^4.0.0",
+    "@playwright/test": "^1.53.1",
     "@prettier/plugin-oxc": "^0.0.4",
     "@testing-library/dom": "^10.4.0",
     "@types/express": "^4.17.21",

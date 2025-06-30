@@ -1362,6 +1362,7 @@ export class Terminal extends LitElement {
           style="view-transition-name: session-${this.sessionId}"
           @paste=${this.handlePaste}
           @click=${this.handleClick}
+          data-testid="terminal-container"
         ></div>
         ${
           !this.followCursorEnabled && !this.hideScrollButton

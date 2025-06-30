@@ -86,6 +86,14 @@ Before running ANY release commands, verify these items:
   # Must be higher than the last release
   ```
   
+- [ ] **Web package.json version matches macOS version**
+  ```bash
+  # Check web version matches macOS version
+  grep '"version"' ../web/package.json
+  # Should match MARKETING_VERSION from version.xcconfig
+  ```
+  ⚠️ **IMPORTANT**: The web frontend version must be synchronized with the macOS app version!
+  
 - [ ] **CHANGELOG.md has entry for this version**
   ```bash
   grep "## \[1.0.0-beta.2\]" CHANGELOG.md
@@ -254,6 +262,31 @@ The `notarize-app.sh` script should sign the app:
 codesign --force --sign "Developer ID Application" --entitlements VibeTunnel.entitlements --options runtime VibeTunnel.app
 ```
 
+### Common Version Sync Issues
+
+#### Web Version Out of Sync
+**Problem**: Web server shows different version than macOS app (e.g., "beta.3" when app is "beta.4").
+
+**Cause**: web/package.json was not updated when BuildNumber.xcconfig was changed.
+
+**Solution**: 
+1. Update package.json to match BuildNumber.xcconfig:
+   ```bash
+   # Check current versions
+   grep MARKETING_VERSION VibeTunnel/version.xcconfig
+   grep "version" ../web/package.json
+   
+   # Update web version to match
+   vim ../web/package.json
+   ```
+
+2. Validate sync before building:
+   ```bash
+   cd ../web && node scripts/validate-version-sync.js
+   ```
+
+**Note**: The web UI automatically displays the version from package.json (injected at build time).
+
 ### Common Sparkle Errors and Solutions
 
 | Error | Cause | Solution |
@@ -350,10 +383,15 @@ The build system creates a single universal binary that works on all Mac archite
 
 If the automated script fails, here's the manual process:
 
-### 1. Update Build Number
-Edit `VibeTunnel/version.xcconfig`:
+### 1. Update Version Numbers
+Edit version configuration files:
+
+**macOS App** (`VibeTunnel/version.xcconfig`):
 - Update MARKETING_VERSION
 - Update CURRENT_PROJECT_VERSION (build number)
+
+**Web Frontend** (`../web/package.json`):
+- Update "version" field to match MARKETING_VERSION
 
 **Note**: The Xcode project file is named `VibeTunnel-Mac.xcodeproj`
 

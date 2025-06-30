@@ -120,3 +120,12 @@ native/
 
 # Bun lockfile (generated during native build)
 bun.lock
+
+# Playwright test artifacts
+playwright-report/
+test-results/
+playwright/.cache/
+final-test-results.json
+test-results-final.json
+test-results.json
+test-results-quick.json

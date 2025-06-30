@@ -218,9 +218,10 @@ describe('SessionCreateForm', () => {
         name: 'Test Session',
         command: ['npm', 'run', 'dev'],
         workingDir: '/home/user/project',
-        spawn_terminal: true,
+        spawn_terminal: false,
         titleMode: TitleMode.DYNAMIC, // Default value
-        // cols and rows are not sent when spawn_terminal is true
+        cols: 120,
+        rows: 30,
       });
 
       expect(createdHandler).toHaveBeenCalledWith(

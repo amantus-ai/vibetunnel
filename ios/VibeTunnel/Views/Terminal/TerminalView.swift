@@ -888,6 +888,10 @@ class TerminalViewModel {
             }
         }
     }
+    
+    func sendSpecialKey(_ key: TerminalInput.SpecialKey) {
+        sendInput(key.rawValue)
+    }
 
     func resize(cols: Int, rows: Int) {
         Task {

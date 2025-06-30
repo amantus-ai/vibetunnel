@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { copyToClipboard, formatPathForDisplay } from './path-utils.js';
+/**
+ * @vitest-environment happy-dom
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { copyToClipboard, formatPathForDisplay } from './path-utils';
 
 describe('formatPathForDisplay', () => {
   describe('macOS paths', () => {
@@ -184,12 +187,121 @@ describe('formatPathForDisplay', () => {
 });
 
 describe('copyToClipboard', () => {
-  it('should be a function', () => {
-    expect(typeof copyToClipboard).toBe('function');
+  let writeTextSpy: ReturnType<typeof vi.fn>;
+  let execCommandSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    // Reset mocks
+    writeTextSpy = vi.fn().mockResolvedValue(undefined);
+    execCommandSpy = vi.fn().mockReturnValue(true);
+
+    // Mock document.execCommand
+    Object.defineProperty(document, 'execCommand', {
+      value: execCommandSpy,
+      configurable: true,
+    });
   });
 
-  // Note: Full testing of clipboard functionality requires a DOM environment
-  // These tests verify the basic structure without mocking the entire DOM/browser APIs
-  // which is complex in the current test setup. The actual clipboard functionality
-  // is tested through integration tests and manual testing.
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should use navigator.clipboard when available', async () => {
+    // Mock navigator.clipboard
+    vi.stubGlobal('navigator', { clipboard: { writeText: writeTextSpy } });
+
+    const result = await copyToClipboard('test text');
+
+    expect(writeTextSpy).toHaveBeenCalledWith('test text');
+    expect(result).toBe(true);
+    expect(execCommandSpy).not.toHaveBeenCalled();
+  });
+
+  it('should fallback to execCommand when clipboard API fails', async () => {
+    // Mock navigator.clipboard to throw error
+    writeTextSpy = vi.fn().mockRejectedValue(new Error('Clipboard API failed'));
+    vi.stubGlobal('navigator', { clipboard: { writeText: writeTextSpy } });
+
+    const result = await copyToClipboard('test text');
+
+    expect(writeTextSpy).toHaveBeenCalledWith('test text');
+    expect(execCommandSpy).toHaveBeenCalledWith('copy');
+    expect(result).toBe(true);
+  });
+
+  it('should fallback to execCommand when clipboard API is not available', async () => {
+    // Mock navigator without clipboard
+    vi.stubGlobal('navigator', {});
+
+    const result = await copyToClipboard('test text');
+
+    expect(execCommandSpy).toHaveBeenCalledWith('copy');
+    expect(result).toBe(true);
+  });
+
+  it('should return false when both methods fail', async () => {
+    // Mock navigator.clipboard to throw error
+    writeTextSpy = vi.fn().mockRejectedValue(new Error('Clipboard API failed'));
+    vi.stubGlobal('navigator', { clipboard: { writeText: writeTextSpy } });
+
+    // Mock execCommand to fail
+    execCommandSpy.mockReturnValue(false);
+
+    const result = await copyToClipboard('test text');
+
+    expect(writeTextSpy).toHaveBeenCalledWith('test text');
+    expect(execCommandSpy).toHaveBeenCalledWith('copy');
+    expect(result).toBe(false);
+  });
+
+  it('should return false when execCommand throws', async () => {
+    // Mock navigator.clipboard to throw error
+    writeTextSpy = vi.fn().mockRejectedValue(new Error('Clipboard API failed'));
+    vi.stubGlobal('navigator', { clipboard: { writeText: writeTextSpy } });
+
+    // Mock execCommand to throw
+    execCommandSpy.mockImplementation(() => {
+      throw new Error('execCommand failed');
+    });
+
+    const result = await copyToClipboard('test text');
+
+    expect(writeTextSpy).toHaveBeenCalledWith('test text');
+    expect(execCommandSpy).toHaveBeenCalledWith('copy');
+    expect(result).toBe(false);
+  });
+
+  it('should clean up textarea element after copy', async () => {
+    // Mock navigator without clipboard
+    vi.stubGlobal('navigator', {});
+
+    const appendChildSpy = vi.spyOn(document.body, 'appendChild');
+    const removeChildSpy = vi.spyOn(document.body, 'removeChild');
+
+    await copyToClipboard('test text');
+
+    expect(appendChildSpy).toHaveBeenCalled();
+    expect(removeChildSpy).toHaveBeenCalled();
+
+    // Verify textarea was created with correct properties
+    const textarea = appendChildSpy.mock.calls[0][0] as HTMLTextAreaElement;
+    expect(textarea.value).toBe('test text');
+    expect(textarea.style.position).toBe('fixed');
+    expect(textarea.style.left).toBe('-999999px');
+    expect(textarea.style.top).toBe('-999999px');
+  });
+
+  it('should clean up textarea even when execCommand fails', async () => {
+    // Mock navigator without clipboard
+    vi.stubGlobal('navigator', {});
+
+    // Mock execCommand to fail
+    execCommandSpy.mockReturnValue(false);
+
+    const removeChildSpy = vi.spyOn(document.body, 'removeChild');
+
+    await copyToClipboard('test text');
+
+    expect(removeChildSpy).toHaveBeenCalled();
+  });
 });

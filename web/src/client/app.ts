@@ -10,6 +10,7 @@ import { BREAKPOINTS, SIDEBAR, TIMING, TRANSITIONS, Z_INDEX } from './utils/cons
 import { createLogger } from './utils/logger.js';
 import { type MediaQueryState, responsiveObserver } from './utils/responsive-utils.js';
 import { triggerTerminalResize } from './utils/terminal-utils.js';
+import { initTitleUpdater } from './utils/title-updater.js';
 // Import version
 import { VERSION } from './version.js';
 
@@ -84,6 +85,8 @@ export class VibeTunnelApp extends LitElement {
     this.setupNotificationHandlers();
     this.setupResponsiveObserver();
     this.setupPreferences();
+    // Initialize title updater
+    initTitleUpdater();
     // Initialize authentication and routing together
     this.initializeApp();
   }
@@ -163,17 +166,19 @@ export class VibeTunnelApp extends LitElement {
 
   private async checkAuthenticationStatus() {
     // Check if no-auth is enabled first
+    let noAuthEnabled = false;
     try {
       const configResponse = await fetch('/api/auth/config');
       if (configResponse.ok) {
         const authConfig = await configResponse.json();
         logger.log('🔧 Auth config:', authConfig);
+        noAuthEnabled = authConfig.noAuth;
 
         if (authConfig.noAuth) {
           logger.log('🔓 No auth required, bypassing authentication');
           this.isAuthenticated = true;
           this.currentView = 'list';
-          await this.initializeServices(); // Initialize services after auth
+          await this.initializeServices(noAuthEnabled); // Initialize services with no-auth flag
           await this.loadSessions(); // Wait for sessions to load
           this.startAutoRefresh();
           return;
@@ -188,7 +193,7 @@ export class VibeTunnelApp extends LitElement {
 
     if (this.isAuthenticated) {
       this.currentView = 'list';
-      await this.initializeServices(); // Initialize services after auth
+      await this.initializeServices(noAuthEnabled); // Initialize services with no-auth flag
       await this.loadSessions(); // Wait for sessions to load
       this.startAutoRefresh();
     } else {
@@ -200,7 +205,7 @@ export class VibeTunnelApp extends LitElement {
     logger.log('✅ Authentication successful');
     this.isAuthenticated = true;
     this.currentView = 'list';
-    await this.initializeServices(); // Initialize services after auth
+    await this.initializeServices(false); // Initialize services after auth (auth is enabled)
     await this.loadSessions();
     this.startAutoRefresh();
 
@@ -214,18 +219,27 @@ export class VibeTunnelApp extends LitElement {
         this.userInitiatedSessionChange = false;
         this.selectedSessionId = sessionId;
         this.currentView = 'session';
+
+        // Update page title with session name
+        const sessionName = session.name || session.command.join(' ');
+        console.log('[App] Setting title from checkUrlParams:', sessionName);
+        document.title = `${sessionName} - VibeTunnel`;
       }
     }
   }
 
-  private async initializeServices() {
+  private async initializeServices(noAuthEnabled = false) {
     logger.log('🚀 Initializing services...');
     try {
       // Initialize buffer subscription service for WebSocket connections
       await bufferSubscriptionService.initialize();
 
-      // Initialize push notification service
-      await pushNotificationService.initialize();
+      // Initialize push notification service only if auth is enabled
+      if (!noAuthEnabled) {
+        await pushNotificationService.initialize();
+      } else {
+        logger.log('⏭️ Skipping push notification service initialization (no-auth mode)');
+      }
 
       logger.log('✅ Services initialized successfully');
     } catch (error) {
@@ -330,6 +344,12 @@ export class VibeTunnelApp extends LitElement {
           this.sessions = newSessions;
           this.clearError();
 
+          // Update page title if we're in list view
+          if (this.currentView === 'list') {
+            const sessionCount = this.sessions.length;
+            document.title = `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`;
+          }
+
           // Check if currently selected session still exists after refresh
           if (this.selectedSessionId && this.currentView === 'session') {
             const sessionExists = this.sessions.find((s) => s.id === this.selectedSessionId);
@@ -383,7 +403,8 @@ export class VibeTunnelApp extends LitElement {
           logger.log('✨ Initial load view transition ready');
         })
         .catch((err) => {
-          logger.error('❌ Initial load view transition failed:', err);
+          // This is expected to fail in browsers that don't support View Transitions
+          logger.debug('View transition not supported or failed (this is normal):', err);
         });
 
       // Clean up the class after transition completes
@@ -451,6 +472,7 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private async waitForSessionAndSwitch(sessionId: string) {
+    console.log('[App] waitForSessionAndSwitch called with:', sessionId);
     const maxAttempts = 10;
     const delay = TIMING.SESSION_SEARCH_DELAY; // Configured delay between attempts
 
@@ -598,6 +620,7 @@ export class VibeTunnelApp extends LitElement {
 
   private async handleNavigateToSession(e: CustomEvent): Promise<void> {
     const { sessionId } = e.detail;
+    console.log('[App] handleNavigateToSession called with:', sessionId);
 
     // Clean up any existing session view stream before switching
     if (this.selectedSessionId !== sessionId) {
@@ -630,6 +653,16 @@ export class VibeTunnelApp extends LitElement {
         this.selectedSessionId = sessionId;
         this.currentView = 'session';
         this.updateUrl(sessionId);
+
+        // Update page title with session name
+        const session = this.sessions.find((s) => s.id === sessionId);
+        if (session) {
+          const sessionName = session.name || session.command.join(' ');
+          console.log('[App] Setting title from view transition:', sessionName);
+          document.title = `${sessionName} - VibeTunnel`;
+        } else {
+          console.log('[App] No session found for view transition:', sessionId);
+        }
 
         // Collapse sidebar on mobile after selecting a session
         if (this.mediaState.isMobile) {
@@ -664,6 +697,16 @@ export class VibeTunnelApp extends LitElement {
       this.currentView = 'session';
       this.updateUrl(sessionId);
 
+      // Update page title with session name
+      const session = this.sessions.find((s) => s.id === sessionId);
+      if (session) {
+        const sessionName = session.name || session.command.join(' ');
+        console.log('[App] Setting title from fallback:', sessionName);
+        document.title = `${sessionName} - VibeTunnel`;
+      } else {
+        console.log('[App] No session found for fallback:', sessionId);
+      }
+
       // Collapse sidebar on mobile after selecting a session
       if (this.mediaState.isMobile) {
         this.sidebarCollapsed = true;
@@ -680,6 +723,10 @@ export class VibeTunnelApp extends LitElement {
   private handleNavigateToList(): void {
     // Clean up the session view before navigating away
     this.cleanupSessionViewStream();
+
+    // Update document title with session count
+    const sessionCount = this.sessions.length;
+    document.title = `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`;
 
     // Check if View Transitions API is supported
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {

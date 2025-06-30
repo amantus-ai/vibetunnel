@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.0.0-beta.5] - 2025-01-29
+
+### 🎨 UI Improvements
+- **Version Display** - Web interface now shows full version including beta suffix (e.g., v1.0.0-beta.5)
+- **Build Filtering** - Cleaner build output by filtering non-actionable Xcode warnings
+- **Mobile Scrolling** - Fixed scrolling issues on mobile web browsers
+
+### 🔧 Infrastructure
+- **Single Source of Truth** - Web version now automatically reads from package.json at build time
+- **Version Sync Validation** - Build process validates version consistency between macOS and web
+- **CI Optimization** - Tests only run when relevant files change (iOS/Mac/Web)
+- **E2E Test Suite** - Comprehensive Playwright tests for web frontend reliability
+
+### 🐛 Bug Fixes
+- **No-Auth Mode** - Fixed authentication-related error messages when running with `--no-auth`
+- **Log Streaming** - Fixed frontend log streaming in no-auth mode
+- **Test Reliability** - Resolved flaky tests and improved test infrastructure
+
+### 📝 Developer Experience
+- **Release Documentation** - Enhanced release process documentation with version sync requirements
+- **Test Improvements** - Better test fixtures, helpers, and debugging capabilities
+- **Error Suppression** - Cleaner logs when running in development mode
+
 ## [1.0.0-beta.4] - 2025-06-25
 
 - We replaced HTTP Basic auth with System Login or SSH Keys for better security.

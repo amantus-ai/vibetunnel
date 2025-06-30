@@ -63,9 +63,11 @@ export class AuthLogin extends LitElement {
       this.currentUserId = await this.authClient.getCurrentSystemUser();
       console.log('👤 Current user:', this.currentUserId);
 
-      // Load user avatar
-      this.userAvatar = await this.authClient.getUserAvatar(this.currentUserId);
-      console.log('🖼️ User avatar loaded');
+      // Load user avatar only if auth is enabled
+      if (!this.authConfig.noAuth) {
+        this.userAvatar = await this.authClient.getUserAvatar(this.currentUserId);
+        console.log('🖼️ User avatar loaded');
+      }
 
       // If no auth required, auto-login
       if (this.authConfig.noAuth) {

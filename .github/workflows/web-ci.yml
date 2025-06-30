@@ -12,6 +12,10 @@ on:
       - 'web/**'
       - '.github/workflows/web-ci.yml'
 
+permissions:
+  pull-requests: write
+  issues: write
+
 defaults:
   run:
     working-directory: web
