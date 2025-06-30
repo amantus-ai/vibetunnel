@@ -123,6 +123,137 @@ export class StreamWatcher {
    */
   private sendExistingContent(streamPath: string, client: StreamClient): void {
     try {
+      // First pass: analyze the stream to find the last clear and track resize events
+      const analysisStream = fs.createReadStream(streamPath, { encoding: 'utf8' });
+      let lineBuffer = '';
+      const events: any[] = [];
+      let lastClearIndex = -1;
+      let lastResizeBeforeClear: any = null;
+      let currentResize: any = null;
+      let header: any = null;
+
+      analysisStream.on('data', (chunk: string | Buffer) => {
+        lineBuffer += chunk.toString();
+        const lines = lineBuffer.split('\n');
+        lineBuffer = lines.pop() || ''; // Keep incomplete line for next chunk
+
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.version && parsed.width && parsed.height) {
+                header = parsed;
+              } else if (Array.isArray(parsed) && parsed.length >= 3) {
+                const [timestamp, type, data] = parsed;
+
+                // Track resize events
+                if (type === 'r') {
+                  currentResize = parsed;
+                }
+
+                // Check for clear sequence in output events
+                if (type === 'o' && typeof data === 'string' && data.includes('\x1b[3J')) {
+                  lastClearIndex = events.length;
+                  lastResizeBeforeClear = currentResize;
+                  logger.debug(
+                    `found clear sequence at event index ${lastClearIndex}, current resize: ${currentResize ? currentResize[2] : 'none'}`
+                  );
+                }
+
+                events.push(parsed);
+              }
+            } catch (e) {
+              logger.debug(`skipping invalid JSON line during analysis: ${e}`);
+            }
+          }
+        }
+      });
+
+      analysisStream.on('end', () => {
+        // Process any remaining line in analysis
+        if (lineBuffer.trim()) {
+          try {
+            const parsed = JSON.parse(lineBuffer);
+            if (Array.isArray(parsed) && parsed.length >= 3) {
+              const [timestamp, type, data] = parsed;
+              if (type === 'r') {
+                currentResize = parsed;
+              }
+              if (type === 'o' && typeof data === 'string' && data.includes('\x1b[3J')) {
+                lastClearIndex = events.length;
+                lastResizeBeforeClear = currentResize;
+                logger.debug(`found clear sequence at event index ${lastClearIndex} (last event)`);
+              }
+              events.push(parsed);
+            }
+          } catch (e) {
+            logger.debug(`skipping invalid JSON in line buffer during analysis: ${e}`);
+          }
+        }
+
+        // Now replay the stream with pruning
+        let startIndex = 0;
+
+        if (lastClearIndex >= 0) {
+          // Start from after the last clear
+          startIndex = lastClearIndex + 1;
+          logger.log(
+            chalk.green(`pruning stream: skipping ${lastClearIndex + 1} events before last clear`)
+          );
+        }
+
+        // Send header first - update dimensions if we have a resize
+        if (header) {
+          const headerToSend = { ...header };
+          if (lastClearIndex >= 0 && lastResizeBeforeClear) {
+            // Update header with last known dimensions before clear
+            const dimensions = lastResizeBeforeClear[2].split('x');
+            headerToSend.width = parseInt(dimensions[0], 10);
+            headerToSend.height = parseInt(dimensions[1], 10);
+          }
+          client.response.write(`data: ${JSON.stringify(headerToSend)}\n\n`);
+        }
+
+        // Send remaining events
+        let exitEventFound = false;
+        for (let i = startIndex; i < events.length; i++) {
+          const event = events[i];
+          if (event[0] === 'exit') {
+            exitEventFound = true;
+            client.response.write(`data: ${JSON.stringify(event)}\n\n`);
+          } else {
+            // Set timestamp to 0 for existing content
+            const instantEvent = [0, event[1], event[2]];
+            client.response.write(`data: ${JSON.stringify(instantEvent)}\n\n`);
+          }
+        }
+
+        // If exit event found, close connection
+        if (exitEventFound) {
+          logger.log(
+            chalk.yellow(
+              `session ${client.response.locals?.sessionId || 'unknown'} already ended, closing stream`
+            )
+          );
+          client.response.end();
+        }
+      });
+
+      analysisStream.on('error', (error) => {
+        logger.error('failed to analyze stream for pruning:', error);
+        // Fall back to original implementation without pruning
+        this.sendExistingContentWithoutPruning(streamPath, client);
+      });
+    } catch (error) {
+      logger.error('failed to create read stream:', error);
+    }
+  }
+
+  /**
+   * Original implementation without pruning (fallback)
+   */
+  private sendExistingContentWithoutPruning(streamPath: string, client: StreamClient): void {
+    try {
       const stream = fs.createReadStream(streamPath, { encoding: 'utf8' });
       let exitEventFound = false;
       let lineBuffer = '';
