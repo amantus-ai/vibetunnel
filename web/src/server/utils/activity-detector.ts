@@ -9,6 +9,16 @@ import { createLogger } from './logger.js';
 
 const logger = createLogger('activity-detector');
 
+// Debug flag - set to true to enable verbose logging
+const CLAUDE_DEBUG = process.env.VIBETUNNEL_CLAUDE_DEBUG === 'true';
+
+// Super debug logging wrapper
+function superDebug(message: string, ...args: unknown[]): void {
+  if (CLAUDE_DEBUG) {
+    console.log(`[ActivityDetector:DEBUG] ${message}`, ...args);
+  }
+}
+
 // ANSI escape code removal regex
 const ANSI_REGEX = /\x1b\[[0-9;]*[a-zA-Z]/g;
 
@@ -57,11 +67,13 @@ export interface AppDetector {
 }
 
 // Pre-compiled regex for Claude status lines
-// Matches: ✻ Crafting… (205s · ↑ 6.0k tokens · <any text> to interrupt)
-// Also matches: ✻ Measuring… (6s ·  100 tokens · esc to interrupt) - note double space
-// Fixed to handle variable whitespace after middle dot
+// Format 1: ✻ Crafting… (205s · ↑ 6.0k tokens · <any text> to interrupt)
+// Format 2: ✻ Measuring… (6s ·  100 tokens · esc to interrupt)
+// Format 3: ⏺ Calculating… (0s) - simpler format without tokens/interrupt
+// Format 4: ✳ Measuring… (120s · ⚒ 671 tokens · esc to interrupt) - with hammer symbol
+// Note: We match ANY non-whitespace character as the indicator since Claude uses many symbols
 const CLAUDE_STATUS_REGEX =
-  /([+✻])\s+(\w+)…\s*\((\d+)s\s*·\s*([↑↓]?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt\)/gi;
+  /(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)/gi;
 
 /**
  * Parse Claude-specific status from output
@@ -75,31 +87,17 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
 
   // Log if we see something that looks like a Claude status
   if (cleanData.includes('interrupt') && cleanData.includes('tokens')) {
-    // Use console.log as fallback for Xcode visibility
-    console.log('[ActivityDetector] Potential Claude status detected');
-    console.log(
-      '[ActivityDetector] Clean data sample:',
-      cleanData.substring(0, 200).replace(/\n/g, '\\n')
-    );
-    logger.log(
-      'Potential Claude status in data:',
-      cleanData.substring(0, 200).replace(/\n/g, '\\n')
-    );
+    superDebug('Potential Claude status detected');
+    superDebug('Clean data sample:', cleanData.substring(0, 200).replace(/\n/g, '\\n'));
   }
 
   const match = CLAUDE_STATUS_REGEX.exec(cleanData);
   if (!match) {
     // Debug log to see what we're trying to match
     if (cleanData.includes('interrupt') && cleanData.includes('tokens')) {
-      console.log('[ActivityDetector] Claude status line NOT matched');
-      console.log(
-        '[ActivityDetector] Looking for pattern like: ✻ Crafting… (123s · ↑ 6.0k tokens · ... to interrupt)'
-      );
-      console.log('[ActivityDetector] Clean data preview:', cleanData.substring(0, 150));
-      logger.log(
-        'Claude status line NOT matched. Clean data preview:',
-        cleanData.substring(0, 150)
-      );
+      superDebug('Claude status line NOT matched');
+      superDebug('Looking for pattern like: ✻ Crafting… (123s · ↑ 6.0k tokens · ... to interrupt)');
+      superDebug('Clean data preview:', cleanData.substring(0, 150));
 
       // Try to find the specific line that contains the status
       const lines = cleanData.split('\n');
@@ -107,8 +105,17 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
         (line) => line.includes('interrupt') && line.includes('tokens')
       );
       if (statusLine) {
-        console.log('[ActivityDetector] Found status line:', statusLine);
-        console.log('[ActivityDetector] Line length:', statusLine.length);
+        superDebug('Found status line:', statusLine);
+        superDebug('Line length:', statusLine.length);
+        // Log each character to debug special symbols
+        if (CLAUDE_DEBUG) {
+          const chars = Array.from(statusLine.substring(0, 50));
+          chars.forEach((char, idx) => {
+            console.log(
+              `  [${idx}] '${char}' = U+${char.charCodeAt(0).toString(16).padStart(4, '0')}`
+            );
+          });
+        }
       }
     }
     return null;
@@ -116,15 +123,18 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
 
   const [fullMatch, indicator, action, duration, direction, tokens] = match;
 
-  console.log(`[ActivityDetector] Claude status MATCHED!`);
-  console.log(
-    `[ActivityDetector] Action: ${action}, Duration: ${duration}s, Direction: ${direction}, Tokens: ${tokens}`
+  // Handle both formats - with and without token information
+  const hasTokenInfo = direction !== undefined && tokens !== undefined;
+
+  superDebug(`Claude status MATCHED!`);
+  superDebug(
+    `Action: ${action}, Duration: ${duration}s, Direction: ${direction}, Tokens: ${tokens}`
   );
-  console.log(`[ActivityDetector] Indicator: '${indicator}'`);
-  logger.log(
+  superDebug(`Indicator: '${indicator}'`);
+  logger.debug(
     `Claude status MATCHED! Action: ${action}, Duration: ${duration}s, Direction: ${direction}, Tokens: ${tokens}`
   );
-  logger.log(`Full match: "${fullMatch}"`);
+  logger.debug(`Full match: "${fullMatch}"`);
 
   // Filter out the status line from output (need to search in original data with ANSI codes)
   // First try to remove the exact match from the clean data position
@@ -161,12 +171,17 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
     filteredData = before + cleanedMiddle + after;
   }
 
-  // Format tokens - add 'k' only if the number is >= 1000 and doesn't already have it
-  const tokenNum = Number.parseFloat(tokens);
-  const formattedTokens = tokenNum >= 1000 ? `${(tokenNum / 1000).toFixed(1)}k` : tokens;
-
   // Create compact display text for title bar
-  const displayText = `${indicator} ${action} (${duration}s, ${direction}${formattedTokens})`;
+  let displayText: string;
+  if (hasTokenInfo) {
+    // Format tokens - add 'k' only if the number is >= 1000 and doesn't already have it
+    const tokenNum = Number.parseFloat(tokens);
+    const formattedTokens = tokenNum >= 1000 ? `${(tokenNum / 1000).toFixed(1)}k` : tokens;
+    displayText = `${indicator} ${action} (${duration}s, ${direction}${formattedTokens})`;
+  } else {
+    // Simple format without token info
+    displayText = `${indicator} ${action} (${duration}s)`;
+  }
 
   return {
     filteredData,
@@ -175,7 +190,7 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
       indicator,
       action,
       duration: Number.parseInt(duration),
-      progress: `${direction}${formattedTokens} tokens`,
+      progress: hasTokenInfo ? `${direction}${tokens} tokens` : undefined,
     },
   };
 }
@@ -218,7 +233,9 @@ export class ActivityDetector {
         `ActivityDetector: Using ${this.detector.name} detector for command: ${command.join(' ')}`
       );
     } else {
-      logger.log(`ActivityDetector: No specific detector found for command: ${command.join(' ')}`);
+      logger.debug(
+        `ActivityDetector: No specific detector found for command: ${command.join(' ')}`
+      );
     }
   }
 
@@ -245,7 +262,7 @@ export class ActivityDetector {
 
     // Log when we process output with a detector
     if (this.detector && data.length > 10) {
-      logger.debug(`Processing output with ${this.detector.name} detector (${data.length} chars)`);
+      superDebug(`Processing output with ${this.detector.name} detector (${data.length} chars)`);
     }
 
     // Try app-specific detection first

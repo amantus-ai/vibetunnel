@@ -488,21 +488,26 @@ export class PtyManager extends EventEmitter {
 
           if (session.activityDetector) {
             // Debug: Log raw data when it contains Claude status indicators
-            if (data.includes('interrupt') || data.includes('tokens') || data.includes('✻')) {
-              console.log('[PtyManager] Detected potential Claude output');
-              console.log(
-                '[PtyManager] Raw data sample:',
-                data.substring(0, 200).replace(/\n/g, '\\n').replace(/\x1b/g, '\\x1b')
-              );
+            if (process.env.VIBETUNNEL_CLAUDE_DEBUG === 'true') {
+              if (data.includes('interrupt') || data.includes('tokens') || data.includes('…')) {
+                console.log('[PtyManager] Detected potential Claude output');
+                console.log(
+                  '[PtyManager] Raw data sample:',
+                  data.substring(0, 200).replace(/\n/g, '\\n').replace(/\x1b/g, '\\x1b')
+                );
 
-              // Also log to file for analysis
-              const debugPath = '/tmp/claude-output-debug.txt';
-              require('fs').appendFileSync(debugPath, `\n\n=== ${new Date().toISOString()} ===\n`);
-              require('fs').appendFileSync(debugPath, `Raw: ${data}\n`);
-              require('fs').appendFileSync(
-                debugPath,
-                `Hex: ${Buffer.from(data).toString('hex')}\n`
-              );
+                // Also log to file for analysis
+                const debugPath = '/tmp/claude-output-debug.txt';
+                require('fs').appendFileSync(
+                  debugPath,
+                  `\n\n=== ${new Date().toISOString()} ===\n`
+                );
+                require('fs').appendFileSync(debugPath, `Raw: ${data}\n`);
+                require('fs').appendFileSync(
+                  debugPath,
+                  `Hex: ${Buffer.from(data).toString('hex')}\n`
+                );
+              }
             }
 
             const { filteredData, activity } =
