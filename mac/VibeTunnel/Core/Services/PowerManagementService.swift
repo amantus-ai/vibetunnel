@@ -1,5 +1,6 @@
 import Foundation
 import IOKit.pwr_mgt
+import Observation
 
 /// Manages system power assertions to prevent the Mac from sleeping while VibeTunnel is running.
 ///
@@ -7,11 +8,12 @@ import IOKit.pwr_mgt
 /// the system from entering idle sleep when terminal sessions are active. The service is
 /// integrated with ServerManager to automatically manage sleep prevention based on server
 /// state and user preferences.
+@Observable
 @MainActor
-class PowerManagementService: ObservableObject {
+final class PowerManagementService {
     static let shared = PowerManagementService()
     
-    @Published private(set) var isSleepPrevented = false
+    private(set) var isSleepPrevented = false
     
     private var assertionID: IOPMAssertionID = 0
     private var isAssertionActive = false
