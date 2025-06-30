@@ -75,7 +75,15 @@ export class SessionCleanupHelper {
 
       // Filter old sessions
       const toDelete = sessions.filter((s: SessionInfo) => {
+        // If no timestamp exists, consider it old and clean it up
+        if (!s.created && !s.startTime) {
+          return true;
+        }
         const created = new Date(s.created || s.startTime).getTime();
+        // Handle invalid dates (NaN)
+        if (Number.isNaN(created)) {
+          return true;
+        }
         return created < cutoffTime;
       });
 

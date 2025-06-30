@@ -11,7 +11,6 @@ test.describe('Optimized Session Management', () => {
     page,
     batchOps,
     waitUtils,
-    cleanupHelper,
   }) => {
     // Navigate to home
     await page.goto('/');
@@ -80,7 +79,7 @@ test.describe('Fast Session Operations', () => {
     expect(exitedSessions.some((s) => s.name === session.name)).toBe(true);
   });
 
-  test('should batch delete sessions', async ({ page, batchOps, cleanupHelper }) => {
+  test('should batch delete sessions', async ({ batchOps, cleanupHelper }) => {
     // Create test sessions
     const sessions = await batchOps.createSessions([
       { name: 'batch-delete-1' },
