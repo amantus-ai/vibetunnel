@@ -156,9 +156,9 @@ describe.sequential('Frontend Logger', () => {
 
       // We should have exactly 3 calls
       expect(logCalls).toHaveLength(3);
-      
+
       // Verify the log levels
-      const logBodies = logCalls.map(call => JSON.parse(call[1].body));
+      const logBodies = logCalls.map((call) => JSON.parse(call[1].body));
       expect(logBodies[0].level).toBe('log');
       expect(logBodies[0].args[0]).toBe('log message');
       expect(logBodies[1].level).toBe('warn');

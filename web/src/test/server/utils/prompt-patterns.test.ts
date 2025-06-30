@@ -22,15 +22,15 @@ describe('PromptDetector', () => {
     });
 
     it('should reject unusually long inputs', () => {
-      const longInput = 'x'.repeat(10001) + '$ ';
+      const longInput = `${'x'.repeat(10001)}$ `;
       expect(PromptDetector.isPromptOnly(longInput)).toBe(false);
 
       // Just under the limit should work
-      const justUnderLimit = 'x'.repeat(9998) + '$ ';
+      const justUnderLimit = `${'x'.repeat(9998)}$ `;
       expect(PromptDetector.isPromptOnly(justUnderLimit)).toBe(false); // Still false because it's not just a prompt
 
       // A normal prompt padded with spaces under the limit
-      const paddedPrompt = ' '.repeat(9998) + '$ ';
+      const paddedPrompt = `${' '.repeat(9998)}$ `;
       expect(PromptDetector.isPromptOnly(paddedPrompt)).toBe(true);
     });
 
@@ -184,7 +184,7 @@ describe('PromptDetector', () => {
 
   describe('performance', () => {
     it('should handle large inputs efficiently', () => {
-      const largeOutput = 'x'.repeat(10000) + '\n$ ';
+      const largeOutput = `${'x'.repeat(10000)}\n$ `;
 
       const start = performance.now();
       const result = PromptDetector.endsWithPrompt(largeOutput);
