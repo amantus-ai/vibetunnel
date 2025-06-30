@@ -6,7 +6,6 @@ import {
 } from '../helpers/assertion.helper';
 import {
   createAndNavigateToSession,
-  createMultipleSessions,
   reconnectToSession,
 } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
@@ -59,13 +58,13 @@ test.describe('Session Creation', () => {
   test('should handle multiple session creation', async ({ page }) => {
     // Create multiple tracked sessions
     const sessions: Array<{ sessionName: string; sessionId: string }> = [];
-    
+
     for (let i = 0; i < 2; i++) {
       const { sessionName, sessionId } = await sessionManager.createTrackedSession(
         sessionManager.generateSessionName(`multi-test-${i + 1}`)
       );
       sessions.push({ sessionName, sessionId });
-      
+
       // Navigate back to list for next creation (except last one)
       if (i < 1) {
         await page.goto('/', { waitUntil: 'domcontentloaded' });
