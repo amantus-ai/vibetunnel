@@ -309,21 +309,24 @@ export class VibeTunnelApp extends LitElement {
         const response = await fetch('/api/sessions', { headers });
         if (response.ok) {
           const newSessions = (await response.json()) as Session[];
-          
+
           // Debug: Log sessions with activity status
           const sessionsWithActivity = newSessions.filter((s) => s.activityStatus);
           if (sessionsWithActivity.length > 0) {
-            logger.debug('Sessions with activity status:', sessionsWithActivity.map((s) => ({
-              id: s.id,
-              name: s.name,
-              command: s.command,
-              status: s.status,
-              activityStatus: s.activityStatus
-            })));
+            logger.debug(
+              'Sessions with activity status:',
+              sessionsWithActivity.map((s) => ({
+                id: s.id,
+                name: s.name,
+                command: s.command,
+                status: s.status,
+                activityStatus: s.activityStatus,
+              }))
+            );
           } else {
             logger.debug('No sessions have activity status');
           }
-          
+
           this.sessions = newSessions;
           this.clearError();
 

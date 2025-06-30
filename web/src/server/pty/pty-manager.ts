@@ -448,6 +448,11 @@ export class PtyManager extends EventEmitter {
           };
           try {
             fs.writeFileSync(activityPath, JSON.stringify(activityData, null, 2));
+            // Debug log first write
+            if (!session.activityFileWritten) {
+              session.activityFileWritten = true;
+              logger.debug(`Writing activity state to ${activityPath} for session ${session.id}`);
+            }
           } catch (error) {
             logger.error(`Failed to write activity state for session ${session.id}:`, error);
           }
@@ -1365,6 +1370,10 @@ export class PtyManager extends EventEmitter {
           const isRecent = Date.now() - new Date(activityData.timestamp).getTime() < 10000;
 
           if (isRecent) {
+            logger.debug(`Found recent activity for external session ${session.id}:`, {
+              isActive: activityData.isActive,
+              specificStatus: activityData.specificStatus,
+            });
             return {
               ...session,
               activityStatus: {
@@ -1372,6 +1381,8 @@ export class PtyManager extends EventEmitter {
                 specificStatus: activityData.specificStatus,
               },
             };
+          } else {
+            logger.debug(`Activity file for session ${session.id} is stale (older than 10s)`);
           }
         }
       } catch (error) {

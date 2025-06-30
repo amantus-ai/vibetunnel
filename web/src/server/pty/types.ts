@@ -83,6 +83,8 @@ export interface PtySession {
   activityDetector?: ActivityDetector;
   // Timer for periodic title updates in dynamic mode
   titleUpdateInterval?: NodeJS.Timeout;
+  // Track if activity file has been written (for debug logging)
+  activityFileWritten?: boolean;
 }
 
 export class PtyError extends Error {
