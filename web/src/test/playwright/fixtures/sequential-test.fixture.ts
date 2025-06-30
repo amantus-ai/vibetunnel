@@ -58,29 +58,5 @@ export const test = base.extend<SequentialTestFixtures>({
 
 export { expect } from '@playwright/test';
 
-// Hook for global setup/teardown
-test.beforeAll(async ({ browser }) => {
-  const page = await browser.newPage();
-  const cleanup = new SessionCleanupHelper(page);
-
-  // Clean up any leftover sessions from previous runs
-  const cleaned = await cleanup.cleanupOldSessions(60); // 1 hour old
-  if (cleaned > 0) {
-    logger.info(`Cleaned up ${cleaned} old sessions before test run`);
-  }
-
-  await page.close();
-});
-
-test.afterAll(async ({ browser }) => {
-  const page = await browser.newPage();
-  const cleanup = new SessionCleanupHelper(page);
-
-  // Final cleanup of test sessions
-  const cleaned = await cleanup.cleanupByPattern(CLEANUP_CONFIG.PATTERN_PREFIX);
-  if (cleaned > 0) {
-    logger.info(`Cleaned up ${cleaned} test sessions after test run`);
-  }
-
-  await page.close();
-});
+// Note: Global cleanup is handled by the cleanupHelper fixture
+// which runs before and after each test
