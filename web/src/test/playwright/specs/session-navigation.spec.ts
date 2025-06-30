@@ -95,9 +95,9 @@ test.describe('Session Navigation', () => {
     // Ensure the card is visible and ready
     await sessionCard.waitFor({ state: 'visible', timeout: 5000 });
     await sessionCard.scrollIntoViewIfNeeded();
-
-    // Ensure UI is stable
-    await sessionCard.waitFor({ state: 'stable' });
+    
+    // Wait for network to be idle before clicking
+    await page.waitForLoadState('networkidle');
 
     // Click the card and wait for navigation
     console.log(`Clicking session card for ${sessionName}`);
