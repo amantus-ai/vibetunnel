@@ -169,14 +169,15 @@ export function generateDynamicTitle(
     return `\x1B]2;${title}\x07`;
   }
 
-  // Otherwise use generic activity indicator
-  let indicator = '○'; // idle (empty circle)
+  // Otherwise use generic activity indicator (only when active)
   if (activity.isActive) {
-    indicator = '●'; // active (filled circle)
+    // Format: ● path · command
+    const title = `● ${displayPath} · ${cmdName}`;
+    return `\x1B]2;${title}\x07`;
   }
 
-  // Format: indicator path · command
-  const title = `${indicator} ${displayPath} · ${cmdName}`;
+  // When idle, no indicator - just path · command
+  const title = `${displayPath} · ${cmdName}`;
 
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
   return `\x1B]2;${title}\x07`;
