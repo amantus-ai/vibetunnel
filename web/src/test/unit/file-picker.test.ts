@@ -76,8 +76,6 @@ describe('FilePicker Component', () => {
     const buttons = element.querySelectorAll('button');
     const fileButton = Array.from(buttons).find((btn) => btn.textContent?.includes('Choose File'));
     expect(fileButton).toBeTruthy();
-    );
-
   });
 
   it('should emit file-cancel event when cancel button is clicked', async () => {
@@ -187,7 +185,7 @@ describe('FilePicker Component', () => {
 
   it('should accept any file type in uploadFile method', async () => {
     const textFile = new File(['test'], 'test.txt', { type: 'text/plain' });
-    
+
     // Mock the XMLHttpRequest for this test
     const mockXHR = {
       upload: { addEventListener: vi.fn() },
