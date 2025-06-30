@@ -130,6 +130,44 @@ struct TerminalInput: Codable {
         /// Control-E (move to end of line).
         case ctrlE = "\u{0005}"
 
+        // MARK: - Function Keys
+        
+        /// F1 key.
+        case f1 = "\u{001B}OP"
+        /// F2 key.
+        case f2 = "\u{001B}OQ"
+        /// F3 key.
+        case f3 = "\u{001B}OR"
+        /// F4 key.
+        case f4 = "\u{001B}OS"
+        /// F5 key.
+        case f5 = "\u{001B}[15~"
+        /// F6 key.
+        case f6 = "\u{001B}[17~"
+        /// F7 key.
+        case f7 = "\u{001B}[18~"
+        /// F8 key.
+        case f8 = "\u{001B}[19~"
+        /// F9 key.
+        case f9 = "\u{001B}[20~"
+        /// F10 key.
+        case f10 = "\u{001B}[21~"
+        /// F11 key.
+        case f11 = "\u{001B}[23~"
+        /// F12 key.
+        case f12 = "\u{001B}[24~"
+        
+        // MARK: - Additional Special Characters
+        
+        /// Backslash character.
+        case backslash = "\\"
+        /// Pipe character.
+        case pipe = "|"
+        /// Backtick character.
+        case backtick = "`"
+        /// Tilde character.
+        case tilde = "~"
+
         // MARK: - Web Compatibility
 
         /// Control-Enter combination (web frontend compatibility).

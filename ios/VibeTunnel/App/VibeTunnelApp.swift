@@ -7,6 +7,7 @@ struct VibeTunnelApp: App {
     @State private var connectionManager = ConnectionManager()
     @State private var navigationManager = NavigationManager()
     @State private var networkMonitor = NetworkMonitor.shared
+    @AppStorage("colorSchemePreference") private var colorSchemePreferenceRaw = "system"
 
     init() {
         // Configure app logging level
@@ -26,9 +27,18 @@ struct VibeTunnelApp: App {
                     // Initialize network monitoring
                     _ = networkMonitor
                 }
+                .preferredColorScheme(colorScheme)
             #if targetEnvironment(macCatalyst)
                 .macCatalystWindowStyle(getStoredWindowStyle())
             #endif
+        }
+    }
+    
+    private var colorScheme: ColorScheme? {
+        switch colorSchemePreferenceRaw {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil // System default
         }
     }
 

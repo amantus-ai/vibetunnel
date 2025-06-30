@@ -45,7 +45,6 @@ struct CastPlayerView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .preferredColorScheme(.dark)
         .onAppear {
             viewModel.loadCastFile(from: castFileURL)
         }

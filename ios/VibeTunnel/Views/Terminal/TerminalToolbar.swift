@@ -145,7 +145,78 @@ struct TerminalToolbar: View {
                         }
                     }
 
-                    // Third row - custom Ctrl key input
+                    // Third row - F-keys (F1-F6)
+                    HStack(spacing: Theme.Spacing.extraSmall) {
+                        ForEach(["F1", "F2", "F3", "F4", "F5", "F6"], id: \.self) { fkey in
+                            ToolbarButton(label: fkey, width: 44) {
+                                HapticFeedback.impact(.light)
+                                switch fkey {
+                                case "F1": onSpecialKey(.f1)
+                                case "F2": onSpecialKey(.f2)
+                                case "F3": onSpecialKey(.f3)
+                                case "F4": onSpecialKey(.f4)
+                                case "F5": onSpecialKey(.f5)
+                                case "F6": onSpecialKey(.f6)
+                                default: break
+                                }
+                            }
+                        }
+                        
+                        Spacer()
+                    }
+                    
+                    // Fourth row - F-keys (F7-F12)
+                    HStack(spacing: Theme.Spacing.extraSmall) {
+                        ForEach(["F7", "F8", "F9", "F10", "F11", "F12"], id: \.self) { fkey in
+                            ToolbarButton(label: fkey, width: 44) {
+                                HapticFeedback.impact(.light)
+                                switch fkey {
+                                case "F7": onSpecialKey(.f7)
+                                case "F8": onSpecialKey(.f8)
+                                case "F9": onSpecialKey(.f9)
+                                case "F10": onSpecialKey(.f10)
+                                case "F11": onSpecialKey(.f11)
+                                case "F12": onSpecialKey(.f12)
+                                default: break
+                                }
+                            }
+                        }
+                        
+                        Spacer()
+                    }
+                    
+                    // Fifth row - Special characters
+                    HStack(spacing: Theme.Spacing.extraSmall) {
+                        ToolbarButton(label: "\\") {
+                            HapticFeedback.impact(.light)
+                            onSpecialKey(.backslash)
+                        }
+                        
+                        ToolbarButton(label: "|") {
+                            HapticFeedback.impact(.light)
+                            onSpecialKey(.pipe)
+                        }
+                        
+                        ToolbarButton(label: "`") {
+                            HapticFeedback.impact(.light)
+                            onSpecialKey(.backtick)
+                        }
+                        
+                        ToolbarButton(label: "~") {
+                            HapticFeedback.impact(.light)
+                            onSpecialKey(.tilde)
+                        }
+                        
+                        ToolbarButton(label: "END") {
+                            HapticFeedback.impact(.light)
+                            // Send Ctrl+E for end
+                            onSpecialKey(.ctrlE)
+                        }
+                        
+                        Spacer()
+                    }
+                    
+                    // Sixth row - custom Ctrl key input
                     HStack(spacing: Theme.Spacing.extraSmall) {
                         Text("CTRL +")
                             .font(Theme.Typography.terminalSystem(size: 12))

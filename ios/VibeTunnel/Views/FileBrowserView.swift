@@ -389,7 +389,7 @@ struct FileBrowserView: View {
             .overlay {
                 if quickLookManager.isDownloading {
                     ZStack {
-                        Color.black.opacity(0.8)
+                        Theme.Colors.overlayBackground
                             .ignoresSafeArea()
 
                         VStack(spacing: 20) {
@@ -414,7 +414,6 @@ struct FileBrowserView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             viewModel.loadDirectory(path: initialPath)
         }

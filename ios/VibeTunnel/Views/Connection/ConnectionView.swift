@@ -88,7 +88,6 @@ struct ConnectionView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .preferredColorScheme(.dark)
         .onAppear {
             viewModel.loadLastConnection()
         }

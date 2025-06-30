@@ -72,7 +72,6 @@ struct WidthSelectorPopover: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .frame(width: 320, height: 400)
         .sheet(isPresented: $showCustomInput) {
             CustomWidthSheet(
@@ -188,7 +187,6 @@ private struct CustomWidthSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             isFocused = true
         }

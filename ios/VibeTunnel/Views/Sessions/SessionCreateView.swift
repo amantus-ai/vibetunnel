@@ -307,7 +307,6 @@ struct SessionCreateView: View {
                 focusedField = .command
             }
         }
-        .preferredColorScheme(.dark)
         .sheet(isPresented: $showFileBrowser) {
             FileBrowserView(initialPath: workingDirectory) { selectedPath in
                 workingDirectory = selectedPath
