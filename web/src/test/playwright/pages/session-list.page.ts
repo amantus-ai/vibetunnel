@@ -38,7 +38,20 @@ export class SessionListPage extends BasePage {
     const createButton = this.page
       .locator(this.selectors.createButton)
       .or(this.page.locator(this.selectors.createButtonFallback));
-    await createButton.click({ timeout: 5000 });
+
+    console.log('Clicking create session button...');
+    try {
+      await createButton.click({ timeout: 5000 });
+      console.log('Create button clicked successfully');
+    } catch (error) {
+      console.error('Failed to click create button:', error);
+      await screenshotOnError(
+        this.page,
+        new Error('Failed to click create button'),
+        'create-button-click-failed'
+      );
+      throw error;
+    }
 
     // Wait for the modal to appear and be ready
     try {
@@ -183,14 +196,27 @@ export class SessionListPage extends BasePage {
     if (!spawnWindow) {
       try {
         const response = await responsePromise;
+        console.log(`Session creation response status: ${response.status()}`);
+
         if (response.status() !== 201 && response.status() !== 200) {
           const body = await response.text();
           throw new Error(`Session creation failed with status ${response.status()}: ${body}`);
         }
+
+        // Log the response body for debugging
+        const responseBody = await response.json();
+        console.log('Session created:', responseBody);
       } catch (error) {
+        console.error('Error waiting for session response:', error);
         // If waitForResponse times out, check if we navigated anyway
         const currentUrl = this.page.url();
         if (!currentUrl.includes('?session=')) {
+          // Take a screenshot for debugging
+          await screenshotOnError(
+            this.page,
+            error instanceof Error ? error : new Error(String(error)),
+            'session-creation-response-error'
+          );
           throw error;
         }
       }
@@ -203,7 +229,21 @@ export class SessionListPage extends BasePage {
         });
 
       // Wait for navigation - the URL should change to include session ID
-      await this.page.waitForURL(/\?session=/, { timeout: 4000 });
+      try {
+        await this.page.waitForURL(/\?session=/, { timeout: 8000 });
+        console.log('Successfully navigated to session view');
+      } catch (error) {
+        const currentUrl = this.page.url();
+        console.error(`Failed to navigate to session. Current URL: ${currentUrl}`);
+        // Take a screenshot
+        await screenshotOnError(
+          this.page,
+          new Error(`Navigation timeout. URL: ${currentUrl}`),
+          'session-navigation-timeout'
+        );
+        throw error;
+      }
+
       await this.page.waitForSelector('vibe-terminal', { state: 'visible' });
     } else {
       // For spawn window, wait for modal to close

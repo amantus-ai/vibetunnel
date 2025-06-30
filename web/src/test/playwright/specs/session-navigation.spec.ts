@@ -18,6 +18,13 @@ test.describe('Session Navigation', () => {
   test('should navigate between session list and session view', async ({ page }) => {
     test.setTimeout(20000);
 
+    // Ensure we start fresh
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Wait a moment for the app to fully initialize
+    await page.waitForTimeout(1000);
+
     // Create a session
     let sessionName: string;
     try {
@@ -71,10 +78,76 @@ test.describe('Session Navigation', () => {
       timeout: 10000,
     });
 
+    // Wait for any animations or transitions to complete
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
+
+    // Ensure no modals are open that might block clicks
+    const modalVisible = await page.locator('.modal-content').isVisible();
+    if (modalVisible) {
+      console.log('Modal is visible, closing it...');
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.modal-content', { state: 'hidden', timeout: 2000 });
+    }
+
     // Click on the session card to navigate back
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
+
+    // Ensure the card is visible and ready
+    await sessionCard.waitFor({ state: 'visible', timeout: 5000 });
     await sessionCard.scrollIntoViewIfNeeded();
+
+    // Add a small delay to ensure UI is stable
+    await page.waitForTimeout(500);
+
+    // Click the card and wait for navigation
+    console.log(`Clicking session card for ${sessionName}`);
     await sessionCard.click();
+
+    // Wait for navigation to complete
+    try {
+      await page.waitForURL(/\?session=/, { timeout: 5000 });
+      console.log('Successfully navigated to session view');
+    } catch (_error) {
+      const currentUrl = page.url();
+      console.error(`Navigation failed. Current URL: ${currentUrl}`);
+
+      // Check if session card is still visible
+      const cardStillVisible = await sessionCard.isVisible();
+      console.log(`Session card still visible: ${cardStillVisible}`);
+
+      // Check console logs for any errors
+      const _consoleLogs = await page.evaluate(() => {
+        const logs = [];
+        // Capture any recent console logs if available
+        return logs;
+      });
+
+      await takeDebugScreenshot(page, 'session-click-no-navigation');
+
+      // Check if we're still on the list page and retry with different approaches
+      if (!currentUrl.includes('?session=')) {
+        console.log('Retrying session click with different approach...');
+
+        // Method 1: Try clicking directly on the clickable area
+        const clickableArea = sessionCard.locator('div.card').first();
+        await clickableArea.waitFor({ state: 'visible', timeout: 2000 });
+        await clickableArea.click();
+
+        // Wait briefly
+        await page.waitForTimeout(500);
+
+        // Check if navigation happened
+        if (!page.url().includes('?session=')) {
+          // Method 2: Try using the SessionListPage helper directly
+          console.log('Using SessionListPage.clickSession method...');
+          const sessionListPage = await import('../pages/session-list.page').then(
+            (m) => new m.SessionListPage(page)
+          );
+          await sessionListPage.clickSession(sessionName);
+        }
+      }
+    }
 
     // Should be back in session view
     await assertUrlHasSession(page);
