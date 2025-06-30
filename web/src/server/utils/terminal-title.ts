@@ -156,32 +156,36 @@ export function generateDynamicTitle(
   cwd: string,
   command: string[],
   activity: ActivityState,
-  sessionName?: string
+  _sessionName?: string
 ): string {
   const homeDir = os.homedir();
   const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
   const cmdName = command[0] || 'shell';
 
-  const parts = [displayPath, cmdName];
+  // Start with activity indicator
+  let indicator = '○'; // idle (empty circle)
 
-  // Add activity indicator or specific status
   if (activity.isActive) {
     if (activity.specificStatus) {
-      // App-specific status (e.g., "✻ Crafting (205s, ↑6.0k)")
-      parts.push(activity.specificStatus.status);
+      indicator = '▶'; // playing/running command
     } else {
-      // Generic activity indicator
-      parts.push('•');
+      indicator = '●'; // active (filled circle)
     }
   }
 
-  // Add session name if provided
-  if (sessionName?.trim()) {
-    parts.push(sessionName);
+  const parts = [displayPath, cmdName];
+
+  // Add Claude-specific status if available
+  if (activity.isActive && activity.specificStatus) {
+    // App-specific status (e.g., "✻ Crafting (205s, ↑6.0k)")
+    parts.push(activity.specificStatus.status);
   }
 
-  // Format: path — command [— status/•] — session name
-  const title = parts.join(' — ');
+  // Don't add session name for dynamic mode to avoid redundancy
+  // Session name already contains command + path info
+
+  // Format: indicator path — command [— status]
+  const title = `${indicator} ${parts.join(' — ')}`;
 
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
   return `\x1B]2;${title}\x07`;

@@ -152,15 +152,30 @@ export async function startVibeTunnelForward(args: string[]) {
   // Store original terminal dimensions
   // For external spawns, wait a moment for terminal to fully initialize
   const isExternalSpawn = process.env.VIBETUNNEL_SESSION_ID !== undefined;
+
+  let originalCols: number | undefined;
+  let originalRows: number | undefined;
+
   if (isExternalSpawn) {
     // Give terminal window time to fully initialize its dimensions
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // For external spawns, try to get the actual terminal size
+    // If stdout isn't properly connected, don't use fallback values
+    if (process.stdout.isTTY && process.stdout.columns && process.stdout.rows) {
+      originalCols = process.stdout.columns;
+      originalRows = process.stdout.rows;
+      logger.debug(`External spawn using actual terminal size: ${originalCols}x${originalRows}`);
+    } else {
+      // Don't pass dimensions - let PTY use terminal's natural size
+      logger.debug('External spawn: terminal dimensions not available, using terminal defaults');
+    }
+  } else {
+    // For non-external spawns, use reasonable defaults
+    originalCols = process.stdout.columns || 120;
+    originalRows = process.stdout.rows || 40;
+    logger.debug(`Regular spawn with dimensions: ${originalCols}x${originalRows}`);
   }
-  
-  // Now read the dimensions - for external spawns, this should be the actual terminal size
-  const originalCols = process.stdout.columns || 120;
-  const originalRows = process.stdout.rows || 40;
-  logger.debug(`Terminal size: ${originalCols}x${originalRows} (external spawn: ${isExternalSpawn})`);
 
   try {
     // Create a human-readable session name
@@ -182,12 +197,10 @@ export async function startVibeTunnelForward(args: string[]) {
       logger.log(chalk.cyan(`✓ ${modeDescriptions[titleMode]}`));
     }
 
-    const result = await ptyManager.createSession(command, {
+    const sessionOptions: Parameters<typeof ptyManager.createSession>[1] = {
       sessionId: finalSessionId,
       name: sessionName,
       workingDir: cwd,
-      cols: originalCols,
-      rows: originalRows,
       titleMode: titleMode,
       forwardToStdout: true,
       onExit: async (exitCode: number) => {
@@ -220,7 +233,15 @@ export async function startVibeTunnelForward(args: string[]) {
         closeLogger();
         process.exit(exitCode || 0);
       },
-    });
+    };
+
+    // Only add dimensions if they're available (for non-external spawns or when TTY is properly connected)
+    if (originalCols !== undefined && originalRows !== undefined) {
+      sessionOptions.cols = originalCols;
+      sessionOptions.rows = originalRows;
+    }
+
+    const result = await ptyManager.createSession(command, sessionOptions);
 
     // Get session info
     const session = ptyManager.getSession(result.sessionId);

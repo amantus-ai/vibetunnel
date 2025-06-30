@@ -127,7 +127,13 @@ export class SessionCreateForm extends LitElement {
         // Validate the saved mode is a valid enum value
         if (Object.values(TitleMode).includes(savedTitleMode as TitleMode)) {
           this.titleMode = savedTitleMode as TitleMode;
+        } else {
+          // If invalid value in localStorage, default to DYNAMIC
+          this.titleMode = TitleMode.DYNAMIC;
         }
+      } else {
+        // If no value in localStorage, ensure DYNAMIC is set
+        this.titleMode = TitleMode.DYNAMIC;
       }
 
       // Force re-render to update the input values
@@ -214,13 +220,13 @@ export class SessionCreateForm extends LitElement {
   private getTitleModeDescription(): string {
     switch (this.titleMode) {
       case TitleMode.NONE:
-        return 'Terminal applications control their own titles';
+        return 'Apps control their own titles';
       case TitleMode.FILTER:
-        return 'Prevents applications from changing terminal titles';
+        return 'Blocks all title changes';
       case TitleMode.STATIC:
-        return 'Shows working directory and command in title';
+        return 'Shows path and command';
       case TitleMode.DYNAMIC:
-        return 'Shows directory, command, and activity status (• = active)';
+        return '○ idle ● active ▶ running';
       default:
         return '';
     }
@@ -251,19 +257,20 @@ export class SessionCreateForm extends LitElement {
 
     this.isCreating = true;
 
-    // Use conservative defaults that work well across devices
-    // The terminal will auto-resize to fit the actual container after creation
-    const terminalCols = 120;
-    const terminalRows = 30;
-
     const sessionData: SessionCreateData = {
       command: this.parseCommand(this.command?.trim() || ''),
       workingDir: this.workingDir?.trim() || '',
       spawn_terminal: this.spawnWindow,
       titleMode: this.titleMode,
-      cols: terminalCols,
-      rows: terminalRows,
     };
+
+    // Only add dimensions for web sessions (not external terminal spawns)
+    if (!this.spawnWindow) {
+      // Use conservative defaults that work well across devices
+      // The terminal will auto-resize to fit the actual container after creation
+      sessionData.cols = 120;
+      sessionData.rows = 30;
+    }
 
     // Add session name if provided
     if (this.sessionName?.trim()) {
@@ -471,24 +478,32 @@ export class SessionCreateForm extends LitElement {
             </div>
 
             <!-- Terminal Title Mode -->
-            <div class="mb-4">
-              <label class="form-label text-dark-text-muted uppercase text-xs tracking-wider"
-                >Terminal Title Mode</label
-              >
-              <select
-                .value=${this.titleMode}
-                @change=${this.handleTitleModeChange}
-                class="w-full mt-1 bg-[#121212] border border-dark-border rounded-lg px-4 py-3 text-dark-text transition-all duration-200 hover:border-accent-green-darker focus:border-accent-green focus:outline-none appearance-none cursor-pointer"
-                ?disabled=${this.disabled || this.isCreating}
-              >
-                <option value="${TitleMode.NONE}" class="bg-[#121212] text-dark-text">None - No title management</option>
-                <option value="${TitleMode.FILTER}" class="bg-[#121212] text-dark-text">Filter - Block title changes</option>
-                <option value="${TitleMode.STATIC}" class="bg-[#121212] text-dark-text">Static - Show path & command</option>
-                <option value="${TitleMode.DYNAMIC}" class="bg-[#121212] text-dark-text">Dynamic - Show path, command & activity</option>
-              </select>
-              <p class="text-xs text-dark-text-muted mt-1">
-                ${this.getTitleModeDescription()}
-              </p>
+            <div class="mb-4 flex items-center justify-between">
+              <div class="flex-1 pr-4">
+                <span class="text-dark-text text-sm">Terminal Title Mode</span>
+                <p class="text-xs text-dark-text-muted mt-1 opacity-50">
+                  ${this.getTitleModeDescription()}
+                </p>
+              </div>
+              <div class="relative">
+                <select
+                  .value=${this.titleMode}
+                  @change=${this.handleTitleModeChange}
+                  class="bg-[#1a1a1a] border border-dark-border rounded-lg px-3 py-2 pr-8 text-dark-text text-sm transition-all duration-200 hover:border-accent-green-darker focus:border-accent-green focus:outline-none appearance-none cursor-pointer"
+                  style="min-width: 140px"
+                  ?disabled=${this.disabled || this.isCreating}
+                >
+                  <option value="${TitleMode.NONE}" class="bg-[#1a1a1a] text-dark-text" ?selected=${this.titleMode === TitleMode.NONE}>None</option>
+                  <option value="${TitleMode.FILTER}" class="bg-[#1a1a1a] text-dark-text" ?selected=${this.titleMode === TitleMode.FILTER}>Filter</option>
+                  <option value="${TitleMode.STATIC}" class="bg-[#1a1a1a] text-dark-text" ?selected=${this.titleMode === TitleMode.STATIC}>Static</option>
+                  <option value="${TitleMode.DYNAMIC}" class="bg-[#1a1a1a] text-dark-text" ?selected=${this.titleMode === TitleMode.DYNAMIC}>Dynamic</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-dark-text-muted">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
             <!-- Quick Start Section -->

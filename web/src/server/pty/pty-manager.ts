@@ -180,9 +180,10 @@ export class PtyManager extends EventEmitter {
     const sessionName = options.name || path.basename(command[0]);
     const workingDir = options.workingDir || process.cwd();
     const term = this.defaultTerm;
-    // Use more reasonable defaults for modern terminals, especially for external spawns
-    const cols = options.cols || 120;
-    const rows = options.rows || 40;
+    // For external spawns without dimensions, let node-pty use the terminal's natural size
+    // For other cases, use reasonable defaults
+    const cols = options.cols;
+    const rows = options.rows;
 
     // Verify working directory exists
     logger.debug('Session creation parameters:', {
@@ -190,8 +191,8 @@ export class PtyManager extends EventEmitter {
       sessionName,
       workingDir,
       term,
-      cols,
-      rows,
+      cols: cols !== undefined ? cols : 'terminal default',
+      rows: rows !== undefined ? rows : 'terminal default',
     });
 
     try {
@@ -234,10 +235,11 @@ export class PtyManager extends EventEmitter {
       this.sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
       // Create asciinema writer
+      // Use actual dimensions if provided, otherwise AsciinemaWriter will use defaults (80x24)
       const asciinemaWriter = AsciinemaWriter.create(
         paths.stdoutPath,
-        cols,
-        rows,
+        cols || undefined,
+        rows || undefined,
         command.join(' '),
         sessionName,
         this.createEnvVars(term)
@@ -260,21 +262,31 @@ export class PtyManager extends EventEmitter {
           args: finalArgs,
           options: {
             name: term,
-            cols,
-            rows,
+            cols: cols !== undefined ? cols : 'terminal default',
+            rows: rows !== undefined ? rows : 'terminal default',
             cwd: workingDir,
             hasEnv: !!ptyEnv,
             envKeys: Object.keys(ptyEnv).length,
           },
         });
 
-        ptyProcess = pty.spawn(finalCommand, finalArgs, {
+        // Build spawn options - only include dimensions if provided
+        const spawnOptions: pty.IPtyForkOptions = {
           name: term,
-          cols,
-          rows,
           cwd: workingDir,
           env: ptyEnv,
-        });
+        };
+
+        // Only add dimensions if they're explicitly provided
+        // This allows node-pty to use the terminal's natural size for external spawns
+        if (cols !== undefined) {
+          spawnOptions.cols = cols;
+        }
+        if (rows !== undefined) {
+          spawnOptions.rows = rows;
+        }
+
+        ptyProcess = pty.spawn(finalCommand, finalArgs, spawnOptions);
       } catch (spawnError) {
         // Debug log the raw error first
         logger.debug('Raw spawn error:', {
@@ -422,11 +434,20 @@ export class PtyManager extends EventEmitter {
       session.activityDetector = new ActivityDetector(session.sessionInfo.command);
 
       // Periodic activity state updates
-      // The actual title updates happen in the onData handler when there's output
+      // This ensures the title shows idle state when there's no output
       session.titleUpdateInterval = setInterval(() => {
-        if (session.activityDetector) {
-          // Just update the activity state, don't write to PTY
-          session.activityDetector.getActivityState();
+        if (session.activityDetector && forwardToStdout) {
+          const activityState = session.activityDetector.getActivityState();
+          const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+          const titleSequence = generateDynamicTitle(
+            dynamicDir,
+            session.sessionInfo.command,
+            activityState,
+            session.sessionInfo.name
+          );
+
+          // Write title update directly to stdout
+          process.stdout.write(titleSequence);
         }
       }, 500);
     }
@@ -466,6 +487,24 @@ export class PtyManager extends EventEmitter {
           processedData = filterTerminalTitleSequences(data, true);
 
           if (session.activityDetector) {
+            // Debug: Log raw data when it contains Claude status indicators
+            if (data.includes('interrupt') || data.includes('tokens') || data.includes('✻')) {
+              console.log('[PtyManager] Detected potential Claude output');
+              console.log(
+                '[PtyManager] Raw data sample:',
+                data.substring(0, 200).replace(/\n/g, '\\n').replace(/\x1b/g, '\\x1b')
+              );
+
+              // Also log to file for analysis
+              const debugPath = '/tmp/claude-output-debug.txt';
+              require('fs').appendFileSync(debugPath, `\n\n=== ${new Date().toISOString()} ===\n`);
+              require('fs').appendFileSync(debugPath, `Raw: ${data}\n`);
+              require('fs').appendFileSync(
+                debugPath,
+                `Hex: ${Buffer.from(data).toString('hex')}\n`
+              );
+            }
+
             const { filteredData, activity } =
               session.activityDetector.processOutput(processedData);
             processedData = filteredData;
