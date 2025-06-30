@@ -499,11 +499,15 @@ export class PtyManager extends EventEmitter {
             session.sessionInfo.name
           );
 
-          if (!session.initialTitleSent) {
-            processedData = titleSequence + processedData;
-            session.initialTitleSent = true;
-          } else {
-            processedData = injectTitleIfNeeded(processedData, titleSequence);
+          // Only inject title sequences for external terminals (not web sessions)
+          // Web sessions should never have title sequences in their data stream
+          if (forwardToStdout) {
+            if (!session.initialTitleSent) {
+              processedData = titleSequence + processedData;
+              session.initialTitleSent = true;
+            } else {
+              processedData = injectTitleIfNeeded(processedData, titleSequence);
+            }
           }
           break;
         }
@@ -553,11 +557,15 @@ export class PtyManager extends EventEmitter {
               session.sessionInfo.name
             );
 
-            if (!session.initialTitleSent) {
-              processedData = dynamicTitleSequence + processedData;
-              session.initialTitleSent = true;
-            } else {
-              processedData = injectTitleIfNeeded(processedData, dynamicTitleSequence);
+            // Only inject title sequences for external terminals (not web sessions)
+            // Web sessions should never have title sequences in their data stream
+            if (forwardToStdout) {
+              if (!session.initialTitleSent) {
+                processedData = dynamicTitleSequence + processedData;
+                session.initialTitleSent = true;
+              } else {
+                processedData = injectTitleIfNeeded(processedData, dynamicTitleSequence);
+              }
             }
           }
           break;

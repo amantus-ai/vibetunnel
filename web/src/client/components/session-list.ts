@@ -293,26 +293,32 @@ export class SessionList extends LitElement {
                                     : session.command)
                                 }
                               </div>
-                              <div class="text-xs text-dark-text-muted truncate">
-                                ${formatPathForDisplay(session.workingDir)}
-                              </div>
-                              ${(() => {
-                                // Debug logging for activity status
-                                if (session.status === 'running' && session.activityStatus) {
-                                  logger.debug(`Session ${session.id} activity:`, {
-                                    isActive: session.activityStatus.isActive,
-                                    specificStatus: session.activityStatus.specificStatus,
-                                  });
-                                }
+                              <div class="text-xs text-dark-text-muted truncate flex items-center gap-1">
+                                ${(() => {
+                                  // Debug logging for activity status
+                                  if (session.status === 'running' && session.activityStatus) {
+                                    logger.debug(`Session ${session.id} activity:`, {
+                                      isActive: session.activityStatus.isActive,
+                                      specificStatus: session.activityStatus.specificStatus,
+                                    });
+                                  }
 
-                                return session.activityStatus?.specificStatus
-                                  ? html`
-                                      <div class="text-xs text-status-warning truncate mt-0.5">
+                                  // Show activity status inline with path
+                                  if (session.activityStatus?.specificStatus) {
+                                    return html`
+                                      <span class="text-status-warning flex-shrink-0">
                                         ${session.activityStatus.specificStatus.status}
-                                      </div>
-                                    `
-                                  : '';
-                              })()}
+                                      </span>
+                                      <span class="text-dark-text-muted/50">·</span>
+                                      <span class="truncate">
+                                        ${formatPathForDisplay(session.workingDir)}
+                                      </span>
+                                    `;
+                                  } else {
+                                    return formatPathForDisplay(session.workingDir);
+                                  }
+                                })()}
+                              </div>
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">
                               <div
