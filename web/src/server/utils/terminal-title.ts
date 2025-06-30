@@ -8,26 +8,12 @@
 import * as os from 'os';
 import * as path from 'path';
 import type { ActivityState } from './activity-detector.js';
+import { PromptDetector } from './prompt-patterns.js';
 
 // Pre-compiled regex patterns for performance
 // Match cd command with optional arguments, handling newlines
 // The argument capture group excludes command separators
 const CD_REGEX = /^\s*cd(?:\s+([^;&|\n]+?))?(?:\s*[;&|\n]|$)/;
-
-// Common shell prompt patterns
-const PROMPT_PATTERNS = [
-  /\$\s*$/, // $ prompt
-  />\s*$/, // > prompt
-  /#\s*$/, // # prompt (root)
-  /❯\s*$/, // Modern prompt arrows
-  /➜\s*$/, // Another common arrow
-  /\]\$\s*$/, // Bracketed prompts like [user@host]$
-  /\]#\s*$/, // Bracketed root prompts
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: Escape sequences are required for terminal prompts
-  /\$\s*\x1B\[/, // Prompt followed by escape sequence
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: Escape sequences are required for terminal prompts
-  />\s*\x1B\[/, // Prompt followed by escape sequence
-];
 
 /**
  * Generate a terminal title sequence (OSC 2)
@@ -122,9 +108,8 @@ export function extractCdDirectory(input: string, currentDir: string): string | 
  * @returns True if this looks like a good time to inject a title
  */
 export function shouldInjectTitle(data: string): boolean {
-  // Look for common shell prompt patterns that indicate command completion
-  // This is a heuristic approach - not perfect but works for most shells
-  return PROMPT_PATTERNS.some((pattern) => pattern.test(data));
+  // Use unified prompt detector for consistency and performance
+  return PromptDetector.endsWithPrompt(data);
 }
 
 /**

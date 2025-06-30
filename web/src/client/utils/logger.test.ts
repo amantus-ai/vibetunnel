@@ -136,10 +136,11 @@ describe.sequential('Frontend Logger', () => {
       // Clear any existing calls to ensure clean state
       mockFetch.mockClear();
 
-      // Record the initial number of log calls
-      const initialLogCalls = mockFetch.mock.calls.filter(
-        (call) => call[0] === '/api/logs/client'
-      ).length;
+      // Wait a bit to ensure any async operations from previous tests complete
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Clear again after waiting
+      mockFetch.mockClear();
 
       logger.log('log message');
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -150,15 +151,20 @@ describe.sequential('Frontend Logger', () => {
       logger.error('error message');
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      // Get all log calls after our test
-      const allLogCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client');
-      // Get only the calls made by this test
-      const testLogCalls = allLogCalls.slice(initialLogCalls);
+      // Get all log calls
+      const logCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client');
 
-      expect(testLogCalls).toHaveLength(3);
-      expect(JSON.parse(testLogCalls[0][1].body).level).toBe('log');
-      expect(JSON.parse(testLogCalls[1][1].body).level).toBe('warn');
-      expect(JSON.parse(testLogCalls[2][1].body).level).toBe('error');
+      // We should have exactly 3 calls
+      expect(logCalls).toHaveLength(3);
+
+      // Verify the log levels
+      const logBodies = logCalls.map((call) => JSON.parse(call[1].body));
+      expect(logBodies[0].level).toBe('log');
+      expect(logBodies[0].args[0]).toBe('log message');
+      expect(logBodies[1].level).toBe('warn');
+      expect(logBodies[1].args[0]).toBe('warn message');
+      expect(logBodies[2].level).toBe('error');
+      expect(logBodies[2].args[0]).toBe('error message');
     });
   });
 
