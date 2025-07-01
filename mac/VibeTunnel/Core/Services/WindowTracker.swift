@@ -157,24 +157,87 @@ final class WindowTracker {
         // Filter windows for the specific terminal
         let terminalWindows = allWindows.filter { $0.terminalApp == terminal }
 
-        // If we have specific tab information, try to match by title or other properties
-        // For now, return the most recently created window (highest window ID)
-        guard let latestWindow = terminalWindows.max(by: { $0.windowID < $1.windowID }) else {
-            return nil
+        // First try to find window by title containing session path or command
+        // Sessions typically show their working directory in the title
+        if let sessionInfo = getSessionInfo(for: sessionID) {
+            let workingDir = sessionInfo.workingDir
+            let dirName = (workingDir as NSString).lastPathComponent
+            
+            // Look for windows whose title contains the directory name
+            if let matchingWindow = terminalWindows.first(where: { window in
+                if let title = window.title {
+                    return title.contains(dirName) || title.contains(workingDir)
+                }
+                return false
+            }) {
+                logger.debug("Found window by directory match: \(dirName)")
+                return createWindowInfo(from: matchingWindow, sessionID: sessionID, terminal: terminal, tabReference: tabReference, tabID: tabID)
+            }
         }
 
-        // Create a new WindowInfo with the session information
+        // For Terminal.app and iTerm2 with specific tab/window IDs, use those
+        if terminal == .terminal, let tabRef = tabReference {
+            // Extract window ID from tab reference (format: "tab id X of window id Y")
+            if let windowIDMatch = tabRef.firstMatch(of: /window id (\d+)/),
+               let windowID = CGWindowID(windowIDMatch.output.1) {
+                if let matchingWindow = terminalWindows.first(where: { $0.windowID == windowID }) {
+                    logger.debug("Found Terminal.app window by ID: \(windowID)")
+                    return createWindowInfo(from: matchingWindow, sessionID: sessionID, terminal: terminal, tabReference: tabReference, tabID: tabID)
+                }
+            }
+        }
+
+        // If we have a window ID from launch result, use it
+        if let tabID = tabID, terminal == .iTerm2 {
+            // For iTerm2, tabID contains the window ID string
+            // Try to match by window title which often includes the window ID
+            if let matchingWindow = terminalWindows.first(where: { window in
+                if let title = window.title {
+                    return title.contains(tabID)
+                }
+                return false
+            }) {
+                logger.debug("Found iTerm2 window by ID in title: \(tabID)")
+                return createWindowInfo(from: matchingWindow, sessionID: sessionID, terminal: terminal, tabReference: tabReference, tabID: tabID)
+            }
+        }
+
+        // Fallback: return the most recently created window (highest window ID)
+        // But only if it was created very recently (within 5 seconds)
+        if let latestWindow = terminalWindows.max(by: { $0.windowID < $1.windowID }) {
+            logger.debug("Using most recent window as fallback for session: \(sessionID)")
+            return createWindowInfo(from: latestWindow, sessionID: sessionID, terminal: terminal, tabReference: tabReference, tabID: tabID)
+        }
+
+        return nil
+    }
+    
+    /// Helper to create WindowInfo from a found window
+    private func createWindowInfo(
+        from window: WindowInfo,
+        sessionID: String,
+        terminal: Terminal,
+        tabReference: String?,
+        tabID: String?
+    ) -> WindowInfo {
         return WindowInfo(
-            windowID: latestWindow.windowID,
-            ownerPID: latestWindow.ownerPID,
+            windowID: window.windowID,
+            ownerPID: window.ownerPID,
             terminalApp: terminal,
             sessionID: sessionID,
             createdAt: Date(),
             tabReference: tabReference,
             tabID: tabID,
-            bounds: latestWindow.bounds,
-            title: latestWindow.title
+            bounds: window.bounds,
+            title: window.title
         )
+    }
+    
+    /// Get session info from SessionMonitor
+    private func getSessionInfo(for sessionID: String) -> ServerSessionInfo? {
+        // Access SessionMonitor to get session details
+        // This is safe because both are @MainActor
+        return SessionMonitor.shared.sessions[sessionID]
     }
 
     // MARK: - Window Focus
@@ -354,17 +417,46 @@ final class WindowTracker {
     private func scanForSession(_ sessionID: String) async {
         logger.info("Scanning for window containing session: \(sessionID)")
 
+        // Get session info to match by working directory
+        guard let sessionInfo = getSessionInfo(for: sessionID) else {
+            logger.warning("No session info found for session: \(sessionID)")
+            return
+        }
+
         // Get all terminal windows
         let allWindows = Self.getAllTerminalWindows()
+        
+        let workingDir = sessionInfo.workingDir
+        let dirName = (workingDir as NSString).lastPathComponent
+        let expandedDir = (workingDir as NSString).expandingTildeInPath
 
         // Look for windows that might contain this session
-        // Sessions typically show their ID in the window title
         for window in allWindows {
-            // Check if window title contains session ID
-            if let title = window.title,
-               title.contains(sessionID) || title.contains("vt") || title.contains("vibetunnel")
-            {
-                logger.info("Found potential window for session \(sessionID): \(title)")
+            var matchFound = false
+            var matchReason = ""
+            
+            // Check if window title contains working directory or session markers
+            if let title = window.title {
+                // Check for directory name match (most common)
+                if title.contains(dirName) || title.contains(expandedDir) {
+                    matchFound = true
+                    matchReason = "directory match: \(dirName)"
+                }
+                // Check for VibeTunnel-specific markers
+                else if title.contains("vt") || title.contains("vibetunnel") || title.contains("TTY_SESSION_ID") {
+                    matchFound = true
+                    matchReason = "VibeTunnel marker in title"
+                }
+                // Check if title contains the command being run
+                else if let command = sessionInfo.command.first,
+                        !command.isEmpty && title.contains(command) {
+                    matchFound = true
+                    matchReason = "command match: \(command)"
+                }
+            }
+            
+            if matchFound {
+                logger.info("Found window for session \(sessionID) by \(matchReason): \(window.title ?? "no title")")
 
                 // Create window info for this session
                 let windowInfo = WindowInfo(
@@ -388,7 +480,11 @@ final class WindowTracker {
             }
         }
 
-        logger.debug("Could not find window for session \(sessionID) in \(allWindows.count) terminal windows")
+        // If no match found, log window titles for debugging
+        logger.debug("Could not find window for session \(sessionID) (workingDir: \(workingDir))")
+        for (index, window) in allWindows.enumerated() {
+            logger.debug("Window \(index): \(window.terminalApp.rawValue) - '\(window.title ?? "no title")'")
+        }
     }
 
     // MARK: - Session Monitoring

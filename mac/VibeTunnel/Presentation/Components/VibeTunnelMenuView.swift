@@ -400,9 +400,8 @@ struct SessionRow: View {
     }
     
     private var hasWindow: Bool {
-        // For now, assume all running sessions have windows
-        // TODO: Add proper window tracking when WindowTracker supports it
-        true
+        // Check if WindowTracker has a window registered for this session
+        WindowTracker.shared.windowInfo(for: session.key) != nil
     }
     
     private var duration: String {
