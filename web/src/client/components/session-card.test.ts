@@ -370,7 +370,7 @@ describe('SessionCard', () => {
       await element.updateComplete;
 
       const card = element.querySelector('.card');
-      expect(card?.classList.contains('shadow-glow-green-sm')).toBe(true);
+      expect(card?.classList.contains('shadow-glow-sm')).toBe(true);
     });
 
     it('should apply opacity when killing', async () => {
