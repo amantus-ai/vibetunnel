@@ -193,7 +193,7 @@ export async function waitForSessionState(
       { name: sessionName, state: targetState },
       { timeout, polling: process.env.CI ? 1000 : 500 }
     );
-  } catch (error) {
+  } catch (_error) {
     // Log current state for debugging
     const cards = await page.locator('session-card').all();
     console.error(`Session state transition timeout for '${sessionName}' to '${targetState}'`);
