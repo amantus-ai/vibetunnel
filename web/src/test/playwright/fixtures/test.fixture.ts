@@ -99,7 +99,7 @@ export const test = base.extend<TestFixtures>({
           page.waitForSelector('auth-login', { state: 'visible', timeout: 3000 }),
           page.waitForSelector('session-card', { state: 'visible', timeout: 3000 }),
         ]);
-      } catch (error) {
+      } catch (_error) {
         // If all fail, give more specific error
         throw new Error('App initialization failed - no expected elements found');
       }
