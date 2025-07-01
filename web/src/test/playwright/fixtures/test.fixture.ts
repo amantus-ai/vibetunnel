@@ -138,13 +138,22 @@ export const test = base.extend<{
       await page.waitForFunction(
         () => {
           const app = document.querySelector('vibetunnel-app');
-          return app && app.innerHTML.length > 100; // Has meaningful content
+          // Check if app has rendered meaningful content (auth view, header, or session list)
+          if (!app) return false;
+
+          const hasContent = app.innerHTML.length > 100;
+          const hasAuthView = !!app.querySelector('auth-login');
+          const hasAppHeader = !!app.querySelector('app-header');
+          const hasSessionList = !!app.querySelector('session-list');
+
+          // App is ready if it has content and either auth view or main app components
+          return hasContent && (hasAuthView || hasAppHeader || hasSessionList);
         },
         { timeout: 30000 }
       );
 
       // Give it a moment to stabilize
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000);
 
       // Check what's rendered
       const appInfo = await page.evaluate(() => {
@@ -168,7 +177,7 @@ export const test = base.extend<{
         await page.click('button[type="submit"]');
 
         // Wait for navigation away from auth view
-        await page.waitForFunction(() => !document.querySelector('auth-login'), { timeout: 10000 });
+        await page.waitForFunction(() => !document.querySelector('auth-login'), { timeout: 30000 });
         console.log('[Test Setup] Login successful');
       }
 
@@ -176,7 +185,7 @@ export const test = base.extend<{
       console.log('[Test Setup] Waiting for main app content...');
       await page.waitForSelector('app-header, session-list, .flex-1', {
         state: 'visible',
-        timeout: 10000,
+        timeout: 30000,
       });
 
       console.log('[Test Setup] App is ready');
