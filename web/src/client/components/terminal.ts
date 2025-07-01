@@ -219,18 +219,14 @@ export class Terminal extends LitElement {
   firstUpdated() {
     // Store the initial font size as original
     this.originalFontSize = this.fontSize;
-    // Add a small delay to ensure DOM is fully rendered
-    requestAnimationFrame(() => {
-      this.initializeTerminal();
-    });
+    this.initializeTerminal();
   }
 
   private async initializeTerminal() {
     try {
       this.requestUpdate();
 
-      // Ensure we only select within this component's DOM
-      this.container = this.renderRoot.querySelector('#terminal-container') as HTMLElement;
+      this.container = this.querySelector('#terminal-container') as HTMLElement;
 
       if (!this.container) {
         const error = new Error('Terminal container not found');
