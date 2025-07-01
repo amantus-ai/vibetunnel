@@ -122,6 +122,10 @@
       "bash -c 'tsc --noEmit --project tsconfig.server.json'",
       "bash -c 'tsc --noEmit --project tsconfig.client.json'",
       "bash -c 'tsc --noEmit --project tsconfig.sw.json'"
+    ],
+    "../{ios,mac}/**/*.swift": [
+      "bash -c 'cd ../ios && ./scripts/lint.sh'",
+      "bash -c 'cd ../mac && ./scripts/lint.sh'"
     ]
   }
 }
