@@ -367,7 +367,7 @@ struct SessionRowView: View {
                     if let activityStatus {
                         Text(activityStatus)
                             .font(.system(size: 11))
-                            .foregroundColor(.orange)
+                            .foregroundColor(Color(red: 0.8, green: 0.4, blue: 0.0))
 
                         Text("·")
                             .font(.system(size: 11))

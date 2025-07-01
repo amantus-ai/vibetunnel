@@ -63,8 +63,10 @@ final class StatusBarController: NSObject {
             button.action = #selector(handleClick(_:))
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            
+            // Use pushOnPushOff for proper state management
             button.setButtonType(.pushOnPushOff)
-
+            
             // Accessibility
             button.setAccessibilityTitle("VibeTunnel")
             button.setAccessibilityRole(.button)
@@ -126,9 +128,6 @@ final class StatusBarController: NSObject {
     func updateStatusItemDisplay() {
         guard let button = statusItem?.button else { return }
 
-        // Check if any menu is visible to preserve highlight state
-        let shouldBeHighlighted = menuManager.isAnyMenuVisible
-
         // Update icon based on server and network status
         let iconName = (serverManager.isRunning && hasNetworkAccess) ? "menubar" : "menubar.inactive"
         if let image = NSImage(named: iconName) {
@@ -141,13 +140,6 @@ final class StatusBarController: NSObject {
                 button.image = image
                 button.alphaValue = (serverManager.isRunning && hasNetworkAccess) ? 1.0 : 0.5
             }
-        }
-
-        // With .pushOnPushOff button type, the button manages its own highlight state
-        // We only need to update the state when the menu visibility changes
-        let expectedState: NSControl.StateValue = shouldBeHighlighted ? .on : .off
-        if button.state != expectedState {
-            button.state = expectedState
         }
 
         // Update session count display
@@ -173,11 +165,6 @@ final class StatusBarController: NSObject {
         let indicatorStyle: IndicatorStyle = .minimalist
         let indicator = formatSessionIndicator(activeCount: activeCount, totalCount: totalCount, style: indicatorStyle)
         button.title = indicator.isEmpty ? "" : " " + indicator
-
-        // Update button state after title change if needed
-        if shouldBeHighlighted && button.state != .on {
-            button.state = .on
-        }
 
         // Update tooltip
         updateTooltip()
@@ -259,12 +246,6 @@ final class StatusBarController: NSObject {
 
     private func handleLeftClick(_ button: NSStatusBarButton) {
         menuManager.toggleCustomWindow(relativeTo: button)
-
-        // Force update display after toggling to ensure button state is correct
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(50))
-            updateStatusItemDisplay()
-        }
     }
 
     private func handleRightClick(_ button: NSStatusBarButton) {

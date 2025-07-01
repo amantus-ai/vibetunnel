@@ -69,13 +69,7 @@ final class StatusBarMenuManager: NSObject {
             statusBarButton = button
         }
 
-        // Update button state based on menu state (for .pushOnPushOff button type)
-        switch menuState {
-        case .none:
-            statusBarButton?.state = .off
-        case .customWindow, .contextMenu:
-            statusBarButton?.state = .on
-        }
+        // No need to manage highlight here since we're using button state
     }
 
     // MARK: - Left-Click Custom Window Management
@@ -83,8 +77,6 @@ final class StatusBarMenuManager: NSObject {
     func toggleCustomWindow(relativeTo button: NSStatusBarButton) {
         if let window = customWindow, window.isVisible {
             hideCustomWindow()
-            // Ensure button state is updated
-            button.state = .off
         } else {
             showCustomWindow(relativeTo: button)
         }
@@ -153,19 +145,19 @@ final class StatusBarMenuManager: NSObject {
         // Show the custom window
         customWindow?.show(relativeTo: button)
 
-        // Force immediate button state update after showing window
+        // Force immediate button highlight update after showing window
         // This ensures the button stays highlighted even if there's a timing issue
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(10))
-            button.state = .on
+            button.highlight(true)
         }
     }
 
     func hideCustomWindow() {
         customWindow?.hide()
-        // Note: state will be reset by the onHide callback
-        // But also ensure button state is updated immediately
+        // Reset button state
         statusBarButton?.state = .off
+        // Note: state will be reset by the onHide callback
     }
 
     var isCustomWindowVisible: Bool {
@@ -195,11 +187,14 @@ final class StatusBarMenuManager: NSObject {
         // Hide custom window first if it's visible
         hideCustomWindow()
 
-        // Update menu state to context menu
-        updateMenuState(.contextMenu, button: button)
-
         // Store status item reference
         currentStatusItem = statusItem
+        
+        // Set the button's state to on for context menu
+        button.state = .on
+
+        // Update menu state to context menu
+        updateMenuState(.contextMenu, button: button)
 
         let menu = NSMenu()
         menu.delegate = self
@@ -282,9 +277,6 @@ final class StatusBarMenuManager: NSObject {
         // Show the context menu
         // Use popUpMenu for proper context menu display that doesn't interfere with button highlighting
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 5), in: button)
-
-        // Update state to indicate no menu is active after context menu closes
-        updateMenuState(.none, button: button)
     }
 
     // MARK: - Context Menu Actions
@@ -362,6 +354,9 @@ final class StatusBarMenuManager: NSObject {
 
 extension StatusBarMenuManager: NSMenuDelegate {
     func menuDidClose(_ menu: NSMenu) {
+        // Reset button state
+        statusBarButton?.state = .off
+        
         // Reset menu state when context menu closes
         updateMenuState(.none)
 

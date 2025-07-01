@@ -35,7 +35,7 @@ final class CustomMenuWindow: NSPanel {
         // Initialize window with appropriate style
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 384, height: 400),
-            styleMask: [.borderless, .nonactivatingPanel, .utilityWindow],
+            styleMask: [.borderless, .utilityWindow],
             backing: .buffered,
             defer: false
         )
@@ -45,10 +45,14 @@ final class CustomMenuWindow: NSPanel {
         backgroundColor = .clear
         hasShadow = true
         level = .popUpMenu
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
         isMovableByWindowBackground = false
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
+        
+        // Allow the window to become key but not main
+        // This helps maintain button highlight state
+        acceptsMouseMovedEvents = false
 
         // Set content view controller
         contentViewController = hostingController
@@ -56,11 +60,27 @@ final class CustomMenuWindow: NSPanel {
         // Force the view to load immediately
         _ = hostingController.view
 
-        // Add visual effect background with rounded corners
+        // Add visual effect background with custom shape
         if let contentView = contentViewController?.view {
             contentView.wantsLayer = true
-            contentView.layer?.cornerRadius = 12
-            contentView.layer?.masksToBounds = true
+
+            // Create a custom mask layer for side-rounded corners
+            let maskLayer = CAShapeLayer()
+            maskLayer.path = createSideRoundedPath(in: contentView.bounds, cornerRadius: 12)
+            contentView.layer?.mask = maskLayer
+
+            // Update mask when bounds change
+            contentView.postsFrameChangedNotifications = true
+            NotificationCenter.default.addObserver(
+                forName: NSView.frameDidChangeNotification,
+                object: contentView,
+                queue: .main
+            ) { [weak self, weak contentView] _ in
+                guard let self = self, let contentView = contentView else { return }
+                Task { @MainActor in
+                    maskLayer.path = self.createSideRoundedPath(in: contentView.bounds, cornerRadius: 12)
+                }
+            }
 
             // Add subtle shadow
             contentView.shadow = NSShadow()
@@ -73,7 +93,7 @@ final class CustomMenuWindow: NSPanel {
     func show(relativeTo statusItemButton: NSStatusBarButton) {
         // Store button reference and ensure it stays highlighted
         self.statusBarButton = statusItemButton
-        statusItemButton.state = .on
+        statusItemButton.highlight(true)
 
         // First, make sure the SwiftUI hierarchy has laid itself out
         hostingController.view.layoutSubtreeIfNeeded()
@@ -134,16 +154,17 @@ final class CustomMenuWindow: NSPanel {
         // Set all visual properties at once
         alphaValue = 1.0
 
-        // Ensure button state remains on
-        statusBarButton?.state = .on
+        // Ensure button remains highlighted
+        statusBarButton?.highlight(true)
 
-        // Activate app and show window
-        NSApp.activate(ignoringOtherApps: true)
-        makeKeyAndOrderFront(nil)
+        // Show window without activating the app aggressively
+        // This helps maintain the button's highlight state
+        orderFront(nil)
+        makeKey()
 
-        // Force button state update again after window is shown
+        // Force button highlight update again after window is shown
         DispatchQueue.main.async { [weak self] in
-            self?.statusBarButton?.state = .on
+            self?.statusBarButton?.highlight(true)
         }
 
         // Set first responder after window is visible
@@ -238,8 +259,8 @@ final class CustomMenuWindow: NSPanel {
         // Mark window as not visible
         _isWindowVisible = false
 
-        // Reset button state when hiding
-        statusBarButton?.state = .off
+        // Reset button highlight when hiding
+        statusBarButton?.highlight(false)
         orderOut(nil)
         teardownEventMonitoring()
         onHide?()
@@ -251,8 +272,8 @@ final class CustomMenuWindow: NSPanel {
         // Mark window as not visible
         _isWindowVisible = false
 
-        // Reset button state when window is ordered out
-        statusBarButton?.state = .off
+        // Reset button highlight when window is ordered out
+        statusBarButton?.highlight(false)
         onHide?()
     }
 
@@ -306,12 +327,67 @@ final class CustomMenuWindow: NSPanel {
             teardownEventMonitoring()
         }
     }
+
+    private func createSideRoundedPath(in rect: CGRect, cornerRadius: CGFloat) -> CGPath {
+        let path = CGMutablePath()
+
+        // Start from top-left corner (flat)
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+
+        // Top edge (flat)
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+
+        // Right edge with rounded corners
+        path.addArc(
+            center: CGPoint(x: rect.maxX - cornerRadius, y: rect.minY + cornerRadius),
+            radius: cornerRadius,
+            startAngle: -CGFloat.pi / 2,
+            endAngle: 0,
+            clockwise: false
+        )
+
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - cornerRadius))
+
+        path.addArc(
+            center: CGPoint(x: rect.maxX - cornerRadius, y: rect.maxY - cornerRadius),
+            radius: cornerRadius,
+            startAngle: 0,
+            endAngle: CGFloat.pi / 2,
+            clockwise: false
+        )
+
+        // Bottom edge (flat)
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+
+        // Left edge with rounded corners
+        path.addArc(
+            center: CGPoint(x: rect.minX + cornerRadius, y: rect.maxY - cornerRadius),
+            radius: cornerRadius,
+            startAngle: CGFloat.pi / 2,
+            endAngle: CGFloat.pi,
+            clockwise: false
+        )
+
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + cornerRadius))
+
+        path.addArc(
+            center: CGPoint(x: rect.minX + cornerRadius, y: rect.minY + cornerRadius),
+            radius: cornerRadius,
+            startAngle: CGFloat.pi,
+            endAngle: 3 * CGFloat.pi / 2,
+            clockwise: false
+        )
+
+        path.closeSubpath()
+
+        return path
+    }
 }
+
 
 /// A wrapper view that applies modern SwiftUI material background to menu content.
 struct CustomMenuContainer<Content: View>: View {
-    @ViewBuilder
-    let content: Content
+    @ViewBuilder let content: Content
 
     @Environment(\.colorScheme)
     private var colorScheme
@@ -319,9 +395,9 @@ struct CustomMenuContainer<Content: View>: View {
     var body: some View {
         content
             .fixedSize()
-            .background(backgroundMaterial, in: RoundedRectangle(cornerRadius: 12))
+            .background(backgroundMaterial, in: SideRoundedRectangle(cornerRadius: 12))
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                SideRoundedRectangle(cornerRadius: 12)
                     .stroke(borderColor, lineWidth: 1)
             )
     }

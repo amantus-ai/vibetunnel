@@ -496,7 +496,7 @@ struct SessionRow: View {
                     HStack(spacing: 4) {
                         Text(activityStatus)
                             .font(.system(size: 10))
-                            .foregroundColor(Color(red: 1.0, green: 0.5, blue: 0.0))
+                            .foregroundColor(Color(red: 0.8, green: 0.4, blue: 0.0))
 
                         Spacer(minLength: 4)
 
@@ -548,7 +548,7 @@ struct SessionRow: View {
                         .transition(.opacity)
                 }
             }
-            .frame(width: 35, alignment: .trailing)
+            .frame(width: 40, alignment: .trailing)
             .animation(.easeInOut(duration: 0.15), value: isHovered)
         }
         .padding(.horizontal, 12)
@@ -704,7 +704,7 @@ struct SessionRow: View {
 
     private var activityColor: Color {
         if isActive {
-            Color(red: 1.0, green: 0.5, blue: 0.0) // Brighter, more saturated orange
+            Color(red: 0.8, green: 0.4, blue: 0.0) // Darker orange for better contrast
         } else {
             Color(red: 0.0, green: 0.7, blue: 0.0) // Darker, more visible green
         }
