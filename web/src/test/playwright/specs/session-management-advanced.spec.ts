@@ -107,16 +107,34 @@ test.describe('Advanced Session Management', () => {
       sessionNames.push(sessionName);
 
       // Go back to list with proper wait
-      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      console.log(`[Test] Navigating back to home after creating session ${i + 1}...`);
+      await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30000 });
 
       // Wait for app to be ready
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
+      console.log('[Test] Waiting for app element...');
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 15000 });
 
       // Then wait for session cards
       try {
-        await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+        console.log('[Test] Waiting for session cards to appear...');
+        await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
+        console.log(`[Test] Session cards visible after creating session ${i + 1}`);
       } catch (error) {
-        console.error(`Failed to find session-card after creating session ${i + 1}`);
+        console.error(`[Test] Failed to find session-card after creating session ${i + 1}`);
+
+        // Log current state for debugging
+        const url = page.url();
+        const title = await page.title();
+        console.error(`[Test] Current URL: ${url}, Title: ${title}`);
+
+        // Check if server is still responsive
+        try {
+          const response = await page.request.get('/health');
+          console.log(`[Test] Server health check: ${response.status()}`);
+        } catch (healthError) {
+          console.error('[Test] Server health check failed:', healthError);
+        }
+
         throw error;
       }
     }

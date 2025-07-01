@@ -498,7 +498,12 @@ export async function createApp(): Promise<AppInstance> {
   );
   logger.debug(`Serving static files from: ${publicPath}`);
 
-  // Health check endpoint (no auth required)
+  // Simple health check endpoint (no auth required)
+  app.get('/health', (_req, res) => {
+    res.status(200).send('OK');
+  });
+
+  // Detailed health check endpoint (no auth required)
   app.get('/api/health', (_req, res) => {
     const versionInfo = getVersionInfo();
     res.json({

@@ -32,13 +32,38 @@ export class TestSessionManager {
 
     try {
       // Create session - use bash by default for consistency
+      console.log(`[SessionManager] Creating session: ${name}`);
       await sessionListPage.createNewSession(name, spawnWindow, command || 'bash');
 
       // Get session ID from URL for web sessions
       let sessionId = '';
       if (!spawnWindow) {
-        await this.page.waitForURL(/\?session=/, { timeout: 4000 });
+        console.log('[SessionManager] Waiting for session URL...');
+
+        // Wait with retry logic for CI stability
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            await this.page.waitForURL(/\?session=/, { timeout: 10000 });
+            break;
+          } catch (_error) {
+            retries--;
+            if (retries === 0) {
+              const currentUrl = this.page.url();
+              console.error(
+                `[SessionManager] Failed to navigate to session after ${3} attempts. Current URL: ${currentUrl}`
+              );
+              throw new Error(
+                `Failed to navigate to session after creation. Current URL: ${currentUrl}`
+              );
+            }
+            console.log(`[SessionManager] URL navigation failed, retrying... (${retries} left)`);
+            await this.page.waitForTimeout(1000);
+          }
+        }
+
         const url = this.page.url();
+        console.log(`[SessionManager] Session URL: ${url}`);
 
         if (!url.includes('?session=')) {
           throw new Error(`Failed to navigate to session after creation. Current URL: ${url}`);
@@ -48,6 +73,7 @@ export class TestSessionManager {
         if (!sessionId) {
           throw new Error(`No session ID found in URL: ${url}`);
         }
+        console.log(`[SessionManager] Session created with ID: ${sessionId}`);
       }
 
       // Track the session

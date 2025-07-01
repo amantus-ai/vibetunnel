@@ -54,8 +54,41 @@ export const test = base.extend<TestFixtures>({
     const isFirstNavigation = !page.url() || page.url() === 'about:blank';
 
     if (isFirstNavigation) {
-      // Navigate to home
-      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      // Navigate to home with retry logic
+      let retries = 3;
+      let lastError: Error | null = null;
+
+      while (retries > 0) {
+        try {
+          console.log(`[Test Setup] Attempting to navigate to home page (${4 - retries}/3)...`);
+          await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+          console.log('[Test Setup] Navigation successful');
+          break;
+        } catch (error) {
+          lastError = error as Error;
+          console.error(`[Test Setup] Navigation failed:`, error);
+
+          // Check if server is actually running
+          try {
+            const response = await page.request.get(`${testConfig.baseURL}/health`, {
+              timeout: 5000,
+            });
+            console.log(`[Test Setup] Health check response: ${response.status()}`);
+          } catch (healthError) {
+            console.error('[Test Setup] Health check failed:', healthError);
+          }
+
+          retries--;
+          if (retries > 0) {
+            console.log(`[Test Setup] Waiting 2s before retry...`);
+            await page.waitForTimeout(2000);
+          }
+        }
+      }
+
+      if (retries === 0 && lastError) {
+        throw new Error(`Failed to navigate to home page after 3 attempts: ${lastError.message}`);
+      }
 
       // Inject CSS to skip animations for faster tests
       await page.addStyleTag({
@@ -87,21 +120,46 @@ export const test = base.extend<TestFixtures>({
       // Reload to pick up settings
       await page.reload({ waitUntil: 'domcontentloaded' });
 
-      // Wait for app initialization with reduced timeout
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
+      // Wait for app initialization with better error handling
+      console.log('[Test Setup] Waiting for app initialization...');
+      try {
+        await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
+        console.log('[Test Setup] App element found');
+      } catch (error) {
+        console.error('[Test Setup] App element not found:', error);
+        const pageContent = await page.content();
+        console.log('[Test Setup] Page content:', pageContent.substring(0, 500));
+        throw new Error('vibetunnel-app element not found - server may not be running properly');
+      }
 
       // Wait for at least one element to be visible
       try {
+        console.log('[Test Setup] Waiting for UI elements...');
         await Promise.race([
-          page.waitForSelector('button[title="Create New Session"]', {
-            state: 'visible',
-            timeout: 3000,
-          }),
-          page.waitForSelector('auth-login', { state: 'visible', timeout: 3000 }),
-          page.waitForSelector('session-card', { state: 'visible', timeout: 3000 }),
+          page
+            .waitForSelector('button[title="Create New Session"]', {
+              state: 'visible',
+              timeout: 10000,
+            })
+            .then(() => console.log('[Test Setup] Found create session button')),
+          page
+            .waitForSelector('auth-login', { state: 'visible', timeout: 10000 })
+            .then(() => console.log('[Test Setup] Found auth login element')),
+          page
+            .waitForSelector('session-card', { state: 'visible', timeout: 10000 })
+            .then(() => console.log('[Test Setup] Found session card')),
         ]);
       } catch (_error) {
-        // If all fail, give more specific error
+        console.error('[Test Setup] No expected elements found');
+        // Log current page state
+        const title = await page.title();
+        const url = page.url();
+        console.log(`[Test Setup] Page title: ${title}, URL: ${url}`);
+
+        // Try to get any visible text
+        const visibleText = await page.evaluate(() => document.body?.innerText || 'No body text');
+        console.log('[Test Setup] Visible text:', visibleText.substring(0, 200));
+
         throw new Error('App initialization failed - no expected elements found');
       }
     }

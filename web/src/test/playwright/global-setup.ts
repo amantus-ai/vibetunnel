@@ -27,6 +27,36 @@ async function globalSetup(config: FullConfig) {
   // Set up any global test data or configuration
   process.env.PLAYWRIGHT_TEST_BASE_URL = config.use?.baseURL || testConfig.baseURL;
 
+  // Wait for server to be ready
+  console.log('Waiting for server to be ready...');
+  const maxRetries = 30;
+  let serverReady = false;
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(`${process.env.PLAYWRIGHT_TEST_BASE_URL}/health`);
+      if (response.ok) {
+        const text = await response.text();
+        console.log(`Server health check response: ${text}`);
+        serverReady = true;
+        break;
+      }
+    } catch (_error) {
+      // Server not ready yet
+    }
+
+    if (i < maxRetries - 1) {
+      console.log(`Server not ready yet, retrying in 2s... (${i + 1}/${maxRetries})`);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+
+  if (!serverReady) {
+    throw new Error('Server failed to start within 60 seconds');
+  }
+
+  console.log('Server is ready!');
+
   // Skip session cleanup to speed up tests
   console.log('Skipping session cleanup to improve test speed');
   // Skip browser storage cleanup to speed up tests

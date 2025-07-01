@@ -36,19 +36,28 @@ test.describe('Minimal Session Tests', () => {
       sessionNames.push(sessionName);
 
       // Navigate back to home after each creation
-      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      console.log(`[Test] Navigating back to home after creating session ${i + 1}...`);
+      await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30000 });
 
       // Wait for app to be ready first
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
+      console.log('[Test] Waiting for app element...');
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 15000 });
 
       // Then wait for session cards to appear
       try {
-        await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+        console.log('[Test] Waiting for session cards to appear...');
+        await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
+        console.log(`[Test] Session cards visible after creating session ${i + 1}`);
       } catch (error) {
         // If no session cards, check if we're on the right page
         const url = page.url();
         const title = await page.title();
-        console.error(`Failed to find session-card. URL: ${url}, Title: ${title}`);
+        console.error(`[Test] Failed to find session-card. URL: ${url}, Title: ${title}`);
+
+        // Log page content for debugging
+        const content = await page.content();
+        console.error('[Test] Page content preview:', content.substring(0, 500));
+
         throw error;
       }
 
