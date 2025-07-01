@@ -38,9 +38,6 @@ final class TailscaleService {
     /// Error message if status check fails
     private(set) var statusError: String?
 
-    /// The Tailscale dashboard URL
-    private(set) var dashboardURL: String?
-
     private init() {
         Task {
             await checkTailscaleStatus()
@@ -59,19 +56,13 @@ final class TailscaleService {
         let status: String
         let deviceName: String
         let tailnetName: String
-        let domainName: String?
         let iPv4: String?
-        let iPv6: String?
-        let controlAdminURL: String?
 
         private enum CodingKeys: String, CodingKey {
             case status = "Status"
             case deviceName = "DeviceName"
             case tailnetName = "TailnetName"
-            case domainName = "DomainName"
             case iPv4 = "IPv4"
-            case iPv6 = "IPv6"
-            case controlAdminURL = "ControlAdminURL"
         }
     }
 
@@ -114,7 +105,6 @@ final class TailscaleService {
             isRunning = false
             tailscaleHostname = nil
             tailscaleIP = nil
-            dashboardURL = nil
             statusError = "Tailscale is not installed"
             return
         }
@@ -122,7 +112,7 @@ final class TailscaleService {
         // Try to fetch status from API
         if let apiResponse = await fetchTailscaleStatus() {
             // Tailscale is running if API responds
-            isRunning = apiResponse.status == "Running"
+            isRunning = apiResponse.status.lowercased() == "running"
 
             if isRunning {
                 // Extract hostname from device name and tailnet name
@@ -134,7 +124,6 @@ final class TailscaleService {
 
                 tailscaleHostname = "\(deviceName).\(tailnetName).ts.net"
                 tailscaleIP = apiResponse.iPv4
-                dashboardURL = apiResponse.controlAdminURL
                 statusError = nil
 
                 logger
@@ -145,7 +134,6 @@ final class TailscaleService {
                 // Tailscale installed but not running properly
                 tailscaleHostname = nil
                 tailscaleIP = nil
-                dashboardURL = nil
                 statusError = "Tailscale is not running"
             }
         } else {
@@ -153,7 +141,6 @@ final class TailscaleService {
             isRunning = false
             tailscaleHostname = nil
             tailscaleIP = nil
-            dashboardURL = nil
             statusError = "Please start the Tailscale app"
             logger.info("Tailscale API not responding - app likely not running")
         }
