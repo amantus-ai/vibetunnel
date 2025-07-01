@@ -93,12 +93,13 @@ describe('SessionCreateForm', () => {
       expect(modal).toBeTruthy();
     });
 
-    it('should not render modal when not visible', async () => {
+    it('should hide modal when not visible', async () => {
       element.visible = false;
       await element.updateComplete;
 
       const modal = element.querySelector('.modal-backdrop');
-      expect(modal).toBeFalsy();
+      expect(modal).toBeTruthy();
+      expect(modal?.classList.contains('hidden')).toBe(true);
     });
   });
 
