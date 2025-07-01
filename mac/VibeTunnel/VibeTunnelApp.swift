@@ -132,6 +132,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                 .contains("libMainThreadChecker.dylib") ?? false ||
                 processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil
         #endif
+        
+        // Perform preference migration as early as possible
+        if !isRunningInTests && !isRunningInPreview {
+            let migrationService = PreferenceMigrationService()
+            migrationService.performMigrationIfNeeded()
+        }
 
         // Handle single instance check before doing anything else
         #if DEBUG
