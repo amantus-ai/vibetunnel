@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os.log
 
 /// Server session information returned by the API
 struct ServerSessionInfo: Codable {
@@ -43,6 +44,7 @@ final class SessionMonitor {
     private let cacheInterval: TimeInterval = 2.0
     private let serverPort: Int
     private var localAuthToken: String?
+    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionMonitor")
 
     private init() {
         let port = UserDefaults.standard.integer(forKey: "serverPort")
@@ -117,6 +119,8 @@ final class SessionMonitor {
             self.sessions = sessionsDict
             self.lastError = nil
             self.lastFetch = Date()
+            
+            logger.debug("Fetched \(sessionsArray.count) sessions, \(sessionsDict.values.filter { $0.isRunning }.count) running")
 
             // Update WindowTracker
             WindowTracker.shared.updateFromSessions(sessionsArray)

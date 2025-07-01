@@ -43,6 +43,12 @@ struct MenuBarView: View {
             if !sessionMonitor.sessions.isEmpty {
                 SessionListView(sessions: sessionMonitor.sessions)
                     .padding(.horizontal, 4)
+            } else {
+                Text("No sessions")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
             }
 
             Divider()
@@ -171,6 +177,12 @@ struct MenuBarView: View {
         }
         .frame(minWidth: 200)
         .task {
+            // Initial delay to ensure auth token is set
+            try? await Task.sleep(for: .milliseconds(500))
+            
+            // Force initial refresh
+            await sessionMonitor.refresh()
+            
             // Update sessions periodically while view is visible
             while true {
                 _ = await sessionMonitor.getSessions()
