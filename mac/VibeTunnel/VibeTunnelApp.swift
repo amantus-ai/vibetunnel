@@ -89,18 +89,7 @@ struct VibeTunnelApp: App {
                 }
             }
 
-            MenuBarExtra {
-                MenuBarView()
-                    .environment(sessionMonitor)
-                    .environment(serverManager)
-                    .environment(ngrokService)
-                    .environment(tailscaleService)
-                    .environment(permissionManager)
-                    .environment(terminalLauncher)
-            } label: {
-                Image("menubar")
-                    .renderingMode(.template)
-            }
+            // MenuBarExtra is replaced by custom StatusBarController in AppDelegate
         #endif
     }
 }
@@ -113,6 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
     private(set) var sparkleUpdaterManager: SparkleUpdaterManager?
     var app: VibeTunnelApp?
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AppDelegate")
+    private var statusBarController: StatusBarController?
 
     /// Distributed notification name used to ask an existing instance to show the Settings window.
     private static let showSettingsNotification = Notification.Name("sh.vibetunnel.vibetunnel.showSettings")
@@ -214,6 +204,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                 if let error = serverManager.lastError {
                     logger.error("Server start error: \(error.localizedDescription)")
                 }
+            }
+            
+            // Initialize status bar controller after services are ready
+            if let sessionMonitor = app?.sessionMonitor,
+               let serverManager = app?.serverManager,
+               let ngrokService = app?.ngrokService,
+               let tailscaleService = app?.tailscaleService,
+               let terminalLauncher = app?.terminalLauncher {
+                statusBarController = StatusBarController(
+                    sessionMonitor: sessionMonitor,
+                    serverManager: serverManager,
+                    ngrokService: ngrokService,
+                    tailscaleService: tailscaleService,
+                    terminalLauncher: terminalLauncher
+                )
             }
         }
     }
