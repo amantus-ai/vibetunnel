@@ -22,19 +22,23 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (_req: any, _file: any, cb: any) => {
+  destination: (_req, _file, cb) => {
     cb(null, UPLOADS_DIR);
   },
-  filename: (_req: any, file: any, cb: any) => {
+  filename: (_req, file, cb) => {
     // Generate unique filename with original extension
     const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
   },
 });
 
-// File filter to allow all files
-const fileFilter = (_req: any, file: any, cb: any) => {
-  // Allow all file types
+// File filter configuration
+// Note: We intentionally do not restrict file types to provide maximum flexibility
+// for users. While the terminal display may not support all file formats (e.g.,
+// binary files, executables), users should be able to upload any file they need
+// and receive the path in their terminal for further processing.
+const fileFilter: multer.Options['fileFilter'] = (_req, _file, cb) => {
+  // Accept all file types - no restrictions by design
   cb(null, true);
 };
 
@@ -53,7 +57,7 @@ export function createFileRoutes(): Router {
   router.post(
     '/files/upload',
     upload.single('file'),
-    (req: AuthenticatedRequest & { file?: any }, res) => {
+    (req: AuthenticatedRequest & { file?: Express.Multer.File }, res) => {
       try {
         if (!req.file) {
           return res.status(400).json({ error: 'No file provided' });

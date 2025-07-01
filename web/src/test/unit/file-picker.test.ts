@@ -241,8 +241,8 @@ describe('FilePicker Component', () => {
 
     const imageFile = new File(['fake image'], 'test.png', { type: 'image/png' });
 
-    const imageSelectedSpy = vi.fn();
-    element.addEventListener('image-selected', imageSelectedSpy);
+    const fileSelectedSpy = vi.fn();
+    element.addEventListener('file-selected', fileSelectedSpy);
 
     const uploadPromise = element.uploadFile(imageFile);
 
@@ -252,6 +252,6 @@ describe('FilePicker Component', () => {
 
     await uploadPromise;
 
-    expect(imageSelectedSpy).toHaveBeenCalledOnce();
+    expect(fileSelectedSpy).toHaveBeenCalledOnce();
   });
 });
