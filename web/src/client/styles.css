@@ -768,7 +768,6 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 /* Enhanced terminal container styling */
 .terminal-container {
   color: #e4e4e4;
-  white-space: pre;
   overflow: hidden;
   background-color: #0a0a0a;
 }
