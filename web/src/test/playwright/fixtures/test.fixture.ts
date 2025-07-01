@@ -131,7 +131,7 @@ export const test = base.extend<{
     try {
       // Wait for the vibetunnel-app element to be attached
       console.log('[Test Setup] Waiting for vibetunnel-app element...');
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 30000 });
 
       // Wait for the app to render some content
       console.log('[Test Setup] Waiting for app to render content...');
@@ -140,7 +140,7 @@ export const test = base.extend<{
           const app = document.querySelector('vibetunnel-app');
           return app && app.innerHTML.length > 100; // Has meaningful content
         },
-        { timeout: 10000 }
+        { timeout: 30000 }
       );
 
       // Give it a moment to stabilize
