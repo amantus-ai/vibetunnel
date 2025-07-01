@@ -35,7 +35,13 @@ import { WriteQueue } from '../utils/write-queue.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
 import { ProcessUtils } from './process-utils.js';
 import { SessionManager } from './session-manager.js';
-import { frameMessage, MessageType } from './socket-protocol.js';
+import {
+  type ControlCommand,
+  frameMessage,
+  MessageParser,
+  MessageType,
+  parsePayload,
+} from './socket-protocol.js';
 import {
   type KillControlMessage,
   PtyError,
@@ -369,12 +375,7 @@ export class PtyManager extends EventEmitter {
       // Setup PTY event handlers
       this.setupPtyHandlers(session, options.forwardToStdout || false, options.onExit);
 
-      // Setup stdin forwarding if forwarding to stdout
-      if (options.forwardToStdout) {
-        // Setup stdin forwarding for fwd mode
-        this.setupStdinForwarding(session);
-        logger.log(chalk.gray('Stdin forwarding enabled'));
-      }
+      // Note: stdin forwarding is now handled via IPC socket
 
       // Setup session.json watcher for title updates (vt title command)
       this.setupSessionJsonWatcher(session);
@@ -670,23 +671,36 @@ export class PtyManager extends EventEmitter {
       logger.debug(`Sent initial ${session.titleMode} title for session ${session.id}`);
     }
 
-    // Monitor stdin file for input
-    this.monitorStdinFile(session);
+    // Setup IPC socket for all communication
+    this.setupIPCSocket(session);
   }
 
   /**
-   * Monitor stdin file for input data using Unix socket for lowest latency
+   * Setup Unix socket for all IPC communication
    */
-  private monitorStdinFile(session: PtySession): void {
+  private setupIPCSocket(session: PtySession): void {
     const ptyProcess = session.ptyProcess;
     if (!ptyProcess) {
       logger.error(`No PTY process found for session ${session.id}`);
       return;
     }
 
-    // Create Unix domain socket for fast IPC
-    // Use shorter name to avoid macOS 104 char limit for Unix socket paths
-    const socketPath = path.join(session.controlDir, 'i.sock');
+    // Create Unix domain socket for all IPC
+    // IMPORTANT: macOS has a 104 character limit for Unix socket paths, including null terminator.
+    // This means the actual usable path length is 103 characters. To avoid EINVAL errors:
+    // - Use short socket names (e.g., 'ipc.sock' instead of 'vibetunnel-ipc.sock')
+    // - Keep session directories as short as possible
+    // - Avoid deeply nested directory structures
+    const socketPath = path.join(session.controlDir, 'ipc.sock');
+
+    // Verify the socket path isn't too long
+    if (socketPath.length > 103) {
+      logger.error(`Socket path too long (${socketPath.length} chars): ${socketPath}`);
+      logger.error(
+        `macOS limit is 103 characters. Consider using shorter session IDs or control paths.`
+      );
+      return;
+    }
 
     try {
       // Remove existing socket if it exists
@@ -696,17 +710,21 @@ export class PtyManager extends EventEmitter {
         // Socket doesn't exist, this is expected
       }
 
-      // Create Unix domain socket server
+      // Create Unix domain socket server with framed message protocol
       const inputServer = net.createServer((client) => {
+        const parser = new MessageParser();
         client.setNoDelay(true);
-        client.on('data', (data) => {
-          const text = data.toString('utf8');
-          if (ptyProcess) {
-            // Write input first for fastest response
-            ptyProcess.write(text);
-            // Then record it (non-blocking)
-            session.asciinemaWriter?.writeInput(text);
+
+        client.on('data', (chunk) => {
+          parser.addData(chunk);
+
+          for (const { type, payload } of parser.parseMessages()) {
+            this.handleSocketMessage(session, type, payload);
           }
+        });
+
+        client.on('error', (err) => {
+          logger.debug(`Client socket error for session ${session.id}:`, err);
         });
       });
 
@@ -726,7 +744,44 @@ export class PtyManager extends EventEmitter {
       logger.error(`Failed to create input socket for session ${session.id}:`, error);
     }
 
-    // Socket-only approach - no FIFO monitoring
+    // All IPC goes through this socket
+  }
+
+  /**
+   * Handle incoming socket messages
+   */
+  private handleSocketMessage(session: PtySession, type: MessageType, payload: Buffer): void {
+    try {
+      const data = parsePayload(type, payload);
+
+      switch (type) {
+        case MessageType.STDIN_DATA: {
+          const text = data as string;
+          if (session.ptyProcess) {
+            // Write input first for fastest response
+            session.ptyProcess.write(text);
+            // Then record it (non-blocking)
+            session.asciinemaWriter?.writeInput(text);
+          }
+          break;
+        }
+
+        case MessageType.CONTROL_CMD: {
+          const cmd = data as ControlCommand;
+          this.handleControlMessage(session, cmd);
+          break;
+        }
+
+        case MessageType.HEARTBEAT:
+          // Echo heartbeat back (could add heartbeat response later)
+          break;
+
+        default:
+          logger.debug(`Unknown message type ${type} for session ${session.id}`);
+      }
+    } catch (error) {
+      logger.error(`Failed to handle socket message for session ${session.id}:`, error);
+    }
   }
 
   /**
@@ -950,7 +1005,7 @@ export class PtyManager extends EventEmitter {
         }
 
         // For forwarded sessions, we need to use socket communication
-        const socketPath = path.join(sessionPaths.controlDir, 'i.sock');
+        const socketPath = path.join(sessionPaths.controlDir, 'ipc.sock');
 
         // Check if we have a cached socket connection
         let socketClient = this.inputSocketClients.get(sessionId);
@@ -978,8 +1033,9 @@ export class PtyManager extends EventEmitter {
         }
 
         if (socketClient && !socketClient.destroyed) {
-          // Write and check for backpressure
-          const canWrite = socketClient.write(dataToSend);
+          // Send stdin data using framed message protocol
+          const message = frameMessage(MessageType.STDIN_DATA, dataToSend);
+          const canWrite = socketClient.write(message);
           if (!canWrite) {
             // Socket buffer is full
             logger.debug(`Socket buffer full for session ${sessionId}, data queued`);
@@ -1703,17 +1759,12 @@ export class PtyManager extends EventEmitter {
   private setupStdinForwarding(session: PtySession): void {
     if (!session.ptyProcess) return;
 
-    // Create and store the listener to enable cleanup
-    const stdinDataListener = (data: Buffer) => {
-      try {
-        session.ptyProcess?.write(data.toString());
-      } catch (error) {
-        logger.error(`Failed to forward stdin to session ${session.id}:`, error);
-      }
-    };
-
-    session.stdinDataListener = stdinDataListener;
-    process.stdin.on('data', stdinDataListener);
+    // IMPORTANT: stdin forwarding is now handled via IPC socket in fwd.ts
+    // This method is kept for backward compatibility but should not be used
+    // as it would cause stdin duplication if multiple sessions are created
+    logger.warn(
+      `setupStdinForwarding called for session ${session.id} - stdin should be handled via IPC socket`
+    );
   }
 
   /**
@@ -1742,7 +1793,7 @@ export class PtyManager extends EventEmitter {
       // Unref the server so it doesn't keep the process alive
       session.inputSocketServer.unref();
       try {
-        fs.unlinkSync(path.join(session.controlDir, 'i.sock'));
+        fs.unlinkSync(path.join(session.controlDir, 'ipc.sock'));
       } catch (_e) {
         // Socket already removed
       }
@@ -1757,10 +1808,6 @@ export class PtyManager extends EventEmitter {
       session.sessionJsonWatcher.close();
     }
 
-    // Clean up stdin listener
-    if (session.stdinDataListener) {
-      process.stdin.removeListener('data', session.stdinDataListener);
-      session.stdinDataListener = undefined;
-    }
+    // Note: stdin handling is now done via IPC socket, no global listeners to clean up
   }
 }
