@@ -9,9 +9,19 @@ import Observation
 @Observable
 @MainActor
 final class ConnectionManager {
+    
+    // MARK: - Constants
+    
+    private enum Constants {
+        static let connectionRestorationWindow: TimeInterval = 3_600 // 1 hour
+        static let savedServerConfigKey = "savedServerConfig"
+        static let connectionStateKey = "connectionState"
+        static let lastConnectionTimeKey = "lastConnectionTime"
+    }
     var isConnected: Bool = false {
         didSet {
-            storage.set(isConnected, forKey: "connectionState")
+            guard oldValue != isConnected else { return }
+            storage.set(isConnected, forKey: Constants.connectionStateKey)
         }
     }
 
@@ -27,7 +37,7 @@ final class ConnectionManager {
     }
 
     private func loadSavedConnection() {
-        if let data = storage.data(forKey: "savedServerConfig"),
+        if let data = storage.data(forKey: Constants.savedServerConfigKey),
            let config = try? JSONDecoder().decode(ServerConfig.self, from: data)
         {
             self.serverConfig = config
@@ -48,13 +58,13 @@ final class ConnectionManager {
 
     private func restoreConnectionState() {
         // Restore connection state if app was terminated while connected
-        let wasConnected = storage.bool(forKey: "connectionState")
-        if let lastConnectionData = storage.object(forKey: "lastConnectionTime") as? Date {
+        let wasConnected = storage.bool(forKey: Constants.connectionStateKey)
+        if let lastConnectionData = storage.object(forKey: Constants.lastConnectionTimeKey) as? Date {
             lastConnectionTime = lastConnectionData
 
             // Only restore connection if it was within the last hour
             let timeSinceLastConnection = Date().timeIntervalSince(lastConnectionData)
-            if wasConnected && timeSinceLastConnection < 3_600 && serverConfig != nil {
+            if wasConnected && timeSinceLastConnection < Constants.connectionRestorationWindow && serverConfig != nil {
                 // Attempt to restore connection
                 isConnected = true
             } else {
@@ -66,14 +76,9 @@ final class ConnectionManager {
 
     func saveConnection(_ config: ServerConfig) {
         if let data = try? JSONEncoder().encode(config) {
-            storage.set(data, forKey: "savedServerConfig")
-            self.serverConfig = config
-
-            // Save connection timestamp
-            lastConnectionTime = Date()
-            storage.set(lastConnectionTime, forKey: "lastConnectionTime")
-
-            // Create and configure authentication service
+            // Create and configure authentication service BEFORE saving config
+            // This prevents race conditions where other components try to use
+            // the API client before authentication is properly configured
             authenticationService = AuthenticationService(
                 apiClient: APIClient.shared,
                 serverConfig: config
@@ -84,17 +89,30 @@ final class ConnectionManager {
                 APIClient.shared.setAuthenticationService(authService)
                 BufferWebSocketClient.shared.setAuthenticationService(authService)
             }
+
+            // Now save the config and timestamp after auth is set up
+            storage.set(data, forKey: Constants.savedServerConfigKey)
+            self.serverConfig = config
+
+            // Save connection timestamp
+            lastConnectionTime = Date()
+            storage.set(lastConnectionTime, forKey: Constants.lastConnectionTimeKey)
         }
     }
 
     func disconnect() {
         isConnected = false
-        storage.removeObject(forKey: "connectionState")
-        storage.removeObject(forKey: "lastConnectionTime")
+        storage.removeObject(forKey: Constants.connectionStateKey)
+        storage.removeObject(forKey: Constants.lastConnectionTimeKey)
 
-        // Clean up authentication
-        Task {
-            await authenticationService?.logout()
+        // Clean up authentication with proper error handling
+        Task { @MainActor in
+            do {
+                try await authenticationService?.logout()
+            } catch {
+                // Log error but don't throw - disconnection should always succeed
+                print("Warning: Failed to logout during disconnect: \(error.localizedDescription)")
+            }
             authenticationService = nil
         }
     }
