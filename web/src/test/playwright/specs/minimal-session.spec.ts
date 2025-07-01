@@ -45,9 +45,9 @@ test.describe('Minimal Session Tests', () => {
       }
     }
 
-    // Verify all sessions are listed
+    // Verify all sessions are listed as running
     for (const sessionName of sessionNames) {
-      await assertSessionInList(page, sessionName);
+      await assertSessionInList(page, sessionName, { status: 'RUNNING' });
     }
 
     // Count total session cards (should be at least our 3)

@@ -35,15 +35,24 @@ export async function assertSessionInList(
 
   // Find and verify the session card
   const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
-  await expect(sessionCard).toBeVisible({ timeout });
+  
+  // If status is specified, filter by status
+  let targetCard = sessionCard;
+  if (status) {
+    const lowerStatus = status.toLowerCase();
+    targetCard = sessionCard.filter({ hasText: new RegExp(lowerStatus, 'i') });
+  }
+  
+  // Use first() to avoid strict mode violations when there are multiple matches
+  await expect(targetCard.first()).toBeVisible({ timeout });
 
-  // Optionally verify status
+  // Optionally verify status (already filtered above, but double-check)
   if (status) {
     // The DOM shows lowercase status values, so we need to check for both cases
     const lowerStatus = status.toLowerCase();
 
     // Look for the span with data-status attribute
-    const statusElement = sessionCard.locator('span[data-status]').first();
+    const statusElement = targetCard.first().locator('span[data-status]').first();
 
     try {
       // Wait for the status element to be visible

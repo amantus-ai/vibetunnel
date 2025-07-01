@@ -75,6 +75,7 @@ export const test = base.extend<TestFixtures>({
         .evaluate(() => {
           localStorage.clear();
           sessionStorage.clear();
+          // Keep hideExitedSessions as false for testing
           localStorage.setItem('hideExitedSessions', 'false');
 
           if (typeof indexedDB !== 'undefined' && indexedDB.deleteDatabase) {
