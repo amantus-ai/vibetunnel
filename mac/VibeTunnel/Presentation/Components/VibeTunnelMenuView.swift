@@ -331,7 +331,7 @@ struct ServerAddressRow: View {
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
             Button(action: {
-                if let url = url ?? (address.isEmpty ? nil : URL(string: "http://\(computedAddress)")) {
+                if let url = url ?? URL(string: "http://\(computedAddress)") {
                     NSWorkspace.shared.open(url)
                 }
             }) {
