@@ -6,6 +6,8 @@
 	<string></string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>LSUIElement</key>
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -47,8 +49,6 @@
 	<true/>
 	<key>NSSupportsSuddenTermination</key>
 	<true/>
-	<key>NSUserNotificationsUsageDescription</key>
-	<string>VibeTunnel will notify you about important events such as new terminal connections, session status changes, and available updates.</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
@@ -57,5 +57,9 @@
 	<string>AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>VibeTunnel needs to control terminal applications to create new terminal sessions from the dashboard.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>VibeTunnel will notify you about important events such as new terminal connections, session status changes, and available updates.</string>
 </dict>
 </plist>
