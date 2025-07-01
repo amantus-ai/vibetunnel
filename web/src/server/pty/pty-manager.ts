@@ -67,6 +67,7 @@ export class PtyManager extends EventEmitter {
     super();
     this.sessionManager = new SessionManager(controlPath);
     this.setupTerminalResizeDetection();
+    this.setupPeriodicCleanup();
   }
 
   /**
@@ -166,6 +167,23 @@ export class PtyManager extends EventEmitter {
         }
       }
     }
+  }
+
+  /**
+   * Setup periodic cleanup of warning set for sessions that no longer exist
+   */
+  private setupPeriodicCleanup(): void {
+    setInterval(() => {
+      // Clean up warnings for sessions that no longer exist
+      const activeSessions = new Set(this.sessions.keys());
+      const diskSessions = new Set(this.sessionManager.listSessions().map((s) => s.id));
+
+      for (const sessionId of this.activityFileWarningsLogged) {
+        if (!activeSessions.has(sessionId) && !diskSessions.has(sessionId)) {
+          this.activityFileWarningsLogged.delete(sessionId);
+        }
+      }
+    }, 300000); // Every 5 minutes
   }
 
   /**
@@ -516,10 +534,10 @@ export class PtyManager extends EventEmitter {
     // Handle PTY data output - Use SafePTYWriter if available
     if (session.safePtyWriter && forwardToStdout) {
       // Use SafePTYWriter for safe title injection
-      session.safePtyWriter.attach((data: string) => {
-        // Write to asciinema file (it has its own internal queue)
-        asciinemaWriter?.writeOutput(Buffer.from(data, 'utf8'));
+      // Track pending title at session level to fix scope issue
+      let pendingTitle: string | null = null;
 
+      session.safePtyWriter.attach((data: string) => {
         // Forward to stdout if requested (using queue for ordering)
         if (stdoutQueue) {
           stdoutQueue.enqueue(async () => {
@@ -532,8 +550,6 @@ export class PtyManager extends EventEmitter {
       });
 
       // Intercept PTY data and handle title injection
-      let pendingTitle: string | null = null;
-
       ptyProcess.onData((data: string) => {
         let processedData = data;
 
@@ -545,11 +561,13 @@ export class PtyManager extends EventEmitter {
             const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
             const title = `${path.basename(currentDir)} — ${session.sessionInfo.command.join(' ')}`;
 
-            // Queue title for safe injection
+            // Queue title for safe injection (with null check)
             if (!session.initialTitleSent || pendingTitle !== title) {
-              session.safePtyWriter!.queueTitle(title);
-              pendingTitle = title;
-              session.initialTitleSent = true;
+              if (session.safePtyWriter) {
+                session.safePtyWriter.queueTitle(title);
+                pendingTitle = title;
+                session.initialTitleSent = true;
+              }
             }
             break;
           }
@@ -604,18 +622,25 @@ export class PtyManager extends EventEmitter {
                 // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
                 .replace(/\x07$/, ''); // Extract just the title text
 
-              // Queue title for safe injection
+              // Queue title for safe injection (with null check)
               if (pendingTitle !== title) {
-                session.safePtyWriter!.queueTitle(title);
-                pendingTitle = title;
+                if (session.safePtyWriter) {
+                  session.safePtyWriter.queueTitle(title);
+                  pendingTitle = title;
+                }
               }
             }
             break;
         }
 
+        // Write to asciinema file BEFORE title injection (capture original data)
+        asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
+
         // Process the filtered data through SafePTYWriter
-        // This will inject titles at safe points
-        session.safePtyWriter!.processOutput(processedData);
+        // This will inject titles at safe points (with null check)
+        if (session.safePtyWriter) {
+          session.safePtyWriter.processOutput(processedData);
+        }
       });
     } else {
       // Fallback to original implementation for non-title modes

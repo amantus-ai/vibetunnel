@@ -151,9 +151,7 @@ export class SafePTYWriter extends EventEmitter {
    * Check if we can inject during idle period
    */
   private checkIdleInjection(): void {
-    // Don't inject if we're currently processing output
-    if (this.isProcessingOutput) {
-      // Reschedule check
+    if (this.isProcessingOutput || !this.pendingTitle) {
       this.scheduleIdleCheck();
       return;
     }
@@ -161,22 +159,18 @@ export class SafePTYWriter extends EventEmitter {
     const now = Date.now();
     const idleTime = now - this.lastOutputTime;
 
-    if (idleTime >= this.idleThreshold && this.pendingTitle) {
-      // Double-check that we're still idle
-      if (now - this.lastOutputTime >= this.idleThreshold && !this.isProcessingOutput) {
-        // Safe to inject during idle
-        const title = this.pendingTitle;
-        this.pendingTitle = null;
+    if (idleTime >= this.idleThreshold) {
+      // Atomic swap to prevent race conditions
+      const titleToInject = this.pendingTitle;
+      this.pendingTitle = null;
 
-        if (this.debug) {
-          logger.debug(`Injecting title during idle period (${idleTime}ms idle)`);
-        }
-
-        this.injectTitle(title);
-      } else {
-        // Race condition detected, reschedule
-        this.scheduleIdleCheck();
+      if (this.debug) {
+        logger.debug(`Injecting title during idle period (${idleTime}ms idle)`);
       }
+
+      this.injectTitle(titleToInject);
+    } else {
+      this.scheduleIdleCheck();
     }
   }
 

@@ -39,6 +39,7 @@ export class PTYStreamAnalyzer {
   private consecutiveNormalBytes = 0;
   private promptPatternBuffer = '';
   private recentBytesCount = 0;
+  private escapeStartTime?: number;
 
   // Confidence levels for different injection points
   private static readonly CONFIDENCE = {
@@ -48,6 +49,12 @@ export class PTYStreamAnalyzer {
     SEQUENCE_END: 80,
     SIMPLE_ESCAPE_END: 70,
   } as const;
+
+  // Maximum escape sequence buffer size to prevent memory issues
+  private static readonly MAX_ESCAPE_BUFFER_SIZE = 1024;
+
+  // Escape sequence timeout to handle malformed sequences
+  private static readonly ESCAPE_TIMEOUT_MS = 1000;
 
   // Common prompt patterns
   // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal prompt patterns need control characters
@@ -219,6 +226,14 @@ export class PTYStreamAnalyzer {
    * Handle escape sequence start
    */
   private handleEscapeStart(byte: number, position: number): SafeInjectionPoint | null {
+    // Check for escape buffer overflow
+    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
+      logger.warn('Escape sequence exceeded maximum length, resetting to normal');
+      this.state = StreamState.NORMAL;
+      this.escapeBuffer = '';
+      return null;
+    }
+
     this.escapeBuffer += String.fromCharCode(byte);
 
     // Determine sequence type
@@ -257,6 +272,14 @@ export class PTYStreamAnalyzer {
    * Handle CSI (Control Sequence Introducer) sequences
    */
   private handleCSISequence(byte: number, position: number): SafeInjectionPoint | null {
+    // Check for escape buffer overflow
+    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
+      logger.warn('CSI sequence exceeded maximum length, resetting to normal');
+      this.state = StreamState.NORMAL;
+      this.escapeBuffer = '';
+      return null;
+    }
+
     this.escapeBuffer += String.fromCharCode(byte);
 
     // CSI sequences end with a letter (0x40-0x7E)
@@ -280,6 +303,14 @@ export class PTYStreamAnalyzer {
    * Handle OSC (Operating System Command) sequences
    */
   private handleOSCSequence(byte: number, position: number): SafeInjectionPoint | null {
+    // Check for escape buffer overflow
+    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
+      logger.warn('OSC sequence exceeded maximum length, resetting to normal');
+      this.state = StreamState.NORMAL;
+      this.escapeBuffer = '';
+      return null;
+    }
+
     this.escapeBuffer += String.fromCharCode(byte);
 
     // OSC sequences end with ST (ESC\) or BEL
@@ -306,6 +337,14 @@ export class PTYStreamAnalyzer {
    * Handle DCS (Device Control String) sequences
    */
   private handleDCSSequence(byte: number, position: number): SafeInjectionPoint | null {
+    // Check for escape buffer overflow
+    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
+      logger.warn('DCS sequence exceeded maximum length, resetting to normal');
+      this.state = StreamState.NORMAL;
+      this.escapeBuffer = '';
+      return null;
+    }
+
     this.escapeBuffer += String.fromCharCode(byte);
 
     // DCS sequences end with ST (ESC\)
@@ -328,12 +367,21 @@ export class PTYStreamAnalyzer {
    * Handle APC (Application Program Command) sequences
    */
   private handleAPCSequence(byte: number, position: number): SafeInjectionPoint | null {
+    // Check for escape buffer overflow
+    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
+      logger.warn('APC sequence exceeded maximum length, resetting to normal');
+      this.state = StreamState.NORMAL;
+      this.escapeBuffer = '';
+      return null;
+    }
+
     this.escapeBuffer += String.fromCharCode(byte);
 
     // APC sequences end with ST (ESC\)
     if (this.lastByte === 0x1b && byte === 0x5c) {
       this.state = StreamState.NORMAL;
       this.escapeBuffer = '';
+      this.escapeStartTime = undefined;
 
       // Safe after APC sequence
       return {
@@ -350,12 +398,21 @@ export class PTYStreamAnalyzer {
    * Handle PM (Privacy Message) sequences
    */
   private handlePMSequence(byte: number, position: number): SafeInjectionPoint | null {
+    // Check for escape buffer overflow
+    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
+      logger.warn('PM sequence exceeded maximum length, resetting to normal');
+      this.state = StreamState.NORMAL;
+      this.escapeBuffer = '';
+      return null;
+    }
+
     this.escapeBuffer += String.fromCharCode(byte);
 
     // PM sequences end with ST (ESC\)
     if (this.lastByte === 0x1b && byte === 0x5c) {
       this.state = StreamState.NORMAL;
       this.escapeBuffer = '';
+      this.escapeStartTime = undefined;
 
       // Safe after PM sequence
       return {
