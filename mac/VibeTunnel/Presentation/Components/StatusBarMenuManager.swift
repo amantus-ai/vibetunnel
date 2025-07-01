@@ -88,7 +88,11 @@ final class StatusBarMenuManager {
                 }
             }
         } else {
-            // Update content if window already exists
+            // Hide and cleanup old window before creating new one
+            customWindow?.hide()
+            customWindow = nil
+            
+            // Create new window with updated content
             customWindow = CustomMenuWindow(contentView: containerView)
             customWindow?.onHide = { [weak self] in
                 Task { @MainActor in
