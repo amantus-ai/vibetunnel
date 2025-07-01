@@ -1125,7 +1125,7 @@ export class VibeTunnelApp extends LitElement {
     const collapsedClasses = this.sidebarCollapsed
       ? isMobile
         ? 'hidden mobile-sessions-sidebar collapsed'
-        : 'sm:w-0 sm:overflow-hidden sm:translate-x-0 flex'
+        : 'sm:overflow-hidden sm:translate-x-0 flex'
       : isMobile
         ? 'overflow-visible sm:translate-x-0 flex mobile-sessions-sidebar expanded'
         : 'overflow-visible sm:translate-x-0 flex';
@@ -1134,12 +1134,18 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private get sidebarStyles(): string {
-    if (!this.showSplitView || this.sidebarCollapsed) {
-      const isMobile = this.mediaState.isMobile;
-      return this.showSplitView && this.sidebarCollapsed && !isMobile ? 'width: 0px;' : '';
+    if (!this.showSplitView) {
+      return '';
     }
 
     const isMobile = this.mediaState.isMobile;
+
+    if (this.sidebarCollapsed) {
+      // On desktop, show collapsed width; on mobile, hide completely
+      return isMobile ? '' : `width: ${SIDEBAR.COLLAPSED_WIDTH}px;`;
+    }
+
+    // Expanded state
     if (isMobile) {
       return `width: calc(100vw - ${SIDEBAR.MOBILE_RIGHT_MARGIN}px);`;
     }
@@ -1272,6 +1278,7 @@ export class VibeTunnelApp extends LitElement {
             .sessions=${this.sessions}
             .hideExited=${this.hideExited}
             .showSplitView=${showSplitView}
+            .sidebarCollapsed=${this.sidebarCollapsed}
             .currentUser=${authClient.getCurrentUser()?.userId || null}
             .authMethod=${authClient.getCurrentUser()?.authMethod || null}
             @create-session=${this.handleCreateSession}
@@ -1282,6 +1289,7 @@ export class VibeTunnelApp extends LitElement {
             @open-settings=${this.handleOpenSettings}
             @logout=${this.handleLogout}
             @navigate-to-list=${this.handleNavigateToList}
+            @toggle-sidebar=${this.handleToggleSidebar}
           ></app-header>
           <div class="${this.showSplitView ? 'flex-1 overflow-y-auto' : 'flex-1'} bg-dark-bg-secondary">
             <session-list
@@ -1290,6 +1298,7 @@ export class VibeTunnelApp extends LitElement {
               .hideExited=${this.hideExited}
               .selectedSessionId=${this.selectedSessionId}
               .compactMode=${showSplitView}
+              .collapsed=${this.sidebarCollapsed}
               .authClient=${authClient}
               @session-killed=${this.handleSessionKilled}
               @refresh=${this.handleRefresh}

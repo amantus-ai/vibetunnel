@@ -4,26 +4,59 @@
  * Compact header for sidebar/split view with vertical layout
  */
 import { html } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import { HeaderBase } from './header-base.js';
 import './terminal-icon.js';
 import './notification-status.js';
 
 @customElement('sidebar-header')
 export class SidebarHeader extends HeaderBase {
+  @property({ type: Boolean }) collapsed = false;
   render() {
     const runningSessions = this.runningSessions;
 
+    // Collapsed state - just show toggle button
+    if (this.collapsed) {
+      return html`
+        <div
+          class="app-header sidebar-header bg-dark-bg-secondary border-b border-dark-border p-3 flex justify-center"
+          style="padding-top: max(0.75rem, calc(0.75rem + env(safe-area-inset-top)));"
+        >
+          <button
+            class="p-2 text-dark-text-muted hover:text-dark-text rounded-lg hover:bg-dark-bg-tertiary transition-all duration-200"
+            @click=${() => this.dispatchEvent(new CustomEvent('toggle-sidebar'))}
+            title="Expand sidebar"
+          >
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
+            </svg>
+          </button>
+        </div>
+      `;
+    }
+
+    // Expanded state - full header
     return html`
       <div
         class="app-header sidebar-header bg-dark-bg-secondary border-b border-dark-border p-3"
         style="padding-top: max(0.75rem, calc(0.75rem + env(safe-area-inset-top)));"
       >
         <!-- Compact layout for sidebar -->
-        <div class="flex items-center justify-between">
-          <!-- Title and logo -->
+        <div class="flex items-center gap-2">
+          <!-- Toggle button -->
           <button
-            class="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer group"
+            class="p-2 text-dark-text-muted hover:text-dark-text rounded-lg hover:bg-dark-bg-tertiary transition-all duration-200 flex-shrink-0"
+            @click=${() => this.dispatchEvent(new CustomEvent('toggle-sidebar'))}
+            title="Collapse sidebar"
+          >
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"/>
+            </svg>
+          </button>
+          
+          <!-- Title and logo with flex-grow for centering -->
+          <button
+            class="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer group flex-grow"
             title="Go to home"
             @click=${this.handleHomeClick}
           >
@@ -41,7 +74,7 @@ export class SidebarHeader extends HeaderBase {
           </button>
           
           <!-- Action buttons group -->
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1 flex-shrink-0">
             <!-- Notification button -->
             <notification-status
               @open-settings=${() => this.dispatchEvent(new CustomEvent('open-settings'))}

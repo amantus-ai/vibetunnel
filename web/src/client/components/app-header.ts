@@ -10,6 +10,7 @@
  * @fires clean-exited-sessions - When clean exited button is clicked
  * @fires open-file-browser - When browse button is clicked
  * @fires logout - When logout is clicked
+ * @fires toggle-sidebar - When sidebar toggle button is clicked
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
@@ -30,6 +31,7 @@ export class AppHeader extends LitElement {
   @property({ type: Boolean }) showSplitView = false;
   @property({ type: String }) currentUser: string | null = null;
   @property({ type: String }) authMethod: string | null = null;
+  @property({ type: Boolean }) sidebarCollapsed = false;
 
   private forwardEvent = (e: Event) => {
     // Forward events from child components to parent
@@ -52,6 +54,7 @@ export class AppHeader extends LitElement {
         .hideExited=${this.hideExited}
         .currentUser=${this.currentUser}
         .authMethod=${this.authMethod}
+        .collapsed=${this.sidebarCollapsed}
         @create-session=${this.forwardEvent}
         @hide-exited-change=${this.forwardEvent}
         @kill-all-sessions=${this.forwardEvent}
@@ -60,6 +63,7 @@ export class AppHeader extends LitElement {
         @open-settings=${this.forwardEvent}
         @logout=${this.forwardEvent}
         @navigate-to-list=${this.forwardEvent}
+        @toggle-sidebar=${this.forwardEvent}
       ></sidebar-header>
     `;
   }

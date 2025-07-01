@@ -10,6 +10,7 @@ export const SIDEBAR = {
   DEFAULT_WIDTH: 320,
   MIN_WIDTH: 240,
   MAX_WIDTH: 600,
+  COLLAPSED_WIDTH: 60,
   MOBILE_RIGHT_MARGIN: 80,
 } as const;
 
