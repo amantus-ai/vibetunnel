@@ -30,7 +30,7 @@ final class CLIInstaller {
     private let binDirectory: String
 
     private var vtTargetPath: String {
-        return URL(fileURLWithPath: binDirectory).appendingPathComponent("vt").path
+        URL(fileURLWithPath: binDirectory).appendingPathComponent("vt").path
     }
 
     var isInstalled = false

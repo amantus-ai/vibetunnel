@@ -421,11 +421,6 @@ struct CLIInstallerTests {
 
     @Test("Script with TITLE_MODE_ARGS detected correctly", .tags(.regression))
     func scriptWithTitleModeArgsDetection() async throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("VibeTunnelTest-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
         let script = """
         #!/bin/bash
         # VibeTunnel CLI wrapper
@@ -440,10 +435,10 @@ struct CLIInstallerTests {
         exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
         """
 
-        try script.write(toFile: tempDir.appendingPathComponent("vt").path,
-                         atomically: true, encoding: .utf8)
+        let vtPath = tempDirectory.appendingPathComponent("vt").path
+        try script.write(toFile: vtPath, atomically: true, encoding: .utf8)
 
-        let installer = CLIInstaller(binDirectory: tempDir.path)
+        let installer = CLIInstaller(binDirectory: tempDirectory.path)
         installer.checkInstallationStatus()
 
         #expect(installer.isInstalled == true)
