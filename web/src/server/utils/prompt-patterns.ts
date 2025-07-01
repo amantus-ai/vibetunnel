@@ -190,5 +190,5 @@ export namespace PromptDetector {
 }
 
 // Export for backward compatibility
-export const isPromptOnly = PromptDetector.isPromptOnly.bind(PromptDetector);
-export const endsWithPrompt = PromptDetector.endsWithPrompt.bind(PromptDetector);
+export const isPromptOnly = PromptDetector.isPromptOnly;
+export const endsWithPrompt = PromptDetector.endsWithPrompt;
