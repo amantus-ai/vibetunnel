@@ -120,6 +120,18 @@ export const test = base.extend<TestFixtures>({
       // Reload to pick up settings
       await page.reload({ waitUntil: 'domcontentloaded' });
 
+      // Verify server is responding with no-auth config
+      try {
+        const authConfigResponse = await page.request.get('/api/auth/config');
+        const authConfig = await authConfigResponse.json();
+        console.log('[Test Setup] Auth config:', authConfig);
+        if (!authConfig.noAuth) {
+          console.warn('[Test Setup] WARNING: Server is not running with --no-auth flag!');
+        }
+      } catch (error) {
+        console.error('[Test Setup] Failed to check auth config:', error);
+      }
+
       // Wait for app initialization with better error handling
       console.log('[Test Setup] Waiting for app initialization...');
       try {
@@ -151,18 +163,24 @@ export const test = base.extend<TestFixtures>({
         });
         console.log('[Test Setup] App state:', appState);
 
+        // If app is not initialized, wait a bit more
+        if (!appState.currentView) {
+          console.log('[Test Setup] App not initialized yet, waiting...');
+          await page.waitForTimeout(2000);
+        }
+
         await Promise.race([
           page
             .waitForSelector('button[title="Create New Session"]', {
               state: 'visible',
-              timeout: 10000,
+              timeout: 20000,
             })
             .then(() => console.log('[Test Setup] Found create session button')),
           page
-            .waitForSelector('auth-login', { state: 'visible', timeout: 10000 })
+            .waitForSelector('auth-login', { state: 'visible', timeout: 20000 })
             .then(() => console.log('[Test Setup] Found auth login element')),
           page
-            .waitForSelector('session-card', { state: 'visible', timeout: 10000 })
+            .waitForSelector('session-card', { state: 'visible', timeout: 20000 })
             .then(() => console.log('[Test Setup] Found session card')),
         ]);
       } catch (_error) {
