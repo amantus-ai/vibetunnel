@@ -138,16 +138,37 @@ export const test = base.extend<TestFixtures>({
         await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
         console.log('[Test Setup] App element found');
 
-        // Wait for the app to actually initialize its properties
+        // Wait for the app to render its content instead of checking properties
+        console.log('[Test Setup] Waiting for app to render content...');
         await page.waitForFunction(
           () => {
-            const app = document.querySelector('vibetunnel-app') as any;
-            // Wait until currentView is set (not undefined)
-            return app && app.currentView !== undefined;
+            const app = document.querySelector('vibetunnel-app');
+            if (!app) return false;
+            
+            // Check if the app has rendered any known views
+            const hasAuthView = !!app.querySelector('auth-login');
+            const hasListView = !!app.querySelector('session-list');
+            const hasSessionView = !!app.querySelector('session-view');
+            const hasCreateButton = !!app.querySelector('button[title="Create New Session"]');
+            const hasSessionCards = !!app.querySelector('session-card');
+            
+            // App is initialized if it has rendered any of its views
+            const isInitialized = hasAuthView || hasListView || hasSessionView || hasCreateButton || hasSessionCards;
+            
+            console.log('[Test Setup] App render state:', {
+              hasAuthView,
+              hasListView,
+              hasSessionView,
+              hasCreateButton,
+              hasSessionCards,
+              isInitialized
+            });
+            
+            return isInitialized;
           },
-          { timeout: 10000 }
+          { timeout: 20000, polling: 100 }
         );
-        console.log('[Test Setup] App properties initialized');
+        console.log('[Test Setup] App has rendered content');
       } catch (error) {
         console.error('[Test Setup] App initialization failed:', error);
         const pageContent = await page.content();
@@ -159,17 +180,32 @@ export const test = base.extend<TestFixtures>({
       try {
         console.log('[Test Setup] Waiting for UI elements...');
 
-        // Check what view the app is in
+        // Check what view the app is in by looking at rendered content
         const appState = await page.evaluate(() => {
-          const app = document.querySelector('vibetunnel-app') as any;
+          const app = document.querySelector('vibetunnel-app');
+          if (!app) return { currentView: null };
+          
+          // Determine view based on rendered content
+          const hasAuthView = !!app.querySelector('auth-login');
+          const hasListView = !!app.querySelector('session-list');
+          const hasSessionView = !!app.querySelector('session-view');
+          
+          let currentView = 'unknown';
+          if (hasAuthView) currentView = 'auth';
+          else if (hasListView) currentView = 'list';
+          else if (hasSessionView) currentView = 'session';
+          
           return {
-            currentView: app?.currentView,
-            isAuthenticated: app?.isAuthenticated,
-            loading: app?.loading,
-            errorMessage: app?.errorMessage,
+            currentView,
+            hasAuthView,
+            hasListView,
+            hasSessionView,
           };
         });
         console.log('[Test Setup] App state:', appState);
+        
+        // Wait a bit for content to settle
+        await page.waitForTimeout(500);
 
         // Based on the current view, wait for appropriate elements
         if (appState.currentView === 'auth') {
@@ -220,6 +256,31 @@ export const test = base.extend<TestFixtures>({
         // Try to get any visible text
         const visibleText = await page.evaluate(() => document.body?.innerText || 'No body text');
         console.log('[Test Setup] Visible text:', visibleText.substring(0, 200));
+        
+        // Log the actual DOM structure
+        const domStructure = await page.evaluate(() => {
+          const app = document.querySelector('vibetunnel-app');
+          if (!app) return 'No vibetunnel-app element found';
+          
+          // Get the shadow root or direct children
+          const content = app.shadowRoot ? app.shadowRoot.innerHTML : app.innerHTML;
+          return content.substring(0, 500);
+        });
+        console.log('[Test Setup] App DOM structure:', domStructure);
+        
+        // Get all visible elements
+        const visibleElements = await page.evaluate(() => {
+          const elements = document.querySelectorAll('*');
+          const visible = [];
+          elements.forEach(el => {
+            const style = window.getComputedStyle(el);
+            if (style.display !== 'none' && style.visibility !== 'hidden' && el.offsetHeight > 0) {
+              visible.push(`${el.tagName}${el.className ? `.${el.className}` : ''}${el.id ? `#${el.id}` : ''}`);
+            }
+          });
+          return visible.slice(0, 20).join(', ');
+        });
+        console.log('[Test Setup] Visible elements:', visibleElements);
 
         throw new Error('App initialization failed - no expected elements found');
       }
