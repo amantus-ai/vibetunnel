@@ -416,4 +416,36 @@ struct CLIInstallerTests {
         await installer.install()
         #expect(installer.isInstalled)
     }
+
+    // MARK: - PR #153 Regression Test
+
+    @Test("Script with TITLE_MODE_ARGS detected correctly", .tags(.regression))
+    func scriptWithTitleModeArgsDetection() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VibeTunnelTest-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let script = """
+        #!/bin/bash
+        # VibeTunnel CLI wrapper
+        for TRY_PATH in "/Applications/VibeTunnel.app" "$HOME/Applications/VibeTunnel.app"; do
+            if [ -d "$TRY_PATH" ] && [ -f "$TRY_PATH/Contents/Resources/vibetunnel" ]; then
+                APP_PATH="$TRY_PATH"
+                break
+            fi
+        done
+        VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
+        TITLE_MODE_ARGS="--title-mode dynamic"
+        exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+        """
+
+        try script.write(toFile: tempDir.appendingPathComponent("vt").path,
+                         atomically: true, encoding: .utf8)
+
+        let installer = CLIInstaller(binDirectory: tempDir.path)
+        installer.checkInstallationStatus()
+
+        #expect(installer.isInstalled == true)
+    }
 }
