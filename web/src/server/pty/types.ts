@@ -86,6 +86,8 @@ export interface PtySession {
   titleUpdateInterval?: NodeJS.Timeout;
   // Track if activity file has been written (for debug logging)
   activityFileWritten?: boolean;
+  // Explicit flag for external terminal detection
+  isExternalTerminal: boolean;
 }
 
 export class PtyError extends Error {

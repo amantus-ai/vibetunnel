@@ -22,7 +22,7 @@ import type {
 } from '../../shared/types.js';
 import { TitleMode } from '../../shared/types.js';
 import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
-import { ActivityDetector } from '../utils/activity-detector.js';
+import { ActivityDetector, type ActivityState } from '../utils/activity-detector.js';
 import { filterTerminalTitleSequences } from '../utils/ansi-filter.js';
 import { createLogger } from '../utils/logger.js';
 import {
@@ -64,10 +64,12 @@ export class PtyManager extends EventEmitter {
     string,
     { cols: number; rows: number; source: 'browser' | 'terminal'; timestamp: number }
   >();
+  private sessionEventListeners = new Map<string, Set<(...args: any[]) => void>>();
   private lastBellTime = new Map<string, number>(); // Track last bell time per session
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
   private activityFileWarningsLogged = new Set<string>(); // Track which sessions we've logged warnings for
+  private lastWrittenActivityState = new Map<string, string>(); // Track last written activity state to avoid unnecessary writes
 
   constructor(controlPath?: string) {
     super();
@@ -359,6 +361,7 @@ export class PtyManager extends EventEmitter {
         sessionJsonPath: paths.sessionJsonPath,
         startTime: new Date(),
         titleMode: titleMode || TitleMode.NONE,
+        isExternalTerminal: !!options.forwardToStdout,
         currentWorkingDir: workingDir,
       };
 
@@ -377,8 +380,8 @@ export class PtyManager extends EventEmitter {
 
       // Note: stdin forwarding is now handled via IPC socket
 
-      // Setup session.json watcher for title updates (vt title command)
-      this.setupSessionJsonWatcher(session);
+      // Setup session.json watcher for title updates (vt title command) if needed
+      this.ensureSessionJsonWatcher(session);
 
       // Initial title will be set when the first output is received
       // Do not write title sequence to PTY input as it would be sent to the shell
@@ -443,26 +446,7 @@ export class PtyManager extends EventEmitter {
           const activityState = session.activityDetector.getActivityState();
 
           // Write activity state to file for persistence
-          // Use a different filename to avoid conflicts with ActivityMonitor service
-          const activityPath = path.join(session.controlDir, 'claude-activity.json');
-          const activityData = {
-            isActive: activityState.isActive,
-            specificStatus: activityState.specificStatus,
-            timestamp: new Date().toISOString(),
-          };
-          try {
-            fs.writeFileSync(activityPath, JSON.stringify(activityData, null, 2));
-            // Debug log first write
-            if (!session.activityFileWritten) {
-              session.activityFileWritten = true;
-              logger.debug(`Writing activity state to ${activityPath} for session ${session.id}`, {
-                activityState,
-                timestamp: activityData.timestamp,
-              });
-            }
-          } catch (error) {
-            logger.error(`Failed to write activity state for session ${session.id}:`, error);
-          }
+          this.writeActivityState(session, activityState);
 
           if (forwardToStdout) {
             const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
@@ -786,6 +770,18 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
+   * Ensure session.json watcher is initialized when needed
+   */
+  private ensureSessionJsonWatcher(session: PtySession): void {
+    if (
+      !session.sessionJsonWatcher &&
+      (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
+    ) {
+      this.setupSessionJsonWatcher(session);
+    }
+  }
+
+  /**
    * Setup watcher for session.json changes (for vt title updates)
    */
   private setupSessionJsonWatcher(session: PtySession): void {
@@ -898,7 +894,7 @@ export class PtyManager extends EventEmitter {
         }
 
         // Emit event for clients
-        this.emit('sessionNameChanged', session.id, newSessionInfo.name);
+        this.trackAndEmit('sessionNameChanged', session.id, newSessionInfo.name);
       }
     } catch (error) {
       logger.warn(`Failed to handle session.json change for session ${session.id}:`, error);
@@ -1771,6 +1767,52 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
+   * Write activity state only if it has changed
+   */
+  private writeActivityState(session: PtySession, activityState: ActivityState): void {
+    const activityPath = path.join(session.controlDir, 'claude-activity.json');
+    const activityData = {
+      isActive: activityState.isActive,
+      specificStatus: activityState.specificStatus,
+      timestamp: new Date().toISOString(),
+    };
+
+    const stateJson = JSON.stringify(activityData);
+    const lastState = this.lastWrittenActivityState.get(session.id);
+
+    if (lastState !== stateJson) {
+      try {
+        fs.writeFileSync(activityPath, JSON.stringify(activityData, null, 2));
+        this.lastWrittenActivityState.set(session.id, stateJson);
+
+        // Debug log first write
+        if (!session.activityFileWritten) {
+          session.activityFileWritten = true;
+          logger.debug(`Writing activity state to ${activityPath} for session ${session.id}`, {
+            activityState,
+            timestamp: activityData.timestamp,
+          });
+        }
+      } catch (error) {
+        logger.error(`Failed to write activity state for session ${session.id}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Track and emit events for proper cleanup
+   */
+  private trackAndEmit(event: string, sessionId: string, ...args: any[]): void {
+    const listeners = this.listeners(event) as ((...args: any[]) => void)[];
+    if (!this.sessionEventListeners.has(sessionId)) {
+      this.sessionEventListeners.set(sessionId, new Set());
+    }
+    const sessionListeners = this.sessionEventListeners.get(sessionId)!;
+    listeners.forEach((listener) => sessionListeners.add(listener));
+    this.emit(event, sessionId, ...args);
+  }
+
+  /**
    * Clean up all resources associated with a session
    */
   private cleanupSessionResources(session: PtySession): void {
@@ -1811,6 +1853,28 @@ export class PtyManager extends EventEmitter {
       session.sessionJsonWatcher.close();
     }
 
-    // Note: stdin handling is now done via IPC socket, no global listeners to clean up
+    // Clean up stdin handlers if they exist
+    if (session.stdinHandler) {
+      process.stdin.removeListener('data', session.stdinHandler);
+      session.stdinHandler = undefined;
+    }
+    if (session.stdinDataListener) {
+      process.stdin.removeListener('data', session.stdinDataListener);
+      session.stdinDataListener = undefined;
+    }
+
+    // Remove all event listeners for this session
+    const listeners = this.sessionEventListeners.get(session.id);
+    if (listeners) {
+      listeners.forEach((listener) => {
+        this.removeListener('sessionNameChanged', listener);
+        this.removeListener('watcherError', listener);
+        this.removeListener('bell', listener);
+      });
+      this.sessionEventListeners.delete(session.id);
+    }
+
+    // Clean up activity state tracking
+    this.lastWrittenActivityState.delete(session.id);
   }
 }
