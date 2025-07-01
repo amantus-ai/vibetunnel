@@ -1042,7 +1042,7 @@ export class SessionView extends LitElement {
         }
       </style>
       <div
-        class="flex flex-col bg-black font-mono relative"
+        class="flex flex-col bg-dark-bg font-mono relative"
         style="height: 100vh; height: 100dvh; outline: none !important; box-shadow: none !important;"
       >
         <!-- Session Header -->
@@ -1075,7 +1075,7 @@ export class SessionView extends LitElement {
 
         <!-- Enhanced Terminal Container -->
         <div
-          class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-black overflow-hidden min-h-0 relative border-t border-dark-border shadow-inner ${
+          class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-dark-bg overflow-hidden min-h-0 relative ${
             this.session?.status === 'exited' ? 'session-exited opacity-90' : ''
           }"
           id="terminal-container"

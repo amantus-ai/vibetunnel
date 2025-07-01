@@ -771,8 +771,6 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   white-space: pre;
   overflow: hidden;
   background-color: #0a0a0a;
-  border-radius: 0.5rem;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* Terminal line styling */
