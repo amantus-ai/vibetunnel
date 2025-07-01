@@ -20,8 +20,7 @@ export const test = base.extend<{
   sessionListPage: SessionListPage;
 }>({
   // Session service fixture
-  // eslint-disable-next-line no-empty-pattern
-  sessionService: async ({}, use) => {
+  sessionService: async (_, use) => {
     const headers = new Headers();
     const baseURL = process.env.CI ? 'http://localhost:8321' : 'http://localhost:3456';
 
@@ -108,15 +107,13 @@ export const test = base.extend<{
   },
 
   // Track test session IDs for cleanup
-  // eslint-disable-next-line no-empty-pattern
-  testSessionIds: async ({}, use) => {
+  testSessionIds: async (_, use) => {
     const sessionIds: string[] = [];
     await use(sessionIds);
   },
 
   // Screenshot directory
-  // eslint-disable-next-line no-empty-pattern
-  screenshotDir: async ({}, use) => {
+  screenshotDir: async (_, use) => {
     const dir = path.join(os.tmpdir(), 'playwright-screenshots', Date.now().toString());
     fs.mkdirSync(dir, { recursive: true });
     await use(dir);
@@ -199,4 +196,3 @@ export const test = base.extend<{
 
 // Common expectations
 export { expect };
-
