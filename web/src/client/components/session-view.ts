@@ -19,6 +19,7 @@ import type { Session } from './session-list.js';
 import './terminal.js';
 import './file-browser.js';
 import './file-picker.js';
+import type { FilePicker } from './file-picker.js';
 import './clickable-path.js';
 import './terminal-quick-keys.js';
 import './session-view/mobile-input-overlay.js';
@@ -846,7 +847,7 @@ export class SessionView extends LitElement {
   private async uploadFile(file: File) {
     try {
       // Get the file picker component and use its upload method
-      const filePicker = this.querySelector('file-picker') as any;
+      const filePicker = this.querySelector('file-picker') as FilePicker | null;
       if (filePicker && typeof filePicker.uploadFile === 'function') {
         await filePicker.uploadFile(file);
       } else {
