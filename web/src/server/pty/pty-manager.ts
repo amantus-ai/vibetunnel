@@ -1853,15 +1853,7 @@ export class PtyManager extends EventEmitter {
       session.sessionJsonWatcher.close();
     }
 
-    // Clean up stdin handlers if they exist
-    if (session.stdinHandler) {
-      process.stdin.removeListener('data', session.stdinHandler);
-      session.stdinHandler = undefined;
-    }
-    if (session.stdinDataListener) {
-      process.stdin.removeListener('data', session.stdinDataListener);
-      session.stdinDataListener = undefined;
-    }
+    // Note: stdin handling is done via IPC socket, no global listeners to clean up
 
     // Remove all event listeners for this session
     const listeners = this.sessionEventListeners.get(session.id);
