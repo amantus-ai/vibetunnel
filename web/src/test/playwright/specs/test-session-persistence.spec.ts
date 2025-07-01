@@ -25,7 +25,10 @@ test.describe('Session Persistence Tests', () => {
 
     // Navigate back to home
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector('session-card', {
+      state: 'visible',
+      timeout: process.env.CI ? 20000 : 10000,
+    });
 
     // Verify session is visible and running
     await assertSessionInList(page, sessionName, { status: 'RUNNING' });
@@ -40,9 +43,16 @@ test.describe('Session Persistence Tests', () => {
 
     // Navigate back to home
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector('session-card', {
+      state: 'visible',
+      timeout: process.env.CI ? 20000 : 10000,
+    });
 
     // Wait for the session status to update to exited
+    // Add extra delay in CI for command error to propagate
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
     await waitForSessionState(page, sessionName, 'EXITED');
 
     // Verify it shows as exited

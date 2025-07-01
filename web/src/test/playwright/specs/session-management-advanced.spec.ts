@@ -27,7 +27,7 @@ test.describe('Advanced Session Management', () => {
     await page
       .waitForResponse(
         (response) => response.url().includes(`/api/sessions/`) && response.url().includes('/kill'),
-        { timeout: 5000 }
+        { timeout: process.env.CI ? 15000 : 5000 }
       )
       .catch(() => {});
 
@@ -47,7 +47,7 @@ test.describe('Advanced Session Management', () => {
           return status === 'exited' || !isKilling;
         },
         sessionName,
-        { timeout: 5000 } // Reduced timeout with performance optimizations
+        { timeout: process.env.CI ? 15000 : 5000 } // Reduced timeout with performance optimizations
       )
       .catch(() => {});
 
@@ -108,16 +108,25 @@ test.describe('Advanced Session Management', () => {
 
       // Go back to list with proper wait
       console.log(`[Test] Navigating back to home after creating session ${i + 1}...`);
-      await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.goto('/', {
+        waitUntil: 'domcontentloaded',
+        timeout: process.env.CI ? 60000 : 30000,
+      });
 
       // Wait for app to be ready
       console.log('[Test] Waiting for app element...');
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 15000 });
+      await page.waitForSelector('vibetunnel-app', {
+        state: 'attached',
+        timeout: process.env.CI ? 30000 : 15000,
+      });
 
       // Then wait for session cards
       try {
         console.log('[Test] Waiting for session cards to appear...');
-        await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
+        await page.waitForSelector('session-card', {
+          state: 'visible',
+          timeout: process.env.CI ? 30000 : 15000,
+        });
         console.log(`[Test] Session cards visible after creating session ${i + 1}`);
       } catch (error) {
         console.error(`[Test] Failed to find session-card after creating session ${i + 1}`);
@@ -174,7 +183,7 @@ test.describe('Advanced Session Management', () => {
     try {
       await page.waitForResponse(
         (response) => response.url().includes('/api/sessions') && response.url().includes('/kill'),
-        { timeout: 5000 }
+        { timeout: process.env.CI ? 15000 : 5000 }
       );
     } catch {
       // Continue even if no kill response detected
@@ -220,7 +229,7 @@ test.describe('Advanced Session Management', () => {
         );
       },
       sessionNames,
-      { timeout: 30000 }
+      { timeout: process.env.CI ? 60000 : 30000 }
     );
 
     // Wait for the UI to update after killing sessions

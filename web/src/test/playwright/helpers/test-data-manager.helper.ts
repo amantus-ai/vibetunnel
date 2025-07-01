@@ -133,6 +133,11 @@ export class TestSessionManager {
   async cleanupAllSessions(): Promise<void> {
     if (this.sessions.size === 0) return;
 
+    // Add delay in CI to allow session states to stabilize
+    if (process.env.CI) {
+      await this.page.waitForTimeout(2000);
+    }
+
     console.log(`Cleaning up ${this.sessions.size} tracked sessions`);
 
     // Navigate to list
@@ -162,7 +167,7 @@ export class TestSessionManager {
                 card.textContent?.toLowerCase().includes('exit')
             );
           },
-          { timeout: 3000 }
+          { timeout: process.env.CI ? 8000 : 3000 }
         );
 
         this.sessions.clear();

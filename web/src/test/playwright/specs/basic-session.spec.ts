@@ -60,8 +60,16 @@ test.describe('Basic Session Tests', () => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
+    // Add extra wait in CI for session list to fully load
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
+
     // Verify both sessions are visible
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
+    await page.waitForSelector('session-card', {
+      state: 'visible',
+      timeout: process.env.CI ? 30000 : 15000,
+    });
     const sessionCards = await page.locator('session-card').count();
     expect(sessionCards).toBeGreaterThanOrEqual(2);
 

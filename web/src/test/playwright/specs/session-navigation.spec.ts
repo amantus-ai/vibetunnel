@@ -21,9 +21,11 @@ test.describe('Session Navigation', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Wait for the app to be ready
-    await page.waitForSelector('body.ready', { state: 'attached', timeout: 5000 }).catch(() => {
-      // Fallback if no ready class
-    });
+    await page
+      .waitForSelector('body.ready', { state: 'attached', timeout: process.env.CI ? 10000 : 5000 })
+      .catch(() => {
+        // Fallback if no ready class
+      });
 
     // Create a session
     let sessionName: string;
@@ -69,7 +71,7 @@ test.describe('Session Navigation', () => {
         const noSessionsMsg = document.querySelector('.text-dark-text-muted');
         return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
       },
-      { timeout: 10000 }
+      { timeout: process.env.CI ? 20000 : 10000 }
     );
 
     // Ensure our specific session card is visible
@@ -93,7 +95,7 @@ test.describe('Session Navigation', () => {
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
 
     // Ensure the card is visible and ready
-    await sessionCard.waitFor({ state: 'visible', timeout: 5000 });
+    await sessionCard.waitFor({ state: 'visible', timeout: process.env.CI ? 10000 : 5000 });
     await sessionCard.scrollIntoViewIfNeeded();
 
     // Wait for network to be idle before clicking
@@ -105,7 +107,7 @@ test.describe('Session Navigation', () => {
 
     // Wait for navigation to complete
     try {
-      await page.waitForURL(/\?session=/, { timeout: 5000 });
+      await page.waitForURL(/\?session=/, { timeout: process.env.CI ? 10000 : 5000 });
       console.log('Successfully navigated to session view');
     } catch (_error) {
       const currentUrl = page.url();

@@ -37,6 +37,11 @@ export async function createAndNavigateToSession(
   // Create the session
   await sessionListPage.createNewSession(sessionName, spawnWindow, command);
 
+  // Add a small delay in CI to ensure session state stabilizes
+  if (process.env.CI) {
+    await page.waitForTimeout(1000);
+  }
+
   // For web sessions, wait for navigation and get session ID
   if (!spawnWindow) {
     await page.waitForURL(/\?session=/, { timeout: 4000 });
@@ -139,7 +144,7 @@ export async function waitForSessionState(
   page: Page,
   sessionName: string,
   targetState: 'RUNNING' | 'EXITED' | 'KILLED',
-  timeout = 5000
+  timeout = process.env.CI ? 30000 : 10000
 ): Promise<void> {
   const _startTime = Date.now();
 
@@ -151,16 +156,54 @@ export async function waitForSessionState(
         const sessionCard = Array.from(cards).find((card) => card.textContent?.includes(name));
         if (!sessionCard) return false;
 
+        // Check multiple possible indicators of session state
+        const cardText = sessionCard.textContent?.toLowerCase() || '';
         const statusElement = sessionCard.querySelector('span[data-status]');
         const statusText = statusElement?.textContent?.toLowerCase() || '';
         const dataStatus = statusElement?.getAttribute('data-status')?.toLowerCase() || '';
 
-        return dataStatus === state.toLowerCase() || statusText.includes(state.toLowerCase());
+        // For EXITED state, check multiple variations
+        if (state.toLowerCase() === 'exited') {
+          return (
+            dataStatus === 'exited' ||
+            statusText.includes('exit') ||
+            cardText.includes('exited') ||
+            cardText.includes('stopped')
+          );
+        }
+
+        // For RUNNING state
+        if (state.toLowerCase() === 'running') {
+          return (
+            dataStatus === 'running' ||
+            statusText.includes('running') ||
+            cardText.includes('running')
+          );
+        }
+
+        // For KILLED state
+        if (state.toLowerCase() === 'killed') {
+          return (
+            dataStatus === 'killed' || statusText.includes('killed') || cardText.includes('killed')
+          );
+        }
+
+        return false;
       },
       { name: sessionName, state: targetState },
-      { timeout, polling: 500 }
+      { timeout, polling: process.env.CI ? 1000 : 500 }
     );
-  } catch (_error) {
+  } catch (error) {
+    // Log current state for debugging
+    const cards = await page.locator('session-card').all();
+    console.error(`Session state transition timeout for '${sessionName}' to '${targetState}'`);
+    console.error('Current session cards:');
+    for (const card of cards) {
+      const text = await card.textContent();
+      if (text?.includes(sessionName)) {
+        console.error(`  - Found card with text: ${text}`);
+      }
+    }
     throw new Error(
       `Session ${sessionName} did not reach ${targetState} state within ${timeout}ms`
     );

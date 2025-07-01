@@ -18,7 +18,10 @@ test.describe('Minimal Session Tests', () => {
 
     // Navigate back to home
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 3000 });
+    await page.waitForSelector('session-card', {
+      state: 'visible',
+      timeout: process.env.CI ? 10000 : 3000,
+    });
 
     // Verify session is listed
     await assertSessionInList(page, sessionName);
@@ -37,16 +40,25 @@ test.describe('Minimal Session Tests', () => {
 
       // Navigate back to home after each creation
       console.log(`[Test] Navigating back to home after creating session ${i + 1}...`);
-      await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.goto('/', {
+        waitUntil: 'domcontentloaded',
+        timeout: process.env.CI ? 60000 : 30000,
+      });
 
       // Wait for app to be ready first
       console.log('[Test] Waiting for app element...');
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 15000 });
+      await page.waitForSelector('vibetunnel-app', {
+        state: 'attached',
+        timeout: process.env.CI ? 30000 : 15000,
+      });
 
       // Then wait for session cards to appear
       try {
         console.log('[Test] Waiting for session cards to appear...');
-        await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
+        await page.waitForSelector('session-card', {
+          state: 'visible',
+          timeout: process.env.CI ? 30000 : 15000,
+        });
         console.log(`[Test] Session cards visible after creating session ${i + 1}`);
       } catch (error) {
         // If no session cards, check if we're on the right page

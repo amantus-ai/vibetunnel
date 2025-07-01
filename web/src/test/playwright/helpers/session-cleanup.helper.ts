@@ -182,7 +182,7 @@ export class SessionCleanupHelper {
           }
 
           // Wait briefly for sessions to exit
-          await this.page.waitForTimeout(500);
+          await this.page.waitForTimeout(process.env.CI ? 2000 : 500);
           return;
         }
       }

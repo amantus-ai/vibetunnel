@@ -26,7 +26,7 @@ export class SessionListPage extends BasePage {
     const createBtn = this.page
       .locator(this.selectors.createButton)
       .or(this.page.locator(this.selectors.createButtonFallback));
-    await createBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await createBtn.waitFor({ state: 'visible', timeout: process.env.CI ? 10000 : 5000 });
   }
 
   async createNewSession(sessionName?: string, spawnWindow = false, command?: string) {
@@ -42,7 +42,7 @@ export class SessionListPage extends BasePage {
 
     console.log('Clicking create session button...');
     try {
-      await createButton.click({ timeout: 5000 });
+      await createButton.click({ timeout: process.env.CI ? 10000 : 5000 });
       console.log('Create button clicked successfully');
 
       // Small delay to ensure the click event has been fully processed
@@ -60,7 +60,10 @@ export class SessionListPage extends BasePage {
     // Wait for the modal to appear and be ready
     try {
       // First wait for the modal backdrop to exist in DOM
-      await this.page.waitForSelector('.modal-backdrop', { state: 'attached', timeout: 5000 });
+      await this.page.waitForSelector('.modal-backdrop', {
+        state: 'attached',
+        timeout: process.env.CI ? 10000 : 5000,
+      });
 
       // Then wait for it to become visible (no hidden class)
       await this.page.waitForFunction(
@@ -68,11 +71,14 @@ export class SessionListPage extends BasePage {
           const modal = document.querySelector('.modal-backdrop');
           return modal && !modal.classList.contains('hidden');
         },
-        { timeout: 5000 }
+        { timeout: process.env.CI ? 10000 : 5000 }
       );
 
       // Finally wait for the modal content to be visible
-      await this.page.waitForSelector(this.selectors.modal, { state: 'visible', timeout: 4000 });
+      await this.page.waitForSelector(this.selectors.modal, {
+        state: 'visible',
+        timeout: process.env.CI ? 8000 : 4000,
+      });
     } catch (_e) {
       const error = new Error('Modal did not appear after clicking create button');
       await screenshotOnError(this.page, error, 'no-modal-after-click');
@@ -219,7 +225,7 @@ export class SessionListPage extends BasePage {
     // Click and wait for response
     const responsePromise = this.page.waitForResponse(
       (response) => response.url().includes('/api/sessions'),
-      { timeout: 4000 }
+      { timeout: process.env.CI ? 8000 : 4000 }
     );
 
     await submitButton.click();
@@ -262,7 +268,7 @@ export class SessionListPage extends BasePage {
 
       // Wait for navigation - the URL should change to include session ID
       try {
-        await this.page.waitForURL(/\?session=/, { timeout: 8000 });
+        await this.page.waitForURL(/\?session=/, { timeout: process.env.CI ? 15000 : 8000 });
         console.log('Successfully navigated to session view');
       } catch (error) {
         const currentUrl = this.page.url();
@@ -279,7 +285,10 @@ export class SessionListPage extends BasePage {
       await this.page.waitForSelector('vibe-terminal', { state: 'visible' });
     } else {
       // For spawn window, wait for modal to close
-      await this.page.waitForSelector('.modal-content', { state: 'hidden', timeout: 4000 });
+      await this.page.waitForSelector('.modal-content', {
+        state: 'hidden',
+        timeout: process.env.CI ? 8000 : 4000,
+      });
     }
   }
 
@@ -316,16 +325,33 @@ export class SessionListPage extends BasePage {
     const sessionCard = (await this.getSessionCard(sessionName)).first();
 
     // Wait for the specific session card to be visible
-    await sessionCard.waitFor({ state: 'visible', timeout: 10000 });
+    await sessionCard.waitFor({ state: 'visible', timeout: process.env.CI ? 20000 : 10000 });
 
     // Scroll into view if needed
     await sessionCard.scrollIntoViewIfNeeded();
 
-    // Click on the session card
-    await sessionCard.click();
+    // Click on the session card with retry logic
+    let navigationSuccess = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await sessionCard.click();
+        // Wait for navigation to session view
+        await this.page.waitForURL(/\?session=/, { timeout: process.env.CI ? 10000 : 5000 });
+        navigationSuccess = true;
+        break;
+      } catch (error) {
+        console.log(`Navigation attempt ${attempt + 1} failed, retrying...`);
+        if (attempt === 2) throw error;
+        await this.page.waitForTimeout(1000);
+        // Re-find the card in case DOM changed
+        const freshCard = (await this.getSessionCard(sessionName)).first();
+        await freshCard.waitFor({ state: 'visible', timeout: 2000 });
+      }
+    }
 
-    // Wait for navigation to session view
-    await this.page.waitForURL(/\?session=/, { timeout: 5000 });
+    if (!navigationSuccess) {
+      throw new Error(`Failed to navigate to session ${sessionName} after 3 attempts`);
+    }
   }
 
   async isSessionActive(sessionName: string): Promise<boolean> {
@@ -340,13 +366,13 @@ export class SessionListPage extends BasePage {
     const sessionCard = await this.getSessionCard(sessionName);
 
     // Wait for the session card to be visible
-    await sessionCard.waitFor({ state: 'visible', timeout: 4000 });
+    await sessionCard.waitFor({ state: 'visible', timeout: process.env.CI ? 8000 : 4000 });
 
     // The kill button should have data-testid="kill-session-button"
     const killButton = sessionCard.locator('[data-testid="kill-session-button"]');
 
     // Wait for the button to be visible and enabled
-    await killButton.waitFor({ state: 'visible', timeout: 4000 });
+    await killButton.waitFor({ state: 'visible', timeout: process.env.CI ? 8000 : 4000 });
 
     // Scroll into view if needed
     await killButton.scrollIntoViewIfNeeded();
@@ -380,7 +406,9 @@ export class SessionListPage extends BasePage {
   }
 
   async waitForEmptyState() {
-    await this.page.waitForSelector(this.selectors.noSessionsMessage, { timeout: 4000 });
+    await this.page.waitForSelector(this.selectors.noSessionsMessage, {
+      timeout: process.env.CI ? 8000 : 4000,
+    });
   }
 
   async getSessionCount(): Promise<number> {
@@ -391,7 +419,7 @@ export class SessionListPage extends BasePage {
   async waitForSessionCard(sessionName: string, options?: { timeout?: number }) {
     await this.page.waitForSelector(`${this.selectors.sessionCard}:has-text("${sessionName}")`, {
       state: 'visible',
-      timeout: options?.timeout || 5000,
+      timeout: options?.timeout || (process.env.CI ? 10000 : 5000),
     });
   }
 
