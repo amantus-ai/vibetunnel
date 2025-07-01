@@ -531,32 +531,22 @@ export class PtyManager extends EventEmitter {
 
     // Handle PTY data output - Use SafePTYWriter if available
     if (session.safePtyWriter && forwardToStdout) {
-      // Use SafePTYWriter for safe title injection
-      session.safePtyWriter.attach((data: string) => {
-        // Forward to stdout if requested (using queue for ordering)
-        if (stdoutQueue) {
-          stdoutQueue.enqueue(async () => {
-            const canWrite = process.stdout.write(data);
-            if (!canWrite) {
-              await once(process.stdout, 'drain');
-            }
-          });
-        }
-      });
+      // Create a custom SafePTYWriter that handles title modes
+      const originalProcessOutput = session.safePtyWriter.processOutput.bind(session.safePtyWriter);
 
-      // Intercept PTY data and handle title injection
-      ptyProcess.onData((data: string) => {
+      // Override processOutput to handle title filtering and queuing
+      session.safePtyWriter.processOutput = (data: string) => {
         let processedData = data;
 
         // Handle title modes
         switch (session.titleMode) {
           case TitleMode.STATIC: {
             // Filter out app titles
-            processedData = filterTerminalTitleSequences(data, true);
+            processedData = filterTerminalTitleSequences(processedData, true);
             const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
             const title = `${path.basename(currentDir)} — ${session.sessionInfo.command.join(' ')}`;
 
-            // Queue title for safe injection (with null check)
+            // Queue title for safe injection
             if (!session.initialTitleSent || session.pendingTitle !== title) {
               if (session.safePtyWriter) {
                 session.safePtyWriter.queueTitle(title);
@@ -569,16 +559,20 @@ export class PtyManager extends EventEmitter {
 
           case TitleMode.DYNAMIC:
             // Filter out app titles and process through activity detector
-            processedData = filterTerminalTitleSequences(data, true);
+            processedData = filterTerminalTitleSequences(processedData, true);
 
             if (session.activityDetector) {
               // Debug logging for Claude
               if (process.env.VIBETUNNEL_CLAUDE_DEBUG === 'true') {
-                if (data.includes('interrupt') || data.includes('tokens') || data.includes('…')) {
+                if (
+                  processedData.includes('interrupt') ||
+                  processedData.includes('tokens') ||
+                  processedData.includes('…')
+                ) {
                   console.log('[PtyManager] Detected potential Claude output');
                   console.log(
                     '[PtyManager] Raw data sample:',
-                    data
+                    processedData
                       .substring(0, 200)
                       .replace(/\n/g, '\\n')
                       // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes need control characters
@@ -591,10 +585,10 @@ export class PtyManager extends EventEmitter {
                     debugPath,
                     `\n\n=== ${new Date().toISOString()} ===\n`
                   );
-                  require('fs').appendFileSync(debugPath, `Raw: ${data}\n`);
+                  require('fs').appendFileSync(debugPath, `Raw: ${processedData}\n`);
                   require('fs').appendFileSync(
                     debugPath,
-                    `Hex: ${Buffer.from(data).toString('hex')}\n`
+                    `Hex: ${Buffer.from(processedData).toString('hex')}\n`
                   );
                 }
               }
@@ -612,12 +606,11 @@ export class PtyManager extends EventEmitter {
                 session.sessionInfo.name
               )
                 // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
-                // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
                 .replace(/^\x1b\]0;/, '')
                 // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
                 .replace(/\x07$/, ''); // Extract just the title text
 
-              // Queue title for safe injection (with null check)
+              // Queue title for safe injection
               if (session.pendingTitle !== title) {
                 if (session.safePtyWriter) {
                   session.safePtyWriter.queueTitle(title);
@@ -630,6 +623,22 @@ export class PtyManager extends EventEmitter {
 
         // Write to asciinema file BEFORE title injection (capture original data)
         asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
+
+        // Call the original processOutput with the filtered data
+        originalProcessOutput(processedData);
+      };
+
+      // Set up SafePTYWriter's output handler
+      session.safePtyWriter.attach((data: string) => {
+        // Forward to stdout if requested (using queue for ordering)
+        if (stdoutQueue) {
+          stdoutQueue.enqueue(async () => {
+            const canWrite = process.stdout.write(data);
+            if (!canWrite) {
+              await once(process.stdout, 'drain');
+            }
+          });
+        }
       });
     } else {
       // Fallback to original implementation for non-title modes
@@ -1012,15 +1021,22 @@ export class PtyManager extends EventEmitter {
                 // Check if we have stdout queue (indicates forwardToStdout mode)
                 const isExternalTerminal = !!session.stdoutQueue;
 
-                // Generate new title sequence with updated name
-                const titleSequence = generateTitleSequence(
-                  session.currentWorkingDir || session.sessionInfo.workingDir,
-                  session.sessionInfo.command,
-                  newSessionInfo.name
-                );
+                // Generate new title with updated name
+                const title = `${path.basename(session.currentWorkingDir || session.sessionInfo.workingDir)} — ${newSessionInfo.name || session.sessionInfo.command.join(' ')}`;
 
-                // Write title sequence to PTY (only for external terminals)
-                if (session.ptyProcess && isExternalTerminal) {
+                // Use SafePTYWriter if available, otherwise write directly
+                if (session.safePtyWriter && isExternalTerminal) {
+                  session.safePtyWriter.queueTitle(title);
+                  logger.debug(
+                    `Queued updated title for session ${session.id}: ${newSessionInfo.name}`
+                  );
+                } else if (session.ptyProcess && isExternalTerminal) {
+                  // Fallback for non-SafePTYWriter mode
+                  const titleSequence = generateTitleSequence(
+                    session.currentWorkingDir || session.sessionInfo.workingDir,
+                    session.sessionInfo.command,
+                    newSessionInfo.name
+                  );
                   session.ptyProcess.write(titleSequence);
                   logger.debug(
                     `Injected updated title for session ${session.id}: ${newSessionInfo.name}`
@@ -1038,8 +1054,15 @@ export class PtyManager extends EventEmitter {
                     newSessionInfo.name
                   );
 
-                  // Write the dynamic title
-                  if (session.ptyProcess && isExternalTerminal) {
+                  // Extract just the title text from the sequence
+                  // biome-ignore lint/suspicious/noControlCharactersInRegex: Need to match terminal escape sequences
+                  const titleText = updatedTitle.replace(/^\x1b\]0;/, '').replace(/\x07$/, '');
+
+                  // Use SafePTYWriter if available
+                  if (session.safePtyWriter && isExternalTerminal) {
+                    session.safePtyWriter.queueTitle(titleText);
+                  } else if (session.ptyProcess && isExternalTerminal) {
+                    // Fallback for non-SafePTYWriter mode
                     session.ptyProcess.write(updatedTitle);
                   }
                 }
