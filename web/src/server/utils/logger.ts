@@ -23,6 +23,11 @@ const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
 export function initLogger(debug: boolean = false): void {
   debugMode = debug;
 
+  // If already initialized, just update debug mode and return
+  if (logFileHandle) {
+    return;
+  }
+
   try {
     // Ensure log directory exists
     if (!fs.existsSync(LOG_DIR)) {

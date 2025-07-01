@@ -910,8 +910,8 @@ let serverStarted = false;
 
 // Export a function to start the server
 export async function startVibeTunnelServer() {
-  // Initialize logger first (we'll set debug mode after parsing args)
-  initLogger(false);
+  // Initialize logger if not already initialized (preserves debug mode from CLI)
+  initLogger();
 
   // Prevent multiple server instances
   if (serverStarted) {
