@@ -131,7 +131,7 @@ struct TerminalInput: Codable {
         case ctrlE = "\u{0005}"
 
         // MARK: - Function Keys
-        
+
         /// F1 key.
         case f1 = "\u{001B}OP"
         /// F2 key.
@@ -156,9 +156,9 @@ struct TerminalInput: Codable {
         case f11 = "\u{001B}[23~"
         /// F12 key.
         case f12 = "\u{001B}[24~"
-        
+
         // MARK: - Additional Special Characters
-        
+
         /// Backslash character.
         case backslash = "\\"
         /// Pipe character.

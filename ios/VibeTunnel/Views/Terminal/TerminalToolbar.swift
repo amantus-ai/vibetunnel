@@ -161,7 +161,7 @@ struct TerminalToolbar: View {
                                 }
                             }
                         }
-                        
+
                         Spacer()
                     }
                     
@@ -181,7 +181,7 @@ struct TerminalToolbar: View {
                                 }
                             }
                         }
-                        
+
                         Spacer()
                     }
                     
@@ -212,7 +212,7 @@ struct TerminalToolbar: View {
                             // Send Ctrl+E for end
                             onSpecialKey(.ctrlE)
                         }
-                        
+
                         Spacer()
                     }
                     

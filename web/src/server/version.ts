@@ -2,8 +2,8 @@
 // This file is updated during the build process
 
 import chalk from 'chalk';
-import { createLogger } from './utils/logger.js';
 import packageJson from '../../package.json';
+import { createLogger } from './utils/logger.js';
 
 const logger = createLogger('version');
 
