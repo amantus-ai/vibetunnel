@@ -13,8 +13,9 @@ describe('vt title Command Integration', () => {
   let vtScriptPath: string;
 
   beforeEach(async () => {
-    // Create test control directory
-    testControlDir = path.join(os.tmpdir(), `vt-title-test-${uuidv4()}`);
+    // Create test control directory with shorter path
+    const shortId = Math.random().toString(36).substring(2, 8);
+    testControlDir = path.join(os.tmpdir(), `vt-${shortId}`);
     await fs.mkdir(testControlDir, { recursive: true });
 
     // Get path to vt script
@@ -44,8 +45,8 @@ describe('vt title Command Integration', () => {
   });
 
   it('should update session.json when vt title is used inside a session', async () => {
-    // Create a mock session environment
-    const sessionId = `test-session-${uuidv4()}`;
+    // Create a mock session environment with shorter ID
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     const sessionDir = path.join(testControlDir, sessionId);
     await fs.mkdir(sessionDir, { recursive: true });
 
@@ -98,7 +99,7 @@ describe('vt title Command Integration', () => {
   });
 
   it('should handle titles with special characters', async () => {
-    const sessionId = `test-session-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     const sessionDir = path.join(testControlDir, sessionId);
     await fs.mkdir(sessionDir, { recursive: true });
 
@@ -177,7 +178,7 @@ describe('vt title Command Integration', () => {
   });
 
   it('should work without jq using sed fallback', async () => {
-    const sessionId = `test-session-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     const sessionDir = path.join(testControlDir, sessionId);
     await fs.mkdir(sessionDir, { recursive: true });
 
@@ -217,7 +218,7 @@ describe('vt title Command Integration', () => {
   });
 
   it('should handle concurrent title updates', async () => {
-    const sessionId = `test-session-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     const sessionDir = path.join(testControlDir, sessionId);
     await fs.mkdir(sessionDir, { recursive: true });
 
@@ -265,7 +266,7 @@ describe('vt title Command Integration', () => {
   });
 
   it('should preserve JSON formatting and other fields', async () => {
-    const sessionId = `test-session-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     const sessionDir = path.join(testControlDir, sessionId);
     await fs.mkdir(sessionDir, { recursive: true });
 

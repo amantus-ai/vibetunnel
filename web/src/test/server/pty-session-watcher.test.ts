@@ -1,7 +1,6 @@
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PtyManager } from '../../server/pty/pty-manager.js';
 import { SessionManager } from '../../server/pty/session-manager.js';
@@ -14,8 +13,9 @@ describe('PTY Session.json Watcher', () => {
   let testSessionIds: string[] = [];
 
   beforeEach(async () => {
-    // Create a temporary control directory for tests
-    controlPath = path.join(os.tmpdir(), `vt-test-${uuidv4()}`);
+    // Create a temporary control directory for tests with shorter path
+    const shortId = Math.random().toString(36).substring(2, 8);
+    controlPath = path.join(os.tmpdir(), `vt-${shortId}`);
     await fs.mkdir(controlPath, { recursive: true });
     ptyManager = new PtyManager(controlPath);
     sessionManager = new SessionManager(controlPath);
@@ -44,7 +44,7 @@ describe('PTY Session.json Watcher', () => {
   });
 
   it('should detect session name changes in session.json', async () => {
-    const sessionId = `test-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     testSessionIds.push(sessionId);
 
     // Create a session with static title mode
@@ -93,7 +93,7 @@ describe('PTY Session.json Watcher', () => {
   });
 
   it('should inject new title when session name changes in static mode', async () => {
-    const sessionId = `test-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     testSessionIds.push(sessionId);
 
     // Mock PTY write to capture title sequences
@@ -140,7 +140,7 @@ describe('PTY Session.json Watcher', () => {
   });
 
   it('should update dynamic title with new session name', async () => {
-    const sessionId = `test-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     testSessionIds.push(sessionId);
 
     // Create a session with dynamic title mode
@@ -186,7 +186,7 @@ describe('PTY Session.json Watcher', () => {
   });
 
   it('should not update title in NONE mode', async () => {
-    const sessionId = `test-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     testSessionIds.push(sessionId);
 
     // Create session with NONE title mode
@@ -228,7 +228,7 @@ describe('PTY Session.json Watcher', () => {
   });
 
   it('should not update title in FILTER mode', async () => {
-    const sessionId = `test-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     testSessionIds.push(sessionId);
 
     // Create session with FILTER title mode
@@ -270,7 +270,7 @@ describe('PTY Session.json Watcher', () => {
   });
 
   it('should handle rapid session name changes', async () => {
-    const sessionId = `test-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     testSessionIds.push(sessionId);
 
     // Create session
@@ -314,7 +314,7 @@ describe('PTY Session.json Watcher', () => {
   });
 
   it('should clean up watcher on session exit', async () => {
-    const sessionId = `test-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     testSessionIds.push(sessionId);
 
     // Create session
@@ -351,7 +351,7 @@ describe('PTY Session.json Watcher', () => {
   });
 
   it('should only update title for external terminals', async () => {
-    const sessionId = `test-${uuidv4()}`;
+    const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     testSessionIds.push(sessionId);
 
     // Create session without forwardToStdout (web session)
