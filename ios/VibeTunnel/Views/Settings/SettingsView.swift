@@ -106,9 +106,9 @@ struct GeneralSettingsView: View {
         
         var displayName: String {
             switch self {
-            case .system: return "System"
-            case .light: return "Light"
-            case .dark: return "Dark"
+            case .system: "System"
+            case .light: "Light"
+            case .dark: "Dark"
             }
         }
     }
@@ -124,14 +124,14 @@ struct GeneralSettingsView: View {
                 Text("Appearance")
                     .font(.headline)
                     .foregroundColor(Theme.Colors.terminalForeground)
-                
+
                 VStack(spacing: Theme.Spacing.medium) {
                     // Color Scheme
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                         Text("Color Scheme")
                             .font(Theme.Typography.terminalSystem(size: 14))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
-                        
+
                         Picker("Color Scheme", selection: $colorSchemePreferenceRaw) {
                             ForEach(ColorSchemePreference.allCases, id: \.self) { preference in
                                 Text(preference.displayName).tag(preference.rawValue)
@@ -144,7 +144,7 @@ struct GeneralSettingsView: View {
                     .cornerRadius(Theme.CornerRadius.card)
                 }
             }
-            
+
             // Terminal Defaults Section
             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                 Text("Terminal Defaults")
