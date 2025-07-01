@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { SESSION_STATE } from '../constants/session.constants';
 import type { SessionInfo } from '../types/session.types';
 import { createLogger } from '../utils/logger';
+import { extractBaseUrl } from '../utils/url.utils';
 
 /**
  * Batch operations helper for efficient test setup/teardown
@@ -14,11 +15,7 @@ export class BatchOperations {
 
   constructor(page: Page) {
     this.page = page;
-    this.baseUrl =
-      page
-        .url()
-        .replace(/\/sessions.*$/, '')
-        .replace(/\/$/, '') || 'http://localhost:4022';
+    this.baseUrl = extractBaseUrl(page.url());
   }
 
   /**

@@ -10,6 +10,7 @@ export class OptimizedWaitUtils {
   private static readonly QUICK_TIMEOUT = TEST_TIMEOUTS.QUICK;
   private static readonly DEFAULT_TIMEOUT = TEST_TIMEOUTS.DEFAULT;
   private static readonly LONG_TIMEOUT = TEST_TIMEOUTS.LONG;
+  private static readonly logger = logger;
 
   /**
    * Wait for app initialization with optimized checks
@@ -21,35 +22,31 @@ export class OptimizedWaitUtils {
       timeout: OptimizedWaitUtils.DEFAULT_TIMEOUT,
     });
 
-    // Check for either session list or auth in parallel
-    const result = await Promise.race([
-      page
-        .waitForSelector('button[title="Create New Session"]', {
-          state: 'visible',
-          timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
-        })
-        .then(() => 'session-list')
-        .catch(() => null),
-      page
-        .waitForSelector('session-card', {
-          state: 'visible',
-          timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
-        })
-        .then(() => 'session-card')
-        .catch(() => null),
-      page
-        .waitForSelector('auth-login', {
-          state: 'visible',
-          timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
-        })
-        .then(() => 'auth-login')
-        .catch(() => null),
+    // Use Promise.allSettled for better reliability
+    const results = await Promise.allSettled([
+      page.waitForSelector('button[title="Create New Session"]', {
+        state: 'visible',
+        timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
+      }),
+      page.waitForSelector('session-card', {
+        state: 'visible',
+        timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
+      }),
+      page.waitForSelector('auth-login', {
+        state: 'visible',
+        timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
+      }),
     ]);
 
-    // If all promises resolved to null, throw an error
-    if (!result) {
-      throw new Error('App initialization failed: No expected elements found within timeout');
+    // Check if all promises were rejected
+    if (results.every((r) => r.status === 'rejected')) {
+      throw new Error('App initialization failed - no expected elements found');
     }
+
+    // Log which element was found
+    const successIndex = results.findIndex((r) => r.status === 'fulfilled');
+    const states = ['session-list', 'has-sessions', 'login-required'];
+    logger.info(`App ready with state: ${states[successIndex] || 'unknown'}`);
   }
 
   /**

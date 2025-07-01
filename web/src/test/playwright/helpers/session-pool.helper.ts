@@ -2,6 +2,9 @@ import type { Page } from '@playwright/test';
 import { POOL_CONFIG } from '../config/test-constants';
 import type { SessionInfo } from '../types/session.types';
 import { logger } from '../utils/logger';
+import { extractBaseUrl } from '../utils/url.utils';
+import { validateCommand, validateSessionName } from '../utils/validation.utils';
+import { BatchOperations } from './batch-operations.helper';
 
 interface SessionPoolInfo {
   id: string;
@@ -24,11 +27,7 @@ export class SessionPool {
 
   constructor(page: Page, prefix = 'pool') {
     this.page = page;
-    this.baseUrl =
-      page
-        .url()
-        .replace(/\/sessions.*$/, '')
-        .replace(/\/$/, '') || 'http://localhost:4022';
+    this.baseUrl = extractBaseUrl(page.url());
     this.sessionPrefix = prefix;
   }
 
@@ -37,11 +36,7 @@ export class SessionPool {
    */
   updatePage(page: Page): void {
     this.page = page;
-    this.baseUrl =
-      page
-        .url()
-        .replace(/\/sessions.*$/, '')
-        .replace(/\/$/, '') || 'http://localhost:4022';
+    this.baseUrl = extractBaseUrl(page.url());
   }
 
   /**
@@ -53,24 +48,30 @@ export class SessionPool {
   ): Promise<void> {
     logger.info(`Initializing session pool with ${poolSize} sessions`);
 
-    const createPromises = Array(poolSize)
+    const batchOps = new BatchOperations(this.page);
+    const sessionRequests = Array(poolSize)
       .fill(0)
-      .map(async (_, i) => {
-        const name = `${this.sessionPrefix}-${Date.now()}-${i}`;
-        try {
-          const session = await this.createSession(name, command);
-          this.availableSessions.set(session.id, {
-            ...session,
-            created: Date.now(),
-            command,
-            status: 'available',
-          });
-        } catch (error) {
-          logger.error(`Failed to create pool session ${i}:`, error);
-        }
-      });
+      .map((_, i) => ({
+        name: `${this.sessionPrefix}-${Date.now()}-${i}`,
+        command,
+      }));
 
-    await Promise.all(createPromises);
+    const results = await batchOps.createSessions(sessionRequests);
+
+    results.forEach((result) => {
+      if (result.success) {
+        this.availableSessions.set(result.id, {
+          id: result.id,
+          name: result.name,
+          created: Date.now(),
+          command,
+          status: 'available',
+        });
+      } else {
+        logger.error(`Failed to create pool session ${result.name}:`, result.error);
+      }
+    });
+
     logger.info(`Session pool initialized with ${this.availableSessions.size} sessions`);
   }
 
@@ -171,6 +172,10 @@ export class SessionPool {
   }
 
   private async createSession(name: string, command: string): Promise<SessionInfo> {
+    // Validate inputs
+    validateSessionName(name);
+    validateCommand(command);
+
     return this.page.evaluate(
       async ({ url, name, command }) => {
         const response = await fetch(`${url}/api/sessions`, {

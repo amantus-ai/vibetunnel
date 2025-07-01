@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { CLEANUP_CONFIG } from '../config/test-constants';
 import type { SessionInfo } from '../types/session.types';
 import { logger } from '../utils/logger';
+import { extractBaseUrl } from '../utils/url.utils';
 
 /**
  * Smart session cleanup helper that efficiently removes test sessions
@@ -13,11 +14,7 @@ export class SessionCleanupHelper {
 
   constructor(page: Page) {
     this.page = page;
-    this.baseUrl =
-      page
-        .url()
-        .replace(/\/sessions.*$/, '')
-        .replace(/\/$/, '') || 'http://localhost:4022';
+    this.baseUrl = extractBaseUrl(page.url());
   }
 
   /**
@@ -173,11 +170,16 @@ export class SessionCleanupHelper {
       if (this.page.url().endsWith('/')) {
         const killAllButton = this.page.locator('button:has-text("Kill All")');
         if (await killAllButton.isVisible({ timeout: 500 })) {
-          const [dialog] = await Promise.all([
-            this.page.waitForEvent('dialog'),
-            killAllButton.click(),
-          ]);
-          await dialog.accept();
+          try {
+            const [dialog] = await Promise.all([
+              this.page.waitForEvent('dialog', { timeout: 1000 }),
+              killAllButton.click(),
+            ]);
+            await dialog.accept();
+          } catch {
+            // Dialog didn't appear, continue with cleanup
+            logger.debug('No dialog appeared for Kill All button');
+          }
 
           // Wait briefly for sessions to exit
           await this.page.waitForTimeout(500);
