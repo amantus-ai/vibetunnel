@@ -3,6 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Session } from '../../shared/types.js';
 import './session-view.js';
 import type { SessionView } from './session-view.js';
 
@@ -58,7 +59,7 @@ describe('SessionView Drag & Drop and Paste', () => {
       status: 'running',
       startedAt: new Date().toISOString(),
       lastModified: new Date().toISOString(),
-    } as any;
+    } as Session;
   });
 
   afterEach(() => {

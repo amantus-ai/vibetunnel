@@ -258,7 +258,7 @@ describe('Socket Protocol Integration', () => {
       await client2.connect();
 
       // Set up status listener on client2
-      let receivedStatus: any = null;
+      let receivedStatus: { app: string; status: string } | null = null;
       client2.on('status', (status) => {
         receivedStatus = status;
       });
@@ -311,6 +311,7 @@ describe('Socket Protocol Integration', () => {
       await client.connect();
 
       // Send some random bytes that don't form a valid message
+      // biome-ignore lint/suspicious/noExplicitAny: Need to access internal socket for testing
       const socket = (client as any).socket;
       socket.write(Buffer.from([0xff, 0xff, 0xff, 0xff, 0xff]));
 

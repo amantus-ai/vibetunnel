@@ -156,7 +156,7 @@ describe('FilePicker Component', () => {
       click: vi.fn(),
       remove: vi.fn(),
     };
-    element.fileInput = mockFileInput as any;
+    element.fileInput = mockFileInput as HTMLInputElement;
 
     fileButton?.click();
 

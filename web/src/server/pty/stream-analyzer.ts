@@ -57,7 +57,6 @@ export class PTYStreamAnalyzer {
   private static readonly ESCAPE_TIMEOUT_MS = 1000;
 
   // Common prompt patterns
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal prompt patterns need control characters
   private readonly promptPatterns = [
     /\$ $/, // Bash/sh prompt ending
     /# $/, // Root prompt ending
