@@ -1372,13 +1372,13 @@ export class VibeTunnelApp extends LitElement {
         @error=${this.handleError}
       ></session-create-form>
 
-      <!-- Version and logs link in bottom right -->
+      <!-- Version and logs link positioned above session controls -->
       ${
         this.showLogLink
           ? html`
-        <div class="fixed bottom-4 right-4 text-dark-text-muted text-xs font-mono z-20">
+        <div class="fixed bottom-20 right-4 text-dark-text-muted text-xs font-mono z-20 bg-dark-bg-secondary px-3 py-1.5 rounded-lg border border-dark-border shadow-sm">
           <a href="/logs" class="hover:text-dark-text transition-colors">Logs</a>
-          <span class="ml-2">v${VERSION}</span>
+          <span class="ml-2 opacity-75">v${VERSION}</span>
         </div>
       `
           : ''

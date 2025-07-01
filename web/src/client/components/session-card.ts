@@ -290,9 +290,10 @@ export class SessionCard extends LitElement {
 
         <!-- Terminal display (main content) -->
         <div
-          class="session-preview bg-black overflow-hidden flex-1 ${
+          class="session-preview bg-black overflow-hidden flex-1 relative ${
             this.session.status === 'exited' ? 'session-exited' : ''
           }"
+          style="background: linear-gradient(to bottom, #0a0a0a, #080808); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);"
         >
           ${
             this.killing
@@ -317,18 +318,20 @@ export class SessionCard extends LitElement {
 
         <!-- Compact Footer -->
         <div
-          class="px-3 py-2 text-dark-text-muted text-xs border-t border-dark-border bg-dark-bg-secondary"
+          class="px-3 py-2 text-dark-text-muted text-xs border-t border-dark-border bg-gradient-to-r from-dark-bg-tertiary to-dark-bg-secondary"
         >
           <div class="flex justify-between items-center min-w-0">
             <span 
-              class="${this.getStatusColor()} text-xs flex items-center gap-1 flex-shrink-0"
+              class="${this.getActivityStatusColor()} text-xs flex items-center gap-1 flex-shrink-0"
               data-status="${this.session.status}"
               data-killing="${this.killing}"
             >
               <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
-              ${this.getStatusText()}
+              ${this.getActivityStatusText()}
               ${
-                this.session.status === 'running' && this.isActive
+                this.session.status === 'running' &&
+                this.isActive &&
+                !this.session.activityStatus?.specificStatus
                   ? html`<span class="text-accent-green animate-pulse ml-1">●</span>`
                   : ''
               }
@@ -347,26 +350,8 @@ export class SessionCard extends LitElement {
                 : ''
             }
           </div>
-          <div class="text-xs min-w-0 mt-1">
-            ${
-              this.session.activityStatus?.specificStatus
-                ? html`
-                  <div class="flex items-center gap-1 text-status-warning">
-                    <span class="flex-shrink-0">
-                      ${this.session.activityStatus.specificStatus.status}
-                    </span>
-                    <span class="text-dark-text-muted/50">·</span>
-                    <span class="truncate opacity-75">
-                      <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
-                    </span>
-                  </div>
-                `
-                : html`
-                  <div class="opacity-75">
-                    <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
-                  </div>
-                `
-            }
+          <div class="text-xs opacity-75 min-w-0 mt-1">
+            <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
           </div>
         </div>
       </div>
@@ -380,12 +365,38 @@ export class SessionCard extends LitElement {
     return this.session.status;
   }
 
+  private getActivityStatusText(): string {
+    if (this.killing) {
+      return 'killing...';
+    }
+    if (this.session.active === false) {
+      return 'waiting';
+    }
+    if (this.session.status === 'running' && this.session.activityStatus?.specificStatus) {
+      return this.session.activityStatus.specificStatus.status;
+    }
+    return this.session.status;
+  }
+
   private getStatusColor(): string {
     if (this.killing) {
       return 'text-status-error';
     }
     if (this.session.active === false) {
       return 'text-dark-text-muted';
+    }
+    return this.session.status === 'running' ? 'text-status-success' : 'text-status-warning';
+  }
+
+  private getActivityStatusColor(): string {
+    if (this.killing) {
+      return 'text-status-error';
+    }
+    if (this.session.active === false) {
+      return 'text-dark-text-muted';
+    }
+    if (this.session.status === 'running' && this.session.activityStatus?.specificStatus) {
+      return 'text-status-warning';
     }
     return this.session.status === 'running' ? 'text-status-success' : 'text-status-warning';
   }

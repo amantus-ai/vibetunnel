@@ -158,7 +158,7 @@ export class SessionList extends LitElement {
 
     return html`
       <div class="font-mono text-sm" data-testid="session-list-container">
-        <div class="p-4">
+        <div class="p-4 pt-5">
         ${
           !hasRunningSessions && (!hasExitedSessions || this.hideExited)
             ? html`
@@ -239,10 +239,10 @@ export class SessionList extends LitElement {
                 hasRunningSessions
                   ? html`
                     <div class="mb-6">
-                      <h3 class="text-xs font-semibold text-dark-text-muted uppercase tracking-wider mb-3">
+                      <h3 class="text-xs font-semibold text-dark-text-muted uppercase tracking-wider mb-4">
                         Active <span class="text-dark-text-dim">(${runningSessions.length})</span>
                       </h3>
-                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'}">
+                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
                         ${repeat(
                           runningSessions,
                           (session) => session.id,
@@ -434,10 +434,10 @@ export class SessionList extends LitElement {
                 showExitedSection
                   ? html`
                     <div>
-                      <h3 class="text-xs font-semibold text-dark-text-muted uppercase tracking-wider mb-3">
+                      <h3 class="text-xs font-semibold text-dark-text-muted uppercase tracking-wider mb-4">
                         Idle <span class="text-dark-text-dim">(${exitedSessions.length})</span>
                       </h3>
-                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'}">
+                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
                         ${repeat(
                           exitedSessions,
                           (session) => session.id,
@@ -581,10 +581,10 @@ export class SessionList extends LitElement {
             ? html`
                 <!-- Show/Hide Exited button -->
                 <button
-                  class="font-mono text-xs px-4 py-2 rounded-md border transition-all duration-200 ${
+                  class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 ${
                     this.hideExited
-                      ? 'border-dark-border bg-dark-bg-elevated text-dark-text-muted hover:bg-dark-surface-hover hover:text-dark-text'
-                      : 'border-accent-primary bg-accent-primary bg-opacity-10 text-accent-primary hover:bg-opacity-20'
+                      ? 'border-dark-border bg-dark-bg-elevated text-dark-text-muted hover:bg-dark-surface-hover hover:text-accent-primary hover:border-accent-primary hover:shadow-sm'
+                      : 'border-accent-primary bg-accent-primary bg-opacity-10 text-accent-primary hover:bg-opacity-20 hover:shadow-glow-primary-sm'
                   }"
                   @click=${() =>
                     this.dispatchEvent(
@@ -600,7 +600,7 @@ export class SessionList extends LitElement {
                   !this.hideExited
                     ? html`
                       <button
-                        class="font-mono text-xs px-4 py-2 rounded-md border transition-all duration-200 border-status-warning bg-status-warning bg-opacity-10 text-status-warning hover:bg-opacity-20 disabled:opacity-50"
+                        class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 border-status-warning bg-status-warning bg-opacity-10 text-status-warning hover:bg-opacity-20 hover:shadow-glow-warning-sm disabled:opacity-50"
                         @click=${this.handleCleanupExited}
                         ?disabled=${this.cleaningExited}
                       >

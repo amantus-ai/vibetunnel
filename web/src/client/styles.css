@@ -106,6 +106,12 @@
     @apply hover:border-dark-border-light hover:shadow-lg hover:-translate-y-1;
     position: relative;
     overflow: hidden;
+    /* Ensure cards have proper z-index for hover */
+    z-index: 1;
+  }
+  
+  .card:hover {
+    z-index: 10;
   }
   
   /* Card glow effect for active sessions */
@@ -186,14 +192,15 @@
     grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
     grid-auto-rows: 400px;
     gap: 1.25rem;
-    padding: 0 0.75rem;
+    padding: 0.5rem 0.75rem;
     /* Enable smooth grid transitions */
     transition: grid-template-columns 0.3s ease-out;
   }
 
   .session-flex-responsive > * {
     height: 100%;
-    overflow: hidden;
+    /* Allow overflow for hover effects */
+    overflow: visible;
   }
 
   @media (max-width: 420px) {
