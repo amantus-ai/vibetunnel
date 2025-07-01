@@ -20,7 +20,6 @@ export const test = base.extend<TestFixtures>({
     // Set up resource blocking for performance - be less aggressive
     // Only intercept routes if explicitly dealing with external resources
     const shouldBlockExternalResources = false; // Disable for now to fix CI issues
-    
     if (shouldBlockExternalResources) {
       await page.route('**/*', (route) => {
         const url = route.request().url();
