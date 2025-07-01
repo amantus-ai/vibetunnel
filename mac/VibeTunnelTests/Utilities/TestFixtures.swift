@@ -12,7 +12,8 @@ enum TestFixtures {
         processID: Int32? = nil,
         isActive: Bool = true
     )
-        -> TunnelSession {
+        -> TunnelSession
+    {
         var session = TunnelSession(
             id: UUID(uuidString: id) ?? UUID(),
             processID: processID
@@ -34,7 +35,8 @@ enum TestFixtures {
     static func createSessionRequest(
         clientInfo: TunnelSession.ClientInfo? = nil
     )
-        -> TunnelSession.CreateRequest {
+        -> TunnelSession.CreateRequest
+    {
         TunnelSession.CreateRequest(clientInfo: clientInfo ?? defaultClientInfo())
     }
 
@@ -42,7 +44,8 @@ enum TestFixtures {
         id: String = "00000000-0000-0000-0000-000000000123",
         session: TunnelSession? = nil
     )
-        -> TunnelSession.CreateResponse {
+        -> TunnelSession.CreateResponse
+    {
         TunnelSession.CreateResponse(
             id: id,
             session: session ?? createSession(id: id)
@@ -57,7 +60,8 @@ enum TestFixtures {
         environment: [String: String]? = nil,
         workingDirectory: String? = nil
     )
-        -> TunnelSession.ExecuteCommandRequest {
+        -> TunnelSession.ExecuteCommandRequest
+    {
         TunnelSession.ExecuteCommandRequest(
             sessionId: sessionId,
             command: command,
@@ -71,7 +75,8 @@ enum TestFixtures {
         stdout: String = "test output",
         stderr: String = ""
     )
-        -> TunnelSession.ExecuteCommandResponse {
+        -> TunnelSession.ExecuteCommandResponse
+    {
         TunnelSession.ExecuteCommandResponse(
             exitCode: exitCode,
             stdout: stdout,
@@ -85,7 +90,8 @@ enum TestFixtures {
         error: String = "Test error",
         code: String? = "TEST_ERROR"
     )
-        -> TunnelSession.ErrorResponse {
+        -> TunnelSession.ErrorResponse
+    {
         TunnelSession.ErrorResponse(error: error, code: code)
     }
 
@@ -116,7 +122,8 @@ extension TestFixtures {
         timeout: TimeInterval = 1.0,
         interval: TimeInterval = 0.1
     )
-        async throws {
+        async throws
+    {
         let deadline = Date().addingTimeInterval(timeout)
 
         while Date() < deadline {

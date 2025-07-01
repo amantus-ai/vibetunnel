@@ -5,18 +5,18 @@ import os.log
 /// Server session information returned by the API
 struct ServerSessionInfo: Codable {
     let id: String
-    let command: [String]  // Changed from String to [String] to match server
-    let name: String?      // Added missing field
+    let command: [String] // Changed from String to [String] to match server
+    let name: String? // Added missing field
     let workingDir: String
     let status: String
     let exitCode: Int?
     let startedAt: String
     let lastModified: String
-    let pid: Int?          // Made optional since it might not exist for all sessions
-    let initialCols: Int?  // Added missing field
-    let initialRows: Int?  // Added missing field
+    let pid: Int? // Made optional since it might not exist for all sessions
+    let initialCols: Int? // Added missing field
+    let initialRows: Int? // Added missing field
     let activityStatus: ActivityStatus?
-    let source: String?    // Added for HQ mode
+    let source: String? // Added for HQ mode
 
     var isRunning: Bool {
         status == "running"
@@ -123,13 +123,19 @@ final class SessionMonitor {
             self.sessions = sessionsDict
             self.lastError = nil
             self.lastFetch = Date()
-            
-            logger.debug("Fetched \(sessionsArray.count) sessions, \(sessionsDict.values.filter { $0.isRunning }.count) running")
-            
+
+            logger
+                .debug(
+                    "Fetched \(sessionsArray.count) sessions, \(sessionsDict.values.count { $0.isRunning }) running"
+                )
+
             // Debug: Log session details
             for session in sessionsArray {
                 let pidStr = session.pid.map { String($0) } ?? "nil"
-                logger.debug("Session \(session.id): status=\(session.status), isRunning=\(session.isRunning), pid=\(pidStr)")
+                logger
+                    .debug(
+                        "Session \(session.id): status=\(session.status), isRunning=\(session.isRunning), pid=\(pidStr)"
+                    )
             }
 
             // Update WindowTracker

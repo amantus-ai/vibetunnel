@@ -18,7 +18,7 @@ struct AboutView: View {
         return "\(version) (\(build))"
     }
 
-    // Special thanks contributors sorted by contribution count
+    /// Special thanks contributors sorted by contribution count
     private let specialContributors = [
         "Helmut Januschka",
         "Manuel Maly",
@@ -187,9 +187,9 @@ struct HoverableLink: View {
 
 // MARK: - Array Extension
 
-private extension Array {
-    func chunked(into size: Int) -> [[Element]] {
-        return stride(from: 0, to: count, by: size).map {
+extension Array {
+    fileprivate func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map {
             Array(self[$0..<Swift.min($0 + size, count)])
         }
     }

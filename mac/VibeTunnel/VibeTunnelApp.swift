@@ -205,13 +205,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                     logger.error("Server start error: \(error.localizedDescription)")
                 }
             }
-            
+
             // Initialize status bar controller after services are ready
             if let sessionMonitor = app?.sessionMonitor,
                let serverManager = app?.serverManager,
                let ngrokService = app?.ngrokService,
                let tailscaleService = app?.tailscaleService,
-               let terminalLauncher = app?.terminalLauncher {
+               let terminalLauncher = app?.terminalLauncher
+            {
                 statusBarController = StatusBarController(
                     sessionMonitor: sessionMonitor,
                     serverManager: serverManager,

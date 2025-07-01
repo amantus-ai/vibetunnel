@@ -40,7 +40,7 @@ struct SessionDetailView: View {
                 DetailRow(label: "Status", value: session.status.capitalized)
                 DetailRow(label: "Started At", value: formatDate(session.startedAt))
                 DetailRow(label: "Last Modified", value: formatDate(session.lastModified))
-                
+
                 if let pid = session.pid {
                     DetailRow(label: "Process ID", value: "\(pid)")
                 }

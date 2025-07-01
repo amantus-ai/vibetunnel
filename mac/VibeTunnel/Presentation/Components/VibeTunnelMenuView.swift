@@ -8,9 +8,9 @@ struct VibeTunnelMenuView: View {
     @Environment(NgrokService.self) var ngrokService
     @Environment(TailscaleService.self) var tailscaleService
     @Environment(\.openWindow) private var openWindow
-    
+
     @State private var hoveredSessionId: String?
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Header with server info
@@ -26,9 +26,9 @@ struct VibeTunnelMenuView: View {
                         endPoint: .bottom
                     )
                 )
-            
+
             Divider()
-            
+
             // Session list
             ScrollView {
                 VStack(spacing: 1) {
@@ -50,14 +50,14 @@ struct VibeTunnelMenuView: View {
                                 }
                             }
                         }
-                        
-                        // Idle sessions section  
+
+                        // Idle sessions section
                         if !idleSessions.isEmpty {
                             if !activeSessions.isEmpty {
                                 Divider()
                                     .padding(.vertical, 4)
                             }
-                            
+
                             SessionSectionHeader(title: "Idle", count: idleSessions.count)
                             ForEach(idleSessions, id: \.key) { session in
                                 SessionRow(
@@ -75,9 +75,9 @@ struct VibeTunnelMenuView: View {
                 .padding(.vertical, 4)
             }
             .frame(maxHeight: 400)
-            
+
             Divider()
-            
+
             // Bottom actions
             HStack {
                 Button(action: {
@@ -88,9 +88,9 @@ struct VibeTunnelMenuView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     NSApplication.shared.terminate(nil)
                 }) {
@@ -102,22 +102,22 @@ struct VibeTunnelMenuView: View {
             }
             .padding()
         }
-        .frame(width: 320)
+        .frame(width: 384)
         .background(Color.clear)
     }
-    
+
     private var activeSessions: [(key: String, value: ServerSessionInfo)] {
         sessionMonitor.sessions
             .filter { $0.value.isRunning && hasActivity($0.value) }
             .sorted { $0.value.startedAt > $1.value.startedAt }
     }
-    
+
     private var idleSessions: [(key: String, value: ServerSessionInfo)] {
         sessionMonitor.sessions
             .filter { $0.value.isRunning && !hasActivity($0.value) }
             .sorted { $0.value.startedAt > $1.value.startedAt }
     }
-    
+
     private func hasActivity(_ session: ServerSessionInfo) -> Bool {
         if let activityStatus = session.activityStatus?.specificStatus?.status {
             return !activityStatus.isEmpty
@@ -132,7 +132,7 @@ struct ServerInfoHeader: View {
     @Environment(ServerManager.self) var serverManager
     @Environment(NgrokService.self) var ngrokService
     @Environment(TailscaleService.self) var tailscaleService
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Title and status
@@ -142,21 +142,21 @@ struct ServerInfoHeader: View {
                         .resizable()
                         .frame(width: 24, height: 24)
                         .cornerRadius(4)
-                    
+
                     Text("VibeTunnel")
                         .font(.system(size: 14, weight: .semibold))
                 }
-                
+
                 Spacer()
-                
+
                 ServerStatusBadge(isRunning: serverManager.isRunning)
             }
-            
+
             // Server address
             if serverManager.isRunning {
                 VStack(alignment: .leading, spacing: 4) {
                     ServerAddressRow()
-                    
+
                     if ngrokService.isActive, let publicURL = ngrokService.publicUrl {
                         HStack(spacing: 4) {
                             Image(systemName: "network")
@@ -172,7 +172,7 @@ struct ServerInfoHeader: View {
                                 .truncationMode(.middle)
                         }
                     }
-                    
+
                     if tailscaleService.isRunning, let hostname = tailscaleService.tailscaleHostname {
                         HStack(spacing: 4) {
                             Image(systemName: "shield")
@@ -194,7 +194,7 @@ struct ServerInfoHeader: View {
 
 struct ServerAddressRow: View {
     @Environment(ServerManager.self) var serverManager
-    
+
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "server.rack")
@@ -208,7 +208,7 @@ struct ServerAddressRow: View {
                 .foregroundColor(.primary)
         }
     }
-    
+
     private var serverAddress: String {
         let bindAddress = serverManager.bindAddress
         if bindAddress == "127.0.0.1" {
@@ -223,7 +223,7 @@ struct ServerAddressRow: View {
 
 struct ServerStatusBadge: View {
     let isRunning: Bool
-    
+
     var body: some View {
         HStack(spacing: 4) {
             Circle()
@@ -251,7 +251,7 @@ struct ServerStatusBadge: View {
 struct SessionSectionHeader: View {
     let title: String
     let count: Int
-    
+
     var body: some View {
         HStack {
             Text(title)
@@ -271,9 +271,9 @@ struct SessionRow: View {
     let session: (key: String, value: ServerSessionInfo)
     let isHovered: Bool
     let isActive: Bool
-    
+
     @Environment(\.openWindow) private var openWindow
-    
+
     var body: some View {
         Button(action: {
             WindowTracker.shared.focusWindow(for: session.key)
@@ -289,7 +289,7 @@ struct SessionRow: View {
                         .fill(activityColor)
                         .frame(width: 4, height: 4)
                 }
-                
+
                 // Session info
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
@@ -298,33 +298,33 @@ struct SessionRow: View {
                             .foregroundColor(.primary)
                             .lineLimit(1)
                             .truncationMode(.middle)
-                        
+
                         Spacer()
-                        
+
                         if hasWindow {
                             Image(systemName: "macwindow")
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary)
                         }
-                        
+
                         if let pid = session.value.pid {
                             Text("PID: \(pid)")
                                 .font(.system(size: 10))
                                 .foregroundColor(Color.secondary.opacity(0.6))
                         }
                     }
-                    
+
                     HStack(spacing: 4) {
                         if let activityStatus = session.value.activityStatus?.specificStatus?.status {
                             Text(activityStatus)
                                 .font(.system(size: 10))
                                 .foregroundColor(.orange)
-                            
+
                             Text("·")
                                 .font(.system(size: 10))
                                 .foregroundColor(Color.secondary.opacity(0.6))
                         }
-                        
+
                         Text(compactPath)
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
@@ -332,7 +332,7 @@ struct SessionRow: View {
                             .truncationMode(.middle)
                     }
                 }
-                
+
                 // Duration
                 Text(duration)
                     .font(.system(size: 10))
@@ -354,86 +354,86 @@ struct SessionRow: View {
                     WindowTracker.shared.focusWindow(for: session.key)
                 }
             }
-            
+
             Button("View Session Details") {
                 openWindow(id: "session-detail", value: session.key)
             }
-            
+
             Divider()
-            
+
             Button("Copy Session ID") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(session.key, forType: .string)
             }
         }
     }
-    
+
     private var sessionName: String {
         let workingDir = session.value.workingDir
         return (workingDir as NSString).lastPathComponent
     }
-    
+
     private var compactPath: String {
         let path = session.value.workingDir
         let homeDir = NSHomeDirectory()
-        
+
         if path.hasPrefix(homeDir) {
             let relativePath = String(path.dropFirst(homeDir.count))
             return "~" + relativePath
         }
-        
+
         let components = (path as NSString).pathComponents
         if components.count > 2 {
             let lastTwo = components.suffix(2).joined(separator: "/")
             return ".../" + lastTwo
         }
-        
+
         return path
     }
-    
+
     private var activityColor: Color {
         if isActive {
-            return .orange
+            .orange
         } else {
-            return .green
+            .green
         }
     }
-    
+
     private var hasWindow: Bool {
         // Check if WindowTracker has a window registered for this session
         WindowTracker.shared.windowInfo(for: session.key) != nil
     }
-    
+
     private var duration: String {
         // Parse ISO8601 date string with fractional seconds
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        
+
         guard let startDate = formatter.date(from: session.value.startedAt) else {
             // Fallback: try without fractional seconds
             formatter.formatOptions = [.withInternetDateTime]
             guard let startDate = formatter.date(from: session.value.startedAt) else {
-                return ""  // Return empty string instead of "unknown"
+                return "" // Return empty string instead of "unknown"
             }
             return formatDuration(from: startDate)
         }
-        
+
         return formatDuration(from: startDate)
     }
-    
+
     private func formatDuration(from startDate: Date) -> String {
         let elapsed = Date().timeIntervalSince(startDate)
-        
+
         if elapsed < 60 {
             return "just now"
-        } else if elapsed < 3600 {
+        } else if elapsed < 3_600 {
             let minutes = Int(elapsed / 60)
             return "\(minutes)m"
-        } else if elapsed < 86400 {
-            let hours = Int(elapsed / 3600)
+        } else if elapsed < 86_400 {
+            let hours = Int(elapsed / 3_600)
             return "\(hours)h"
         } else {
-            let days = Int(elapsed / 86400)
+            let days = Int(elapsed / 86_400)
             return "\(days)d"
         }
     }
@@ -442,7 +442,7 @@ struct SessionRow: View {
 struct EmptySessionsView: View {
     @Environment(ServerManager.self) var serverManager
     @State private var isAnimating = false
-    
+
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: "terminal")
@@ -457,11 +457,11 @@ struct EmptySessionsView: View {
                 .scaleEffect(isAnimating ? 1.05 : 1.0)
                 .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isAnimating)
                 .onAppear { isAnimating = true }
-            
+
             Text("No active sessions")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
-            
+
             if serverManager.isRunning {
                 Button("Open Dashboard") {
                     if let url = URL(string: "http://127.0.0.1:\(serverManager.port)") {

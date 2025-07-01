@@ -53,7 +53,7 @@ final class SessionMonitorTests {
         #expect(session.exitCode == nil)
         #expect(session.startedAt == "2025-01-01T10:00:00.000Z")
         #expect(session.lastModified == "2025-01-01T10:05:00.000Z")
-        #expect(session.pid == 12345)
+        #expect(session.pid == 12_345)
         #expect(session.initialCols == 80)
         #expect(session.initialRows == 24)
         #expect(session.activityStatus?.isActive == true)
@@ -177,7 +177,7 @@ final class SessionMonitorTests {
         #expect(sessions[0].id == "session-1")
         #expect(sessions[0].command == ["bash"])
         #expect(sessions[0].isRunning == true)
-        #expect(sessions[0].pid == 1001)
+        #expect(sessions[0].pid == 1_001)
 
         // Verify second session
         #expect(sessions[1].id == "session-2")
@@ -288,8 +288,10 @@ final class SessionMonitorTests {
             let data = json.data(using: .utf8)!
             let session = try JSONDecoder().decode(ServerSessionInfo.self, from: data)
 
-            #expect(session.isRunning == expectedRunning,
-                   "Status '\(status)' should result in isRunning=\(expectedRunning)")
+            #expect(
+                session.isRunning == expectedRunning,
+                "Status '\(status)' should result in isRunning=\(expectedRunning)"
+            )
         }
     }
 
@@ -430,7 +432,7 @@ final class SessionMonitorTests {
         let devSession = sessions[1]
         #expect(devSession.command == ["pnpm", "run", "dev"])
         #expect(devSession.isRunning == true)
-        #expect(devSession.pid == 34567)
+        #expect(devSession.pid == 34_567)
 
         // Verify exited session
         let gitSession = sessions[2]
