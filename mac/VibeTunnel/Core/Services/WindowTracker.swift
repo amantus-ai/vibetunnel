@@ -138,7 +138,7 @@ final class WindowTracker {
         guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
             return []
         }
-        
+
         let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "WindowTracker")
 
         return windowList.compactMap { windowDict in
@@ -149,9 +149,9 @@ final class WindowTracker {
             else {
                 return nil
             }
-            
+
             // Log suspicious window IDs for debugging
-            if windowID < 1000 && windowID == CGWindowID(ownerPID) {
+            if windowID < 1_000 && windowID == CGWindowID(ownerPID) {
                 logger.warning("Suspicious window ID \(windowID) matches PID for \(ownerName)")
             }
 
@@ -215,7 +215,7 @@ final class WindowTracker {
         // First try to find window by process PID traversal
         if let sessionInfo = getSessionInfo(for: sessionID), let sessionPID = sessionInfo.pid {
             logger.debug("Attempting to find window by process PID: \(sessionPID)")
-            
+
             // For debugging: log the process tree
             logProcessTree(for: pid_t(sessionPID))
 
@@ -248,7 +248,10 @@ final class WindowTracker {
                         if let matchingWindow = terminalWindows.first(where: { window in
                             window.ownerPID == grandParentPID
                         }) {
-                            logger.info("Found window by ancestor process match: PID \(grandParentPID) at depth \(depth + 2)")
+                            logger
+                                .info(
+                                    "Found window by ancestor process match: PID \(grandParentPID) at depth \(depth + 2)"
+                                )
                             return createWindowInfo(
                                 from: matchingWindow,
                                 sessionID: sessionID,
@@ -391,7 +394,7 @@ final class WindowTracker {
 
         return nil
     }
-    
+
     /// Get process info including name
     private func getProcessInfo(for pid: pid_t) -> (name: String, ppid: pid_t)? {
         var info = kinfo_proc()
@@ -409,13 +412,13 @@ final class WindowTracker {
 
         return nil
     }
-    
+
     /// Log the process tree for debugging
     private func logProcessTree(for pid: pid_t) {
         var currentPID = pid
         var depth = 0
         var processPath: [String] = []
-        
+
         while depth < 15 {
             if let processInfo = getProcessInfo(for: currentPID) {
                 processPath.append("\(processInfo.name):\(currentPID)")
@@ -428,7 +431,7 @@ final class WindowTracker {
                 break
             }
         }
-        
+
         logger.debug("Process tree: \(processPath.joined(separator: " <- "))")
     }
 
@@ -673,8 +676,11 @@ final class WindowTracker {
 
     /// Focuses a Ghostty window with macOS standard tabs.
     private func focusGhosttyWindow(_ windowInfo: WindowInfo) {
-        logger.info("Attempting to focus Ghostty window - windowID: \(windowInfo.windowID), ownerPID: \(windowInfo.ownerPID), sessionID: \(windowInfo.sessionID)")
-        
+        logger
+            .info(
+                "Attempting to focus Ghostty window - windowID: \(windowInfo.windowID), ownerPID: \(windowInfo.ownerPID), sessionID: \(windowInfo.sessionID)"
+            )
+
         // First bring the application to front
         if let app = NSRunningApplication(processIdentifier: windowInfo.ownerPID) {
             app.activate()
@@ -683,13 +689,13 @@ final class WindowTracker {
         // Ghostty uses macOS standard tabs, so we need to:
         // 1. Focus the window
         // 2. Find and select the correct tab
-        
+
         // Use Accessibility API to handle tab selection
         let axApp = AXUIElementCreateApplication(windowInfo.ownerPID)
-        
+
         var windowsValue: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsValue)
-        
+
         guard result == .success,
               let windows = windowsValue as? [AXUIElement],
               !windows.isEmpty
@@ -698,17 +704,17 @@ final class WindowTracker {
             focusWindowUsingAccessibility(windowInfo)
             return
         }
-        
+
         // Find the matching window
         logger.debug("Looking for Ghostty window with ID \(windowInfo.windowID) among \(windows.count) windows")
-        
+
         // If we have a very low window ID that matches PID, it's likely wrong
-        if windowInfo.windowID < 1000 && windowInfo.windowID == CGWindowID(windowInfo.ownerPID) {
+        if windowInfo.windowID < 1_000 && windowInfo.windowID == CGWindowID(windowInfo.ownerPID) {
             logger.warning("Window ID \(windowInfo.windowID) suspiciously matches PID, will try alternative matching")
-            
+
             // In this case, we need to find the correct window by tab content
             let sessionInfo = getSessionInfo(for: windowInfo.sessionID)
-            
+
             for (windowIndex, window) in windows.enumerated() {
                 // Check tabs in this window
                 var tabsValue: CFTypeRef?
@@ -721,40 +727,40 @@ final class WindowTracker {
                         // Found the window with matching tab
                         AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
                         AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
-                        
+
                         // Select the correct tab
                         selectGhosttyTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
-                        
+
                         logger.info("Focused Ghostty window \(windowIndex) by tab content match")
                         return
                     }
                 }
             }
-            
+
             // If no matching tab found, use first window as fallback
             if !windows.isEmpty {
                 let window = windows[0]
                 AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
                 AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
-                
+
                 logger.info("Focused first Ghostty window as final fallback")
                 return
             }
         }
-        
+
         // Try matching by window ID, but also prepare for tab-based matching
         var windowWithMatchingTab: (window: AXUIElement, tabs: [AXUIElement])?
         let sessionInfo = getSessionInfo(for: windowInfo.sessionID)
-        
+
         for (windowIndex, window) in windows.enumerated() {
             var windowIDValue: CFTypeRef?
             let windowIDResult = AXUIElementCopyAttributeValue(window, kAXWindowAttribute as CFString, &windowIDValue)
-            
+
             // Also get window title for debugging
             var titleValue: CFTypeRef?
             let titleResult = AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleValue)
             let windowTitle = titleResult == .success ? (titleValue as? String ?? "no title") : "failed to get title"
-            
+
             // Check tabs in this window for content matching
             var tabsValue: CFTypeRef?
             if AXUIElementCopyAttributeValue(window, kAXTabsAttribute as CFString, &tabsValue) == .success,
@@ -767,59 +773,66 @@ final class WindowTracker {
                     logger.debug("Window \(windowIndex) has matching tab for session \(windowInfo.sessionID)")
                 }
             }
-            
+
             if windowIDResult == .success {
                 if let windowNumber = windowIDValue as? Int {
-                    logger.debug("Window \(windowIndex): AX window ID = \(windowNumber), title = '\(windowTitle)', looking for \(windowInfo.windowID)")
-                    
+                    logger
+                        .debug(
+                            "Window \(windowIndex): AX window ID = \(windowNumber), title = '\(windowTitle)', looking for \(windowInfo.windowID)"
+                        )
+
                     if windowNumber == windowInfo.windowID {
                         // Found the window by ID, make it main and focused
                         AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
                         AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
-                    
-                    // Now select the correct tab
-                    var tabsValue2: CFTypeRef?
-                    if AXUIElementCopyAttributeValue(window, kAXTabsAttribute as CFString, &tabsValue2) == .success,
-                       let tabs = tabsValue2 as? [AXUIElement],
-                       !tabs.isEmpty
-                    {
-                        // Use the helper method to select the correct tab
-                        selectGhosttyTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
+
+                        // Now select the correct tab
+                        var tabsValue2: CFTypeRef?
+                        if AXUIElementCopyAttributeValue(window, kAXTabsAttribute as CFString, &tabsValue2) == .success,
+                           let tabs = tabsValue2 as? [AXUIElement],
+                           !tabs.isEmpty
+                        {
+                            // Use the helper method to select the correct tab
+                            selectGhosttyTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
+                        }
+
+                        logger.info("Focused Ghostty window by ID match")
+                        return
                     }
-                    
-                    logger.info("Focused Ghostty window by ID match")
-                    return
-                }
                 } else {
-                    logger.debug("Window \(windowIndex): AX window ID value is not an Int: \(String(describing: windowIDValue))")
+                    logger
+                        .debug(
+                            "Window \(windowIndex): AX window ID value is not an Int: \(String(describing: windowIDValue))"
+                        )
                 }
             } else {
-                logger.debug("Window \(windowIndex): Failed to get AX window ID, error code: \(windowIDResult.rawValue)")
+                logger
+                    .debug("Window \(windowIndex): Failed to get AX window ID, error code: \(windowIDResult.rawValue)")
             }
         }
-        
+
         // If we couldn't find by window ID but found a window with matching tab content, use that
         if let matchingWindow = windowWithMatchingTab {
             AXUIElementSetAttributeValue(matchingWindow.window, kAXMainAttribute as CFString, true as CFTypeRef)
             AXUIElementSetAttributeValue(matchingWindow.window, kAXFocusedAttribute as CFString, true as CFTypeRef)
-            
+
             // Select the correct tab
             selectGhosttyTab(tabs: matchingWindow.tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
-            
+
             logger.info("Focused Ghostty window by tab content match (no window ID match)")
             return
         }
-        
+
         // Fallback if we couldn't find the specific window
         logger.warning("Could not find matching Ghostty window with ID \(windowInfo.windowID), using fallback")
-        
+
         // Log additional debugging info
         if windows.isEmpty {
             logger.error("No Ghostty windows found at all")
         } else {
             logger.debug("Ghostty windows found but none matched ID \(windowInfo.windowID)")
         }
-        
+
         focusWindowUsingAccessibility(windowInfo)
     }
 
@@ -855,7 +868,7 @@ final class WindowTracker {
                 // Found the matching window, make it main and focused
                 AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
                 AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
-                
+
                 // For terminals that use macOS standard tabs, try to select the correct tab
                 var tabsValue: CFTypeRef?
                 if AXUIElementCopyAttributeValue(window, kAXTabsAttribute as CFString, &tabsValue) == .success,
@@ -863,45 +876,55 @@ final class WindowTracker {
                    !tabs.isEmpty
                 {
                     logger.info("Terminal has \(tabs.count) tabs, attempting to find correct one")
-                    
+
                     // Try to find the tab with matching session info
                     if let sessionInfo = getSessionInfo(for: windowInfo.sessionID) {
                         let workingDir = sessionInfo.workingDir
                         let dirName = (workingDir as NSString).lastPathComponent
                         let sessionID = windowInfo.sessionID
                         let activityStatus = sessionInfo.activityStatus?.specificStatus?.status
-                        
+
                         // Try multiple matching strategies
                         for (index, tab) in tabs.enumerated() {
                             var titleValue: CFTypeRef?
-                            if AXUIElementCopyAttributeValue(tab, kAXTitleAttribute as CFString, &titleValue) == .success,
-                               let title = titleValue as? String
+                            if AXUIElementCopyAttributeValue(tab, kAXTitleAttribute as CFString, &titleValue) ==
+                                .success,
+                                let title = titleValue as? String
                             {
                                 // Check for session ID match first (most precise)
                                 if title.contains(sessionID) || title.contains("TTY_SESSION_ID=\(sessionID)") {
                                     AXUIElementPerformAction(tab, kAXPressAction as CFString)
-                                    logger.info("Selected tab \(index) by session ID for terminal \(windowInfo.terminalApp.rawValue)")
+                                    logger
+                                        .info(
+                                            "Selected tab \(index) by session ID for terminal \(windowInfo.terminalApp.rawValue)"
+                                        )
                                     return
                                 }
-                                
+
                                 // Check for activity status match (unique for dynamic activities)
                                 if let activity = activityStatus, !activity.isEmpty, title.contains(activity) {
                                     AXUIElementPerformAction(tab, kAXPressAction as CFString)
-                                    logger.info("Selected tab \(index) by activity '\(activity)' for terminal \(windowInfo.terminalApp.rawValue)")
+                                    logger
+                                        .info(
+                                            "Selected tab \(index) by activity '\(activity)' for terminal \(windowInfo.terminalApp.rawValue)"
+                                        )
                                     return
                                 }
-                                
+
                                 // Check for directory match
                                 if title.contains(dirName) || title.contains(workingDir) {
                                     AXUIElementPerformAction(tab, kAXPressAction as CFString)
-                                    logger.info("Selected tab \(index) by directory for terminal \(windowInfo.terminalApp.rawValue)")
+                                    logger
+                                        .info(
+                                            "Selected tab \(index) by directory for terminal \(windowInfo.terminalApp.rawValue)"
+                                        )
                                     return
                                 }
                             }
                         }
                     }
                 }
-                
+
                 logger.info("Focused window using Accessibility API")
                 return
             }
@@ -1162,16 +1185,16 @@ final class WindowTracker {
             SystemPermissionManager.shared.requestPermission(.accessibility)
         }
     }
-    
+
     /// Find a tab that matches the session
     private func findMatchingTab(tabs: [AXUIElement], sessionInfo: ServerSessionInfo?) -> AXUIElement? {
-        guard let sessionInfo = sessionInfo else { return nil }
-        
+        guard let sessionInfo else { return nil }
+
         let workingDir = sessionInfo.workingDir
         let dirName = (workingDir as NSString).lastPathComponent
         let sessionID = sessionInfo.id
         let activityStatus = sessionInfo.activityStatus?.specificStatus?.status
-        
+
         for tab in tabs {
             var titleValue: CFTypeRef?
             if AXUIElementCopyAttributeValue(tab, kAXTitleAttribute as CFString, &titleValue) == .success,
@@ -1181,34 +1204,34 @@ final class WindowTracker {
                 if title.contains(sessionID) || title.contains("TTY_SESSION_ID=\(sessionID)") {
                     return tab
                 }
-                
+
                 // Priority 2: Activity status with directory
                 if let activity = activityStatus, !activity.isEmpty, title.contains(activity) {
                     if title.contains(dirName) || title.contains(workingDir) {
                         return tab
                     }
                 }
-                
+
                 // Priority 3: Command with directory
                 if let command = sessionInfo.command.first, !command.isEmpty, title.contains(command) {
                     if title.contains(dirName) || title.contains(workingDir) {
                         return tab
                     }
                 }
-                
+
                 // Priority 4: Directory only
                 if title.contains(dirName) || title.contains(workingDir) {
                     return tab
                 }
             }
         }
-        
+
         return nil
     }
-    
+
     /// Helper to select the correct Ghostty tab
     private func selectGhosttyTab(tabs: [AXUIElement], windowInfo: WindowInfo, sessionInfo: ServerSessionInfo?) {
-        guard let sessionInfo = sessionInfo else {
+        guard let sessionInfo else {
             // No session info, select last tab as fallback
             if let lastTab = tabs.last {
                 AXUIElementPerformAction(lastTab, kAXPressAction as CFString)
@@ -1216,12 +1239,12 @@ final class WindowTracker {
             }
             return
         }
-        
+
         let workingDir = sessionInfo.workingDir
         let dirName = (workingDir as NSString).lastPathComponent
         let sessionID = windowInfo.sessionID
         let activityStatus = sessionInfo.activityStatus?.specificStatus?.status
-        
+
         // Try multiple matching strategies as in the main method
         for (index, tab) in tabs.enumerated() {
             var titleValue: CFTypeRef?
@@ -1234,7 +1257,7 @@ final class WindowTracker {
                     logger.info("Selected Ghostty tab \(index) by session ID")
                     return
                 }
-                
+
                 // Priority 2: Activity status
                 if let activity = activityStatus, !activity.isEmpty, title.contains(activity) {
                     if title.contains(dirName) || title.contains(workingDir) {
@@ -1243,7 +1266,7 @@ final class WindowTracker {
                         return
                     }
                 }
-                
+
                 // Priority 3: Command
                 if let command = sessionInfo.command.first, !command.isEmpty, title.contains(command) {
                     if title.contains(dirName) || title.contains(workingDir) {
@@ -1252,7 +1275,7 @@ final class WindowTracker {
                         return
                     }
                 }
-                
+
                 // Priority 4: Directory only
                 if title.contains(dirName) || title.contains(workingDir) {
                     AXUIElementPerformAction(tab, kAXPressAction as CFString)
@@ -1261,7 +1284,7 @@ final class WindowTracker {
                 }
             }
         }
-        
+
         // Fallback: select last tab
         if let lastTab = tabs.last {
             AXUIElementPerformAction(lastTab, kAXPressAction as CFString)

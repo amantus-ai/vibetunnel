@@ -63,10 +63,10 @@ final class StatusBarController: NSObject {
             button.action = #selector(handleClick(_:))
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            
+
             // Use pushOnPushOff for proper state management
             button.setButtonType(.pushOnPushOff)
-            
+
             // Accessibility
             button.setAccessibilityTitle("VibeTunnel")
             button.setAccessibilityRole(.button)

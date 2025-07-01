@@ -6,6 +6,10 @@ import SwiftUI
 /// Provides a dropdown-style window for the menu bar application
 /// without the standard macOS popover arrow. Handles automatic positioning below
 /// the status item, click-outside dismissal, and proper window management.
+private enum DesignConstants {
+    static let menuCornerRadius: CGFloat = 12
+}
+
 @MainActor
 final class CustomMenuWindow: NSPanel {
     private var eventMonitor: Any?
@@ -15,6 +19,8 @@ final class CustomMenuWindow: NSPanel {
     private var targetFrame: NSRect?
     private weak var statusBarButton: NSStatusBarButton?
     private var _isWindowVisible = false
+    private var frameObserver: Any?
+    private var lastBounds: CGRect = .zero
 
     /// Closure to be called when window hides
     var onHide: (() -> Void)?
@@ -49,7 +55,7 @@ final class CustomMenuWindow: NSPanel {
         isMovableByWindowBackground = false
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
-        
+
         // Allow the window to become key but not main
         // This helps maintain button highlight state
         acceptsMouseMovedEvents = false
@@ -66,19 +72,29 @@ final class CustomMenuWindow: NSPanel {
 
             // Create a custom mask layer for side-rounded corners
             let maskLayer = CAShapeLayer()
-            maskLayer.path = createSideRoundedPath(in: contentView.bounds, cornerRadius: 12)
+            maskLayer.path = createSideRoundedPath(
+                in: contentView.bounds,
+                cornerRadius: DesignConstants.menuCornerRadius
+            )
             contentView.layer?.mask = maskLayer
+            lastBounds = contentView.bounds
 
             // Update mask when bounds change
             contentView.postsFrameChangedNotifications = true
-            NotificationCenter.default.addObserver(
+            self.frameObserver = NotificationCenter.default.addObserver(
                 forName: NSView.frameDidChangeNotification,
                 object: contentView,
                 queue: .main
             ) { [weak self, weak contentView] _ in
-                guard let self = self, let contentView = contentView else { return }
                 Task { @MainActor in
-                    maskLayer.path = self.createSideRoundedPath(in: contentView.bounds, cornerRadius: 12)
+                    guard let self, let contentView else { return }
+                    let currentBounds = contentView.bounds
+                    guard currentBounds != self.lastBounds else { return }
+                    self.lastBounds = currentBounds
+                    maskLayer.path = self.createSideRoundedPath(
+                        in: currentBounds,
+                        cornerRadius: DesignConstants.menuCornerRadius
+                    )
                 }
             }
 
@@ -91,9 +107,8 @@ final class CustomMenuWindow: NSPanel {
     }
 
     func show(relativeTo statusItemButton: NSStatusBarButton) {
-        // Store button reference and ensure it stays highlighted
+        // Store button reference (state should already be set by StatusBarMenuManager)
         self.statusBarButton = statusItemButton
-        statusItemButton.highlight(true)
 
         // First, make sure the SwiftUI hierarchy has laid itself out
         hostingController.view.layoutSubtreeIfNeeded()
@@ -154,18 +169,14 @@ final class CustomMenuWindow: NSPanel {
         // Set all visual properties at once
         alphaValue = 1.0
 
-        // Ensure button remains highlighted
-        statusBarButton?.highlight(true)
+        // Button state is managed by StatusBarMenuManager, don't change it here
 
         // Show window without activating the app aggressively
         // This helps maintain the button's highlight state
         orderFront(nil)
         makeKey()
 
-        // Force button highlight update again after window is shown
-        DispatchQueue.main.async { [weak self] in
-            self?.statusBarButton?.highlight(true)
-        }
+        // Button state is managed by StatusBarMenuManager
 
         // Set first responder after window is visible
         makeFirstResponder(self)
@@ -259,8 +270,7 @@ final class CustomMenuWindow: NSPanel {
         // Mark window as not visible
         _isWindowVisible = false
 
-        // Reset button highlight when hiding
-        statusBarButton?.highlight(false)
+        // Button state will be reset by StatusBarMenuManager via onHide callback
         orderOut(nil)
         teardownEventMonitoring()
         onHide?()
@@ -272,8 +282,7 @@ final class CustomMenuWindow: NSPanel {
         // Mark window as not visible
         _isWindowVisible = false
 
-        // Reset button highlight when window is ordered out
-        statusBarButton?.highlight(false)
+        // Button state will be reset by StatusBarMenuManager via onHide callback
         onHide?()
     }
 
@@ -325,6 +334,9 @@ final class CustomMenuWindow: NSPanel {
     deinit {
         MainActor.assumeIsolated {
             teardownEventMonitoring()
+            if let observer = frameObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
         }
     }
 
@@ -384,7 +396,6 @@ final class CustomMenuWindow: NSPanel {
     }
 }
 
-
 /// A wrapper view that applies modern SwiftUI material background to menu content.
 struct CustomMenuContainer<Content: View>: View {
     @ViewBuilder let content: Content
@@ -395,9 +406,9 @@ struct CustomMenuContainer<Content: View>: View {
     var body: some View {
         content
             .fixedSize()
-            .background(backgroundMaterial, in: SideRoundedRectangle(cornerRadius: 12))
+            .background(backgroundMaterial, in: SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius))
             .overlay(
-                SideRoundedRectangle(cornerRadius: 12)
+                SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius)
                     .stroke(borderColor, lineWidth: 1)
             )
     }

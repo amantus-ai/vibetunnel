@@ -69,7 +69,10 @@ final class StatusBarMenuManager: NSObject {
             statusBarButton = button
         }
 
-        // No need to manage highlight here since we're using button state
+        // Reset button state when no menu is active
+        if newState == .none {
+            statusBarButton?.state = .off
+        }
     }
 
     // MARK: - Left-Click Custom Window Management
@@ -144,20 +147,11 @@ final class StatusBarMenuManager: NSObject {
 
         // Show the custom window
         customWindow?.show(relativeTo: button)
-
-        // Force immediate button highlight update after showing window
-        // This ensures the button stays highlighted even if there's a timing issue
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(10))
-            button.highlight(true)
-        }
     }
 
     func hideCustomWindow() {
         customWindow?.hide()
-        // Reset button state
-        statusBarButton?.state = .off
-        // Note: state will be reset by the onHide callback
+        // Button state will be reset by updateMenuState(.none) in the onHide callback
     }
 
     var isCustomWindowVisible: Bool {
@@ -189,7 +183,7 @@ final class StatusBarMenuManager: NSObject {
 
         // Store status item reference
         currentStatusItem = statusItem
-        
+
         // Set the button's state to on for context menu
         button.state = .on
 
@@ -356,7 +350,7 @@ extension StatusBarMenuManager: NSMenuDelegate {
     func menuDidClose(_ menu: NSMenu) {
         // Reset button state
         statusBarButton?.state = .off
-        
+
         // Reset menu state when context menu closes
         updateMenuState(.none)
 

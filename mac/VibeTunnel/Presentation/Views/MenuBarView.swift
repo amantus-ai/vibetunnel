@@ -349,13 +349,13 @@ struct SessionRowView: View {
                         .foregroundColor(.primary)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                    
+
                     // Show session name if available
                     if let name = session.value.name, !name.isEmpty {
                         Text("–")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary.opacity(0.6))
-                        
+
                         Text(name)
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
@@ -435,10 +435,10 @@ struct SessionRowView: View {
         guard let firstCommand = session.value.command.first else {
             return "Unknown"
         }
-        
+
         // Extract just the executable name from the path
         let executableName = (firstCommand as NSString).lastPathComponent
-        
+
         // Special handling for common commands
         switch executableName {
         case "zsh", "bash", "sh":
@@ -446,7 +446,8 @@ struct SessionRowView: View {
             if session.value.command.count > 2,
                session.value.command.contains("-c"),
                let cIndex = session.value.command.firstIndex(of: "-c"),
-               cIndex + 1 < session.value.command.count {
+               cIndex + 1 < session.value.command.count
+            {
                 let actualCommand = session.value.command[cIndex + 1]
                 return (actualCommand as NSString).lastPathComponent
             }
@@ -455,7 +456,7 @@ struct SessionRowView: View {
             return executableName
         }
     }
-    
+
     private var sessionName: String {
         // Extract the working directory name as the session name
         let workingDir = session.value.workingDir

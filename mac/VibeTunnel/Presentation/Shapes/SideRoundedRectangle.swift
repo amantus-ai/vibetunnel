@@ -15,9 +15,6 @@ struct SideRoundedRectangle: Shape {
         // Top edge (flat)
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
 
-        // Top-right corner (flat)
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-
         // Right edge with rounded corners
         path.addArc(
             center: CGPoint(x: rect.maxX - cornerRadius, y: rect.minY + cornerRadius),
@@ -38,9 +35,6 @@ struct SideRoundedRectangle: Shape {
         )
 
         // Bottom edge (flat)
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-
-        // Bottom-left corner (flat)
         path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
 
         // Left edge with rounded corners

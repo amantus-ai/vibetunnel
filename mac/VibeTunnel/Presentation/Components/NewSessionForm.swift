@@ -292,7 +292,11 @@ struct NewSessionForm: View {
                 .foregroundColor(.white)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(command.isEmpty || workingDirectory.isEmpty ? Color.gray.opacity(0.4) : Color(red: 0.2, green: 0.6, blue: 0.3))
+                        .fill(command.isEmpty || workingDirectory.isEmpty ? Color.gray.opacity(0.4) : Color(
+                            red: 0.2,
+                            green: 0.6,
+                            blue: 0.3
+                        ))
                 )
                 .disabled(isCreating || command.isEmpty || workingDirectory.isEmpty)
             }

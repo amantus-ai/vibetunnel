@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0-beta.6] - 2025-01-01
+## [1.0.0-beta.6] - 2025-07-02
 
 ### ✨ New Features
 - **Sleep Prevention** - Mac now stays awake when VibeTunnel is running terminal sessions
