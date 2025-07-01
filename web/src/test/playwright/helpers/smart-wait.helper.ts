@@ -17,7 +17,9 @@ export class SmartWait {
     // Wait for the session to show running status
     await page.waitForFunction(
       (name) => {
-        const card = document.querySelector(`session-card:has-text("${name}")`);
+        // Find session card by iterating through all cards
+        const cards = document.querySelectorAll('session-card');
+        const card = Array.from(cards).find((el) => el.textContent?.includes(name));
         if (!card) return false;
         const text = card.textContent?.toLowerCase() || '';
         return text.includes('running') || text.includes('active');
