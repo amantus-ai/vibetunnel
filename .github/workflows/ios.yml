@@ -135,12 +135,6 @@ jobs:
             sleep 5
           fi
         done
-
-    - name: Download web build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: web-build-${{ github.sha }}
-        path: web/
     
     - name: Resolve Dependencies (once)
       run: |
