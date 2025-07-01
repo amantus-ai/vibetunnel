@@ -17,7 +17,7 @@ struct SessionDetailView: View {
                     .fontWeight(.bold)
 
                 HStack {
-                    Label("PID: \(session.pid)", systemImage: "number.circle.fill")
+                    Label("PID: \(session.pid ?? 0)", systemImage: "number.circle.fill")
                         .font(.title3)
 
                     Spacer()

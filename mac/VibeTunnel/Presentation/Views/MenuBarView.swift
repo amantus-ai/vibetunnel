@@ -325,27 +325,46 @@ struct SessionRowView: View {
             // Focus the terminal window for this session
             WindowTracker.shared.focusWindow(for: session.key)
         }, label: {
-            HStack {
-                Text("  • \(sessionName)")
-                    .font(.system(size: 12))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+            VStack(alignment: .leading, spacing: 2) {
+                // Main session row
+                HStack {
+                    Text("  • \(sessionName)")
+                        .font(.system(size: 12))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
 
-                Spacer()
+                    Spacer()
 
-                if let claudeStatus = claudeStatus {
-                    Text(claudeStatus)
+                    if let pid = session.value.pid {
+                        Text("PID: \(pid)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                // Activity status and path row
+                HStack(spacing: 4) {
+                    Text("    ")
+                        .font(.system(size: 11))
+                    
+                    if let activityStatus = activityStatus {
+                        Text(activityStatus)
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                        
+                        Text("·")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary.opacity(0.5))
+                    }
+                    
+                    Text(compactPath)
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
-                        .padding(.trailing, 8)
-                }
-
-                if let pid = session.value.pid {
-                    Text("PID: \(pid)")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .truncationMode(.middle)
+                    
+                    Spacer()
                 }
             }
             .padding(.vertical, 2)
@@ -392,12 +411,31 @@ struct SessionRowView: View {
         return name
     }
     
-    private var claudeStatus: String? {
-        if let specificStatus = session.value.activityStatus?.specificStatus,
-           specificStatus.app == "claude" {
+    private var activityStatus: String? {
+        if let specificStatus = session.value.activityStatus?.specificStatus {
             return specificStatus.status
         }
         return nil
+    }
+    
+    private var compactPath: String {
+        let path = session.value.workingDir
+        let homeDir = NSHomeDirectory()
+        
+        // Replace home directory with ~
+        if path.hasPrefix(homeDir) {
+            let relativePath = String(path.dropFirst(homeDir.count))
+            return "~" + relativePath
+        }
+        
+        // For other paths, show last two components
+        let components = (path as NSString).pathComponents
+        if components.count > 2 {
+            let lastTwo = components.suffix(2).joined(separator: "/")
+            return ".../" + lastTwo
+        }
+        
+        return path
     }
 }
 

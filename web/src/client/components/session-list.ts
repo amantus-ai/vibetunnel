@@ -146,14 +146,6 @@ export class SessionList extends LitElement {
     }
   }
 
-  private handleOpenFileBrowser() {
-    this.dispatchEvent(
-      new CustomEvent('open-file-browser', {
-        bubbles: true,
-      })
-    );
-  }
-
   render() {
     const filteredSessions = this.hideExited
       ? this.sessions.filter((session) => session.status !== 'exited')
@@ -237,28 +229,6 @@ export class SessionList extends LitElement {
             `
             : html`
               <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'}">
-                ${
-                  this.compactMode
-                    ? html`
-                      <!-- Browse Files button as special tab -->
-                      <div
-                        class="flex items-center gap-2 p-3 rounded-md cursor-pointer transition-all hover:bg-dark-bg-tertiary border border-dark-border bg-dark-bg-secondary"
-                        @click=${this.handleOpenFileBrowser}
-                        title="Browse Files (⌘O)"
-                      >
-                        <div class="flex-1 min-w-0">
-                          <div class="text-sm font-mono text-accent-green truncate">
-                            📁 Browse Files
-                          </div>
-                          <div class="text-xs text-dark-text-muted truncate">Open file browser</div>
-                        </div>
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                          <span class="text-dark-text-muted text-xs">⌘O</span>
-                        </div>
-                      </div>
-                    `
-                    : ''
-                }
                 ${repeat(
                   filteredSessions,
                   (session) => session.id,

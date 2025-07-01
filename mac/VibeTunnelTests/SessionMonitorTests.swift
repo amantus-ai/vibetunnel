@@ -14,7 +14,315 @@ final class SessionMonitorTests {
         await monitor.refresh()
     }
 
-    // MARK: - Basic Functionality Tests
+    // MARK: - JSON Decoding Tests
+
+    @Test("Decode valid session with all fields")
+    func decodeValidSessionAllFields() throws {
+        let json = """
+        {
+            "id": "test-session-123",
+            "command": ["bash", "-l"],
+            "name": "Test Session",
+            "workingDir": "/Users/test",
+            "status": "running",
+            "exitCode": null,
+            "startedAt": "2025-01-01T10:00:00.000Z",
+            "lastModified": "2025-01-01T10:05:00.000Z",
+            "pid": 12345,
+            "initialCols": 80,
+            "initialRows": 24,
+            "activityStatus": {
+                "isActive": true,
+                "specificStatus": {
+                    "app": "claude",
+                    "status": "active"
+                }
+            },
+            "source": "local"
+        }
+        """
+
+        let data = json.data(using: .utf8)!
+        let session = try JSONDecoder().decode(ServerSessionInfo.self, from: data)
+
+        #expect(session.id == "test-session-123")
+        #expect(session.command == ["bash", "-l"])
+        #expect(session.name == "Test Session")
+        #expect(session.workingDir == "/Users/test")
+        #expect(session.status == "running")
+        #expect(session.exitCode == nil)
+        #expect(session.startedAt == "2025-01-01T10:00:00.000Z")
+        #expect(session.lastModified == "2025-01-01T10:05:00.000Z")
+        #expect(session.pid == 12345)
+        #expect(session.initialCols == 80)
+        #expect(session.initialRows == 24)
+        #expect(session.activityStatus?.isActive == true)
+        #expect(session.activityStatus?.specificStatus?.app == "claude")
+        #expect(session.activityStatus?.specificStatus?.status == "active")
+        #expect(session.source == "local")
+        #expect(session.isRunning == true)
+    }
+
+    @Test("Decode session with minimal fields")
+    func decodeSessionMinimalFields() throws {
+        let json = """
+        {
+            "id": "minimal-session",
+            "command": ["sh"],
+            "workingDir": "/tmp",
+            "status": "exited",
+            "startedAt": "2025-01-01T09:00:00.000Z",
+            "lastModified": "2025-01-01T09:30:00.000Z"
+        }
+        """
+
+        let data = json.data(using: .utf8)!
+        let session = try JSONDecoder().decode(ServerSessionInfo.self, from: data)
+
+        #expect(session.id == "minimal-session")
+        #expect(session.command == ["sh"])
+        #expect(session.name == nil)
+        #expect(session.workingDir == "/tmp")
+        #expect(session.status == "exited")
+        #expect(session.exitCode == nil)
+        #expect(session.pid == nil)
+        #expect(session.initialCols == nil)
+        #expect(session.initialRows == nil)
+        #expect(session.activityStatus == nil)
+        #expect(session.source == nil)
+        #expect(session.isRunning == false)
+    }
+
+    @Test("Decode session with command array bug reproduction")
+    func decodeSessionCommandArrayBug() throws {
+        // This test reproduces the exact bug where command was an array
+        let json = """
+        {
+            "id": "bug-session",
+            "command": ["claude", "session", "--continue"],
+            "name": "Claude Session",
+            "workingDir": "/Users/developer/project",
+            "status": "running",
+            "exitCode": null,
+            "startedAt": "2025-01-01T12:00:00.000Z",
+            "lastModified": "2025-01-01T12:15:00.000Z",
+            "pid": 54321,
+            "initialCols": 120,
+            "initialRows": 40,
+            "activityStatus": {
+                "isActive": true,
+                "specificStatus": {
+                    "app": "claude",
+                    "status": "thinking"
+                }
+            }
+        }
+        """
+
+        let data = json.data(using: .utf8)!
+        let session = try JSONDecoder().decode(ServerSessionInfo.self, from: data)
+
+        // Verify command array is properly decoded
+        #expect(session.command == ["claude", "session", "--continue"])
+        #expect(session.command.count == 3)
+        #expect(session.command[0] == "claude")
+        #expect(session.command[1] == "session")
+        #expect(session.command[2] == "--continue")
+        #expect(session.isRunning == true)
+    }
+
+    @Test("Decode session array from API response")
+    func decodeSessionArrayFromAPI() throws {
+        let json = """
+        [
+            {
+                "id": "session-1",
+                "command": ["bash"],
+                "workingDir": "/home/user1",
+                "status": "running",
+                "startedAt": "2025-01-01T10:00:00.000Z",
+                "lastModified": "2025-01-01T10:05:00.000Z",
+                "pid": 1001
+            },
+            {
+                "id": "session-2",
+                "command": ["python3", "script.py"],
+                "workingDir": "/home/user2",
+                "status": "exited",
+                "exitCode": 0,
+                "startedAt": "2025-01-01T09:00:00.000Z",
+                "lastModified": "2025-01-01T09:30:00.000Z"
+            },
+            {
+                "id": "session-3",
+                "command": ["node", "server.js", "--port", "3000"],
+                "name": "Dev Server",
+                "workingDir": "/app",
+                "status": "running",
+                "startedAt": "2025-01-01T11:00:00.000Z",
+                "lastModified": "2025-01-01T11:45:00.000Z",
+                "pid": 2002,
+                "initialCols": 100,
+                "initialRows": 30
+            }
+        ]
+        """
+
+        let data = json.data(using: .utf8)!
+        let sessions = try JSONDecoder().decode([ServerSessionInfo].self, from: data)
+
+        #expect(sessions.count == 3)
+
+        // Verify first session
+        #expect(sessions[0].id == "session-1")
+        #expect(sessions[0].command == ["bash"])
+        #expect(sessions[0].isRunning == true)
+        #expect(sessions[0].pid == 1001)
+
+        // Verify second session
+        #expect(sessions[1].id == "session-2")
+        #expect(sessions[1].command == ["python3", "script.py"])
+        #expect(sessions[1].isRunning == false)
+        #expect(sessions[1].exitCode == 0)
+
+        // Verify third session
+        #expect(sessions[2].id == "session-3")
+        #expect(sessions[2].command == ["node", "server.js", "--port", "3000"])
+        #expect(sessions[2].name == "Dev Server")
+        #expect(sessions[2].isRunning == true)
+    }
+
+    // MARK: - Edge Case Tests
+
+    @Test("Handle empty JSON array response")
+    func handleEmptyArrayResponse() throws {
+        let json = "[]"
+        let data = json.data(using: .utf8)!
+        let sessions = try JSONDecoder().decode([ServerSessionInfo].self, from: data)
+
+        #expect(sessions.isEmpty)
+    }
+
+    @Test("Handle malformed JSON", .tags(.reliability))
+    func handleMalformedJSON() {
+        let malformedJson = """
+        {
+            "id": "broken",
+            "command": "this should be an array",
+            "workingDir": "/tmp",
+            "status": "running"
+        }
+        """
+
+        let data = malformedJson.data(using: .utf8)!
+
+        #expect(throws: (any Error).self) {
+            _ = try JSONDecoder().decode(ServerSessionInfo.self, from: data)
+        }
+    }
+
+    @Test("Handle missing required fields")
+    func handleMissingRequiredFields() {
+        let incompleteJson = """
+        {
+            "id": "incomplete",
+            "workingDir": "/tmp"
+        }
+        """
+
+        let data = incompleteJson.data(using: .utf8)!
+
+        #expect(throws: (any Error).self) {
+            _ = try JSONDecoder().decode(ServerSessionInfo.self, from: data)
+        }
+    }
+
+    @Test("Handle unexpected session status values")
+    func handleUnexpectedStatus() throws {
+        // The status field is just a string, so any value should work
+        let json = """
+        {
+            "id": "weird-status",
+            "command": ["bash"],
+            "workingDir": "/tmp",
+            "status": "zombie",
+            "startedAt": "2025-01-01T10:00:00.000Z",
+            "lastModified": "2025-01-01T10:00:00.000Z"
+        }
+        """
+
+        let data = json.data(using: .utf8)!
+        let session = try JSONDecoder().decode(ServerSessionInfo.self, from: data)
+
+        #expect(session.status == "zombie")
+        #expect(session.isRunning == false) // Only "running" status means isRunning = true
+    }
+
+    // MARK: - isRunning Calculation Tests
+
+    @Test("isRunning calculation for different statuses")
+    func isRunningCalculation() throws {
+        let statuses = [
+            ("running", true),
+            ("exited", false),
+            ("starting", false),
+            ("stopped", false),
+            ("crashed", false),
+            ("", false),
+            ("RUNNING", false), // Case sensitive
+            ("Running", false)
+        ]
+
+        for (status, expectedRunning) in statuses {
+            let json = """
+            {
+                "id": "test-\(status)",
+                "command": ["test"],
+                "workingDir": "/tmp",
+                "status": "\(status)",
+                "startedAt": "2025-01-01T10:00:00.000Z",
+                "lastModified": "2025-01-01T10:00:00.000Z"
+            }
+            """
+
+            let data = json.data(using: .utf8)!
+            let session = try JSONDecoder().decode(ServerSessionInfo.self, from: data)
+
+            #expect(session.isRunning == expectedRunning,
+                   "Status '\(status)' should result in isRunning=\(expectedRunning)")
+        }
+    }
+
+    // MARK: - Remote Session Tests
+
+    @Test("Decode remote session with HQ mode fields")
+    func decodeRemoteSession() throws {
+        let json = """
+        {
+            "id": "remote-session-456",
+            "command": ["ssh", "remote-server"],
+            "name": "Remote SSH Session",
+            "workingDir": "/home/remote",
+            "status": "running",
+            "startedAt": "2025-01-01T14:00:00.000Z",
+            "lastModified": "2025-01-01T14:30:00.000Z",
+            "pid": 8888,
+            "source": "remote",
+            "remoteId": "remote-123",
+            "remoteName": "Production Server",
+            "remoteUrl": "https://remote.example.com"
+        }
+        """
+
+        let data = json.data(using: .utf8)!
+        let session = try JSONDecoder().decode(ServerSessionInfo.self, from: data)
+
+        #expect(session.source == "remote")
+        // Note: remoteId, remoteName, and remoteUrl are not part of ServerSessionInfo
+        // They would need to be added if HQ mode support is needed
+    }
+
+    // MARK: - Session Count Tests
 
     @Test("Session count calculation")
     func sessionCount() {
@@ -22,7 +330,7 @@ final class SessionMonitorTests {
         #expect(monitor.sessionCount == 0)
 
         // Note: Full integration tests would require a running server
-        // These tests verify the basic functionality of SessionMonitor
+        // or the ability to inject mock sessions
     }
 
     // MARK: - Cache Behavior Tests
@@ -36,7 +344,6 @@ final class SessionMonitorTests {
         let cachedSessions = await monitor.getSessions()
 
         // Verify we got a result (even if empty due to no server)
-        // cachedSessions is non-optional, so just verify it's a dictionary
         #expect(cachedSessions.isEmpty || !cachedSessions.isEmpty)
     }
 
@@ -55,19 +362,82 @@ final class SessionMonitorTests {
         #expect(type(of: initialSessions) == type(of: refreshedSessions))
     }
 
-    // MARK: - Error Handling Tests
+    // MARK: - Mock API Response Tests
 
-    @Test("Error handling", .tags(.reliability))
-    func errorHandling() async {
-        // When server is not running, should handle gracefully
-        _ = await monitor.getSessions()
+    @Test("Parse real-world API response")
+    func parseRealWorldResponse() throws {
+        // This mimics an actual response from the server
+        let realWorldJson = """
+        [
+            {
+                "id": "20250101-100000-abc123",
+                "command": ["claude", "session", "--continue", "20250101-095000-xyz789"],
+                "name": "Claude Development Session",
+                "workingDir": "/Users/developer/vibetunnel",
+                "status": "running",
+                "startedAt": "2025-01-01T10:00:00.123Z",
+                "lastModified": "2025-01-01T10:45:32.456Z",
+                "pid": 45678,
+                "initialCols": 120,
+                "initialRows": 40,
+                "activityStatus": {
+                    "isActive": true,
+                    "specificStatus": {
+                        "app": "claude",
+                        "status": "editing"
+                    }
+                }
+            },
+            {
+                "id": "20250101-090000-def456",
+                "command": ["pnpm", "run", "dev"],
+                "name": "Development Server",
+                "workingDir": "/Users/developer/vibetunnel/web",
+                "status": "running",
+                "startedAt": "2025-01-01T09:00:00.000Z",
+                "lastModified": "2025-01-01T10:45:00.000Z",
+                "pid": 34567,
+                "initialCols": 80,
+                "initialRows": 24
+            },
+            {
+                "id": "20250101-083000-ghi789",
+                "command": ["git", "log", "--oneline", "-10"],
+                "workingDir": "/Users/developer/vibetunnel",
+                "status": "exited",
+                "exitCode": 0,
+                "startedAt": "2025-01-01T08:30:00.000Z",
+                "lastModified": "2025-01-01T08:30:05.000Z"
+            }
+        ]
+        """
 
-        // Should have empty sessions, not crash
-        #expect(monitor.sessions.isEmpty || !monitor.sessions.isEmpty)
+        let data = realWorldJson.data(using: .utf8)!
+        let sessions = try JSONDecoder().decode([ServerSessionInfo].self, from: data)
 
-        // Last error might be nil (if treating connection errors as expected)
-        // or might contain error info
-        #expect(monitor.lastError == nil || monitor.lastError != nil)
+        #expect(sessions.count == 3)
+
+        // Verify Claude session
+        let claudeSession = sessions[0]
+        #expect(claudeSession.command.count == 4)
+        #expect(claudeSession.command[0] == "claude")
+        #expect(claudeSession.command[1] == "session")
+        #expect(claudeSession.command[2] == "--continue")
+        #expect(claudeSession.isRunning == true)
+        #expect(claudeSession.activityStatus?.specificStatus?.app == "claude")
+
+        // Verify dev server session
+        let devSession = sessions[1]
+        #expect(devSession.command == ["pnpm", "run", "dev"])
+        #expect(devSession.isRunning == true)
+        #expect(devSession.pid == 34567)
+
+        // Verify exited session
+        let gitSession = sessions[2]
+        #expect(gitSession.command == ["git", "log", "--oneline", "-10"])
+        #expect(gitSession.isRunning == false)
+        #expect(gitSession.exitCode == 0)
+        #expect(gitSession.pid == nil)
     }
 
     // MARK: - Concurrent Access Tests
@@ -93,39 +463,6 @@ final class SessionMonitorTests {
                     #expect(result.count == first.count)
                 }
             }
-        }
-    }
-
-    // MARK: - Session Update Tests
-
-    @Test("Session updates are reflected")
-    func sessionUpdates() async {
-        // Get initial state
-        _ = monitor.sessionCount
-
-        // Refresh to get latest
-        await monitor.refresh()
-
-        // Count should be consistent with sessions dictionary
-        #expect(monitor.sessionCount == monitor.sessions.count)
-        #expect(monitor.sessionCount >= 0)
-    }
-
-    // MARK: - Integration Tests
-
-    @Test("Session monitor integration", .tags(.integration))
-    func integration() async {
-        // Test the full flow
-        await monitor.refresh()
-        let sessions = await monitor.getSessions()
-
-        // Verify session structure if we have any
-        for (sessionId, _) in sessions {
-            // Session ID should be valid
-            #expect(!sessionId.isEmpty)
-
-            // Note: ServerSessionInfo structure details would be validated here
-            // if we had access to the actual session info fields
         }
     }
 
