@@ -1269,7 +1269,7 @@ export class VibeTunnelApp extends LitElement {
             @navigate-to-list=${this.handleNavigateToList}
             @toggle-sidebar=${this.handleToggleSidebar}
           ></app-header>
-          <div class="${this.showSplitView ? 'flex-1 overflow-y-auto' : 'flex-1'} bg-dark-bg-secondary">
+          <div class="${this.showSplitView ? 'flex-1 flex flex-col overflow-hidden' : 'flex-1'} bg-dark-bg-secondary">
             <session-list
               .sessions=${this.sessions}
               .loading=${this.loading}
