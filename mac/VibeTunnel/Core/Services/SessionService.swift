@@ -112,7 +112,7 @@ final class SessionService {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 201
+              httpResponse.statusCode == 200
         else {
             var errorMessage = "Failed to create session"
             if let errorData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -124,7 +124,7 @@ final class SessionService {
         }
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let sessionId = json["id"] as? String
+              let sessionId = json["sessionId"] as? String
         else {
             throw SessionServiceError.invalidResponse
         }
