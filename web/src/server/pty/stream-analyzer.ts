@@ -237,14 +237,52 @@ export class PTYStreamAnalyzer {
   }
 
   /**
+   * Check for buffer overflow and reset state if needed
+   */
+  private checkBufferOverflow(sequenceType: string): boolean {
+    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
+      logger.warn(`${sequenceType} sequence exceeded maximum length, resetting to normal`);
+      this.state = StreamState.NORMAL;
+      this.escapeBuffer = '';
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Create a safe injection point after sequence end
+   */
+  private createSequenceEndPoint(position: number): SafeInjectionPoint {
+    this.state = StreamState.NORMAL;
+    this.escapeBuffer = '';
+    this.escapeStartTime = undefined;
+
+    return {
+      position: position + 1,
+      reason: 'sequence_end',
+      confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
+    };
+  }
+
+  /**
+   * Create a safe injection point after simple two-character escape sequence
+   */
+  private createSimpleSequenceEndPoint(position: number): SafeInjectionPoint {
+    this.state = StreamState.NORMAL;
+    this.escapeBuffer = '';
+
+    return {
+      position: position + 1,
+      reason: 'sequence_end',
+      confidence: PTYStreamAnalyzer.CONFIDENCE.SIMPLE_ESCAPE_END,
+    };
+  }
+
+  /**
    * Handle escape sequence start
    */
   private handleEscapeStart(byte: number, position: number): SafeInjectionPoint | null {
-    // Check for escape buffer overflow
-    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
-      logger.warn('Escape sequence exceeded maximum length, resetting to normal');
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
+    if (this.checkBufferOverflow('Escape')) {
       return null;
     }
 
@@ -269,14 +307,8 @@ export class PTYStreamAnalyzer {
         break;
       default:
         // Two-character escape sequence
-        this.state = StreamState.NORMAL;
-        this.escapeBuffer = '';
         // Safe after simple escape sequences
-        return {
-          position: position + 1,
-          reason: 'sequence_end',
-          confidence: PTYStreamAnalyzer.CONFIDENCE.SIMPLE_ESCAPE_END,
-        };
+        return this.createSimpleSequenceEndPoint(position);
     }
 
     return null;
@@ -286,11 +318,7 @@ export class PTYStreamAnalyzer {
    * Handle CSI (Control Sequence Introducer) sequences
    */
   private handleCSISequence(byte: number, position: number): SafeInjectionPoint | null {
-    // Check for escape buffer overflow
-    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
-      logger.warn('CSI sequence exceeded maximum length, resetting to normal');
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
+    if (this.checkBufferOverflow('CSI')) {
       return null;
     }
 
@@ -298,15 +326,7 @@ export class PTYStreamAnalyzer {
 
     // CSI sequences end with a letter (0x40-0x7E)
     if (byte >= 0x40 && byte <= 0x7e) {
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
-
-      // Safe after CSI sequence
-      return {
-        position: position + 1,
-        reason: 'sequence_end',
-        confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
-      };
+      return this.createSequenceEndPoint(position);
     }
 
     // Still in sequence
@@ -317,11 +337,7 @@ export class PTYStreamAnalyzer {
    * Handle OSC (Operating System Command) sequences
    */
   private handleOSCSequence(byte: number, position: number): SafeInjectionPoint | null {
-    // Check for escape buffer overflow
-    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
-      logger.warn('OSC sequence exceeded maximum length, resetting to normal');
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
+    if (this.checkBufferOverflow('OSC')) {
       return null;
     }
 
@@ -330,18 +346,31 @@ export class PTYStreamAnalyzer {
     // OSC sequences end with ST (ESC\) or BEL
     if (
       byte === 0x07 || // BEL
-      (this.lastByte === 0x1b && byte === 0x5c)
+      (this.lastByte === 0x1b && byte === 0x5c) // ESC\
     ) {
-      // ESC\
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
+      return this.createSequenceEndPoint(position);
+    }
 
-      // Safe after OSC sequence
-      return {
-        position: position + 1,
-        reason: 'sequence_end',
-        confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
-      };
+    return null;
+  }
+
+  /**
+   * Generic handler for sequences terminated by ST (ESC\)
+   */
+  private handleSTTerminatedSequence(
+    byte: number,
+    position: number,
+    sequenceType: 'DCS' | 'APC' | 'PM'
+  ): SafeInjectionPoint | null {
+    if (this.checkBufferOverflow(sequenceType)) {
+      return null;
+    }
+
+    this.escapeBuffer += String.fromCharCode(byte);
+
+    // Check for ST (ESC\) termination
+    if (this.lastByte === 0x1b && byte === 0x5c) {
+      return this.createSequenceEndPoint(position);
     }
 
     return null;
@@ -351,92 +380,21 @@ export class PTYStreamAnalyzer {
    * Handle DCS (Device Control String) sequences
    */
   private handleDCSSequence(byte: number, position: number): SafeInjectionPoint | null {
-    // Check for escape buffer overflow
-    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
-      logger.warn('DCS sequence exceeded maximum length, resetting to normal');
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
-      return null;
-    }
-
-    this.escapeBuffer += String.fromCharCode(byte);
-
-    // DCS sequences end with ST (ESC\)
-    if (this.lastByte === 0x1b && byte === 0x5c) {
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
-
-      // Safe after DCS sequence
-      return {
-        position: position + 1,
-        reason: 'sequence_end',
-        confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
-      };
-    }
-
-    return null;
+    return this.handleSTTerminatedSequence(byte, position, 'DCS');
   }
 
   /**
    * Handle APC (Application Program Command) sequences
    */
   private handleAPCSequence(byte: number, position: number): SafeInjectionPoint | null {
-    // Check for escape buffer overflow
-    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
-      logger.warn('APC sequence exceeded maximum length, resetting to normal');
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
-      return null;
-    }
-
-    this.escapeBuffer += String.fromCharCode(byte);
-
-    // APC sequences end with ST (ESC\)
-    if (this.lastByte === 0x1b && byte === 0x5c) {
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
-      this.escapeStartTime = undefined;
-
-      // Safe after APC sequence
-      return {
-        position: position + 1,
-        reason: 'sequence_end',
-        confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
-      };
-    }
-
-    return null;
+    return this.handleSTTerminatedSequence(byte, position, 'APC');
   }
 
   /**
    * Handle PM (Privacy Message) sequences
    */
   private handlePMSequence(byte: number, position: number): SafeInjectionPoint | null {
-    // Check for escape buffer overflow
-    if (this.escapeBuffer.length >= PTYStreamAnalyzer.MAX_ESCAPE_BUFFER_SIZE) {
-      logger.warn('PM sequence exceeded maximum length, resetting to normal');
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
-      return null;
-    }
-
-    this.escapeBuffer += String.fromCharCode(byte);
-
-    // PM sequences end with ST (ESC\)
-    if (this.lastByte === 0x1b && byte === 0x5c) {
-      this.state = StreamState.NORMAL;
-      this.escapeBuffer = '';
-      this.escapeStartTime = undefined;
-
-      // Safe after PM sequence
-      return {
-        position: position + 1,
-        reason: 'sequence_end',
-        confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
-      };
-    }
-
-    return null;
+    return this.handleSTTerminatedSequence(byte, position, 'PM');
   }
 
   /**
