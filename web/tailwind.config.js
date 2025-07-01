@@ -4,60 +4,74 @@ module.exports = {
     theme: {
         extend: {
             colors: {
-                // Dark theme colors
+                // Unified Dark theme colors with consistent depth
                 "dark-bg": "#0a0a0a",
-                "dark-bg-secondary": "#1a1a1a",
-                "dark-bg-tertiary": "#242424",
-                "dark-surface": "#1f1f1f",
+                "dark-bg-secondary": "#141414",
+                "dark-bg-tertiary": "#1f1f1f",
+                "dark-bg-elevated": "#262626",
+                "dark-surface": "#1a1a1a",
+                "dark-surface-hover": "#2a2a2a",
                 "dark-border": "#2a2a2a",
                 "dark-border-light": "#3a3a3a",
+                "dark-border-focus": "#4a4a4a",
                 
                 // Text colors
                 "dark-text": "#e4e4e4",
-                "dark-text-muted": "#7a7a7a",
-                "dark-text-dim": "#5a5a5a",
+                "dark-text-bright": "#ffffff",
+                "dark-text-muted": "#a3a3a3",
+                "dark-text-dim": "#737373",
                 
-                // Green accent colors (multiple shades)
-                "accent-green": "#00ff88",
-                "accent-green-dark": "#00cc66",
-                "accent-green-darker": "#009944",
-                "accent-green-light": "#44ffaa",
-                "accent-green-glow": "#00ff8866",
-                
-                // Secondary accent colors
-                "accent-cyan": "#00ffcc",
-                "accent-teal": "#00ccaa",
+                // Unified accent color - Vibrant teal-green
+                "primary": "#10B981",
+                "primary-hover": "#059669",
+                "primary-dark": "#047857",
+                "primary-light": "#34D399",
+                "primary-muted": "#10B98133",
+                "primary-glow": "#10B98166",
                 
                 // Status colors
-                "status-error": "#cc3333",
-                "status-warning": "#cc8833",
-                "status-success": "#00cc66",
+                "status-error": "#EF4444",
+                "status-warning": "#F59E0B",
+                "status-success": "#10B981",
+                "status-info": "#3B82F6",
                 
-                // Legacy VS Code theme colors (for compatibility)
-                "vs-bg": "#0a0a0a",
-                "vs-text": "#e4e4e4",
-                "vs-muted": "#7a7a7a",
-                "vs-accent": "#00ff88",
-                "vs-user": "#00ff88",
-                "vs-assistant": "#00ccaa",
-                "vs-warning": "#ffaa44",
-                "vs-function": "#44ffaa",
-                "vs-type": "#00ffcc",
-                "vs-border": "#2a2a2a",
-                "vs-border-light": "#3a3a3a",
-                "vs-bg-secondary": "#1a1a1a",
-                "vs-nav": "#1a1a1a",
-                "vs-nav-hover": "#242424",
-                "vs-nav-active": "#00ff88",
-                "vs-highlight": "#8b6914",
+                // Legacy mappings for gradual migration
+                "accent-primary": "#10B981",
+                "accent-primary-dark": "#059669",
+                "accent-primary-darker": "#047857",
+                "accent-primary-light": "#34D399",
+                "accent-primary-glow": "#10B98166",
+                "accent-green": "#10B981",
+                "accent-green-dark": "#059669",
+                "accent-green-darker": "#047857",
+                "accent-green-light": "#34D399",
+                "accent-green-glow": "#10B98166",
             },
             boxShadow: {
-                'glow-green': '0 0 20px rgba(0, 255, 136, 0.4)',
-                'glow-green-sm': '0 0 10px rgba(0, 255, 136, 0.3)',
-                'glow-green-lg': '0 0 30px rgba(0, 255, 136, 0.5)',
+                // Unified glow effects with primary color
+                'glow': '0 0 20px rgba(16, 185, 129, 0.4)',
+                'glow-sm': '0 0 10px rgba(16, 185, 129, 0.3)',
+                'glow-lg': '0 0 30px rgba(16, 185, 129, 0.5)',
+                'glow-intense': '0 0 40px rgba(16, 185, 129, 0.6)',
+                // Legacy mappings
+                'glow-primary': '0 0 20px rgba(16, 185, 129, 0.4)',
+                'glow-primary-sm': '0 0 10px rgba(16, 185, 129, 0.3)',
+                'glow-primary-lg': '0 0 30px rgba(16, 185, 129, 0.5)',
+                'glow-green': '0 0 20px rgba(16, 185, 129, 0.4)',
+                'glow-green-sm': '0 0 10px rgba(16, 185, 129, 0.3)',
+                'glow-green-lg': '0 0 30px rgba(16, 185, 129, 0.5)',
+                // Subtle shadows for depth
+                'card': '0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4)',
+                'card-hover': '0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.4)',
+                'elevated': '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)',
             },
             animation: {
                 'pulse-green': 'pulseGreen 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'pulse-primary': 'pulsePrimary 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'slide-in-right': 'slideInRight 0.3s ease-out',
+                'slide-in-bottom': 'slideInBottom 0.3s ease-out',
+                'fade-in': 'fadeIn 0.2s ease-out',
+                'scale-in': 'scaleIn 0.2s ease-out',
             },
             keyframes: {
                 pulseGreen: {
@@ -66,6 +80,52 @@ module.exports = {
                     },
                     '50%': {
                         opacity: '.8',
+                    },
+                },
+                pulsePrimary: {
+                    '0%, 100%': {
+                        opacity: '1',
+                    },
+                    '50%': {
+                        opacity: '.7',
+                    },
+                },
+                slideInRight: {
+                    '0%': {
+                        transform: 'translateX(100%)',
+                        opacity: '0',
+                    },
+                    '100%': {
+                        transform: 'translateX(0)',
+                        opacity: '1',
+                    },
+                },
+                slideInBottom: {
+                    '0%': {
+                        transform: 'translateY(100%)',
+                        opacity: '0',
+                    },
+                    '100%': {
+                        transform: 'translateY(0)',
+                        opacity: '1',
+                    },
+                },
+                fadeIn: {
+                    '0%': {
+                        opacity: '0',
+                    },
+                    '100%': {
+                        opacity: '1',
+                    },
+                },
+                scaleIn: {
+                    '0%': {
+                        transform: 'scale(0.95)',
+                        opacity: '0',
+                    },
+                    '100%': {
+                        transform: 'scale(1)',
+                        opacity: '1',
                     },
                 },
             },

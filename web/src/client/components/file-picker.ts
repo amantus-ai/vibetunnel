@@ -35,6 +35,7 @@ export class FilePicker extends LitElement {
 
   @property({ type: Boolean }) visible = false;
   @property({ type: Boolean }) showPathOption = true; // Whether to show "Send path to terminal" option
+  @property({ type: Boolean }) directSelect = false; // Skip dialog and open file picker directly
   @state() private uploading = false;
   @state() private uploadProgress = 0;
 
@@ -43,6 +44,20 @@ export class FilePicker extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.createFileInput();
+  }
+
+  updated(changedProperties: Map<string, unknown>) {
+    super.updated(changedProperties);
+
+    // If directSelect is enabled and visible becomes true, immediately open file picker
+    if (changedProperties.has('visible') && this.visible && this.directSelect) {
+      // Small delay to ensure the component is ready
+      setTimeout(() => {
+        this.handleFileClick();
+        // Reset visible state since we're not showing the dialog
+        this.visible = false;
+      }, 10);
+    }
   }
 
   disconnectedCallback() {
@@ -92,6 +107,13 @@ export class FilePicker extends LitElement {
    */
   async uploadFile(file: File): Promise<void> {
     return this.uploadFileToServer(file);
+  }
+
+  /**
+   * Public method to directly open the file picker without showing dialog
+   */
+  openFilePicker(): void {
+    this.handleFileClick();
   }
 
   private async uploadFileToServer(file: File): Promise<void> {
@@ -187,52 +209,53 @@ export class FilePicker extends LitElement {
   }
 
   render() {
+    // Always render a container so the file input is available
     if (!this.visible) {
-      return html``;
+      return html`<div style="display: none;"></div>`;
     }
 
     return html`
-      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click=${this.handleCancel}>
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 m-4 max-w-sm w-full" @click=${(e: Event) => e.stopPropagation()}>
-          <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+      <div class="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" @click=${this.handleCancel}>
+        <div class="bg-dark-bg-elevated border border-dark-border rounded-xl shadow-2xl p-8 m-4 max-w-sm w-full animate-scale-in" @click=${(e: Event) => e.stopPropagation()}>
+          <h3 class="text-xl font-bold text-dark-text mb-6">
             Select File
           </h3>
           
           ${
             this.uploading
               ? html`
-            <div class="mb-4">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-sm text-gray-600 dark:text-gray-400">Uploading...</span>
-                <span class="text-sm text-gray-600 dark:text-gray-400">${Math.round(this.uploadProgress)}%</span>
+            <div class="mb-6">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm text-dark-text-muted font-mono">Uploading...</span>
+                <span class="text-sm text-accent-primary font-mono font-medium">${Math.round(this.uploadProgress)}%</span>
               </div>
-              <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div class="w-full bg-dark-bg-secondary rounded-full h-2 overflow-hidden">
                 <div 
-                  class="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                  class="bg-gradient-to-r from-accent-primary to-accent-primary-light h-2 rounded-full transition-all duration-300 shadow-glow-primary-sm" 
                   style="width: ${this.uploadProgress}%"
                 ></div>
               </div>
             </div>
           `
               : html`
-            <div class="space-y-3">
+            <div class="space-y-4">
               <button
                 @click=${this.handleFileClick}
-                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                class="w-full bg-accent-primary text-dark-bg font-medium py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-all duration-200 hover:bg-accent-primary-light hover:shadow-glow-primary active:scale-95"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-5L9 2H4z" clip-rule="evenodd"/>
                 </svg>
-                <span>Choose File</span>
+                <span class="font-mono">Choose File</span>
               </button>
             </div>
           `
           }
           
-          <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+          <div class="mt-6 pt-6 border-t border-dark-border">
             <button
               @click=${this.handleCancel}
-              class="w-full bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors"
+              class="w-full bg-dark-bg-secondary border border-dark-border text-dark-text font-mono py-3 px-6 rounded-lg transition-all duration-200 hover:bg-dark-surface-hover hover:border-dark-border-light active:scale-95"
               ?disabled=${this.uploading}
             >
               Cancel

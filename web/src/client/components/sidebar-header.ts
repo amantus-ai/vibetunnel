@@ -16,8 +16,8 @@ export class SidebarHeader extends HeaderBase {
 
     return html`
       <div
-        class="app-header sidebar-header bg-dark-bg-secondary border-b border-dark-border p-3"
-        style="padding-top: max(0.75rem, calc(0.75rem + env(safe-area-inset-top)));"
+        class="app-header sidebar-header bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary border-b border-dark-border px-4 py-2 shadow-sm"
+        style="padding-top: max(0.625rem, env(safe-area-inset-top));"
       >
         <!-- Compact layout for sidebar -->
         <div class="flex items-center gap-2">
@@ -44,7 +44,7 @@ export class SidebarHeader extends HeaderBase {
             <terminal-icon size="20"></terminal-icon>
             <div class="min-w-0">
               <h1
-                class="text-sm font-bold text-accent-green font-mono group-hover:underline truncate"
+                class="text-sm font-bold text-accent-primary font-mono group-hover:underline truncate"
               >
                 VibeTunnel
               </h1>
@@ -54,8 +54,8 @@ export class SidebarHeader extends HeaderBase {
             </div>
           </button>
           
-          <!-- Action buttons group -->
-          <div class="flex items-center gap-1 flex-shrink-0">
+          <!-- Action buttons group with consistent styling -->
+          <div class="flex items-center gap-2 flex-shrink-0">
             <!-- Notification button -->
             <notification-status
               @open-settings=${() => this.dispatchEvent(new CustomEvent('open-settings'))}
@@ -63,7 +63,7 @@ export class SidebarHeader extends HeaderBase {
             
             <!-- File Browser button -->
             <button
-              class="p-2 text-dark-text border border-dark-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200 flex-shrink-0"
+              class="p-2 text-dark-text-muted bg-dark-bg-elevated border border-dark-border hover:border-accent-primary hover:text-accent-primary rounded-md transition-all duration-200 flex-shrink-0"
               @click=${() => this.dispatchEvent(new CustomEvent('open-file-browser'))}
               title="Browse Files (⌘O)"
             >
@@ -74,11 +74,11 @@ export class SidebarHeader extends HeaderBase {
               </svg>
             </button>
             
-            <!-- Create Session button -->
+            <!-- Create Session button with primary styling -->
             <button
-              class="p-2 text-accent-green border border-accent-green hover:bg-accent-green hover:text-dark-bg rounded-lg transition-all duration-200 flex-shrink-0"
+              class="p-2 text-accent-primary bg-accent-primary bg-opacity-10 border border-accent-primary hover:bg-opacity-20 rounded-md transition-all duration-200 flex-shrink-0"
               @click=${this.handleCreateSession}
-              title="Create New Session"
+              title="Create New Session (⌘K)"
             >
               <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>

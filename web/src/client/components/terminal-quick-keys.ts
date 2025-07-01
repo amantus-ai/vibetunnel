@@ -433,8 +433,8 @@ export class TerminalQuickKeys extends LitElement {
         
         /* The actual bar with buttons */
         .quick-keys-bar {
-          background: rgb(17, 17, 17);
-          border-top: 1px solid rgb(51, 51, 51);
+          background: #0a0a0a;
+          border-top: 1px solid #2a2a2a;
           padding: 0.5rem 0.25rem;
           /* Prevent iOS from adding its own styling */
           -webkit-appearance: none;
@@ -455,12 +455,12 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Modifier key styling */
         .modifier-key {
-          background-color: #1a1a1a;
+          background-color: #141414;
           border-color: #444;
         }
         
         .modifier-key:hover {
-          background-color: #2a2a2a;
+          background-color: #1f1f1f;
         }
         
         /* Arrow key styling */
@@ -471,23 +471,23 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Combo key styling (like ^C, ^Z) */
         .combo-key {
-          background-color: #1e1e1e;
+          background-color: #141414;
           border-color: #555;
         }
         
         .combo-key:hover {
-          background-color: #2e2e2e;
+          background-color: #1f1f1f;
         }
         
         /* Special key styling (like ABC) */
         .special-key {
-          background-color: rgb(0, 122, 255);
-          border-color: rgb(0, 122, 255);
+          background-color: rgb(16, 185, 129);
+          border-color: rgb(16, 185, 129);
           color: white;
         }
         
         .special-key:hover {
-          background-color: rgb(0, 100, 220);
+          background-color: rgb(5, 150, 105);
         }
         
         /* Function key styling */
@@ -501,22 +501,22 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Toggle button styling */
         .toggle-key {
-          background-color: #2a2a2a;
+          background-color: #1f1f1f;
           border-color: #666;
         }
         
         .toggle-key:hover {
-          background-color: #3a3a3a;
+          background-color: #2a2a2a;
         }
         
         .toggle-key.active {
-          background-color: rgb(0, 122, 255);
-          border-color: rgb(0, 122, 255);
+          background-color: rgb(16, 185, 129);
+          border-color: rgb(16, 185, 129);
           color: white;
         }
         
         .toggle-key.active:hover {
-          background-color: rgb(0, 100, 220);
+          background-color: rgb(5, 150, 105);
         }
         
         /* Ctrl shortcut button styling */

@@ -193,16 +193,34 @@ final class TailscaleService {
             let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
 
             if process.terminationStatus == 0 {
-                // Log raw output for debugging
-                if let rawOutput = String(data: outputData, encoding: .utf8) {
-                    // tailscale status command requires the Tailscale daemon to be running.
-                    // In non-Xcode builds, when the daemon isn't running and the CLI tries to start it,
-                    // it fails due to different entitlements or sandbox restrictions compared to Xcode debug builds.
-                    logger.debug("Tailscale raw output: \(rawOutput)")
+                // Check if we have data
+                guard !outputData.isEmpty else {
+                    isRunning = false
+                    tailscaleHostname = nil
+                    tailscaleIP = nil
+                    statusError = "Tailscale returned empty response"
+                    logger.warning("Tailscale status command returned empty data")
+                    return
                 }
                 
+                // Log raw output for debugging
+                let rawOutput = String(data: outputData, encoding: .utf8) ?? "<non-UTF8 data>"
+                logger.debug("Tailscale raw output: \(rawOutput)")
+                
                 // Parse JSON output
-                if let json = try? JSONSerialization.jsonObject(with: outputData) as? [String: Any] {
+                do {
+                    let jsonObject = try JSONSerialization.jsonObject(with: outputData)
+                    
+                    // Ensure it's a dictionary
+                    guard let json = jsonObject as? [String: Any] else {
+                        isRunning = false
+                        tailscaleHostname = nil
+                        tailscaleIP = nil
+                        statusError = "Tailscale returned invalid JSON format (not a dictionary)"
+                        logger.warning("Tailscale status returned non-dictionary JSON: \(type(of: jsonObject))")
+                        return
+                    }
+                    
                     // Check if we're logged in and connected
                     if let self_ = json["Self"] as? [String: Any],
                        let dnsName = self_["DNSName"] as? String
@@ -235,22 +253,20 @@ final class TailscaleService {
                         logger.warning("Tailscale status check failed - missing required fields in JSON")
                         logger.debug("JSON keys: \(json.keys.sorted())")
                     }
-                } else {
+                } catch let parseError {
                     isRunning = false
+                    tailscaleHostname = nil
+                    tailscaleIP = nil
+                    
                     // Check if this is the GUI startup error
-                    if let rawOutput = String(data: outputData, encoding: .utf8) {
-                        logger.error("Failed to parse JSON. Raw output: \(rawOutput)")
-                        
-                        if rawOutput.contains("The Tailscale GUI failed to start") {
-                            statusError = "Tailscale app is not running"
-                            tailscaleHostname = nil
-                            tailscaleIP = nil
-                        } else {
-                            statusError = "Failed to parse Tailscale status"
-                        }
+                    if rawOutput.contains("The Tailscale GUI failed to start") {
+                        statusError = "Tailscale app is not running"
                     } else {
-                        statusError = "Failed to parse Tailscale status"
+                        statusError = "Failed to parse Tailscale status: \(parseError.localizedDescription)"
                     }
+                    
+                    logger.error("JSON parsing error: \(parseError)")
+                    logger.debug("Failed to parse data: \(rawOutput.prefix(200))...")
                 }
             } else {
                 // Tailscale CLI returned error

@@ -224,7 +224,7 @@ export class SessionCard extends LitElement {
           this.killing ? 'opacity-60' : ''
         } ${
           this.isActive && this.session.status === 'running'
-            ? 'shadow-[0_0_0_2px_#00ff88] shadow-glow-green-sm'
+            ? 'ring-2 ring-primary shadow-glow-sm'
             : ''
         }"
         style="view-transition-name: session-${this.session.id}; --session-id: session-${
@@ -238,7 +238,7 @@ export class SessionCard extends LitElement {
       >
         <!-- Compact Header -->
         <div
-          class="flex justify-between items-center px-3 py-2 border-b border-dark-border bg-dark-bg-secondary"
+          class="flex justify-between items-center px-3 py-2 border-b border-dark-border bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary"
         >
           <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-accent-green">
             <div class="truncate" title="${this.session.name || this.session.command.join(' ')}">
@@ -249,12 +249,10 @@ export class SessionCard extends LitElement {
             this.session.status === 'running' || this.session.status === 'exited'
               ? html`
                 <button
-                  class="btn-ghost ${
-                    this.session.status === 'running' ? 'text-status-error' : 'text-status-warning'
-                  } disabled:opacity-50 flex-shrink-0 p-1 rounded-full hover:bg-opacity-20 transition-all ${
+                  class="p-1 rounded-full transition-all duration-200 disabled:opacity-50 flex-shrink-0 ${
                     this.session.status === 'running'
-                      ? 'hover:bg-status-error'
-                      : 'hover:bg-status-warning'
+                      ? 'text-status-error hover:bg-status-error hover:bg-opacity-20'
+                      : 'text-status-warning hover:bg-status-warning hover:bg-opacity-20'
                   }"
                   @click=${this.handleKillClick}
                   ?disabled=${this.killing}
@@ -292,9 +290,10 @@ export class SessionCard extends LitElement {
 
         <!-- Terminal display (main content) -->
         <div
-          class="session-preview bg-black overflow-hidden flex-1 ${
+          class="session-preview bg-black overflow-hidden flex-1 relative ${
             this.session.status === 'exited' ? 'session-exited' : ''
           }"
+          style="background: linear-gradient(to bottom, #0a0a0a, #080808); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);"
         >
           ${
             this.killing
@@ -319,18 +318,20 @@ export class SessionCard extends LitElement {
 
         <!-- Compact Footer -->
         <div
-          class="px-3 py-2 text-dark-text-muted text-xs border-t border-dark-border bg-dark-bg-secondary"
+          class="px-3 py-2 text-dark-text-muted text-xs border-t border-dark-border bg-gradient-to-r from-dark-bg-tertiary to-dark-bg-secondary"
         >
           <div class="flex justify-between items-center min-w-0">
             <span 
-              class="${this.getStatusColor()} text-xs flex items-center gap-1 flex-shrink-0"
+              class="${this.getActivityStatusColor()} text-xs flex items-center gap-1 flex-shrink-0"
               data-status="${this.session.status}"
               data-killing="${this.killing}"
             >
               <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
-              ${this.getStatusText()}
+              ${this.getActivityStatusText()}
               ${
-                this.session.status === 'running' && this.isActive
+                this.session.status === 'running' &&
+                this.isActive &&
+                !this.session.activityStatus?.specificStatus
                   ? html`<span class="text-accent-green animate-pulse ml-1">●</span>`
                   : ''
               }
@@ -364,17 +365,58 @@ export class SessionCard extends LitElement {
     return this.session.status;
   }
 
+  private getActivityStatusText(): string {
+    if (this.killing) {
+      return 'killing...';
+    }
+    if (this.session.active === false) {
+      return 'waiting';
+    }
+    if (this.session.status === 'running' && this.session.activityStatus?.specificStatus) {
+      return this.session.activityStatus.specificStatus.status;
+    }
+    return this.session.status;
+  }
+
   private getStatusColor(): string {
+    if (this.killing) {
+      return 'text-status-error';
+    }
     if (this.session.active === false) {
       return 'text-dark-text-muted';
     }
     return this.session.status === 'running' ? 'text-status-success' : 'text-status-warning';
   }
 
+  private getActivityStatusColor(): string {
+    if (this.killing) {
+      return 'text-status-error';
+    }
+    if (this.session.active === false) {
+      return 'text-dark-text-muted';
+    }
+    if (this.session.status === 'running' && this.session.activityStatus?.specificStatus) {
+      return 'text-status-warning';
+    }
+    return this.session.status === 'running' ? 'text-status-success' : 'text-status-warning';
+  }
+
   private getStatusDotColor(): string {
+    if (this.killing) {
+      return 'bg-status-error animate-pulse';
+    }
     if (this.session.active === false) {
       return 'bg-dark-text-muted';
     }
-    return this.session.status === 'running' ? 'bg-status-success' : 'bg-status-warning';
+    if (this.session.status === 'running') {
+      if (this.session.activityStatus?.specificStatus) {
+        return 'bg-status-warning animate-pulse'; // Claude active - amber with pulse
+      } else if (this.session.activityStatus?.isActive || this.isActive) {
+        return 'bg-status-success'; // Generic active - solid green
+      } else {
+        return 'bg-status-success ring-1 ring-status-success ring-opacity-50'; // Idle - green with ring
+      }
+    }
+    return 'bg-status-warning';
   }
 }

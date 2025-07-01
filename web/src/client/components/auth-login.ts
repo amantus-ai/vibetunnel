@@ -176,7 +176,7 @@ export class AuthLogin extends LitElement {
             <div class="flex flex-col items-center gap-2 sm:gap-3 mb-4 sm:mb-8">
               <terminal-icon
                 size="${this.isMobile ? '48' : '56'}"
-                style="filter: drop-shadow(0 0 15px rgba(124, 230, 161, 0.4));"
+                style="filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.4));"
               ></terminal-icon>
               <h2 class="auth-title text-2xl sm:text-3xl mt-1 sm:mt-2">VibeTunnel</h2>
               <p class="auth-subtitle text-xs sm:text-sm">Please authenticate to continue</p>
@@ -233,7 +233,7 @@ export class AuthLogin extends LitElement {
                     <div class="flex flex-col items-center mb-4 sm:mb-6">
                       <div
                         class="w-24 h-24 sm:w-28 sm:h-28 rounded-full mb-3 sm:mb-4 overflow-hidden"
-                        style="box-shadow: 0 0 25px rgba(124, 230, 161, 0.3);"
+                        style="box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);"
                       >
                         ${
                           this.userAvatar
@@ -361,7 +361,7 @@ export class AuthLogin extends LitElement {
                   <div class="ssh-key-item p-6 sm:p-8">
                     <div class="flex items-center justify-between mb-3 sm:mb-4">
                       <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 rounded-full bg-accent-green"></div>
+                        <div class="w-2 h-2 rounded-full bg-primary"></div>
                         <span class="font-mono text-xs sm:text-sm">SSH Key Management</span>
                       </div>
                       <button

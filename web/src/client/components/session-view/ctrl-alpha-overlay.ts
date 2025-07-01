@@ -49,10 +49,10 @@ export class CtrlAlphaOverlay extends LitElement {
           style="background: black; border: 1px solid #569cd6; border-radius: 8px; padding: 10px; margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
           @click=${(e: Event) => e.stopPropagation()}
         >
-          <div class="text-vs-user text-center mb-2 font-bold">Ctrl + Key</div>
+          <div class="text-primary text-center mb-2 font-bold">Ctrl + Key</div>
 
           <!-- Help text -->
-          <div class="text-xs text-vs-muted text-center mb-3 opacity-70">
+          <div class="text-xs text-dark-text-muted text-center mb-3 opacity-70">
             Build sequences like ctrl+c ctrl+c
           </div>
 
@@ -60,9 +60,9 @@ export class CtrlAlphaOverlay extends LitElement {
           ${
             this.ctrlSequence.length > 0
               ? html`
-                <div class="text-center mb-4 p-2 border border-vs-muted rounded bg-vs-bg">
-                  <div class="text-xs text-vs-muted mb-1">Current sequence:</div>
-                  <div class="text-sm text-vs-accent font-bold">
+                <div class="text-center mb-4 p-2 border border-dark-border rounded bg-dark-bg">
+                  <div class="text-xs text-dark-text-muted mb-1">Current sequence:</div>
+                  <div class="text-sm text-primary font-bold">
                     ${this.ctrlSequence.map((letter) => `Ctrl+${letter}`).join(' ')}
                   </div>
                 </div>
@@ -112,7 +112,7 @@ export class CtrlAlphaOverlay extends LitElement {
           </div>
 
           <!-- Common shortcuts info -->
-          <div class="text-xs text-vs-muted text-center mb-3">
+          <div class="text-xs text-dark-text-muted text-center mb-3">
             <div>Common: C=interrupt, X=exit, O=save, W=search</div>
           </div>
 

@@ -79,6 +79,9 @@ describe('Terminal', () => {
       // Now terminal should be created
       const terminal = (element as unknown as { terminal: MockTerminal }).terminal;
       expect(terminal).toBeDefined();
+
+      // Should call scrollToTop on initialization
+      expect(terminal.scrollToTop).toHaveBeenCalled();
     });
 
     it('should handle custom dimensions', async () => {

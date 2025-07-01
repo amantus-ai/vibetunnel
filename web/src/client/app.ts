@@ -113,6 +113,11 @@ export class VibeTunnelApp extends LitElement {
       this.hasActiveOverlay =
         this.showFileBrowser || this.showCreateModal || this.showSSHKeyManager || this.showSettings;
     }
+
+    // Force re-render when sessions change or view changes to update log button position
+    if (changedProperties.has('sessions') || changedProperties.has('currentView')) {
+      this.requestUpdate();
+    }
   }
 
   disconnectedCallback() {
@@ -1155,6 +1160,54 @@ export class VibeTunnelApp extends LitElement {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
   }
 
+  private getLogButtonPosition(): string {
+    // Check if we're in grid view and not in split view
+    const isGridView = !this.showSplitView && this.currentView === 'list';
+
+    if (isGridView) {
+      // Calculate if we need to move the button up
+      const runningSessions = this.sessions.filter((s) => s.status === 'running');
+      const viewportHeight = window.innerHeight;
+
+      // Grid layout: auto-fill with 360px min width, 400px height, 1.25rem gap
+      const gridItemHeight = 400;
+      const gridGap = 20; // 1.25rem
+      const containerPadding = 16; // Approximate padding
+      const headerHeight = 200; // Approximate header + controls height
+
+      // Calculate available height for grid
+      const availableHeight = viewportHeight - headerHeight;
+
+      // Calculate how many rows can fit
+      const rowsCanFit = Math.floor(
+        (availableHeight - containerPadding) / (gridItemHeight + gridGap)
+      );
+
+      // Calculate grid columns based on viewport width
+      const viewportWidth = window.innerWidth;
+      const gridItemMinWidth = 360;
+      const sidebarWidth = this.sidebarCollapsed
+        ? 0
+        : this.mediaState.isMobile
+          ? 0
+          : this.sidebarWidth;
+      const availableWidth = viewportWidth - sidebarWidth - containerPadding * 2;
+      const columnsCanFit = Math.floor(availableWidth / (gridItemMinWidth + gridGap));
+
+      // Calculate total items that can fit in viewport
+      const itemsInViewport = rowsCanFit * columnsCanFit;
+
+      // If we have more running sessions than can fit in viewport, items will be at bottom
+      if (runningSessions.length >= itemsInViewport && itemsInViewport > 0) {
+        // Move button up to avoid overlapping with kill buttons
+        return 'bottom-20'; // ~80px up
+      }
+    }
+
+    // Default position with equal margins
+    return 'bottom-4';
+  }
+
   private get isInSidebarDismissMode(): boolean {
     if (!this.mediaState.isMobile || !this.shouldShowMobileOverlay) return false;
 
@@ -1372,13 +1425,13 @@ export class VibeTunnelApp extends LitElement {
         @error=${this.handleError}
       ></session-create-form>
 
-      <!-- Version and logs link in bottom right -->
+      <!-- Version and logs link with smart positioning -->
       ${
         this.showLogLink
           ? html`
-        <div class="fixed bottom-4 right-4 text-dark-text-muted text-xs font-mono z-20">
+        <div class="fixed ${this.getLogButtonPosition()} right-4 text-dark-text-muted text-xs font-mono z-20 bg-dark-bg-secondary px-3 py-1.5 rounded-lg border border-dark-border shadow-sm transition-all duration-200">
           <a href="/logs" class="hover:text-dark-text transition-colors">Logs</a>
-          <span class="ml-2">v${VERSION}</span>
+          <span class="ml-2 opacity-75">v${VERSION}</span>
         </div>
       `
           : ''

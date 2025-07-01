@@ -484,7 +484,7 @@ export class FileBrowser extends LitElement {
           let className = 'text-dark-text-muted';
           if (line.startsWith('+')) className = 'text-status-success bg-green-900/20';
           else if (line.startsWith('-')) className = 'text-status-error bg-red-900/20';
-          else if (line.startsWith('@@')) className = 'text-accent-blue font-semibold';
+          else if (line.startsWith('@@')) className = 'text-status-info font-semibold';
 
           return html`<div class="whitespace-pre ${className}">${line}</div>`;
         })}
@@ -550,7 +550,7 @@ export class FileBrowser extends LitElement {
                         @input=${this.handlePathInput}
                         @keydown=${this.handlePathKeyDown}
                         @blur=${this.handlePathBlur}
-                        class="bg-dark-bg border border-dark-border rounded px-2 py-1 text-blue-400 text-xs sm:text-sm font-mono w-full min-w-0 focus:outline-none focus:border-accent-green"
+                        class="bg-dark-bg border border-dark-border rounded px-2 py-1 text-status-info text-xs sm:text-sm font-mono w-full min-w-0 focus:outline-none focus:border-primary"
                         placeholder="Enter path and press Enter"
                       />
                     `
@@ -598,7 +598,7 @@ export class FileBrowser extends LitElement {
                 <div class="flex gap-2">
                   <button
                     class="btn-secondary text-xs px-2 py-1 font-mono ${
-                      this.gitFilter === 'changed' ? 'bg-accent-green text-dark-bg' : ''
+                      this.gitFilter === 'changed' ? 'bg-primary text-black' : ''
                     }"
                     @click=${this.toggleGitFilter}
                     title="Show only Git changes"
@@ -607,7 +607,7 @@ export class FileBrowser extends LitElement {
                   </button>
                   <button
                     class="btn-secondary text-xs px-2 py-1 font-mono ${
-                      this.showHidden ? 'bg-accent-green text-dark-bg' : ''
+                      this.showHidden ? 'bg-primary text-black' : ''
                     }"
                     @click=${this.toggleHidden}
                     title="Show hidden files"
@@ -657,7 +657,7 @@ export class FileBrowser extends LitElement {
                             class="p-3 hover:bg-dark-bg-lighter cursor-pointer transition-colors flex items-center gap-2 
                             ${
                               this.selectedFile?.path === file.path
-                                ? 'bg-dark-bg-lighter border-l-2 border-accent-green'
+                                ? 'bg-dark-bg-lighter border-l-2 border-primary'
                                 : ''
                             }"
                             @click=${() => this.handleFileClick(file)}
@@ -684,7 +684,7 @@ export class FileBrowser extends LitElement {
                             </span>
                             <span
                               class="flex-1 text-sm whitespace-nowrap ${
-                                file.type === 'directory' ? 'text-accent-blue' : 'text-dark-text'
+                                file.type === 'directory' ? 'text-status-info' : 'text-dark-text'
                               }"
                               title="${file.name}${file.isSymlink ? ' (symlink)' : ''}"
                               >${file.name}</span
@@ -805,7 +805,7 @@ export class FileBrowser extends LitElement {
                             ? html`
                               <button
                                 class="btn-secondary text-xs px-2 py-1 font-mono ${
-                                  this.showDiff ? 'bg-accent-green text-dark-bg' : ''
+                                  this.showDiff ? 'bg-primary text-black' : ''
                                 } ${
                                   this.isMobile &&
                                   this.selectedFile.type === 'file' &&

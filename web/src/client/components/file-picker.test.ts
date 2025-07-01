@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 /**
  * Unit tests for FilePicker component
  */
@@ -63,7 +64,7 @@ describe('FilePicker Component', () => {
     const progressText = element.querySelector('span');
     expect(progressText?.textContent).toContain('Uploading...');
 
-    const progressBar = element.querySelector('.bg-blue-500');
+    const progressBar = element.querySelector('.bg-gradient-to-r');
     expect(progressBar).toBeTruthy();
   });
 
@@ -115,7 +116,7 @@ describe('FilePicker Component', () => {
     const cancelEventSpy = vi.fn();
     element.addEventListener('file-cancel', cancelEventSpy);
 
-    const modal = element.querySelector('.bg-white');
+    const modal = element.querySelector('.bg-dark-bg-elevated');
     expect(modal).toBeTruthy();
 
     modal?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

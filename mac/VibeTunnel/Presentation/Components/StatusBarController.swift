@@ -259,6 +259,12 @@ final class StatusBarController: NSObject {
 
     private func handleLeftClick(_ button: NSStatusBarButton) {
         menuManager.toggleCustomWindow(relativeTo: button)
+
+        // Force update display after toggling to ensure button state is correct
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(50))
+            updateStatusItemDisplay()
+        }
     }
 
     private func handleRightClick(_ button: NSStatusBarButton) {

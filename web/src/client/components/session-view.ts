@@ -761,7 +761,16 @@ export class SessionView extends LitElement {
   }
 
   private handleOpenFilePicker() {
-    this.showImagePicker = true;
+    if (!this.isMobile) {
+      // On desktop, directly open the file picker without showing the dialog
+      const filePicker = this.querySelector('file-picker') as FilePicker | null;
+      if (filePicker && typeof filePicker.openFilePicker === 'function') {
+        filePicker.openFilePicker();
+      }
+    } else {
+      // On mobile, show the file picker dialog
+      this.showImagePicker = true;
+    }
   }
 
   private handleCloseFilePicker() {
@@ -1028,12 +1037,12 @@ export class SessionView extends LitElement {
           box-shadow: none !important;
         }
         session-view:focus {
-          outline: 2px solid #00ff88 !important;
+          outline: 2px solid rgb(16 185 129) !important;
           outline-offset: -2px;
         }
       </style>
       <div
-        class="flex flex-col bg-black font-mono relative"
+        class="flex flex-col bg-dark-bg font-mono relative"
         style="height: 100vh; height: 100dvh; outline: none !important; box-shadow: none !important;"
       >
         <!-- Session Header -->
@@ -1064,30 +1073,30 @@ export class SessionView extends LitElement {
           }}
         ></session-header>
 
-        <!-- Terminal Container -->
+        <!-- Enhanced Terminal Container -->
         <div
-          class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-black overflow-hidden min-h-0 relative ${
-            this.session?.status === 'exited' ? 'session-exited' : ''
+          class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-dark-bg overflow-hidden min-h-0 relative ${
+            this.session?.status === 'exited' ? 'session-exited opacity-90' : ''
           }"
           id="terminal-container"
-          style="${this.terminalContainerHeight !== '100%' ? `height: ${this.terminalContainerHeight}; flex: none; max-height: ${this.terminalContainerHeight};` : ''} transition: height 0.3s ease-out;"
+          style="${this.terminalContainerHeight !== '100%' ? `height: ${this.terminalContainerHeight}; flex: none; max-height: ${this.terminalContainerHeight};` : ''} transition: all 0.3s ease-out;"
         >
           ${
             this.loadingAnimationManager.isLoading()
               ? html`
-                <!-- Loading overlay -->
+                <!-- Enhanced Loading overlay -->
                 <div
-                  class="absolute inset-0 bg-dark-bg bg-opacity-80 flex items-center justify-center z-10"
+                  class="absolute inset-0 bg-dark-bg bg-opacity-90 backdrop-filter backdrop-blur-sm flex items-center justify-center z-10 animate-fade-in"
                 >
                   <div class="text-dark-text font-mono text-center">
-                    <div class="text-2xl mb-2">${this.loadingAnimationManager.getLoadingText()}</div>
+                    <div class="text-2xl mb-3 text-accent-primary animate-pulse-primary">${this.loadingAnimationManager.getLoadingText()}</div>
                     <div class="text-sm text-dark-text-muted">Connecting to session...</div>
                   </div>
                 </div>
               `
               : ''
           }
-          <!-- Terminal Component -->
+          <!-- Enhanced Terminal Component -->
           <vibe-terminal
             .sessionId=${this.session?.id || ''}
             .sessionStatus=${this.session?.status || 'running'}
@@ -1100,7 +1109,7 @@ export class SessionView extends LitElement {
             .initialRows=${this.session?.initialRows || 0}
             .disableClick=${this.isMobile && this.useDirectKeyboard}
             .hideScrollButton=${this.showQuickKeys}
-            class="w-full h-full p-0 m-0"
+            class="w-full h-full p-0 m-0 terminal-container"
             @click=${this.handleTerminalClick}
             @terminal-input=${this.handleTerminalInput}
           ></vibe-terminal>
@@ -1114,9 +1123,12 @@ export class SessionView extends LitElement {
                 class="fixed inset-0 flex items-center justify-center pointer-events-none z-[25]"
               >
                 <div
-                  class="bg-dark-bg-secondary border border-dark-border text-status-warning font-medium text-sm tracking-wide px-4 py-2 rounded-lg shadow-lg"
+                  class="bg-dark-bg-elevated border border-status-warning text-status-warning font-medium text-sm tracking-wide px-6 py-3 rounded-lg shadow-elevated animate-scale-in"
                 >
-                  SESSION EXITED
+                  <span class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-status-warning"></span>
+                    SESSION EXITED
+                  </span>
                 </div>
               </div>
             `
@@ -1278,12 +1290,23 @@ export class SessionView extends LitElement {
         ${
           this.isDragOver
             ? html`
-              <div class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 pointer-events-none">
-                <div class="bg-dark-bg-secondary border-2 border-dashed border-terminal-green text-terminal-green rounded-lg p-8 text-center">
-                  <div class="text-6xl mb-4">📁</div>
-                  <div class="text-xl font-semibold mb-2">Drop files here</div>
-                  <div class="text-sm opacity-80">Files will be uploaded and the path sent to terminal</div>
-                  <div class="text-xs opacity-60 mt-2">Or press CMD+V to paste from clipboard</div>
+              <div class="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
+                <div class="bg-dark-bg-elevated border-2 border-dashed border-accent-primary rounded-xl p-10 text-center max-w-md mx-4 shadow-2xl animate-scale-in">
+                  <div class="relative mb-6">
+                    <div class="w-24 h-24 mx-auto bg-gradient-to-br from-accent-primary to-accent-primary-light rounded-full flex items-center justify-center shadow-glow-primary">
+                      <svg class="w-12 h-12 text-dark-bg" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+                      </svg>
+                    </div>
+                    <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-accent-primary to-transparent opacity-50"></div>
+                  </div>
+                  <h3 class="text-2xl font-bold text-dark-text mb-3">Drop files here</h3>
+                  <p class="text-sm text-dark-text-muted mb-4">Files will be uploaded and the path sent to terminal</p>
+                  <div class="inline-flex items-center gap-2 text-xs text-dark-text-dim bg-dark-bg-secondary px-4 py-2 rounded-lg">
+                    <span class="opacity-75">Or press</span>
+                    <kbd class="px-2 py-1 bg-dark-bg-tertiary border border-dark-border rounded text-accent-primary font-mono text-xs">⌘V</kbd>
+                    <span class="opacity-75">to paste from clipboard</span>
+                  </div>
                 </div>
               </div>
             `

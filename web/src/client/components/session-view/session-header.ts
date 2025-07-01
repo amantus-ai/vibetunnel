@@ -75,10 +75,10 @@ export class SessionHeader extends LitElement {
     if (!this.session) return null;
 
     return html`
-      <!-- Compact Header -->
+      <!-- Enhanced Header with gradient background -->
       <div
-        class="flex items-center justify-between border-b border-dark-border text-sm min-w-0 bg-dark-bg-secondary p-3"
-        style="padding-top: max(0.75rem, calc(0.75rem + env(safe-area-inset-top))); padding-left: max(0.75rem, env(safe-area-inset-left)); padding-right: max(0.75rem, env(safe-area-inset-right));"
+        class="flex items-center justify-between border-b border-dark-border text-sm min-w-0 bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary px-4 py-2 shadow-sm"
+        style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
       >
         <div class="flex items-center gap-3 min-w-0 flex-1">
           <!-- Sidebar Toggle and Create Session Buttons (shown when sidebar is collapsed) -->
@@ -87,7 +87,7 @@ export class SessionHeader extends LitElement {
               ? html`
                 <div class="flex items-center gap-2">
                   <button
-                    class="bg-dark-bg-tertiary border border-dark-border rounded-lg p-1.5 font-mono text-dark-text-muted transition-all duration-300 hover:text-dark-text hover:bg-dark-bg hover:border-accent-green flex-shrink-0"
+                    class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
                     @click=${() => this.onSidebarToggle?.()}
                     title="Show sidebar (⌘B)"
                     aria-label="Show sidebar"
@@ -100,9 +100,9 @@ export class SessionHeader extends LitElement {
                     </svg>
                   </button>
                   
-                  <!-- Create Session button -->
+                  <!-- Create Session button with primary color -->
                   <button
-                    class="bg-dark-bg-tertiary border border-accent-green text-accent-green rounded-lg p-1.5 font-mono transition-all duration-300 hover:bg-accent-green hover:text-dark-bg flex-shrink-0"
+                    class="bg-accent-primary bg-opacity-10 border border-accent-primary text-accent-primary rounded-lg p-2 font-mono transition-all duration-200 hover:bg-accent-primary hover:text-dark-bg hover:shadow-glow-primary-sm flex-shrink-0"
                     @click=${() => this.onCreateSession?.()}
                     title="Create New Session (⌘K)"
                   >
@@ -118,7 +118,7 @@ export class SessionHeader extends LitElement {
             this.showBackButton
               ? html`
                 <button
-                  class="btn-secondary font-mono text-xs px-3 py-1 flex-shrink-0"
+                  class="bg-dark-bg-elevated border border-dark-border rounded-lg px-3 py-1.5 font-mono text-xs text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
                   @click=${() => this.onBack?.()}
                 >
                   Back
@@ -128,7 +128,7 @@ export class SessionHeader extends LitElement {
           }
           <div class="text-dark-text min-w-0 flex-1 overflow-hidden max-w-[50vw] sm:max-w-none">
             <div
-              class="text-accent-green text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"
+              class="text-dark-text-bright font-medium text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"
               title="${
                 this.session.name ||
                 (Array.isArray(this.session.command)
@@ -153,7 +153,7 @@ export class SessionHeader extends LitElement {
         </div>
         <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2 relative">
           <button
-            class="btn-secondary font-mono text-xs p-1 flex-shrink-0"
+            class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
             @click=${() => this.onOpenFileBrowser?.()}
             title="Browse Files (⌘O)"
           >
@@ -164,7 +164,7 @@ export class SessionHeader extends LitElement {
             </svg>
           </button>
           <button
-            class="btn-secondary font-mono text-xs p-1 flex-shrink-0"
+            class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
             @click=${() => this.onOpenImagePicker?.()}
             title="Upload File"
           >
@@ -174,7 +174,7 @@ export class SessionHeader extends LitElement {
             </svg>
           </button>
           <button
-            class="btn-secondary font-mono text-xs px-2 py-1 flex-shrink-0 width-selector-button"
+            class="bg-dark-bg-elevated border border-dark-border rounded-lg px-3 py-2 font-mono text-xs text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0 width-selector-button"
             @click=${() => this.onMaxWidthToggle?.()}
             title="${this.widthTooltip}"
           >
@@ -190,8 +190,17 @@ export class SessionHeader extends LitElement {
             .onClose=${() => this.handleCloseWidthSelector()}
           ></width-selector>
           <div class="flex flex-col items-end gap-0">
-            <span class="${this.getStatusColor()} text-xs flex items-center gap-1">
-              <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
+            <span class="text-xs flex items-center gap-2 font-medium ${
+              this.getStatusText() === 'running' ? 'text-status-success' : 'text-status-warning'
+            }">
+              <div class="relative">
+                <div class="w-2.5 h-2.5 rounded-full ${this.getStatusDotColor()}"></div>
+                ${
+                  this.getStatusText() === 'running'
+                    ? html`<div class="absolute inset-0 w-2.5 h-2.5 rounded-full bg-status-success animate-ping opacity-50"></div>`
+                    : ''
+                }
+              </div>
               ${this.getStatusText().toUpperCase()}
             </span>
             ${
