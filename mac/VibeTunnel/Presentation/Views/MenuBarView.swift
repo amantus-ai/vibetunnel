@@ -153,10 +153,15 @@ struct MenuBarView: View {
                     .fill(Color.accentColor.opacity(0.001))
             )
 
-            // New Session button
+            // New Session button - disabled since we can't use popover in this context
             Button(
                 action: {
-                    openWindow(id: "new-session")
+                    // Close menu and show custom window with new session
+                    NSApp.sendAction(#selector(NSWindow.performClose(_:)), to: nil, from: nil)
+                    if let statusBarController = (NSApp.delegate as? AppDelegate)?.statusBarController {
+                        statusBarController.showCustomWindow()
+                        // TODO: Show new session form in custom window
+                    }
                 },
                 label: {
                     Label("New Session…", systemImage: "plus.square")
@@ -397,6 +402,10 @@ struct SessionRowView: View {
 
             Button("View Session Details") {
                 openWindow(id: "session-detail", value: session.key)
+            }
+
+            Button("Show in Finder") {
+                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
             }
 
             Divider()

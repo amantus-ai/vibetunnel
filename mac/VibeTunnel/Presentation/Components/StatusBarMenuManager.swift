@@ -69,12 +69,12 @@ final class StatusBarMenuManager: NSObject {
             statusBarButton = button
         }
 
-        // Update highlighting based on state
+        // Update button state based on menu state (for .pushOnPushOff button type)
         switch menuState {
         case .none:
-            statusBarButton?.highlight(false)
+            statusBarButton?.state = .off
         case .customWindow, .contextMenu:
-            statusBarButton?.highlight(true)
+            statusBarButton?.state = .on
         }
     }
 
@@ -83,6 +83,8 @@ final class StatusBarMenuManager: NSObject {
     func toggleCustomWindow(relativeTo button: NSStatusBarButton) {
         if let window = customWindow, window.isVisible {
             hideCustomWindow()
+            // Ensure button state is updated
+            button.state = .off
         } else {
             showCustomWindow(relativeTo: button)
         }
@@ -95,8 +97,11 @@ final class StatusBarMenuManager: NSObject {
               let tailscaleService,
               let terminalLauncher else { return }
 
-        // Update menu state to custom window
+        // Update menu state to custom window FIRST before any async operations
         updateMenuState(.customWindow, button: button)
+
+        // Ensure button state is set immediately
+        button.state = .on
 
         // Create the main view with all dependencies
         let mainView = VibeTunnelMenuView()
@@ -138,15 +143,24 @@ final class StatusBarMenuManager: NSObject {
 
         // Show the custom window
         customWindow?.show(relativeTo: button)
+
+        // Force immediate button state update after showing window
+        // This ensures the button stays highlighted even if there's a timing issue
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(10))
+            button.state = .on
+        }
     }
 
     func hideCustomWindow() {
         customWindow?.hide()
         // Note: state will be reset by the onHide callback
+        // But also ensure button state is updated immediately
+        statusBarButton?.state = .off
     }
 
     var isCustomWindowVisible: Bool {
-        customWindow?.isVisible ?? false
+        customWindow?.isWindowVisible ?? false
     }
 
     // MARK: - Menu State Management
@@ -256,9 +270,11 @@ final class StatusBarMenuManager: NSObject {
         menu.addItem(quitItem)
 
         // Show the context menu
-        statusItem.menu = menu
-        button.performClick(nil)
-        statusItem.menu = nil
+        // Use popUpMenu for proper context menu display that doesn't interfere with button highlighting
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 5), in: button)
+
+        // Update state to indicate no menu is active after context menu closes
+        updateMenuState(.none, button: button)
     }
 
     // MARK: - Context Menu Actions

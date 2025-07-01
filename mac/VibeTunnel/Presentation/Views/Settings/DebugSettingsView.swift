@@ -309,20 +309,6 @@ private struct DeveloperToolsSection: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Application Support")
-                    Spacer()
-                    Button("Show in Finder") {
-                        showApplicationSupport()
-                    }
-                    .buttonStyle(.bordered)
-                }
-                Text("Open the application support directory.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
                     Text("Welcome Screen")
                     Spacer()
                     Button("Show Welcome") {

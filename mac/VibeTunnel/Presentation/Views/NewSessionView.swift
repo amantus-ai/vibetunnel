@@ -49,7 +49,7 @@ struct NewSessionView: View {
             case .dynamic: "Dynamic"
             }
         }
-        
+
         var description: String {
             switch self {
             case .none: "Apps control their own titles"
@@ -79,31 +79,31 @@ struct NewSessionView: View {
                                     titleMode = .dynamic
                                 }
                             }
-                        
+
                         // Optional session name
                         TextField("Session Name (optional)", text: $sessionName)
                             .textFieldStyle(.squareBorder)
                             .focused($focusedField, equals: .name)
                             .frame(width: 160)
                     }
-                    
+
                     // Working Directory
                     HStack(spacing: 8) {
                         Text("Working Directory")
                             .foregroundColor(.secondary)
                             .frame(width: 120, alignment: .trailing)
-                        
+
                         TextField("", text: $workingDirectory)
                             .textFieldStyle(.squareBorder)
                             .focused($focusedField, equals: .directory)
-                        
+
                         Button(action: selectDirectory) {
                             Image(systemName: "folder")
                         }
                         .buttonStyle(.borderless)
                     }
                 }
-                
+
                 // Quick Start Grid
                 Section("Quick Start") {
                     LazyVGrid(columns: [
@@ -112,7 +112,7 @@ struct NewSessionView: View {
                         GridItem(.flexible())
                     ], spacing: 8) {
                         ForEach(quickCommands, id: \.0) { cmd in
-                            Button(action: { 
+                            Button(action: {
                                 command = cmd.0
                                 // Clear session name when selecting quick command
                                 sessionName = ""
@@ -137,10 +137,10 @@ struct NewSessionView: View {
                     }
                     .padding(.vertical, 4)
                 }
-                
+
                 Divider()
                     .padding(.vertical, 8)
-                
+
                 // Options Section
                 Section {
                     // Terminal Title Mode - Single line
@@ -148,7 +148,7 @@ struct NewSessionView: View {
                         Text("Terminal Title Mode")
                             .foregroundColor(.secondary)
                             .frame(width: 120, alignment: .trailing)
-                        
+
                         Picker("", selection: $titleMode) {
                             ForEach(TitleMode.allCases, id: \.self) { mode in
                                 Text(mode.displayName)
@@ -157,25 +157,25 @@ struct NewSessionView: View {
                         }
                         .pickerStyle(.segmented)
                         .frame(width: 200)
-                        
+
                         Text(titleMode.description)
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    
+
                     // Open in Terminal Window - Toggle on right
                     HStack {
                         Text("Open in Terminal Window")
                             .foregroundColor(.secondary)
                             .frame(width: 120, alignment: .trailing)
-                        
+
                         Text("Launch session in native terminal app")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
-                        
+
                         Spacer()
-                        
+
                         Toggle("", isOn: $spawnWindow)
                             .toggleStyle(.switch)
                             .labelsHidden()
@@ -185,7 +185,7 @@ struct NewSessionView: View {
             .formStyle(.grouped)
             .scrollDisabled(true)
             .padding(.top, 12)
-            
+
             // Buttons
             HStack {
                 Button("Cancel") {
@@ -258,7 +258,7 @@ struct NewSessionView: View {
 
     private func createSession() {
         guard isFormValid else { return }
-        
+
         // Check if server is running
         guard serverManager.isRunning else {
             errorMessage = "Server is not running. Please start the server first."
@@ -276,7 +276,7 @@ struct NewSessionView: View {
 
                 // Expand tilde in working directory
                 let expandedWorkingDir = NSString(string: workingDirectory).expandingTildeInPath
-                
+
                 // Prepare request body
                 var body: [String: Any] = [
                     "command": commandArray,
@@ -333,7 +333,7 @@ struct NewSessionView: View {
                         {
                             errorMessage = error
                         }
-                        
+
                         throw NSError(domain: "VibeTunnel", code: httpResponse.statusCode, userInfo: [
                             NSLocalizedDescriptionKey: errorMessage
                         ])
@@ -393,7 +393,7 @@ struct NewSessionView: View {
         if let savedDir = UserDefaults.standard.string(forKey: "NewSession.workingDirectory") {
             workingDirectory = savedDir
         }
-        
+
         // Check if spawn window preference has been explicitly set
         if UserDefaults.standard.object(forKey: "NewSession.spawnWindow") != nil {
             spawnWindow = UserDefaults.standard.bool(forKey: "NewSession.spawnWindow")
@@ -401,7 +401,7 @@ struct NewSessionView: View {
             // Default to true if never set
             spawnWindow = true
         }
-        
+
         if let savedMode = UserDefaults.standard.string(forKey: "NewSession.titleMode"),
            let mode = TitleMode(rawValue: savedMode)
         {

@@ -12,9 +12,17 @@ final class CustomMenuWindow: NSPanel {
     private let hostingController: NSHostingController<AnyView>
     private var retainedContentView: AnyView?
     private var isEventMonitoringActive = false
+    private var targetFrame: NSRect?
+    private weak var statusBarButton: NSStatusBarButton?
+    private var _isWindowVisible = false
 
     /// Closure to be called when window hides
     var onHide: (() -> Void)?
+
+    /// More reliable visibility tracking
+    var isWindowVisible: Bool {
+        _isWindowVisible
+    }
 
     init(contentView: some View) {
         // Store the content view to prevent deallocation in Release builds
@@ -63,6 +71,10 @@ final class CustomMenuWindow: NSPanel {
     }
 
     func show(relativeTo statusItemButton: NSStatusBarButton) {
+        // Store button reference and ensure it stays highlighted
+        self.statusBarButton = statusItemButton
+        statusItemButton.state = .on
+
         // First, make sure the SwiftUI hierarchy has laid itself out
         hostingController.view.layoutSubtreeIfNeeded()
 
@@ -87,69 +99,71 @@ final class CustomMenuWindow: NSPanel {
                     preferredSize: preferredSize
                 )
 
+                // Set frame directly without animation
                 setFrame(targetFrame, display: false)
+
+                // Clear target frame since we're not animating
+                self.targetFrame = nil
             } else {
                 // Fallback: Position at top right of screen
                 showAtTopRightFallback(withSize: preferredSize)
+                self.targetFrame = nil
             }
         } else {
             // Fallback case
             showAtTopRightFallback(withSize: preferredSize)
+            self.targetFrame = nil
         }
 
         // Ensure the hosting controller's view is loaded
         _ = hostingController.view
 
-        // Display window safely
-        displayWindowSafely()
+        // Display window with animation
+        displayWindowWithAnimation()
+    }
+
+    private func displayWindowWithAnimation() {
+        // Group all visual changes in a single transaction to prevent flicker
+        CATransaction.begin()
+        CATransaction.setDisableActions(true) // Disable all implicit animations
+        CATransaction.setCompletionBlock { [weak self] in
+            // Setup event monitoring after all visual changes are complete
+            self?.setupEventMonitoring()
+        }
+
+        // Set all visual properties at once
+        alphaValue = 1.0
+
+        // Ensure button state remains on
+        statusBarButton?.state = .on
+
+        // Activate app and show window
+        NSApp.activate(ignoringOtherApps: true)
+        makeKeyAndOrderFront(nil)
+
+        // Set first responder after window is visible
+        makeFirstResponder(self)
+
+        // Force immediate layout of all subviews to prevent delayed rendering
+        contentView?.layoutSubtreeIfNeeded()
+
+        // Mark window as visible
+        _isWindowVisible = true
+
+        // Commit all changes at once
+        CATransaction.commit()
     }
 
     private func displayWindowSafely() {
-        alphaValue = 0
-
-        // Ensure app is active
-        NSApp.activate(ignoringOtherApps: true)
-
-        // Make the window first responder to enable keyboard navigation
-        // but don't focus any specific element
-        makeFirstResponder(self)
-
-        // Small delay to ensure window is fully displayed before animation
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(10))
-
-            if self.isVisible {
-                self.animateWindowIn()
-                self.setupEventMonitoring()
-            } else {
-                await self.displayWindowFallback()
-            }
-        }
+        // This method is now just a fallback for compatibility
+        displayWindowWithAnimation()
     }
 
     private func displayWindowFallback() async {
         NSApp.activate(ignoringOtherApps: true)
         self.makeKeyAndOrderFront(nil)
-
-        try? await Task.sleep(for: .milliseconds(50))
-
-        if self.isVisible {
-            self.animateWindowIn()
-            self.setupEventMonitoring()
-        } else {
-            self.orderFrontRegardless()
-            self.alphaValue = 1.0
-            self.setupEventMonitoring()
-        }
-    }
-
-    private func animateWindowIn() {
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.25
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.0, 0.2, 1.0)
-            context.allowsImplicitAnimation = true
-            self.animator().alphaValue = 1
-        }
+        self.alphaValue = 1.0 // Set to full opacity immediately
+        self.setupEventMonitoring()
     }
 
     private func calculateOptimalFrame(relativeTo statusFrame: NSRect, preferredSize: NSSize) -> NSRect {
@@ -216,6 +230,11 @@ final class CustomMenuWindow: NSPanel {
     }
 
     func hide() {
+        // Mark window as not visible
+        _isWindowVisible = false
+
+        // Reset button state when hiding
+        statusBarButton?.state = .off
         orderOut(nil)
         teardownEventMonitoring()
         onHide?()
@@ -223,9 +242,13 @@ final class CustomMenuWindow: NSPanel {
 
     override func orderOut(_ sender: Any?) {
         super.orderOut(sender)
-        if isVisible == false {
-            onHide?()
-        }
+
+        // Mark window as not visible
+        _isWindowVisible = false
+
+        // Reset button state when window is ordered out
+        statusBarButton?.state = .off
+        onHide?()
     }
 
     private func setupEventMonitoring() {

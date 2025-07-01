@@ -17,6 +17,7 @@ struct VibeTunnelMenuView: View {
 
     @State private var hoveredSessionId: String?
     @State private var hasStartedKeyboardNavigation = false
+    @State private var showingNewSession = false
     @FocusState private var focusedField: FocusField?
 
     enum FocusField: Hashable {
@@ -27,6 +28,22 @@ struct VibeTunnelMenuView: View {
     }
 
     var body: some View {
+        if showingNewSession {
+            NewSessionForm(isPresented: $showingNewSession)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .move(edge: .bottom).combined(with: .opacity)
+                ))
+        } else {
+            mainContent
+                .transition(.asymmetric(
+                    insertion: .opacity,
+                    removal: .opacity
+                ))
+        }
+    }
+
+    private var mainContent: some View {
         VStack(spacing: 0) {
             // Header with server info
             ServerInfoHeader()
@@ -114,6 +131,30 @@ struct VibeTunnelMenuView: View {
             // Bottom actions
             HStack {
                 Button(action: {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        showingNewSession = true
+                    }
+                }) {
+                    Label("New Session", systemImage: "plus.square")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .focusable()
+                .focused($focusedField, equals: .newSessionButton)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .strokeBorder(
+                            focusedField == .newSessionButton && hasStartedKeyboardNavigation ? Color.accentColor
+                                .opacity(0.3) : Color.clear,
+                            lineWidth: 1
+                        )
+                        .animation(.easeInOut(duration: 0.15), value: focusedField)
+                )
+
+                Spacer()
+
+                Button(action: {
                     SettingsOpener.openSettings()
                 }) {
                     Label("Settings", systemImage: "gear")
@@ -127,28 +168,6 @@ struct VibeTunnelMenuView: View {
                     RoundedRectangle(cornerRadius: 4)
                         .strokeBorder(
                             focusedField == .settingsButton && hasStartedKeyboardNavigation ? Color.accentColor
-                                .opacity(0.3) : Color.clear,
-                            lineWidth: 1
-                        )
-                        .animation(.easeInOut(duration: 0.15), value: focusedField)
-                )
-
-                Spacer()
-
-                Button(action: {
-                    openWindow(id: "new-session")
-                }) {
-                    Label("New Session", systemImage: "plus.square")
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
-                .focusable()
-                .focused($focusedField, equals: .newSessionButton)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .strokeBorder(
-                            focusedField == .newSessionButton && hasStartedKeyboardNavigation ? Color.accentColor
                                 .opacity(0.3) : Color.clear,
                             lineWidth: 1
                         )
@@ -563,6 +582,10 @@ struct SessionRow: View {
 
             Button("View Session Details") {
                 openWindow(id: "session-detail", value: session.key)
+            }
+
+            Button("Show in Finder") {
+                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
             }
 
             Button("Rename Session...") {
