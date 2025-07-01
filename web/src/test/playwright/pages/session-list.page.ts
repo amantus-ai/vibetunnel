@@ -277,7 +277,7 @@ export class SessionListPage extends BasePage {
     // Try regular click first, then force if needed
     try {
       await submitButton.click({ timeout: 5000 });
-    } catch (clickError) {
+    } catch (_clickError) {
       console.log('Regular click failed, trying force click...');
       await submitButton.click({ force: true });
     }
