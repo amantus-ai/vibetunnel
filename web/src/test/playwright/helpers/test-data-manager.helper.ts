@@ -111,8 +111,11 @@ export class TestSessionManager {
     }
 
     try {
-      // Wait for session cards
-      await this.page.waitForSelector('session-card', { state: 'visible', timeout: 2000 });
+      // Wait for session cards with longer timeout for CI
+      await this.page.waitForSelector('session-card', {
+        state: 'visible',
+        timeout: process.env.CI ? 15000 : 5000,
+      });
 
       // Check if session exists
       const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`);
