@@ -20,7 +20,8 @@ export const test = base.extend<{
   sessionListPage: SessionListPage;
 }>({
   // Session service fixture
-  sessionService: async (_, use) => {
+  // biome-ignore lint/correctness/noEmptyPattern: Playwright fixture pattern
+  sessionService: async ({}, use) => {
     const headers = new Headers();
     const baseURL = process.env.CI ? 'http://localhost:8321' : 'http://localhost:3456';
 
@@ -107,13 +108,15 @@ export const test = base.extend<{
   },
 
   // Track test session IDs for cleanup
-  testSessionIds: async (_, use) => {
+  // biome-ignore lint/correctness/noEmptyPattern: Playwright fixture pattern
+  testSessionIds: async ({}, use) => {
     const sessionIds: string[] = [];
     await use(sessionIds);
   },
 
   // Screenshot directory
-  screenshotDir: async (_, use) => {
+  // biome-ignore lint/correctness/noEmptyPattern: Playwright fixture pattern
+  screenshotDir: async ({}, use) => {
     const dir = path.join(os.tmpdir(), 'playwright-screenshots', Date.now().toString());
     fs.mkdirSync(dir, { recursive: true });
     await use(dir);
