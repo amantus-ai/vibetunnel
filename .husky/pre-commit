@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Change to web directory and run lint-staged
+cd web && pnpm exec lint-staged

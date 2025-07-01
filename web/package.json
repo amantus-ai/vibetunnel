@@ -36,7 +36,8 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "prepare": "husky"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -93,6 +94,8 @@
     "concurrently": "^9.1.2",
     "esbuild": "^0.25.5",
     "happy-dom": "^18.0.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
     "node-fetch": "^3.3.2",
     "postcss": "^8.5.6",
     "prettier": "^3.6.1",
@@ -112,5 +115,13 @@
     "asciinema"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "lint-staged": {
+    "src/**/*.{ts,tsx,js,jsx}": [
+      "biome check --write",
+      "bash -c 'tsc --noEmit --project tsconfig.server.json'",
+      "bash -c 'tsc --noEmit --project tsconfig.client.json'",
+      "bash -c 'tsc --noEmit --project tsconfig.sw.json'"
+    ]
+  }
 }
