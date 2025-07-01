@@ -25,7 +25,10 @@ export class SidebarHeader extends HeaderBase {
           <button
             class="p-2 text-dark-text-muted hover:text-dark-text rounded-lg hover:bg-dark-bg-tertiary transition-all duration-200 flex-shrink-0"
             @click=${() => this.dispatchEvent(new CustomEvent('toggle-sidebar'))}
-            title="Collapse sidebar"
+            title="Collapse sidebar (⌘B)"
+            aria-label="Collapse sidebar"
+            aria-expanded="true"
+            aria-controls="sidebar"
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
               <path d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"/>

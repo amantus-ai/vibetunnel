@@ -77,8 +77,8 @@ export class SessionHeader extends LitElement {
     return html`
       <!-- Compact Header -->
       <div
-        class="flex items-center justify-between px-3 py-2 border-b border-dark-border text-sm min-w-0 bg-dark-bg-secondary"
-        style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(0.75rem, env(safe-area-inset-left)); padding-right: max(0.75rem, env(safe-area-inset-right));"
+        class="flex items-center justify-between border-b border-dark-border text-sm min-w-0 bg-dark-bg-secondary p-3"
+        style="padding-top: max(0.75rem, calc(0.75rem + env(safe-area-inset-top))); padding-left: max(0.75rem, env(safe-area-inset-left)); padding-right: max(0.75rem, env(safe-area-inset-right));"
       >
         <div class="flex items-center gap-3 min-w-0 flex-1">
           <!-- Sidebar Toggle and Create Session Buttons (shown when sidebar is collapsed) -->
@@ -89,7 +89,10 @@ export class SessionHeader extends LitElement {
                   <button
                     class="bg-dark-bg-tertiary border border-dark-border rounded-lg p-1.5 font-mono text-dark-text-muted transition-all duration-300 hover:text-dark-text hover:bg-dark-bg hover:border-accent-green flex-shrink-0"
                     @click=${() => this.onSidebarToggle?.()}
-                    title="Show sidebar (Toggle with Cmd+B)"
+                    title="Show sidebar (⌘B)"
+                    aria-label="Show sidebar"
+                    aria-expanded="false"
+                    aria-controls="sidebar"
                   >
                     <!-- Right chevron icon to expand sidebar -->
                     <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">

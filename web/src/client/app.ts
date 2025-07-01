@@ -144,6 +144,12 @@ export class VibeTunnelApp extends LitElement {
       this.showFileBrowser = true;
     }
 
+    // Handle Cmd+B / Ctrl+B to toggle sidebar
+    if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+      e.preventDefault();
+      this.handleToggleSidebar();
+    }
+
     // Handle Escape to close the session and return to list view
     if (
       e.key === 'Escape' &&

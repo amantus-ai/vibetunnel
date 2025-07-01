@@ -22,6 +22,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import type { Session } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
+import { formatSessionDuration } from '../../shared/utils/time.js';
 import { createLogger } from '../utils/logger.js';
 import { formatPathForDisplay } from '../utils/path-utils.js';
 
@@ -238,14 +239,40 @@ export class SessionList extends LitElement {
                         ? html`
                           <!-- Compact list item for sidebar -->
                           <div
-                            class="flex items-center gap-2 p-3 rounded-md cursor-pointer transition-all hover:bg-dark-bg-tertiary ${
+                            class="group flex items-center gap-3 p-3 rounded-md cursor-pointer transition-all hover:bg-dark-bg-tertiary hover:shadow-md ${
                               session.id === this.selectedSessionId
                                 ? 'bg-dark-bg-tertiary border border-accent-green shadow-sm'
-                                : 'border border-transparent'
+                                : 'border border-transparent hover:border-dark-border'
                             }"
                             @click=${() =>
                               this.handleSessionSelect({ detail: session } as CustomEvent)}
                           >
+                            <!-- Activity indicator on the left -->
+                            <div
+                              class="w-2 h-2 rounded-full flex-shrink-0 ${
+                                session.status === 'running'
+                                  ? session.activityStatus?.specificStatus
+                                    ? 'bg-status-warning' // Claude active - orange, no pulse
+                                    : session.activityStatus?.isActive
+                                      ? 'bg-status-success' // Generic active
+                                      : 'bg-status-success ring-1 ring-status-success' // Idle (outline)
+                                  : 'bg-status-warning'
+                              }"
+                              title="${
+                                session.status === 'running' && session.activityStatus
+                                  ? session.activityStatus.specificStatus
+                                    ? `Active: ${session.activityStatus.specificStatus.app}`
+                                    : session.activityStatus.isActive
+                                      ? 'Active'
+                                      : 'Idle'
+                                  : session.status
+                              }"
+                            ></div>
+                            
+                            <!-- Divider line -->
+                            <div class="w-px h-8 bg-dark-border"></div>
+                            
+                            <!-- Session content -->
                             <div class="flex-1 min-w-0">
                               <div
                                 class="text-sm font-mono text-accent-green truncate"
@@ -290,32 +317,26 @@ export class SessionList extends LitElement {
                                 })()}
                               </div>
                             </div>
-                            <div class="flex items-center gap-2 flex-shrink-0">
-                              <div
-                                class="w-2 h-2 rounded-full ${
-                                  session.status === 'running'
-                                    ? session.activityStatus?.specificStatus
-                                      ? 'bg-accent-green animate-pulse' // Claude active
-                                      : session.activityStatus?.isActive
-                                        ? 'bg-status-success' // Generic active
-                                        : 'bg-status-success ring-1 ring-status-success' // Idle (outline)
-                                    : 'bg-status-warning'
-                                }"
-                                title="${
-                                  session.status === 'running' && session.activityStatus
-                                    ? session.activityStatus.specificStatus
-                                      ? `Active: ${session.activityStatus.specificStatus.app}`
-                                      : session.activityStatus.isActive
-                                        ? 'Active'
-                                        : 'Idle'
-                                    : session.status
-                                }"
-                              ></div>
+                            
+                            <!-- Right side: duration and close button -->
+                            <div class="relative flex items-center flex-shrink-0">
+                              <!-- Session duration (hidden on group hover on desktop) -->
+                              <div class="text-xs text-dark-text-muted font-mono transition-opacity ${
+                                'ontouchstart' in window ? '' : 'group-hover:opacity-0'
+                              }">
+                                ${session.startedAt ? formatSessionDuration(session.startedAt) : ''}
+                              </div>
+                              
+                              <!-- Close button (overlaps duration on hover) -->
                               ${
                                 session.status === 'running' || session.status === 'exited'
                                   ? html`
                                     <button
-                                      class="btn-ghost text-status-error p-1 rounded hover:bg-dark-bg"
+                                      class="btn-ghost text-status-error p-1 rounded transition-opacity absolute right-0 ${
+                                        'ontouchstart' in window
+                                          ? 'opacity-100 static ml-2'
+                                          : 'opacity-0 group-hover:opacity-100'
+                                      } hover:bg-dark-bg hover:shadow-sm"
                                       @click=${async (e: Event) => {
                                         e.stopPropagation();
                                         // Kill the session
