@@ -261,6 +261,45 @@ cd web && ./scripts/coverage-report.sh
 - macOS/iOS: 75% minimum (enforced in CI)
 - Web: 80% minimum for lines, functions, branches, and statements
 
+### Testing on External Devices (iPad, iPhone, etc.)
+
+When developing the web interface, you often need to test changes on external devices to debug browser-specific issues. Here's how to do it:
+
+#### Quick Setup
+
+1. **Run the dev server with network access**:
+   ```bash
+   cd web
+   pnpm run dev --port 4021 --bind 0.0.0.0
+   ```
+   This binds to all network interfaces, making it accessible from other devices.
+
+2. **Find your Mac's IP address**:
+   - System Preferences → Network → Wi-Fi → Details
+   - Or run: `ipconfig getifaddr en0`
+
+3. **Access from your external device**:
+   ```
+   http://[your-mac-ip]:4021
+   ```
+
+#### Important Notes
+
+- **Port conflict**: The Mac app runs on port 4020, so use a different port (e.g., 4021) for development
+- **Same network**: Ensure both devices are on the same Wi-Fi network
+- **Firewall**: macOS may prompt to allow incoming connections - click "Allow"
+- **Hot reload**: Changes to the web code will automatically update on your external device
+
+#### Alternative: Using the Mac App
+
+If you need to test with the full Mac app integration:
+
+1. Build the web project: `cd web && pnpm run build`
+2. In VibeTunnel settings, set Dashboard Access to "Network"
+3. Access from external device: `http://[your-mac-ip]:4020`
+
+Note: This requires rebuilding after each change, so the dev server method above is preferred for rapid iteration.
+
 ### Debug Logging
 
 Enable debug logging for troubleshooting:
