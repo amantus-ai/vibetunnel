@@ -44,6 +44,9 @@ export class SessionListPage extends BasePage {
     try {
       await createButton.click({ timeout: 5000 });
       console.log('Create button clicked successfully');
+
+      // Small delay to ensure the click event has been fully processed
+      await this.page.waitForTimeout(100);
     } catch (error) {
       console.error('Failed to click create button:', error);
       await screenshotOnError(
@@ -56,6 +59,19 @@ export class SessionListPage extends BasePage {
 
     // Wait for the modal to appear and be ready
     try {
+      // First wait for the modal backdrop to exist in DOM
+      await this.page.waitForSelector('.modal-backdrop', { state: 'attached', timeout: 5000 });
+
+      // Then wait for it to become visible (no hidden class)
+      await this.page.waitForFunction(
+        () => {
+          const modal = document.querySelector('.modal-backdrop');
+          return modal && !modal.classList.contains('hidden');
+        },
+        { timeout: 5000 }
+      );
+
+      // Finally wait for the modal content to be visible
       await this.page.waitForSelector(this.selectors.modal, { state: 'visible', timeout: 4000 });
     } catch (_e) {
       const error = new Error('Modal did not appear after clicking create button');
