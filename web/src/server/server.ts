@@ -771,14 +771,18 @@ export async function createApp(): Promise<AppInstance> {
     server.on('error', (error: NodeJS.ErrnoException) => {
       if (error.code === 'EADDRINUSE') {
         logger.error(`Port ${requestedPort} is already in use`);
-        
+
         // Provide more helpful error message in development mode
         const isDevelopment = !process.env.BUILD_DATE || process.env.NODE_ENV === 'development';
         if (isDevelopment) {
           logger.error(chalk.yellow('\nDevelopment mode options:'));
-          logger.error('  1. Run server on different port: ' + chalk.cyan('pnpm run dev:server --port 4021'));
+          logger.error(
+            '  1. Run server on different port: ' + chalk.cyan('pnpm run dev:server --port 4021')
+          );
           logger.error('  2. Use environment variable: ' + chalk.cyan('PORT=4021 pnpm run dev'));
-          logger.error('  3. Stop the existing server (check Activity Monitor for vibetunnel processes)');
+          logger.error(
+            '  3. Stop the existing server (check Activity Monitor for vibetunnel processes)'
+          );
         } else {
           logger.error(
             'Please use a different port with --port <number> or stop the existing server'
