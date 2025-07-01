@@ -618,7 +618,7 @@ export class SessionList extends LitElement {
           runningSessions.length > 0
             ? html`
               <button
-                class="font-mono text-xs px-4 py-2 rounded-md border transition-all duration-200 border-status-error bg-status-error bg-opacity-10 text-status-error hover:bg-opacity-20 ml-auto"
+                class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 border-status-error bg-status-error bg-opacity-10 text-status-error hover:bg-opacity-20"
                 @click=${() => this.dispatchEvent(new CustomEvent('kill-all-sessions'))}
               >
                 Kill All <span class="text-dark-text-dim">(${runningSessions.length})</span>

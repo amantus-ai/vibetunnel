@@ -14,14 +14,17 @@ import os
 final class TailscaleService {
     static let shared = TailscaleService()
 
+    /// Tailscale local API endpoint
+    private static let tailscaleAPIEndpoint = "http://100.100.100.100/api/data"
+
+    /// API request timeout in seconds
+    private static let apiTimeoutInterval: TimeInterval = 5.0
+
     /// Logger instance for debugging
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "TailscaleService")
 
     /// Indicates if Tailscale app is installed on the system
     private(set) var isInstalled = false
-
-    /// Indicates if Tailscale CLI is available
-    private(set) var isCLIAvailable = false
 
     /// Indicates if Tailscale is currently running
     private(set) var isRunning = false
@@ -34,9 +37,6 @@ final class TailscaleService {
 
     /// Error message if status check fails
     private(set) var statusError: String?
-
-    /// Path to the tailscale executable
-    private var tailscalePath: String?
 
     private init() {
         Task {
@@ -51,66 +51,49 @@ final class TailscaleService {
         return isAppInstalled
     }
 
-    /// Checks if Tailscale CLI is available
-    func checkCLIAvailability() async -> Bool {
-        let checkPaths = [
-            "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
-            "/usr/local/bin/tailscale",
-            "/opt/homebrew/bin/tailscale"
-        ]
+    /// Struct to decode Tailscale API response
+    private struct TailscaleAPIResponse: Codable {
+        let status: String
+        let deviceName: String
+        let tailnetName: String
+        let iPv4: String?
 
-        for path in checkPaths {
-            if FileManager.default.fileExists(atPath: path) {
-                logger.info("Tailscale CLI found at: \(path)")
-                tailscalePath = path
-                return true
-            }
+        private enum CodingKeys: String, CodingKey {
+            case status = "Status"
+            case deviceName = "DeviceName"
+            case tailnetName = "TailnetName"
+            case iPv4 = "IPv4"
+        }
+    }
+
+    /// Fetches Tailscale status from the API
+    private func fetchTailscaleStatus() async -> TailscaleAPIResponse? {
+        guard let url = URL(string: Self.tailscaleAPIEndpoint) else {
+            logger.error("Invalid Tailscale API URL")
+            return nil
         }
 
-        // Also check if we can run the tailscale command using which
         do {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-            process.arguments = ["tailscale"]
+            // Configure URLSession with timeout
+            let configuration = URLSessionConfiguration.default
+            configuration.timeoutIntervalForRequest = Self.apiTimeoutInterval
+            let session = URLSession(configuration: configuration)
 
-            // Set up PATH to include common installation directories
-            var environment = ProcessInfo.processInfo.environment
-            let additionalPaths = [
-                "/usr/local/bin",
-                "/opt/homebrew/bin",
-                "/Applications/Tailscale.app/Contents/MacOS"
-            ]
-            if let currentPath = environment["PATH"] {
-                environment["PATH"] = "\(currentPath):\(additionalPaths.joined(separator: ":"))"
-            } else {
-                environment["PATH"] = additionalPaths.joined(separator: ":")
+            let (data, response) = try await session.data(from: url)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200
+            else {
+                logger.warning("Tailscale API returned non-200 status")
+                return nil
             }
-            process.environment = environment
 
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = pipe
-
-            try process.run()
-            process.waitUntilExit()
-
-            if process.terminationStatus == 0 {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-                   !output.isEmpty
-                {
-                    logger.info("Tailscale CLI found at: \(output)")
-                    tailscalePath = output
-                    return true
-                }
-            }
+            let decoder = JSONDecoder()
+            return try decoder.decode(TailscaleAPIResponse.self, from: data)
         } catch {
-            logger.debug("Failed to check for tailscale command: \(error)")
+            logger.debug("Failed to fetch Tailscale status: \(error)")
+            return nil
         }
-
-        logger.info("Tailscale CLI not found")
-        tailscalePath = nil
-        return false
     }
 
     /// Checks the current Tailscale status and updates properties
@@ -119,7 +102,6 @@ final class TailscaleService {
         isInstalled = checkAppInstallation()
 
         guard isInstalled else {
-            isCLIAvailable = false
             isRunning = false
             tailscaleHostname = nil
             tailscaleIP = nil
@@ -127,168 +109,40 @@ final class TailscaleService {
             return
         }
 
-        // Then check if CLI is available
-        isCLIAvailable = await checkCLIAvailability()
+        // Try to fetch status from API
+        if let apiResponse = await fetchTailscaleStatus() {
+            // Tailscale is running if API responds
+            isRunning = apiResponse.status.lowercased() == "running"
 
-        guard isCLIAvailable else {
-            isRunning = false
-            tailscaleHostname = nil
-            tailscaleIP = nil
-            statusError = nil // No error, just CLI not available
-            return
-        }
-        
-        // Check if Tailscale daemon is running by looking for the process
-        let isAppRunning = NSWorkspace.shared.runningApplications.contains { app in
-            app.bundleIdentifier == "io.tailscale.ipn.macsys" || 
-            app.bundleIdentifier == "io.tailscale.ipn.macos"
-        }
-        
-        if !isAppRunning {
-            isRunning = false
-            tailscaleHostname = nil
-            tailscaleIP = nil
-            statusError = "Tailscale app is not running"
-            logger.info("Tailscale app is not running - skipping status check")
-            return
-        }
+            if isRunning {
+                // Extract hostname from device name and tailnet name
+                // Format: devicename.tailnetname (without .ts.net suffix)
+                let deviceName = apiResponse.deviceName.lowercased().replacingOccurrences(of: " ", with: "-")
+                let tailnetName = apiResponse.tailnetName
+                    .replacingOccurrences(of: ".ts.net", with: "")
+                    .replacingOccurrences(of: ".tailscale.net", with: "")
 
-        // If CLI is available, check status
-        do {
-            let process = Process()
+                tailscaleHostname = "\(deviceName).\(tailnetName).ts.net"
+                tailscaleIP = apiResponse.iPv4
+                statusError = nil
 
-            // Use the discovered tailscale path
-            if let tailscalePath {
-                process.executableURL = URL(fileURLWithPath: tailscalePath)
-                process.arguments = ["status", "--json"]
+                logger
+                    .info(
+                        "Tailscale status: running=true, hostname=\(self.tailscaleHostname ?? "nil"), IP=\(self.tailscaleIP ?? "nil")"
+                    )
             } else {
-                // Fallback to env if path not found (shouldn't happen if isCLIAvailable is true)
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                process.arguments = ["tailscale", "status", "--json"]
-
-                // Set up PATH environment variable
-                var environment = ProcessInfo.processInfo.environment
-                let additionalPaths = [
-                    "/usr/local/bin",
-                    "/opt/homebrew/bin",
-                    "/Applications/Tailscale.app/Contents/MacOS"
-                ]
-                if let currentPath = environment["PATH"] {
-                    environment["PATH"] = "\(currentPath):\(additionalPaths.joined(separator: ":"))"
-                } else {
-                    environment["PATH"] = additionalPaths.joined(separator: ":")
-                }
-                process.environment = environment
-            }
-
-            let outputPipe = Pipe()
-            let errorPipe = Pipe()
-            process.standardOutput = outputPipe
-            process.standardError = errorPipe
-
-            try process.run()
-            process.waitUntilExit()
-
-            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-
-            if process.terminationStatus == 0 {
-                // Check if we have data
-                guard !outputData.isEmpty else {
-                    isRunning = false
-                    tailscaleHostname = nil
-                    tailscaleIP = nil
-                    statusError = "Tailscale returned empty response"
-                    logger.warning("Tailscale status command returned empty data")
-                    return
-                }
-                
-                // Log raw output for debugging
-                let rawOutput = String(data: outputData, encoding: .utf8) ?? "<non-UTF8 data>"
-                logger.debug("Tailscale raw output: \(rawOutput)")
-                
-                // Parse JSON output
-                do {
-                    let jsonObject = try JSONSerialization.jsonObject(with: outputData)
-                    
-                    // Ensure it's a dictionary
-                    guard let json = jsonObject as? [String: Any] else {
-                        isRunning = false
-                        tailscaleHostname = nil
-                        tailscaleIP = nil
-                        statusError = "Tailscale returned invalid JSON format (not a dictionary)"
-                        logger.warning("Tailscale status returned non-dictionary JSON: \(type(of: jsonObject))")
-                        return
-                    }
-                    
-                    // Check if we're logged in and connected
-                    if let self_ = json["Self"] as? [String: Any],
-                       let dnsName = self_["DNSName"] as? String
-                    {
-                        // Check online status - it might be missing or false
-                        let online = self_["Online"] as? Bool ?? false
-                        isRunning = online
-
-                        // Use the DNSName which is already properly formatted for DNS
-                        // Remove trailing dot if present
-                        tailscaleHostname = dnsName.hasSuffix(".") ? String(dnsName.dropLast()) : dnsName
-
-                        // Get Tailscale IP
-                        if let tailscaleIPs = self_["TailscaleIPs"] as? [String],
-                           let firstIP = tailscaleIPs.first
-                        {
-                            tailscaleIP = firstIP
-                        }
-
-                        statusError = nil
-                        logger
-                            .info(
-                                "Tailscale status: running=\(online), hostname=\(self.tailscaleHostname ?? "nil"), IP=\(self.tailscaleIP ?? "nil")"
-                            )
-                    } else {
-                        isRunning = false
-                        tailscaleHostname = nil
-                        tailscaleIP = nil
-                        statusError = "Tailscale is not logged in"
-                        logger.warning("Tailscale status check failed - missing required fields in JSON")
-                        logger.debug("JSON keys: \(json.keys.sorted())")
-                    }
-                } catch let parseError {
-                    isRunning = false
-                    tailscaleHostname = nil
-                    tailscaleIP = nil
-                    
-                    // Check if this is the GUI startup error
-                    if rawOutput.contains("The Tailscale GUI failed to start") {
-                        statusError = "Tailscale app is not running"
-                    } else {
-                        statusError = "Failed to parse Tailscale status: \(parseError.localizedDescription)"
-                    }
-                    
-                    logger.error("JSON parsing error: \(parseError)")
-                    logger.debug("Failed to parse data: \(rawOutput.prefix(200))...")
-                }
-            } else {
-                // Tailscale CLI returned error
-                let errorOutput = String(data: errorData, encoding: .utf8) ?? String(data: outputData, encoding: .utf8) ?? "Unknown error"
-                isRunning = false
+                // Tailscale installed but not running properly
                 tailscaleHostname = nil
                 tailscaleIP = nil
-
-                if errorOutput.contains("not logged in") {
-                    statusError = "Tailscale is not logged in"
-                } else if errorOutput.contains("stopped") {
-                    statusError = "Tailscale is stopped"
-                } else {
-                    statusError = "Tailscale error: \(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
-                }
+                statusError = "Tailscale is not running"
             }
-        } catch {
-            logger.error("Failed to check Tailscale status: \(error)")
+        } else {
+            // API not responding - Tailscale not running
             isRunning = false
             tailscaleHostname = nil
             tailscaleIP = nil
-            statusError = "Failed to check status: \(error.localizedDescription)"
+            statusError = "Please start the Tailscale app"
+            logger.info("Tailscale API not responding - app likely not running")
         }
     }
 

@@ -16,14 +16,12 @@
 		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
-			<key>vibetunnel.sh</key>
+			<key>0.0.0.0</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<false/>
-				<key>NSIncludesSubdomains</key>
 				<true/>
 			</dict>
-			<key>localhost</key>
+			<key>100.100.100.100</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
@@ -33,9 +31,16 @@
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
 			</dict>
-			<key>0.0.0.0</key>
+			<key>localhost</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+			<key>vibetunnel.sh</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
 				<true/>
 			</dict>
 		</dict>

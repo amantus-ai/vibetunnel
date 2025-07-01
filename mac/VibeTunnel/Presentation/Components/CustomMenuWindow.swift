@@ -140,7 +140,7 @@ final class CustomMenuWindow: NSPanel {
         // Activate app and show window
         NSApp.activate(ignoringOtherApps: true)
         makeKeyAndOrderFront(nil)
-        
+
         // Force button state update again after window is shown
         DispatchQueue.main.async { [weak self] in
             self?.statusBarButton?.state = .on
@@ -336,7 +336,7 @@ struct CustomMenuContainer<Content: View>: View {
             Color.white.opacity(0.5)
         }
     }
-    
+
     private var backgroundMaterial: some ShapeStyle {
         switch colorScheme {
         case .dark:

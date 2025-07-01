@@ -74,8 +74,9 @@ struct TerminalLaunchTests {
         // iTerm2 URL with working directory
         if let url = Terminal.iTerm2.commandURL(for: command, workingDirectory: workDir) {
             #expect(url.absoluteString.contains("cd="))
-            #expect(url.absoluteString
-                .contains(workDir.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")
+            #expect(
+                url.absoluteString
+                    .contains(workDir.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")
             )
         }
     }

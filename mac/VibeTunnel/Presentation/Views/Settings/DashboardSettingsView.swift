@@ -807,199 +807,92 @@ private struct TailscaleIntegrationSection: View {
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
-                if tailscaleService.isInstalled {
-                    // Tailscale app is installed
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Tailscale is installed")
-                            .font(.callout)
-
-                        Spacer()
-                    }
-
-                    if tailscaleService.isCLIAvailable {
-                        // CLI is available, show status
-                        if tailscaleService.isRunning || tailscaleService.tailscaleHostname != nil {
-                            // Show Tailscale hostname and connection info (even if offline, as user might still
-                            // connect)
-                            VStack(alignment: .leading, spacing: 8) {
-                                if let hostname = tailscaleService.tailscaleHostname {
-                                    HStack {
-                                        Text("Tailscale hostname:")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        Text(hostname)
-                                            .font(.caption)
-                                            .textSelection(.enabled)
-                                    }
-                                }
-
-                                if let tailscaleIP = tailscaleService.tailscaleIP {
-                                    HStack {
-                                        Text("Tailscale IP:")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        Text(tailscaleIP)
-                                            .font(.caption)
-                                            .textSelection(.enabled)
-                                    }
-                                }
-
-                                // Access URL
-                                if let hostname = tailscaleService.tailscaleHostname {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        if accessMode == .localhost {
-                                            // Show warning if in localhost-only mode
-                                            HStack(spacing: 4) {
-                                                Image(systemName: "exclamationmark.triangle.fill")
-                                                    .foregroundColor(.orange)
-                                                    .font(.system(size: 12))
-                                                Text(
-                                                    "Server is in localhost-only mode. Change to 'Network' mode above to access via Tailscale."
-                                                )
-                                                .font(.caption)
-                                                .foregroundColor(.orange)
-                                            }
-                                            .padding(.vertical, 4)
-                                        } else {
-                                            // Show the access URL
-                                            HStack(spacing: 5) {
-                                                Text("Access VibeTunnel at:")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-
-                                                let urlString = "http://\(hostname):\(serverPort)"
-                                                if let url = URL(string: urlString) {
-                                                    Link(urlString, destination: url)
-                                                        .font(.caption)
-                                                        .foregroundStyle(.blue)
-                                                }
-                                            }
-
-                                            if !tailscaleService.isRunning {
-                                                HStack(spacing: 4) {
-                                                    Image(systemName: "exclamationmark.triangle")
-                                                        .foregroundColor(.orange)
-                                                        .font(.system(size: 10))
-                                                    Text("Tailscale reports as offline but may still be accessible")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.orange)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                HStack {
+                    if tailscaleService.isInstalled {
+                        if tailscaleService.isRunning {
+                            // Green dot: Tailscale is installed and running
+                            Image(systemName: "circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 10))
+                            Text("Tailscale is installed and running")
+                                .font(.callout)
                         } else {
-                            // CLI available but Tailscale not running/logged in
-                            VStack(alignment: .leading, spacing: 8) {
-                                if let error = tailscaleService.statusError {
-                                    HStack {
-                                        Image(systemName: "exclamationmark.triangle")
-                                            .foregroundColor(.orange)
-                                        Text(error)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-
-                                HStack {
-                                    Button("Open Tailscale") {
-                                        tailscaleService.openTailscaleApp()
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .controlSize(.small)
-
-                                    if let url = URL(string: "https://tailscale.com/kb/1017/install/") {
-                                        Link("Setup Guide", destination: url)
-                                            .font(.caption)
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        // App installed but CLI not available
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Image(systemName: "info.circle")
-                                    .foregroundColor(.blue)
-                                Text("Tailscale CLI not available")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Text(
-                                "To see your Tailscale status here, install the Tailscale CLI. You can still use Tailscale - just open the app and connect to your tailnet."
-                            )
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                            HStack(spacing: 12) {
-                                Button("Open Tailscale") {
-                                    tailscaleService.openTailscaleApp()
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.small)
-
-                                if let url = URL(string: "https://tailscale.com/kb/1090/install-tailscale-cli/") {
-                                    Link("Install CLI", destination: url)
-                                        .font(.caption)
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // Tailscale is not installed
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "info.circle")
-                                .foregroundColor(.blue)
-                            Text("Tailscale is not installed")
+                            // Orange dot: Tailscale is installed but not running
+                            Image(systemName: "circle.fill")
+                                .foregroundColor(.orange)
+                                .font(.system(size: 10))
+                            Text("Tailscale is installed but not running")
                                 .font(.callout)
                         }
+                    } else {
+                        // Yellow dot: Tailscale is not installed
+                        Image(systemName: "circle.fill")
+                            .foregroundColor(.yellow)
+                            .font(.system(size: 10))
+                        Text("Tailscale is not installed")
+                            .font(.callout)
+                    }
 
-                        Text(
-                            "Tailscale creates a secure peer-to-peer VPN for accessing VibeTunnel from any device - your phone, tablet, or another computer."
-                        )
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                }
 
-                        HStack(spacing: 12) {
-                            Button(action: {
-                                tailscaleService.openAppStore()
-                            }) {
-                                Text("App Store")
-                            }
-                            .buttonStyle(.link)
-                            .controlSize(.small)
-
-                            Button(action: {
-                                tailscaleService.openDownloadPage()
-                            }) {
-                                Text("Direct Download")
-                            }
-                            .buttonStyle(.link)
-                            .controlSize(.small)
-
-                            Button(action: {
-                                tailscaleService.openSetupGuide()
-                            }) {
-                                Text("Setup Guide")
-                            }
-                            .buttonStyle(.link)
-                            .controlSize(.small)
-                        }
-
-                        Button("Check Again") {
-                            Task {
-                                await tailscaleService.checkTailscaleStatus()
-                            }
+                // Show additional content based on state
+                if !tailscaleService.isInstalled {
+                    // Show download links when not installed
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            tailscaleService.openAppStore()
+                        }) {
+                            Text("App Store")
                         }
                         .buttonStyle(.link)
-                        .font(.caption)
+                        .controlSize(.small)
+
+                        Button(action: {
+                            tailscaleService.openDownloadPage()
+                        }) {
+                            Text("Direct Download")
+                        }
+                        .buttonStyle(.link)
+                        .controlSize(.small)
+
+                        Button(action: {
+                            tailscaleService.openSetupGuide()
+                        }) {
+                            Text("Setup Guide")
+                        }
+                        .buttonStyle(.link)
+                        .controlSize(.small)
+                    }
+                } else if tailscaleService.isRunning {
+                    // Show dashboard URL when running
+                    if let hostname = tailscaleService.tailscaleHostname {
+                        HStack(spacing: 5) {
+                            Text("Access VibeTunnel at:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            let urlString = "http://\(hostname):\(serverPort)"
+                            if let url = URL(string: urlString) {
+                                Link(urlString, destination: url)
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                            }
+                        }
+
+                        // Show warning if in localhost-only mode
+                        if accessMode == .localhost {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.system(size: 12))
+                                Text(
+                                    "Server is in localhost-only mode. Change to 'Network' mode above to access via Tailscale."
+                                )
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
             }
@@ -1020,7 +913,7 @@ private struct TailscaleIntegrationSection: View {
             await tailscaleService.checkTailscaleStatus()
             logger
                 .info(
-                    "TailscaleIntegrationSection: Status check complete - isInstalled: \(tailscaleService.isInstalled), isCLIAvailable: \(tailscaleService.isCLIAvailable), isRunning: \(tailscaleService.isRunning), hostname: \(tailscaleService.tailscaleHostname ?? "nil")"
+                    "TailscaleIntegrationSection: Status check complete - isInstalled: \(tailscaleService.isInstalled), isRunning: \(tailscaleService.isRunning), hostname: \(tailscaleService.tailscaleHostname ?? "nil")"
                 )
 
             // Set up timer for automatic updates every 5 seconds
