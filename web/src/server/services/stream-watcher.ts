@@ -11,6 +11,34 @@ interface StreamClient {
   startTime: number;
 }
 
+// Type for asciinema event array format
+type AsciinemaOutputEvent = [number, 'o', string];
+type AsciinemaInputEvent = [number, 'i', string];
+type AsciinemaResizeEvent = [number, 'r', string];
+type AsciinemaExitEvent = ['exit', number, string];
+type AsciinemaEvent =
+  | AsciinemaOutputEvent
+  | AsciinemaInputEvent
+  | AsciinemaResizeEvent
+  | AsciinemaExitEvent;
+
+// Type guard functions
+function isOutputEvent(event: AsciinemaEvent): event is AsciinemaOutputEvent {
+  return (
+    Array.isArray(event) && event.length === 3 && event[1] === 'o' && typeof event[0] === 'number'
+  );
+}
+
+function isResizeEvent(event: AsciinemaEvent): event is AsciinemaResizeEvent {
+  return (
+    Array.isArray(event) && event.length === 3 && event[1] === 'r' && typeof event[0] === 'number'
+  );
+}
+
+function isExitEvent(event: AsciinemaEvent): event is AsciinemaExitEvent {
+  return Array.isArray(event) && event[0] === 'exit';
+}
+
 interface WatcherInfo {
   clients: Set<StreamClient>;
   watcher?: fs.FSWatcher;
@@ -127,10 +155,10 @@ export class StreamWatcher {
       // First pass: analyze the stream to find the last clear and track resize events
       const analysisStream = fs.createReadStream(streamPath, { encoding: 'utf8' });
       let lineBuffer = '';
-      const events: any[] = [];
+      const events: AsciinemaEvent[] = [];
       let lastClearIndex = -1;
-      let lastResizeBeforeClear: [number, string, string] | null = null;
-      let currentResize: [number, string, string] | null = null;
+      let lastResizeBeforeClear: AsciinemaResizeEvent | null = null;
+      let currentResize: AsciinemaResizeEvent | null = null;
       let header: AsciinemaHeader | null = null;
 
       analysisStream.on('data', (chunk: string | Buffer) => {
@@ -144,24 +172,29 @@ export class StreamWatcher {
               const parsed = JSON.parse(line);
               if (parsed.version && parsed.width && parsed.height) {
                 header = parsed;
-              } else if (Array.isArray(parsed) && parsed.length >= 3) {
-                const [_timestamp, type, data] = parsed;
+              } else if (Array.isArray(parsed)) {
+                // Check if it's an exit event first
+                if (parsed[0] === 'exit') {
+                  events.push(parsed as AsciinemaExitEvent);
+                } else if (parsed.length >= 3 && typeof parsed[0] === 'number') {
+                  const event = parsed as AsciinemaEvent;
 
-                // Track resize events
-                if (type === 'r' && typeof data === 'string') {
-                  currentResize = parsed as [number, string, string];
+                  // Track resize events
+                  if (isResizeEvent(event)) {
+                    currentResize = event;
+                  }
+
+                  // Check for clear sequence in output events
+                  if (isOutputEvent(event) && event[2].includes('\x1b[3J')) {
+                    lastClearIndex = events.length;
+                    lastResizeBeforeClear = currentResize;
+                    logger.debug(
+                      `found clear sequence at event index ${lastClearIndex}, current resize: ${currentResize ? currentResize[2] : 'none'}`
+                    );
+                  }
+
+                  events.push(event);
                 }
-
-                // Check for clear sequence in output events
-                if (type === 'o' && typeof data === 'string' && data.includes('\x1b[3J')) {
-                  lastClearIndex = events.length;
-                  lastResizeBeforeClear = currentResize;
-                  logger.debug(
-                    `found clear sequence at event index ${lastClearIndex}, current resize: ${currentResize ? currentResize[2] : 'none'}`
-                  );
-                }
-
-                events.push(parsed);
               }
             } catch (e) {
               logger.debug(`skipping invalid JSON line during analysis: ${e}`);
@@ -175,17 +208,24 @@ export class StreamWatcher {
         if (lineBuffer.trim()) {
           try {
             const parsed = JSON.parse(lineBuffer);
-            if (Array.isArray(parsed) && parsed.length >= 3) {
-              const [_timestamp, type, data] = parsed;
-              if (type === 'r' && typeof data === 'string') {
-                currentResize = parsed as [number, string, string];
+            if (Array.isArray(parsed)) {
+              if (parsed[0] === 'exit') {
+                events.push(parsed as AsciinemaExitEvent);
+              } else if (parsed.length >= 3 && typeof parsed[0] === 'number') {
+                const event = parsed as AsciinemaEvent;
+
+                if (isResizeEvent(event)) {
+                  currentResize = event;
+                }
+                if (isOutputEvent(event) && event[2].includes('\x1b[3J')) {
+                  lastClearIndex = events.length;
+                  lastResizeBeforeClear = currentResize;
+                  logger.debug(
+                    `found clear sequence at event index ${lastClearIndex} (last event)`
+                  );
+                }
+                events.push(event);
               }
-              if (type === 'o' && typeof data === 'string' && data.includes('\x1b[3J')) {
-                lastClearIndex = events.length;
-                lastResizeBeforeClear = currentResize;
-                logger.debug(`found clear sequence at event index ${lastClearIndex} (last event)`);
-              }
-              events.push(parsed);
             }
           } catch (e) {
             logger.debug(`skipping invalid JSON in line buffer during analysis: ${e}`);
@@ -219,12 +259,12 @@ export class StreamWatcher {
         let exitEventFound = false;
         for (let i = startIndex; i < events.length; i++) {
           const event = events[i];
-          if (Array.isArray(event) && event[0] === 'exit') {
+          if (isExitEvent(event)) {
             exitEventFound = true;
             client.response.write(`data: ${JSON.stringify(event)}\n\n`);
-          } else if (Array.isArray(event) && event.length >= 3) {
+          } else if (isOutputEvent(event) || isResizeEvent(event)) {
             // Set timestamp to 0 for existing content
-            const instantEvent = [0, event[1], event[2]];
+            const instantEvent: AsciinemaEvent = [0, event[1], event[2]];
             client.response.write(`data: ${JSON.stringify(instantEvent)}\n\n`);
           }
         }

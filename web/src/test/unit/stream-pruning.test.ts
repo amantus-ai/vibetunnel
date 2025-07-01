@@ -3,12 +3,16 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AsciinemaHeader } from '../../server/pty/types.js';
 import { StreamWatcher } from '../../server/services/stream-watcher.js';
 import {
   mockAsciinemaNoClears,
   mockAsciinemaWithClearMidLine,
   mockAsciinemaWithClears,
 } from '../fixtures/test-data.js';
+
+// Type for asciinema events used in tests
+type TestAsciinemaEvent = [number | 'exit', string | number, string?];
 
 describe('StreamWatcher - Asciinema Stream Pruning', () => {
   let streamWatcher: StreamWatcher;
@@ -42,9 +46,8 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
   // Helper to create test asciinema file
   function createTestFile(
     filename: string,
-    // biome-ignore lint/suspicious/noExplicitAny: test data headers can have various fields
-    header: Record<string, any>,
-    events: any[]
+    header: AsciinemaHeader,
+    events: TestAsciinemaEvent[]
   ): string {
     const filepath = path.join(tempDir, filename);
     const lines = [JSON.stringify(header), ...events.map((event) => JSON.stringify(event))];
@@ -53,7 +56,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
   }
 
   // Helper to parse SSE data
-  function parseSSEData(data: string[]): any[] {
+  function parseSSEData(data: string[]): Array<AsciinemaHeader | TestAsciinemaEvent> {
     return data
       .filter((line) => line.startsWith('data: '))
       .map((line) => {
@@ -70,8 +73,8 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
   it('should prune content before the last clear sequence', async () => {
     const filepath = createTestFile(
       'with-clears.cast',
-      mockAsciinemaWithClears.header,
-      mockAsciinemaWithClears.events
+      mockAsciinemaWithClears.header as AsciinemaHeader,
+      mockAsciinemaWithClears.events as TestAsciinemaEvent[]
     );
 
     // Use reflection to call private method
@@ -88,7 +91,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
     expect(events.length).toBeGreaterThan(0);
 
     // First event should be header with updated dimensions
-    const header = events[0];
+    const header = events[0] as AsciinemaHeader;
     expect(header.version).toBe(2);
     expect(header.width).toBe(100); // From last resize before clear
     expect(header.height).toBe(30);
@@ -108,8 +111,8 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
   it('should handle clear sequence in middle of line', async () => {
     const filepath = createTestFile(
       'clear-mid-line.cast',
-      mockAsciinemaWithClearMidLine.header,
-      mockAsciinemaWithClearMidLine.events
+      mockAsciinemaWithClearMidLine.header as AsciinemaHeader,
+      mockAsciinemaWithClearMidLine.events as TestAsciinemaEvent[]
     );
 
     // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
@@ -129,8 +132,8 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
   it('should not prune streams without clear sequences', async () => {
     const filepath = createTestFile(
       'no-clears.cast',
-      mockAsciinemaNoClears.header,
-      mockAsciinemaNoClears.events
+      mockAsciinemaNoClears.header as AsciinemaHeader,
+      mockAsciinemaNoClears.events as TestAsciinemaEvent[]
     );
 
     // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
@@ -178,7 +181,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
     expect(events.length).toBeGreaterThan(0);
 
     // First event should be header
-    const header = events[0];
+    const header = events[0] as AsciinemaHeader;
     expect(header.version).toBe(2);
 
     // Check that we're getting content after the last clear
