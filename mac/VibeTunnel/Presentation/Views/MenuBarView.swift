@@ -38,9 +38,6 @@ struct MenuBarView: View {
             SessionCountView(count: sessionMonitor.sessionCount)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .onAppear {
-                    print("[MenuBarView] Session count: \(sessionMonitor.sessionCount), total sessions: \(sessionMonitor.sessions.count)")
-                }
 
             // Session list with clickable items
             if !sessionMonitor.sessions.isEmpty {
