@@ -153,8 +153,8 @@ export class SessionList extends LitElement {
       : this.sessions;
 
     return html`
-      <div class="font-mono text-sm flex flex-col h-full" data-testid="session-list-container">
-        <div class="flex-1 overflow-y-auto p-4">
+      <div class="font-mono text-sm" data-testid="session-list-container">
+        <div class="p-4">
         ${
           filteredSessions.length === 0
             ? html`
@@ -429,7 +429,7 @@ export class SessionList extends LitElement {
     if (exitedSessions.length === 0 && runningSessions.length === 0) return '';
 
     return html`
-      <div class="border-t border-dark-border bg-dark-bg-secondary p-3 flex flex-wrap gap-2">
+      <div class="sticky bottom-0 border-t border-dark-border bg-dark-bg-secondary p-3 flex flex-wrap gap-2 shadow-lg">
         <!-- Control buttons with consistent styling -->
         ${
           exitedSessions.length > 0
