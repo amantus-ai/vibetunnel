@@ -85,7 +85,7 @@ export class StatefulAnsiFilter {
             // Still parsing digits
           } else if (char === ';') {
             // Check if it's a title sequence (OSC 0, 1, or 2)
-            const oscNumber = parseInt(this.buffer.slice(2, -1), 10);
+            const oscNumber = Number.parseInt(this.buffer.slice(2, -1), 10);
             if (oscNumber >= 0 && oscNumber <= 2) {
               // This is a title sequence, continue parsing
               this.state = ParseState.OSC_CONTENT;

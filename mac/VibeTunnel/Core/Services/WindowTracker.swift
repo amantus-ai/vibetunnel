@@ -138,6 +138,8 @@ final class WindowTracker {
         guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
             return []
         }
+        
+        let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "WindowTracker")
 
         return windowList.compactMap { windowDict in
             // Extract window properties
@@ -146,6 +148,11 @@ final class WindowTracker {
                   let ownerName = windowDict[kCGWindowOwnerName as String] as? String
             else {
                 return nil
+            }
+            
+            // Log suspicious window IDs for debugging
+            if windowID < 1000 && windowID == CGWindowID(ownerPID) {
+                logger.warning("Suspicious window ID \(windowID) matches PID for \(ownerName)")
             }
 
             // Check if this is a terminal application

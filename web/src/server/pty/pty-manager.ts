@@ -24,8 +24,8 @@ import { TitleMode } from '../../shared/types.js';
 import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
 import { ActivityDetector, type ActivityState } from '../utils/activity-detector.js';
 import { filterTerminalTitleSequences } from '../utils/ansi-filter.js';
-import { StatefulAnsiFilter } from '../utils/stateful-ansi-filter.js';
 import { createLogger } from '../utils/logger.js';
+import { StatefulAnsiFilter } from '../utils/stateful-ansi-filter.js';
 import {
   extractCdDirectory,
   generateDynamicTitle,
@@ -1868,6 +1868,12 @@ export class PtyManager extends EventEmitter {
     if (session.activityDetector) {
       session.activityDetector.clearStatus();
       session.activityDetector = undefined;
+    }
+
+    // Clean up ANSI filter
+    if (session.ansiFilter) {
+      session.ansiFilter.reset();
+      session.ansiFilter = undefined;
     }
 
     // Clean up input socket server

@@ -82,6 +82,7 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
         return res.json({
           exists: false,
           size: 0,
+          lastModified: null,
           path: logPath,
         });
       }
