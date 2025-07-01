@@ -131,17 +131,18 @@ final class StatusBarController: NSObject {
             return false
         }
         
-        let idleCount = sessions.count - activeSessions.count
         let activeCount = activeSessions.count
+        let totalCount = sessions.count
         
-        // Format the title based on session counts
-        if sessions.isEmpty {
-            button.title = ""
-        } else if activeCount > 0 {
-            button.title = "\(idleCount)·\(activeCount)"
-        } else {
-            button.title = "\(sessions.count)"
-        }
+        // Format the title with visual indicators
+        // Try different styles by changing this:
+        // .dots (default): ●●● 5
+        // .bars: ▪︎▪︎▫︎▫︎▫︎
+        // .compact: 2◆5
+        // .minimalist: 2|5
+        // .meter: [■■□□□]
+        let indicatorStyle: IndicatorStyle = .dots
+        button.title = formatSessionIndicator(activeCount: activeCount, totalCount: totalCount, style: indicatorStyle)
         
         // Update tooltip
         updateTooltip()
@@ -184,10 +185,15 @@ final class StatusBarController: NSObject {
                 return false
             }
             
+            let idleCount = sessions.count - activeSessions.count
             if activeSessions.count > 0 {
-                tooltipParts.append("\(sessions.count - activeSessions.count) idle, \(activeSessions.count) active sessions")
+                if idleCount > 0 {
+                    tooltipParts.append("\(activeSessions.count) active, \(idleCount) idle session\(sessions.count == 1 ? "" : "s")")
+                } else {
+                    tooltipParts.append("\(activeSessions.count) active session\(activeSessions.count == 1 ? "" : "s")")
+                }
             } else {
-                tooltipParts.append("\(sessions.count) session\(sessions.count == 1 ? "" : "s")")
+                tooltipParts.append("\(sessions.count) idle session\(sessions.count == 1 ? "" : "s")")
             }
         }
         

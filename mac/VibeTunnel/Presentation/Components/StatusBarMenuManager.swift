@@ -60,6 +60,9 @@ final class StatusBarMenuManager {
         // Store button reference
         self.statusBarButton = button
         
+        // Highlight the button immediately to show active state
+        button.highlight(true)
+        
         // Create the main view with all dependencies
         let mainView = VibeTunnelMenuView()
             .environment(sessionMonitor)
@@ -79,15 +82,23 @@ final class StatusBarMenuManager {
             
             // Set up callback to unhighlight button when window hides
             customWindow?.onHide = { [weak self] in
-                self?.statusBarButton?.highlight(false)
+                // Ensure button is unhighlighted on main thread
+                Task { @MainActor in
+                    self?.statusBarButton?.highlight(false)
+                }
+            }
+        } else {
+            // Update content if window already exists
+            customWindow = CustomMenuWindow(contentView: containerView)
+            customWindow?.onHide = { [weak self] in
+                Task { @MainActor in
+                    self?.statusBarButton?.highlight(false)
+                }
             }
         }
         
         // Show the custom window
         customWindow?.show(relativeTo: button)
-        
-        // Highlight the button to show active state
-        button.highlight(true)
     }
     
     func hideCustomWindow() {

@@ -26,7 +26,7 @@ final class CustomMenuWindow: NSPanel {
         
         // Initialize window with appropriate style
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 300, height: 400),
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 400),
             styleMask: [.borderless, .nonactivatingPanel, .utilityWindow],
             backing: .buffered,
             defer: false)
