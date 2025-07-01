@@ -164,7 +164,7 @@ struct TerminalToolbar: View {
 
                         Spacer()
                     }
-                    
+
                     // Fourth row - F-keys (F7-F12)
                     HStack(spacing: Theme.Spacing.extraSmall) {
                         ForEach(["F7", "F8", "F9", "F10", "F11", "F12"], id: \.self) { fkey in
@@ -184,29 +184,29 @@ struct TerminalToolbar: View {
 
                         Spacer()
                     }
-                    
+
                     // Fifth row - Special characters
                     HStack(spacing: Theme.Spacing.extraSmall) {
                         ToolbarButton(label: "\\") {
                             HapticFeedback.impact(.light)
                             onSpecialKey(.backslash)
                         }
-                        
+
                         ToolbarButton(label: "|") {
                             HapticFeedback.impact(.light)
                             onSpecialKey(.pipe)
                         }
-                        
+
                         ToolbarButton(label: "`") {
                             HapticFeedback.impact(.light)
                             onSpecialKey(.backtick)
                         }
-                        
+
                         ToolbarButton(label: "~") {
                             HapticFeedback.impact(.light)
                             onSpecialKey(.tilde)
                         }
-                        
+
                         ToolbarButton(label: "END") {
                             HapticFeedback.impact(.light)
                             // Send Ctrl+E for end
