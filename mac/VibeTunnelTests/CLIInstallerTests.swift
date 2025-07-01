@@ -441,6 +441,9 @@ struct CLIInstallerTests {
         let installer = CLIInstaller(binDirectory: tempDirectory.path)
         installer.checkInstallationStatus()
 
-        #expect(installer.isInstalled == true)
+        // Wait for the async Task in checkInstallationStatus to complete
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(installer.isInstalled)
     }
 }
