@@ -33,6 +33,9 @@ jspm_packages/
 # npm lock file (using pnpm instead)
 package-lock.json
 
+# yarn lock file (using pnpm instead)
+yarn.lock
+
 # Optional eslint cache
 .eslintcache
 

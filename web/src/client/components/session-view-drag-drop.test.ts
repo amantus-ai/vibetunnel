@@ -3,18 +3,18 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import '../../client/components/session-view.js';
-import type { SessionView } from '../../client/components/session-view.js';
+import './session-view.js';
+import type { SessionView } from './session-view.js';
 
 // Mock auth client
-vi.mock('../../client/services/auth-client.js', () => ({
+vi.mock('../services/auth-client.js', () => ({
   authClient: {
     getAuthHeader: () => ({ Authorization: 'Bearer test-token' }),
   },
 }));
 
 // Mock logger
-vi.mock('../../client/utils/logger.js', () => ({
+vi.mock('../utils/logger.js', () => ({
   createLogger: () => ({
     log: vi.fn(),
     error: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock('../../client/utils/logger.js', () => ({
 }));
 
 // Mock other dependencies
-vi.mock('../../client/utils/terminal-preferences.js', () => ({
+vi.mock('../utils/terminal-preferences.js', () => ({
   TerminalPreferencesManager: {
     getInstance: () => ({
       getFontSize: () => 14,
