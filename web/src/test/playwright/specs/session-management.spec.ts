@@ -66,6 +66,13 @@ test.describe('Session Management', () => {
 
       // Navigate to list and verify both exist
       await page.goto('/');
+      await page.waitForLoadState('networkidle');
+
+      // Add CI stabilization
+      if (process.env.CI) {
+        await page.waitForTimeout(2000);
+      }
+
       await assertSessionCount(page, 2, { operator: 'minimum' });
       await assertSessionInList(page, session1);
       await assertSessionInList(page, session2);

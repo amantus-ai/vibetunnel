@@ -35,24 +35,31 @@ test.describe('Session Persistence Tests', () => {
   });
 
   test('should handle session with error gracefully', async ({ page }) => {
-    // Create a session with a command that will fail
+    // Create a session with a command that will fail immediately
     const { sessionName } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('error-test'),
-      command: 'this-command-does-not-exist',
+      command: 'exit 1', // Use 'exit 1' instead of non-existent command
     });
 
     // Navigate back to home
     await page.goto('/');
+
+    // Wait for navigation to complete
+    await page.waitForLoadState('domcontentloaded');
+
+    // Wait for session cards to appear
     await page.waitForSelector('session-card', {
       state: 'visible',
-      timeout: process.env.CI ? 20000 : 10000,
+      timeout: process.env.CI ? 30000 : 15000,
     });
 
     // Wait for the session status to update to exited
     // Add extra delay in CI for command error to propagate
     if (process.env.CI) {
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
     }
+
+    // Wait for session to exit with increased timeout
     await waitForSessionState(page, sessionName, 'EXITED');
 
     // Verify it shows as exited

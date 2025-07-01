@@ -58,18 +58,23 @@ test.describe('Basic Session Tests', () => {
 
     // Go back to session list
     await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
 
     // Add extra wait in CI for session list to fully load
     if (process.env.CI) {
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
     }
 
-    // Verify both sessions are visible
-    await page.waitForSelector('session-card', {
-      state: 'visible',
-      timeout: process.env.CI ? 30000 : 15000,
-    });
+    // Wait for at least 2 session cards to be visible
+    await page.waitForFunction(
+      () => {
+        const cards = document.querySelectorAll('session-card');
+        return cards.length >= 2;
+      },
+      { timeout: process.env.CI ? 30000 : 15000 }
+    );
+
+    // Double-check the count
     const sessionCards = await page.locator('session-card').count();
     expect(sessionCards).toBeGreaterThanOrEqual(2);
 

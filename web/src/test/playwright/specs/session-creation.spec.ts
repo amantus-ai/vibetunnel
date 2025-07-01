@@ -73,6 +73,12 @@ test.describe('Session Creation', () => {
 
     // Navigate to list and verify all exist
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Add CI stabilization delay
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
 
     // Wait for session cards to appear
     await page.waitForSelector('session-card', {
