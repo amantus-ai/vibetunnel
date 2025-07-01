@@ -330,7 +330,7 @@ struct ServerAddressRow: View {
         HStack(spacing: 4) {
             Image(systemName: "server.rack")
                 .font(.system(size: 10))
-                .foregroundColor(.green)
+                .foregroundColor(Color(red: 0.0, green: 0.7, blue: 0.0))
             Text("Local:")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
@@ -367,20 +367,20 @@ struct ServerStatusBadge: View {
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(isRunning ? Color.green : Color.red)
+                .fill(isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0) : Color.red)
                 .frame(width: 6, height: 6)
             Text(isRunning ? "Running" : "Stopped")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundColor(isRunning ? .green : .red)
+                .foregroundColor(isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0) : .red)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
             Capsule()
-                .fill(isRunning ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
+                .fill(isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0).opacity(0.1) : Color.red.opacity(0.1))
                 .overlay(
                     Capsule()
-                        .stroke(isRunning ? Color.green.opacity(0.3) : Color.red.opacity(0.3), lineWidth: 0.5)
+                        .stroke(isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0).opacity(0.3) : Color.red.opacity(0.3), lineWidth: 0.5)
                 )
         )
     }
@@ -492,7 +492,7 @@ struct SessionRow: View {
                     HStack(spacing: 4) {
                         Text(activityStatus)
                             .font(.system(size: 10))
-                            .foregroundColor(.orange)
+                            .foregroundColor(Color(red: 1.0, green: 0.5, blue: 0.0))
 
                         Spacer(minLength: 4)
 
@@ -700,9 +700,9 @@ struct SessionRow: View {
 
     private var activityColor: Color {
         if isActive {
-            .orange
+            Color(red: 1.0, green: 0.5, blue: 0.0)  // Brighter, more saturated orange
         } else {
-            .green
+            Color(red: 0.0, green: 0.7, blue: 0.0)  // Darker, more visible green
         }
     }
 

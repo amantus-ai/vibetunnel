@@ -319,19 +319,9 @@ struct CustomMenuContainer<Content: View>: View {
     var body: some View {
         content
             .fixedSize()
-            .background(backgroundMaterial, in: UnevenRoundedRectangle(cornerRadii: .init(
-                topLeading: 12,
-                bottomLeading: 0,
-                bottomTrailing: 0,
-                topTrailing: 12
-            )))
+            .background(backgroundMaterial, in: RoundedRectangle(cornerRadius: 12))
             .overlay(
-                UnevenRoundedRectangle(cornerRadii: .init(
-                    topLeading: 12,
-                    bottomLeading: 0,
-                    bottomTrailing: 0,
-                    topTrailing: 12
-                ))
+                RoundedRectangle(cornerRadius: 12)
                     .stroke(borderColor, lineWidth: 1)
             )
     }
