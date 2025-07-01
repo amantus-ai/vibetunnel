@@ -598,7 +598,7 @@ export class FileBrowser extends LitElement {
                 <div class="flex gap-2">
                   <button
                     class="btn-secondary text-xs px-2 py-1 font-mono ${
-                      this.gitFilter === 'changed' ? 'bg-primary text-white' : ''
+                      this.gitFilter === 'changed' ? 'bg-primary text-black' : ''
                     }"
                     @click=${this.toggleGitFilter}
                     title="Show only Git changes"
@@ -607,7 +607,7 @@ export class FileBrowser extends LitElement {
                   </button>
                   <button
                     class="btn-secondary text-xs px-2 py-1 font-mono ${
-                      this.showHidden ? 'bg-primary text-white' : ''
+                      this.showHidden ? 'bg-primary text-black' : ''
                     }"
                     @click=${this.toggleHidden}
                     title="Show hidden files"
@@ -805,7 +805,7 @@ export class FileBrowser extends LitElement {
                             ? html`
                               <button
                                 class="btn-secondary text-xs px-2 py-1 font-mono ${
-                                  this.showDiff ? 'bg-primary text-white' : ''
+                                  this.showDiff ? 'bg-primary text-black' : ''
                                 } ${
                                   this.isMobile &&
                                   this.selectedFile.type === 'file' &&

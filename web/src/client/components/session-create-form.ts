@@ -546,7 +546,7 @@ export class SessionCreateForm extends LitElement {
                 Cancel
               </button>
               <button
-                class="flex-1 bg-primary text-white px-6 py-3 rounded-lg font-mono text-sm font-medium transition-all duration-200 hover:bg-primary-hover hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                class="flex-1 bg-primary text-black px-6 py-3 rounded-lg font-mono text-sm font-medium transition-all duration-200 hover:bg-primary-hover hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 @click=${this.handleCreate}
                 ?disabled=${
                   this.disabled ||

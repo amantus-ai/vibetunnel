@@ -98,7 +98,7 @@
   }
 
   .btn-primary {
-    @apply btn-md bg-primary text-white;
+    @apply btn-md bg-primary text-black;
     @apply hover:bg-primary-hover hover:shadow-glow;
     @apply active:scale-95;
   }
@@ -181,7 +181,7 @@
   }
 
   .quick-start-btn.active {
-    @apply bg-primary text-white border-primary shadow-glow-sm;
+    @apply bg-primary text-black border-primary shadow-glow-sm;
   }
 
   /* Modal backdrop */
