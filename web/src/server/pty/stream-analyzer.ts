@@ -23,7 +23,9 @@ enum StreamState {
   ESCAPE_START, // Just saw ESC (0x1B)
   CSI_SEQUENCE, // In CSI sequence (ESC[)
   OSC_SEQUENCE, // In OSC sequence (ESC])
-  DCS_SEQUENCE, // In DCS sequence (ESCP or ESC^)
+  DCS_SEQUENCE, // In DCS sequence (ESCP)
+  APC_SEQUENCE, // In APC sequence (ESC_)
+  PM_SEQUENCE, // In PM sequence (ESC^)
   UTF8_MULTIBYTE, // In multi-byte UTF-8 character
   PROMPT_DETECTED, // Detected a shell prompt pattern
 }
@@ -140,6 +142,12 @@ export class PTYStreamAnalyzer {
       case StreamState.DCS_SEQUENCE:
         return this.handleDCSSequence(byte, position);
 
+      case StreamState.APC_SEQUENCE:
+        return this.handleAPCSequence(byte, position);
+
+      case StreamState.PM_SEQUENCE:
+        return this.handlePMSequence(byte, position);
+
       case StreamState.UTF8_MULTIBYTE:
         // This state is now handled above in the UTF-8 check
         return null;
@@ -211,8 +219,13 @@ export class PTYStreamAnalyzer {
         this.state = StreamState.OSC_SEQUENCE;
         break;
       case 0x50: // P
-      case 0x5e: // ^
         this.state = StreamState.DCS_SEQUENCE;
+        break;
+      case 0x5f: // _
+        this.state = StreamState.APC_SEQUENCE;
+        break;
+      case 0x5e: // ^
+        this.state = StreamState.PM_SEQUENCE;
         break;
       default:
         // Two-character escape sequence
@@ -290,6 +303,50 @@ export class PTYStreamAnalyzer {
       this.escapeBuffer = '';
 
       // Safe after DCS sequence
+      return {
+        position: position + 1,
+        reason: 'sequence_end',
+        confidence: 80,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Handle APC (Application Program Command) sequences
+   */
+  private handleAPCSequence(byte: number, position: number): SafeInjectionPoint | null {
+    this.escapeBuffer += String.fromCharCode(byte);
+
+    // APC sequences end with ST (ESC\)
+    if (this.lastByte === 0x1b && byte === 0x5c) {
+      this.state = StreamState.NORMAL;
+      this.escapeBuffer = '';
+
+      // Safe after APC sequence
+      return {
+        position: position + 1,
+        reason: 'sequence_end',
+        confidence: 80,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Handle PM (Privacy Message) sequences
+   */
+  private handlePMSequence(byte: number, position: number): SafeInjectionPoint | null {
+    this.escapeBuffer += String.fromCharCode(byte);
+
+    // PM sequences end with ST (ESC\)
+    if (this.lastByte === 0x1b && byte === 0x5c) {
+      this.state = StreamState.NORMAL;
+      this.escapeBuffer = '';
+
+      // Safe after PM sequence
       return {
         position: position + 1,
         reason: 'sequence_end',

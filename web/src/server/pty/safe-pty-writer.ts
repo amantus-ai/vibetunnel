@@ -24,13 +24,14 @@ export interface SafePTYWriterOptions {
 export class SafePTYWriter extends EventEmitter {
   private pty: IPty;
   private analyzer = new PTYStreamAnalyzer();
-  private pendingTitles: string[] = [];
+  private pendingTitle: string | null = null;
   private lastOutputTime = Date.now();
   private idleThreshold: number;
   private maxWaitTime: number;
   private debug: boolean;
   private injectionTimer?: NodeJS.Timeout;
   private originalOnData?: (data: string) => void;
+  private isProcessingOutput = false;
 
   constructor(pty: IPty, options: SafePTYWriterOptions = {}) {
     super();
@@ -57,14 +58,14 @@ export class SafePTYWriter extends EventEmitter {
    */
   queueTitle(title: string): void {
     const titleSequence = `\x1b]0;${title}\x07`;
-    this.pendingTitles.push(titleSequence);
+    this.pendingTitle = titleSequence;
 
     if (this.debug) {
       logger.debug(`Queued title for safe injection: ${title}`);
     }
 
     // Try to inject immediately if we have a pending safe point
-    this.tryInjectPendingTitles();
+    this.tryInjectPendingTitle();
   }
 
   /**
@@ -73,16 +74,21 @@ export class SafePTYWriter extends EventEmitter {
   processOutput(data: string): void {
     const buffer = Buffer.from(data, 'utf8');
     this.lastOutputTime = Date.now();
+    this.isProcessingOutput = true;
 
-    // Analyze the stream for safe injection points
-    const safePoints = this.analyzer.process(buffer);
+    try {
+      // Analyze the stream for safe injection points
+      const safePoints = this.analyzer.process(buffer);
 
-    // If we have safe points and pending titles, inject them
-    if (safePoints.length > 0 && this.pendingTitles.length > 0) {
-      this.injectAtSafePoints(data, safePoints);
-    } else {
-      // No safe points found, forward data as-is
-      this.originalOnData?.(data);
+      // If we have safe points and pending title, inject it
+      if (safePoints.length > 0 && this.pendingTitle) {
+        this.injectAtSafePoints(data, safePoints);
+      } else {
+        // No safe points found, forward data as-is
+        this.originalOnData?.(data);
+      }
+    } finally {
+      this.isProcessingOutput = false;
     }
 
     // Schedule idle check
@@ -93,30 +99,24 @@ export class SafePTYWriter extends EventEmitter {
    * Inject titles at safe points in the data stream
    */
   private injectAtSafePoints(data: string, safePoints: SafeInjectionPoint[]): void {
-    let modifiedData = data;
-    let injectionOffset = 0;
+    if (!this.pendingTitle) {
+      this.originalOnData?.(data);
+      return;
+    }
 
-    // Sort safe points by position
-    safePoints.sort((a, b) => a.position - b.position);
+    // Use the first safe point
+    const point = safePoints[0];
+    const title = this.pendingTitle;
+    this.pendingTitle = null;
 
-    for (const point of safePoints) {
-      if (this.pendingTitles.length === 0) break;
+    // Split data and inject title
+    if (this.debug) {
+      logger.debug(`Injecting at position ${point.position} in data of length ${data.length}`);
+    }
+    const modifiedData = data.slice(0, point.position) + title + data.slice(point.position);
 
-      const title = this.pendingTitles.shift()!;
-      const insertPos = point.position + injectionOffset;
-
-      // Split data and inject title
-      if (this.debug) {
-        logger.debug(`Injecting at position ${insertPos} in data of length ${modifiedData.length}`);
-      }
-      modifiedData = modifiedData.slice(0, insertPos) + title + modifiedData.slice(insertPos);
-
-      // Update offset for next injection
-      injectionOffset += title.length;
-
-      if (this.debug) {
-        logger.debug(`Injected title at safe point: ${point.reason} (pos: ${point.position})`);
-      }
+    if (this.debug) {
+      logger.debug(`Injected title at safe point: ${point.reason} (pos: ${point.position})`);
     }
 
     // Forward modified data
@@ -142,50 +142,78 @@ export class SafePTYWriter extends EventEmitter {
    * Check if we can inject during idle period
    */
   private checkIdleInjection(): void {
-    const idleTime = Date.now() - this.lastOutputTime;
+    // Don't inject if we're currently processing output
+    if (this.isProcessingOutput) {
+      // Reschedule check
+      this.scheduleIdleCheck();
+      return;
+    }
 
-    if (idleTime >= this.idleThreshold && this.pendingTitles.length > 0) {
-      // Safe to inject during idle
-      const titles = this.pendingTitles.splice(0, this.pendingTitles.length);
-      const titleData = titles.join('');
+    const now = Date.now();
+    const idleTime = now - this.lastOutputTime;
 
-      if (this.debug) {
-        logger.debug(`Injecting ${titles.length} titles during idle period (${idleTime}ms idle)`);
+    if (idleTime >= this.idleThreshold && this.pendingTitle) {
+      // Double-check that we're still idle
+      if (now - this.lastOutputTime >= this.idleThreshold && !this.isProcessingOutput) {
+        // Safe to inject during idle
+        const title = this.pendingTitle;
+        this.pendingTitle = null;
+
+        if (this.debug) {
+          logger.debug(`Injecting title during idle period (${idleTime}ms idle)`);
+        }
+
+        this.injectTitle(title);
+      } else {
+        // Race condition detected, reschedule
+        this.scheduleIdleCheck();
       }
-
-      // Write directly to PTY during idle period
-      this.pty.write(titleData);
     }
   }
 
   /**
-   * Try to inject pending titles if conditions are safe
+   * Try to inject pending title if conditions are safe
    */
-  private tryInjectPendingTitles(): void {
-    if (this.pendingTitles.length === 0) return;
+  private tryInjectPendingTitle(): void {
+    if (!this.pendingTitle) return;
 
     // Schedule check for idle injection
     this.scheduleIdleCheck();
   }
 
   /**
+   * Inject title with error handling
+   */
+  private injectTitle(title: string): void {
+    try {
+      this.pty.write(title);
+    } catch (error) {
+      logger.error('Failed to inject title:', error);
+      // Clear pending title on error to prevent retries
+      if (this.pendingTitle === title) {
+        this.pendingTitle = null;
+      }
+    }
+  }
+
+  /**
    * Force injection of all pending titles (use with caution)
    */
   forceInject(): void {
-    if (this.pendingTitles.length === 0) return;
+    if (!this.pendingTitle) return;
 
-    const titles = this.pendingTitles.splice(0, this.pendingTitles.length);
-    const titleData = titles.join('');
+    const title = this.pendingTitle;
+    this.pendingTitle = null;
 
-    logger.warn(`Force injecting ${titles.length} titles`);
-    this.pty.write(titleData);
+    logger.warn('Force injecting title');
+    this.injectTitle(title);
   }
 
   /**
    * Clear all pending titles
    */
   clearPending(): void {
-    this.pendingTitles = [];
+    this.pendingTitle = null;
     if (this.injectionTimer) {
       clearTimeout(this.injectionTimer);
       this.injectionTimer = undefined;
@@ -196,7 +224,7 @@ export class SafePTYWriter extends EventEmitter {
    * Get number of pending titles
    */
   getPendingCount(): number {
-    return this.pendingTitles.length;
+    return this.pendingTitle ? 1 : 0;
   }
 
   /**
