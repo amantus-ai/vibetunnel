@@ -370,12 +370,15 @@ struct SessionRow: View {
     private var openWindow
     @Environment(ServerManager.self)
     private var serverManager
+    @Environment(SessionMonitor.self)
+    private var sessionMonitor
     @State private var isTerminating = false
+    @State private var isEditing = false
+    @State private var editedName = ""
+    @FocusState private var isEditFieldFocused: Bool
 
     var body: some View {
-        Button(action: {
-            WindowTracker.shared.focusWindow(for: session.key)
-        }) {
+        HStack(spacing: 8) {
             HStack(spacing: 8) {
                 // Activity indicator with subtle glow
                 ZStack {
@@ -393,18 +396,44 @@ struct SessionRow: View {
                 // Session info - use flexible width
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
-                        Text(sessionName)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.primary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                        if isEditing {
+                            TextField("Session Name", text: $editedName)
+                                .font(.system(size: 12, weight: .medium))
+                                .textFieldStyle(.plain)
+                                .focused($isEditFieldFocused)
+                                .onSubmit {
+                                    saveSessionName()
+                                }
+                                .onKeyPress(.escape) {
+                                    cancelEditing()
+                                    return .handled
+                                }
+                        } else {
+                            Text(sessionName)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
 
                         Spacer(minLength: 8)
 
-                        if hasWindow {
-                            Image(systemName: "macwindow")
+                        // Show edit icon on hover when not editing
+                        if isHovered && !isEditing && !isTerminating {
+                            Button(action: startEditing) {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary.opacity(0.6))
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.scale.combined(with: .opacity))
+                        }
+
+                        if !hasWindow {
+                            Image(systemName: "globe")
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary)
+                                .opacity(0.8)
                         }
                     }
 
@@ -479,11 +508,17 @@ struct SessionRow: View {
                 .animation(.easeInOut(duration: 0.15), value: isFocused)
         )
         .focusable()
-        .disabled(isTerminating)
+        .disabled(isTerminating || isEditing)
         .contextMenu {
             if hasWindow {
                 Button("Focus Terminal Window") {
                     WindowTracker.shared.focusWindow(for: session.key)
+                }
+            } else {
+                Button("Open in Browser") {
+                    if let url = URL(string: "http://127.0.0.1:\(serverManager.port)/?sessionId=\(session.key)") {
+                        NSWorkspace.shared.open(url)
+                    }
                 }
             }
 
@@ -491,9 +526,13 @@ struct SessionRow: View {
                 openWindow(id: "session-detail", value: session.key)
             }
 
+            Button("Rename Session...") {
+                startEditing()
+            }
+
             Divider()
 
-            Button("Terminate Session", role: .destructive) {
+            Button("Kill Session", role: .destructive) {
                 terminateSession()
             }
 
@@ -511,7 +550,10 @@ struct SessionRow: View {
 
         Task {
             do {
-                let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(session.key)")!
+                guard let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(session.key)") else {
+                    isTerminating = false
+                    return
+                }
                 var request = URLRequest(url: url)
                 request.httpMethod = "DELETE"
                 request.setValue("localhost", forHTTPHeaderField: "Host")
@@ -538,8 +580,64 @@ struct SessionRow: View {
     }
 
     private var sessionName: String {
+        // Use the session name if available, otherwise fall back to directory name
+        if let name = session.value.name, !name.isEmpty {
+            return name
+        }
         let workingDir = session.value.workingDir
         return (workingDir as NSString).lastPathComponent
+    }
+
+    private func startEditing() {
+        editedName = sessionName
+        isEditing = true
+        isEditFieldFocused = true
+    }
+
+    private func cancelEditing() {
+        isEditing = false
+        editedName = ""
+        isEditFieldFocused = false
+    }
+
+    private func saveSessionName() {
+        let trimmedName = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            cancelEditing()
+            return
+        }
+
+        isEditing = false
+        isEditFieldFocused = false
+
+        // Update the session name via API
+        Task {
+            do {
+                guard let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(session.key)") else {
+                    return
+                }
+                var request = URLRequest(url: url)
+                request.httpMethod = "PATCH"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("localhost", forHTTPHeaderField: "Host")
+
+                let body = ["name": trimmedName]
+                request.httpBody = try JSONEncoder().encode(body)
+
+                let (_, response) = try await URLSession.shared.data(for: request)
+
+                if let httpResponse = response as? HTTPURLResponse,
+                   httpResponse.statusCode == 200
+                {
+                    // Success - the session monitor will automatically update
+                } else {
+                    // Handle error - could show an alert or revert the name
+                    // TODO: Show error to user
+                }
+            } catch {
+                // TODO: Show error to user
+            }
+        }
     }
 
     private var compactPath: String {

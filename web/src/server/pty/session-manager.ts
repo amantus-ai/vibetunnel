@@ -170,6 +170,20 @@ export class SessionManager {
   }
 
   /**
+   * Update session name
+   */
+  updateSessionName(sessionId: string, name: string): void {
+    const sessionInfo = this.loadSessionInfo(sessionId);
+    if (!sessionInfo) {
+      throw new PtyError('Session info not found', 'SESSION_NOT_FOUND');
+    }
+
+    sessionInfo.name = name;
+    this.saveSessionInfo(sessionId, sessionInfo);
+    logger.log(`session ${sessionId} name updated to: ${name}`);
+  }
+
+  /**
    * List all sessions
    */
   listSessions(): Session[] {

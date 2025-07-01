@@ -1195,6 +1195,22 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
+   * Update session name
+   */
+  updateSessionName(sessionId: string, name: string): void {
+    // Update in session manager (persisted storage)
+    this.sessionManager.updateSessionName(sessionId, name);
+
+    // Update in-memory session if it exists
+    const memorySession = this.sessions.get(sessionId);
+    if (memorySession?.sessionInfo) {
+      memorySession.sessionInfo.name = name;
+    }
+
+    logger.log(`Updated session ${sessionId} name to: ${name}`);
+  }
+
+  /**
    * Reset session size to terminal size (for external terminals)
    */
   resetSessionSize(sessionId: string): void {
