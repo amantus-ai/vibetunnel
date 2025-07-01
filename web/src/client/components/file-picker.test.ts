@@ -2,20 +2,19 @@
  * Unit tests for FilePicker component
  */
 
-import { html } from 'lit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import '../../client/components/file-picker.js';
-import type { FilePicker } from '../../client/components/file-picker.js';
+import './file-picker.js';
+import type { FilePicker } from './file-picker.js';
 
 // Mock auth client
-vi.mock('../../client/services/auth-client.js', () => ({
+vi.mock('../services/auth-client.js', () => ({
   authClient: {
     getAuthHeader: () => ({ Authorization: 'Bearer test-token' }),
   },
 }));
 
 // Mock logger
-vi.mock('../../client/utils/logger.js', () => ({
+vi.mock('../utils/logger.js', () => ({
   createLogger: () => ({
     log: vi.fn(),
     error: vi.fn(),
@@ -155,8 +154,9 @@ describe('FilePicker Component', () => {
     const mockFileInput = {
       removeAttribute: vi.fn(),
       click: vi.fn(),
+      remove: vi.fn(),
     };
-    element['fileInput'] = mockFileInput as any;
+    element.fileInput = mockFileInput as any;
 
     fileButton?.click();
 

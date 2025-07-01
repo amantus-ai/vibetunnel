@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as fs from 'fs';
 import { access, readdir, stat, unlink } from 'fs/promises';
+import * as mime from 'mime-types';
 import multer from 'multer';
 import * as os from 'os';
 import * as path from 'path';
@@ -127,51 +128,10 @@ export function createFileRoutes(): Router {
 
       // Get file stats for content length
       const stats = await stat(filePath);
-      const ext = path.extname(filename).toLowerCase();
 
-      // Set appropriate content type based on file extension
-      const mimeTypes: Record<string, string> = {
-        // Images
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.png': 'image/png',
-        '.gif': 'image/gif',
-        '.webp': 'image/webp',
-        '.svg': 'image/svg+xml',
-        // Documents
-        '.pdf': 'application/pdf',
-        '.txt': 'text/plain',
-        '.md': 'text/markdown',
-        '.json': 'application/json',
-        '.xml': 'application/xml',
-        '.csv': 'text/csv',
-        // Code files
-        '.js': 'text/javascript',
-        '.ts': 'text/typescript',
-        '.html': 'text/html',
-        '.css': 'text/css',
-        '.py': 'text/x-python',
-        '.java': 'text/x-java-source',
-        '.cpp': 'text/x-c++src',
-        '.c': 'text/x-csrc',
-        '.h': 'text/x-chdr',
-        '.rs': 'text/x-rustsrc',
-        '.go': 'text/x-go',
-        '.php': 'text/x-php',
-        '.rb': 'text/x-ruby',
-        '.sh': 'text/x-shellscript',
-        '.sql': 'text/x-sql',
-        '.yaml': 'text/yaml',
-        '.yml': 'text/yaml',
-        // Archives
-        '.zip': 'application/zip',
-        '.tar': 'application/x-tar',
-        '.gz': 'application/gzip',
-        '.7z': 'application/x-7z-compressed',
-        '.rar': 'application/vnd.rar',
-      };
-
-      const contentType = mimeTypes[ext] || 'application/octet-stream';
+      // Use mime-types library to determine content type
+      // It automatically falls back to 'application/octet-stream' for unknown types
+      const contentType = mime.lookup(filename) || 'application/octet-stream';
 
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Length', stats.size);
