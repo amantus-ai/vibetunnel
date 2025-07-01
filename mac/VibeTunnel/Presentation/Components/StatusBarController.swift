@@ -86,7 +86,7 @@ final class StatusBarController: NSObject {
     private func setupObservers() {
         // Create a timer to periodically update the display
         // since SessionMonitor doesn't have a publisher
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 _ = await self?.sessionMonitor.getSessions()
                 self?.updateStatusItemDisplay()
