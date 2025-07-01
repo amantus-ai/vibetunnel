@@ -368,6 +368,9 @@ struct SessionRow: View {
 
     @Environment(\.openWindow)
     private var openWindow
+    @Environment(ServerManager.self)
+    private var serverManager
+    @State private var isTerminating = false
 
     var body: some View {
         Button(action: {
@@ -387,7 +390,7 @@ struct SessionRow: View {
                         .animation(.easeInOut(duration: 0.4), value: activityColor)
                 }
 
-                // Session info
+                // Session info - use flexible width
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         Text(sessionName)
@@ -396,7 +399,7 @@ struct SessionRow: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
 
-                        Spacer()
+                        Spacer(minLength: 8)
 
                         if hasWindow {
                             Image(systemName: "macwindow")
@@ -411,7 +414,7 @@ struct SessionRow: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(.orange)
 
-                            Spacer()
+                            Spacer(minLength: 4)
 
                             Text(compactPath)
                                 .font(.system(size: 10))
@@ -427,11 +430,35 @@ struct SessionRow: View {
                             .truncationMode(.middle)
                     }
                 }
+                .frame(maxWidth: .infinity)
 
-                // Duration
-                Text(duration)
-                    .font(.system(size: 10))
-                    .foregroundColor(Color.secondary.opacity(0.6))
+                // Fixed width area for time/close button
+                ZStack {
+                    if isHovered && !isTerminating {
+                        // Show X button on hover
+                        Button(action: terminateSession) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.red.opacity(0.8))
+                                .background(Circle().fill(Color.white.opacity(0.9)))
+                        }
+                        .buttonStyle(.plain)
+                        .transition(.scale.combined(with: .opacity))
+                    } else if isTerminating {
+                        // Show progress indicator while terminating
+                        ProgressView()
+                            .scaleEffect(0.6)
+                            .frame(width: 14, height: 14)
+                    } else {
+                        // Show time when not hovering
+                        Text(duration)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color.secondary.opacity(0.6))
+                            .transition(.opacity)
+                    }
+                }
+                .frame(width: 35, alignment: .trailing)
+                .animation(.easeInOut(duration: 0.15), value: isHovered)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -452,6 +479,7 @@ struct SessionRow: View {
                 .animation(.easeInOut(duration: 0.15), value: isFocused)
         )
         .focusable()
+        .disabled(isTerminating)
         .contextMenu {
             if hasWindow {
                 Button("Focus Terminal Window") {
@@ -465,9 +493,46 @@ struct SessionRow: View {
 
             Divider()
 
+            Button("Terminate Session", role: .destructive) {
+                terminateSession()
+            }
+
+            Divider()
+
             Button("Copy Session ID") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(session.key, forType: .string)
+            }
+        }
+    }
+
+    private func terminateSession() {
+        isTerminating = true
+
+        Task {
+            do {
+                let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(session.key)")!
+                var request = URLRequest(url: url)
+                request.httpMethod = "DELETE"
+                request.setValue("localhost", forHTTPHeaderField: "Host")
+
+                // Add local auth token if available
+                // Note: Auth token is managed by SessionMonitor internally
+
+                let (_, response) = try await URLSession.shared.data(for: request)
+
+                if let httpResponse = response as? HTTPURLResponse,
+                   httpResponse.statusCode == 200 || httpResponse.statusCode == 204
+                {
+                    // Session terminated successfully
+                    // The session monitor will automatically update
+                } else {
+                    // Handle error
+                    isTerminating = false
+                }
+            } catch {
+                // Handle error
+                isTerminating = false
             }
         }
     }

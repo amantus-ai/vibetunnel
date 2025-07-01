@@ -62,7 +62,6 @@ struct VibeTunnelApp: App {
     }
 }
 
-
 /// Manages app-wide navigation state.
 ///
 /// NavigationManager handles deep linking and programmatic navigation,

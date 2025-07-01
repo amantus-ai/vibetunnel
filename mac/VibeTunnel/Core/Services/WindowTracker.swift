@@ -1,7 +1,7 @@
 import AppKit
+import Darwin
 import Foundation
 import OSLog
-import Darwin
 
 /// Tracks terminal windows and their associated sessions.
 ///
@@ -208,11 +208,11 @@ final class WindowTracker {
         // First try to find window by process PID traversal
         if let sessionInfo = getSessionInfo(for: sessionID), let sessionPID = sessionInfo.pid {
             logger.debug("Attempting to find window by process PID: \(sessionPID)")
-            
+
             // Try to find the parent process (shell) that owns this session
             if let parentPID = getParentProcessID(of: pid_t(sessionPID)) {
                 logger.debug("Found parent process PID: \(parentPID)")
-                
+
                 // Look for a window owned by the parent process
                 if let matchingWindow = terminalWindows.first(where: { window in
                     // Check if the window's owner PID matches the parent PID
@@ -227,14 +227,14 @@ final class WindowTracker {
                         tabID: tabID
                     )
                 }
-                
+
                 // If direct parent match fails, try to find grandparent or higher ancestors
                 var currentPID = parentPID
                 var depth = 0
                 while depth < 5 { // Limit traversal depth to prevent infinite loops
                     if let grandParentPID = getParentProcessID(of: currentPID) {
                         logger.debug("Checking ancestor process PID: \(grandParentPID) at depth \(depth + 2)")
-                        
+
                         if let matchingWindow = terminalWindows.first(where: { window in
                             window.ownerPID == grandParentPID
                         }) {
@@ -247,7 +247,7 @@ final class WindowTracker {
                                 tabID: tabID
                             )
                         }
-                        
+
                         currentPID = grandParentPID
                         depth += 1
                     } else {
@@ -366,19 +366,19 @@ final class WindowTracker {
         // This is safe because both are @MainActor
         SessionMonitor.shared.sessions[sessionID]
     }
-    
+
     /// Get the parent process ID of a given process
     private func getParentProcessID(of pid: pid_t) -> pid_t? {
         var info = kinfo_proc()
         var size = MemoryLayout<kinfo_proc>.size
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
-        
+
         let result = sysctl(&mib, u_int(mib.count), &info, &size, nil, 0)
-        
+
         if result == 0 && size > 0 {
             return info.kp_eproc.e_ppid
         }
-        
+
         return nil
     }
 
@@ -446,11 +446,11 @@ final class WindowTracker {
         // First try to find window by process PID traversal
         if let sessionPID = sessionInfo.pid {
             logger.debug("Attempting to find window by process PID (sync): \(sessionPID)")
-            
+
             // Try to find the parent process (shell) that owns this session
             if let parentPID = getParentProcessID(of: pid_t(sessionPID)) {
                 logger.debug("Found parent process PID (sync): \(parentPID)")
-                
+
                 // Look for a window owned by the parent process
                 if let matchingWindow = allWindows.first(where: { window in
                     window.ownerPID == parentPID
@@ -468,14 +468,14 @@ final class WindowTracker {
                         title: matchingWindow.title
                     )
                 }
-                
+
                 // If direct parent match fails, try to find grandparent or higher ancestors
                 var currentPID = parentPID
                 var depth = 0
                 while depth < 5 { // Limit traversal depth to prevent infinite loops
                     if let grandParentPID = getParentProcessID(of: currentPID) {
                         logger.debug("Checking ancestor process PID (sync): \(grandParentPID) at depth \(depth + 2)")
-                        
+
                         if let matchingWindow = allWindows.first(where: { window in
                             window.ownerPID == grandParentPID
                         }) {
@@ -492,7 +492,7 @@ final class WindowTracker {
                                 title: matchingWindow.title
                             )
                         }
-                        
+
                         currentPID = grandParentPID
                         depth += 1
                     } else {
@@ -698,17 +698,18 @@ final class WindowTracker {
         // First try to find window by process PID traversal
         if let sessionPID = sessionInfo.pid {
             logger.debug("Scanning by process PID: \(sessionPID)")
-            
+
             // Try to find the parent process (shell) that owns this session
             if let parentPID = getParentProcessID(of: pid_t(sessionPID)) {
                 logger.debug("Found parent process PID (scan): \(parentPID)")
-                
+
                 // Look for a window owned by the parent process
                 if let matchingWindow = allWindows.first(where: { window in
                     window.ownerPID == parentPID
                 }) {
-                    logger.info("Found window by parent process match (scan): PID \(parentPID) for session \(sessionID)")
-                    
+                    logger
+                        .info("Found window by parent process match (scan): PID \(parentPID) for session \(sessionID)")
+
                     let windowInfo = WindowInfo(
                         windowID: matchingWindow.windowID,
                         ownerPID: matchingWindow.ownerPID,
@@ -720,27 +721,30 @@ final class WindowTracker {
                         bounds: matchingWindow.bounds,
                         title: matchingWindow.title
                     )
-                    
+
                     mapLock.withLock {
                         sessionWindowMap[sessionID] = windowInfo
                     }
-                    
+
                     logger.info("Successfully mapped window \(matchingWindow.windowID) to session \(sessionID)")
                     return
                 }
-                
+
                 // If direct parent match fails, try to find grandparent or higher ancestors
                 var currentPID = parentPID
                 var depth = 0
                 while depth < 5 { // Limit traversal depth to prevent infinite loops
                     if let grandParentPID = getParentProcessID(of: currentPID) {
                         logger.debug("Checking ancestor process PID (scan): \(grandParentPID) at depth \(depth + 2)")
-                        
+
                         if let matchingWindow = allWindows.first(where: { window in
                             window.ownerPID == grandParentPID
                         }) {
-                            logger.info("Found window by ancestor process match (scan): PID \(grandParentPID) for session \(sessionID)")
-                            
+                            logger
+                                .info(
+                                    "Found window by ancestor process match (scan): PID \(grandParentPID) for session \(sessionID)"
+                                )
+
                             let windowInfo = WindowInfo(
                                 windowID: matchingWindow.windowID,
                                 ownerPID: matchingWindow.ownerPID,
@@ -752,15 +756,15 @@ final class WindowTracker {
                                 bounds: matchingWindow.bounds,
                                 title: matchingWindow.title
                             )
-                            
+
                             mapLock.withLock {
                                 sessionWindowMap[sessionID] = windowInfo
                             }
-                            
+
                             logger.info("Successfully mapped window \(matchingWindow.windowID) to session \(sessionID)")
                             return
                         }
-                        
+
                         currentPID = grandParentPID
                         depth += 1
                     } else {

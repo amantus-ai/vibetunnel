@@ -3,7 +3,15 @@ import SwiftUI
 
 /// Manages status bar menu behavior, providing left-click custom view and right-click context menu functionality.
 @MainActor
-final class StatusBarMenuManager {
+final class StatusBarMenuManager: NSObject {
+    // MARK: - Menu State Management
+
+    private enum MenuState {
+        case none
+        case customWindow
+        case contextMenu
+    }
+
     // MARK: - Private Properties
 
     private var sessionMonitor: SessionMonitor?
@@ -15,10 +23,17 @@ final class StatusBarMenuManager {
     // Custom window management
     private var customWindow: CustomMenuWindow?
     private weak var statusBarButton: NSStatusBarButton?
+    private weak var currentStatusItem: NSStatusItem?
+
+    // State management
+    private var menuState: MenuState = .none
+    private var highlightTask: Task<Void, Never>?
 
     // MARK: - Initialization
 
-    init() {}
+    override init() {
+        super.init()
+    }
 
     // MARK: - Configuration
 
@@ -40,6 +55,29 @@ final class StatusBarMenuManager {
         self.terminalLauncher = configuration.terminalLauncher
     }
 
+    // MARK: - State Management
+
+    private func updateMenuState(_ newState: MenuState, button: NSStatusBarButton? = nil) {
+        // Cancel any pending highlight task
+        highlightTask?.cancel()
+
+        // Update state
+        menuState = newState
+
+        // Update button reference if provided
+        if let button {
+            statusBarButton = button
+        }
+
+        // Update highlighting based on state
+        switch menuState {
+        case .none:
+            statusBarButton?.highlight(false)
+        case .customWindow, .contextMenu:
+            statusBarButton?.highlight(true)
+        }
+    }
+
     // MARK: - Left-Click Custom Window Management
 
     func toggleCustomWindow(relativeTo button: NSStatusBarButton) {
@@ -57,11 +95,8 @@ final class StatusBarMenuManager {
               let tailscaleService,
               let terminalLauncher else { return }
 
-        // Store button reference
-        self.statusBarButton = button
-
-        // Highlight the button immediately to show active state
-        button.highlight(true)
+        // Update menu state to custom window
+        updateMenuState(.customWindow, button: button)
 
         // Create the main view with all dependencies
         let mainView = VibeTunnelMenuView()
@@ -80,23 +115,23 @@ final class StatusBarMenuManager {
         if customWindow == nil {
             customWindow = CustomMenuWindow(contentView: containerView)
 
-            // Set up callback to unhighlight button when window hides
+            // Set up callback to reset state when window hides
             customWindow?.onHide = { [weak self] in
-                // Ensure button is unhighlighted on main thread
+                // Ensure state is reset on main thread
                 Task { @MainActor in
-                    self?.statusBarButton?.highlight(false)
+                    self?.updateMenuState(.none)
                 }
             }
         } else {
             // Hide and cleanup old window before creating new one
             customWindow?.hide()
             customWindow = nil
-            
+
             // Create new window with updated content
             customWindow = CustomMenuWindow(contentView: containerView)
             customWindow?.onHide = { [weak self] in
                 Task { @MainActor in
-                    self?.statusBarButton?.highlight(false)
+                    self?.updateMenuState(.none)
                 }
             }
         }
@@ -107,6 +142,7 @@ final class StatusBarMenuManager {
 
     func hideCustomWindow() {
         customWindow?.hide()
+        // Note: state will be reset by the onHide callback
     }
 
     var isCustomWindowVisible: Bool {
@@ -117,10 +153,16 @@ final class StatusBarMenuManager {
 
     func hideAllMenus() {
         hideCustomWindow()
+        // If there's a context menu showing, dismiss it
+        if menuState == .contextMenu, let statusItem = currentStatusItem {
+            statusItem.menu = nil
+        }
+        // Reset state to none
+        updateMenuState(.none)
     }
 
     var isAnyMenuVisible: Bool {
-        isCustomWindowVisible
+        menuState != .none
     }
 
     // MARK: - Right-Click Context Menu
@@ -129,7 +171,14 @@ final class StatusBarMenuManager {
         // Hide custom window first if it's visible
         hideCustomWindow()
 
+        // Update menu state to context menu
+        updateMenuState(.contextMenu, button: button)
+
+        // Store status item reference
+        currentStatusItem = statusItem
+
         let menu = NSMenu()
+        menu.delegate = self
 
         // Server status
         if let serverManager {
@@ -137,6 +186,13 @@ final class StatusBarMenuManager {
             let statusItem = NSMenuItem(title: statusText, action: nil, keyEquivalent: "")
             statusItem.isEnabled = false
             menu.addItem(statusItem)
+
+            menu.addItem(NSMenuItem.separator())
+
+            // Restart server
+            let restartItem = NSMenuItem(title: "Restart", action: #selector(restartServer), keyEquivalent: "")
+            restartItem.target = self
+            menu.addItem(restartItem)
 
             menu.addItem(NSMenuItem.separator())
         }
@@ -216,6 +272,14 @@ final class StatusBarMenuManager {
     }
 
     @objc
+    private func restartServer() {
+        guard let serverManager else { return }
+        Task {
+            await serverManager.restart()
+        }
+    }
+
+    @objc
     private func showTutorial() {
         #if !SWIFT_PACKAGE
             AppDelegate.showWelcomeScreen()
@@ -265,5 +329,22 @@ final class StatusBarMenuManager {
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
+    }
+}
+
+// MARK: - NSMenuDelegate
+
+extension StatusBarMenuManager: NSMenuDelegate {
+    func menuDidClose(_ menu: NSMenu) {
+        // Reset menu state when context menu closes
+        updateMenuState(.none)
+
+        // Clean up the menu from status item
+        if let statusItem = currentStatusItem {
+            statusItem.menu = nil
+        }
+
+        // Clear the stored reference
+        currentStatusItem = nil
     }
 }
