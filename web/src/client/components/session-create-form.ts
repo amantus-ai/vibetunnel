@@ -375,13 +375,13 @@ export class SessionCreateForm extends LitElement {
     // Always render the modal structure to avoid timing issues in tests
     // Use CSS to control visibility instead of conditional rendering
     const modalClass = this.visible
-      ? 'modal-backdrop flex items-center justify-center'
-      : 'modal-backdrop flex items-center justify-center hidden pointer-events-none';
+      ? 'modal-backdrop flex items-center justify-center p-4'
+      : 'modal-backdrop flex items-center justify-center hidden pointer-events-none p-4';
 
     return html`
       <div class="${modalClass}">
         <div
-          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] mx-2 sm:mx-4"
+          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-2rem)] sm:max-w-md lg:max-w-[576px] max-h-[calc(100vh-2rem)] overflow-y-auto"
           style="view-transition-name: create-session-modal"
         >
           <div class="p-6 pb-4 mb-3 border-b border-dark-border relative bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary">
