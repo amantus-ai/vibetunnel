@@ -283,7 +283,7 @@ export class Terminal extends LitElement {
         theme: {
           background: '#1e1e1e',
           foreground: '#d4d4d4',
-          cursor: '#00ff00',
+          cursor: '#10B981',
           cursorAccent: '#1e1e1e',
           // Standard 16 colors (0-15) - using proper xterm colors
           black: '#000000',
@@ -938,7 +938,7 @@ export class Terminal extends LitElement {
 
       // Apply cursor styling after inverse to ensure it takes precedence
       if (isCursor) {
-        style += `background-color: #23d18b;`;
+        style += `background-color: #10B981;`;
       }
 
       // Handle invisible text

@@ -102,7 +102,7 @@ export class VibeLogo extends LitElement {
       <div class="font-mono text-sm select-none leading-tight text-center">
         <pre
           class="whitespace-pre"
-        >${coloredLeft} <span class="text-vs-user">VibeTunnel</span> ${coloredRight}</pre>
+        >${coloredLeft} <span class="text-primary">VibeTunnel</span> ${coloredRight}</pre>
       </div>
     `;
   }

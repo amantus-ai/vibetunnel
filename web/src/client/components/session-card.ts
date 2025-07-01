@@ -224,7 +224,7 @@ export class SessionCard extends LitElement {
           this.killing ? 'opacity-60' : ''
         } ${
           this.isActive && this.session.status === 'running'
-            ? 'shadow-[0_0_0_2px_#00ff88] shadow-glow-green-sm'
+            ? 'ring-2 ring-primary shadow-glow-sm'
             : ''
         }"
         style="view-transition-name: session-${this.session.id}; --session-id: session-${
