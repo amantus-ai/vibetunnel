@@ -344,7 +344,7 @@ export class SessionList extends LitElement {
                             </div>
                             
                             <!-- Right side: duration and close button -->
-                            <div class="relative flex items-center flex-shrink-0">
+                            <div class="relative flex items-center flex-shrink-0 gap-1">
                               <!-- Session duration (hidden on group hover on desktop) -->
                               <div class="text-xs text-dark-text-muted font-mono transition-opacity ${
                                 'ontouchstart' in window ? '' : 'group-hover:opacity-0'
@@ -357,10 +357,10 @@ export class SessionList extends LitElement {
                                 session.status === 'running' || session.status === 'exited'
                                   ? html`
                                     <button
-                                      class="btn-ghost text-status-error p-1.5 rounded-md transition-all absolute right-0 ${
+                                      class="btn-ghost text-status-error p-1.5 rounded-md transition-all ${
                                         'ontouchstart' in window
-                                          ? 'opacity-100 static ml-2'
-                                          : 'opacity-0 group-hover:opacity-100'
+                                          ? 'opacity-100 flex-shrink-0'
+                                          : 'opacity-0 group-hover:opacity-100 absolute right-0'
                                       } hover:bg-dark-bg-elevated hover:shadow-sm hover:scale-110"
                                       @click=${async (e: Event) => {
                                         e.stopPropagation();
@@ -491,7 +491,7 @@ export class SessionList extends LitElement {
                                     </div>
                                     
                                     <!-- Right side: duration and close button -->
-                                    <div class="relative flex items-center flex-shrink-0">
+                                    <div class="relative flex items-center flex-shrink-0 gap-1">
                                       <!-- Session duration -->
                                       <div class="text-xs text-dark-text-dim font-mono">
                                         ${session.startedAt ? formatSessionDuration(session.startedAt) : ''}
@@ -499,7 +499,7 @@ export class SessionList extends LitElement {
                                       
                                       <!-- Clean up button -->
                                       <button
-                                        class="btn-ghost text-dark-text-muted p-1.5 rounded-md transition-all ml-2 hover:text-status-warning hover:bg-dark-bg-elevated hover:shadow-sm"
+                                        class="btn-ghost text-dark-text-muted p-1.5 rounded-md transition-all flex-shrink-0 hover:text-status-warning hover:bg-dark-bg-elevated hover:shadow-sm"
                                         @click=${async (e: Event) => {
                                           e.stopPropagation();
                                           try {

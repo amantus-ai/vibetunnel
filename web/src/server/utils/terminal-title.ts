@@ -143,29 +143,37 @@ export function generateDynamicTitle(
   cwd: string,
   command: string[],
   activity: ActivityState,
-  _sessionName?: string
+  sessionName?: string
 ): string {
   const homeDir = os.homedir();
   const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
   const fullCmd = command[0] || 'shell';
   const cmdName = path.basename(fullCmd);
 
+  // Build base parts
+  const baseParts = [displayPath, cmdName];
+
+  // Add session name if provided
+  if (sessionName?.trim()) {
+    baseParts.push(sessionName);
+  }
+
   // If we have Claude-specific status, put it first
   if (activity.specificStatus) {
-    // Format: status · path · command
-    const title = `${activity.specificStatus.status} · ${displayPath} · ${cmdName}`;
+    // Format: status · path · command · session name
+    const title = `${activity.specificStatus.status} · ${baseParts.join(' · ')}`;
     return `\x1B]2;${title}\x07`;
   }
 
   // Otherwise use generic activity indicator (only when active)
   if (activity.isActive) {
-    // Format: ● path · command
-    const title = `● ${displayPath} · ${cmdName}`;
+    // Format: ● path · command · session name
+    const title = `● ${baseParts.join(' · ')}`;
     return `\x1B]2;${title}\x07`;
   }
 
-  // When idle, no indicator - just path · command
-  const title = `${displayPath} · ${cmdName}`;
+  // When idle, no indicator - just path · command · session name
+  const title = baseParts.join(' · ');
 
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
   return `\x1B]2;${title}\x07`;

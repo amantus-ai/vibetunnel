@@ -221,7 +221,7 @@ describe('Terminal Title Utilities', () => {
         'Editor'
       );
 
-      expect(result).toBe('\x1B]2;~/projects · vim\x07');
+      expect(result).toBe('\x1B]2;~/projects · vim · Editor\x07');
     });
 
     it('should generate title with generic activity', () => {
@@ -252,7 +252,9 @@ describe('Terminal Title Utilities', () => {
         'AI Assistant'
       );
 
-      expect(result).toBe('\x1B]2;✻ Crafting (205s, ↑6.0k) · ~/projects · claude\x07');
+      expect(result).toBe(
+        '\x1B]2;✻ Crafting (205s, ↑6.0k) · ~/projects · claude · AI Assistant\x07'
+      );
     });
 
     it('should handle all parts missing', () => {
@@ -279,6 +281,28 @@ describe('Terminal Title Utilities', () => {
       const result = generateDynamicTitle('/home/user/app', ['npm', 'install'], activity);
 
       expect(result).toBe('\x1B]2;📦 Installing (45%) · ~/app · npm\x07');
+    });
+
+    it('should extract process name from full path', () => {
+      const activity: ActivityState = {
+        isActive: true,
+        lastActivityTime: Date.now(),
+        specificStatus: {
+          app: 'claude',
+          status: '⚡ Thinking',
+        },
+      };
+
+      // Test with full path like /home/user/.claude/local/claude
+      const result = generateDynamicTitle(
+        '/home/user/Projects/vibetunnel',
+        ['/home/user/.claude/local/claude'],
+        activity,
+        'Test Session'
+      );
+
+      // Should extract just "claude" from the full path
+      expect(result).toBe('\x1B]2;⚡ Thinking · ~/Projects/vibetunnel · claude · Test Session\x07');
     });
   });
 });

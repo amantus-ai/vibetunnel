@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0-beta.6] - 2025-01-30
+## [1.0.0-beta.6] - 2025-01-01
 
 ### ✨ New Features
 - **Sleep Prevention** - Mac now stays awake when VibeTunnel is running terminal sessions
@@ -8,12 +8,53 @@
 - **Terminal Title Management** - Enhanced terminal title updates with activity detection
 - **Prompt Pattern Detection** - Optimized prompt detection with unified regex patterns and caching
 
-### 🐛 Bug Fixes
+### 🎨 UI Enhancements
+
+#### **New Menu Bar Design**
+- The menu bar dropdown now features a modern design with rounded corners only on the left and right sides, creating a more integrated appearance with the macOS menu bar
+- The flat top and bottom borders make the dropdown feel like a natural extension of the menu bar while maintaining a contemporary aesthetic
+- Enhanced shadow and visual layering for better depth perception
+
+#### **Improved Session Display**
+- Sessions now show cleaner, more readable information:
+  - Process names are extracted from full paths (e.g., shows "python" instead of "/usr/bin/python")
+  - Session names are displayed next to commands with a dash separator for better organization
+  - Smart handling of shell commands - when running commands through shells like bash or zsh with `-c`, the actual command is shown instead of just "bash"
+  - Long session names are intelligently truncated with ellipsis to prevent UI overflow
+
+#### **Faster Session Updates**
+- Session information now refreshes every second instead of every 3 seconds, providing more responsive feedback about session status
+
+#### **Better Visual Feedback**
+- Fixed menu bar button highlighting to properly indicate when the dropdown is open
+- Improved hover states for session items with smoother transitions
+- Enhanced button colors - the "Create" button now uses a darker green for better visibility and accessibility
+
+### 🛠 Bug Fixes
+
+#### **Window Tracking Improvements**
+- Enhanced window focus functionality for terminal sessions, especially for Ghostty terminal
+- Improved process tree traversal for more reliable window detection
+- Better handling of tabs in terminals that use macOS standard tab system
+- Fixed issues with window ID detection and matching
+
+#### **Form Styling**
+- Fixed corner radius on the new session dialog to match the overall design language
+- Improved form field styling and spacing for better usability
+
+#### **Other Fixes**
 - **Unicode Cursor Positioning** - Fixed cursor positioning issues with Unicode characters
 - **Race Condition** - Fixed sleep prevention race condition during server startup
 - **Memory Efficiency** - Added input validation to prevent excessive memory usage on long inputs
 
 ### 🔧 Technical Improvements
+
+#### **State Management**
+- Button state management now uses proper state tracking instead of the deprecated `highlight()` method
+- More reliable window visibility tracking
+- Enhanced event monitoring for click-outside dismissal
+
+#### **Performance & Code Quality**
 - **Performance** - 45% faster prompt pattern detection with LRU caching
 - **Code Quality** - Comprehensive test coverage for prompt detection utilities
 - **Documentation** - Improved regex documentation for maintainability
