@@ -82,6 +82,12 @@ export class SessionView extends LitElement {
   @state() private terminalContainerHeight = '100%';
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
+
+  // Bound event handlers to ensure proper cleanup
+  private boundHandleDragOver = this.handleDragOver.bind(this);
+  private boundHandleDragLeave = this.handleDragLeave.bind(this);
+  private boundHandleDrop = this.handleDrop.bind(this);
+  private boundHandlePaste = this.handlePaste.bind(this);
   private connectionManager!: ConnectionManager;
   private inputManager!: InputManager;
   private mobileInputManager!: MobileInputManager;
@@ -341,20 +347,20 @@ export class SessionView extends LitElement {
     this.lifecycleEventManager.setupLifecycle();
 
     // Add drag & drop and paste event listeners
-    this.addEventListener('dragover', this.handleDragOver.bind(this));
-    this.addEventListener('dragleave', this.handleDragLeave.bind(this));
-    this.addEventListener('drop', this.handleDrop.bind(this));
-    document.addEventListener('paste', this.handlePaste.bind(this));
+    this.addEventListener('dragover', this.boundHandleDragOver);
+    this.addEventListener('dragleave', this.boundHandleDragLeave);
+    this.addEventListener('drop', this.boundHandleDrop);
+    document.addEventListener('paste', this.boundHandlePaste);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
 
     // Remove drag & drop and paste event listeners
-    this.removeEventListener('dragover', this.handleDragOver.bind(this));
-    this.removeEventListener('dragleave', this.handleDragLeave.bind(this));
-    this.removeEventListener('drop', this.handleDrop.bind(this));
-    document.removeEventListener('paste', this.handlePaste.bind(this));
+    this.removeEventListener('dragover', this.boundHandleDragOver);
+    this.removeEventListener('dragleave', this.boundHandleDragLeave);
+    this.removeEventListener('drop', this.boundHandleDrop);
+    document.removeEventListener('paste', this.boundHandlePaste);
 
     // Clear any pending timeout
     if (this.createHiddenInputTimeout) {
