@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { assertSessionInList } from '../helpers/assertion.helper';
-import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { SmartWait } from '../helpers/smart-wait.helper';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe('Minimal Session Tests', () => {
   let sessionManager: TestSessionManager;

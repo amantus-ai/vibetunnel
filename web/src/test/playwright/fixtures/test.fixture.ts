@@ -29,15 +29,20 @@ export const test = base.extend<TestFixtures>({
         if (blockedLocalTypes.includes(resourceType)) {
           return route.abort();
         }
-        
+
         // Allow only necessary file extensions
         const allowedExtensions = ['.js', '.css', '.html', '/api/', '.json'];
-        const hasAllowedExtension = allowedExtensions.some(ext => url.includes(ext));
-        
-        if (!hasAllowedExtension && resourceType !== 'document' && resourceType !== 'xhr' && resourceType !== 'fetch') {
+        const hasAllowedExtension = allowedExtensions.some((ext) => url.includes(ext));
+
+        if (
+          !hasAllowedExtension &&
+          resourceType !== 'document' &&
+          resourceType !== 'xhr' &&
+          resourceType !== 'fetch'
+        ) {
           return route.abort();
         }
-        
+
         return route.continue();
       }
 

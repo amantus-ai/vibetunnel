@@ -1,4 +1,4 @@
-import { test as base, type BrowserContext, type Page } from '@playwright/test';
+import { type BrowserContext, test as base, type Page } from '@playwright/test';
 import { testConfig } from '../test-config';
 
 // Global storage for reusable contexts and pages
@@ -19,7 +19,7 @@ export const test = base.extend<{
       if (globalContext) {
         await globalContext.close();
       }
-      
+
       globalContext = await browser.newContext({
         // Share storage state across tests for speed
         viewport: { width: 1280, height: 720 },
@@ -27,7 +27,7 @@ export const test = base.extend<{
         hasTouch: false,
         isMobile: false,
       });
-      
+
       // Set up resource blocking once for the context
       await globalContext.route('**/*', (route) => {
         const url = route.request().url();
@@ -39,14 +39,19 @@ export const test = base.extend<{
           if (blockedLocalTypes.includes(resourceType)) {
             return route.abort();
           }
-          
+
           const allowedExtensions = ['.js', '.css', '.html', '/api/', '.json'];
-          const hasAllowedExtension = allowedExtensions.some(ext => url.includes(ext));
-          
-          if (!hasAllowedExtension && resourceType !== 'document' && resourceType !== 'xhr' && resourceType !== 'fetch') {
+          const hasAllowedExtension = allowedExtensions.some((ext) => url.includes(ext));
+
+          if (
+            !hasAllowedExtension &&
+            resourceType !== 'document' &&
+            resourceType !== 'xhr' &&
+            resourceType !== 'fetch'
+          ) {
             return route.abort();
           }
-          
+
           return route.continue();
         }
 
@@ -54,11 +59,11 @@ export const test = base.extend<{
         return route.abort();
       });
     }
-    
+
     contextRefCount++;
     await use(globalContext);
     contextRefCount--;
-    
+
     // Don't close context - keep it for next test
   },
 
@@ -67,11 +72,11 @@ export const test = base.extend<{
     // Create new page if needed or if previous one is closed
     if (!globalPage || globalPage.isClosed()) {
       globalPage = await reusableContext.newPage();
-      
+
       // Set up page-level optimizations once
       globalPage.setDefaultTimeout(testConfig.defaultTimeout);
       globalPage.setDefaultNavigationTimeout(testConfig.navigationTimeout);
-      
+
       // Inject CSS to skip animations once
       await globalPage.addStyleTag({
         content: `
@@ -87,25 +92,25 @@ export const test = base.extend<{
     } else {
       // Clean existing page for reuse
       await globalPage.goto('about:blank');
-      
+
       // Clear storage to avoid test contamination
       await globalPage.evaluate(() => {
         localStorage.clear();
         sessionStorage.clear();
       });
     }
-    
+
     // Navigate to base URL
     await globalPage.goto('/', { waitUntil: 'domcontentloaded' });
-    
+
     // Set localStorage defaults
     await globalPage.evaluate(() => {
       localStorage.setItem('hideExitedSessions', 'false');
     });
-    
+
     // Wait for app to be ready
     await globalPage.waitForSelector('vibetunnel-app', { state: 'attached' });
-    
+
     await use(globalPage);
     // Don't close page - keep it for next test
   },
