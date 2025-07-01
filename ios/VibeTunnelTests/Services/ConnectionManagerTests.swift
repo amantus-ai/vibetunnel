@@ -123,7 +123,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Disconnect clears connection state")
-    func disconnectClearsState() throws {
+    func disconnectClearsState() async throws {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager(storage: mockStorage)
@@ -134,7 +134,7 @@ struct ConnectionManagerTests {
         manager.isConnected = true
 
         // Act
-        manager.disconnect()
+        await manager.disconnect()
 
         // Assert
         #expect(manager.isConnected == false)
@@ -220,12 +220,9 @@ struct ConnectionManagerTests {
         #expect(manager.authenticationService != nil)
 
         // Act
-        manager.disconnect()
+        await manager.disconnect()
 
-        // Wait for async cleanup
-        try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-
-        // Assert
+        // Assert - No waiting needed, disconnect is now async and completes cleanup
         #expect(manager.authenticationService == nil)
     }
 
@@ -248,28 +245,22 @@ struct ConnectionManagerTests {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager(storage: mockStorage)
-        var stateChanged = false
+        
+        // Verify initial state
+        #expect(manager.isConnected == false)
+        #expect(mockStorage.bool(forKey: "connectionState") == false)
 
-        // Observe connection state changes
-        Task {
-            let initialState = manager.isConnected
-            while manager.isConnected == initialState {
-                try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
-            }
-            stateChanged = true
-        }
-
-        // Act
-        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+        // Act - Change state and verify immediate observation
         manager.isConnected = true
-
-        // Assert
-        // Wait for state change
-        let timeout = Date().addingTimeInterval(1.0)
-        while !stateChanged && Date() < timeout {
-            try await Task.sleep(nanoseconds: 10_000_000) // 10ms
-        }
-        #expect(stateChanged)
+        
+        // Assert - State should be immediately observable (synchronous)
+        #expect(manager.isConnected == true)
+        #expect(mockStorage.bool(forKey: "connectionState") == true)
+        
+        // Test state change back to false
+        manager.isConnected = false
+        #expect(manager.isConnected == false)
+        #expect(mockStorage.bool(forKey: "connectionState") == false)
     }
 
     @Test("Thread safety of shared instance")
@@ -314,12 +305,12 @@ struct ConnectionManagerTests {
         let config1 = TestFixtures.validServerConfig
         let config2 = TestFixtures.sslServerConfig
 
-        // Act - Simulate concurrent connection attempts
+        // Act - Simulate concurrent connection attempts on MainActor
         await withTaskGroup(of: Void.self) { group in
-            group.addTask {
+            group.addTask { @MainActor in
                 manager.saveConnection(config1)
             }
-            group.addTask {
+            group.addTask { @MainActor in
                 manager.saveConnection(config2)
             }
         }
@@ -341,10 +332,7 @@ struct ConnectionManagerTests {
         #expect(manager.authenticationService != nil)
 
         // Act - Disconnect (which may fail logout but should still clean up)
-        manager.disconnect()
-
-        // Wait for async cleanup
-        try await Task.sleep(nanoseconds: 200_000_000) // 200ms
+        await manager.disconnect()
 
         // Assert - Auth service should be cleaned up even if logout fails
         #expect(manager.authenticationService == nil)
@@ -400,7 +388,7 @@ struct ConnectionManagerIntegrationTests {
         #expect(newManager.isConnected == true) // Restored
 
         // 5. Disconnect
-        newManager.disconnect()
+        await newManager.disconnect()
         #expect(newManager.isConnected == false)
         #expect(newManager.serverConfig != nil) // Config preserved
 

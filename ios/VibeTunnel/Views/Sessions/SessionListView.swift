@@ -89,7 +89,9 @@ struct SessionListView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         HapticFeedback.impact(.medium)
-                        connectionManager.disconnect()
+                        Task {
+                            await connectionManager.disconnect()
+                        }
                     }, label: {
                         HStack(spacing: 4) {
                             Image(systemName: "xmark.circle")

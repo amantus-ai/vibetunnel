@@ -112,7 +112,9 @@ class ServerProfilesViewModel {
             ServerProfile.updateLastConnected(for: profile.id)
             loadProfiles()
         } catch {
-            connectionManager.disconnect()
+            Task {
+                await connectionManager.disconnect()
+            }
             throw error
         }
     }

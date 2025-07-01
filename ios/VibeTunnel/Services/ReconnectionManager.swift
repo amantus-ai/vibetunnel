@@ -99,7 +99,7 @@ class ReconnectionManager {
 
         // Max retries reached
         isReconnecting = false
-        connectionManager.disconnect()
+        await connectionManager.disconnect()
     }
 
     deinit {

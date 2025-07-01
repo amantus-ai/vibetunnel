@@ -83,7 +83,9 @@ struct ContentView: View {
             } catch {
                 // Connection failed, reset state
                 await MainActor.run {
-                    connectionManager.disconnect()
+                    Task {
+                        await connectionManager.disconnect()
+                    }
                     isValidatingConnection = false
                 }
             }

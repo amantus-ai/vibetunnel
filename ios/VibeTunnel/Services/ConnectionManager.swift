@@ -100,21 +100,13 @@ final class ConnectionManager {
         }
     }
 
-    func disconnect() {
+    func disconnect() async {
         isConnected = false
         storage.removeObject(forKey: Constants.connectionStateKey)
         storage.removeObject(forKey: Constants.lastConnectionTimeKey)
 
-        // Clean up authentication with proper error handling
-        Task { @MainActor in
-            do {
-                try await authenticationService?.logout()
-            } catch {
-                // Log error but don't throw - disconnection should always succeed
-                print("Warning: Failed to logout during disconnect: \(error.localizedDescription)")
-            }
-            authenticationService = nil
-        }
+        await authenticationService?.logout()
+        authenticationService = nil
     }
 
     var currentServerConfig: ServerConfig? {
