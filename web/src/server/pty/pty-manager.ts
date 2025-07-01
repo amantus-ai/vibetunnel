@@ -719,7 +719,7 @@ export class PtyManager extends EventEmitter {
           parser.addData(chunk);
 
           for (const { type, payload } of parser.parseMessages()) {
-            this.handleSocketMessage(session, type, payload);
+            this.handleSocketMessage(session, type, payload, client);
           }
         });
 
@@ -750,7 +750,12 @@ export class PtyManager extends EventEmitter {
   /**
    * Handle incoming socket messages
    */
-  private handleSocketMessage(session: PtySession, type: MessageType, payload: Buffer): void {
+  private handleSocketMessage(
+    session: PtySession,
+    type: MessageType,
+    payload: Buffer,
+    client?: net.Socket
+  ): void {
     try {
       const data = parsePayload(type, payload);
 
@@ -773,7 +778,11 @@ export class PtyManager extends EventEmitter {
         }
 
         case MessageType.HEARTBEAT:
-          // Echo heartbeat back (could add heartbeat response later)
+          // Echo heartbeat back to the client
+          if (client && !client.destroyed) {
+            const heartbeatFrame = frameMessage(MessageType.HEARTBEAT, Buffer.alloc(0));
+            client.write(heartbeatFrame);
+          }
           break;
 
         default:
@@ -802,14 +811,18 @@ export class PtyManager extends EventEmitter {
 
           debounceTimer = setTimeout(() => {
             this.handleSessionJsonChange(session);
-            // Clear the timer reference after execution
+            // Clear both timer references after execution
             session.sessionJsonDebounceTimer = null;
+            debounceTimer = null;
           }, 100);
 
           // Update the session's timer reference
           session.sessionJsonDebounceTimer = debounceTimer;
         }
       });
+
+      // Store watcher for cleanup BEFORE setting up error handler
+      session.sessionJsonWatcher = watcher;
 
       // Add error handling for watcher
       watcher.on('error', (error) => {
@@ -822,9 +835,6 @@ export class PtyManager extends EventEmitter {
           session.sessionJsonWatcher = undefined;
         }
       });
-
-      // Store watcher for cleanup
-      session.sessionJsonWatcher = watcher;
 
       // Unref the watcher so it doesn't keep the process alive
       watcher.unref();
