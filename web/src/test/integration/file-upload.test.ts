@@ -2,8 +2,6 @@
  * Integration tests for file upload functionality
  */
 
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { createBasicAuthHeader } from '../utils/server-utils.js';
 
@@ -106,7 +104,7 @@ describe('File Upload API', () => {
 
     expect(result).toHaveProperty('files');
     expect(result).toHaveProperty('count');
-    expect(Array.isArray(result.images)).toBe(true);
+    expect(Array.isArray(result.files)).toBe(true);
     expect(typeof result.count).toBe('number');
 
     if (result.files.length > 0) {
@@ -155,9 +153,72 @@ describe('File Upload API', () => {
   });
 
   it('should prevent path traversal attacks', async () => {
-    const response = await fetch(`${baseUrl}/api/images/../../../etc/passwd`);
+    const response = await fetch(`${baseUrl}/api/files/../../../etc/passwd`);
     expect(response.status).toBe(400);
 
+    const result = await response.json();
+    expect(result.error).toBe('Invalid filename');
+  });
+
+  it('should delete uploaded files', async () => {
+    // First upload a file
+    const testFileContent = 'File to be deleted';
+    const formData = new FormData();
+    const blob = new Blob([testFileContent], { type: 'text/plain' });
+    formData.append('file', blob, 'delete-test.txt');
+
+    const uploadResponse = await fetch(`${baseUrl}/api/files/upload`, {
+      method: 'POST',
+      headers: {
+        Authorization: authHeader,
+      },
+      body: formData,
+    });
+
+    expect(uploadResponse.ok).toBe(true);
+    const uploadResult = await uploadResponse.json();
+    const filename = uploadResult.filename;
+
+    // Now delete the file
+    const deleteResponse = await fetch(`${baseUrl}/api/files/${filename}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+
+    expect(deleteResponse.ok).toBe(true);
+    const deleteResult = await deleteResponse.json();
+    expect(deleteResult.success).toBe(true);
+    expect(deleteResult.message).toBe('File deleted successfully');
+
+    // Verify file is gone
+    const checkResponse = await fetch(`${baseUrl}/api/files/${filename}`);
+    expect(checkResponse.status).toBe(404);
+  });
+
+  it('should return 404 when deleting non-existent file', async () => {
+    const response = await fetch(`${baseUrl}/api/files/non-existent-file.txt`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+
+    expect(response.status).toBe(404);
+    const result = await response.json();
+    expect(result.error).toBe('File not found');
+  });
+
+  it('should prevent path traversal in DELETE', async () => {
+    const response = await fetch(`${baseUrl}/api/files/../../../etc/passwd`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+
+    expect(response.status).toBe(400);
     const result = await response.json();
     expect(result.error).toBe('Invalid filename');
   });

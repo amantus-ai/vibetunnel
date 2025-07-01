@@ -1258,8 +1258,8 @@ export class SessionView extends LitElement {
               <div class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 pointer-events-none">
                 <div class="bg-dark-bg-secondary border-2 border-dashed border-terminal-green text-terminal-green rounded-lg p-8 text-center">
                   <div class="text-6xl mb-4">📁</div>
-                  <div class="text-xl font-semibold mb-2">Drop images here</div>
-                  <div class="text-sm opacity-80">Images will be uploaded and the path sent to terminal</div>
+                  <div class="text-xl font-semibold mb-2">Drop files here</div>
+                  <div class="text-sm opacity-80">Files will be uploaded and the path sent to terminal</div>
                   <div class="text-xs opacity-60 mt-2">Or press CMD+V to paste from clipboard</div>
                 </div>
               </div>
