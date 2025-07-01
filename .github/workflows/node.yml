@@ -14,7 +14,7 @@ permissions:
 jobs:
   lint:
     name: Lint TypeScript/JavaScript Code
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     env:
       GITHUB_REPO_NAME: ${{ github.repository }}
 
@@ -117,7 +117,7 @@ jobs:
 
   build-and-test:
     name: Build and Test
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     env:
       GITHUB_REPO_NAME: ${{ github.repository }}
 
@@ -282,7 +282,7 @@ jobs:
 
   type-check:
     name: TypeScript Type Checking
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     env:
       GITHUB_REPO_NAME: ${{ github.repository }}
 
@@ -329,7 +329,7 @@ jobs:
 
   audit:
     name: Security Audit
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
 
     steps:
     - name: Checkout code
@@ -353,7 +353,7 @@ jobs:
 
   report-coverage:
     name: Report Coverage Results
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     needs: [build-and-test]
     if: always() && github.event_name == 'pull_request'
 

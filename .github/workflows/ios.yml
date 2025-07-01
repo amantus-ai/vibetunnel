@@ -486,7 +486,7 @@ jobs:
 
   report-coverage:
     name: Report iOS Coverage
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     needs: [build-lint-test]
     if: always() && github.event_name == 'pull_request'
 
