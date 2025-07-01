@@ -36,11 +36,11 @@ import { AsciinemaWriter } from './asciinema-writer.js';
 import { ProcessUtils } from './process-utils.js';
 import { SessionManager } from './session-manager.js';
 import {
-  MessageType,
-  MessageParser,
-  parsePayload,
-  frameMessage,
   type ControlCommand,
+  frameMessage,
+  MessageParser,
+  MessageType,
+  parsePayload,
   type StatusUpdate,
 } from './socket-protocol.js';
 import {
@@ -712,7 +712,7 @@ export class PtyManager extends EventEmitter {
       const inputServer = net.createServer((client) => {
         const parser = new MessageParser();
         client.setNoDelay(true);
-        
+
         // Track this client
         if (!this.sessionSocketClients.has(session.id)) {
           this.sessionSocketClients.set(session.id, new Set());
@@ -737,7 +737,7 @@ export class PtyManager extends EventEmitter {
         client.on('error', (err) => {
           logger.debug(`Client socket error for session ${session.id}:`, err);
         });
-        
+
         client.on('close', () => {
           // Remove client from tracking
           this.sessionSocketClients.get(session.id)?.delete(client);
@@ -829,7 +829,7 @@ export class PtyManager extends EventEmitter {
   private broadcastToClients(
     sessionId: string,
     type: MessageType,
-    data: unknown,
+    data: Buffer | string | object,
     sender?: net.Socket
   ): void {
     const clients = this.sessionSocketClients.get(sessionId);
@@ -1680,7 +1680,7 @@ export class PtyManager extends EventEmitter {
 
     // Clean up Claude status
     this.sessionClaudeStatus.delete(session.id);
-    
+
     // Clean up socket clients tracking
     this.sessionSocketClients.delete(session.id);
 

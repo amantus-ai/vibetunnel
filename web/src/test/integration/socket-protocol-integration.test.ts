@@ -1,19 +1,19 @@
 /**
  * Integration tests for the socket protocol with PTY manager
- * 
+ *
  * Note: Some tests in this file require real PTY support and will fail when node-pty
  * is mocked (which happens in src/test/setup.ts). To run these tests with real PTY:
  * 1. Comment out the node-pty mock in src/test/setup.ts
  * 2. Run the tests
  * 3. Restore the mock when done
- * 
+ *
  * The affected tests are marked with comments.
  */
 
+import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import * as fs from 'fs';
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PtyManager } from '../../server/pty/pty-manager.js';
 import { VibeTunnelSocketClient } from '../../server/pty/socket-client.js';
 import { TitleMode } from '../../shared/types.js';
@@ -386,7 +386,7 @@ describe('Socket Protocol Integration', () => {
 
       // Should handle 1000 status updates quickly
       expect(duration).toBeLessThan(500);
-      
+
       // Give a bit of time for the last status to be processed
       await new Promise((resolve) => setTimeout(resolve, 50));
 

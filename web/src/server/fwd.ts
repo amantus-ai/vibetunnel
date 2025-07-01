@@ -294,7 +294,7 @@ export async function startVibeTunnelForward(args: string[]) {
 
       // Hook into stdout to detect Claude status
       const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-      process.stdout.write = function (chunk: any, encoding?: any, callback?: any): boolean {
+      process.stdout.write = (chunk: any, encoding?: any, callback?: any): boolean => {
         // Process output through activity detector
         if (activityDetector && typeof chunk === 'string') {
           const { filteredData, activity } = activityDetector.processOutput(chunk);

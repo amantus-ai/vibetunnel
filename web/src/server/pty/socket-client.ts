@@ -2,16 +2,16 @@
  * Client for connecting to VibeTunnel Unix sockets
  */
 
-import * as net from 'net';
 import { EventEmitter } from 'events';
+import * as net from 'net';
 import { createLogger } from '../utils/logger.js';
 import {
-  MessageType,
-  MessageParser,
+  type ErrorMessage,
   MessageBuilder,
+  MessageParser,
+  MessageType,
   parsePayload,
   type StatusUpdate,
-  type ErrorMessage,
 } from './socket-protocol.js';
 
 const logger = createLogger('socket-client');

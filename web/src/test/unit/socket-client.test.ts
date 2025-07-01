@@ -2,13 +2,13 @@
  * Tests for the VibeTunnel socket client
  */
 
+import * as fs from 'fs';
 import * as net from 'net';
 import * as os from 'os';
 import * as path from 'path';
-import * as fs from 'fs';
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VibeTunnelSocketClient } from '../../server/pty/socket-client.js';
-import { MessageType, frameMessage } from '../../server/pty/socket-protocol.js';
+import { frameMessage, MessageType } from '../../server/pty/socket-protocol.js';
 
 describe('VibeTunnelSocketClient', () => {
   let testDir: string;
@@ -427,7 +427,7 @@ describe('VibeTunnelSocketClient', () => {
       await client.connect();
 
       // Force an error by writing invalid data then destroying the connection
-      serverConnections[0].write(Buffer.from([0xFF, 0xFF, 0xFF, 0xFF])); // Invalid message
+      serverConnections[0].write(Buffer.from([0xff, 0xff, 0xff, 0xff])); // Invalid message
       serverConnections[0].destroy();
 
       await new Promise((resolve) => setTimeout(resolve, 100));

@@ -104,6 +104,32 @@ VibeTunnel uses a binary framed message protocol over Unix domain sockets for al
   }
   ```
 
+#### Error Codes
+
+| Code | Description | Details |
+|------|-------------|---------|
+| `SESSION_NOT_FOUND` | The requested session does not exist | Session ID is invalid or session has been terminated |
+| `MESSAGE_PROCESSING_ERROR` | Failed to process incoming message | Malformed message, invalid JSON, or internal processing error |
+| `INVALID_OPERATION` | Operation not valid for session type | e.g., reset-size on in-memory session |
+| `CONTROL_MESSAGE_FAILED` | Failed to send control message | Unable to communicate with PTY process |
+| `RESET_SIZE_FAILED` | Failed to reset terminal size | Error during size reset operation |
+| `CONNECTION_LIMIT` | Too many concurrent connections | Server connection limit reached |
+| `PAYLOAD_TOO_LARGE` | Message payload exceeds size limit | Payload larger than maximum allowed size |
+| `INVALID_MESSAGE_TYPE` | Unknown or unsupported message type | Client sent unrecognized message type |
+| `MALFORMED_FRAME` | Invalid message frame structure | Message framing protocol violation |
+
+**Example Error Response**:
+```json
+{
+  "code": "MESSAGE_PROCESSING_ERROR",
+  "message": "Failed to parse control command",
+  "details": {
+    "error": "Unexpected token } in JSON at position 42",
+    "messageType": 2
+  }
+}
+```
+
 ## Client Implementation
 
 ### Connection Flow

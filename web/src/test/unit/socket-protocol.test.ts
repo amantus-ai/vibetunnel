@@ -4,10 +4,10 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  MessageType,
-  MessageParser,
-  MessageBuilder,
   frameMessage,
+  MessageBuilder,
+  MessageParser,
+  MessageType,
   parsePayload,
 } from '../../server/pty/socket-protocol.js';
 
