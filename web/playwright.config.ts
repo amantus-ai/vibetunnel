@@ -85,7 +85,5 @@ export default defineConfig({
       SUPPRESS_CLIENT_ERRORS: 'true',
       VIBETUNNEL_SEA: '', // Explicitly set to empty to disable SEA loader
     },
-    // Add health check
-    url: `http://localhost:${testConfig.port}`,
   },
 });
