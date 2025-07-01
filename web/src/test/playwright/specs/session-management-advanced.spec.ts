@@ -108,7 +108,17 @@ test.describe('Advanced Session Management', () => {
 
       // Go back to list with proper wait
       await page.goto('/', { waitUntil: 'domcontentloaded' });
-      await page.waitForSelector('session-card', { state: 'visible', timeout: 3000 });
+
+      // Wait for app to be ready
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
+
+      // Then wait for session cards
+      try {
+        await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+      } catch (error) {
+        console.error(`Failed to find session-card after creating session ${i + 1}`);
+        throw error;
+      }
     }
 
     // Verify all sessions are visible

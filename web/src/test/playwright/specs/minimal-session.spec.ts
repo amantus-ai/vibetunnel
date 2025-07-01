@@ -1,6 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { assertSessionInList } from '../helpers/assertion.helper';
-import { SmartWait } from '../helpers/smart-wait.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe('Minimal Session Tests', () => {
@@ -38,12 +37,24 @@ test.describe('Minimal Session Tests', () => {
 
       // Navigate back to home after each creation
       await page.goto('/', { waitUntil: 'domcontentloaded' });
-      await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
 
-      // Wait for session to be fully created before creating next one
+      // Wait for app to be ready first
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
+
+      // Then wait for session cards to appear
+      try {
+        await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+      } catch (error) {
+        // If no session cards, check if we're on the right page
+        const url = page.url();
+        const title = await page.title();
+        console.error(`Failed to find session-card. URL: ${url}, Title: ${title}`);
+        throw error;
+      }
+
+      // Small delay between session creations
       if (i < 2) {
-        // Simple wait to ensure session is ready
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
       }
     }
 
