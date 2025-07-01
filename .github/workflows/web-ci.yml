@@ -123,13 +123,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
-        run: pnpm run test:ci
+      - name: Run client tests
+        run: pnpm run test:client:coverage
 
-      - name: Upload coverage
+      - name: Run server tests
+        run: pnpm run test:server:coverage
+
+      - name: Upload client coverage
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-report
-          path: web/coverage/
+          name: client-coverage-report
+          path: web/coverage/client/
+          retention-days: 7
+
+      - name: Upload server coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: server-coverage-report
+          path: web/coverage/server/
           retention-days: 7
