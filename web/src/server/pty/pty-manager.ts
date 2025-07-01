@@ -818,7 +818,7 @@ export class PtyManager extends EventEmitter {
             // Clear the timer reference after execution
             session.sessionJsonDebounceTimer = null;
           }, 100);
-          
+
           // Update the session's timer reference
           session.sessionJsonDebounceTimer = debounceTimer;
         }
