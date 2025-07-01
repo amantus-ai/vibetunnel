@@ -60,7 +60,10 @@ export class PtyManager extends EventEmitter {
   private lastBellTime = new Map<string, number>(); // Track last bell time per session
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
-  private activityFileWarningsLogged = new Set<string>(); // Track which sessions we've logged warnings for
+  private sessionClaudeStatus = new Map<
+    string,
+    { app: string; status: string; timestamp: number }
+  >(); // Track Claude status in memory
 
   constructor(controlPath?: string) {
     super();
@@ -548,6 +551,14 @@ export class PtyManager extends EventEmitter {
               session.activityDetector.processOutput(processedData);
             processedData = filteredData;
 
+            // Store Claude status in memory
+            if (activity.specificStatus) {
+              this.sessionClaudeStatus.set(session.id, {
+                ...activity.specificStatus,
+                timestamp: Date.now(),
+              });
+            }
+
             // Generate dynamic title with activity
             const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
             const dynamicTitleSequence = generateDynamicTitle(
@@ -629,6 +640,7 @@ export class PtyManager extends EventEmitter {
         // Clean up bell tracking
         this.lastBellTime.delete(session.id);
         this.sessionExitTimes.delete(session.id);
+        this.sessionClaudeStatus.delete(session.id);
 
         // Call exit callback if provided (for fwd.ts)
         if (onExit) {
@@ -1360,59 +1372,36 @@ export class PtyManager extends EventEmitter {
       const activeSession = this.sessions.get(session.id);
       if (activeSession?.activityDetector) {
         const activityState = activeSession.activityDetector.getActivityState();
+        // Also check our in-memory Claude status
+        const claudeStatus = this.sessionClaudeStatus.get(session.id);
+        const now = Date.now();
+        const CLAUDE_STATUS_TIMEOUT = 30000; // 30 seconds timeout
+
         return {
           ...session,
           activityStatus: {
             isActive: activityState.isActive,
-            specificStatus: activityState.specificStatus,
+            specificStatus:
+              claudeStatus && now - claudeStatus.timestamp < CLAUDE_STATUS_TIMEOUT
+                ? { app: claudeStatus.app, status: claudeStatus.status }
+                : activityState.specificStatus,
           },
         };
       }
 
-      // Otherwise, try to read from activity file (for external sessions)
-      try {
-        const sessionPaths = this.sessionManager.getSessionPaths(session.id);
-        if (!sessionPaths) {
-          return session;
-        }
-        const activityPath = path.join(sessionPaths.controlDir, 'claude-activity.json');
+      // For external sessions, check in-memory Claude status
+      const claudeStatus = this.sessionClaudeStatus.get(session.id);
+      const now = Date.now();
+      const CLAUDE_STATUS_TIMEOUT = 30000; // 30 seconds timeout
 
-        if (fs.existsSync(activityPath)) {
-          const activityData = JSON.parse(fs.readFileSync(activityPath, 'utf-8'));
-          // Check if activity is recent (within last 60 seconds)
-          // Use Math.abs to handle future timestamps from system clock issues
-          const timeDiff = Math.abs(Date.now() - new Date(activityData.timestamp).getTime());
-          const isRecent = timeDiff < 60000;
-
-          if (isRecent) {
-            logger.debug(`Found recent activity for external session ${session.id}:`, {
-              isActive: activityData.isActive,
-              specificStatus: activityData.specificStatus,
-            });
-            return {
-              ...session,
-              activityStatus: {
-                isActive: activityData.isActive,
-                specificStatus: activityData.specificStatus,
-              },
-            };
-          } else {
-            logger.debug(
-              `Activity file for session ${session.id} is stale (time diff: ${timeDiff}ms)`
-            );
-          }
-        } else {
-          // Only log once per session to avoid spam
-          if (!this.activityFileWarningsLogged.has(session.id)) {
-            this.activityFileWarningsLogged.add(session.id);
-            logger.debug(
-              `No claude-activity.json found for session ${session.id} at ${activityPath}`
-            );
-          }
-        }
-      } catch (error) {
-        // Ignore errors reading activity file
-        logger.debug(`Failed to read activity file for session ${session.id}:`, error);
+      if (claudeStatus && now - claudeStatus.timestamp < CLAUDE_STATUS_TIMEOUT) {
+        return {
+          ...session,
+          activityStatus: {
+            isActive: false, // External sessions don't have real-time activity tracking
+            specificStatus: { app: claudeStatus.app, status: claudeStatus.status },
+          },
+        };
       }
 
       return session;
@@ -1640,6 +1629,9 @@ export class PtyManager extends EventEmitter {
   private cleanupSessionResources(session: PtySession): void {
     // Clean up resize tracking
     this.sessionResizeSources.delete(session.id);
+
+    // Clean up Claude status
+    this.sessionClaudeStatus.delete(session.id);
 
     // Clean up title update interval for dynamic mode
     if (session.titleUpdateInterval) {

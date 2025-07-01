@@ -11,10 +11,23 @@ struct ServerSessionInfo: Codable {
     let startedAt: String
     let lastModified: String
     let pid: Int
+    let activityStatus: ActivityStatus?
 
     var isRunning: Bool {
         status == "running"
     }
+}
+
+/// Activity status for a session
+struct ActivityStatus: Codable {
+    let isActive: Bool
+    let specificStatus: SpecificStatus?
+}
+
+/// App-specific status (e.g., Claude status)
+struct SpecificStatus: Codable {
+    let app: String
+    let status: String
 }
 
 /// Lightweight session monitor that fetches terminal sessions on-demand
