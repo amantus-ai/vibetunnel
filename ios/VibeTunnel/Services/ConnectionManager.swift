@@ -9,7 +9,6 @@ import Observation
 @Observable
 @MainActor
 final class ConnectionManager {
-    
     // MARK: - Constants
     
     private enum Constants {

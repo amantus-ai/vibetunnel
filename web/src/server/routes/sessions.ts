@@ -49,13 +49,20 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
   // List all sessions (aggregate local + remote in HQ mode)
   router.get('/sessions', async (_req, res) => {
-    logger.debug('listing all sessions');
+    logger.debug('[GET /sessions] Listing all sessions');
     try {
       let allSessions = [];
 
       // Get local sessions
       const localSessions = ptyManager.listSessions();
-      logger.debug(`found ${localSessions.length} local sessions`);
+      logger.debug(`[GET /sessions] Found ${localSessions.length} local sessions`);
+
+      // Log session names for debugging
+      localSessions.forEach((session) => {
+        logger.debug(
+          `[GET /sessions] Session ${session.id}: name="${session.name || 'null'}", workingDir="${session.workingDir}"`
+        );
+      });
 
       // Add source info to local sessions
       const localSessionsWithSource = localSessions.map((session) => ({
@@ -1022,6 +1029,78 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         res.status(500).json({ error: 'Failed to resize session', details: error.message });
       } else {
         res.status(500).json({ error: 'Failed to resize session' });
+      }
+    }
+  });
+
+  // Update session name
+  router.patch('/sessions/:sessionId', async (req, res) => {
+    const sessionId = req.params.sessionId;
+    logger.log(chalk.yellow(`[PATCH] Received rename request for session ${sessionId}`));
+    logger.debug(`[PATCH] Request body:`, req.body);
+    logger.debug(`[PATCH] Request headers:`, req.headers);
+
+    const { name } = req.body;
+
+    if (typeof name !== 'string' || name.trim() === '') {
+      logger.warn(`[PATCH] Invalid name provided: ${JSON.stringify(name)}`);
+      return res.status(400).json({ error: 'Name must be a non-empty string' });
+    }
+
+    logger.log(chalk.blue(`[PATCH] Updating session ${sessionId} name to: ${name}`));
+
+    try {
+      // If in HQ mode, check if this is a remote session
+      if (isHQMode && remoteRegistry) {
+        const remote = remoteRegistry.getRemoteBySessionId(sessionId);
+        if (remote) {
+          // Forward update to remote server
+          try {
+            const response = await fetch(`${remote.url}/api/sessions/${sessionId}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${remote.token}`,
+              },
+              body: JSON.stringify({ name }),
+              signal: AbortSignal.timeout(5000),
+            });
+
+            if (!response.ok) {
+              return res.status(response.status).json(await response.json());
+            }
+
+            return res.json(await response.json());
+          } catch (error) {
+            logger.error(`failed to update session name on remote ${remote.name}:`, error);
+            return res.status(503).json({ error: 'Failed to reach remote server' });
+          }
+        }
+      }
+
+      // Local session handling
+      logger.debug(`[PATCH] Handling local session update`);
+
+      const session = ptyManager.getSession(sessionId);
+      if (!session) {
+        logger.warn(`[PATCH] Session ${sessionId} not found for name update`);
+        return res.status(404).json({ error: 'Session not found' });
+      }
+
+      logger.debug(`[PATCH] Found session: ${JSON.stringify(session)}`);
+
+      // Update the session name
+      logger.debug(`[PATCH] Calling ptyManager.updateSessionName(${sessionId}, ${name})`);
+      ptyManager.updateSessionName(sessionId, name);
+      logger.log(chalk.green(`[PATCH] Session ${sessionId} name updated to: ${name}`));
+
+      res.json({ success: true, name });
+    } catch (error) {
+      logger.error('error updating session name:', error);
+      if (error instanceof PtyError) {
+        res.status(500).json({ error: 'Failed to update session name', details: error.message });
+      } else {
+        res.status(500).json({ error: 'Failed to update session name' });
       }
     }
   });

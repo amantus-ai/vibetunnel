@@ -12,6 +12,8 @@ struct MenuBarView: View {
     var serverManager
     @AppStorage("showInDock")
     private var showInDock = false
+    @Environment(\.openWindow)
+    private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -150,6 +152,23 @@ struct MenuBarView: View {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.accentColor.opacity(0.001))
             )
+
+            // New Session button
+            Button(
+                action: {
+                    // Close menu and show custom window with new session form
+                    NSApp.sendAction(#selector(NSWindow.performClose(_:)), to: nil, from: nil)
+                    if let statusBarController = (NSApp.delegate as? AppDelegate)?.statusBarController {
+                        statusBarController.showCustomWindow()
+                        // Navigate to new session form
+                    }
+                },
+                label: {
+                    Label("New Session…", systemImage: "plus.square")
+                }
+            )
+            .buttonStyle(MenuButtonStyle())
+            .keyboardShortcut("n", modifiers: .command)
 
             // Settings button
             Button(
@@ -383,6 +402,10 @@ struct SessionRowView: View {
 
             Button("View Session Details") {
                 openWindow(id: "session-detail", value: session.key)
+            }
+
+            Button("Show in Finder") {
+                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
             }
 
             Divider()

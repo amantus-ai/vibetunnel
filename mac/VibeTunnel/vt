@@ -47,12 +47,19 @@ fi
 # Check if we're already inside a VibeTunnel session
 if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
     # Special case: handle 'vt title' command inside a session
-    if [[ "$1" == "title" && $# -ge 2 ]]; then
+    if [[ "$1" == "title" ]]; then
+        if [[ $# -lt 2 ]]; then
+            echo "Error: 'vt title' requires a title argument" >&2
+            echo "Usage: vt title <new title>" >&2
+            exit 1
+        fi
         shift # Remove 'title' from arguments
         TITLE="$*" # Get all remaining arguments as the title
         
         # Use the vibetunnel binary's new --update-title flag
         exec "$VIBETUNNEL_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
+        # If exec fails, exit with error
+        exit 1
     fi
     
     echo "Error: Already inside a VibeTunnel session (ID: $VIBETUNNEL_SESSION_ID). Recursive VibeTunnel sessions are not supported." >&2

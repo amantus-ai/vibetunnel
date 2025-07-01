@@ -17,15 +17,33 @@ struct VibeTunnelMenuView: View {
 
     @State private var hoveredSessionId: String?
     @State private var hasStartedKeyboardNavigation = false
+    @State private var showingNewSession = false
     @FocusState private var focusedField: FocusField?
 
     enum FocusField: Hashable {
         case sessionRow(String)
         case settingsButton
+        case newSessionButton
         case quitButton
     }
 
     var body: some View {
+        if showingNewSession {
+            NewSessionForm(isPresented: $showingNewSession)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .move(edge: .bottom).combined(with: .opacity)
+                ))
+        } else {
+            mainContent
+                .transition(.asymmetric(
+                    insertion: .opacity,
+                    removal: .opacity
+                ))
+        }
+    }
+
+    private var mainContent: some View {
         VStack(spacing: 0) {
             // Header with server info
             ServerInfoHeader()
@@ -112,6 +130,30 @@ struct VibeTunnelMenuView: View {
 
             // Bottom actions
             HStack {
+                Button(action: {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        showingNewSession = true
+                    }
+                }) {
+                    Label("New Session", systemImage: "plus.square")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .focusable()
+                .focused($focusedField, equals: .newSessionButton)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .strokeBorder(
+                            focusedField == .newSessionButton && hasStartedKeyboardNavigation ? Color.accentColor
+                                .opacity(0.3) : Color.clear,
+                            lineWidth: 1
+                        )
+                        .animation(.easeInOut(duration: 0.15), value: focusedField)
+                )
+
+                Spacer()
+
                 Button(action: {
                     SettingsOpener.openSettings()
                 }) {
@@ -368,76 +410,151 @@ struct SessionRow: View {
 
     @Environment(\.openWindow)
     private var openWindow
+    @Environment(ServerManager.self)
+    private var serverManager
+    @Environment(SessionMonitor.self)
+    private var sessionMonitor
+    @Environment(SessionService.self)
+    private var sessionService
+    @State private var isTerminating = false
+    @State private var isEditing = false
+    @State private var editedName = ""
+    @FocusState private var isEditFieldFocused: Bool
 
     var body: some View {
-        Button(action: {
-            WindowTracker.shared.focusWindow(for: session.key)
-        }) {
-            HStack(spacing: 8) {
-                // Activity indicator with subtle glow
-                ZStack {
-                    Circle()
-                        .fill(activityColor.opacity(0.3))
-                        .frame(width: 8, height: 8)
-                        .blur(radius: 2)
-                        .animation(.easeInOut(duration: 0.4), value: activityColor)
-                    Circle()
-                        .fill(activityColor)
-                        .frame(width: 4, height: 4)
-                        .animation(.easeInOut(duration: 0.4), value: activityColor)
-                }
+        HStack(spacing: 8) {
+            // Activity indicator with subtle glow
+            ZStack {
+                Circle()
+                    .fill(activityColor.opacity(0.3))
+                    .frame(width: 8, height: 8)
+                    .blur(radius: 2)
+                    .animation(.easeInOut(duration: 0.4), value: activityColor)
+                Circle()
+                    .fill(activityColor)
+                    .frame(width: 4, height: 4)
+                    .animation(.easeInOut(duration: 0.4), value: activityColor)
+            }
 
-                // Session info
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
+            // Session info - use flexible width
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    if isEditing {
+                        TextField("Session Name", text: $editedName)
+                            .font(.system(size: 12, weight: .medium))
+                            .textFieldStyle(.plain)
+                            .focused($isEditFieldFocused)
+                            .onSubmit {
+                                saveSessionName()
+                            }
+                            .onKeyPress(.escape) {
+                                cancelEditing()
+                                return .handled
+                            }
+                    } else {
                         Text(sessionName)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.primary)
                             .lineLimit(1)
                             .truncationMode(.middle)
+                            .layoutPriority(1)
 
-                        Spacer()
-
-                        if hasWindow {
-                            Image(systemName: "macwindow")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
+                        // Show edit icon on hover when not editing
+                        if isHovered && !isEditing && !isTerminating {
+                            Button(action: startEditing) {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary.opacity(0.6))
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.scale.combined(with: .opacity))
                         }
                     }
 
-                    if let activityStatus = session.value.activityStatus?.specificStatus?.status {
-                        HStack(spacing: 4) {
-                            Text(activityStatus)
-                                .font(.system(size: 10))
-                                .foregroundColor(.orange)
+                    Spacer(minLength: 4)
 
-                            Spacer()
+                    if !hasWindow {
+                        Image(systemName: "globe")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .opacity(0.8)
+                    }
+                }
 
-                            Text(compactPath)
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-                    } else {
+                if let activityStatus = session.value.activityStatus?.specificStatus?.status {
+                    HStack(spacing: 4) {
+                        Text(activityStatus)
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+
+                        Spacer(minLength: 4)
+
                         Text(compactPath)
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
+                } else {
+                    Text(compactPath)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
-
-                // Duration
-                Text(duration)
-                    .font(.system(size: 10))
-                    .foregroundColor(Color.secondary.opacity(0.6))
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity)
+
+            // Fixed width area for time/close button
+            ZStack {
+                if isHovered && !isTerminating {
+                    // Show X button on hover
+                    Button(action: terminateSession) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.red.opacity(0.1))
+                                .frame(width: 16, height: 16)
+                            Circle()
+                                .strokeBorder(Color.red.opacity(0.3), lineWidth: 0.5)
+                                .frame(width: 16, height: 16)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.red.opacity(0.8))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.scale.combined(with: .opacity))
+                } else if isTerminating {
+                    // Show progress indicator while terminating
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .frame(width: 14, height: 14)
+                } else {
+                    // Show time when not hovering
+                    Text(duration)
+                        .font(.system(size: 10))
+                        .foregroundColor(Color.secondary.opacity(0.6))
+                        .transition(.opacity)
+                }
+            }
+            .frame(width: 35, alignment: .trailing)
+            .animation(.easeInOut(duration: 0.15), value: isHovered)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard !isEditing else { return }
+
+            if hasWindow {
+                WindowTracker.shared.focusWindow(for: session.key)
+            } else {
+                // Open browser for sessions without windows
+                if let url = URL(string: "http://127.0.0.1:\(serverManager.port)/?sessionId=\(session.key)") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+        }
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(isHovered ? Color.accentColor.opacity(0.08) : Color.clear)
@@ -457,10 +574,30 @@ struct SessionRow: View {
                 Button("Focus Terminal Window") {
                     WindowTracker.shared.focusWindow(for: session.key)
                 }
+            } else {
+                Button("Open in Browser") {
+                    if let url = URL(string: "http://127.0.0.1:\(serverManager.port)/?sessionId=\(session.key)") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
             }
 
             Button("View Session Details") {
                 openWindow(id: "session-detail", value: session.key)
+            }
+
+            Button("Show in Finder") {
+                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
+            }
+
+            Button("Rename Session...") {
+                startEditing()
+            }
+
+            Divider()
+
+            Button("Kill Session", role: .destructive) {
+                terminateSession()
             }
 
             Divider()
@@ -472,9 +609,68 @@ struct SessionRow: View {
         }
     }
 
+    private func terminateSession() {
+        isTerminating = true
+
+        Task {
+            do {
+                try await sessionService.terminateSession(sessionId: session.key)
+                // Session terminated successfully
+                // The session monitor will automatically update
+            } catch {
+                // Handle error
+                await MainActor.run {
+                    isTerminating = false
+                }
+                // Error terminating session - reset state
+            }
+        }
+    }
+
     private var sessionName: String {
+        // Use the session name if available, otherwise fall back to directory name
+        if let name = session.value.name, !name.isEmpty {
+            return name
+        }
         let workingDir = session.value.workingDir
         return (workingDir as NSString).lastPathComponent
+    }
+
+    private func startEditing() {
+        editedName = sessionName
+        isEditing = true
+        isEditFieldFocused = true
+    }
+
+    private func cancelEditing() {
+        isEditing = false
+        editedName = ""
+        isEditFieldFocused = false
+    }
+
+    private func saveSessionName() {
+        let trimmedName = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            cancelEditing()
+            return
+        }
+
+        // Update the session name via SessionService
+        Task {
+            do {
+                try await sessionService.renameSession(sessionId: session.key, to: trimmedName)
+
+                // Clear editing state after successful update
+                await MainActor.run {
+                    isEditing = false
+                    editedName = ""
+                    isEditFieldFocused = false
+                }
+            } catch {
+                // Error already handled - editing state reverted
+                cancelEditing()
+            }
+        }
     }
 
     private var compactPath: String {

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Network
+import Observation
 import SwiftUI
 
 /// Manages the macOS status bar item with custom left-click view and right-click menu.
@@ -62,6 +63,7 @@ final class StatusBarController: NSObject {
             button.action = #selector(handleClick(_:))
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.setButtonType(.pushOnPushOff)
 
             // Accessibility
             button.setAccessibilityTitle("VibeTunnel")
@@ -84,12 +86,27 @@ final class StatusBarController: NSObject {
     }
 
     private func setupObservers() {
+        // Start observing server state changes
+        observeServerState()
+
         // Create a timer to periodically update the display
         // since SessionMonitor doesn't have a publisher
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 _ = await self?.sessionMonitor.getSessions()
                 self?.updateStatusItemDisplay()
+            }
+        }
+    }
+
+    private func observeServerState() {
+        withObservationTracking {
+            _ = serverManager.isRunning
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.updateStatusItemDisplay()
+                // Re-register the observation for continuous tracking
+                self?.observeServerState()
             }
         }
     }
@@ -109,6 +126,9 @@ final class StatusBarController: NSObject {
     func updateStatusItemDisplay() {
         guard let button = statusItem?.button else { return }
 
+        // Check if any menu is visible to preserve highlight state
+        let shouldBeHighlighted = menuManager.isAnyMenuVisible
+
         // Update icon based on server and network status
         let iconName = (serverManager.isRunning && hasNetworkAccess) ? "menubar" : "menubar.inactive"
         if let image = NSImage(named: iconName) {
@@ -121,6 +141,13 @@ final class StatusBarController: NSObject {
                 button.image = image
                 button.alphaValue = (serverManager.isRunning && hasNetworkAccess) ? 1.0 : 0.5
             }
+        }
+
+        // With .pushOnPushOff button type, the button manages its own highlight state
+        // We only need to update the state when the menu visibility changes
+        let expectedState: NSControl.StateValue = shouldBeHighlighted ? .on : .off
+        if button.state != expectedState {
+            button.state = expectedState
         }
 
         // Update session count display
@@ -144,7 +171,13 @@ final class StatusBarController: NSObject {
         // .minimalist: 2|5
         // .meter: [■■□□□]
         let indicatorStyle: IndicatorStyle = .minimalist
-        button.title = formatSessionIndicator(activeCount: activeCount, totalCount: totalCount, style: indicatorStyle)
+        let indicator = formatSessionIndicator(activeCount: activeCount, totalCount: totalCount, style: indicatorStyle)
+        button.title = indicator.isEmpty ? "" : " " + indicator
+
+        // Update button state after title change if needed
+        if shouldBeHighlighted && button.state != .on {
+            button.state = .on
+        }
 
         // Update tooltip
         updateTooltip()
@@ -226,6 +259,12 @@ final class StatusBarController: NSObject {
 
     private func handleLeftClick(_ button: NSStatusBarButton) {
         menuManager.toggleCustomWindow(relativeTo: button)
+
+        // Force update display after toggling to ensure button state is correct
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(50))
+            updateStatusItemDisplay()
+        }
     }
 
     private func handleRightClick(_ button: NSStatusBarButton) {

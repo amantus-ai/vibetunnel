@@ -1195,6 +1195,30 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
+   * Update session name
+   */
+  updateSessionName(sessionId: string, name: string): void {
+    logger.debug(
+      `[PtyManager] updateSessionName called for session ${sessionId} with name: ${name}`
+    );
+
+    // Update in session manager (persisted storage)
+    logger.debug(`[PtyManager] Calling sessionManager.updateSessionName`);
+    this.sessionManager.updateSessionName(sessionId, name);
+
+    // Update in-memory session if it exists
+    const memorySession = this.sessions.get(sessionId);
+    if (memorySession?.sessionInfo) {
+      logger.debug(`[PtyManager] Updating in-memory session info`);
+      memorySession.sessionInfo.name = name;
+    } else {
+      logger.debug(`[PtyManager] No in-memory session found for ${sessionId}`);
+    }
+
+    logger.log(`[PtyManager] Updated session ${sessionId} name to: ${name}`);
+  }
+
+  /**
    * Reset session size to terminal size (for external terminals)
    */
   resetSessionSize(sessionId: string): void {
@@ -1557,21 +1581,34 @@ export class PtyManager extends EventEmitter {
    * Get a specific session
    */
   getSession(sessionId: string): Session | null {
+    logger.debug(`[PtyManager] getSession called for sessionId: ${sessionId}`);
+
     const paths = this.sessionManager.getSessionPaths(sessionId, true);
     if (!paths) {
+      logger.debug(`[PtyManager] No session paths found for ${sessionId}`);
       return null;
     }
-    const session = this.sessionManager.loadSessionInfo(sessionId);
-    if (!session) {
+
+    const sessionInfo = this.sessionManager.loadSessionInfo(sessionId);
+    if (!sessionInfo) {
+      logger.debug(`[PtyManager] No session info found for ${sessionId}`);
       return null;
     }
+
+    // Create Session object with the id field
+    const session: Session = {
+      ...sessionInfo,
+      id: sessionId, // Ensure the id field is set
+      lastModified: sessionInfo.startedAt,
+    };
 
     if (fs.existsSync(paths.stdoutPath)) {
       const lastModified = fs.statSync(paths.stdoutPath).mtime.toISOString();
-      return { ...session, lastModified };
+      session.lastModified = lastModified;
     }
 
-    return { ...session, lastModified: session.startedAt };
+    logger.debug(`[PtyManager] Found session: ${JSON.stringify(session)}`);
+    return session;
   }
 
   getSessionPaths(sessionId: string) {

@@ -176,8 +176,34 @@ final class TailscaleService {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
 
             if process.terminationStatus == 0 {
+                // Check if we have data
+                guard !data.isEmpty else {
+                    isRunning = false
+                    tailscaleHostname = nil
+                    tailscaleIP = nil
+                    statusError = "Tailscale returned empty response"
+                    logger.warning("Tailscale status command returned empty data")
+                    return
+                }
+                
+                // Log raw output for debugging
+                let rawOutput = String(data: data, encoding: .utf8) ?? "<non-UTF8 data>"
+                logger.debug("Tailscale raw output: \(rawOutput)")
+                
                 // Parse JSON output
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                do {
+                    let jsonObject = try JSONSerialization.jsonObject(with: data)
+                    
+                    // Ensure it's a dictionary
+                    guard let json = jsonObject as? [String: Any] else {
+                        isRunning = false
+                        tailscaleHostname = nil
+                        tailscaleIP = nil
+                        statusError = "Tailscale returned invalid JSON format (not a dictionary)"
+                        logger.warning("Tailscale status returned non-dictionary JSON: \(type(of: jsonObject))")
+                        return
+                    }
+                    
                     // Check if we're logged in and connected
                     if let self_ = json["Self"] as? [String: Any],
                        let dnsName = self_["DNSName"] as? String
@@ -210,9 +236,13 @@ final class TailscaleService {
                         logger.warning("Tailscale status check failed - missing required fields in JSON")
                         logger.debug("JSON keys: \(json.keys.sorted())")
                     }
-                } else {
+                } catch let parseError {
                     isRunning = false
-                    statusError = "Failed to parse Tailscale status"
+                    tailscaleHostname = nil
+                    tailscaleIP = nil
+                    statusError = "Failed to parse Tailscale status: \(parseError.localizedDescription)"
+                    logger.error("JSON parsing error: \(parseError)")
+                    logger.debug("Failed to parse data: \(rawOutput.prefix(200))...")
                 }
             } else {
                 // Tailscale CLI returned error

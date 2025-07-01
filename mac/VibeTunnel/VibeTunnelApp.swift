@@ -64,6 +64,8 @@ struct VibeTunnelApp: App {
             }
             .windowResizability(.contentSize)
 
+            // New Session is now integrated into the popover
+
             Settings {
                 SettingsView()
                     .environment(sessionMonitor)
@@ -102,7 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
     private(set) var sparkleUpdaterManager: SparkleUpdaterManager?
     var app: VibeTunnelApp?
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AppDelegate")
-    private var statusBarController: StatusBarController?
+    private(set) var statusBarController: StatusBarController?
 
     /// Distributed notification name used to ask an existing instance to show the Settings window.
     private static let showSettingsNotification = Notification.Name("sh.vibetunnel.vibetunnel.showSettings")

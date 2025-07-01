@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import Foundation
 import OSLog
 
@@ -204,7 +205,59 @@ final class WindowTracker {
         // Filter windows for the specific terminal
         let terminalWindows = allWindows.filter { $0.terminalApp == terminal }
 
-        // First try to find window by title containing session path or command
+        // First try to find window by process PID traversal
+        if let sessionInfo = getSessionInfo(for: sessionID), let sessionPID = sessionInfo.pid {
+            logger.debug("Attempting to find window by process PID: \(sessionPID)")
+
+            // Try to find the parent process (shell) that owns this session
+            if let parentPID = getParentProcessID(of: pid_t(sessionPID)) {
+                logger.debug("Found parent process PID: \(parentPID)")
+
+                // Look for a window owned by the parent process
+                if let matchingWindow = terminalWindows.first(where: { window in
+                    // Check if the window's owner PID matches the parent PID
+                    window.ownerPID == parentPID
+                }) {
+                    logger.info("Found window by parent process match: PID \(parentPID)")
+                    return createWindowInfo(
+                        from: matchingWindow,
+                        sessionID: sessionID,
+                        terminal: terminal,
+                        tabReference: tabReference,
+                        tabID: tabID
+                    )
+                }
+
+                // If direct parent match fails, try to find grandparent or higher ancestors
+                var currentPID = parentPID
+                var depth = 0
+                while depth < 5 { // Limit traversal depth to prevent infinite loops
+                    if let grandParentPID = getParentProcessID(of: currentPID) {
+                        logger.debug("Checking ancestor process PID: \(grandParentPID) at depth \(depth + 2)")
+
+                        if let matchingWindow = terminalWindows.first(where: { window in
+                            window.ownerPID == grandParentPID
+                        }) {
+                            logger.info("Found window by ancestor process match: PID \(grandParentPID)")
+                            return createWindowInfo(
+                                from: matchingWindow,
+                                sessionID: sessionID,
+                                terminal: terminal,
+                                tabReference: tabReference,
+                                tabID: tabID
+                            )
+                        }
+
+                        currentPID = grandParentPID
+                        depth += 1
+                    } else {
+                        break
+                    }
+                }
+            }
+        }
+
+        // Fallback: try to find window by title containing session path or command
         // Sessions typically show their working directory in the title
         if let sessionInfo = getSessionInfo(for: sessionID) {
             let workingDir = sessionInfo.workingDir
@@ -314,6 +367,21 @@ final class WindowTracker {
         SessionMonitor.shared.sessions[sessionID]
     }
 
+    /// Get the parent process ID of a given process
+    private func getParentProcessID(of pid: pid_t) -> pid_t? {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.size
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+
+        let result = sysctl(&mib, u_int(mib.count), &info, &size, nil, 0)
+
+        if result == 0 && size > 0 {
+            return info.kp_eproc.e_ppid
+        }
+
+        return nil
+    }
+
     // MARK: - Window Focus
 
     /// Focuses the window associated with a session.
@@ -375,6 +443,66 @@ final class WindowTracker {
     private func findWindowForSession(_ sessionID: String, sessionInfo: ServerSessionInfo) -> WindowInfo? {
         let allWindows = Self.getAllTerminalWindows()
 
+        // First try to find window by process PID traversal
+        if let sessionPID = sessionInfo.pid {
+            logger.debug("Attempting to find window by process PID (sync): \(sessionPID)")
+
+            // Try to find the parent process (shell) that owns this session
+            if let parentPID = getParentProcessID(of: pid_t(sessionPID)) {
+                logger.debug("Found parent process PID (sync): \(parentPID)")
+
+                // Look for a window owned by the parent process
+                if let matchingWindow = allWindows.first(where: { window in
+                    window.ownerPID == parentPID
+                }) {
+                    logger.info("Found window by parent process match (sync): PID \(parentPID)")
+                    return WindowInfo(
+                        windowID: matchingWindow.windowID,
+                        ownerPID: matchingWindow.ownerPID,
+                        terminalApp: matchingWindow.terminalApp,
+                        sessionID: sessionID,
+                        createdAt: Date(),
+                        tabReference: nil,
+                        tabID: nil,
+                        bounds: matchingWindow.bounds,
+                        title: matchingWindow.title
+                    )
+                }
+
+                // If direct parent match fails, try to find grandparent or higher ancestors
+                var currentPID = parentPID
+                var depth = 0
+                while depth < 5 { // Limit traversal depth to prevent infinite loops
+                    if let grandParentPID = getParentProcessID(of: currentPID) {
+                        logger.debug("Checking ancestor process PID (sync): \(grandParentPID) at depth \(depth + 2)")
+
+                        if let matchingWindow = allWindows.first(where: { window in
+                            window.ownerPID == grandParentPID
+                        }) {
+                            logger.info("Found window by ancestor process match (sync): PID \(grandParentPID)")
+                            return WindowInfo(
+                                windowID: matchingWindow.windowID,
+                                ownerPID: matchingWindow.ownerPID,
+                                terminalApp: matchingWindow.terminalApp,
+                                sessionID: sessionID,
+                                createdAt: Date(),
+                                tabReference: nil,
+                                tabID: nil,
+                                bounds: matchingWindow.bounds,
+                                title: matchingWindow.title
+                            )
+                        }
+
+                        currentPID = grandParentPID
+                        depth += 1
+                    } else {
+                        break
+                    }
+                }
+            }
+        }
+
+        // Fallback to title-based matching
         let workingDir = sessionInfo.workingDir
         let dirName = (workingDir as NSString).lastPathComponent
         let expandedDir = (workingDir as NSString).expandingTildeInPath
@@ -567,6 +695,86 @@ final class WindowTracker {
         // Get all terminal windows
         let allWindows = Self.getAllTerminalWindows()
 
+        // First try to find window by process PID traversal
+        if let sessionPID = sessionInfo.pid {
+            logger.debug("Scanning by process PID: \(sessionPID)")
+
+            // Try to find the parent process (shell) that owns this session
+            if let parentPID = getParentProcessID(of: pid_t(sessionPID)) {
+                logger.debug("Found parent process PID (scan): \(parentPID)")
+
+                // Look for a window owned by the parent process
+                if let matchingWindow = allWindows.first(where: { window in
+                    window.ownerPID == parentPID
+                }) {
+                    logger
+                        .info("Found window by parent process match (scan): PID \(parentPID) for session \(sessionID)")
+
+                    let windowInfo = WindowInfo(
+                        windowID: matchingWindow.windowID,
+                        ownerPID: matchingWindow.ownerPID,
+                        terminalApp: matchingWindow.terminalApp,
+                        sessionID: sessionID,
+                        createdAt: Date(),
+                        tabReference: nil,
+                        tabID: nil,
+                        bounds: matchingWindow.bounds,
+                        title: matchingWindow.title
+                    )
+
+                    mapLock.withLock {
+                        sessionWindowMap[sessionID] = windowInfo
+                    }
+
+                    logger.info("Successfully mapped window \(matchingWindow.windowID) to session \(sessionID)")
+                    return
+                }
+
+                // If direct parent match fails, try to find grandparent or higher ancestors
+                var currentPID = parentPID
+                var depth = 0
+                while depth < 5 { // Limit traversal depth to prevent infinite loops
+                    if let grandParentPID = getParentProcessID(of: currentPID) {
+                        logger.debug("Checking ancestor process PID (scan): \(grandParentPID) at depth \(depth + 2)")
+
+                        if let matchingWindow = allWindows.first(where: { window in
+                            window.ownerPID == grandParentPID
+                        }) {
+                            logger
+                                .info(
+                                    "Found window by ancestor process match (scan): PID \(grandParentPID) for session \(sessionID)"
+                                )
+
+                            let windowInfo = WindowInfo(
+                                windowID: matchingWindow.windowID,
+                                ownerPID: matchingWindow.ownerPID,
+                                terminalApp: matchingWindow.terminalApp,
+                                sessionID: sessionID,
+                                createdAt: Date(),
+                                tabReference: nil,
+                                tabID: nil,
+                                bounds: matchingWindow.bounds,
+                                title: matchingWindow.title
+                            )
+
+                            mapLock.withLock {
+                                sessionWindowMap[sessionID] = windowInfo
+                            }
+
+                            logger.info("Successfully mapped window \(matchingWindow.windowID) to session \(sessionID)")
+                            return
+                        }
+
+                        currentPID = grandParentPID
+                        depth += 1
+                    } else {
+                        break
+                    }
+                }
+            }
+        }
+
+        // Fallback to title-based scanning
         let workingDir = sessionInfo.workingDir
         let dirName = (workingDir as NSString).lastPathComponent
         let expandedDir = (workingDir as NSString).expandingTildeInPath
