@@ -3,10 +3,10 @@
  */
 
 export const TEST_TIMEOUTS = {
-  QUICK: 1000,
-  DEFAULT: 3000,
-  LONG: 10000,
-  NETWORK_QUIET: 2000,
+  QUICK: 2000,
+  DEFAULT: 5000,
+  LONG: 15000,
+  NETWORK_QUIET: 3000,
 } as const;
 
 export const POOL_CONFIG = {

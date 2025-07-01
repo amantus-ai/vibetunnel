@@ -17,30 +17,30 @@ export const test = base.extend<TestFixtures>({
     page.setDefaultTimeout(testConfig.defaultTimeout);
     page.setDefaultNavigationTimeout(testConfig.navigationTimeout);
 
-    // Set up resource blocking for performance
+    // Set up resource blocking for performance - be less aggressive
     await page.route('**/*', (route) => {
       const url = route.request().url();
       const resourceType = route.request().resourceType();
 
-      // Block unnecessary resource types
+      // Only block specific external resources, not localhost
+      if (url.includes('localhost') || url.includes('127.0.0.1')) {
+        return route.continue();
+      }
+
+      // Block unnecessary resource types from external sources
       const blockedTypes = ['image', 'font', 'media'];
       if (blockedTypes.includes(resourceType)) {
         return route.abort();
       }
 
-      // Block analytics and tracking
+      // Block analytics and tracking only
       const blockedPatterns = [
         'google-analytics',
         'googletagmanager',
         'analytics',
-        '.png',
-        '.jpg',
-        '.jpeg',
-        '.gif',
-        '.svg',
-        '.woff',
-        '.woff2',
-        '.ttf',
+        'doubleclick',
+        'facebook',
+        'twitter',
       ];
 
       if (blockedPatterns.some((pattern) => url.includes(pattern))) {
@@ -89,17 +89,20 @@ export const test = base.extend<TestFixtures>({
       // Wait for app initialization with reduced timeout
       await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
 
-      // Use Promise.race for faster initialization check
-      await Promise.race([
-        page.waitForSelector('button[title="Create New Session"]', {
-          state: 'visible',
-          timeout: 3000,
-        }),
-        page.waitForSelector('auth-login', { state: 'visible', timeout: 3000 }),
-        page.waitForSelector('session-card', { state: 'visible', timeout: 3000 }),
-      ]).catch(() => {
-        // One of them should be visible
-      });
+      // Wait for at least one element to be visible
+      try {
+        await Promise.race([
+          page.waitForSelector('button[title="Create New Session"]', {
+            state: 'visible',
+            timeout: 3000,
+          }),
+          page.waitForSelector('auth-login', { state: 'visible', timeout: 3000 }),
+          page.waitForSelector('session-card', { state: 'visible', timeout: 3000 }),
+        ]);
+      } catch (error) {
+        // If all fail, give more specific error
+        throw new Error('App initialization failed - no expected elements found');
+      }
     }
 
     // Use the page
