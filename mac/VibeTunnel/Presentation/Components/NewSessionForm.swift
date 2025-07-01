@@ -5,6 +5,7 @@ struct NewSessionForm: View {
     @Binding var isPresented: Bool
     @Environment(ServerManager.self) private var serverManager
     @Environment(SessionMonitor.self) private var sessionMonitor
+    @Environment(SessionService.self) private var sessionService
 
     // Form fields
     @State private var command = "zsh"
@@ -334,13 +335,6 @@ struct NewSessionForm: View {
     private func createSession() {
         guard !command.isEmpty && !workingDirectory.isEmpty else { return }
 
-        // Check if server is running
-        guard serverManager.isRunning else {
-            errorMessage = "Server is not running. Please start the server first."
-            showError = true
-            return
-        }
-
         isCreating = true
         savePreferences()
 
@@ -352,74 +346,24 @@ struct NewSessionForm: View {
                 // Expand tilde in working directory
                 let expandedWorkingDir = NSString(string: workingDirectory).expandingTildeInPath
 
-                // Prepare request body
-                var body: [String: Any] = [
-                    "command": commandArray,
-                    "workingDir": expandedWorkingDir,
-                    "titleMode": titleMode.rawValue
-                ]
+                // Create session using SessionService
+                let sessionId = try await sessionService.createSession(
+                    command: commandArray,
+                    workingDir: expandedWorkingDir,
+                    name: sessionName.isEmpty ? nil : sessionName.trimmingCharacters(in: .whitespacesAndNewlines),
+                    titleMode: titleMode.rawValue,
+                    spawnTerminal: spawnWindow
+                )
 
-                if !sessionName.isEmpty {
-                    body["name"] = sessionName.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-
-                if spawnWindow {
-                    body["spawn_terminal"] = true
-                } else {
-                    // Web sessions need terminal dimensions
-                    body["cols"] = 120
-                    body["rows"] = 30
-                }
-
-                // Create session
-                let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions")!
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue("localhost", forHTTPHeaderField: "Host")
-                request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-                let (data, response) = try await URLSession.shared.data(for: request)
-
-                if let httpResponse = response as? HTTPURLResponse {
-                    if httpResponse.statusCode == 201 {
-                        // Success
-                        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let sessionId = json["id"] as? String
-                        {
-                            // Refresh session list
-                            await sessionMonitor.refresh()
-
-                            // If not spawning window, open in browser
-                            if !spawnWindow {
-                                if let webURL =
-                                    URL(string: "http://127.0.0.1:\(serverManager.port)/?sessionId=\(sessionId)")
-                                {
-                                    NSWorkspace.shared.open(webURL)
-                                }
-                            }
-
-                            await MainActor.run {
-                                isPresented = false
-                            }
-                        }
-                    } else {
-                        // Parse error response
-                        var errorMessage = "Failed to create session"
-                        if let errorData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let error = errorData["error"] as? String
-                        {
-                            errorMessage = error
-                        }
-
-                        throw NSError(domain: "VibeTunnel", code: httpResponse.statusCode, userInfo: [
-                            NSLocalizedDescriptionKey: errorMessage
-                        ])
+                // If not spawning window, open in browser
+                if !spawnWindow {
+                    if let webURL = URL(string: "http://127.0.0.1:\(serverManager.port)/?sessionId=\(sessionId)") {
+                        NSWorkspace.shared.open(webURL)
                     }
-                } else {
-                    throw NSError(domain: "VibeTunnel", code: 1, userInfo: [
-                        NSLocalizedDescriptionKey: "Invalid server response"
-                    ])
+                }
+
+                await MainActor.run {
+                    isPresented = false
                 }
             } catch {
                 await MainActor.run {

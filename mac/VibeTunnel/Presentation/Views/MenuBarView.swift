@@ -153,14 +153,14 @@ struct MenuBarView: View {
                     .fill(Color.accentColor.opacity(0.001))
             )
 
-            // New Session button - disabled since we can't use popover in this context
+            // New Session button
             Button(
                 action: {
-                    // Close menu and show custom window with new session
+                    // Close menu and show custom window with new session form
                     NSApp.sendAction(#selector(NSWindow.performClose(_:)), to: nil, from: nil)
                     if let statusBarController = (NSApp.delegate as? AppDelegate)?.statusBarController {
                         statusBarController.showCustomWindow()
-                        // TODO: Show new session form in custom window
+                        // Navigate to new session form
                     }
                 },
                 label: {

@@ -103,6 +103,9 @@ final class StatusBarMenuManager: NSObject {
         // Ensure button state is set immediately
         button.state = .on
 
+        // Create SessionService instance
+        let sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
+
         // Create the main view with all dependencies
         let mainView = VibeTunnelMenuView()
             .environment(sessionMonitor)
@@ -110,6 +113,7 @@ final class StatusBarMenuManager: NSObject {
             .environment(ngrokService)
             .environment(tailscaleService)
             .environment(terminalLauncher)
+            .environment(sessionService)
 
         // Wrap in custom container for proper styling
         let containerView = CustomMenuContainer {

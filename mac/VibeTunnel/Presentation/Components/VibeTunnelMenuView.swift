@@ -414,6 +414,8 @@ struct SessionRow: View {
     private var serverManager
     @Environment(SessionMonitor.self)
     private var sessionMonitor
+    @Environment(SessionService.self)
+    private var sessionService
     @State private var isTerminating = false
     @State private var isEditing = false
     @State private var editedName = ""
@@ -612,31 +614,15 @@ struct SessionRow: View {
 
         Task {
             do {
-                guard let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(session.key)") else {
-                    isTerminating = false
-                    return
-                }
-                var request = URLRequest(url: url)
-                request.httpMethod = "DELETE"
-                request.setValue("localhost", forHTTPHeaderField: "Host")
-
-                // Add local auth token if available
-                // Note: Auth token is managed by SessionMonitor internally
-
-                let (_, response) = try await URLSession.shared.data(for: request)
-
-                if let httpResponse = response as? HTTPURLResponse,
-                   httpResponse.statusCode == 200 || httpResponse.statusCode == 204
-                {
-                    // Session terminated successfully
-                    // The session monitor will automatically update
-                } else {
-                    // Handle error
-                    isTerminating = false
-                }
+                try await sessionService.terminateSession(sessionId: session.key)
+                // Session terminated successfully
+                // The session monitor will automatically update
             } catch {
                 // Handle error
-                isTerminating = false
+                await MainActor.run {
+                    isTerminating = false
+                }
+                // Error terminating session - reset state
             }
         }
     }
@@ -665,65 +651,23 @@ struct SessionRow: View {
     private func saveSessionName() {
         let trimmedName = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
-            print("[SessionRow] Rename cancelled: empty name")
             cancelEditing()
             return
         }
 
-        print("[SessionRow] Attempting to rename session \(session.key) to '\(trimmedName)'")
-
-        // Update the session name via API
+        // Update the session name via SessionService
         Task {
             do {
-                guard let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(session.key)") else {
-                    print("[SessionRow] Failed to create URL for session rename")
-                    return
-                }
+                try await sessionService.renameSession(sessionId: session.key, to: trimmedName)
 
-                print("[SessionRow] Sending PATCH request to \(url)")
-
-                var request = URLRequest(url: url)
-                request.httpMethod = "PATCH"
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue("localhost", forHTTPHeaderField: "Host")
-
-                let body = ["name": trimmedName]
-                request.httpBody = try JSONEncoder().encode(body)
-
-                print("[SessionRow] Request body: \(String(data: request.httpBody!, encoding: .utf8) ?? "nil")")
-
-                let (data, response) = try await URLSession.shared.data(for: request)
-
-                print("[SessionRow] Response received: \(response)")
-                if let responseString = String(data: data, encoding: .utf8) {
-                    print("[SessionRow] Response body: \(responseString)")
-                }
-
-                if let httpResponse = response as? HTTPURLResponse,
-                   httpResponse.statusCode == 200
-                {
-                    print("[SessionRow] Rename successful! Refreshing session monitor...")
-
-                    // Success - force refresh the session monitor to see the update immediately
-                    await sessionMonitor.refresh()
-
-                    print("[SessionRow] Session monitor refreshed")
-
-                    // Clear editing state after successful update
-                    await MainActor.run {
-                        print("[SessionRow] Clearing edit state")
-                        isEditing = false
-                        editedName = ""
-                        isEditFieldFocused = false
-                    }
-                } else {
-                    // Handle error - could show an alert or revert the name
-                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-                    print("[SessionRow] Rename failed with status code: \(statusCode)")
-                    cancelEditing()
+                // Clear editing state after successful update
+                await MainActor.run {
+                    isEditing = false
+                    editedName = ""
+                    isEditFieldFocused = false
                 }
             } catch {
-                print("[SessionRow] Error renaming session: \(error)")
+                // Error already handled - editing state reverted
                 cancelEditing()
             }
         }
