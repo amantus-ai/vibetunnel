@@ -782,9 +782,9 @@ export async function createApp(): Promise<AppInstance> {
         if (isDevelopment) {
           logger.error(chalk.yellow('\nDevelopment mode options:'));
           logger.error(
-            '  1. Run server on different port: ' + chalk.cyan('pnpm run dev:server --port 4021')
+            `  1. Run server on different port: ${chalk.cyan('pnpm run dev:server --port 4021')}`
           );
-          logger.error('  2. Use environment variable: ' + chalk.cyan('PORT=4021 pnpm run dev'));
+          logger.error(`  2. Use environment variable: ${chalk.cyan('PORT=4021 pnpm run dev')}`);
           logger.error(
             '  3. Stop the existing server (check Activity Monitor for vibetunnel processes)'
           );

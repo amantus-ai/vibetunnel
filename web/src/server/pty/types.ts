@@ -66,12 +66,10 @@ export interface PtySession {
   controlDir: string;
   stdoutPath: string;
   stdinPath: string;
-  controlPipePath: string;
   sessionJsonPath: string;
   startTime: Date;
   // Optional fields for resource cleanup
   inputSocketServer?: net.Server;
-  controlWatcher?: fs.FSWatcher;
   sessionJsonWatcher?: fs.FSWatcher;
   stdinHandler?: (data: string) => void;
   stdoutQueue?: WriteQueue;

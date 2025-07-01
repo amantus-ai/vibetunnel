@@ -144,8 +144,9 @@ export async function startTestServer(config: ServerConfig = {}): Promise<Server
     serverType = 'SERVER',
   } = config;
 
-  // Build spawn command - use built binary if available for better compatibility
-  const useBuiltBinary = fs.existsSync(BUILT_CLI_PATH);
+  // Build spawn command - always use source code with tsx for tests
+  // This avoids issues with SEA patches in node-pty
+  const useBuiltBinary = false; // Disabled - always use source for tests
   const command = useBuiltBinary ? BUILT_CLI_PATH : usePnpm ? 'pnpm' : 'tsx';
   const spawnArgs = useBuiltBinary
     ? args

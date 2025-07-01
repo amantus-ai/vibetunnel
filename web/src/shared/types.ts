@@ -55,6 +55,10 @@ export interface SessionActivity {
   isActive: boolean;
   timestamp: string;
   session?: SessionInfo;
+  specificStatus?: {
+    app: string;
+    status: string;
+  };
 }
 
 /**

@@ -1,3 +1,4 @@
+import type { Express } from 'express';
 import { Router } from 'express';
 import * as fs from 'fs';
 import { access, readdir, stat, unlink } from 'fs/promises';
@@ -24,10 +25,18 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
+  destination: (
+    _req: Express.Request,
+    _file: Express.Multer.File,
+    cb: (error: Error | null, destination: string) => void
+  ) => {
     cb(null, UPLOADS_DIR);
   },
-  filename: (_req, file, cb) => {
+  filename: (
+    _req: Express.Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, filename: string) => void
+  ) => {
     // Generate unique filename with original extension
     const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
@@ -39,7 +48,11 @@ const storage = multer.diskStorage({
 // for users. While the terminal display may not support all file formats (e.g.,
 // binary files, executables), users should be able to upload any file they need
 // and receive the path in their terminal for further processing.
-const fileFilter: multer.Options['fileFilter'] = (_req, _file, cb) => {
+const fileFilter = (
+  _req: Express.Request,
+  _file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
   // Accept all file types - no restrictions by design
   cb(null, true);
 };

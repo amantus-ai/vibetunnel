@@ -56,8 +56,8 @@ describe('FilePicker Component', () => {
 
   it('should show upload progress when uploading', async () => {
     element.visible = true;
-    element['uploading'] = true;
-    element['uploadProgress'] = 50;
+    element.uploading = true;
+    element.uploadProgress = 50;
     await element.updateComplete;
 
     const progressText = element.querySelector('span');
@@ -69,7 +69,7 @@ describe('FilePicker Component', () => {
 
   it('should show file selection button when not uploading', async () => {
     element.visible = true;
-    element['uploading'] = false;
+    element.uploading = false;
     await element.updateComplete;
 
     const buttons = element.querySelectorAll('button');
@@ -125,7 +125,7 @@ describe('FilePicker Component', () => {
 
   it('should disable cancel button when uploading', async () => {
     element.visible = true;
-    element['uploading'] = true;
+    element.uploading = true;
     await element.updateComplete;
 
     const buttons = element.querySelectorAll('button');

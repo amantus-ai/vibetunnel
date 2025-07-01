@@ -318,7 +318,7 @@ describe('SessionView Drag & Drop and Paste', () => {
     });
 
     it('should ignore paste when modals are open', async () => {
-      element['showFileBrowser'] = true;
+      element.showFileBrowser = true;
 
       const testFile = new File(['fake content'], 'clipboard.txt', { type: 'text/plain' });
       const mockClipboardItem = {

@@ -314,6 +314,14 @@ struct SessionRowView: View {
 
                 Spacer()
 
+                if let claudeStatus = claudeStatus {
+                    Text(claudeStatus)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .padding(.trailing, 8)
+                }
+
                 Text("PID: \(session.value.pid)")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -360,6 +368,14 @@ struct SessionRowView: View {
             return "\(prefix)...\(suffix)"
         }
         return name
+    }
+    
+    private var claudeStatus: String? {
+        if let specificStatus = session.value.activityStatus?.specificStatus,
+           specificStatus.app == "claude" {
+            return specificStatus.status
+        }
+        return nil
     }
 }
 

@@ -16,6 +16,8 @@ import * as os from 'os';
 import * as path from 'path';
 import { TitleMode } from '../shared/types.js';
 import { PtyManager } from './pty/index.js';
+import { VibeTunnelSocketClient } from './pty/socket-client.js';
+import { ActivityDetector } from './utils/activity-detector.js';
 import { closeLogger, createLogger } from './utils/logger.js';
 import { generateSessionName } from './utils/session-naming.js';
 import { BUILD_DATE, GIT_COMMIT, VERSION } from './version.js';
@@ -225,6 +227,11 @@ export async function startVibeTunnelForward(args: string[]) {
           process.stdin.destroy();
         }
 
+        // Restore original stdout.write if we hooked it
+        if (cleanupStdout) {
+          cleanupStdout();
+        }
+
         // Shutdown PTY manager and exit
         logger.debug('Shutting down PTY manager');
         await ptyManager.shutdown();
@@ -254,22 +261,112 @@ export async function startVibeTunnelForward(args: string[]) {
     logger.log(chalk.gray('Control directory:'), path.join(controlPath, result.sessionId));
     logger.log(chalk.gray('Build:'), `${BUILD_DATE} | Commit: ${GIT_COMMIT}`);
 
+    // Connect to the session's IPC socket
+    const socketPath = path.join(controlPath, result.sessionId, 'ipc.sock');
+    const socketClient = new VibeTunnelSocketClient(socketPath, {
+      autoReconnect: true,
+      heartbeatInterval: 30000, // 30 seconds
+    });
+
+    // Wait for socket connection
+    try {
+      await socketClient.connect();
+      logger.debug('Connected to session IPC socket');
+    } catch (error) {
+      logger.error('Failed to connect to session socket:', error);
+      throw error;
+    }
+
     // Set up terminal resize handler
     const resizeHandler = () => {
       const cols = process.stdout.columns || 80;
       const rows = process.stdout.rows || 24;
       logger.debug(`Terminal resized to ${cols}x${rows}`);
 
-      // Send resize command through PTY manager
-      try {
-        ptyManager.resizeSession(result.sessionId, cols, rows);
-      } catch (error) {
-        logger.error('Failed to resize session:', error);
+      // Send resize command through socket
+      if (!socketClient.resize(cols, rows)) {
+        logger.error('Failed to send resize command');
       }
     };
 
     // Listen for terminal resize events
     process.stdout.on('resize', resizeHandler);
+
+    // Set up activity detector for Claude status updates
+    let activityDetector: ActivityDetector | undefined;
+    let cleanupStdout: (() => void) | undefined;
+
+    if (titleMode === TitleMode.DYNAMIC) {
+      activityDetector = new ActivityDetector(command);
+
+      // Hook into stdout to detect Claude status
+      const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+
+      // Create a proper override that handles all overloads
+      const stdoutWriteOverride = function (
+        this: NodeJS.WriteStream,
+        chunk: string | Uint8Array,
+        encodingOrCallback?: BufferEncoding | ((err?: Error | null) => void),
+        callback?: (err?: Error | null) => void
+      ): boolean {
+        // Handle the overload: write(chunk, callback)
+        if (typeof encodingOrCallback === 'function') {
+          callback = encodingOrCallback;
+          encodingOrCallback = undefined;
+        }
+
+        // Process output through activity detector
+        if (activityDetector && typeof chunk === 'string') {
+          const { filteredData, activity } = activityDetector.processOutput(chunk);
+
+          // Send status update if detected
+          if (activity.specificStatus) {
+            socketClient.sendStatus(activity.specificStatus.app, activity.specificStatus.status);
+          }
+
+          // Call original with correct arguments
+          if (callback) {
+            return originalStdoutWrite.call(
+              this,
+              filteredData,
+              encodingOrCallback as BufferEncoding | undefined,
+              callback
+            );
+          } else if (encodingOrCallback && typeof encodingOrCallback === 'string') {
+            return originalStdoutWrite.call(this, filteredData, encodingOrCallback);
+          } else {
+            return originalStdoutWrite.call(this, filteredData);
+          }
+        }
+
+        // Pass through as-is if not string or no detector
+        if (callback) {
+          return originalStdoutWrite.call(
+            this,
+            chunk,
+            encodingOrCallback as BufferEncoding | undefined,
+            callback
+          );
+        } else if (encodingOrCallback && typeof encodingOrCallback === 'string') {
+          return originalStdoutWrite.call(this, chunk, encodingOrCallback);
+        } else {
+          return originalStdoutWrite.call(this, chunk);
+        }
+      };
+
+      // Apply the override
+      process.stdout.write = stdoutWriteOverride as typeof process.stdout.write;
+
+      // Store reference for cleanup
+      cleanupStdout = () => {
+        process.stdout.write = originalStdoutWrite;
+      };
+
+      // Ensure cleanup happens on process exit
+      process.on('exit', cleanupStdout);
+      process.on('SIGINT', cleanupStdout);
+      process.on('SIGTERM', cleanupStdout);
+    }
 
     // Set up raw mode for terminal input
     if (process.stdin.isTTY) {
@@ -278,6 +375,24 @@ export async function startVibeTunnelForward(args: string[]) {
     }
     process.stdin.resume();
     process.stdin.setEncoding('utf8');
+
+    // Forward stdin through socket
+    process.stdin.on('data', (data: string) => {
+      // Send through socket
+      if (!socketClient.sendStdin(data)) {
+        logger.error('Failed to send stdin data');
+      }
+    });
+
+    // Handle socket events
+    socketClient.on('disconnect', (error) => {
+      logger.error('Socket disconnected:', error?.message || 'Unknown error');
+      process.exit(1);
+    });
+
+    socketClient.on('error', (error) => {
+      logger.error('Socket error:', error);
+    });
 
     // The process will stay alive because stdin is in raw mode and resumed
   } catch (error) {
