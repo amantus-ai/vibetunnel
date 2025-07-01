@@ -95,17 +95,21 @@ swiftlint
 
 ### TypeScript/JavaScript Code
 
-- **ESLint**: For code quality checks
-- **Prettier**: For consistent formatting
+- **Biome**: For code formatting and linting (replaces ESLint + Prettier)
 - **TypeScript**: Strict mode enabled
 
 Run before committing:
 ```bash
 cd web
-pnpm run format      # Format with Prettier
-pnpm run lint        # Check with ESLint
-pnpm run lint:fix    # Auto-fix ESLint issues
-pnpm run typecheck   # Check TypeScript types
+pnpm run precommit   # Runs format + lint fixes + typecheck in one command
+```
+
+Or run individually if needed:
+```bash
+pnpm run format      # Format with Biome
+pnpm run lint        # Check with Biome + TypeScript
+pnpm run lint:fix    # Auto-fix Biome issues
+pnpm run typecheck   # Check TypeScript types only
 ```
 
 ### Important Rules
@@ -195,7 +199,7 @@ pnpm run test
 4. **Commit your changes**
    ```bash
    # Web changes
-   cd web && pnpm run lint:fix && pnpm run typecheck
+   cd web && pnpm run precommit
 
    # Swift changes
    cd mac && swiftformat . && swiftlint

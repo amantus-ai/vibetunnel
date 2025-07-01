@@ -3,7 +3,10 @@
     "allow": [
       "Bash(git -C .. pull)",
       "Bash(rg:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(pnpm run format:*)",
+      "Bash(pnpm run lint:*)",
+      "Bash(pnpm run precommit)"
     ],
     "deny": []
   }
