@@ -42,7 +42,8 @@ test.describe('Minimal Session Tests', () => {
 
       // Wait for session to be fully created before creating next one
       if (i < 2) {
-        await SmartWait.forSessionCreation(page, sessionName);
+        // Simple wait to ensure session is ready
+        await page.waitForTimeout(1000);
       }
     }
 
