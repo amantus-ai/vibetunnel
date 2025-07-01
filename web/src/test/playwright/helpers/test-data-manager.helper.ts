@@ -178,50 +178,56 @@ export class TestSessionManager {
 /**
  * Creates test data factory for consistent test data generation
  */
-export class TestDataFactory {
-  private static counters: Map<string, number> = new Map();
+const counters: Map<string, number> = new Map();
 
-  /**
-   * Generates sequential IDs for a given prefix
-   */
-  static sequentialId(prefix: string): string {
-    const current = TestDataFactory.counters.get(prefix) || 0;
-    TestDataFactory.counters.set(prefix, current + 1);
-    return `${prefix}-${current + 1}`;
-  }
+/**
+ * Generates sequential IDs for a given prefix
+ */
+function sequentialId(prefix: string): string {
+  const current = counters.get(prefix) || 0;
+  counters.set(prefix, current + 1);
+  return `${prefix}-${current + 1}`;
+}
 
-  /**
-   * Generates session name with optional prefix
-   */
-  static sessionName(prefix = 'session'): string {
-    const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
-    const counter = TestDataFactory.sequentialId(prefix);
-    return `${counter}-${timestamp}`;
-  }
+/**
+ * Generates session name with optional prefix
+ */
+function sessionName(prefix = 'session'): string {
+  const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+  const counter = sequentialId(prefix);
+  return `${counter}-${timestamp}`;
+}
 
-  /**
-   * Generates command for testing
-   */
-  static command(type: 'echo' | 'sleep' | 'env' | 'file' = 'echo'): string {
-    switch (type) {
-      case 'echo':
-        return `echo "Test output ${Date.now()}"`;
-      case 'sleep':
-        return `sleep ${Math.floor(Math.random() * 3) + 1}`;
-      case 'env':
-        return `export TEST_VAR_${Date.now()}="test_value"`;
-      case 'file':
-        return `touch test-file-${Date.now()}.tmp`;
-    }
-  }
-
-  /**
-   * Reset all counters
-   */
-  static reset(): void {
-    TestDataFactory.counters.clear();
+/**
+ * Generates command for testing
+ */
+function command(type: 'echo' | 'sleep' | 'env' | 'file' = 'echo'): string {
+  switch (type) {
+    case 'echo':
+      return `echo "Test output ${Date.now()}"`;
+    case 'sleep':
+      return `sleep ${Math.floor(Math.random() * 3) + 1}`;
+    case 'env':
+      return `export TEST_VAR_${Date.now()}="test_value"`;
+    case 'file':
+      return `touch test-file-${Date.now()}.tmp`;
   }
 }
+
+/**
+ * Reset all counters
+ */
+function reset(): void {
+  counters.clear();
+}
+
+// Export as namespace for backward compatibility
+export const TestDataFactory = {
+  sequentialId,
+  sessionName,
+  command,
+  reset,
+};
 
 /**
  * Fixture data for common test scenarios

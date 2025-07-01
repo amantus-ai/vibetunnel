@@ -98,7 +98,9 @@ test.describe('Debug Session Tests', () => {
 
     // Check the app component's state
     const appHideExited = await page.evaluate(() => {
-      const app = document.querySelector('vibetunnel-app') as any;
+      const app = document.querySelector('vibetunnel-app') as HTMLElement & {
+        hideExited?: boolean;
+      };
       return app?.hideExited;
     });
     console.log('App component hideExited:', appHideExited);
@@ -139,9 +141,7 @@ test.describe('Debug Session Tests', () => {
       console.log('Sessions exist in API but not showing in UI - likely filtered out');
 
       // Check if all sessions are exited
-      const exitedCount = sessionsResponse.sessions.filter(
-        (s: any) => s.status === 'exited'
-      ).length;
+      const exitedCount = sessionsResponse.sessions.filter((s) => s.status === 'exited').length;
       console.log(`Exited sessions: ${exitedCount} out of ${sessionsResponse.count}`);
     }
   });
