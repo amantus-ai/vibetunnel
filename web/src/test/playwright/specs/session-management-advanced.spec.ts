@@ -97,7 +97,7 @@ test.describe('Advanced Session Management', () => {
     }
   });
 
-  test.skip('should kill all sessions at once', async ({ page, sessionListPage }) => {
+  test('should kill all sessions at once', async ({ page, sessionListPage }) => {
     // Increase timeout for this test as it involves multiple sessions
     test.setTimeout(60000);
     // Create multiple tracked sessions

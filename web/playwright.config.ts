@@ -83,7 +83,7 @@ export default defineConfig({
       VIBETUNNEL_DEBUG: 'true', // Enable debug logging
       VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
       SUPPRESS_CLIENT_ERRORS: 'true',
-      VIBETUNNEL_SEA: '', // Explicitly set to empty to disable SEA loader
+      VIBETUNNEL_SEA: undefined as any, // Explicitly set to undefined to override any existing value
     },
   },
 });

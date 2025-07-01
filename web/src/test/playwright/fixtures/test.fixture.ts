@@ -125,6 +125,9 @@ export const test = base.extend<TestFixtures>({
       try {
         await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
         console.log('[Test Setup] App element found');
+
+        // Wait a bit for the app to fully initialize
+        await page.waitForTimeout(1000);
       } catch (error) {
         console.error('[Test Setup] App element not found:', error);
         const pageContent = await page.content();
@@ -135,6 +138,19 @@ export const test = base.extend<TestFixtures>({
       // Wait for at least one element to be visible
       try {
         console.log('[Test Setup] Waiting for UI elements...');
+
+        // Check what view the app is in
+        const appState = await page.evaluate(() => {
+          const app = document.querySelector('vibetunnel-app') as any;
+          return {
+            currentView: app?.currentView,
+            isAuthenticated: app?.isAuthenticated,
+            loading: app?.loading,
+            errorMessage: app?.errorMessage,
+          };
+        });
+        console.log('[Test Setup] App state:', appState);
+
         await Promise.race([
           page
             .waitForSelector('button[title="Create New Session"]', {
