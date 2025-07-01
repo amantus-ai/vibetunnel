@@ -210,7 +210,7 @@ struct MenuBarView: View {
             // Update sessions periodically while view is visible
             while true {
                 _ = await sessionMonitor.getSessions()
-                try? await Task.sleep(for: .seconds(3))
+                try? await Task.sleep(for: .seconds(1))
             }
         }
     }
@@ -344,11 +344,24 @@ struct SessionRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 // Main session row
                 HStack {
-                    Text("  • \(sessionName)")
+                    Text("  • \(commandName)")
                         .font(.system(size: 12))
                         .foregroundColor(.primary)
                         .lineLimit(1)
-                        .truncationMode(.middle)
+                        .truncationMode(.tail)
+                    
+                    // Show session name if available
+                    if let name = session.value.name, !name.isEmpty {
+                        Text("–")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary.opacity(0.6))
+                        
+                        Text(name)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
 
                     Spacer()
 
@@ -417,6 +430,32 @@ struct SessionRowView: View {
         }
     }
 
+    private var commandName: String {
+        // Extract the process name from the command
+        guard let firstCommand = session.value.command.first else {
+            return "Unknown"
+        }
+        
+        // Extract just the executable name from the path
+        let executableName = (firstCommand as NSString).lastPathComponent
+        
+        // Special handling for common commands
+        switch executableName {
+        case "zsh", "bash", "sh":
+            // For shells, check if there's a -c argument with the actual command
+            if session.value.command.count > 2,
+               session.value.command.contains("-c"),
+               let cIndex = session.value.command.firstIndex(of: "-c"),
+               cIndex + 1 < session.value.command.count {
+                let actualCommand = session.value.command[cIndex + 1]
+                return (actualCommand as NSString).lastPathComponent
+            }
+            return executableName
+        default:
+            return executableName
+        }
+    }
+    
     private var sessionName: String {
         // Extract the working directory name as the session name
         let workingDir = session.value.workingDir

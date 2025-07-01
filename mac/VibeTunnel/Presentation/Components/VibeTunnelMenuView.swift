@@ -463,12 +463,26 @@ struct SessionRow: View {
                                 return .handled
                             }
                     } else {
-                        Text(sessionName)
+                        // Show command name
+                        Text(commandName)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.primary)
                             .lineLimit(1)
-                            .truncationMode(.middle)
-                            .layoutPriority(1)
+                            .truncationMode(.tail)
+                        
+                        // Show session name if available
+                        if let name = session.value.name, !name.isEmpty {
+                            Text("–")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary.opacity(0.6))
+                            
+                            Text(name)
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .layoutPriority(1)
+                        }
 
                         // Show edit icon on hover when not editing
                         if isHovered && !isEditing && !isTerminating {
@@ -638,6 +652,32 @@ struct SessionRow: View {
         }
     }
 
+    private var commandName: String {
+        // Extract the process name from the command
+        guard let firstCommand = session.value.command.first else {
+            return "Unknown"
+        }
+        
+        // Extract just the executable name from the path
+        let executableName = (firstCommand as NSString).lastPathComponent
+        
+        // Special handling for common commands
+        switch executableName {
+        case "zsh", "bash", "sh":
+            // For shells, check if there's a -c argument with the actual command
+            if session.value.command.count > 2,
+               session.value.command.contains("-c"),
+               let cIndex = session.value.command.firstIndex(of: "-c"),
+               cIndex + 1 < session.value.command.count {
+                let actualCommand = session.value.command[cIndex + 1]
+                return (actualCommand as NSString).lastPathComponent
+            }
+            return executableName
+        default:
+            return executableName
+        }
+    }
+    
     private var sessionName: String {
         // Use the session name if available, otherwise fall back to directory name
         if let name = session.value.name, !name.isEmpty {
@@ -648,7 +688,7 @@ struct SessionRow: View {
     }
 
     private func startEditing() {
-        editedName = sessionName
+        editedName = session.value.name ?? ""
         isEditing = true
         isEditFieldFocused = true
     }

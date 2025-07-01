@@ -9,6 +9,7 @@ import type * as net from 'net';
 import type { IPty } from 'node-pty';
 import type { SessionInfo, TitleMode } from '../../shared/types.js';
 import type { ActivityDetector } from '../utils/activity-detector.js';
+import type { StatefulAnsiFilter } from '../utils/stateful-ansi-filter.js';
 import type { WriteQueue } from '../utils/write-queue.js';
 import type { AsciinemaWriter } from './asciinema-writer.js';
 
@@ -86,6 +87,8 @@ export interface PtySession {
   activityFileWritten?: boolean;
   // Explicit flag for external terminal detection
   isExternalTerminal: boolean;
+  // Stateful ANSI filter for handling split escape sequences
+  ansiFilter?: StatefulAnsiFilter;
 }
 
 export class PtyError extends Error {

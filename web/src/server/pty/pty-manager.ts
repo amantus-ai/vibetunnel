@@ -24,6 +24,7 @@ import { TitleMode } from '../../shared/types.js';
 import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
 import { ActivityDetector, type ActivityState } from '../utils/activity-detector.js';
 import { filterTerminalTitleSequences } from '../utils/ansi-filter.js';
+import { StatefulAnsiFilter } from '../utils/stateful-ansi-filter.js';
 import { createLogger } from '../utils/logger.js';
 import {
   extractCdDirectory,
@@ -363,6 +364,7 @@ export class PtyManager extends EventEmitter {
         titleMode: titleMode || TitleMode.NONE,
         isExternalTerminal: !!options.forwardToStdout,
         currentWorkingDir: workingDir,
+        ansiFilter: new StatefulAnsiFilter(),
       };
 
       this.sessions.set(sessionId, session);
@@ -472,12 +474,12 @@ export class PtyManager extends EventEmitter {
       switch (session.titleMode) {
         case TitleMode.FILTER:
           // Filter out all title sequences
-          processedData = filterTerminalTitleSequences(data, true);
+          processedData = session.ansiFilter ? session.ansiFilter.filter(data, true) : data;
           break;
 
         case TitleMode.STATIC: {
           // Filter out app titles and inject static title
-          processedData = filterTerminalTitleSequences(data, true);
+          processedData = session.ansiFilter ? session.ansiFilter.filter(data, true) : data;
           const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
           const titleSequence = generateTitleSequence(
             currentDir,
@@ -500,7 +502,7 @@ export class PtyManager extends EventEmitter {
 
         case TitleMode.DYNAMIC:
           // Filter out app titles and process through activity detector
-          processedData = filterTerminalTitleSequences(data, true);
+          processedData = session.ansiFilter ? session.ansiFilter.filter(data, true) : data;
 
           if (session.activityDetector) {
             // Debug: Log raw data when it contains Claude status indicators
