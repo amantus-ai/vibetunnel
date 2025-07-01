@@ -6,6 +6,15 @@ import { keyed } from 'lit/directives/keyed.js';
 import type { Session } from '../shared/types.js';
 // Import utilities
 import { BREAKPOINTS, SIDEBAR, TIMING, TRANSITIONS, Z_INDEX } from './utils/constants.js';
+
+// Extend Window interface for test environment detection
+declare global {
+  interface Window {
+    __playwright?: boolean;
+    __TEST__?: boolean;
+  }
+}
+
 // Import logger
 import { createLogger } from './utils/logger.js';
 import { type MediaQueryState, responsiveObserver } from './utils/responsive-utils.js';
@@ -585,7 +594,7 @@ export class VibeTunnelApp extends LitElement {
     console.log('[App] Current showCreateModal:', this.showCreateModal);
 
     // Disable View Transitions in test environment to avoid timing issues
-    const disableTransitions = window.location.port === '4022'; // Test server port
+    const disableTransitions = this.isTestEnvironment();
     console.log('[App] Disable transitions:', disableTransitions);
 
     // Check if View Transitions API is supported and not disabled
@@ -608,7 +617,7 @@ export class VibeTunnelApp extends LitElement {
 
   private handleCreateModalClose() {
     // Disable View Transitions in test environment to avoid timing issues
-    const disableTransitions = window.location.port === '4022'; // Test server port
+    const disableTransitions = this.isTestEnvironment();
 
     // Check if View Transitions API is supported and not disabled
     if (
@@ -1230,6 +1239,25 @@ export class VibeTunnelApp extends LitElement {
     return 'bottom-4';
   }
 
+  private isTestEnvironment(): boolean {
+    // Check multiple indicators for test environment
+    return (
+      // Check for common test ports
+      ['4022', '8321', '3456'].includes(window.location.port) ||
+      // Check for localhost with any port in test range (4000-5000)
+      (window.location.hostname === 'localhost' &&
+        Number.parseInt(window.location.port) >= 4000 &&
+        Number.parseInt(window.location.port) <= 5000) ||
+      // Check for test user agent markers (Playwright adds HeadlessChrome)
+      /HeadlessChrome/.test(navigator.userAgent) ||
+      // Check for Playwright-specific markers
+      !!window.__playwright ||
+      // Check for test environment globals
+      !!window.__TEST__ ||
+      // Check if running in GitHub Actions
+      /github-actions/.test(window.location.hostname)
+    );
+  }
   private get isInSidebarDismissMode(): boolean {
     if (!this.mediaState.isMobile || !this.shouldShowMobileOverlay) return false;
 
