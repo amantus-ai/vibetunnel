@@ -137,6 +137,21 @@ final class TailscaleService {
             statusError = nil // No error, just CLI not available
             return
         }
+        
+        // Check if Tailscale daemon is running by looking for the process
+        let isAppRunning = NSWorkspace.shared.runningApplications.contains { app in
+            app.bundleIdentifier == "io.tailscale.ipn.macsys" || 
+            app.bundleIdentifier == "io.tailscale.ipn.macos"
+        }
+        
+        if !isAppRunning {
+            isRunning = false
+            tailscaleHostname = nil
+            tailscaleIP = nil
+            statusError = "Tailscale app is not running"
+            logger.info("Tailscale app is not running - skipping status check")
+            return
+        }
 
         // If CLI is available, check status
         do {
@@ -166,18 +181,28 @@ final class TailscaleService {
                 process.environment = environment
             }
 
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = pipe
+            let outputPipe = Pipe()
+            let errorPipe = Pipe()
+            process.standardOutput = outputPipe
+            process.standardError = errorPipe
 
             try process.run()
             process.waitUntilExit()
 
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
 
             if process.terminationStatus == 0 {
+                // Log raw output for debugging
+                if let rawOutput = String(data: outputData, encoding: .utf8) {
+                    // tailscale status command requires the Tailscale daemon to be running.
+                    // In non-Xcode builds, when the daemon isn't running and the CLI tries to start it,
+                    // it fails due to different entitlements or sandbox restrictions compared to Xcode debug builds.
+                    logger.debug("Tailscale raw output: \(rawOutput)")
+                }
+                
                 // Parse JSON output
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let json = try? JSONSerialization.jsonObject(with: outputData) as? [String: Any] {
                     // Check if we're logged in and connected
                     if let self_ = json["Self"] as? [String: Any],
                        let dnsName = self_["DNSName"] as? String
@@ -212,11 +237,24 @@ final class TailscaleService {
                     }
                 } else {
                     isRunning = false
-                    statusError = "Failed to parse Tailscale status"
+                    // Check if this is the GUI startup error
+                    if let rawOutput = String(data: outputData, encoding: .utf8) {
+                        logger.error("Failed to parse JSON. Raw output: \(rawOutput)")
+                        
+                        if rawOutput.contains("The Tailscale GUI failed to start") {
+                            statusError = "Tailscale app is not running"
+                            tailscaleHostname = nil
+                            tailscaleIP = nil
+                        } else {
+                            statusError = "Failed to parse Tailscale status"
+                        }
+                    } else {
+                        statusError = "Failed to parse Tailscale status"
+                    }
                 }
             } else {
                 // Tailscale CLI returned error
-                let errorOutput = String(data: data, encoding: .utf8) ?? "Unknown error"
+                let errorOutput = String(data: errorData, encoding: .utf8) ?? String(data: outputData, encoding: .utf8) ?? "Unknown error"
                 isRunning = false
                 tailscaleHostname = nil
                 tailscaleIP = nil

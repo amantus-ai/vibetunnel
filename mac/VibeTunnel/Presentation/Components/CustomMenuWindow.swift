@@ -140,6 +140,11 @@ final class CustomMenuWindow: NSPanel {
         // Activate app and show window
         NSApp.activate(ignoringOtherApps: true)
         makeKeyAndOrderFront(nil)
+        
+        // Force button state update again after window is shown
+        DispatchQueue.main.async { [weak self] in
+            self?.statusBarButton?.state = .on
+        }
 
         // Set first responder after window is visible
         makeFirstResponder(self)
@@ -314,9 +319,19 @@ struct CustomMenuContainer<Content: View>: View {
     var body: some View {
         content
             .fixedSize()
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+            .background(backgroundMaterial, in: UnevenRoundedRectangle(cornerRadii: .init(
+                topLeading: 12,
+                bottomLeading: 0,
+                bottomTrailing: 0,
+                topTrailing: 12
+            )))
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                UnevenRoundedRectangle(cornerRadii: .init(
+                    topLeading: 12,
+                    bottomLeading: 0,
+                    bottomTrailing: 0,
+                    topTrailing: 12
+                ))
                     .stroke(borderColor, lineWidth: 1)
             )
     }
@@ -326,9 +341,21 @@ struct CustomMenuContainer<Content: View>: View {
         case .dark:
             Color.white.opacity(0.1)
         case .light:
-            Color.white.opacity(0.8)
+            Color.black.opacity(0.2)
         @unknown default:
             Color.white.opacity(0.5)
+        }
+    }
+    
+    private var backgroundMaterial: some ShapeStyle {
+        switch colorScheme {
+        case .dark:
+            return .ultraThinMaterial
+        case .light:
+            // Use a darker material in light mode for better contrast
+            return .regularMaterial
+        @unknown default:
+            return .ultraThinMaterial
         }
     }
 }

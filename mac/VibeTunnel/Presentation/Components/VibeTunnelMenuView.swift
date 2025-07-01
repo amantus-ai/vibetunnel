@@ -14,6 +14,8 @@ struct VibeTunnelMenuView: View {
     var tailscaleService
     @Environment(\.openWindow)
     private var openWindow
+    @Environment(\.colorScheme)
+    private var colorScheme
 
     @State private var hoveredSessionId: String?
     @State private var hasStartedKeyboardNavigation = false
@@ -50,9 +52,12 @@ struct VibeTunnelMenuView: View {
                 .padding()
                 .background(
                     LinearGradient(
-                        colors: [
+                        colors: colorScheme == .dark ? [
                             Color(NSColor.controlBackgroundColor).opacity(0.6),
                             Color(NSColor.controlBackgroundColor).opacity(0.3)
+                        ] : [
+                            Color(NSColor.controlBackgroundColor),
+                            Color(NSColor.controlBackgroundColor).opacity(0.8)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -416,6 +421,8 @@ struct SessionRow: View {
     private var sessionMonitor
     @Environment(SessionService.self)
     private var sessionService
+    @Environment(\.colorScheme)
+    private var colorScheme
     @State private var isTerminating = false
     @State private var isEditing = false
     @State private var editedName = ""
@@ -557,7 +564,7 @@ struct SessionRow: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isHovered ? Color.accentColor.opacity(0.08) : Color.clear)
+                .fill(isHovered ? hoverBackgroundColor : Color.clear)
                 .animation(.easeInOut(duration: 0.15), value: isHovered)
         )
         .overlay(
@@ -704,6 +711,10 @@ struct SessionRow: View {
         WindowTracker.shared.windowInfo(for: session.key) != nil
     }
 
+    private var hoverBackgroundColor: Color {
+        colorScheme == .dark ? Color.accentColor.opacity(0.08) : Color.accentColor.opacity(0.15)
+    }
+    
     private var duration: String {
         // Parse ISO8601 date string with fractional seconds
         let formatter = ISO8601DateFormatter()
