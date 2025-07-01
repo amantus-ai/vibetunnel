@@ -227,6 +227,11 @@ export async function startVibeTunnelForward(args: string[]) {
           process.stdin.destroy();
         }
 
+        // Restore original stdout.write if we hooked it
+        if (cleanupStdout) {
+          cleanupStdout();
+        }
+
         // Shutdown PTY manager and exit
         logger.debug('Shutting down PTY manager');
         await ptyManager.shutdown();
@@ -289,12 +294,27 @@ export async function startVibeTunnelForward(args: string[]) {
 
     // Set up activity detector for Claude status updates
     let activityDetector: ActivityDetector | undefined;
+    let cleanupStdout: (() => void) | undefined;
+
     if (titleMode === TitleMode.DYNAMIC) {
       activityDetector = new ActivityDetector(command);
 
       // Hook into stdout to detect Claude status
       const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-      process.stdout.write = (chunk: any, encoding?: any, callback?: any): boolean => {
+
+      // Create a proper override that handles all overloads
+      const stdoutWriteOverride = function (
+        this: NodeJS.WriteStream,
+        chunk: string | Uint8Array,
+        encodingOrCallback?: BufferEncoding | ((err?: Error | null) => void),
+        callback?: (err?: Error | null) => void
+      ): boolean {
+        // Handle the overload: write(chunk, callback)
+        if (typeof encodingOrCallback === 'function') {
+          callback = encodingOrCallback;
+          encodingOrCallback = undefined;
+        }
+
         // Process output through activity detector
         if (activityDetector && typeof chunk === 'string') {
           const { filteredData, activity } = activityDetector.processOutput(chunk);
@@ -304,13 +324,48 @@ export async function startVibeTunnelForward(args: string[]) {
             socketClient.sendStatus(activity.specificStatus.app, activity.specificStatus.status);
           }
 
-          // Write filtered data
-          return originalStdoutWrite(filteredData, encoding, callback);
+          // Call original with correct arguments
+          if (callback) {
+            return originalStdoutWrite.call(
+              this,
+              filteredData,
+              encodingOrCallback as BufferEncoding | undefined,
+              callback
+            );
+          } else if (encodingOrCallback && typeof encodingOrCallback === 'string') {
+            return originalStdoutWrite.call(this, filteredData, encodingOrCallback);
+          } else {
+            return originalStdoutWrite.call(this, filteredData);
+          }
         }
 
         // Pass through as-is if not string or no detector
-        return originalStdoutWrite(chunk, encoding, callback);
+        if (callback) {
+          return originalStdoutWrite.call(
+            this,
+            chunk,
+            encodingOrCallback as BufferEncoding | undefined,
+            callback
+          );
+        } else if (encodingOrCallback && typeof encodingOrCallback === 'string') {
+          return originalStdoutWrite.call(this, chunk, encodingOrCallback);
+        } else {
+          return originalStdoutWrite.call(this, chunk);
+        }
       };
+
+      // Apply the override
+      process.stdout.write = stdoutWriteOverride as typeof process.stdout.write;
+
+      // Store reference for cleanup
+      cleanupStdout = () => {
+        process.stdout.write = originalStdoutWrite;
+      };
+
+      // Ensure cleanup happens on process exit
+      process.on('exit', cleanupStdout);
+      process.on('SIGINT', cleanupStdout);
+      process.on('SIGTERM', cleanupStdout);
     }
 
     // Set up raw mode for terminal input
