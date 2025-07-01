@@ -809,7 +809,7 @@ export class SessionView extends LitElement {
     }
   }
 
-  private handleDrop(e: DragEvent) {
+  private async handleDrop(e: DragEvent) {
     e.preventDefault();
     e.stopPropagation();
     this.isDragOver = false;
@@ -821,12 +821,19 @@ export class SessionView extends LitElement {
       return;
     }
 
-    // Upload the first file (or we could upload all of them)
-    this.uploadFile(files[0]);
+    // Upload all files sequentially
+    for (const file of files) {
+      try {
+        await this.uploadFile(file);
+        logger.log(`Successfully uploaded file: ${file.name}`);
+      } catch (error) {
+        logger.error(`Failed to upload file: ${file.name}`, error);
+      }
+    }
   }
 
   // Paste handler
-  private handlePaste(e: ClipboardEvent) {
+  private async handlePaste(e: ClipboardEvent) {
     // Only handle paste if session view is focused and no modal is open
     if (this.showFileBrowser || this.showImagePicker || this.showMobileInput) {
       return;
@@ -841,12 +848,17 @@ export class SessionView extends LitElement {
 
     e.preventDefault(); // Prevent default paste behavior for files
 
-    const fileItem = fileItems[0];
-    const file = fileItem.getAsFile();
-
-    if (file) {
-      logger.log('File pasted from clipboard');
-      this.uploadFile(file);
+    // Upload all pasted files
+    for (const fileItem of fileItems) {
+      const file = fileItem.getAsFile();
+      if (file) {
+        try {
+          await this.uploadFile(file);
+          logger.log(`Successfully pasted and uploaded file: ${file.name}`);
+        } catch (error) {
+          logger.error(`Failed to upload pasted file: ${file?.name}`, error);
+        }
+      }
     }
   }
 

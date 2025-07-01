@@ -227,7 +227,7 @@ describe('SessionView Drag & Drop and Paste', () => {
       expect(mockFilePicker.uploadFile).not.toHaveBeenCalled();
     });
 
-    it('should handle multiple files and pick the first one', async () => {
+    it('should handle multiple files and upload all of them', async () => {
       const textFile = new File(['text'], 'test.txt', { type: 'text/plain' });
       const jsonFile = new File(['{}'], 'test.json', { type: 'application/json' });
       const pdfFile = new File(['pdf'], 'test.pdf', { type: 'application/pdf' });
@@ -272,12 +272,15 @@ describe('SessionView Drag & Drop and Paste', () => {
 
       element.dispatchEvent(dropEvent);
 
-      // Wait for async operations
+      // Wait for all async operations to complete
       await vi.waitFor(() => {
-        expect(mockFilePicker.uploadFile).toHaveBeenCalledWith(textFile);
+        expect(mockFilePicker.uploadFile).toHaveBeenCalledTimes(3);
       });
 
-      expect(mockFilePicker.uploadFile).toHaveBeenCalledTimes(1);
+      // Verify all files were uploaded in order
+      expect(mockFilePicker.uploadFile).toHaveBeenNthCalledWith(1, textFile);
+      expect(mockFilePicker.uploadFile).toHaveBeenNthCalledWith(2, jsonFile);
+      expect(mockFilePicker.uploadFile).toHaveBeenNthCalledWith(3, pdfFile);
     });
   });
 
@@ -415,6 +418,50 @@ describe('SessionView Drag & Drop and Paste', () => {
           })
         );
       });
+    });
+
+    it('should handle multiple files pasted from clipboard', async () => {
+      const textFile = new File(['text content'], 'text.txt', { type: 'text/plain' });
+      const imageFile = new File(['image content'], 'image.png', { type: 'image/png' });
+
+      const mockClipboardItems = [
+        {
+          kind: 'file',
+          type: 'text/plain',
+          getAsFile: () => textFile,
+        },
+        {
+          kind: 'file',
+          type: 'image/png',
+          getAsFile: () => imageFile,
+        },
+      ];
+
+      const pasteEvent = new ClipboardEvent('paste', {
+        bubbles: true,
+        clipboardData: new DataTransfer(),
+      });
+
+      Object.defineProperty(pasteEvent.clipboardData, 'items', {
+        value: mockClipboardItems,
+        writable: false,
+      });
+
+      const mockFilePicker = {
+        uploadFile: vi.fn().mockResolvedValue(undefined),
+      };
+      element.querySelector = vi.fn(() => mockFilePicker);
+
+      document.dispatchEvent(pasteEvent);
+
+      // Wait for all uploads to complete
+      await vi.waitFor(() => {
+        expect(mockFilePicker.uploadFile).toHaveBeenCalledTimes(2);
+      });
+
+      // Verify both files were uploaded
+      expect(mockFilePicker.uploadFile).toHaveBeenNthCalledWith(1, textFile);
+      expect(mockFilePicker.uploadFile).toHaveBeenNthCalledWith(2, imageFile);
     });
   });
 
