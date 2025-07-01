@@ -62,7 +62,6 @@ export class VibeTunnelApp extends LitElement {
   @state() private isAuthenticated = false;
   @state() private sidebarCollapsed = this.loadSidebarState();
   @state() private sidebarWidth = this.loadSidebarWidth();
-  @state() private userInitiatedSessionChange = false;
   @state() private isResizing = false;
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   @state() private showLogLink = false;
@@ -215,7 +214,6 @@ export class VibeTunnelApp extends LitElement {
     if (sessionId) {
       // Always navigate to the session view if a session ID is provided
       logger.log(`Navigating to session ${sessionId} from URL after auth`);
-      this.userInitiatedSessionChange = false;
       this.selectedSessionId = sessionId;
       this.currentView = 'session';
     }
@@ -624,8 +622,6 @@ export class VibeTunnelApp extends LitElement {
       mediaStateIsMobile: this.mediaState.isMobile,
     });
 
-    this.userInitiatedSessionChange = true;
-
     // Check if View Transitions API is supported
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
       // Debug: Check what elements have view-transition-name before transition
@@ -824,19 +820,17 @@ export class VibeTunnelApp extends LitElement {
   private loadSidebarState(): boolean {
     try {
       const saved = localStorage.getItem('sidebarCollapsed');
-      // Default to false (expanded) on desktop, true (collapsed) on mobile
-      // Use window.innerWidth for initial load since mediaState might not be initialized yet
       const isMobile = window.innerWidth < BREAKPOINTS.MOBILE;
 
-      // Force expanded on desktop regardless of localStorage for better UX
-      const result = isMobile ? (saved !== null ? saved === 'true' : true) : false;
+      // Respect saved state if it exists, otherwise default based on device type
+      const result = saved !== null ? saved === 'true' : isMobile;
 
       logger.debug('Loading sidebar state:', {
         savedValue: saved,
         windowWidth: window.innerWidth,
         mobileBreakpoint: BREAKPOINTS.MOBILE,
         isMobile,
-        forcedDesktopExpanded: !isMobile,
+        hasSavedState: saved !== null,
         resultingState: result ? 'collapsed' : 'expanded',
       });
 
@@ -1092,12 +1086,8 @@ export class VibeTunnelApp extends LitElement {
 
     const baseClasses = 'bg-dark-bg-secondary border-r border-dark-border flex flex-col';
     const isMobile = this.mediaState.isMobile;
-    const transitionClass =
-      this.initialRenderComplete && !isMobile
-        ? this.userInitiatedSessionChange
-          ? 'sidebar-transition'
-          : ''
-        : '';
+    // Apply transition class on desktop after initial render
+    const transitionClass = this.initialRenderComplete && !isMobile ? 'sidebar-transition' : '';
     const mobileClasses = isMobile ? 'absolute left-0 top-0 bottom-0 z-30 flex' : transitionClass;
 
     const collapsedClasses = this.sidebarCollapsed
