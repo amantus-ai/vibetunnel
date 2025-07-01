@@ -213,18 +213,11 @@ export class VibeTunnelApp extends LitElement {
     const url = new URL(window.location.href);
     const sessionId = url.searchParams.get('session');
     if (sessionId) {
-      // Try to find the session and navigate to it
-      const session = this.sessions.find((s) => s.id === sessionId);
-      if (session) {
-        this.userInitiatedSessionChange = false;
-        this.selectedSessionId = sessionId;
-        this.currentView = 'session';
-
-        // Update page title with session name
-        const sessionName = session.name || session.command.join(' ');
-        console.log('[App] Setting title from checkUrlParams:', sessionName);
-        document.title = `${sessionName} - VibeTunnel`;
-      }
+      // Always navigate to the session view if a session ID is provided
+      logger.log(`Navigating to session ${sessionId} from URL after auth`);
+      this.userInitiatedSessionChange = false;
+      this.selectedSessionId = sessionId;
+      this.currentView = 'session';
     }
   }
 
@@ -350,20 +343,14 @@ export class VibeTunnelApp extends LitElement {
             document.title = `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`;
           }
 
-          // Check if currently selected session still exists after refresh
+          // Don't redirect away from session view during loadSessions
+          // The session-view component will handle missing sessions
           if (this.selectedSessionId && this.currentView === 'session') {
             const sessionExists = this.sessions.find((s) => s.id === this.selectedSessionId);
             if (!sessionExists) {
-              // Session no longer exists, redirect to dashboard
               logger.warn(
-                `Selected session ${this.selectedSessionId} no longer exists, redirecting to dashboard`
+                `Selected session ${this.selectedSessionId} not found in current sessions list, but keeping session view`
               );
-              this.selectedSessionId = null;
-              this.currentView = 'list';
-              // Clear the session param from URL
-              const newUrl = new URL(window.location.href);
-              newUrl.searchParams.delete('session');
-              window.history.replaceState({}, '', newUrl.toString());
             }
           }
         } else if (response.status === 401) {
@@ -994,26 +981,17 @@ export class VibeTunnelApp extends LitElement {
     }
 
     if (sessionId) {
-      // Check if we have sessions loaded
-      if (this.sessions.length === 0 && this.isAuthenticated) {
-        // Sessions not loaded yet, load them first
-        await this.loadSessions();
-      }
+      // Always navigate to the session view if a session ID is provided
+      // The session-view component will handle loading and error cases
+      logger.log(`Navigating to session ${sessionId} from URL`);
+      this.selectedSessionId = sessionId;
+      this.currentView = 'session';
 
-      // Now check if the session exists
-      const session = this.sessions.find((s) => s.id === sessionId);
-      if (session) {
-        this.selectedSessionId = sessionId;
-        this.currentView = 'session';
-      } else {
-        // Session not found, go to list view
-        logger.warn(`Session ${sessionId} not found in sessions list`);
-        this.selectedSessionId = null;
-        this.currentView = 'list';
-        // Clear the session param from URL
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.delete('session');
-        window.history.replaceState({}, '', newUrl.toString());
+      // Load sessions in the background if not already loaded
+      if (this.sessions.length === 0 && this.isAuthenticated) {
+        this.loadSessions().catch((error) => {
+          logger.error('Error loading sessions:', error);
+        });
       }
     } else {
       this.selectedSessionId = null;
