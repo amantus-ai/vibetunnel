@@ -84,6 +84,7 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
           size: 0,
           lastModified: null,
           path: logPath,
+          lastModified: null,
         });
       }
 
