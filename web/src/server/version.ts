@@ -3,10 +3,11 @@
 
 import chalk from 'chalk';
 import { createLogger } from './utils/logger.js';
+import packageJson from '../../package.json';
 
 const logger = createLogger('version');
 
-export const VERSION = '1.0.0-beta.3';
+export const VERSION = packageJson.version;
 // BUILD_DATE will be replaced by build script, fallback to current time in dev
 export const BUILD_DATE = process.env.BUILD_DATE || new Date().toISOString();
 export const BUILD_TIMESTAMP = process.env.BUILD_TIMESTAMP || Date.now();
