@@ -3,6 +3,28 @@
 
 # Check if we're already inside a VibeTunnel session
 if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
+    # Special case: handle 'vt title' command inside a session
+    if [[ "$1" == "title" && $# -ge 2 ]]; then
+        shift # Remove 'title' from arguments
+        TITLE="$*" # Get all remaining arguments as the title
+        SESSION_FILE="$HOME/.vibetunnel/control/$VIBETUNNEL_SESSION_ID/session.json"
+        
+        if [ -f "$SESSION_FILE" ]; then
+            # Use jq if available, otherwise fall back to sed
+            if command -v jq >/dev/null 2>&1; then
+                jq ".name = \"$TITLE\"" "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
+            else
+                # Fallback: use sed (less reliable but works in most cases)
+                sed -i.bak "s/\"name\":[^,}]*/\"name\":\"$TITLE\"/" "$SESSION_FILE" && rm "$SESSION_FILE.bak"
+            fi
+            echo "Session title updated to: $TITLE"
+            exit 0
+        else
+            echo "Error: Session file not found at $SESSION_FILE" >&2
+            exit 1
+        fi
+    fi
+    
     echo "Error: Already inside a VibeTunnel session (ID: $VIBETUNNEL_SESSION_ID). Recursive VibeTunnel sessions are not supported." >&2
     echo "If you need to run commands, use them directly without the 'vt' prefix." >&2
     exit 1
@@ -61,6 +83,7 @@ USAGE:
     vt -i [args...]
     vt --no-shell-wrap [command] [args...]
     vt -S [command] [args...]
+    vt title <new title>    # Inside a VibeTunnel session only
     vt --help
 
 DESCRIPTION:
@@ -72,6 +95,8 @@ DESCRIPTION:
     By default, commands are executed through your shell to resolve aliases,
     functions, and builtins. Use --no-shell-wrap to execute commands directly.
 
+    Inside a VibeTunnel session, use 'vt title' to update the session name.
+
 EXAMPLES:
     vt top                  # Watch top with VibeTunnel monitoring
     vt python script.py     # Run Python script with output forwarding
@@ -79,6 +104,7 @@ EXAMPLES:
     vt --shell              # Launch current shell (equivalent to vt $SHELL)
     vt -i                   # Launch current shell (short form)
     vt -S ls -la            # List files without shell alias resolution
+    vt title "My Project"   # Update session title (inside session only)
 
 OPTIONS:
     --shell, -i            Launch current shell (equivalent to vt $SHELL)

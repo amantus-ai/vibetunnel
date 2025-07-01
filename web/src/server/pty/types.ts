@@ -71,6 +71,7 @@ export interface PtySession {
   // Optional fields for resource cleanup
   inputSocketServer?: net.Server;
   controlWatcher?: fs.FSWatcher;
+  sessionJsonWatcher?: fs.FSWatcher;
   stdinHandler?: (data: string) => void;
   stdoutQueue?: WriteQueue;
   // Terminal title mode
