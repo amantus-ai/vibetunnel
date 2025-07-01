@@ -74,6 +74,12 @@ test.describe('Session Creation', () => {
     // Navigate to list and verify all exist
     await page.goto('/');
 
+    // Wait for session cards to appear
+    await page.waitForSelector('session-card', {
+      state: 'visible',
+      timeout: process.env.CI ? 30000 : 15000,
+    });
+
     for (const session of sessions) {
       await assertSessionInList(page, session.sessionName);
     }

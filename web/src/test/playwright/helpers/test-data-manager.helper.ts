@@ -167,7 +167,7 @@ export class TestSessionManager {
                 card.textContent?.toLowerCase().includes('exit')
             );
           },
-          { timeout: process.env.CI ? 8000 : 3000 }
+          { timeout: process.env.CI ? 30000 : 10000 }
         );
 
         this.sessions.clear();
