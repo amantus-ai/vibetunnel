@@ -30,8 +30,15 @@ with open('$SESSION_FILE.tmp', 'w') as f:
                 ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/[[\.*^$()+?{|]/\\&/g' | sed 's/"/\\"/g')
                 sed -i.bak "s|\"name\":[^,}]*|\"name\":\"$ESCAPED_TITLE\"|" "$SESSION_FILE" && rm "$SESSION_FILE.bak"
             fi
-            echo "Session title updated to: $TITLE"
-            exit 0
+            
+            # Verify the update was successful
+            if [ $? -eq 0 ]; then
+                echo "Session title updated to: $TITLE"
+                exit 0
+            else
+                echo "Error: Failed to update session title" >&2
+                exit 1
+            fi
         else
             echo "Error: Session file not found at $SESSION_FILE" >&2
             exit 1
