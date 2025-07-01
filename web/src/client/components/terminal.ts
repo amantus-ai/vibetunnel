@@ -238,6 +238,12 @@ export class Terminal extends LitElement {
       this.setupResize();
       this.setupScrolling();
 
+      // Ensure terminal starts at the top
+      this.viewportY = 0;
+      if (this.terminal) {
+        this.terminal.scrollToTop();
+      }
+
       this.requestUpdate();
     } catch (error: unknown) {
       logger.error('failed to initialize terminal:', error);
