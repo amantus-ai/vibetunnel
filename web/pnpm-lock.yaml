@@ -38,9 +38,6 @@ importers:
       '@codemirror/view':
         specifier: ^6.28.0
         version: 6.37.2
-      '@types/multer':
-        specifier: ^1.4.13
-        version: 1.4.13
       '@xterm/headless':
         specifier: ^5.5.0
         version: 5.5.0
@@ -108,6 +105,9 @@ importers:
       '@types/mime-types':
         specifier: ^3.0.1
         version: 3.0.1
+      '@types/multer':
+        specifier: ^1.4.13
+        version: 1.4.13
       '@types/node':
         specifier: ^24.0.3
         version: 24.0.4

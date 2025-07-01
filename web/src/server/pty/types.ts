@@ -69,6 +69,8 @@ export interface PtySession {
   startTime: Date;
   // Optional fields for resource cleanup
   inputSocketServer?: net.Server;
+  sessionJsonWatcher?: fs.FSWatcher;
+  sessionJsonDebounceTimer?: NodeJS.Timeout | null;
   stdinHandler?: (data: string) => void;
   stdoutQueue?: WriteQueue;
   // Terminal title mode

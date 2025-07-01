@@ -382,6 +382,9 @@ export class PtyManager extends EventEmitter {
 
       // Note: stdin forwarding is now handled via IPC socket
 
+      // Setup session.json watcher for title updates (vt title command)
+      this.setupSessionJsonWatcher(session);
+
       // Initial title will be set when the first output is received
       // Do not write title sequence to PTY input as it would be sent to the shell
 
@@ -841,6 +844,123 @@ export class PtyManager extends EventEmitter {
       if (client !== sender && !client.destroyed) {
         client.write(message);
       }
+    }
+  }
+
+  /**
+   * Setup watcher for session.json changes (for vt title updates)
+   */
+  private setupSessionJsonWatcher(session: PtySession): void {
+    try {
+      const { sessionJsonPath } = session;
+      let lastSessionName = session.sessionInfo.name;
+      let debounceTimer: NodeJS.Timeout | null = null;
+
+      // Watch for changes to session.json
+      const watcher = fs.watch(sessionJsonPath, (eventType) => {
+        if (eventType === 'change') {
+          // Debounce file changes to avoid multiple rapid updates
+          if (debounceTimer) {
+            clearTimeout(debounceTimer);
+          }
+
+          debounceTimer = setTimeout(() => {
+            try {
+            // Reload session info
+            const newSessionInfo = this.sessionManager.loadSessionInfo(session.id);
+            if (!newSessionInfo) return;
+
+            // Check if name changed
+            if (newSessionInfo.name !== lastSessionName) {
+              logger.log(
+                chalk.cyan(
+                  `Session ${session.id} name changed: "${lastSessionName}" → "${newSessionInfo.name}"`
+                )
+              );
+              lastSessionName = newSessionInfo.name;
+
+              // Update in-memory session info
+              session.sessionInfo.name = newSessionInfo.name;
+
+              // Handle title update based on title mode
+              if (
+                session.titleMode === TitleMode.STATIC ||
+                session.titleMode === TitleMode.DYNAMIC
+              ) {
+                // Check if we have stdout queue (indicates forwardToStdout mode)
+                const isExternalTerminal = !!session.stdoutQueue;
+
+                // Generate new title sequence with updated name
+                const titleSequence = generateTitleSequence(
+                  session.currentWorkingDir || session.sessionInfo.workingDir,
+                  session.sessionInfo.command,
+                  newSessionInfo.name
+                );
+
+                // Write title sequence to PTY (only for external terminals)
+                if (session.ptyProcess && isExternalTerminal) {
+                  session.ptyProcess.write(titleSequence);
+                  logger.debug(
+                    `Injected updated title for session ${session.id}: ${newSessionInfo.name}`
+                  );
+                }
+
+                // If using dynamic mode, update the activity detector's base name
+                if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
+                  // Update the activity detector with new session name
+                  const activityState = session.activityDetector.getActivityState();
+                  const updatedTitle = generateDynamicTitle(
+                    session.currentWorkingDir || session.sessionInfo.workingDir,
+                    session.sessionInfo.command,
+                    activityState,
+                    newSessionInfo.name
+                  );
+
+                  // Write the dynamic title
+                  if (session.ptyProcess && isExternalTerminal) {
+                    session.ptyProcess.write(updatedTitle);
+                  }
+                }
+              }
+
+              // Emit event for clients
+              this.emit('sessionNameChanged', session.id, newSessionInfo.name);
+            }
+            } catch (error) {
+              logger.warn(`Failed to handle session.json change for session ${session.id}:`, error);
+            }
+
+            // Clear the timer reference after execution
+            session.sessionJsonDebounceTimer = null;
+          }, 100);
+
+          // Update the session's timer reference
+          session.sessionJsonDebounceTimer = debounceTimer;
+        }
+      });
+
+      // Add error handling for watcher
+      watcher.on('error', (error) => {
+        logger.error(`Session.json watcher failed for ${session.id}:`, error);
+        this.emit('watcherError', session.id, error);
+
+        // Clean up the failed watcher
+        if (session.sessionJsonWatcher) {
+          session.sessionJsonWatcher.close();
+          session.sessionJsonWatcher = undefined;
+        }
+      });
+
+      // Store watcher for cleanup
+      session.sessionJsonWatcher = watcher;
+
+      // Unref the watcher so it doesn't keep the process alive
+      watcher.unref();
+
+      logger.debug(`Session.json watcher setup for session ${session.id}`);
+    } catch (error) {
+      logger.warn(`Failed to setup session.json watcher for session ${session.id}:`, error);
+      this.emit('watcherError', session.id, error);
     }
   }
 
@@ -1709,6 +1829,13 @@ export class PtyManager extends EventEmitter {
       }
     }
 
-    // Control watcher no longer needed with socket-based IPC
+    // Close session.json watcher and clear debounce timer
+    if (session.sessionJsonDebounceTimer) {
+      clearTimeout(session.sessionJsonDebounceTimer);
+      session.sessionJsonDebounceTimer = null;
+    }
+    if (session.sessionJsonWatcher) {
+      session.sessionJsonWatcher.close();
+    }
   }
 }
