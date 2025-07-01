@@ -58,6 +58,23 @@ cd web
 pnpm run dev  # Keep this running in a separate terminal
 ```
 
+**Custom Port Configuration** (if port 4020 is already in use):
+```bash
+# Option 1: Run server directly with custom port (cleanest approach)
+pnpm run dev:server --port 4021
+
+# Option 2: Using environment variable
+PORT=4021 pnpm run dev
+
+# Option 3: Using the full dev command with arguments (requires --)
+pnpm run dev -- --port 4021
+```
+
+**Development Commands**:
+- `pnpm run dev` - Run everything (server, client watcher, CSS, assets)
+- `pnpm run dev:server` - Run just the server (accepts --port directly!)
+- `pnpm run dev:client` - Run just client-side watchers
+
 **Important**: Never manually build the web project - the development server handles all compilation automatically.
 
 ### Working with the macOS App
@@ -238,9 +255,11 @@ We follow conventional commits:
 ### Common Issues
 
 **"Port already in use"**
-- Another instance might be running
+- Another instance might be running (e.g., production VibeTunnel app)
 - Check Activity Monitor for `vibetunnel` processes
-- Try a different port in settings
+- Quick fix: `pnpm run dev:server --port 4021` (no -- needed!)
+- Or use environment variable: `PORT=4021 pnpm run dev`
+- See "Custom Port Configuration" section above for all options
 
 **"Binary not found"**
 - Run `cd web && node build-native.js` to build the Bun executable

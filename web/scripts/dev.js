@@ -8,8 +8,35 @@ console.log('Starting development mode...');
 // Validate version sync first
 require('child_process').execSync('node scripts/validate-version-sync.js', { stdio: 'inherit' });
 
-// Determine what to watch based on arguments
-const watchServer = !process.argv.includes('--client-only');
+// Parse command line arguments using Node's built-in parseArgs
+const { parseArgs } = require('util');
+
+const { values, positionals } = parseArgs({
+  options: {
+    'client-only': {
+      type: 'boolean',
+      default: false,
+    },
+    port: {
+      type: 'string',
+    },
+    bind: {
+      type: 'string',
+    },
+  },
+  allowPositionals: true,
+});
+
+const watchServer = !values['client-only'];
+
+// Build server args from parsed values
+const serverArgs = [];
+if (values.port) {
+  serverArgs.push('--port', values.port);
+}
+if (values.bind) {
+  serverArgs.push('--bind', values.bind);
+}
 
 // Initial build of assets and CSS
 console.log('Initial build...');
@@ -27,7 +54,8 @@ const commands = [
 
 // Add server watching if not client-only
 if (watchServer) {
-  commands.push(['pnpm', ['exec', 'tsx', 'watch', 'src/cli.ts', '--no-auth']]);
+  const serverCommand = ['pnpm', ['exec', 'tsx', 'watch', 'src/cli.ts', '--no-auth', ...serverArgs]];
+  commands.push(serverCommand);
 }
 
 // Set up esbuild contexts for watching
