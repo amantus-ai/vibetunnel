@@ -695,11 +695,12 @@ export class PtyManager extends EventEmitter {
 
     // Verify the socket path isn't too long
     if (socketPath.length > 103) {
+      const error = new Error(`Socket path too long: ${socketPath.length} characters`);
       logger.error(`Socket path too long (${socketPath.length} chars): ${socketPath}`);
       logger.error(
         `macOS limit is 103 characters. Consider using shorter session IDs or control paths.`
       );
-      return;
+      throw error; // Fail fast instead of returning silently
     }
 
     try {
@@ -800,15 +801,16 @@ export class PtyManager extends EventEmitter {
             clearTimeout(debounceTimer);
           }
 
-          debounceTimer = setTimeout(() => {
+          const timer = setTimeout(() => {
             this.handleSessionJsonChange(session);
             // Clear both timer references after execution
             session.sessionJsonDebounceTimer = null;
             debounceTimer = null;
           }, 100);
 
-          // Update the session's timer reference
-          session.sessionJsonDebounceTimer = debounceTimer;
+          // Update both timer references
+          session.sessionJsonDebounceTimer = timer;
+          debounceTimer = timer;
         }
       });
 
