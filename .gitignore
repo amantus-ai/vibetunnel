@@ -105,6 +105,12 @@ web/vibetunnel
 /server/vibetunnel-server
 server/vibetunnel-fwd
 /.build-tools
+linux/vibetunnel
+*.o
+
+# Rust build artifacts
+tty-fwd/target/
+tty-fwd/Cargo.lock
 
 # Bun prebuilt executables (should be built during build process)
 mac/Resources/BunPrebuilts/
