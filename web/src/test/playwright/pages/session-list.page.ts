@@ -254,7 +254,9 @@ export class SessionListPage extends BasePage {
       () => {
         const button =
           document.querySelector('[data-testid="create-session-submit"]') ||
-          document.querySelector('button:has-text("Create")');
+          Array.from(document.querySelectorAll('button')).find((btn) =>
+            btn.textContent?.includes('Create')
+          );
         if (!button) return false;
 
         const rect = button.getBoundingClientRect();
