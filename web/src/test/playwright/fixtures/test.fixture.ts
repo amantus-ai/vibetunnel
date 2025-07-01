@@ -138,13 +138,21 @@ export const test = base.extend<TestFixtures>({
         await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
         console.log('[Test Setup] App element found');
 
-        // Wait a bit for the app to fully initialize
-        await page.waitForTimeout(1000);
+        // Wait for the app to actually initialize its properties
+        await page.waitForFunction(
+          () => {
+            const app = document.querySelector('vibetunnel-app') as any;
+            // Wait until currentView is set (not undefined)
+            return app && app.currentView !== undefined;
+          },
+          { timeout: 10000 }
+        );
+        console.log('[Test Setup] App properties initialized');
       } catch (error) {
-        console.error('[Test Setup] App element not found:', error);
+        console.error('[Test Setup] App initialization failed:', error);
         const pageContent = await page.content();
         console.log('[Test Setup] Page content:', pageContent.substring(0, 500));
-        throw new Error('vibetunnel-app element not found - server may not be running properly');
+        throw new Error('vibetunnel-app element not found or not initialized');
       }
 
       // Wait for at least one element to be visible
@@ -163,26 +171,45 @@ export const test = base.extend<TestFixtures>({
         });
         console.log('[Test Setup] App state:', appState);
 
-        // If app is not initialized, wait a bit more
-        if (!appState.currentView) {
-          console.log('[Test Setup] App not initialized yet, waiting...');
-          await page.waitForTimeout(2000);
+        // Based on the current view, wait for appropriate elements
+        if (appState.currentView === 'auth') {
+          console.log('[Test Setup] App is on auth view, waiting for auth-login element...');
+          await page.waitForSelector('auth-login', { state: 'visible', timeout: 20000 });
+          console.log('[Test Setup] Found auth login element');
+        } else if (appState.currentView === 'list') {
+          console.log('[Test Setup] App is on list view, waiting for UI elements...');
+          // Wait for either create button or session cards
+          await Promise.race([
+            page
+              .waitForSelector('button[title="Create New Session"]', {
+                state: 'visible',
+                timeout: 20000,
+              })
+              .then(() => console.log('[Test Setup] Found create session button')),
+            page
+              .waitForSelector('session-card', { state: 'visible', timeout: 20000 })
+              .then(() => console.log('[Test Setup] Found session card')),
+          ]);
+        } else {
+          // Unexpected state, wait for any known element
+          console.log(
+            `[Test Setup] Unexpected view: ${appState.currentView}, waiting for any UI element...`
+          );
+          await Promise.race([
+            page
+              .waitForSelector('button[title="Create New Session"]', {
+                state: 'visible',
+                timeout: 20000,
+              })
+              .then(() => console.log('[Test Setup] Found create session button')),
+            page
+              .waitForSelector('auth-login', { state: 'visible', timeout: 20000 })
+              .then(() => console.log('[Test Setup] Found auth login element')),
+            page
+              .waitForSelector('session-card', { state: 'visible', timeout: 20000 })
+              .then(() => console.log('[Test Setup] Found session card')),
+          ]);
         }
-
-        await Promise.race([
-          page
-            .waitForSelector('button[title="Create New Session"]', {
-              state: 'visible',
-              timeout: 20000,
-            })
-            .then(() => console.log('[Test Setup] Found create session button')),
-          page
-            .waitForSelector('auth-login', { state: 'visible', timeout: 20000 })
-            .then(() => console.log('[Test Setup] Found auth login element')),
-          page
-            .waitForSelector('session-card', { state: 'visible', timeout: 20000 })
-            .then(() => console.log('[Test Setup] Found session card')),
-        ]);
       } catch (_error) {
         console.error('[Test Setup] No expected elements found');
         // Log current page state

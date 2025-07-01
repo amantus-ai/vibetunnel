@@ -24,7 +24,7 @@ test.describe('Minimal Session Tests', () => {
     await assertSessionInList(page, sessionName);
   });
 
-  test.skip('should create multiple sessions', async ({ page }) => {
+  test('should create multiple sessions', async ({ page }) => {
     // Increase timeout for this test as it creates multiple sessions
     test.setTimeout(120000); // 2 minutes for CI environment
 
