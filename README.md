@@ -29,8 +29,7 @@ Ever wanted to check on your AI agents while you're away? Need to monitor that l
 
 #### Option 2: Homebrew
 ```bash
-# Install the beta version
-brew install --cask vibetunnel@beta
+brew install --cask vibetunnel
 ```
 
 ### 2. Launch VibeTunnel
