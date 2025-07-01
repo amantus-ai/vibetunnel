@@ -135,7 +135,6 @@ jobs:
             sleep 5
           fi
         done
-    
     - name: Resolve Dependencies (once)
       run: |
         cd ios
