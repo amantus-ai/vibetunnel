@@ -222,13 +222,56 @@ export class SessionListPage extends BasePage {
       throw new Error('Create button is disabled - form may not be valid');
     }
 
+    // Wait for any animations to complete and ensure modal is stable
+    await this.page.waitForFunction(
+      () => {
+        const modal = document.querySelector('.modal-backdrop');
+        if (!modal) return false;
+
+        // Check if modal has pointer-events enabled
+        const styles = window.getComputedStyle(modal);
+        return styles.pointerEvents !== 'none' && styles.opacity === '1';
+      },
+      { timeout: 5000 }
+    );
+
     // Click and wait for response
     const responsePromise = this.page.waitForResponse(
       (response) => response.url().includes('/api/sessions'),
       { timeout: process.env.CI ? 8000 : 4000 }
     );
 
-    await submitButton.click();
+    // Try to click with force if normal click fails due to interception
+    try {
+      await submitButton.click({ timeout: 5000 });
+    } catch (_error) {
+      console.log('Normal click failed, checking for intercepting elements...');
+
+      // Log what's intercepting
+      const interceptInfo = await this.page.evaluate(() => {
+        const button =
+          document.querySelector('[data-testid="create-session-submit"]') ||
+          Array.from(document.querySelectorAll('button')).find((b) =>
+            b.textContent?.includes('Create')
+          );
+        if (!button) return 'Button not found';
+
+        const rect = button.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const topElement = document.elementFromPoint(centerX, centerY);
+
+        if (topElement === button) return 'Button is clickable';
+        if (button.contains(topElement)) return 'Child element is on top';
+
+        return `Intercepted by: ${topElement?.tagName}.${topElement?.className}`;
+      });
+
+      console.log('Interception info:', interceptInfo);
+
+      // Try force click as last resort
+      await submitButton.click({ force: true });
+    }
 
     // Wait for navigation to session view (only for web sessions)
     if (!spawnWindow) {

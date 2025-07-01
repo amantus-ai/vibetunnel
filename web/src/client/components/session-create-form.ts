@@ -376,7 +376,7 @@ export class SessionCreateForm extends LitElement {
     // Use CSS to control visibility instead of conditional rendering
     const modalClass = this.visible
       ? 'modal-backdrop flex items-center justify-center'
-      : 'modal-backdrop flex items-center justify-center hidden';
+      : 'modal-backdrop flex items-center justify-center hidden pointer-events-none';
 
     return html`
       <div class="${modalClass}">
