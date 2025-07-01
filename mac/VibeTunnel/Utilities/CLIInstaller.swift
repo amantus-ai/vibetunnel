@@ -54,13 +54,25 @@ final class CLIInstaller {
             // Check if vt script exists and is configured correctly
             var isCorrectlyInstalled = false
 
-            if FileManager.default.fileExists(atPath: vtTargetPath) {
-                // Check if it contains the correct app path reference
-                if let content = try? String(contentsOfFile: vtTargetPath, encoding: .utf8) {
-                    // Verify it's our wrapper script with all expected components
-                    isCorrectlyInstalled = content.contains("VibeTunnel CLI wrapper") &&
-                        content.contains("$TRY_PATH/Contents/Resources/vibetunnel") &&
-                        content.contains("exec \"$VIBETUNNEL_BIN\" fwd")
+            // Check both /usr/local/bin and Apple Silicon Homebrew path
+            let pathsToCheck = [
+                vtTargetPath,
+                "/opt/homebrew/bin/vt"
+            ]
+            
+            for path in pathsToCheck {
+                if FileManager.default.fileExists(atPath: path) {
+                    // Check if it contains the correct app path reference
+                    if let content = try? String(contentsOfFile: path, encoding: .utf8) {
+                        // Verify it's our wrapper script with all expected components
+                        if content.contains("VibeTunnel CLI wrapper") &&
+                           content.contains("$TRY_PATH/Contents/Resources/vibetunnel") &&
+                           content.contains("exec \"$VIBETUNNEL_BIN\" fwd") {
+                            isCorrectlyInstalled = true
+                            logger.info("CLIInstaller: Found valid vt script at \(path)")
+                            break
+                        }
+                    }
                 }
             }
 
