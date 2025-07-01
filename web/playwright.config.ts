@@ -26,7 +26,7 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: 1, // Force single worker to avoid race conditions
   /* Test timeout */
-  timeout: process.env.CI ? 60 * 1000 : 30 * 1000, // 60s on CI, 30s locally
+  timeout: process.env.CI ? 45 * 1000 : 20 * 1000, // 45s on CI, 20s locally (reduced with optimizations)
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { open: 'never' }],
@@ -44,13 +44,20 @@ export default defineConfig({
     screenshot: 'only-on-failure',
 
     /* Capture video on failure */
-    video: 'on-first-retry',
+    video: process.env.CI ? 'retain-on-failure' : 'on-first-retry',
 
     /* Maximum time each action can take */
     actionTimeout: testConfig.actionTimeout,
 
     /* Give browser more time to start on CI */
     navigationTimeout: testConfig.actionTimeout,
+
+    /* Performance optimizations */
+    headless: true, // Always run headless for speed
+    viewport: { width: 1280, height: 720 }, // Smaller viewport for faster rendering
+    deviceScaleFactor: 1, // Disable retina
+    hasTouch: false, // Disable touch events
+    isMobile: false, // Disable mobile viewport
   },
 
   /* Configure projects for major browsers */
@@ -68,7 +75,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: process.env.CI ? 'inherit' : 'pipe', // Show output in CI for debugging
     stderr: process.env.CI ? 'inherit' : 'pipe', // Show errors in CI for debugging
-    timeout: 60 * 1000, // 1 minute for server startup (reduced from 3 minutes)
+    timeout: 30 * 1000, // 30 seconds for server startup (optimized)
     cwd: process.cwd(), // Ensure we're in the right directory
     env: {
       ...process.env, // Include all existing env vars

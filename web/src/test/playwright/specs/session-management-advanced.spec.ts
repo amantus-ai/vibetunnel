@@ -47,7 +47,7 @@ test.describe('Advanced Session Management', () => {
           return status === 'exited' || !isKilling;
         },
         sessionName,
-        { timeout: 10000 } // Increase timeout as kill operation can take time
+        { timeout: 5000 } // Reduced timeout with performance optimizations
       )
       .catch(() => {});
 
@@ -99,7 +99,7 @@ test.describe('Advanced Session Management', () => {
 
   test('should kill all sessions at once', async ({ page, sessionListPage }) => {
     // Increase timeout for this test as it involves multiple sessions
-    test.setTimeout(90000);
+    test.setTimeout(60000);
     // Create multiple tracked sessions
     const sessionNames = [];
     for (let i = 0; i < 3; i++) {
@@ -270,10 +270,10 @@ test.describe('Advanced Session Management', () => {
     // Hover to see PID copy option
     await sessionCard.hover();
     const pidElement = sessionCard.locator('[title*="Click to copy PID"]');
-    await expect(pidElement).toBeVisible({ timeout: 10000 });
+    await expect(pidElement).toBeVisible({ timeout: 5000 });
 
     // Click to copy PID
-    await pidElement.click({ timeout: 10000 });
+    await pidElement.click({ timeout: 5000 });
   });
 
   test('should display session metadata correctly', async ({ page }) => {
@@ -282,7 +282,7 @@ test.describe('Advanced Session Management', () => {
       state: 'visible',
       timeout: 5000,
     });
-    await page.click('button[title="Create New Session"]', { timeout: 10000 });
+    await page.click('button[title="Create New Session"]', { timeout: 5000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
     const spawnWindowToggle = page.locator('button[role="switch"]');

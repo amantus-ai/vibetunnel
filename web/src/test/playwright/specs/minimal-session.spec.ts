@@ -18,7 +18,7 @@ test.describe('Minimal Session Tests', () => {
 
     // Navigate back to home
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 3000 });
 
     // Verify session is listed
     await assertSessionInList(page, sessionName);
@@ -26,7 +26,7 @@ test.describe('Minimal Session Tests', () => {
 
   test('should create multiple sessions', async ({ page }) => {
     // Increase timeout for this test as it creates multiple sessions
-    test.setTimeout(90000);
+    test.setTimeout(60000);
 
     const sessionNames = [];
 
@@ -37,7 +37,7 @@ test.describe('Minimal Session Tests', () => {
 
       // Navigate back to home after each creation
       await page.goto('/');
-      await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+      await page.waitForSelector('session-card', { state: 'visible', timeout: 3000 });
 
       // Add a small delay between creations to avoid race conditions
       if (i < 2) {
