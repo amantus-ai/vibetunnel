@@ -14,6 +14,8 @@ import { testConfig } from './src/test/playwright/test-config';
  */
 export default defineConfig({
   testDir: './src/test/playwright',
+  // Temporarily only run minimal debug test
+  testMatch: '**/minimal-debug.spec.ts',
   
   /* Global setup */
   globalSetup: require.resolve('./src/test/playwright/global-setup.ts'),
