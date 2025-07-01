@@ -1,9 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { type ServerInstance, startTestServer, stopServer } from '../utils/server-utils';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe('Logs API Tests', () => {
+describe.sequential('Logs API Tests', () => {
   let server: ServerInstance | null = null;
 
   beforeAll(async () => {
@@ -24,6 +24,11 @@ describe('Logs API Tests', () => {
     if (server) {
       await stopServer(server.process);
     }
+  });
+
+  // Add delay between tests to avoid socket issues
+  beforeEach(async () => {
+    await sleep(100);
   });
 
   describe('POST /api/logs/client', () => {
@@ -160,6 +165,9 @@ describe('Logs API Tests', () => {
     });
 
     it('should accept requests without authentication when using --no-auth', async () => {
+      // Wait a bit to avoid socket issues
+      await sleep(200);
+
       const response = await fetch(`http://localhost:${server?.port}/api/logs/raw`);
       expect(response.status).toBe(200);
     });
@@ -167,6 +175,9 @@ describe('Logs API Tests', () => {
 
   describe('DELETE /api/logs/clear', () => {
     it('should clear the log file', async () => {
+      // Wait to avoid socket issues from previous test
+      await sleep(200);
+
       // First, ensure there's some content in the log file
       await fetch(`http://localhost:${server?.port}/api/logs/client`, {
         method: 'POST',
@@ -212,6 +223,9 @@ describe('Logs API Tests', () => {
     });
 
     it('should accept requests without authentication when using --no-auth', async () => {
+      // Wait to avoid socket issues
+      await sleep(200);
+
       const response = await fetch(`http://localhost:${server?.port}/api/logs/clear`, {
         method: 'DELETE',
       });

@@ -23,6 +23,8 @@ export interface ServerConfig {
   logOutput?: boolean;
   /** Server type for logging context */
   serverType?: string;
+  /** Whether to wait for health check after port detection */
+  waitForHealth?: boolean;
 }
 
 /**
@@ -142,6 +144,7 @@ export async function startTestServer(config: ServerConfig = {}): Promise<Server
     timeout = DEFAULT_TIMEOUT,
     logOutput = true,
     serverType = 'SERVER',
+    waitForHealth = false,
   } = config;
 
   // Build spawn command - always use source code with tsx for tests
@@ -196,7 +199,27 @@ export async function startTestServer(config: ServerConfig = {}): Promise<Server
         resolved = true;
         clearTimeout(timeoutHandle);
         serverProcess.stdout?.off('data', dataListener);
-        resolve({ process: serverProcess, port, controlDir });
+
+        // If waitForHealth is enabled, wait for the health endpoint
+        if (waitForHealth) {
+          // Calculate max retries based on timeout and interval
+          const maxRetries = Math.floor(timeout / HEALTH_CHECK_INTERVAL);
+          waitForServerHealth(port, undefined, undefined, maxRetries)
+            .then((ready) => {
+              if (ready) {
+                resolve({ process: serverProcess, port, controlDir });
+              } else {
+                serverProcess.kill();
+                reject(new Error(`${serverType} health check failed after ${timeout}ms`));
+              }
+            })
+            .catch((error) => {
+              serverProcess.kill();
+              reject(error);
+            });
+        } else {
+          resolve({ process: serverProcess, port, controlDir });
+        }
       }
     };
 
