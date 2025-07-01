@@ -110,6 +110,10 @@ final class CustomMenuWindow: NSPanel {
         // Ensure app is active
         NSApp.activate(ignoringOtherApps: true)
 
+        // Make the window first responder to enable keyboard navigation
+        // but don't focus any specific element
+        makeFirstResponder(self)
+
         // Small delay to ensure window is fully displayed before animation
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(10))
@@ -257,6 +261,12 @@ final class CustomMenuWindow: NSPanel {
 
     override var canBecomeKey: Bool {
         true
+    }
+
+    override func makeKey() {
+        super.makeKey()
+        // Set the window itself as first responder to prevent auto-focus
+        makeFirstResponder(self)
     }
 
     override var canBecomeMain: Bool {

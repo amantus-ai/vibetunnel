@@ -1,15 +1,29 @@
+import AppKit
 import SwiftUI
 
 /// Main menu view displayed when left-clicking the status bar item.
 /// Shows server status, session list, and quick actions in a rich interface.
 struct VibeTunnelMenuView: View {
-    @Environment(SessionMonitor.self) var sessionMonitor
-    @Environment(ServerManager.self) var serverManager
-    @Environment(NgrokService.self) var ngrokService
-    @Environment(TailscaleService.self) var tailscaleService
-    @Environment(\.openWindow) private var openWindow
+    @Environment(SessionMonitor.self)
+    var sessionMonitor
+    @Environment(ServerManager.self)
+    var serverManager
+    @Environment(NgrokService.self)
+    var ngrokService
+    @Environment(TailscaleService.self)
+    var tailscaleService
+    @Environment(\.openWindow)
+    private var openWindow
 
     @State private var hoveredSessionId: String?
+    @State private var hasStartedKeyboardNavigation = false
+    @FocusState private var focusedField: FocusField?
+
+    enum FocusField: Hashable {
+        case sessionRow(String)
+        case settingsButton
+        case quitButton
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,19 +49,27 @@ struct VibeTunnelMenuView: View {
                     if activeSessions.isEmpty && idleSessions.isEmpty {
                         EmptySessionsView()
                             .padding()
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     } else {
                         // Active sessions section
                         if !activeSessions.isEmpty {
                             SessionSectionHeader(title: "Active", count: activeSessions.count)
+                                .transition(.opacity)
                             ForEach(activeSessions, id: \.key) { session in
                                 SessionRow(
                                     session: session,
                                     isHovered: hoveredSessionId == session.key,
-                                    isActive: true
+                                    isActive: true,
+                                    isFocused: focusedField == .sessionRow(session.key) && hasStartedKeyboardNavigation
                                 )
                                 .onHover { hovering in
                                     hoveredSessionId = hovering ? session.key : nil
                                 }
+                                .focused($focusedField, equals: .sessionRow(session.key))
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .move(edge: .top)),
+                                    removal: .opacity.combined(with: .move(edge: .bottom))
+                                ))
                             }
                         }
 
@@ -56,23 +78,33 @@ struct VibeTunnelMenuView: View {
                             if !activeSessions.isEmpty {
                                 Divider()
                                     .padding(.vertical, 4)
+                                    .transition(.opacity)
                             }
 
                             SessionSectionHeader(title: "Idle", count: idleSessions.count)
+                                .transition(.opacity)
                             ForEach(idleSessions, id: \.key) { session in
                                 SessionRow(
                                     session: session,
                                     isHovered: hoveredSessionId == session.key,
-                                    isActive: false
+                                    isActive: false,
+                                    isFocused: focusedField == .sessionRow(session.key) && hasStartedKeyboardNavigation
                                 )
                                 .onHover { hovering in
                                     hoveredSessionId = hovering ? session.key : nil
                                 }
+                                .focused($focusedField, equals: .sessionRow(session.key))
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .move(edge: .bottom)),
+                                    removal: .opacity.combined(with: .move(edge: .top))
+                                ))
                             }
                         }
                     }
                 }
                 .padding(.vertical, 4)
+                .animation(.easeInOut(duration: 0.3), value: activeSessions.map(\.key))
+                .animation(.easeInOut(duration: 0.3), value: idleSessions.map(\.key))
             }
             .frame(maxHeight: 400)
 
@@ -88,6 +120,17 @@ struct VibeTunnelMenuView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
+                .focusable()
+                .focused($focusedField, equals: .settingsButton)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .strokeBorder(
+                            focusedField == .settingsButton && hasStartedKeyboardNavigation ? Color.accentColor
+                                .opacity(0.3) : Color.clear,
+                            lineWidth: 1
+                        )
+                        .animation(.easeInOut(duration: 0.15), value: focusedField)
+                )
 
                 Spacer()
 
@@ -99,11 +142,39 @@ struct VibeTunnelMenuView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
+                .focusable()
+                .focused($focusedField, equals: .quitButton)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .strokeBorder(
+                            focusedField == .quitButton && hasStartedKeyboardNavigation ? Color.accentColor
+                                .opacity(0.3) : Color.clear,
+                            lineWidth: 1
+                        )
+                        .animation(.easeInOut(duration: 0.15), value: focusedField)
+                )
             }
             .padding()
         }
         .frame(width: 384)
         .background(Color.clear)
+        .onAppear {
+            // Clear any initial focus after a short delay
+            Task {
+                try? await Task.sleep(for: .milliseconds(50))
+                await MainActor.run {
+                    focusedField = nil
+                }
+            }
+        }
+        .onKeyPress { keyPress in
+            if keyPress.key == .tab && !hasStartedKeyboardNavigation {
+                hasStartedKeyboardNavigation = true
+                // Let the system handle the Tab to actually move focus
+                return .ignored
+            }
+            return .ignored
+        }
     }
 
     private var activeSessions: [(key: String, value: ServerSessionInfo)] {
@@ -129,16 +200,19 @@ struct VibeTunnelMenuView: View {
 // MARK: - Server Info Header
 
 struct ServerInfoHeader: View {
-    @Environment(ServerManager.self) var serverManager
-    @Environment(NgrokService.self) var ngrokService
-    @Environment(TailscaleService.self) var tailscaleService
+    @Environment(ServerManager.self)
+    var serverManager
+    @Environment(NgrokService.self)
+    var ngrokService
+    @Environment(TailscaleService.self)
+    var tailscaleService
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Title and status
             HStack {
                 HStack(spacing: 8) {
-                    Image("AppIcon")
+                    Image(nsImage: NSImage(named: "AppIcon") ?? NSImage())
                         .resizable()
                         .frame(width: 24, height: 24)
                         .cornerRadius(4)
@@ -181,9 +255,18 @@ struct ServerInfoHeader: View {
                             Text("Tailscale:")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
-                            Text(hostname)
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(.blue)
+                            Button(action: {
+                                if let url = URL(string: "http://\(hostname)") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }) {
+                                Text(hostname)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundColor(.blue)
+                                    .underline()
+                            }
+                            .buttonStyle(.plain)
+                            .pointingHandCursor()
                         }
                     }
                 }
@@ -193,7 +276,8 @@ struct ServerInfoHeader: View {
 }
 
 struct ServerAddressRow: View {
-    @Environment(ServerManager.self) var serverManager
+    @Environment(ServerManager.self)
+    var serverManager
 
     var body: some View {
         HStack(spacing: 4) {
@@ -203,9 +287,18 @@ struct ServerAddressRow: View {
             Text("Local:")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
-            Text(serverAddress)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.primary)
+            Button(action: {
+                if let url = URL(string: "http://\(serverAddress)") {
+                    NSWorkspace.shared.open(url)
+                }
+            }) {
+                Text(serverAddress)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.accentColor)
+                    .underline()
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
         }
     }
 
@@ -271,8 +364,10 @@ struct SessionRow: View {
     let session: (key: String, value: ServerSessionInfo)
     let isHovered: Bool
     let isActive: Bool
+    let isFocused: Bool
 
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openWindow)
+    private var openWindow
 
     var body: some View {
         Button(action: {
@@ -285,9 +380,11 @@ struct SessionRow: View {
                         .fill(activityColor.opacity(0.3))
                         .frame(width: 8, height: 8)
                         .blur(radius: 2)
+                        .animation(.easeInOut(duration: 0.4), value: activityColor)
                     Circle()
                         .fill(activityColor)
                         .frame(width: 4, height: 4)
+                        .animation(.easeInOut(duration: 0.4), value: activityColor)
                 }
 
                 // Session info
@@ -306,25 +403,23 @@ struct SessionRow: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary)
                         }
-
-                        if let pid = session.value.pid {
-                            Text("PID: \(pid)")
-                                .font(.system(size: 10))
-                                .foregroundColor(Color.secondary.opacity(0.6))
-                        }
                     }
 
-                    HStack(spacing: 4) {
-                        if let activityStatus = session.value.activityStatus?.specificStatus?.status {
+                    if let activityStatus = session.value.activityStatus?.specificStatus?.status {
+                        HStack(spacing: 4) {
                             Text(activityStatus)
                                 .font(.system(size: 10))
                                 .foregroundColor(.orange)
 
-                            Text("·")
-                                .font(.system(size: 10))
-                                .foregroundColor(Color.secondary.opacity(0.6))
-                        }
+                            Spacer()
 
+                            Text(compactPath)
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                    } else {
                         Text(compactPath)
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
@@ -348,6 +443,15 @@ struct SessionRow: View {
                 .fill(isHovered ? Color.accentColor.opacity(0.08) : Color.clear)
                 .animation(.easeInOut(duration: 0.15), value: isHovered)
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(
+                    isFocused ? Color.accentColor.opacity(0.3) : Color.clear,
+                    lineWidth: 1
+                )
+                .animation(.easeInOut(duration: 0.15), value: isFocused)
+        )
+        .focusable()
         .contextMenu {
             if hasWindow {
                 Button("Focus Terminal Window") {
@@ -440,7 +544,8 @@ struct SessionRow: View {
 }
 
 struct EmptySessionsView: View {
-    @Environment(ServerManager.self) var serverManager
+    @Environment(ServerManager.self)
+    var serverManager
     @State private var isAnimating = false
 
     var body: some View {
