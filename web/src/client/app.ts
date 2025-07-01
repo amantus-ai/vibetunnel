@@ -69,6 +69,7 @@ export class VibeTunnelApp extends LitElement {
   private initialLoadComplete = false;
   private responsiveObserverInitialized = false;
   private initialRenderComplete = false;
+  private sidebarAnimationReady = false;
 
   private hotReloadWs: WebSocket | null = null;
   private errorTimeoutId: number | null = null;
@@ -94,6 +95,10 @@ export class VibeTunnelApp extends LitElement {
     // Mark initial render as complete after a microtask to ensure DOM is settled
     Promise.resolve().then(() => {
       this.initialRenderComplete = true;
+      // Enable sidebar animations after a short delay to prevent initial load animations
+      setTimeout(() => {
+        this.sidebarAnimationReady = true;
+      }, 100);
     });
   }
 
@@ -1086,8 +1091,8 @@ export class VibeTunnelApp extends LitElement {
 
     const baseClasses = 'bg-dark-bg-secondary border-r border-dark-border flex flex-col';
     const isMobile = this.mediaState.isMobile;
-    // Apply transition class on desktop after initial render
-    const transitionClass = this.initialRenderComplete && !isMobile ? 'sidebar-transition' : '';
+    // Only apply transition class when animations are ready (not during initial load)
+    const transitionClass = this.sidebarAnimationReady && !isMobile ? 'sidebar-transition' : '';
     const mobileClasses = isMobile ? 'absolute left-0 top-0 bottom-0 z-30 flex' : transitionClass;
 
     const collapsedClasses = this.sidebarCollapsed
