@@ -1,8 +1,8 @@
 import { TerminalTestUtils } from '../utils/terminal-test-utils';
 import { WaitUtils } from '../utils/test-utils';
-import { PerformanceBasePage } from './performance-base.page';
+import { BasePage } from './base.page';
 
-export class SessionViewPage extends PerformanceBasePage {
+export class SessionViewPage extends BasePage {
   // Selectors
   private readonly selectors = {
     terminal: 'vibe-terminal',

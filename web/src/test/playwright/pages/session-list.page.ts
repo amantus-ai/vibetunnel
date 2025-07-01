@@ -1,8 +1,8 @@
 import { screenshotOnError } from '../helpers/screenshot.helper';
 import { validateCommand, validateSessionName } from '../utils/validation.utils';
-import { PerformanceBasePage } from './performance-base.page';
+import { BasePage } from './base.page';
 
-export class SessionListPage extends PerformanceBasePage {
+export class SessionListPage extends BasePage {
   // Selectors
   private readonly selectors = {
     createButton: '[data-testid="create-session-button"]',
