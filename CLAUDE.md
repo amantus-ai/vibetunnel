@@ -77,9 +77,26 @@ In the `mac/` directory:
 - Mac tests: Swift Testing framework in `VibeTunnelTests/`
 - Web tests: Vitest in `web/src/test/`
 
+## Testing on External Devices (iPad, Safari, etc.)
+
+When the user reports issues on external devices, use the development server method for testing:
+
+```bash
+# Run dev server accessible from external devices
+cd web
+pnpm run dev --port 4021 --bind 0.0.0.0
+```
+
+Then access from the external device using `http://[mac-ip]:4021`
+
+**Important**: The production server runs on port 4020, so use 4021 for development to avoid conflicts.
+
+For detailed instructions, see `docs/TESTING_EXTERNAL_DEVICES.md`
+
 ## Key Files Quick Reference
 
 - Architecture Details: `docs/ARCHITECTURE.md`
 - API Specifications: `docs/spec.md`
 - Server Implementation Guide: `web/spec.md`
 - Build Configuration: `web/package.json`, `mac/Package.swift`
+- External Device Testing: `docs/TESTING_EXTERNAL_DEVICES.md`
