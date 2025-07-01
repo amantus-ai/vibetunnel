@@ -406,12 +406,23 @@ struct SessionRow: View {
     }
     
     private var duration: String {
-        // Parse ISO8601 date string
+        // Parse ISO8601 date string with fractional seconds
         let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
         guard let startDate = formatter.date(from: session.value.startedAt) else {
-            return "unknown"
+            // Fallback: try without fractional seconds
+            formatter.formatOptions = [.withInternetDateTime]
+            guard let startDate = formatter.date(from: session.value.startedAt) else {
+                return ""  // Return empty string instead of "unknown"
+            }
+            return formatDuration(from: startDate)
         }
         
+        return formatDuration(from: startDate)
+    }
+    
+    private func formatDuration(from startDate: Date) -> String {
         let elapsed = Date().timeIntervalSince(startDate)
         
         if elapsed < 60 {
