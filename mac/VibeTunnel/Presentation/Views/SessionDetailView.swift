@@ -30,11 +30,15 @@ struct SessionDetailView: View {
             // Session Information
             VStack(alignment: .leading, spacing: 16) {
                 DetailRow(label: "Session ID", value: session.id)
-                DetailRow(label: "Command", value: session.command)
+                DetailRow(label: "Command", value: session.command.joined(separator: " "))
                 DetailRow(label: "Working Directory", value: session.workingDir)
                 DetailRow(label: "Status", value: session.status.capitalized)
                 DetailRow(label: "Started At", value: formatDate(session.startedAt))
                 DetailRow(label: "Last Modified", value: formatDate(session.lastModified))
+                
+                if let pid = session.pid {
+                    DetailRow(label: "Process ID", value: "\(pid)")
+                }
 
                 if let exitCode = session.exitCode {
                     DetailRow(label: "Exit Code", value: "\(exitCode)")
@@ -71,7 +75,11 @@ struct SessionDetailView: View {
 
     private func updateWindowTitle() {
         let dir = URL(fileURLWithPath: session.workingDir).lastPathComponent
-        windowTitle = "\(dir) — VibeTunnel (PID: \(session.pid))"
+        if let pid = session.pid {
+            windowTitle = "\(dir) — VibeTunnel (PID: \(pid))"
+        } else {
+            windowTitle = "\(dir) — VibeTunnel"
+        }
     }
 
     private func formatDate(_ dateString: String) -> String {

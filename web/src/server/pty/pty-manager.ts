@@ -719,7 +719,7 @@ export class PtyManager extends EventEmitter {
           parser.addData(chunk);
 
           for (const { type, payload } of parser.parseMessages()) {
-            this.handleSocketMessage(session, type, payload, client);
+            this.handleSocketMessage(session, type, payload);
           }
         });
 
@@ -750,12 +750,7 @@ export class PtyManager extends EventEmitter {
   /**
    * Handle incoming socket messages
    */
-  private handleSocketMessage(
-    session: PtySession,
-    type: MessageType,
-    payload: Buffer,
-    client?: net.Socket
-  ): void {
+  private handleSocketMessage(session: PtySession, type: MessageType, payload: Buffer): void {
     try {
       const data = parsePayload(type, payload);
 
@@ -778,11 +773,7 @@ export class PtyManager extends EventEmitter {
         }
 
         case MessageType.HEARTBEAT:
-          // Echo heartbeat back to the client
-          if (client && !client.destroyed) {
-            const heartbeatFrame = frameMessage(MessageType.HEARTBEAT, Buffer.alloc(0));
-            client.write(heartbeatFrame);
-          }
+          // Heartbeat received - no action needed for now
           break;
 
         default:

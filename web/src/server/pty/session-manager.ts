@@ -33,7 +33,7 @@ export class SessionManager {
   private validateSessionId(sessionId: string): void {
     if (!SessionManager.SESSION_ID_REGEX.test(sessionId)) {
       throw new PtyError(
-        'Invalid session ID format. Only alphanumeric characters, hyphens, and underscores are allowed.',
+        `Invalid session ID format: "${sessionId}". Session IDs must only contain letters, numbers, hyphens (-), and underscores (_).`,
         'INVALID_SESSION_ID'
       );
     }

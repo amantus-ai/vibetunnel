@@ -38,6 +38,9 @@ struct MenuBarView: View {
             SessionCountView(count: sessionMonitor.sessionCount)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
+                .onAppear {
+                    print("[MenuBarView] Session count: \(sessionMonitor.sessionCount), total sessions: \(sessionMonitor.sessions.count)")
+                }
 
             // Session list with clickable items
             if !sessionMonitor.sessions.isEmpty {
@@ -177,8 +180,13 @@ struct MenuBarView: View {
         }
         .frame(minWidth: 200)
         .task {
-            // Initial delay to ensure auth token is set
-            try? await Task.sleep(for: .milliseconds(500))
+            // Wait for server to be running before fetching sessions
+            while !serverManager.isRunning {
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+            
+            // Give the server a moment to fully initialize after starting
+            try? await Task.sleep(for: .milliseconds(100))
             
             // Force initial refresh
             await sessionMonitor.refresh()
@@ -334,9 +342,11 @@ struct SessionRowView: View {
                         .padding(.trailing, 8)
                 }
 
-                Text("PID: \(session.value.pid)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                if let pid = session.value.pid {
+                    Text("PID: \(pid)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
             }
             .padding(.vertical, 2)
             .padding(.horizontal, 8)

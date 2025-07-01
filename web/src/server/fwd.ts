@@ -146,7 +146,7 @@ export async function startVibeTunnelForward(args: string[]) {
     // Validate session ID format for security
     if (!/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
       logger.error(
-        'Invalid session ID format. Only alphanumeric characters, hyphens, and underscores are allowed.'
+        `Invalid session ID format: "${sessionId}". Session IDs must only contain letters, numbers, hyphens (-), and underscores (_).`
       );
       closeLogger();
       process.exit(1);
