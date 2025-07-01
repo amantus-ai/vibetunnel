@@ -32,6 +32,7 @@ export class SessionHeader extends LitElement {
   @property({ type: Function }) onBack?: () => void;
   @property({ type: Function }) onSidebarToggle?: () => void;
   @property({ type: Function }) onOpenFileBrowser?: () => void;
+  @property({ type: Function }) onCreateSession?: () => void;
   @property({ type: Function }) onOpenImagePicker?: () => void;
   @property({ type: Function }) onMaxWidthToggle?: () => void;
   @property({ type: Function }) onWidthSelect?: (width: number) => void;
@@ -80,20 +81,33 @@ export class SessionHeader extends LitElement {
         style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(0.75rem, env(safe-area-inset-left)); padding-right: max(0.75rem, env(safe-area-inset-right));"
       >
         <div class="flex items-center gap-3 min-w-0 flex-1">
-          <!-- Sidebar Toggle Button (shown when sidebar is collapsed) -->
+          <!-- Sidebar Toggle and Create Session Buttons (shown when sidebar is collapsed) -->
           ${
             this.showSidebarToggle && this.sidebarCollapsed
               ? html`
-                <button
-                  class="bg-dark-bg-tertiary border border-dark-border rounded-lg p-1.5 font-mono text-dark-text-muted transition-all duration-300 hover:text-dark-text hover:bg-dark-bg hover:border-accent-green flex-shrink-0"
-                  @click=${() => this.onSidebarToggle?.()}
-                  title="Show sidebar (Toggle with Cmd+B)"
-                >
-                  <!-- Right chevron icon to expand sidebar -->
-                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                  </svg>
-                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    class="bg-dark-bg-tertiary border border-dark-border rounded-lg p-1.5 font-mono text-dark-text-muted transition-all duration-300 hover:text-dark-text hover:bg-dark-bg hover:border-accent-green flex-shrink-0"
+                    @click=${() => this.onSidebarToggle?.()}
+                    title="Show sidebar (Toggle with Cmd+B)"
+                  >
+                    <!-- Right chevron icon to expand sidebar -->
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
+                    </svg>
+                  </button>
+                  
+                  <!-- Create Session button -->
+                  <button
+                    class="bg-dark-bg-tertiary border border-accent-green text-accent-green rounded-lg p-1.5 font-mono transition-all duration-300 hover:bg-accent-green hover:text-dark-bg flex-shrink-0"
+                    @click=${() => this.onCreateSession?.()}
+                    title="Create New Session (⌘K)"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+                    </svg>
+                  </button>
+                </div>
               `
               : ''
           }

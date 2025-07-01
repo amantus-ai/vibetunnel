@@ -1344,6 +1344,7 @@ export class VibeTunnelApp extends LitElement {
                       .disableFocusManagement=${this.hasActiveOverlay}
                       @navigate-to-list=${this.handleNavigateToList}
                       @toggle-sidebar=${this.handleToggleSidebar}
+                      @create-session=${this.handleCreateSession}
                       @session-status-changed=${this.handleSessionStatusChanged}
                     ></session-view>
                   `

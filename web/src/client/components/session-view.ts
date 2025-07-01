@@ -496,6 +496,16 @@ export class SessionView extends LitElement {
     );
   }
 
+  private handleCreateSession() {
+    // Dispatch event to create a new session
+    this.dispatchEvent(
+      new CustomEvent('create-session', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   private handleSessionExit(e: Event) {
     const customEvent = e as CustomEvent;
     logger.log('session exit event received', customEvent.detail);
@@ -1042,6 +1052,7 @@ export class SessionView extends LitElement {
           .widthTooltip=${this.getWidthTooltip()}
           .onBack=${() => this.handleBack()}
           .onSidebarToggle=${() => this.handleSidebarToggle()}
+          .onCreateSession=${() => this.handleCreateSession()}
           .onOpenFileBrowser=${() => this.handleOpenFileBrowser()}
           .onOpenImagePicker=${() => this.handleOpenFilePicker()}
           .onMaxWidthToggle=${() => this.handleMaxWidthToggle()}
