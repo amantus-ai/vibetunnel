@@ -279,42 +279,21 @@ struct ServerInfoHeader: View {
                     ServerAddressRow()
 
                     if ngrokService.isActive, let publicURL = ngrokService.publicUrl {
-                        HStack(spacing: 4) {
-                            Image(systemName: "network")
-                                .font(.system(size: 10))
-                                .foregroundColor(.purple)
-                            Text("ngrok:")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                            Text(publicURL)
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(.purple)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
+                        ServerAddressRow(
+                            icon: "network",
+                            label: "ngrok:",
+                            address: publicURL,
+                            url: URL(string: publicURL)
+                        )
                     }
 
                     if tailscaleService.isRunning, let hostname = tailscaleService.tailscaleHostname {
-                        HStack(spacing: 4) {
-                            Image(systemName: "shield")
-                                .font(.system(size: 10))
-                                .foregroundColor(.blue)
-                            Text("Tailscale:")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                            Button(action: {
-                                if let url = URL(string: "http://\(hostname)") {
-                                    NSWorkspace.shared.open(url)
-                                }
-                            }) {
-                                Text(hostname)
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .foregroundColor(.blue)
-                                    .underline()
-                            }
-                            .buttonStyle(.plain)
-                            .pointingHandCursor()
-                        }
+                        ServerAddressRow(
+                            icon: "shield",
+                            label: "Tailscale:",
+                            address: hostname,
+                            url: URL(string: "http://\(hostname):\(serverManager.port)")
+                        )
                     }
                 }
             }
@@ -323,33 +302,55 @@ struct ServerInfoHeader: View {
 }
 
 struct ServerAddressRow: View {
+    let icon: String
+    let label: String
+    let address: String
+    let url: URL?
+    
     @Environment(ServerManager.self)
     var serverManager
+    
+    init(
+        icon: String = "server.rack",
+        label: String = "Local:",
+        address: String? = nil,
+        url: URL? = nil
+    ) {
+        self.icon = icon
+        self.label = label
+        self.address = address ?? ""
+        self.url = url
+    }
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "server.rack")
+            Image(systemName: icon)
                 .font(.system(size: 10))
-                .foregroundColor(Color(red: 0.0, green: 0.7, blue: 0.0))
-            Text("Local:")
+                .foregroundColor(.green)
+            Text(label)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
             Button(action: {
-                if let url = URL(string: "http://\(serverAddress)") {
+                if let url = url ?? (address.isEmpty ? nil : URL(string: "http://\(computedAddress)")) {
                     NSWorkspace.shared.open(url)
                 }
             }) {
-                Text(serverAddress)
+                Text(computedAddress)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.green)
                     .underline()
             }
             .buttonStyle(.plain)
             .pointingHandCursor()
         }
     }
-
-    private var serverAddress: String {
+    
+    private var computedAddress: String {
+        if !address.isEmpty {
+            return address
+        }
+        
+        // Default behavior for local server
         let bindAddress = serverManager.bindAddress
         if bindAddress == "127.0.0.1" {
             return "127.0.0.1:\(serverManager.port)"
