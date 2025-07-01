@@ -736,6 +736,10 @@ export class PtyManager extends EventEmitter {
    */
   private setupControlPipe(session: PtySession): void {
     const controlPipePath = session.controlPipePath;
+    if (!controlPipePath) {
+      logger.warn(`No control pipe path for session ${session.id}`);
+      return;
+    }
 
     try {
       // Create control file if it doesn't exist
@@ -1083,7 +1087,8 @@ export class PtyManager extends EventEmitter {
 
     try {
       const messageStr = `${JSON.stringify(message)}\n`;
-      fs.appendFileSync(sessionPaths.controlPipePath, messageStr);
+      const controlPipePath = sessionPaths.controlPipePath;
+      fs.appendFileSync(controlPipePath, messageStr);
       return true;
     } catch (error) {
       logger.error(`Failed to send control message to session ${sessionId}:`, error);
@@ -1746,14 +1751,17 @@ export class PtyManager extends EventEmitter {
   private setupStdinForwarding(session: PtySession): void {
     if (!session.ptyProcess) return;
 
-    // Forward stdin to PTY with maximum speed
-    process.stdin.on('data', (data: string) => {
+    // Create and store the listener to enable cleanup
+    const stdinDataListener = (data: Buffer) => {
       try {
-        session.ptyProcess?.write(data);
+        session.ptyProcess?.write(data.toString());
       } catch (error) {
         logger.error(`Failed to forward stdin to session ${session.id}:`, error);
       }
-    });
+    };
+
+    session.stdinDataListener = stdinDataListener;
+    process.stdin.on('data', stdinDataListener);
   }
 
   /**
@@ -1802,8 +1810,14 @@ export class PtyManager extends EventEmitter {
       session.sessionJsonWatcher.close();
     }
 
+    // Clean up stdin listener
+    if (session.stdinDataListener) {
+      process.stdin.removeListener('data', session.stdinDataListener);
+      session.stdinDataListener = undefined;
+    }
+
     // Remove control pipe
-    if (fs.existsSync(session.controlPipePath)) {
+    if (session.controlPipePath && fs.existsSync(session.controlPipePath)) {
       try {
         fs.unlinkSync(session.controlPipePath);
       } catch (_e) {

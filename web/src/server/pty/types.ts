@@ -72,7 +72,10 @@ export interface PtySession {
   sessionJsonWatcher?: fs.FSWatcher;
   sessionJsonDebounceTimer?: NodeJS.Timeout | null;
   stdinHandler?: (data: string) => void;
+  stdinDataListener?: (data: Buffer) => void;
   stdoutQueue?: WriteQueue;
+  controlPipePath?: string;
+  controlWatcher?: fs.FSWatcher;
   // Terminal title mode
   titleMode?: TitleMode;
   // Track current working directory for title updates
