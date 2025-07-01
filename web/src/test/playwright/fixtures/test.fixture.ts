@@ -18,37 +18,42 @@ export const test = base.extend<TestFixtures>({
     page.setDefaultNavigationTimeout(testConfig.navigationTimeout);
 
     // Set up resource blocking for performance - be less aggressive
-    await page.route('**/*', (route) => {
-      const url = route.request().url();
-      const resourceType = route.request().resourceType();
+    // Only intercept routes if explicitly dealing with external resources
+    const shouldBlockExternalResources = false; // Disable for now to fix CI issues
+    
+    if (shouldBlockExternalResources) {
+      await page.route('**/*', (route) => {
+        const url = route.request().url();
+        const resourceType = route.request().resourceType();
 
-      // Only block specific external resources, not localhost
-      if (url.includes('localhost') || url.includes('127.0.0.1')) {
+        // Only block specific external resources, not localhost
+        if (url.includes('localhost') || url.includes('127.0.0.1')) {
+          return route.continue();
+        }
+
+        // Block unnecessary resource types from external sources
+        const blockedTypes = ['image', 'font', 'media'];
+        if (blockedTypes.includes(resourceType)) {
+          return route.abort();
+        }
+
+        // Block analytics and tracking only
+        const blockedPatterns = [
+          'google-analytics',
+          'googletagmanager',
+          'analytics',
+          'doubleclick',
+          'facebook',
+          'twitter',
+        ];
+
+        if (blockedPatterns.some((pattern) => url.includes(pattern))) {
+          return route.abort();
+        }
+
         return route.continue();
-      }
-
-      // Block unnecessary resource types from external sources
-      const blockedTypes = ['image', 'font', 'media'];
-      if (blockedTypes.includes(resourceType)) {
-        return route.abort();
-      }
-
-      // Block analytics and tracking only
-      const blockedPatterns = [
-        'google-analytics',
-        'googletagmanager',
-        'analytics',
-        'doubleclick',
-        'facebook',
-        'twitter',
-      ];
-
-      if (blockedPatterns.some((pattern) => url.includes(pattern))) {
-        return route.abort();
-      }
-
-      return route.continue();
-    });
+      });
+    }
 
     // Only do initial setup on first navigation
     const isFirstNavigation = !page.url() || page.url() === 'about:blank';

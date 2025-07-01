@@ -35,14 +35,14 @@ export async function assertSessionInList(
 
   // Find and verify the session card
   const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
-  
+
   // If status is specified, filter by status
   let targetCard = sessionCard;
   if (status) {
     const lowerStatus = status.toLowerCase();
     targetCard = sessionCard.filter({ hasText: new RegExp(lowerStatus, 'i') });
   }
-  
+
   // Use first() to avoid strict mode violations when there are multiple matches
   await expect(targetCard.first()).toBeVisible({ timeout });
 

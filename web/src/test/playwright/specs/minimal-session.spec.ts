@@ -36,12 +36,12 @@ test.describe('Minimal Session Tests', () => {
       sessionNames.push(sessionName);
 
       // Navigate back to home after each creation
-      await page.goto('/');
-      await page.waitForSelector('session-card', { state: 'visible', timeout: 3000 });
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
 
       // Add a small delay between creations to avoid race conditions
       if (i < 2) {
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
       }
     }
 

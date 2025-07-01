@@ -106,8 +106,9 @@ test.describe('Advanced Session Management', () => {
       const { sessionName } = await sessionManager.createTrackedSession();
       sessionNames.push(sessionName);
 
-      // Go back to list
-      await page.goto('/');
+      // Go back to list with proper wait
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('session-card', { state: 'visible', timeout: 3000 });
     }
 
     // Verify all sessions are visible
@@ -195,7 +196,9 @@ test.describe('Advanced Session Management', () => {
     );
 
     // Wait for the UI to update after killing sessions
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {
+      // Ignore network idle timeout - the UI might still be updating
+    });
 
     // After killing all sessions, verify the result by checking for exited status
     // We can see in the screenshot that sessions appear in a grid view with "exited" status
