@@ -16,6 +16,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { TitleMode } from '../shared/types.js';
 import { PtyManager } from './pty/index.js';
+import { SessionManager } from './pty/session-manager.js';
 import { VibeTunnelSocketClient } from './pty/socket-client.js';
 import { ActivityDetector } from './utils/activity-detector.js';
 import { closeLogger, createLogger } from './utils/logger.js';
@@ -36,6 +37,7 @@ function showUsage() {
   console.log('  --session-id <id>     Use a pre-generated session ID');
   console.log('  --title-mode <mode>   Terminal title mode: none, filter, static, dynamic');
   console.log('                        (defaults to none for most commands, dynamic for claude)');
+  console.log('  --update-title <title> Update session title and exit (requires --session-id)');
   console.log('');
   console.log('Title Modes:');
   console.log('  none     - No title management (default)');
@@ -52,6 +54,7 @@ function showUsage() {
   console.log('  pnpm exec tsx src/fwd.ts --title-mode static bash -l');
   console.log('  pnpm exec tsx src/fwd.ts --title-mode filter vim');
   console.log('  pnpm exec tsx src/fwd.ts --session-id abc123 claude');
+  console.log('  pnpm exec tsx src/fwd.ts --update-title "New Title" --session-id abc123');
   console.log('');
   console.log('The command will be spawned in the current working directory');
   console.log('and managed through the VibeTunnel PTY infrastructure.');
@@ -76,6 +79,7 @@ export async function startVibeTunnelForward(args: string[]) {
   // Parse command line arguments
   let sessionId: string | undefined;
   let titleMode: TitleMode = TitleMode.NONE;
+  let updateTitle: string | undefined;
   let remainingArgs = args;
 
   // Check environment variables for title mode
@@ -101,6 +105,9 @@ export async function startVibeTunnelForward(args: string[]) {
     if (remainingArgs[0] === '--session-id' && remainingArgs.length > 1) {
       sessionId = remainingArgs[1];
       remainingArgs = remainingArgs.slice(2);
+    } else if (remainingArgs[0] === '--update-title' && remainingArgs.length > 1) {
+      updateTitle = remainingArgs[1];
+      remainingArgs = remainingArgs.slice(2);
     } else if (remainingArgs[0] === '--title-mode' && remainingArgs.length > 1) {
       const mode = remainingArgs[1].toLowerCase();
       if (Object.values(TitleMode).includes(mode as TitleMode)) {
@@ -122,6 +129,43 @@ export async function startVibeTunnelForward(args: string[]) {
   // This allows commands like: fwd -- command-with-dashes
   if (remainingArgs[0] === '--' && remainingArgs.length > 1) {
     remainingArgs = remainingArgs.slice(1);
+  }
+
+  // Handle special case: --update-title mode
+  if (updateTitle !== undefined) {
+    if (!sessionId) {
+      logger.error('--update-title requires --session-id');
+      closeLogger();
+      process.exit(1);
+    }
+
+    // Initialize session manager
+    const controlPath = path.join(os.homedir(), '.vibetunnel', 'control');
+    const sessionManager = new SessionManager(controlPath);
+
+    try {
+      // Load existing session info
+      const sessionInfo = sessionManager.loadSessionInfo(sessionId);
+      if (!sessionInfo) {
+        logger.error(`Session ${sessionId} not found`);
+        closeLogger();
+        process.exit(1);
+      }
+
+      // Update the title
+      sessionInfo.name = updateTitle;
+      sessionManager.saveSessionInfo(sessionId, sessionInfo);
+
+      logger.log(`Session title updated to: ${updateTitle}`);
+      closeLogger();
+      process.exit(0);
+    } catch (error) {
+      logger.error(
+        `Failed to update session title: ${error instanceof Error ? error.message : String(error)}`
+      );
+      closeLogger();
+      process.exit(1);
+    }
   }
 
   const command = remainingArgs;

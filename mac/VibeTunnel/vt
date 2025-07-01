@@ -1,55 +1,7 @@
 #!/bin/bash
 # VibeTunnel CLI wrapper
 
-# Check if we're already inside a VibeTunnel session
-if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
-    # Special case: handle 'vt title' command inside a session
-    if [[ "$1" == "title" && $# -ge 2 ]]; then
-        shift # Remove 'title' from arguments
-        TITLE="$*" # Get all remaining arguments as the title
-        SESSION_FILE="$HOME/.vibetunnel/control/$VIBETUNNEL_SESSION_ID/session.json"
-        
-        if [ -f "$SESSION_FILE" ]; then
-            # Use jq if available, otherwise fall back to python
-            if command -v jq >/dev/null 2>&1; then
-                # Use jq's --arg flag to safely pass the title as a variable
-                jq --arg title "$TITLE" '.name = $title' "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
-            elif command -v python3 >/dev/null 2>&1; then
-                # Fallback to Python for safe JSON manipulation
-                python3 -c "
-import json, sys
-with open('$SESSION_FILE', 'r') as f:
-    data = json.load(f)
-data['name'] = sys.argv[1]
-with open('$SESSION_FILE.tmp', 'w') as f:
-    json.dump(data, f, indent=2)
-" "$TITLE" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
-            else
-                # Last resort: use printf to escape the title and sed with delimiter that's unlikely in titles
-                # Use a delimiter that's extremely unlikely to appear in a title
-                ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/[[\.*^$()+?{|]/\\&/g' | sed 's/"/\\"/g')
-                sed -i.bak "s|\"name\":[^,}]*|\"name\":\"$ESCAPED_TITLE\"|" "$SESSION_FILE" && rm "$SESSION_FILE.bak"
-            fi
-            
-            # Verify the update was successful
-            if [ $? -eq 0 ]; then
-                echo "Session title updated to: $TITLE"
-                exit 0
-            else
-                echo "Error: Failed to update session title" >&2
-                exit 1
-            fi
-        else
-            echo "Error: Session file not found at $SESSION_FILE" >&2
-            exit 1
-        fi
-    fi
-    
-    echo "Error: Already inside a VibeTunnel session (ID: $VIBETUNNEL_SESSION_ID). Recursive VibeTunnel sessions are not supported." >&2
-    echo "If you need to run commands, use them directly without the 'vt' prefix." >&2
-    exit 1
-fi
-
+# First, find the VibeTunnel app location
 # Try standard locations first, but verify the binary exists
 APP_PATH=""
 for TRY_PATH in "/Applications/VibeTunnel.app" "$HOME/Applications/VibeTunnel.app"; do
@@ -89,6 +41,22 @@ fi
 VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
 if [ ! -f "$VIBETUNNEL_BIN" ]; then
     echo "Error: vibetunnel binary not found in app bundle at $VIBETUNNEL_BIN" >&2
+    exit 1
+fi
+
+# Check if we're already inside a VibeTunnel session
+if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
+    # Special case: handle 'vt title' command inside a session
+    if [[ "$1" == "title" && $# -ge 2 ]]; then
+        shift # Remove 'title' from arguments
+        TITLE="$*" # Get all remaining arguments as the title
+        
+        # Use the vibetunnel binary's new --update-title flag
+        exec "$VIBETUNNEL_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
+    fi
+    
+    echo "Error: Already inside a VibeTunnel session (ID: $VIBETUNNEL_SESSION_ID). Recursive VibeTunnel sessions are not supported." >&2
+    echo "If you need to run commands, use them directly without the 'vt' prefix." >&2
     exit 1
 fi
 
