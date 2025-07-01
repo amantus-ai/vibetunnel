@@ -14,6 +14,12 @@ import os
 final class TailscaleService {
     static let shared = TailscaleService()
 
+    /// Tailscale local API endpoint
+    private static let tailscaleAPIEndpoint = "http://100.100.100.100/api/data"
+
+    /// API request timeout in seconds
+    private static let apiTimeoutInterval: TimeInterval = 5.0
+
     /// Logger instance for debugging
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "TailscaleService")
 
@@ -50,24 +56,39 @@ final class TailscaleService {
 
     /// Struct to decode Tailscale API response
     private struct TailscaleAPIResponse: Codable {
-        let Status: String
-        let DeviceName: String
-        let TailnetName: String
-        let DomainName: String?
-        let IPv4: String?
-        let IPv6: String?
-        let ControlAdminURL: String?
+        let status: String
+        let deviceName: String
+        let tailnetName: String
+        let domainName: String?
+        let iPv4: String?
+        let iPv6: String?
+        let controlAdminURL: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case status = "Status"
+            case deviceName = "DeviceName"
+            case tailnetName = "TailnetName"
+            case domainName = "DomainName"
+            case iPv4 = "IPv4"
+            case iPv6 = "IPv6"
+            case controlAdminURL = "ControlAdminURL"
+        }
     }
 
     /// Fetches Tailscale status from the API
     private func fetchTailscaleStatus() async -> TailscaleAPIResponse? {
-        guard let url = URL(string: "http://100.100.100.100/api/data") else {
+        guard let url = URL(string: Self.tailscaleAPIEndpoint) else {
             logger.error("Invalid Tailscale API URL")
             return nil
         }
 
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            // Configure URLSession with timeout
+            let configuration = URLSessionConfiguration.default
+            configuration.timeoutIntervalForRequest = Self.apiTimeoutInterval
+            let session = URLSession(configuration: configuration)
+
+            let (data, response) = try await session.data(from: url)
 
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200
@@ -101,19 +122,19 @@ final class TailscaleService {
         // Try to fetch status from API
         if let apiResponse = await fetchTailscaleStatus() {
             // Tailscale is running if API responds
-            isRunning = apiResponse.Status == "Running"
+            isRunning = apiResponse.status == "Running"
 
             if isRunning {
                 // Extract hostname from device name and tailnet name
                 // Format: devicename.tailnetname (without .ts.net suffix)
-                let deviceName = apiResponse.DeviceName.lowercased().replacingOccurrences(of: " ", with: "-")
-                let tailnetName = apiResponse.TailnetName
+                let deviceName = apiResponse.deviceName.lowercased().replacingOccurrences(of: " ", with: "-")
+                let tailnetName = apiResponse.tailnetName
                     .replacingOccurrences(of: ".ts.net", with: "")
                     .replacingOccurrences(of: ".tailscale.net", with: "")
 
                 tailscaleHostname = "\(deviceName).\(tailnetName).ts.net"
-                tailscaleIP = apiResponse.IPv4
-                dashboardURL = apiResponse.ControlAdminURL
+                tailscaleIP = apiResponse.iPv4
+                dashboardURL = apiResponse.controlAdminURL
                 statusError = nil
 
                 logger

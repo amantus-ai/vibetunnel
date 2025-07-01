@@ -306,10 +306,10 @@ struct ServerAddressRow: View {
     let label: String
     let address: String
     let url: URL?
-    
+
     @Environment(ServerManager.self)
     var serverManager
-    
+
     init(
         icon: String = "server.rack",
         label: String = "Local:",
@@ -344,12 +344,12 @@ struct ServerAddressRow: View {
             .pointingHandCursor()
         }
     }
-    
+
     private var computedAddress: String {
         if !address.isEmpty {
             return address
         }
-        
+
         // Default behavior for local server
         let bindAddress = serverManager.bindAddress
         if bindAddress == "127.0.0.1" {
@@ -381,7 +381,10 @@ struct ServerStatusBadge: View {
                 .fill(isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0).opacity(0.1) : Color.red.opacity(0.1))
                 .overlay(
                     Capsule()
-                        .stroke(isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0).opacity(0.3) : Color.red.opacity(0.3), lineWidth: 0.5)
+                        .stroke(
+                            isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0).opacity(0.3) : Color.red.opacity(0.3),
+                            lineWidth: 0.5
+                        )
                 )
         )
     }
@@ -701,9 +704,9 @@ struct SessionRow: View {
 
     private var activityColor: Color {
         if isActive {
-            Color(red: 1.0, green: 0.5, blue: 0.0)  // Brighter, more saturated orange
+            Color(red: 1.0, green: 0.5, blue: 0.0) // Brighter, more saturated orange
         } else {
-            Color(red: 0.0, green: 0.7, blue: 0.0)  // Darker, more visible green
+            Color(red: 0.0, green: 0.7, blue: 0.0) // Darker, more visible green
         }
     }
 
@@ -715,7 +718,7 @@ struct SessionRow: View {
     private var hoverBackgroundColor: Color {
         colorScheme == .dark ? Color.accentColor.opacity(0.08) : Color.accentColor.opacity(0.15)
     }
-    
+
     private var duration: String {
         // Parse ISO8601 date string with fractional seconds
         let formatter = ISO8601DateFormatter()

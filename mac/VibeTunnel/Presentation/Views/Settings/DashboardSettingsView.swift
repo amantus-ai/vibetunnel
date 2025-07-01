@@ -832,10 +832,10 @@ private struct TailscaleIntegrationSection: View {
                         Text("Tailscale is not installed")
                             .font(.callout)
                     }
-                    
+
                     Spacer()
                 }
-                
+
                 // Show additional content based on state
                 if !tailscaleService.isInstalled {
                     // Show download links when not installed
@@ -879,16 +879,18 @@ private struct TailscaleIntegrationSection: View {
                                     .foregroundStyle(.blue)
                             }
                         }
-                        
+
                         // Show warning if in localhost-only mode
                         if accessMode == .localhost {
                             HStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundColor(.orange)
                                     .font(.system(size: 12))
-                                Text("Server is in localhost-only mode. Change to 'Network' mode above to access via Tailscale.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                Text(
+                                    "Server is in localhost-only mode. Change to 'Network' mode above to access via Tailscale."
+                                )
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             }
                         }
                     }

@@ -99,10 +99,10 @@ final class StatusBarMenuManager: NSObject {
 
         // Update menu state to custom window FIRST before any async operations
         updateMenuState(.customWindow, button: button)
-        
+
         // Ensure button state is set immediately and persistently
         button.state = .on
-        
+
         // Force another button state update to ensure it sticks
         DispatchQueue.main.async {
             button.state = .on
