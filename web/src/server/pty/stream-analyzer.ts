@@ -38,6 +38,16 @@ export class PTYStreamAnalyzer {
   private lastByte: number | null = null;
   private consecutiveNormalBytes = 0;
   private promptPatternBuffer = '';
+  private recentBytesCount = 0;
+
+  // Confidence levels for different injection points
+  private static readonly CONFIDENCE = {
+    NEWLINE: 100,
+    CARRIAGE_RETURN: 90,
+    PROMPT: 85,
+    SEQUENCE_END: 80,
+    SIMPLE_ESCAPE_END: 70,
+  } as const;
 
   // Common prompt patterns
   // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal prompt patterns need control characters
@@ -66,6 +76,7 @@ export class PTYStreamAnalyzer {
       }
 
       this.lastByte = byte;
+      this.recentBytesCount++;
     }
 
     return safePoints;
@@ -178,7 +189,7 @@ export class PTYStreamAnalyzer {
       return {
         position: position + 1,
         reason: 'newline',
-        confidence: 100,
+        confidence: PTYStreamAnalyzer.CONFIDENCE.NEWLINE,
       };
     }
 
@@ -187,17 +198,17 @@ export class PTYStreamAnalyzer {
       return {
         position: position + 1,
         reason: 'carriage_return',
-        confidence: 90,
+        confidence: PTYStreamAnalyzer.CONFIDENCE.CARRIAGE_RETURN,
       };
     }
 
     // 3. After prompt patterns (high confidence)
-    if (this.isPromptPattern()) {
+    if (this.shouldCheckPrompts() && this.isPromptPattern()) {
       this.state = StreamState.PROMPT_DETECTED;
       return {
         position: position + 1,
         reason: 'prompt',
-        confidence: 85,
+        confidence: PTYStreamAnalyzer.CONFIDENCE.PROMPT,
       };
     }
 
@@ -235,7 +246,7 @@ export class PTYStreamAnalyzer {
         return {
           position: position + 1,
           reason: 'sequence_end',
-          confidence: 70,
+          confidence: PTYStreamAnalyzer.CONFIDENCE.SIMPLE_ESCAPE_END,
         };
     }
 
@@ -257,7 +268,7 @@ export class PTYStreamAnalyzer {
       return {
         position: position + 1,
         reason: 'sequence_end',
-        confidence: 80,
+        confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
       };
     }
 
@@ -284,7 +295,7 @@ export class PTYStreamAnalyzer {
       return {
         position: position + 1,
         reason: 'sequence_end',
-        confidence: 80,
+        confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
       };
     }
 
@@ -306,7 +317,7 @@ export class PTYStreamAnalyzer {
       return {
         position: position + 1,
         reason: 'sequence_end',
-        confidence: 80,
+        confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
       };
     }
 
@@ -328,7 +339,7 @@ export class PTYStreamAnalyzer {
       return {
         position: position + 1,
         reason: 'sequence_end',
-        confidence: 80,
+        confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
       };
     }
 
@@ -350,7 +361,7 @@ export class PTYStreamAnalyzer {
       return {
         position: position + 1,
         reason: 'sequence_end',
-        confidence: 80,
+        confidence: PTYStreamAnalyzer.CONFIDENCE.SEQUENCE_END,
       };
     }
 
@@ -379,6 +390,14 @@ export class PTYStreamAnalyzer {
   }
 
   /**
+   * Check if we should check for prompt patterns
+   */
+  private shouldCheckPrompts(): boolean {
+    // Only check prompts when we have enough buffer and haven't processed too many recent bytes
+    return this.promptPatternBuffer.length >= 2 && this.recentBytesCount < 100;
+  }
+
+  /**
    * Check if current buffer matches a prompt pattern
    */
   private isPromptPattern(): boolean {
@@ -403,6 +422,7 @@ export class PTYStreamAnalyzer {
     this.lastByte = null;
     this.consecutiveNormalBytes = 0;
     this.promptPatternBuffer = '';
+    this.recentBytesCount = 0;
   }
 
   /**

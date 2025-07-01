@@ -33,6 +33,10 @@ export class SafePTYWriter extends EventEmitter {
   private originalOnData?: (data: string) => void;
   private isProcessingOutput = false;
 
+  // Regular expression to match control characters (except for the ones we need for the title sequence)
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: We need to match control characters for sanitization
+  private static readonly CONTROL_CHAR_REGEX = /[\x00-\x06\x08-\x1A\x1C-\x1F\x7F-\x9F]/g;
+
   constructor(pty: IPty, options: SafePTYWriterOptions = {}) {
     super();
     this.pty = pty;
@@ -57,11 +61,16 @@ export class SafePTYWriter extends EventEmitter {
    * Queue a title for safe injection
    */
   queueTitle(title: string): void {
-    const titleSequence = `\x1b]0;${title}\x07`;
+    // Sanitize title to prevent injection attacks
+    const sanitized = this.sanitizeTitle(title);
+    const titleSequence = `\x1b]0;${sanitized}\x07`;
     this.pendingTitle = titleSequence;
 
     if (this.debug) {
-      logger.debug(`Queued title for safe injection: ${title}`);
+      logger.debug(`Queued title for safe injection: ${sanitized}`);
+      if (title !== sanitized) {
+        logger.debug(`Title was sanitized from: ${title}`);
+      }
     }
 
     // Try to inject immediately if we have a pending safe point
@@ -187,6 +196,9 @@ export class SafePTYWriter extends EventEmitter {
   private injectTitle(title: string): void {
     try {
       this.pty.write(title);
+      if (this.debug) {
+        logger.debug(`Successfully injected title sequence`);
+      }
     } catch (error) {
       logger.error('Failed to inject title:', error);
       // Clear pending title on error to prevent retries
@@ -194,6 +206,22 @@ export class SafePTYWriter extends EventEmitter {
         this.pendingTitle = null;
       }
     }
+  }
+
+  /**
+   * Sanitize title to prevent injection attacks
+   */
+  private sanitizeTitle(title: string): string {
+    // Remove control characters that could break the terminal
+    let sanitized = title.replace(SafePTYWriter.CONTROL_CHAR_REGEX, '');
+
+    // Limit title length to prevent buffer overflow
+    const maxLength = 256;
+    if (sanitized.length > maxLength) {
+      sanitized = sanitized.substring(0, maxLength);
+    }
+
+    return sanitized;
   }
 
   /**
