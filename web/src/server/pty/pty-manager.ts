@@ -34,6 +34,7 @@ import {
 import { WriteQueue } from '../utils/write-queue.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
 import { ProcessUtils } from './process-utils.js';
+import { SafePTYWriter } from './safe-pty-writer.js';
 import { SessionManager } from './session-manager.js';
 import {
   type KillControlMessage,
@@ -430,6 +431,18 @@ export class PtyManager extends EventEmitter {
       session.stdoutQueue = stdoutQueue;
     }
 
+    // Setup SafePTYWriter for title injection if using title modes
+    if (
+      forwardToStdout &&
+      (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
+    ) {
+      session.safePtyWriter = new SafePTYWriter(ptyProcess, {
+        idleThreshold: 50,
+        maxWaitTime: 1000,
+        debug: process.env.VIBETUNNEL_PTY_DEBUG === 'true',
+      });
+    }
+
     // Setup activity detector for dynamic mode
     if (session.titleMode === TitleMode.DYNAMIC) {
       session.activityDetector = new ActivityDetector(session.sessionInfo.command);
@@ -464,96 +477,162 @@ export class PtyManager extends EventEmitter {
 
           if (forwardToStdout) {
             const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-            const titleSequence = generateDynamicTitle(
-              dynamicDir,
-              session.sessionInfo.command,
-              activityState,
-              session.sessionInfo.name
-            );
 
-            // Write title update directly to stdout
-            process.stdout.write(titleSequence);
+            if (session.safePtyWriter) {
+              // Queue title through SafePTYWriter
+              const title = generateDynamicTitle(
+                dynamicDir,
+                session.sessionInfo.command,
+                activityState,
+                session.sessionInfo.name
+              )
+                // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
+                // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
+                .replace(/^\x1b\]0;/, '')
+                // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
+                .replace(/\x07$/, ''); // Extract just the title text
+
+              session.safePtyWriter.queueTitle(title);
+            } else {
+              // Fallback to direct write
+              const titleSequence = generateDynamicTitle(
+                dynamicDir,
+                session.sessionInfo.command,
+                activityState,
+                session.sessionInfo.name
+              );
+
+              // Write title update directly to stdout
+              process.stdout.write(titleSequence);
+            }
           }
         }
       }, 500);
     }
 
-    // Handle PTY data output
-    ptyProcess.onData((data: string) => {
-      let processedData = data;
+    // Handle PTY data output - Use SafePTYWriter if available
+    if (session.safePtyWriter && forwardToStdout) {
+      // Use SafePTYWriter for safe title injection
+      session.safePtyWriter.attach((data: string) => {
+        // Write to asciinema file (it has its own internal queue)
+        asciinemaWriter?.writeOutput(Buffer.from(data, 'utf8'));
 
-      // Handle title modes
-      switch (session.titleMode) {
-        case TitleMode.FILTER:
-          // Filter out all title sequences
-          processedData = filterTerminalTitleSequences(data, true);
-          break;
-
-        case TitleMode.STATIC: {
-          // Filter out app titles and inject static title
-          processedData = filterTerminalTitleSequences(data, true);
-          const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-          const titleSequence = generateTitleSequence(
-            currentDir,
-            session.sessionInfo.command,
-            session.sessionInfo.name
-          );
-
-          // Only inject title sequences for external terminals (not web sessions)
-          // Web sessions should never have title sequences in their data stream
-          if (forwardToStdout) {
-            if (!session.initialTitleSent) {
-              processedData = titleSequence + processedData;
-              session.initialTitleSent = true;
-            } else {
-              processedData = injectTitleIfNeeded(processedData, titleSequence);
+        // Forward to stdout if requested (using queue for ordering)
+        if (stdoutQueue) {
+          stdoutQueue.enqueue(async () => {
+            const canWrite = process.stdout.write(data);
+            if (!canWrite) {
+              await once(process.stdout, 'drain');
             }
-          }
-          break;
+          });
         }
+      });
 
-        case TitleMode.DYNAMIC:
-          // Filter out app titles and process through activity detector
-          processedData = filterTerminalTitleSequences(data, true);
+      // Intercept PTY data and handle title injection
+      let pendingTitle: string | null = null;
 
-          if (session.activityDetector) {
-            // Debug: Log raw data when it contains Claude status indicators
-            if (process.env.VIBETUNNEL_CLAUDE_DEBUG === 'true') {
-              if (data.includes('interrupt') || data.includes('tokens') || data.includes('…')) {
-                console.log('[PtyManager] Detected potential Claude output');
-                console.log(
-                  '[PtyManager] Raw data sample:',
-                  data
-                    .substring(0, 200)
-                    .replace(/\n/g, '\\n')
-                    // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes need control characters
-                    .replace(/\x1b/g, '\\x1b')
-                );
+      ptyProcess.onData((data: string) => {
+        let processedData = data;
 
-                // Also log to file for analysis
-                const debugPath = '/tmp/claude-output-debug.txt';
-                require('fs').appendFileSync(
-                  debugPath,
-                  `\n\n=== ${new Date().toISOString()} ===\n`
-                );
-                require('fs').appendFileSync(debugPath, `Raw: ${data}\n`);
-                require('fs').appendFileSync(
-                  debugPath,
-                  `Hex: ${Buffer.from(data).toString('hex')}\n`
-                );
+        // Handle title modes
+        switch (session.titleMode) {
+          case TitleMode.STATIC: {
+            // Filter out app titles
+            processedData = filterTerminalTitleSequences(data, true);
+            const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+            const title = `${path.basename(currentDir)} — ${session.sessionInfo.command.join(' ')}`;
+
+            // Queue title for safe injection
+            if (!session.initialTitleSent || pendingTitle !== title) {
+              session.safePtyWriter!.queueTitle(title);
+              pendingTitle = title;
+              session.initialTitleSent = true;
+            }
+            break;
+          }
+
+          case TitleMode.DYNAMIC:
+            // Filter out app titles and process through activity detector
+            processedData = filterTerminalTitleSequences(data, true);
+
+            if (session.activityDetector) {
+              // Debug logging for Claude
+              if (process.env.VIBETUNNEL_CLAUDE_DEBUG === 'true') {
+                if (data.includes('interrupt') || data.includes('tokens') || data.includes('…')) {
+                  console.log('[PtyManager] Detected potential Claude output');
+                  console.log(
+                    '[PtyManager] Raw data sample:',
+                    data
+                      .substring(0, 200)
+                      .replace(/\n/g, '\\n')
+                      // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes need control characters
+                      .replace(/\x1b/g, '\\x1b')
+                  );
+
+                  // Also log to file for analysis
+                  const debugPath = '/tmp/claude-output-debug.txt';
+                  require('fs').appendFileSync(
+                    debugPath,
+                    `\n\n=== ${new Date().toISOString()} ===\n`
+                  );
+                  require('fs').appendFileSync(debugPath, `Raw: ${data}\n`);
+                  require('fs').appendFileSync(
+                    debugPath,
+                    `Hex: ${Buffer.from(data).toString('hex')}\n`
+                  );
+                }
+              }
+
+              const { filteredData, activity } =
+                session.activityDetector.processOutput(processedData);
+              processedData = filteredData;
+
+              // Generate dynamic title with activity
+              const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+              const title = generateDynamicTitle(
+                dynamicDir,
+                session.sessionInfo.command,
+                activity,
+                session.sessionInfo.name
+              )
+                // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
+                // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
+                .replace(/^\x1b\]0;/, '')
+                // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
+                .replace(/\x07$/, ''); // Extract just the title text
+
+              // Queue title for safe injection
+              if (pendingTitle !== title) {
+                session.safePtyWriter!.queueTitle(title);
+                pendingTitle = title;
               }
             }
+            break;
+        }
 
-            const { filteredData, activity } =
-              session.activityDetector.processOutput(processedData);
-            processedData = filteredData;
+        // Process the filtered data through SafePTYWriter
+        // This will inject titles at safe points
+        session.safePtyWriter!.processOutput(processedData);
+      });
+    } else {
+      // Fallback to original implementation for non-title modes
+      ptyProcess.onData((data: string) => {
+        let processedData = data;
 
-            // Generate dynamic title with activity
-            const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-            const dynamicTitleSequence = generateDynamicTitle(
-              dynamicDir,
+        // Handle title modes
+        switch (session.titleMode) {
+          case TitleMode.FILTER:
+            // Filter out all title sequences
+            processedData = filterTerminalTitleSequences(data, true);
+            break;
+
+          case TitleMode.STATIC: {
+            // Filter out app titles and inject static title
+            processedData = filterTerminalTitleSequences(data, true);
+            const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+            const titleSequence = generateTitleSequence(
+              currentDir,
               session.sessionInfo.command,
-              activity,
               session.sessionInfo.name
             );
 
@@ -561,32 +640,91 @@ export class PtyManager extends EventEmitter {
             // Web sessions should never have title sequences in their data stream
             if (forwardToStdout) {
               if (!session.initialTitleSent) {
-                processedData = dynamicTitleSequence + processedData;
+                processedData = titleSequence + processedData;
                 session.initialTitleSent = true;
               } else {
-                processedData = injectTitleIfNeeded(processedData, dynamicTitleSequence);
+                processedData = injectTitleIfNeeded(processedData, titleSequence);
               }
             }
+            break;
           }
-          break;
-        default:
-          // No title management
-          break;
-      }
 
-      // Write to asciinema file (it has its own internal queue)
-      asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
+          case TitleMode.DYNAMIC:
+            // Filter out app titles and process through activity detector
+            processedData = filterTerminalTitleSequences(data, true);
 
-      // Forward to stdout if requested (using queue for ordering)
-      if (forwardToStdout && stdoutQueue) {
-        stdoutQueue.enqueue(async () => {
-          const canWrite = process.stdout.write(processedData);
-          if (!canWrite) {
-            await once(process.stdout, 'drain');
-          }
-        });
-      }
-    });
+            if (session.activityDetector) {
+              // Debug logging remains the same
+              if (process.env.VIBETUNNEL_CLAUDE_DEBUG === 'true') {
+                if (data.includes('interrupt') || data.includes('tokens') || data.includes('…')) {
+                  console.log('[PtyManager] Detected potential Claude output');
+                  console.log(
+                    '[PtyManager] Raw data sample:',
+                    data
+                      .substring(0, 200)
+                      .replace(/\n/g, '\\n')
+                      // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes need control characters
+                      .replace(/\x1b/g, '\\x1b')
+                  );
+
+                  // Also log to file for analysis
+                  const debugPath = '/tmp/claude-output-debug.txt';
+                  require('fs').appendFileSync(
+                    debugPath,
+                    `\n\n=== ${new Date().toISOString()} ===\n`
+                  );
+                  require('fs').appendFileSync(debugPath, `Raw: ${data}\n`);
+                  require('fs').appendFileSync(
+                    debugPath,
+                    `Hex: ${Buffer.from(data).toString('hex')}\n`
+                  );
+                }
+              }
+
+              const { filteredData, activity } =
+                session.activityDetector.processOutput(processedData);
+              processedData = filteredData;
+
+              // Generate dynamic title with activity
+              const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+              const dynamicTitleSequence = generateDynamicTitle(
+                dynamicDir,
+                session.sessionInfo.command,
+                activity,
+                session.sessionInfo.name
+              );
+
+              // Only inject title sequences for external terminals (not web sessions)
+              // Web sessions should never have title sequences in their data stream
+              if (forwardToStdout) {
+                if (!session.initialTitleSent) {
+                  processedData = dynamicTitleSequence + processedData;
+                  session.initialTitleSent = true;
+                } else {
+                  processedData = injectTitleIfNeeded(processedData, dynamicTitleSequence);
+                }
+              }
+            }
+            break;
+          default:
+            // No title management
+            break;
+        }
+
+        // Write to asciinema file (it has its own internal queue)
+        asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
+
+        // Forward to stdout if requested (using queue for ordering)
+        if (forwardToStdout && stdoutQueue) {
+          stdoutQueue.enqueue(async () => {
+            const canWrite = process.stdout.write(processedData);
+            if (!canWrite) {
+              await once(process.stdout, 'drain');
+            }
+          });
+        }
+      });
+    }
 
     // Handle PTY exit
     ptyProcess.onExit(async ({ exitCode, signal }: { exitCode: number; signal?: number }) => {
@@ -645,28 +783,55 @@ export class PtyManager extends EventEmitter {
       (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
     ) {
       const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-      let initialTitle: string;
 
-      if (session.titleMode === TitleMode.STATIC) {
-        initialTitle = generateTitleSequence(
-          currentDir,
-          session.sessionInfo.command,
-          session.sessionInfo.name
-        );
+      if (session.safePtyWriter) {
+        // Queue initial title through SafePTYWriter
+        let title: string;
+
+        if (session.titleMode === TitleMode.STATIC) {
+          title = `${path.basename(currentDir)} — ${session.sessionInfo.command.join(' ')}`;
+        } else {
+          // For dynamic mode, start with idle state
+          title = generateDynamicTitle(
+            currentDir,
+            session.sessionInfo.command,
+            { isActive: false, lastActivityTime: Date.now() },
+            session.sessionInfo.name
+          )
+            // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
+            .replace(/^\x1b\]0;/, '')
+            // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal escape sequences
+            .replace(/\x07$/, ''); // Extract just the title text
+        }
+
+        session.safePtyWriter.queueTitle(title);
+        session.initialTitleSent = true;
+        logger.debug(`Queued initial ${session.titleMode} title for session ${session.id}`);
       } else {
-        // For dynamic mode, start with idle state
-        initialTitle = generateDynamicTitle(
-          currentDir,
-          session.sessionInfo.command,
-          { isActive: false, lastActivityTime: Date.now() },
-          session.sessionInfo.name
-        );
-      }
+        // Fallback to direct write
+        let initialTitle: string;
 
-      // Write initial title directly to stdout
-      process.stdout.write(initialTitle);
-      session.initialTitleSent = true;
-      logger.debug(`Sent initial ${session.titleMode} title for session ${session.id}`);
+        if (session.titleMode === TitleMode.STATIC) {
+          initialTitle = generateTitleSequence(
+            currentDir,
+            session.sessionInfo.command,
+            session.sessionInfo.name
+          );
+        } else {
+          // For dynamic mode, start with idle state
+          initialTitle = generateDynamicTitle(
+            currentDir,
+            session.sessionInfo.command,
+            { isActive: false, lastActivityTime: Date.now() },
+            session.sessionInfo.name
+          );
+        }
+
+        // Write initial title directly to stdout
+        process.stdout.write(initialTitle);
+        session.initialTitleSent = true;
+        logger.debug(`Sent initial ${session.titleMode} title for session ${session.id}`);
+      }
     }
 
     // Monitor stdin file for input
@@ -1651,6 +1816,12 @@ export class PtyManager extends EventEmitter {
     if (session.activityDetector) {
       session.activityDetector.clearStatus();
       session.activityDetector = undefined;
+    }
+
+    // Clean up SafePTYWriter
+    if (session.safePtyWriter) {
+      session.safePtyWriter.detach();
+      session.safePtyWriter = undefined;
     }
 
     // Clean up input socket server

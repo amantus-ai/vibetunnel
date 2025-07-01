@@ -128,11 +128,11 @@ class ServerManager {
         Task { @MainActor in
             // Only update sleep prevention if server is running
             guard isRunning else { return }
-            
+
             // Check if preventSleepWhenRunning setting changed
             let preventSleep = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
             powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
-            
+
             logger.info("Updated sleep prevention setting: \(preventSleep ? "enabled" : "disabled")")
         }
     }
@@ -226,7 +226,7 @@ class ServerManager {
                 // This prevents a race condition where the server could crash after setting isRunning = true
                 let preventSleep = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
                 powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
-                
+
                 // Now update state
                 isRunning = true
                 lastError = nil
@@ -276,7 +276,7 @@ class ServerManager {
 
         // Clear the auth token from SessionMonitor
         SessionMonitor.shared.setLocalAuthToken(nil)
-        
+
         // Allow sleep when server is stopped
         powerManager.updateSleepPrevention(enabled: false, serverRunning: false)
 
@@ -396,7 +396,7 @@ class ServerManager {
         // Update state immediately
         isRunning = false
         bunServer = nil
-        
+
         // Allow sleep when server crashes
         powerManager.updateSleepPrevention(enabled: false, serverRunning: false)
 
@@ -516,7 +516,7 @@ class ServerManager {
                 let preventSleep = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
                 powerManager.updateSleepPrevention(enabled: preventSleep, serverRunning: true)
             }
-            
+
             while true {
                 try? await Task.sleep(for: .seconds(30))
 

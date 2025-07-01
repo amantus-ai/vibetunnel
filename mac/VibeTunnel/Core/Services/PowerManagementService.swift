@@ -12,28 +12,28 @@ import Observation
 @MainActor
 final class PowerManagementService {
     static let shared = PowerManagementService()
-    
+
     private(set) var isSleepPrevented = false
-    
+
     private var assertionID: IOPMAssertionID = 0
     private var isAssertionActive = false
-    
+
     private init() {}
-    
+
     /// Prevents the system from sleeping
     func preventSleep() {
         guard !isAssertionActive else { return }
-        
+
         let reason = "VibeTunnel is running terminal sessions" as CFString
         let assertionType = kIOPMAssertionTypeNoIdleSleep as CFString
-        
+
         let success = IOPMAssertionCreateWithName(
             assertionType,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
             reason,
             &assertionID
         )
-        
+
         if success == kIOReturnSuccess {
             isAssertionActive = true
             isSleepPrevented = true
@@ -42,13 +42,13 @@ final class PowerManagementService {
             print("Failed to prevent sleep: \(success)")
         }
     }
-    
+
     /// Allows the system to sleep normally
     func allowSleep() {
         guard isAssertionActive else { return }
-        
+
         let success = IOPMAssertionRelease(assertionID)
-        
+
         if success == kIOReturnSuccess {
             isAssertionActive = false
             isSleepPrevented = false
@@ -58,7 +58,7 @@ final class PowerManagementService {
             print("Failed to release sleep assertion: \(success)")
         }
     }
-    
+
     /// Updates sleep prevention based on user preference and server state
     func updateSleepPrevention(enabled: Bool, serverRunning: Bool) {
         if enabled && serverRunning {
@@ -67,7 +67,7 @@ final class PowerManagementService {
             allowSleep()
         }
     }
-    
+
     deinit {
         // Deinit runs on arbitrary thread, but we need to check MainActor state
         // Since we can't access MainActor properties directly in deinit,

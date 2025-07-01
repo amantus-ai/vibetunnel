@@ -11,6 +11,7 @@ import type { SessionInfo, TitleMode } from '../../shared/types.js';
 import type { ActivityDetector } from '../utils/activity-detector.js';
 import type { WriteQueue } from '../utils/write-queue.js';
 import type { AsciinemaWriter } from './asciinema-writer.js';
+import type { SafePTYWriter } from './safe-pty-writer.js';
 
 export interface AsciinemaHeader {
   version: number;
@@ -85,6 +86,8 @@ export interface PtySession {
   titleUpdateInterval?: NodeJS.Timeout;
   // Track if activity file has been written (for debug logging)
   activityFileWritten?: boolean;
+  // Safe PTY writer for title injection
+  safePtyWriter?: SafePTYWriter;
 }
 
 export class PtyError extends Error {
