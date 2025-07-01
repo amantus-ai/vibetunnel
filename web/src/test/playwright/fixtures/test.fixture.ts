@@ -131,7 +131,7 @@ export const test = base.extend<{
     try {
       // Wait for the vibetunnel-app element to be attached
       console.log('[Test Setup] Waiting for vibetunnel-app element...');
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 30000 });
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
 
       // Wait for the app to render some content
       console.log('[Test Setup] Waiting for app to render content...');
@@ -149,11 +149,11 @@ export const test = base.extend<{
           // App is ready if it has content and either auth view or main app components
           return hasContent && (hasAuthView || hasAppHeader || hasSessionList);
         },
-        { timeout: 30000 }
+        { timeout: 10000 }
       );
 
       // Give it a moment to stabilize
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(500);
 
       // Check what's rendered
       const appInfo = await page.evaluate(() => {
@@ -177,7 +177,7 @@ export const test = base.extend<{
         await page.click('button[type="submit"]');
 
         // Wait for navigation away from auth view
-        await page.waitForFunction(() => !document.querySelector('auth-login'), { timeout: 30000 });
+        await page.waitForFunction(() => !document.querySelector('auth-login'), { timeout: 10000 });
         console.log('[Test Setup] Login successful');
       }
 
@@ -185,43 +185,10 @@ export const test = base.extend<{
       console.log('[Test Setup] Waiting for main app content...');
       await page.waitForSelector('app-header, session-list, .flex-1', {
         state: 'visible',
-        timeout: 30000,
+        timeout: 10000,
       });
 
       console.log('[Test Setup] App is ready');
-
-      // Wait for any overlays to disappear
-      console.log('[Test Setup] Waiting for overlays to clear...');
-      await page.waitForFunction(
-        () => {
-          // Check for any overlays that might block interactions
-          const overlays = document.querySelectorAll(
-            '[class*="fixed"][class*="inset-0"], [class*="fixed"][class*="top-0"][class*="left-0"]'
-          );
-          for (const overlay of overlays) {
-            const styles = window.getComputedStyle(overlay);
-            // Skip if pointer-events are disabled
-            if (styles.pointerEvents === 'none') continue;
-            // Skip if opacity is 0
-            if (styles.opacity === '0') continue;
-            // Skip if display is none
-            if (styles.display === 'none') continue;
-            // Skip if it's transparent
-            if (
-              styles.backgroundColor === 'transparent' ||
-              styles.backgroundColor === 'rgba(0, 0, 0, 0)'
-            )
-              continue;
-
-            console.log('Blocking overlay found:', overlay.className);
-            return false;
-          }
-          return true;
-        },
-        { timeout: 5000 }
-      );
-
-      console.log('[Test Setup] No blocking overlays detected');
     } catch (error) {
       console.error('[Test Setup] Failed to initialize app:', error);
       const html = await page.content();

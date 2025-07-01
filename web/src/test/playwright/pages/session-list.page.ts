@@ -42,46 +42,19 @@ export class SessionListPage extends BasePage {
 
     console.log('Clicking create session button...');
     try {
-      // Wait for button to be truly clickable
-      await this.page.waitForFunction(
-        () => {
-          const buttons = Array.from(document.querySelectorAll('button'));
-          const createBtn = buttons.find(
-            (btn) =>
-              btn.textContent?.includes('Create') ||
-              btn.getAttribute('data-testid') === 'create-session-button'
-          );
-          if (!createBtn) return false;
-
-          const rect = createBtn.getBoundingClientRect();
-          const centerX = rect.left + rect.width / 2;
-          const centerY = rect.top + rect.height / 2;
-          const elementAtPoint = document.elementFromPoint(centerX, centerY);
-
-          return elementAtPoint === createBtn || createBtn.contains(elementAtPoint);
-        },
-        { timeout: 5000 }
-      );
-
       await createButton.click({ timeout: process.env.CI ? 10000 : 5000 });
       console.log('Create button clicked successfully');
 
       // Small delay to ensure the click event has been fully processed
       await this.page.waitForTimeout(100);
     } catch (error) {
-      console.error('Failed to click create button, trying force click:', error);
-      try {
-        await createButton.click({ force: true });
-        console.log('Force click successful');
-        await this.page.waitForTimeout(100);
-      } catch (forceError) {
-        await screenshotOnError(
-          this.page,
-          new Error('Failed to click create button even with force'),
-          'create-button-click-failed'
-        );
-        throw forceError;
-      }
+      console.error('Failed to click create button:', error);
+      await screenshotOnError(
+        this.page,
+        new Error('Failed to click create button'),
+        'create-button-click-failed'
+      );
+      throw error;
     }
 
     // Wait for the modal to appear and be ready
@@ -249,40 +222,13 @@ export class SessionListPage extends BasePage {
       throw new Error('Create button is disabled - form may not be valid');
     }
 
-    // Wait for any overlays to disappear before clicking
-    await this.page.waitForFunction(
-      () => {
-        const button =
-          document.querySelector('[data-testid="create-session-submit"]') ||
-          Array.from(document.querySelectorAll('button')).find((btn) =>
-            btn.textContent?.includes('Create')
-          );
-        if (!button) return false;
-
-        const rect = button.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const elementAtPoint = document.elementFromPoint(centerX, centerY);
-
-        // Check if the button or its child is at the click point
-        return elementAtPoint === button || button.contains(elementAtPoint);
-      },
-      { timeout: 5000 }
-    );
-
     // Click and wait for response
     const responsePromise = this.page.waitForResponse(
       (response) => response.url().includes('/api/sessions'),
       { timeout: process.env.CI ? 8000 : 4000 }
     );
 
-    // Try regular click first, then force if needed
-    try {
-      await submitButton.click({ timeout: 5000 });
-    } catch (_clickError) {
-      console.log('Regular click failed, trying force click...');
-      await submitButton.click({ force: true });
-    }
+    await submitButton.click();
 
     // Wait for navigation to session view (only for web sessions)
     if (!spawnWindow) {
