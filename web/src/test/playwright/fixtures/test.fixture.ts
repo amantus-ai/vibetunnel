@@ -4,6 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { test as base, expect } from '@playwright/test';
 import type { AuthConfigResponse } from '../../../shared/types';
+import { SessionListPage } from '../pages/session-list.page';
 import type { SessionService } from '../services/session-service';
 
 // Declare test context type
@@ -16,9 +17,11 @@ export const test = base.extend<{
   sessionService: SessionService;
   testSessionIds: string[];
   screenshotDir: string;
+  sessionListPage: SessionListPage;
 }>({
   // Session service fixture
-  sessionService: async (_, use) => {
+  // eslint-disable-next-line no-empty-pattern
+  sessionService: async ({}, use) => {
     const headers = new Headers();
     const baseURL = process.env.CI ? 'http://localhost:8321' : 'http://localhost:3456';
 
@@ -105,13 +108,15 @@ export const test = base.extend<{
   },
 
   // Track test session IDs for cleanup
-  testSessionIds: async (_, use) => {
+  // eslint-disable-next-line no-empty-pattern
+  testSessionIds: async ({}, use) => {
     const sessionIds: string[] = [];
     await use(sessionIds);
   },
 
   // Screenshot directory
-  screenshotDir: async (_, use) => {
+  // eslint-disable-next-line no-empty-pattern
+  screenshotDir: async ({}, use) => {
     const dir = path.join(os.tmpdir(), 'playwright-screenshots', Date.now().toString());
     fs.mkdirSync(dir, { recursive: true });
     await use(dir);
@@ -183,6 +188,12 @@ export const test = base.extend<{
     }
 
     await use(page);
+  },
+
+  // Session list page object
+  sessionListPage: async ({ page }, use) => {
+    const sessionListPage = new SessionListPage(page);
+    await use(sessionListPage);
   },
 });
 
