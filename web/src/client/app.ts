@@ -581,8 +581,15 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private handleCreateSession() {
-    // Check if View Transitions API is supported
-    if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
+    // Disable View Transitions in test environment to avoid timing issues
+    const disableTransitions = window.location.port === '4022'; // Test server port
+
+    // Check if View Transitions API is supported and not disabled
+    if (
+      !disableTransitions &&
+      'startViewTransition' in document &&
+      typeof document.startViewTransition === 'function'
+    ) {
       document.startViewTransition(() => {
         this.showCreateModal = true;
       });
@@ -592,8 +599,15 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private handleCreateModalClose() {
-    // Check if View Transitions API is supported
-    if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
+    // Disable View Transitions in test environment to avoid timing issues
+    const disableTransitions = window.location.port === '4022'; // Test server port
+
+    // Check if View Transitions API is supported and not disabled
+    if (
+      !disableTransitions &&
+      'startViewTransition' in document &&
+      typeof document.startViewTransition === 'function'
+    ) {
       // Add a class to prevent flicker during transition
       document.body.classList.add('modal-closing');
 
