@@ -10,12 +10,25 @@ if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
         SESSION_FILE="$HOME/.vibetunnel/control/$VIBETUNNEL_SESSION_ID/session.json"
         
         if [ -f "$SESSION_FILE" ]; then
-            # Use jq if available, otherwise fall back to sed
+            # Use jq if available, otherwise fall back to python
             if command -v jq >/dev/null 2>&1; then
-                jq ".name = \"$TITLE\"" "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
+                # Use jq's --arg flag to safely pass the title as a variable
+                jq --arg title "$TITLE" '.name = $title' "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
+            elif command -v python3 >/dev/null 2>&1; then
+                # Fallback to Python for safe JSON manipulation
+                python3 -c "
+import json, sys
+with open('$SESSION_FILE', 'r') as f:
+    data = json.load(f)
+data['name'] = sys.argv[1]
+with open('$SESSION_FILE.tmp', 'w') as f:
+    json.dump(data, f, indent=2)
+" "$TITLE" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
             else
-                # Fallback: use sed (less reliable but works in most cases)
-                sed -i.bak "s/\"name\":[^,}]*/\"name\":\"$TITLE\"/" "$SESSION_FILE" && rm "$SESSION_FILE.bak"
+                # Last resort: use printf to escape the title and sed with delimiter that's unlikely in titles
+                # Use a delimiter that's extremely unlikely to appear in a title
+                ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/[[\.*^$()+?{|]/\\&/g' | sed 's/"/\\"/g')
+                sed -i.bak "s|\"name\":[^,}]*|\"name\":\"$ESCAPED_TITLE\"|" "$SESSION_FILE" && rm "$SESSION_FILE.bak"
             fi
             echo "Session title updated to: $TITLE"
             exit 0

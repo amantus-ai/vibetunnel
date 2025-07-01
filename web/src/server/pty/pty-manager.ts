@@ -36,14 +36,6 @@ import { AsciinemaWriter } from './asciinema-writer.js';
 import { ProcessUtils } from './process-utils.js';
 import { SessionManager } from './session-manager.js';
 import {
-  type ControlCommand,
-  frameMessage,
-  MessageParser,
-  MessageType,
-  parsePayload,
-  type StatusUpdate,
-} from './socket-protocol.js';
-import {
   type KillControlMessage,
   PtyError,
   type PtySession,
@@ -68,11 +60,7 @@ export class PtyManager extends EventEmitter {
   private lastBellTime = new Map<string, number>(); // Track last bell time per session
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
-  private sessionClaudeStatus = new Map<
-    string,
-    { app: string; status: string; timestamp: number }
-  >(); // Track Claude status in memory
-  private sessionSocketClients = new Map<string, Set<net.Socket>>(); // Track connected clients per session
+  private activityFileWarningsLogged = new Set<string>(); // Track which sessions we've logged warnings for
 
   constructor(controlPath?: string) {
     super();
@@ -361,6 +349,7 @@ export class PtyManager extends EventEmitter {
         controlDir: paths.controlDir,
         stdoutPath: paths.stdoutPath,
         stdinPath: paths.stdinPath,
+        controlPipePath: paths.controlPipePath,
         sessionJsonPath: paths.sessionJsonPath,
         startTime: new Date(),
         titleMode: titleMode || TitleMode.NONE,
@@ -380,7 +369,14 @@ export class PtyManager extends EventEmitter {
       // Setup PTY event handlers
       this.setupPtyHandlers(session, options.forwardToStdout || false, options.onExit);
 
-      // Note: stdin forwarding is now handled via IPC socket
+      // Setup control pipe if forwarding to stdout
+      if (options.forwardToStdout) {
+        this.setupControlPipe(session);
+
+        // Setup stdin forwarding for fwd mode
+        this.setupStdinForwarding(session);
+        logger.log(chalk.gray('Stdin forwarding enabled'));
+      }
 
       // Setup session.json watcher for title updates (vt title command)
       this.setupSessionJsonWatcher(session);
@@ -447,13 +443,26 @@ export class PtyManager extends EventEmitter {
         if (session.activityDetector) {
           const activityState = session.activityDetector.getActivityState();
 
-          // Store Claude status in memory (no longer written to file)
-          if (activityState.specificStatus) {
-            this.sessionClaudeStatus.set(session.id, {
-              app: activityState.specificStatus.app,
-              status: activityState.specificStatus.status,
-              timestamp: Date.now(),
-            });
+          // Write activity state to file for persistence
+          // Use a different filename to avoid conflicts with ActivityMonitor service
+          const activityPath = path.join(session.controlDir, 'claude-activity.json');
+          const activityData = {
+            isActive: activityState.isActive,
+            specificStatus: activityState.specificStatus,
+            timestamp: new Date().toISOString(),
+          };
+          try {
+            fs.writeFileSync(activityPath, JSON.stringify(activityData, null, 2));
+            // Debug log first write
+            if (!session.activityFileWritten) {
+              session.activityFileWritten = true;
+              logger.debug(`Writing activity state to ${activityPath} for session ${session.id}`, {
+                activityState,
+                timestamp: activityData.timestamp,
+              });
+            }
+          } catch (error) {
+            logger.error(`Failed to write activity state for session ${session.id}:`, error);
           }
 
           if (forwardToStdout) {
@@ -542,14 +551,6 @@ export class PtyManager extends EventEmitter {
               session.activityDetector.processOutput(processedData);
             processedData = filteredData;
 
-            // Store Claude status in memory
-            if (activity.specificStatus) {
-              this.sessionClaudeStatus.set(session.id, {
-                ...activity.specificStatus,
-                timestamp: Date.now(),
-              });
-            }
-
             // Generate dynamic title with activity
             const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
             const dynamicTitleSequence = generateDynamicTitle(
@@ -631,7 +632,6 @@ export class PtyManager extends EventEmitter {
         // Clean up bell tracking
         this.lastBellTime.delete(session.id);
         this.sessionExitTimes.delete(session.id);
-        this.sessionClaudeStatus.delete(session.id);
 
         // Call exit callback if provided (for fwd.ts)
         if (onExit) {
@@ -672,36 +672,23 @@ export class PtyManager extends EventEmitter {
       logger.debug(`Sent initial ${session.titleMode} title for session ${session.id}`);
     }
 
-    // Setup IPC socket for all communication
-    this.setupIPCSocket(session);
+    // Monitor stdin file for input
+    this.monitorStdinFile(session);
   }
 
   /**
-   * Setup Unix socket for all IPC communication
+   * Monitor stdin file for input data using Unix socket for lowest latency
    */
-  private setupIPCSocket(session: PtySession): void {
+  private monitorStdinFile(session: PtySession): void {
     const ptyProcess = session.ptyProcess;
     if (!ptyProcess) {
       logger.error(`No PTY process found for session ${session.id}`);
       return;
     }
 
-    // Create Unix domain socket for all IPC
-    // IMPORTANT: macOS has a 104 character limit for Unix socket paths, including null terminator.
-    // This means the actual usable path length is 103 characters. To avoid EINVAL errors:
-    // - Use short socket names (e.g., 'ipc.sock' instead of 'vibetunnel-ipc.sock')
-    // - Keep session directories as short as possible
-    // - Avoid deeply nested directory structures
-    const socketPath = path.join(session.controlDir, 'ipc.sock');
-
-    // Verify the socket path isn't too long
-    if (socketPath.length > 103) {
-      logger.error(`Socket path too long (${socketPath.length} chars): ${socketPath}`);
-      logger.error(
-        `macOS limit is 103 characters. Consider using shorter session IDs or control paths.`
-      );
-      return;
-    }
+    // Create Unix domain socket for fast IPC
+    // Use shorter name to avoid macOS 104 char limit for Unix socket paths
+    const socketPath = path.join(session.controlDir, 'i.sock');
 
     try {
       // Remove existing socket if it exists
@@ -711,39 +698,17 @@ export class PtyManager extends EventEmitter {
         // Socket doesn't exist, this is expected
       }
 
-      // Create Unix domain socket server with framed message protocol
+      // Create Unix domain socket server
       const inputServer = net.createServer((client) => {
-        const parser = new MessageParser();
         client.setNoDelay(true);
-
-        // Track this client
-        if (!this.sessionSocketClients.has(session.id)) {
-          this.sessionSocketClients.set(session.id, new Set());
-        }
-        this.sessionSocketClients.get(session.id)!.add(client);
-
-        // Send current Claude status if available
-        const claudeStatus = this.sessionClaudeStatus.get(session.id);
-        if (claudeStatus) {
-          const statusMsg = frameMessage(MessageType.STATUS_UPDATE, claudeStatus);
-          client.write(statusMsg);
-        }
-
-        client.on('data', (chunk) => {
-          parser.addData(chunk);
-
-          for (const { type, payload } of parser.parseMessages()) {
-            this.handleSocketMessage(session, type, payload, client);
+        client.on('data', (data) => {
+          const text = data.toString('utf8');
+          if (ptyProcess) {
+            // Write input first for fastest response
+            ptyProcess.write(text);
+            // Then record it (non-blocking)
+            session.asciinemaWriter?.writeInput(text);
           }
-        });
-
-        client.on('error', (err) => {
-          logger.debug(`Client socket error for session ${session.id}:`, err);
-        });
-
-        client.on('close', () => {
-          // Remove client from tracking
-          this.sessionSocketClients.get(session.id)?.delete(client);
         });
       });
 
@@ -763,87 +728,72 @@ export class PtyManager extends EventEmitter {
       logger.error(`Failed to create input socket for session ${session.id}:`, error);
     }
 
-    // All IPC goes through this socket
+    // Socket-only approach - no FIFO monitoring
   }
 
   /**
-   * Handle incoming socket messages
+   * Setup control pipe for fwd mode to handle resize and kill commands
    */
-  private handleSocketMessage(
-    session: PtySession,
-    type: MessageType,
-    payload: Buffer,
-    client: net.Socket
-  ): void {
+  private setupControlPipe(session: PtySession): void {
+    const controlPipePath = session.controlPipePath;
+
     try {
-      const data = parsePayload(type, payload);
+      // Create control file if it doesn't exist
+      if (!fs.existsSync(controlPipePath)) {
+        fs.writeFileSync(controlPipePath, '');
+      }
 
-      switch (type) {
-        case MessageType.STDIN_DATA: {
-          const text = data as string;
-          if (session.ptyProcess) {
-            // Write input first for fastest response
-            session.ptyProcess.write(text);
-            // Then record it (non-blocking)
-            session.asciinemaWriter?.writeInput(text);
+      // Use file watching approach for all platforms
+      let lastControlPosition = 0;
+
+      const readNewControlData = () => {
+        try {
+          if (!fs.existsSync(controlPipePath)) return;
+
+          const stats = fs.statSync(controlPipePath);
+          if (stats.size > lastControlPosition) {
+            const fd = fs.openSync(controlPipePath, 'r');
+            const buffer = Buffer.allocUnsafe(stats.size - lastControlPosition);
+            fs.readSync(fd, buffer, 0, buffer.length, lastControlPosition);
+            fs.closeSync(fd);
+            const data = buffer.toString('utf8');
+
+            const lines = data.split('\n');
+            for (const line of lines) {
+              if (line.trim()) {
+                try {
+                  const message = JSON.parse(line);
+                  this.handleControlMessage(session, message);
+                } catch (_e) {
+                  logger.warn(`Invalid control message in session ${session.id}: ${line}`);
+                }
+              }
+            }
+
+            lastControlPosition = stats.size;
           }
-          break;
+        } catch (error) {
+          logger.debug(`Failed to read control data for session ${session.id}:`, error);
         }
+      };
 
-        case MessageType.CONTROL_CMD: {
-          const cmd = data as ControlCommand;
-          this.handleControlMessage(session, cmd);
-          break;
+      // Use file watcher
+      const watcher = fs.watch(controlPipePath, (eventType) => {
+        if (eventType === 'change') {
+          readNewControlData();
         }
-
-        case MessageType.STATUS_UPDATE: {
-          const status = data as StatusUpdate;
-          this.sessionClaudeStatus.set(session.id, {
-            app: status.app,
-            status: status.status,
-            timestamp: Date.now(),
-          });
-          // Broadcast the parsed status to other connected clients
-          this.broadcastToClients(session.id, type, status, client);
-          break;
-        }
-
-        case MessageType.HEARTBEAT:
-          // Echo heartbeat back
-          client.write(frameMessage(MessageType.HEARTBEAT, Buffer.alloc(0)));
-          break;
-
-        default:
-          logger.debug(`Unknown message type ${type} for session ${session.id}`);
-      }
-    } catch (error) {
-      logger.error(`Failed to handle socket message for session ${session.id}:`, error);
-      const errorMsg = frameMessage(MessageType.ERROR, {
-        code: 'MESSAGE_PROCESSING_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
       });
-      client.write(errorMsg);
-    }
-  }
 
-  /**
-   * Broadcast message to all connected clients except sender
-   */
-  private broadcastToClients(
-    sessionId: string,
-    type: MessageType,
-    data: Buffer | string | object,
-    sender?: net.Socket
-  ): void {
-    const clients = this.sessionSocketClients.get(sessionId);
-    if (!clients || clients.size === 0) return;
+      // Store watcher for cleanup
+      session.controlWatcher = watcher;
 
-    const message = frameMessage(type, data);
+      // Unref the watcher so it doesn't keep the process alive
+      watcher.unref();
 
-    for (const client of clients) {
-      if (client !== sender && !client.destroyed) {
-        client.write(message);
-      }
+      // Read any existing data
+      readNewControlData();
+    } catch (error) {
+      logger.error(`Failed to set up control pipe for session ${session.id}:`, error);
     }
   }
 
@@ -853,7 +803,6 @@ export class PtyManager extends EventEmitter {
   private setupSessionJsonWatcher(session: PtySession): void {
     try {
       const { sessionJsonPath } = session;
-      let lastSessionName = session.sessionInfo.name;
       let debounceTimer: NodeJS.Timeout | null = null;
 
       // Watch for changes to session.json
@@ -865,75 +814,11 @@ export class PtyManager extends EventEmitter {
           }
 
           debounceTimer = setTimeout(() => {
-            try {
-            // Reload session info
-            const newSessionInfo = this.sessionManager.loadSessionInfo(session.id);
-            if (!newSessionInfo) return;
-
-            // Check if name changed
-            if (newSessionInfo.name !== lastSessionName) {
-              logger.log(
-                chalk.cyan(
-                  `Session ${session.id} name changed: "${lastSessionName}" → "${newSessionInfo.name}"`
-                )
-              );
-              lastSessionName = newSessionInfo.name;
-
-              // Update in-memory session info
-              session.sessionInfo.name = newSessionInfo.name;
-
-              // Handle title update based on title mode
-              if (
-                session.titleMode === TitleMode.STATIC ||
-                session.titleMode === TitleMode.DYNAMIC
-              ) {
-                // Check if we have stdout queue (indicates forwardToStdout mode)
-                const isExternalTerminal = !!session.stdoutQueue;
-
-                // Generate new title sequence with updated name
-                const titleSequence = generateTitleSequence(
-                  session.currentWorkingDir || session.sessionInfo.workingDir,
-                  session.sessionInfo.command,
-                  newSessionInfo.name
-                );
-
-                // Write title sequence to PTY (only for external terminals)
-                if (session.ptyProcess && isExternalTerminal) {
-                  session.ptyProcess.write(titleSequence);
-                  logger.debug(
-                    `Injected updated title for session ${session.id}: ${newSessionInfo.name}`
-                  );
-                }
-
-                // If using dynamic mode, update the activity detector's base name
-                if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
-                  // Update the activity detector with new session name
-                  const activityState = session.activityDetector.getActivityState();
-                  const updatedTitle = generateDynamicTitle(
-                    session.currentWorkingDir || session.sessionInfo.workingDir,
-                    session.sessionInfo.command,
-                    activityState,
-                    newSessionInfo.name
-                  );
-
-                  // Write the dynamic title
-                  if (session.ptyProcess && isExternalTerminal) {
-                    session.ptyProcess.write(updatedTitle);
-                  }
-                }
-              }
-
-              // Emit event for clients
-              this.emit('sessionNameChanged', session.id, newSessionInfo.name);
-            }
-            } catch (error) {
-              logger.warn(`Failed to handle session.json change for session ${session.id}:`, error);
-            }
-
+            this.handleSessionJsonChange(session);
             // Clear the timer reference after execution
             session.sessionJsonDebounceTimer = null;
           }, 100);
-
+          
           // Update the session's timer reference
           session.sessionJsonDebounceTimer = debounceTimer;
         }
@@ -960,6 +845,73 @@ export class PtyManager extends EventEmitter {
       logger.debug(`Session.json watcher setup for session ${session.id}`);
     } catch (error) {
       logger.warn(`Failed to setup session.json watcher for session ${session.id}:`, error);
+      this.emit('watcherError', session.id, error);
+    }
+  }
+
+  /**
+   * Handle session.json file changes (debounced)
+   */
+  private handleSessionJsonChange(session: PtySession): void {
+    try {
+      // Reload session info
+      const newSessionInfo = this.sessionManager.loadSessionInfo(session.id);
+      if (!newSessionInfo) return;
+
+      // Check if name changed
+      if (newSessionInfo.name !== session.sessionInfo.name) {
+        logger.log(
+          chalk.cyan(
+            `Session ${session.id} name changed: "${session.sessionInfo.name}" → "${newSessionInfo.name}"`
+          )
+        );
+
+        // Update in-memory session info
+        session.sessionInfo.name = newSessionInfo.name;
+
+        // Handle title update based on title mode
+        if (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC) {
+          // Check if we have stdout queue (indicates forwardToStdout mode)
+          const isExternalTerminal = !!session.stdoutQueue;
+
+          // Generate new title sequence with updated name
+          const titleSequence = generateTitleSequence(
+            session.currentWorkingDir || session.sessionInfo.workingDir,
+            session.sessionInfo.command,
+            newSessionInfo.name
+          );
+
+          // Write title sequence to PTY (only for external terminals)
+          if (session.ptyProcess && isExternalTerminal) {
+            session.ptyProcess.write(titleSequence);
+            logger.debug(
+              `Injected updated title for session ${session.id}: ${newSessionInfo.name}`
+            );
+          }
+
+          // If using dynamic mode, update the activity detector's base name
+          if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
+            // Update the activity detector with new session name
+            const activityState = session.activityDetector.getActivityState();
+            const updatedTitle = generateDynamicTitle(
+              session.currentWorkingDir || session.sessionInfo.workingDir,
+              session.sessionInfo.command,
+              activityState,
+              newSessionInfo.name
+            );
+
+            // Write the dynamic title
+            if (session.ptyProcess && isExternalTerminal) {
+              session.ptyProcess.write(updatedTitle);
+            }
+          }
+        }
+
+        // Emit event for clients
+        this.emit('sessionNameChanged', session.id, newSessionInfo.name);
+      }
+    } catch (error) {
+      logger.warn(`Failed to handle session.json change for session ${session.id}:`, error);
       this.emit('watcherError', session.id, error);
     }
   }
@@ -1066,7 +1018,7 @@ export class PtyManager extends EventEmitter {
         }
 
         // For forwarded sessions, we need to use socket communication
-        const socketPath = path.join(sessionPaths.controlDir, 'ipc.sock');
+        const socketPath = path.join(sessionPaths.controlDir, 'i.sock');
 
         // Check if we have a cached socket connection
         let socketClient = this.inputSocketClients.get(sessionId);
@@ -1094,9 +1046,8 @@ export class PtyManager extends EventEmitter {
         }
 
         if (socketClient && !socketClient.destroyed) {
-          // Send stdin data using framed message protocol
-          const message = frameMessage(MessageType.STDIN_DATA, dataToSend);
-          const canWrite = socketClient.write(message);
+          // Write and check for backpressure
+          const canWrite = socketClient.write(dataToSend);
           if (!canWrite) {
             // Socket buffer is full
             logger.debug(`Socket buffer full for session ${sessionId}, data queued`);
@@ -1119,7 +1070,7 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Send a control message to an external session via socket
+   * Send a control message to an external session
    */
   private sendControlMessage(
     sessionId: string,
@@ -1131,34 +1082,9 @@ export class PtyManager extends EventEmitter {
     }
 
     try {
-      const socketPath = path.join(sessionPaths.controlDir, 'ipc.sock');
-      let socketClient = this.inputSocketClients.get(sessionId);
-
-      if (!socketClient || socketClient.destroyed) {
-        // Try to connect to the socket
-        try {
-          socketClient = net.createConnection(socketPath);
-          socketClient.setNoDelay(true);
-          socketClient.setKeepAlive(true, 0);
-          this.inputSocketClients.set(sessionId, socketClient);
-
-          socketClient.on('error', () => {
-            this.inputSocketClients.delete(sessionId);
-          });
-
-          socketClient.on('close', () => {
-            this.inputSocketClients.delete(sessionId);
-          });
-        } catch (error) {
-          logger.debug(`Failed to connect to control socket for session ${sessionId}:`, error);
-          return false;
-        }
-      }
-
-      if (socketClient && !socketClient.destroyed) {
-        const frameMsg = frameMessage(MessageType.CONTROL_CMD, message);
-        return socketClient.write(frameMsg);
-      }
+      const messageStr = `${JSON.stringify(message)}\n`;
+      fs.appendFileSync(sessionPaths.controlPipePath, messageStr);
+      return true;
     } catch (error) {
       logger.error(`Failed to send control message to session ${sessionId}:`, error);
     }
@@ -1556,36 +1482,59 @@ export class PtyManager extends EventEmitter {
       const activeSession = this.sessions.get(session.id);
       if (activeSession?.activityDetector) {
         const activityState = activeSession.activityDetector.getActivityState();
-        // Also check our in-memory Claude status
-        const claudeStatus = this.sessionClaudeStatus.get(session.id);
-        const now = Date.now();
-        const CLAUDE_STATUS_TIMEOUT = 30000; // 30 seconds timeout
-
         return {
           ...session,
           activityStatus: {
             isActive: activityState.isActive,
-            specificStatus:
-              claudeStatus && now - claudeStatus.timestamp < CLAUDE_STATUS_TIMEOUT
-                ? { app: claudeStatus.app, status: claudeStatus.status }
-                : activityState.specificStatus,
+            specificStatus: activityState.specificStatus,
           },
         };
       }
 
-      // For external sessions, check in-memory Claude status
-      const claudeStatus = this.sessionClaudeStatus.get(session.id);
-      const now = Date.now();
-      const CLAUDE_STATUS_TIMEOUT = 30000; // 30 seconds timeout
+      // Otherwise, try to read from activity file (for external sessions)
+      try {
+        const sessionPaths = this.sessionManager.getSessionPaths(session.id);
+        if (!sessionPaths) {
+          return session;
+        }
+        const activityPath = path.join(sessionPaths.controlDir, 'claude-activity.json');
 
-      if (claudeStatus && now - claudeStatus.timestamp < CLAUDE_STATUS_TIMEOUT) {
-        return {
-          ...session,
-          activityStatus: {
-            isActive: false, // External sessions don't have real-time activity tracking
-            specificStatus: { app: claudeStatus.app, status: claudeStatus.status },
-          },
-        };
+        if (fs.existsSync(activityPath)) {
+          const activityData = JSON.parse(fs.readFileSync(activityPath, 'utf-8'));
+          // Check if activity is recent (within last 60 seconds)
+          // Use Math.abs to handle future timestamps from system clock issues
+          const timeDiff = Math.abs(Date.now() - new Date(activityData.timestamp).getTime());
+          const isRecent = timeDiff < 60000;
+
+          if (isRecent) {
+            logger.debug(`Found recent activity for external session ${session.id}:`, {
+              isActive: activityData.isActive,
+              specificStatus: activityData.specificStatus,
+            });
+            return {
+              ...session,
+              activityStatus: {
+                isActive: activityData.isActive,
+                specificStatus: activityData.specificStatus,
+              },
+            };
+          } else {
+            logger.debug(
+              `Activity file for session ${session.id} is stale (time diff: ${timeDiff}ms)`
+            );
+          }
+        } else {
+          // Only log once per session to avoid spam
+          if (!this.activityFileWarningsLogged.has(session.id)) {
+            this.activityFileWarningsLogged.add(session.id);
+            logger.debug(
+              `No claude-activity.json found for session ${session.id} at ${activityPath}`
+            );
+          }
+        }
+      } catch (error) {
+        // Ignore errors reading activity file
+        logger.debug(`Failed to read activity file for session ${session.id}:`, error);
       }
 
       return session;
@@ -1792,17 +1741,27 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
+   * Setup stdin forwarding for fwd mode
+   */
+  private setupStdinForwarding(session: PtySession): void {
+    if (!session.ptyProcess) return;
+
+    // Forward stdin to PTY with maximum speed
+    process.stdin.on('data', (data: string) => {
+      try {
+        session.ptyProcess?.write(data);
+      } catch (error) {
+        logger.error(`Failed to forward stdin to session ${session.id}:`, error);
+      }
+    });
+  }
+
+  /**
    * Clean up all resources associated with a session
    */
   private cleanupSessionResources(session: PtySession): void {
     // Clean up resize tracking
     this.sessionResizeSources.delete(session.id);
-
-    // Clean up Claude status
-    this.sessionClaudeStatus.delete(session.id);
-
-    // Clean up socket clients tracking
-    this.sessionSocketClients.delete(session.id);
 
     // Clean up title update interval for dynamic mode
     if (session.titleUpdateInterval) {
@@ -1823,10 +1782,15 @@ export class PtyManager extends EventEmitter {
       // Unref the server so it doesn't keep the process alive
       session.inputSocketServer.unref();
       try {
-        fs.unlinkSync(path.join(session.controlDir, 'ipc.sock'));
+        fs.unlinkSync(path.join(session.controlDir, 'i.sock'));
       } catch (_e) {
         // Socket already removed
       }
+    }
+
+    // Close control watcher
+    if (session.controlWatcher) {
+      session.controlWatcher.close();
     }
 
     // Close session.json watcher and clear debounce timer
@@ -1836,6 +1800,15 @@ export class PtyManager extends EventEmitter {
     }
     if (session.sessionJsonWatcher) {
       session.sessionJsonWatcher.close();
+    }
+
+    // Remove control pipe
+    if (fs.existsSync(session.controlPipePath)) {
+      try {
+        fs.unlinkSync(session.controlPipePath);
+      } catch (_e) {
+        // Control pipe already removed
+      }
     }
   }
 }
