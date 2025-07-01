@@ -16,6 +16,16 @@ pnpm run dev:client # Watch mode: client only (for debugging server)
 
 Open http://localhost:3000
 
+### Pre-commit Hooks
+
+This project uses husky and lint-staged to enforce code quality standards. After running `pnpm install`, pre-commit hooks will automatically:
+
+- Format code with Biome
+- Check for linting errors
+- Run TypeScript type checking for all configs
+
+If your commit fails due to linting or type errors, fix the issues and try again. Many formatting issues will be auto-fixed.
+
 ### Build Commands
 
 ```bash
