@@ -103,6 +103,22 @@ describe.sequential('Logs API Tests', () => {
 
   describe('GET /api/logs/info', () => {
     it('should return log file information', async () => {
+      // First write a log to ensure the file exists
+      await fetch(`http://localhost:${server?.port}/api/logs/client`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          level: 'log',
+          module: 'test',
+          args: ['Ensuring log file exists'],
+        }),
+      });
+
+      // Give it a moment to write
+      await sleep(100);
+
       const response = await fetch(`http://localhost:${server?.port}/api/logs/info`);
 
       expect(response.status).toBe(200);
