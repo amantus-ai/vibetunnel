@@ -17,42 +17,33 @@ export const test = base.extend<TestFixtures>({
     page.setDefaultTimeout(testConfig.defaultTimeout);
     page.setDefaultNavigationTimeout(testConfig.navigationTimeout);
 
-    // Set up resource blocking for performance - be less aggressive
-    // Only intercept routes if explicitly dealing with external resources
-    const shouldBlockExternalResources = false; // Disable for now to fix CI issues
-    if (shouldBlockExternalResources) {
-      await page.route('**/*', (route) => {
-        const url = route.request().url();
-        const resourceType = route.request().resourceType();
+    // Aggressive resource blocking for performance
+    await page.route('**/*', (route) => {
+      const url = route.request().url();
+      const resourceType = route.request().resourceType();
 
-        // Only block specific external resources, not localhost
-        if (url.includes('localhost') || url.includes('127.0.0.1')) {
-          return route.continue();
-        }
-
-        // Block unnecessary resource types from external sources
-        const blockedTypes = ['image', 'font', 'media'];
-        if (blockedTypes.includes(resourceType)) {
+      // Allow only essential resources for localhost
+      if (url.includes('localhost') || url.includes('127.0.0.1')) {
+        // Block non-essential resource types even for localhost
+        const blockedLocalTypes = ['image', 'font', 'media'];
+        if (blockedLocalTypes.includes(resourceType)) {
           return route.abort();
         }
-
-        // Block analytics and tracking only
-        const blockedPatterns = [
-          'google-analytics',
-          'googletagmanager',
-          'analytics',
-          'doubleclick',
-          'facebook',
-          'twitter',
-        ];
-
-        if (blockedPatterns.some((pattern) => url.includes(pattern))) {
+        
+        // Allow only necessary file extensions
+        const allowedExtensions = ['.js', '.css', '.html', '/api/', '.json'];
+        const hasAllowedExtension = allowedExtensions.some(ext => url.includes(ext));
+        
+        if (!hasAllowedExtension && resourceType !== 'document' && resourceType !== 'xhr' && resourceType !== 'fetch') {
           return route.abort();
         }
-
+        
         return route.continue();
-      });
-    }
+      }
+
+      // Block all external resources
+      return route.abort();
+    });
 
     // Only do initial setup on first navigation
     const isFirstNavigation = !page.url() || page.url() === 'about:blank';

@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { assertSessionInList } from '../helpers/assertion.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { SmartWait } from '../helpers/smart-wait.helper';
 
 test.describe('Minimal Session Tests', () => {
   let sessionManager: TestSessionManager;
@@ -39,9 +40,9 @@ test.describe('Minimal Session Tests', () => {
       await page.goto('/', { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
 
-      // Add a small delay between creations to avoid race conditions
+      // Wait for session to be fully created before creating next one
       if (i < 2) {
-        await page.waitForTimeout(500);
+        await SmartWait.forSessionCreation(page, sessionName);
       }
     }
 
