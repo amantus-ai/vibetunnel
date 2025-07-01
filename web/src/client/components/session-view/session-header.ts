@@ -78,7 +78,7 @@ export class SessionHeader extends LitElement {
       <!-- Enhanced Header with gradient background -->
       <div
         class="flex items-center justify-between border-b border-dark-border text-sm min-w-0 bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary p-4 shadow-sm"
-        style="padding-top: max(1rem, calc(1rem + env(safe-area-inset-top))); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
+        style="padding-top: max(1rem, calc(1rem + env(safe-area-inset-top))); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); min-height: 73px;"
       >
         <div class="flex items-center gap-3 min-w-0 flex-1">
           <!-- Sidebar Toggle and Create Session Buttons (shown when sidebar is collapsed) -->

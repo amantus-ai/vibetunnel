@@ -17,7 +17,7 @@ export class SidebarHeader extends HeaderBase {
     return html`
       <div
         class="app-header sidebar-header bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary border-b border-dark-border p-4"
-        style="padding-top: max(1rem, calc(1rem + env(safe-area-inset-top)));"
+        style="padding-top: max(1rem, calc(1rem + env(safe-area-inset-top))); min-height: 73px;"
       >
         <!-- Compact layout for sidebar -->
         <div class="flex items-center gap-2">

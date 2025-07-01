@@ -148,15 +148,19 @@ export class SessionList extends LitElement {
   }
 
   render() {
-    const filteredSessions = this.hideExited
-      ? this.sessions.filter((session) => session.status !== 'exited')
-      : this.sessions;
+    // Group sessions by status
+    const runningSessions = this.sessions.filter((session) => session.status === 'running');
+    const exitedSessions = this.sessions.filter((session) => session.status === 'exited');
+
+    const hasRunningSessions = runningSessions.length > 0;
+    const hasExitedSessions = exitedSessions.length > 0;
+    const showExitedSection = !this.hideExited && hasExitedSessions;
 
     return html`
       <div class="font-mono text-sm" data-testid="session-list-container">
         <div class="p-4">
         ${
-          filteredSessions.length === 0
+          !hasRunningSessions && (!hasExitedSessions || this.hideExited)
             ? html`
               <div class="text-dark-text-muted text-center py-8">
                 ${
@@ -230,11 +234,19 @@ export class SessionList extends LitElement {
               </div>
             `
             : html`
-              <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'}">
-                ${repeat(
-                  filteredSessions,
-                  (session) => session.id,
-                  (session) => html`
+              <!-- Active Sessions -->
+              ${
+                hasRunningSessions
+                  ? html`
+                    <div class="mb-6">
+                      <h3 class="text-xs font-semibold text-dark-text-muted uppercase tracking-wider mb-3">
+                        Active <span class="text-dark-text-dim">(${runningSessions.length})</span>
+                      </h3>
+                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'}">
+                        ${repeat(
+                          runningSessions,
+                          (session) => session.id,
+                          (session) => html`
                     ${
                       this.compactMode
                         ? html`
@@ -410,8 +422,141 @@ export class SessionList extends LitElement {
                         `
                     }
                   `
-                )}
-              </div>
+                        )}
+                      </div>
+                    </div>
+                  `
+                  : ''
+              }
+              
+              <!-- Idle/Exited Sessions -->
+              ${
+                showExitedSection
+                  ? html`
+                    <div>
+                      <h3 class="text-xs font-semibold text-dark-text-muted uppercase tracking-wider mb-3">
+                        Idle <span class="text-dark-text-dim">(${exitedSessions.length})</span>
+                      </h3>
+                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'}">
+                        ${repeat(
+                          exitedSessions,
+                          (session) => session.id,
+                          (session) => html`
+                            ${
+                              this.compactMode
+                                ? html`
+                                  <!-- Enhanced compact list item for sidebar -->
+                                  <div
+                                    class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 animate-fade-in ${
+                                      session.id === this.selectedSessionId
+                                        ? 'bg-dark-bg-elevated border border-accent-primary shadow-card-hover'
+                                        : 'bg-dark-bg-secondary border border-dark-border hover:bg-dark-bg-tertiary hover:border-dark-border-light hover:shadow-card opacity-75'
+                                    }"
+                                    @click=${() =>
+                                      this.handleSessionSelect({ detail: session } as CustomEvent)}
+                                  >
+                                    <!-- Status indicator -->
+                                    <div class="relative flex-shrink-0">
+                                      <div class="w-2.5 h-2.5 rounded-full bg-status-warning"></div>
+                                    </div>
+                                    
+                                    <!-- Elegant divider line -->
+                                    <div class="w-px h-8 bg-gradient-to-b from-transparent via-dark-border to-transparent"></div>
+                                    
+                                    <!-- Session content -->
+                                    <div class="flex-1 min-w-0">
+                                      <div
+                                        class="text-sm font-mono truncate ${
+                                          session.id === this.selectedSessionId
+                                            ? 'text-accent-primary font-medium'
+                                            : 'text-dark-text-muted group-hover:text-dark-text transition-colors'
+                                        }"
+                                        title="${
+                                          session.name ||
+                                          (Array.isArray(session.command)
+                                            ? session.command.join(' ')
+                                            : session.command)
+                                        }"
+                                      >
+                                        ${
+                                          session.name ||
+                                          (Array.isArray(session.command)
+                                            ? session.command.join(' ')
+                                            : session.command)
+                                        }
+                                      </div>
+                                      <div class="text-xs text-dark-text-dim truncate">
+                                        ${formatPathForDisplay(session.workingDir)}
+                                      </div>
+                                    </div>
+                                    
+                                    <!-- Right side: duration and close button -->
+                                    <div class="relative flex items-center flex-shrink-0">
+                                      <!-- Session duration -->
+                                      <div class="text-xs text-dark-text-dim font-mono">
+                                        ${session.startedAt ? formatSessionDuration(session.startedAt) : ''}
+                                      </div>
+                                      
+                                      <!-- Clean up button -->
+                                      <button
+                                        class="btn-ghost text-dark-text-muted p-1.5 rounded-md transition-all ml-2 hover:text-status-warning hover:bg-dark-bg-elevated hover:shadow-sm"
+                                        @click=${async (e: Event) => {
+                                          e.stopPropagation();
+                                          try {
+                                            const response = await fetch(
+                                              `/api/sessions/${session.id}/cleanup`,
+                                              {
+                                                method: 'DELETE',
+                                                headers: this.authClient.getAuthHeader(),
+                                              }
+                                            );
+                                            if (response.ok) {
+                                              this.handleSessionKilled({
+                                                detail: { sessionId: session.id },
+                                              } as CustomEvent);
+                                            }
+                                          } catch (error) {
+                                            logger.error('Failed to clean up session', error);
+                                          }
+                                        }}
+                                        title="Clean up session"
+                                      >
+                                        <svg
+                                          class="w-4 h-4"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"
+                                          />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                `
+                                : html`
+                                  <!-- Full session card for main view -->
+                                  <session-card
+                                    .session=${session}
+                                    .authClient=${this.authClient}
+                                    @session-select=${this.handleSessionSelect}
+                                    @session-killed=${this.handleSessionKilled}
+                                    @session-kill-error=${this.handleSessionKillError}
+                                  >
+                                  </session-card>
+                                `
+                            }
+                          `
+                        )}
+                      </div>
+                    </div>
+                  `
+                  : ''
+              }
             `
         }
         </div>

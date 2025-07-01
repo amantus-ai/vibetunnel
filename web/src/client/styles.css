@@ -75,7 +75,7 @@
     @apply transition-all duration-200 ease-in-out;
     @apply hover:border-accent-green-darker focus:border-accent-green;
     @apply focus:shadow-glow-green-sm;
-    @apply text-center placeholder:text-center;
+    @apply text-left placeholder:text-dark-text-muted;
   }
 
   /* Button styles */
