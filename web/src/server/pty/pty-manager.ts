@@ -1198,16 +1198,24 @@ export class PtyManager extends EventEmitter {
    * Update session name
    */
   updateSessionName(sessionId: string, name: string): void {
+    logger.debug(
+      `[PtyManager] updateSessionName called for session ${sessionId} with name: ${name}`
+    );
+
     // Update in session manager (persisted storage)
+    logger.debug(`[PtyManager] Calling sessionManager.updateSessionName`);
     this.sessionManager.updateSessionName(sessionId, name);
 
     // Update in-memory session if it exists
     const memorySession = this.sessions.get(sessionId);
     if (memorySession?.sessionInfo) {
+      logger.debug(`[PtyManager] Updating in-memory session info`);
       memorySession.sessionInfo.name = name;
+    } else {
+      logger.debug(`[PtyManager] No in-memory session found for ${sessionId}`);
     }
 
-    logger.log(`Updated session ${sessionId} name to: ${name}`);
+    logger.log(`[PtyManager] Updated session ${sessionId} name to: ${name}`);
   }
 
   /**

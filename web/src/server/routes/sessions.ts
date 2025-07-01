@@ -49,13 +49,20 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
   // List all sessions (aggregate local + remote in HQ mode)
   router.get('/sessions', async (_req, res) => {
-    logger.debug('listing all sessions');
+    logger.debug('[GET /sessions] Listing all sessions');
     try {
       let allSessions = [];
 
       // Get local sessions
       const localSessions = ptyManager.listSessions();
-      logger.debug(`found ${localSessions.length} local sessions`);
+      logger.debug(`[GET /sessions] Found ${localSessions.length} local sessions`);
+
+      // Log session names for debugging
+      localSessions.forEach((session) => {
+        logger.debug(
+          `[GET /sessions] Session ${session.id}: name="${session.name || 'null'}", workingDir="${session.workingDir}"`
+        );
+      });
 
       // Add source info to local sessions
       const localSessionsWithSource = localSessions.map((session) => ({
@@ -1029,13 +1036,18 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
   // Update session name
   router.patch('/sessions/:sessionId', async (req, res) => {
     const sessionId = req.params.sessionId;
+    logger.log(chalk.yellow(`[PATCH] Received rename request for session ${sessionId}`));
+    logger.debug(`[PATCH] Request body:`, req.body);
+    logger.debug(`[PATCH] Request headers:`, req.headers);
+
     const { name } = req.body;
 
     if (typeof name !== 'string' || name.trim() === '') {
+      logger.warn(`[PATCH] Invalid name provided: ${JSON.stringify(name)}`);
       return res.status(400).json({ error: 'Name must be a non-empty string' });
     }
 
-    logger.log(chalk.blue(`updating session ${sessionId} name to: ${name}`));
+    logger.log(chalk.blue(`[PATCH] Updating session ${sessionId} name to: ${name}`));
 
     try {
       // If in HQ mode, check if this is a remote session
@@ -1067,15 +1079,20 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       }
 
       // Local session handling
+      logger.debug(`[PATCH] Handling local session update`);
+
       const session = ptyManager.getSession(sessionId);
       if (!session) {
-        logger.warn(`session ${sessionId} not found for name update`);
+        logger.warn(`[PATCH] Session ${sessionId} not found for name update`);
         return res.status(404).json({ error: 'Session not found' });
       }
 
+      logger.debug(`[PATCH] Found session: ${JSON.stringify(session)}`);
+
       // Update the session name
+      logger.debug(`[PATCH] Calling ptyManager.updateSessionName(${sessionId}, ${name})`);
       ptyManager.updateSessionName(sessionId, name);
-      logger.log(chalk.green(`session ${sessionId} name updated to: ${name}`));
+      logger.log(chalk.green(`[PATCH] Session ${sessionId} name updated to: ${name}`));
 
       res.json({ success: true, name });
     } catch (error) {

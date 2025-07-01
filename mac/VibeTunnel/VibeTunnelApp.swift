@@ -64,6 +64,9 @@ struct VibeTunnelApp: App {
             }
             .windowResizability(.contentSize)
 
+            // New Session Window
+            NewSessionWindow()
+
             Settings {
                 SettingsView()
                     .environment(sessionMonitor)

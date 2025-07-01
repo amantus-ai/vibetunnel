@@ -33,7 +33,9 @@ export function generateTitleSequence(
   const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
 
   // Get the command name (first element of command array)
-  const cmdName = command[0] || 'shell';
+  // Extract just the process name from the full path
+  const fullCmd = command[0] || 'shell';
+  const cmdName = path.basename(fullCmd);
 
   // Build title parts
   const parts = [displayPath, cmdName];
@@ -145,7 +147,8 @@ export function generateDynamicTitle(
 ): string {
   const homeDir = os.homedir();
   const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
-  const cmdName = command[0] || 'shell';
+  const fullCmd = command[0] || 'shell';
+  const cmdName = path.basename(fullCmd);
 
   // If we have Claude-specific status, put it first
   if (activity.specificStatus) {

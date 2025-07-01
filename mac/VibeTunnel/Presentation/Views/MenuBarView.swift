@@ -12,6 +12,8 @@ struct MenuBarView: View {
     var serverManager
     @AppStorage("showInDock")
     private var showInDock = false
+    @Environment(\.openWindow)
+    private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -150,6 +152,18 @@ struct MenuBarView: View {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.accentColor.opacity(0.001))
             )
+
+            // New Session button
+            Button(
+                action: {
+                    openWindow(id: "new-session")
+                },
+                label: {
+                    Label("New Session…", systemImage: "plus.square")
+                }
+            )
+            .buttonStyle(MenuButtonStyle())
+            .keyboardShortcut("n", modifiers: .command)
 
             // Settings button
             Button(

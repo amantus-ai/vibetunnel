@@ -173,14 +173,25 @@ export class SessionManager {
    * Update session name
    */
   updateSessionName(sessionId: string, name: string): void {
+    logger.debug(
+      `[SessionManager] updateSessionName called for session ${sessionId} with name: ${name}`
+    );
+
     const sessionInfo = this.loadSessionInfo(sessionId);
     if (!sessionInfo) {
+      logger.error(`[SessionManager] Session info not found for ${sessionId}`);
       throw new PtyError('Session info not found', 'SESSION_NOT_FOUND');
     }
 
+    logger.debug(`[SessionManager] Current session info: ${JSON.stringify(sessionInfo)}`);
+
     sessionInfo.name = name;
+
+    logger.debug(`[SessionManager] Updated session info: ${JSON.stringify(sessionInfo)}`);
+    logger.debug(`[SessionManager] Calling saveSessionInfo`);
+
     this.saveSessionInfo(sessionId, sessionInfo);
-    logger.log(`session ${sessionId} name updated to: ${name}`);
+    logger.log(`[SessionManager] session ${sessionId} name updated to: ${name}`);
   }
 
   /**
