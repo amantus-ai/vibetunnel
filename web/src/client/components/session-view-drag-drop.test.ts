@@ -66,39 +66,49 @@ describe('SessionView Drag & Drop and Paste', () => {
 
   describe('Drag & Drop', () => {
     it('should show drag overlay when dragging files over', async () => {
+      const dataTransfer = new DataTransfer();
       const dragEvent = new DragEvent('dragover', {
         bubbles: true,
-        dataTransfer: new DataTransfer(),
+        dataTransfer,
       });
 
       // Mock dataTransfer to include Files type
-      Object.defineProperty(dragEvent.dataTransfer, 'types', {
-        value: ['Files'],
-        writable: false,
-      });
+      if (dragEvent.dataTransfer) {
+        Object.defineProperty(dragEvent.dataTransfer, 'types', {
+          value: ['Files'],
+          writable: false,
+        });
+      }
 
       element.dispatchEvent(dragEvent);
       await element.updateComplete;
 
-      const overlay = element.querySelector('.fixed.inset-0.bg-black.bg-opacity-80');
+      // Also wait for any async operations
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(element.isDragOver).toBe(true);
+      const overlay = element.shadowRoot?.querySelector('.fixed.inset-0.bg-black.bg-opacity-80');
       expect(overlay).toBeTruthy();
     });
 
     it('should hide drag overlay when leaving drag area', async () => {
       // First show the overlay
+      const dataTransfer = new DataTransfer();
       const dragOverEvent = new DragEvent('dragover', {
         bubbles: true,
-        dataTransfer: new DataTransfer(),
+        dataTransfer,
       });
-      Object.defineProperty(dragOverEvent.dataTransfer, 'types', {
-        value: ['Files'],
-        writable: false,
-      });
+      if (dragOverEvent.dataTransfer) {
+        Object.defineProperty(dragOverEvent.dataTransfer, 'types', {
+          value: ['Files'],
+          writable: false,
+        });
+      }
 
       element.dispatchEvent(dragOverEvent);
       await element.updateComplete;
 
-      expect(element['isDragOver']).toBe(true);
+      expect(element.isDragOver).toBe(true);
 
       // Then simulate leaving the area
       const dragLeaveEvent = new DragEvent('dragleave', {
@@ -123,14 +133,24 @@ describe('SessionView Drag & Drop and Paste', () => {
       element.dispatchEvent(dragLeaveEvent);
       await element.updateComplete;
 
-      expect(element['isDragOver']).toBe(false);
+      expect(element.isDragOver).toBe(false);
     });
 
     it('should handle file drop', async () => {
       const testFile = new File(['fake content'], 'test.txt', { type: 'text/plain' });
       const dataTransfer = new DataTransfer();
+
+      // Create a mock FileList
+      const files = [testFile];
+      Object.defineProperty(files, 'item', {
+        value: (index: number) => files[index] || null,
+      });
+      Object.defineProperty(files, 'length', {
+        value: files.length,
+      });
+
       Object.defineProperty(dataTransfer, 'files', {
-        value: [testFile],
+        value: files,
         writable: false,
       });
 
@@ -143,18 +163,24 @@ describe('SessionView Drag & Drop and Paste', () => {
       const mockFilePicker = {
         uploadFile: vi.fn().mockResolvedValue(undefined),
       };
-      element.querySelector = vi.fn((selector) => {
+
+      // Override querySelector to return our mock
+      const originalQuerySelector = element.querySelector.bind(element);
+      element.querySelector = vi.fn((selector: string) => {
         if (selector === 'file-picker') {
           return mockFilePicker;
         }
-        return null;
+        return originalQuerySelector(selector);
       });
 
       element.dispatchEvent(dropEvent);
-      await element.updateComplete;
 
-      expect(mockFilePicker.uploadFile).toHaveBeenCalledWith(testFile);
-      expect(element['isDragOver']).toBe(false);
+      // Wait for async operations
+      await vi.waitFor(() => {
+        expect(mockFilePicker.uploadFile).toHaveBeenCalledWith(testFile);
+      });
+
+      expect(element.isDragOver).toBe(false);
     });
 
     it('should handle empty file drops gracefully', async () => {
@@ -186,8 +212,18 @@ describe('SessionView Drag & Drop and Paste', () => {
       const pdfFile = new File(['pdf'], 'test.pdf', { type: 'application/pdf' });
 
       const dataTransfer = new DataTransfer();
+
+      // Create a mock FileList with multiple files
+      const files = [textFile, jsonFile, pdfFile];
+      Object.defineProperty(files, 'item', {
+        value: (index: number) => files[index] || null,
+      });
+      Object.defineProperty(files, 'length', {
+        value: files.length,
+      });
+
       Object.defineProperty(dataTransfer, 'files', {
-        value: [textFile, jsonFile, pdfFile],
+        value: files,
         writable: false,
       });
 
@@ -199,12 +235,23 @@ describe('SessionView Drag & Drop and Paste', () => {
       const mockFilePicker = {
         uploadFile: vi.fn().mockResolvedValue(undefined),
       };
-      element.querySelector = vi.fn(() => mockFilePicker);
+
+      // Override querySelector to return our mock
+      const originalQuerySelector = element.querySelector.bind(element);
+      element.querySelector = vi.fn((selector: string) => {
+        if (selector === 'file-picker') {
+          return mockFilePicker;
+        }
+        return originalQuerySelector(selector);
+      });
 
       element.dispatchEvent(dropEvent);
-      await element.updateComplete;
 
-      expect(mockFilePicker.uploadFile).toHaveBeenCalledWith(textFile);
+      // Wait for async operations
+      await vi.waitFor(() => {
+        expect(mockFilePicker.uploadFile).toHaveBeenCalledWith(textFile);
+      });
+
       expect(mockFilePicker.uploadFile).toHaveBeenCalledTimes(1);
     });
   });
@@ -302,6 +349,7 @@ describe('SessionView Drag & Drop and Paste', () => {
     it('should handle paste error gracefully', async () => {
       const imageFile = new File(['fake image'], 'clipboard.png', { type: 'image/png' });
       const mockClipboardItem = {
+        kind: 'file',
         type: 'image/png',
         getAsFile: () => imageFile,
       };
@@ -319,21 +367,29 @@ describe('SessionView Drag & Drop and Paste', () => {
       const mockImagePicker = {
         uploadFile: vi.fn().mockRejectedValue(new Error('Upload failed')),
       };
-      element.querySelector = vi.fn(() => mockImagePicker);
+
+      // Override querySelector to return our mock
+      const originalQuerySelector = element.querySelector.bind(element);
+      element.querySelector = vi.fn((selector: string) => {
+        if (selector === 'file-picker') {
+          return mockImagePicker;
+        }
+        return originalQuerySelector(selector);
+      });
 
       const errorSpy = vi.fn();
       element.addEventListener('error', errorSpy);
 
       document.dispatchEvent(pasteEvent);
 
-      // Wait for async error handling
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          detail: 'Upload failed',
-        })
-      );
+      // Wait for the error event to be dispatched
+      await vi.waitFor(() => {
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            detail: 'Upload failed',
+          })
+        );
+      });
     });
   });
 
