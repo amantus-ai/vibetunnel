@@ -66,13 +66,9 @@ export default defineConfig({
       name: 'parallel-safe',
       testMatch: [
         '**/terminal-interaction.spec.ts',
-        '**/session-navigation.spec.ts',
-        '**/session-creation.spec.ts',
-        '**/test-session-persistence.spec.ts',
         '**/ui-features.spec.ts',
         '**/debug-session.spec.ts',
-        '**/keyboard-shortcuts.spec.ts',
-        '**/minimal-session.spec.ts'
+        '**/keyboard-shortcuts.spec.ts'
       ],
       use: { 
         ...devices['Desktop Chrome'],
@@ -84,7 +80,11 @@ export default defineConfig({
       testMatch: [
         '**/session-management-advanced.spec.ts',
         '**/basic-session.spec.ts',
-        '**/session-management.spec.ts'
+        '**/session-management.spec.ts',
+        '**/minimal-session.spec.ts',
+        '**/session-navigation.spec.ts',
+        '**/session-creation.spec.ts',
+        '**/test-session-persistence.spec.ts'
       ],
       use: {
         ...devices['Desktop Chrome'],
