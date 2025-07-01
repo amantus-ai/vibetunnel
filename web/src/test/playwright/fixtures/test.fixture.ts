@@ -144,26 +144,27 @@ export const test = base.extend<TestFixtures>({
           () => {
             const app = document.querySelector('vibetunnel-app');
             if (!app) return false;
-            
+
             // Check if the app has rendered any known views
             const hasAuthView = !!app.querySelector('auth-login');
             const hasListView = !!app.querySelector('session-list');
             const hasSessionView = !!app.querySelector('session-view');
             const hasCreateButton = !!app.querySelector('button[title="Create New Session"]');
             const hasSessionCards = !!app.querySelector('session-card');
-            
+
             // App is initialized if it has rendered any of its views
-            const isInitialized = hasAuthView || hasListView || hasSessionView || hasCreateButton || hasSessionCards;
-            
+            const isInitialized =
+              hasAuthView || hasListView || hasSessionView || hasCreateButton || hasSessionCards;
+
             console.log('[Test Setup] App render state:', {
               hasAuthView,
               hasListView,
               hasSessionView,
               hasCreateButton,
               hasSessionCards,
-              isInitialized
+              isInitialized,
             });
-            
+
             return isInitialized;
           },
           { timeout: 20000, polling: 100 }
@@ -184,17 +185,17 @@ export const test = base.extend<TestFixtures>({
         const appState = await page.evaluate(() => {
           const app = document.querySelector('vibetunnel-app');
           if (!app) return { currentView: null };
-          
+
           // Determine view based on rendered content
           const hasAuthView = !!app.querySelector('auth-login');
           const hasListView = !!app.querySelector('session-list');
           const hasSessionView = !!app.querySelector('session-view');
-          
+
           let currentView = 'unknown';
           if (hasAuthView) currentView = 'auth';
           else if (hasListView) currentView = 'list';
           else if (hasSessionView) currentView = 'session';
-          
+
           return {
             currentView,
             hasAuthView,
@@ -203,7 +204,7 @@ export const test = base.extend<TestFixtures>({
           };
         });
         console.log('[Test Setup] App state:', appState);
-        
+
         // Wait a bit for content to settle
         await page.waitForTimeout(500);
 
@@ -256,26 +257,28 @@ export const test = base.extend<TestFixtures>({
         // Try to get any visible text
         const visibleText = await page.evaluate(() => document.body?.innerText || 'No body text');
         console.log('[Test Setup] Visible text:', visibleText.substring(0, 200));
-        
+
         // Log the actual DOM structure
         const domStructure = await page.evaluate(() => {
           const app = document.querySelector('vibetunnel-app');
           if (!app) return 'No vibetunnel-app element found';
-          
+
           // Get the shadow root or direct children
           const content = app.shadowRoot ? app.shadowRoot.innerHTML : app.innerHTML;
           return content.substring(0, 500);
         });
         console.log('[Test Setup] App DOM structure:', domStructure);
-        
+
         // Get all visible elements
         const visibleElements = await page.evaluate(() => {
           const elements = document.querySelectorAll('*');
           const visible = [];
-          elements.forEach(el => {
+          elements.forEach((el) => {
             const style = window.getComputedStyle(el);
             if (style.display !== 'none' && style.visibility !== 'hidden' && el.offsetHeight > 0) {
-              visible.push(`${el.tagName}${el.className ? `.${el.className}` : ''}${el.id ? `#${el.id}` : ''}`);
+              visible.push(
+                `${el.tagName}${el.className ? `.${el.className}` : ''}${el.id ? `#${el.id}` : ''}`
+              );
             }
           });
           return visible.slice(0, 20).join(', ');
