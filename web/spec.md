@@ -66,7 +66,7 @@ web/
 - Session creation: `173-400` (Spawns PTY processes with node-pty)
 - **Automatic alias resolution**: `204-217` (Uses `ProcessUtils.resolveCommand()`)
 - Terminal resize handling: `115-168` (Native terminal dimension sync)
-- Control pipe support using file watching
+- Control support using Unix domain sockets
 - Bell event emission for push notifications
 - Clean termination with SIGTERM→SIGKILL escalation
 
@@ -511,14 +511,14 @@ pnpm exec tsx src/fwd.ts --session-id abc123 --title-mode dynamic bash -l
 - SSE: Real-time asciinema streaming
 - WebSocket: Binary buffer updates
 - WebSocket Input: Low-latency keyboard/mouse
-- Control pipes: External session control
+- IPC sockets: External session control
 
 ### Session Data Storage
 Each session has a directory in `~/.vibetunnel/control/[sessionId]/`:
 - `session.json`: Session metadata
 - `stream-out`: Asciinema cast file
 - `stdin`: Input pipe
-- `control`: Control pipe
+- `ipc.sock`: IPC socket for all session communication
 - `stdout`: Raw output file
 - `activity.json`: Activity status
 

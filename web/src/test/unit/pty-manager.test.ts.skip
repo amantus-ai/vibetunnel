@@ -371,16 +371,16 @@ describe.skip('PtyManager', () => {
     });
   });
 
-  describe('Control Pipe', () => {
-    it('should handle resize via control pipe', async () => {
+  describe('IPC Socket', () => {
+    it('should handle resize via IPC socket', async () => {
       const result = await ptyManager.createSession(['sleep', '10'], {
         workingDir: testDir,
         cols: 80,
         rows: 24,
       });
 
-      // Write resize command to control pipe
-      const controlPath = path.join(testDir, result.sessionId, 'control');
+      // Send resize command via IPC socket
+      const socketPath = path.join(testDir, result.sessionId, 'ipc.sock');
       fs.writeFileSync(controlPath, 'resize 120 40\n');
 
       // Wait for file watcher to pick it up

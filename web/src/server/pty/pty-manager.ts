@@ -1141,7 +1141,7 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Handle control messages from control pipe
+   * Handle control messages from IPC socket
    */
   private handleControlMessage(session: PtySession, message: Record<string, unknown>): void {
     if (
@@ -1407,7 +1407,7 @@ export class PtyManager extends EventEmitter {
 
         logger.debug(`Resized session ${sessionId} to ${cols}x${rows} from browser`);
       } else {
-        // For external sessions, try to send resize via control pipe
+        // For external sessions, send resize via IPC socket
         const resizeMessage: ResizeControlMessage = {
           cmd: 'resize',
           cols,
@@ -1448,7 +1448,7 @@ export class PtyManager extends EventEmitter {
         );
       }
 
-      // For external sessions, send reset-size command via control pipe
+      // For external sessions, send reset-size command via IPC socket
       const resetSizeMessage: ResetSizeControlMessage = {
         cmd: 'reset-size',
       };
@@ -1509,7 +1509,7 @@ export class PtyManager extends EventEmitter {
         // Start with SIGTERM and escalate if needed
         await this.killSessionWithEscalation(sessionId, memorySession);
       } else {
-        // For external sessions, try control pipe first, then fall back to PID
+        // For external sessions, send kill command via IPC socket
         const killMessage: KillControlMessage = {
           cmd: 'kill',
           signal,

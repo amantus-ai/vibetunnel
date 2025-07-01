@@ -238,7 +238,7 @@ When a client sends a STATUS_UPDATE:
 ## Migration from File-Based IPC
 
 ### Previous System
-- Control commands via `{session_dir}/control-pipe` file
+- Control commands via `{session_dir}/ipc.sock` Unix domain socket
 - Activity updates via `{session_dir}/activity.json` file
 - Required file watching and polling
 
