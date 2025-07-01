@@ -157,6 +157,13 @@ if [[ $# -eq 0 || "$1" == "--help" || "$1" == "-h" ]]; then
     exit 0
 fi
 
+# Handle 'vt title' command when not inside a session
+if [[ "$1" == "title" ]]; then
+    echo "Error: 'vt title' can only be used inside a VibeTunnel session." >&2
+    echo "Start a session first with 'vt' or 'vt <command>'" >&2
+    exit 1
+fi
+
 # Handle --shell or -i option (launch current shell)
 if [[ "$1" == "--shell" || "$1" == "-i" ]]; then
     shift
