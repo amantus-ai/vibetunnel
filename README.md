@@ -24,7 +24,14 @@ Ever wanted to check on your AI agents while you're away? Need to monitor that l
 
 ### 1. Download & Install
 
+#### Option 1: Direct Download
 [Download VibeTunnel](https://github.com/amantus-ai/vibetunnel/releases/latest) and drag it to your Applications folder.
+
+#### Option 2: Homebrew
+```bash
+# Install the beta version
+brew install --cask vibetunnel@beta
+```
 
 ### 2. Launch VibeTunnel
 
