@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as fs from 'fs';
+import { access, readdir, stat, unlink } from 'fs/promises';
 import multer from 'multer';
 import * as os from 'os';
 import * as path from 'path';
@@ -88,7 +89,7 @@ export function createFileRoutes(): Router {
   );
 
   // Serve uploaded files
-  router.get('/files/:filename', (req, res) => {
+  router.get('/files/:filename', async (req, res) => {
     try {
       const filename = req.params.filename;
       const filePath = path.join(UPLOADS_DIR, filename);
@@ -118,12 +119,14 @@ export function createFileRoutes(): Router {
       }
 
       // Check if file exists
-      if (!fs.existsSync(filePath)) {
+      try {
+        await access(filePath);
+      } catch {
         return res.status(404).json({ error: 'File not found' });
       }
 
       // Get file stats for content length
-      const stats = fs.statSync(filePath);
+      const stats = await stat(filePath);
       const ext = path.extname(filename).toLowerCase();
 
       // Set appropriate content type based on file extension
@@ -184,13 +187,13 @@ export function createFileRoutes(): Router {
   });
 
   // List uploaded files
-  router.get('/files', (_req: AuthenticatedRequest, res) => {
+  router.get('/files', async (_req: AuthenticatedRequest, res) => {
     try {
-      const allFiles = fs.readdirSync(UPLOADS_DIR);
-      const files = allFiles
-        .map((file) => {
+      const allFiles = await readdir(UPLOADS_DIR);
+      const files = await Promise.all(
+        allFiles.map(async (file) => {
           const filePath = path.join(UPLOADS_DIR, file);
-          const stats = fs.statSync(filePath);
+          const stats = await stat(filePath);
           return {
             filename: file,
             size: stats.size,
@@ -200,7 +203,8 @@ export function createFileRoutes(): Router {
             extension: path.extname(file).toLowerCase(),
           };
         })
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // Sort by newest first
+      );
+      files.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // Sort by newest first
 
       res.json({
         files,
@@ -209,6 +213,50 @@ export function createFileRoutes(): Router {
     } catch (error) {
       logger.error('File list error:', error);
       res.status(500).json({ error: 'Failed to list files' });
+    }
+  });
+
+  // Delete uploaded file
+  router.delete('/files/:filename', async (req: AuthenticatedRequest, res) => {
+    try {
+      const filename = req.params.filename;
+
+      // Security check: ensure filename doesn't contain path traversal
+      if (
+        filename.includes('..') ||
+        filename.includes('/') ||
+        filename.includes('\\') ||
+        filename.includes('\0') ||
+        !/^[a-zA-Z0-9._-]+$/.test(filename) ||
+        filename.startsWith('.') ||
+        filename.length > 255
+      ) {
+        return res.status(400).json({ error: 'Invalid filename' });
+      }
+
+      const filePath = path.join(UPLOADS_DIR, filename);
+
+      // Ensure the resolved path is within the uploads directory
+      const resolvedPath = path.resolve(filePath);
+      const resolvedUploadsDir = path.resolve(UPLOADS_DIR);
+      if (
+        !resolvedPath.startsWith(resolvedUploadsDir + path.sep) &&
+        resolvedPath !== resolvedUploadsDir
+      ) {
+        return res.status(400).json({ error: 'Invalid file path' });
+      }
+
+      try {
+        await unlink(filePath);
+        logger.log(`File deleted by user ${req.userId}: ${filename}`);
+        res.json({ success: true, message: 'File deleted successfully' });
+      } catch {
+        // File doesn't exist
+        res.status(404).json({ error: 'File not found' });
+      }
+    } catch (error) {
+      logger.error('File deletion error:', error);
+      res.status(500).json({ error: 'Failed to delete file' });
     }
   });
 
