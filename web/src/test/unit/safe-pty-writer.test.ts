@@ -51,14 +51,16 @@ describe('SafePTYWriter', () => {
       writer.queueTitle('Test Title');
       expect(writer.getPendingCount()).toBe(1);
 
+      // New title replaces the previous one
       writer.queueTitle('Another Title');
-      expect(writer.getPendingCount()).toBe(2);
+      expect(writer.getPendingCount()).toBe(1);
     });
 
     it('should clear pending titles', () => {
       writer.queueTitle('Test Title');
+      // New title replaces the previous one
       writer.queueTitle('Another Title');
-      expect(writer.getPendingCount()).toBe(2);
+      expect(writer.getPendingCount()).toBe(1);
 
       writer.clearPending();
       expect(writer.getPendingCount()).toBe(0);
@@ -78,17 +80,17 @@ describe('SafePTYWriter', () => {
       expect(writer.getPendingCount()).toBe(0);
     });
 
-    it('should inject multiple titles at multiple newlines', () => {
+    it('should only inject latest title when multiple are queued', () => {
       const onData = vi.fn();
       writer.attach(onData);
       writer.queueTitle('Title 1');
-      writer.queueTitle('Title 2');
+      writer.queueTitle('Title 2'); // This replaces Title 1
 
-      // Send data with multiple newlines
+      // Send data with newline
       onDataCallback?.('Line 1\nLine 2\n');
 
-      // Should inject both titles at available safe points
-      expect(onData).toHaveBeenCalledWith('Line 1\n\x1b]0;Title 1\x07Line 2\n\x1b]0;Title 2\x07');
+      // Should only inject the latest title (Title 2)
+      expect(onData).toHaveBeenCalledWith('Line 1\n\x1b]0;Title 2\x07Line 2\n');
       expect(writer.getPendingCount()).toBe(0);
     });
   });
@@ -133,7 +135,7 @@ describe('SafePTYWriter', () => {
 
       // Should not inject yet
       expect(onData).toHaveBeenCalledWith('\x1b[31');
-      expect(writer.getPendingCount()).toBe(0);
+      expect(writer.getPendingCount()).toBe(1); // Still pending
 
       // Complete the sequence
       onDataCallback?.('m');
@@ -243,15 +245,15 @@ describe('SafePTYWriter', () => {
   });
 
   describe('force injection', () => {
-    it('should force inject all pending titles', () => {
+    it('should force inject pending title', () => {
       writer.queueTitle('Force 1');
-      writer.queueTitle('Force 2');
+      writer.queueTitle('Force 2'); // This replaces Force 1
 
-      expect(writer.getPendingCount()).toBe(2);
+      expect(writer.getPendingCount()).toBe(1);
 
       writer.forceInject();
 
-      expect(mockPty.write).toHaveBeenCalledWith('\x1b]0;Force 1\x07\x1b]0;Force 2\x07');
+      expect(mockPty.write).toHaveBeenCalledWith('\x1b]0;Force 2\x07');
       expect(writer.getPendingCount()).toBe(0);
     });
   });
@@ -284,15 +286,13 @@ describe('SafePTYWriter', () => {
       writer.attach(onData);
       writer.queueTitle('Multi 1');
       writer.queueTitle('Multi 2');
-      writer.queueTitle('Multi 3');
+      writer.queueTitle('Multi 3'); // Only this one will be injected
 
       // Send data with multiple safe points
       onDataCallback?.('Line 1\nLine 2\nLine 3\n');
 
-      // All titles should be injected
-      expect(onData).toHaveBeenCalledWith(
-        'Line 1\n\x1b]0;Multi 1\x07Line 2\n\x1b]0;Multi 2\x07Line 3\n\x1b]0;Multi 3\x07'
-      );
+      // Only latest title should be injected at first safe point
+      expect(onData).toHaveBeenCalledWith('Line 1\n\x1b]0;Multi 3\x07Line 2\nLine 3\n');
       expect(writer.getPendingCount()).toBe(0);
     });
   });
