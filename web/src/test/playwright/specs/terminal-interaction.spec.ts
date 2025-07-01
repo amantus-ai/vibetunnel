@@ -44,10 +44,7 @@ test.describe.skip('Terminal Interaction', () => {
 
   test('should execute multiple commands in sequence', async ({ page }) => {
     // Execute sequence with expected outputs
-    await executeCommandSequence(page, [
-      'echo "Test 1"',
-      'echo "Test 2"',
-    ]);
+    await executeCommandSequence(page, ['echo "Test 1"', 'echo "Test 2"']);
 
     // Both outputs should be visible
     await assertTerminalContains(page, 'Test 1');

@@ -98,7 +98,9 @@ test.describe('Debug Session Tests', () => {
 
     // Check the app component's state
     const appHideExited = await page.evaluate(() => {
-      const app = document.querySelector('vibetunnel-app') as HTMLElement & { hideExited?: boolean };
+      const app = document.querySelector('vibetunnel-app') as HTMLElement & {
+        hideExited?: boolean;
+      };
       return app?.hideExited;
     });
     console.log('App component hideExited:', appHideExited);
