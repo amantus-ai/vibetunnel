@@ -581,8 +581,12 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private handleCreateSession() {
+    console.log('[App] handleCreateSession called');
+    console.log('[App] Current showCreateModal:', this.showCreateModal);
+
     // Disable View Transitions in test environment to avoid timing issues
     const disableTransitions = window.location.port === '4022'; // Test server port
+    console.log('[App] Disable transitions:', disableTransitions);
 
     // Check if View Transitions API is supported and not disabled
     if (
@@ -590,12 +594,16 @@ export class VibeTunnelApp extends LitElement {
       'startViewTransition' in document &&
       typeof document.startViewTransition === 'function'
     ) {
+      console.log('[App] Using View Transitions API');
       document.startViewTransition(() => {
         this.showCreateModal = true;
       });
     } else {
+      console.log('[App] Setting showCreateModal directly');
       this.showCreateModal = true;
     }
+
+    console.log('[App] After setting showCreateModal:', this.showCreateModal);
   }
 
   private handleCreateModalClose() {

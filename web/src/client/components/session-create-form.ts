@@ -171,7 +171,9 @@ export class SessionCreateForm extends LitElement {
 
     // Handle visibility changes
     if (changedProperties.has('visible')) {
+      console.log('[SessionCreateForm] Visibility changed:', this.visible);
       if (this.visible) {
+        console.log('[SessionCreateForm] Modal becoming visible');
         // Load from localStorage when form becomes visible
         this.loadFromLocalStorage();
         // Add global keyboard listener
