@@ -259,15 +259,32 @@ export class SessionListPage extends BasePage {
         const rect = button.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
+
+        // Debug info
+        const debugInfo = {
+          buttonRect: `${rect.left},${rect.top} ${rect.width}x${rect.height}`,
+          center: `${centerX},${centerY}`,
+          viewport: `${window.innerWidth}x${window.innerHeight}`,
+          scrollY: window.scrollY,
+        };
+
         const topElement = document.elementFromPoint(centerX, centerY);
 
+        if (!topElement) return `No element at point - Debug: ${JSON.stringify(debugInfo)}`;
         if (topElement === button) return 'Button is clickable';
         if (button.contains(topElement)) return 'Child element is on top';
 
-        return `Intercepted by: ${topElement?.tagName}.${topElement?.className}`;
+        return `Intercepted by: ${topElement.tagName}.${topElement.className} - Debug: ${JSON.stringify(debugInfo)}`;
       });
 
       console.log('Interception info:', interceptInfo);
+
+      // Take a screenshot to see what's happening
+      await screenshotOnError(
+        this.page,
+        new Error(`Click interception: ${interceptInfo}`),
+        'click-interception'
+      );
 
       // Try force click as last resort
       await submitButton.click({ force: true });
