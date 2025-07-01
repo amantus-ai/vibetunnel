@@ -176,10 +176,8 @@ export class PtyManager extends EventEmitter {
     setInterval(() => {
       // Clean up warnings for sessions that no longer exist
       const activeSessions = new Set(this.sessions.keys());
-      const diskSessions = new Set(this.sessionManager.listSessions().map((s) => s.id));
-
       for (const sessionId of this.activityFileWarningsLogged) {
-        if (!activeSessions.has(sessionId) && !diskSessions.has(sessionId)) {
+        if (!activeSessions.has(sessionId)) {
           this.activityFileWarningsLogged.delete(sessionId);
         }
       }
@@ -534,9 +532,6 @@ export class PtyManager extends EventEmitter {
     // Handle PTY data output - Use SafePTYWriter if available
     if (session.safePtyWriter && forwardToStdout) {
       // Use SafePTYWriter for safe title injection
-      // Track pending title at session level to fix scope issue
-      let pendingTitle: string | null = null;
-
       session.safePtyWriter.attach((data: string) => {
         // Forward to stdout if requested (using queue for ordering)
         if (stdoutQueue) {
@@ -562,10 +557,10 @@ export class PtyManager extends EventEmitter {
             const title = `${path.basename(currentDir)} — ${session.sessionInfo.command.join(' ')}`;
 
             // Queue title for safe injection (with null check)
-            if (!session.initialTitleSent || pendingTitle !== title) {
+            if (!session.initialTitleSent || session.pendingTitle !== title) {
               if (session.safePtyWriter) {
                 session.safePtyWriter.queueTitle(title);
-                pendingTitle = title;
+                session.pendingTitle = title;
                 session.initialTitleSent = true;
               }
             }
@@ -623,10 +618,10 @@ export class PtyManager extends EventEmitter {
                 .replace(/\x07$/, ''); // Extract just the title text
 
               // Queue title for safe injection (with null check)
-              if (pendingTitle !== title) {
+              if (session.pendingTitle !== title) {
                 if (session.safePtyWriter) {
                   session.safePtyWriter.queueTitle(title);
-                  pendingTitle = title;
+                  session.pendingTitle = title;
                 }
               }
             }
@@ -635,12 +630,6 @@ export class PtyManager extends EventEmitter {
 
         // Write to asciinema file BEFORE title injection (capture original data)
         asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
-
-        // Process the filtered data through SafePTYWriter
-        // This will inject titles at safe points (with null check)
-        if (session.safePtyWriter) {
-          session.safePtyWriter.processOutput(processedData);
-        }
       });
     } else {
       // Fallback to original implementation for non-title modes

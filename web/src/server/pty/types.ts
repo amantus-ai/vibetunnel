@@ -89,6 +89,8 @@ export interface PtySession {
   activityFileWritten?: boolean;
   // Safe PTY writer for title injection
   safePtyWriter?: SafePTYWriter;
+  // Track pending title to avoid redundant queuing
+  pendingTitle?: string | null;
 }
 
 export class PtyError extends Error {

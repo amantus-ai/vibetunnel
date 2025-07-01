@@ -41,6 +41,11 @@ export class PTYStreamAnalyzer {
   private recentBytesCount = 0;
   private escapeStartTime?: number;
 
+  // Circular buffer for prompt detection
+  private promptRingBuffer = new Uint8Array(20);
+  private promptBufferPos = 0;
+  private promptBufferLength = 0;
+
   // Confidence levels for different injection points
   private static readonly CONFIDENCE = {
     NEWLINE: 100,
@@ -93,6 +98,20 @@ export class PTYStreamAnalyzer {
    * Process a single byte and return injection point if safe
    */
   private processByte(byte: number, position: number): SafeInjectionPoint | null {
+    // Set start time when entering escape
+    if (this.state === StreamState.NORMAL && byte === 0x1b) {
+      this.escapeStartTime = Date.now();
+    }
+
+    // Check timeout for non-normal states
+    if (this.state !== StreamState.NORMAL && this.escapeStartTime) {
+      if (Date.now() - this.escapeStartTime > PTYStreamAnalyzer.ESCAPE_TIMEOUT_MS) {
+        logger.warn('Escape sequence timeout, resetting to normal');
+        this.reset();
+        return null;
+      }
+    }
+
     // Update prompt pattern buffer
     this.updatePromptBuffer(byte);
 
@@ -426,24 +445,30 @@ export class PTYStreamAnalyzer {
   }
 
   /**
-   * Update prompt pattern buffer
+   * Update prompt pattern buffer using circular buffer
    */
   private updatePromptBuffer(byte: number): void {
-    // Only add printable ASCII characters and completed UTF-8 sequences
-    if (this.state === StreamState.NORMAL) {
-      if (byte >= 0x20 && byte <= 0x7e) {
-        // Printable ASCII
-        this.promptPatternBuffer += String.fromCharCode(byte);
-      } else if (byte === 0x20 || byte === 0x09) {
-        // Space or tab
-        this.promptPatternBuffer += String.fromCharCode(byte);
-      }
+    if (byte >= 0x20 && byte <= 0x7e) {
+      this.promptRingBuffer[this.promptBufferPos] = byte;
+      this.promptBufferPos = (this.promptBufferPos + 1) % 20;
+      this.promptBufferLength = Math.min(this.promptBufferLength + 1, 20);
+    }
+  }
+
+  /**
+   * Get prompt string from circular buffer
+   */
+  private getPromptString(): string {
+    if (this.promptBufferLength === 0) return '';
+
+    const start = (this.promptBufferPos - this.promptBufferLength + 20) % 20;
+    const bytes: number[] = [];
+
+    for (let i = 0; i < this.promptBufferLength; i++) {
+      bytes.push(this.promptRingBuffer[(start + i) % 20]);
     }
 
-    // Keep buffer size reasonable
-    if (this.promptPatternBuffer.length > 20) {
-      this.promptPatternBuffer = this.promptPatternBuffer.slice(-20);
-    }
+    return String.fromCharCode(...bytes);
   }
 
   /**
@@ -451,19 +476,18 @@ export class PTYStreamAnalyzer {
    */
   private shouldCheckPrompts(): boolean {
     // Only check prompts when we have enough buffer and haven't processed too many recent bytes
-    return this.promptPatternBuffer.length >= 2 && this.recentBytesCount < 100;
+    return this.promptBufferLength >= 2 && this.recentBytesCount < 100;
   }
 
   /**
    * Check if current buffer matches a prompt pattern
    */
   private isPromptPattern(): boolean {
-    const matches = this.promptPatterns.some((pattern) => pattern.test(this.promptPatternBuffer));
+    const promptString = this.getPromptString();
+    const matches = this.promptPatterns.some((pattern) => pattern.test(promptString));
     // Debug logging for test
-    if (this.promptPatternBuffer.includes('❯')) {
-      logger.debug(
-        `Prompt buffer: ${JSON.stringify(this.promptPatternBuffer)}, matches: ${matches}`
-      );
+    if (promptString.includes('❯')) {
+      logger.debug(`Prompt buffer: ${JSON.stringify(promptString)}, matches: ${matches}`);
     }
     return matches;
   }
@@ -480,6 +504,10 @@ export class PTYStreamAnalyzer {
     this.consecutiveNormalBytes = 0;
     this.promptPatternBuffer = '';
     this.recentBytesCount = 0;
+    this.escapeStartTime = undefined;
+    this.promptBufferPos = 0;
+    this.promptBufferLength = 0;
+    this.promptRingBuffer.fill(0);
   }
 
   /**
