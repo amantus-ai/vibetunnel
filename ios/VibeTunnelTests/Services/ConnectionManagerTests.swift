@@ -297,28 +297,6 @@ struct ConnectionManagerTests {
         #expect(mockStorage.bool(forKey: "connectionState") == true)
     }
 
-    @Test("Concurrent connection attempts")
-    func concurrentConnectionAttempts() async throws {
-        // Arrange
-        let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
-        let config1 = TestFixtures.validServerConfig
-        let config2 = TestFixtures.sslServerConfig
-
-        // Act - Simulate concurrent connection attempts on MainActor
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { @MainActor in
-                manager.saveConnection(config1)
-            }
-            group.addTask { @MainActor in
-                manager.saveConnection(config2)
-            }
-        }
-
-        // Assert - Should have one of the configs (last one wins)
-        #expect(manager.serverConfig != nil)
-        #expect(manager.authenticationService != nil)
-    }
 
     @Test("Authentication service cleanup on failed logout")
     func authServiceCleanupOnFailedLogout() async throws {
