@@ -18,6 +18,24 @@ struct AboutView: View {
         return "\(version) (\(build))"
     }
 
+    // Special thanks contributors sorted by contribution count
+    private let specialContributors = [
+        "Helmut Januschka",
+        "Manuel Maly",
+        "Piotr Gredowski",
+        "Billy Irwin",
+        "Madhava Jay",
+        "Michi Hoffmann",
+        "Chris Reynolds",
+        "Clay Warren",
+        "Davi Andrade",
+        "Igor Tarasenko",
+        "Jeff Hurray",
+        "Nityesh Agarwal",
+        "Zhiqiang Zhou",
+        "noppe"
+    ]
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -83,7 +101,7 @@ struct AboutView: View {
     }
 
     private var copyrightSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 16) {
             // Credits
             VStack(spacing: 4) {
                 Text("Brought to you by")
@@ -104,6 +122,28 @@ struct AboutView: View {
                         .foregroundColor(.secondary)
 
                     CreditLink(name: "@steipete", url: "https://steipete.me")
+                }
+            }
+
+            // Special Thanks
+            VStack(spacing: 8) {
+                Text("Special thanks")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                VStack(spacing: 4) {
+                    ForEach(specialContributors.chunked(into: 3), id: \.self) { row in
+                        HStack(spacing: 4) {
+                            ForEach(Array(row.enumerated()), id: \.offset) { index, contributor in
+                                Text(contributor)
+                                if index < row.count - 1 {
+                                    Text("•")
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .font(.caption)
+                    }
                 }
             }
 
@@ -141,6 +181,16 @@ struct HoverableLink: View {
             withAnimation(.easeInOut(duration: 0.2)) {
                 isHovering = hovering
             }
+        }
+    }
+}
+
+// MARK: - Array Extension
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
 }
