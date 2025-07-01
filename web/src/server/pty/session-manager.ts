@@ -332,8 +332,12 @@ export class SessionManager {
     sessionJsonPath: string;
   } | null {
     const sessionDir = path.join(this.controlPath, sessionId);
+    logger.debug(
+      `[SessionManager] getSessionPaths for ${sessionId}, sessionDir: ${sessionDir}, checkExists: ${checkExists}`
+    );
 
     if (checkExists && !fs.existsSync(sessionDir)) {
+      logger.debug(`[SessionManager] Session directory does not exist: ${sessionDir}`);
       return null;
     }
 
