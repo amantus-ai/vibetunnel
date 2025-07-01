@@ -83,7 +83,7 @@ struct AboutView: View {
     }
 
     private var copyrightSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 16) {
             // Credits
             VStack(spacing: 4) {
                 Text("Brought to you by")
@@ -104,6 +104,67 @@ struct AboutView: View {
                         .foregroundColor(.secondary)
 
                     CreditLink(name: "@steipete", url: "https://steipete.me")
+                }
+            }
+
+            // Special Thanks
+            VStack(spacing: 8) {
+                Text("Special thanks")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                VStack(spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text("Helmut Januschka")
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text("Manuel Maly")
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text("Piotr Gredowski")
+                    }
+                    .font(.caption)
+
+                    HStack(spacing: 4) {
+                        Text("Billy Irwin")
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text("Madhava Jay")
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text("Michi Hoffmann")
+                    }
+                    .font(.caption)
+
+                    HStack(spacing: 4) {
+                        Text("Chris Reynolds")
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text("Clay Warren")
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text("Davi Andrade")
+                    }
+                    .font(.caption)
+
+                    HStack(spacing: 4) {
+                        Text("Igor Tarasenko")
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text("Jeff Hurray")
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text("Nityesh Agarwal")
+                    }
+                    .font(.caption)
+
+                    HStack(spacing: 4) {
+                        Text("Zhiqiang Zhou")
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text("noppe")
+                    }
+                    .font(.caption)
                 }
             }
 
