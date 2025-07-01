@@ -1141,8 +1141,8 @@ export class VibeTunnelApp extends LitElement {
     const isMobile = this.mediaState.isMobile;
 
     if (this.sidebarCollapsed) {
-      // On desktop, show collapsed width; on mobile, hide completely
-      return isMobile ? '' : `width: ${SIDEBAR.COLLAPSED_WIDTH}px;`;
+      // Hide completely on both desktop and mobile
+      return 'width: 0px;';
     }
 
     // Expanded state
@@ -1278,7 +1278,6 @@ export class VibeTunnelApp extends LitElement {
             .sessions=${this.sessions}
             .hideExited=${this.hideExited}
             .showSplitView=${showSplitView}
-            .sidebarCollapsed=${this.sidebarCollapsed}
             .currentUser=${authClient.getCurrentUser()?.userId || null}
             .authMethod=${authClient.getCurrentUser()?.authMethod || null}
             @create-session=${this.handleCreateSession}

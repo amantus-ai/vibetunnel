@@ -31,7 +31,6 @@ export class AppHeader extends LitElement {
   @property({ type: Boolean }) showSplitView = false;
   @property({ type: String }) currentUser: string | null = null;
   @property({ type: String }) authMethod: string | null = null;
-  @property({ type: Boolean }) sidebarCollapsed = false;
 
   private forwardEvent = (e: Event) => {
     // Forward events from child components to parent
@@ -54,7 +53,6 @@ export class AppHeader extends LitElement {
         .hideExited=${this.hideExited}
         .currentUser=${this.currentUser}
         .authMethod=${this.authMethod}
-        .collapsed=${this.sidebarCollapsed}
         @create-session=${this.forwardEvent}
         @hide-exited-change=${this.forwardEvent}
         @kill-all-sessions=${this.forwardEvent}

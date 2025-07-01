@@ -11,31 +11,9 @@ import './notification-status.js';
 
 @customElement('sidebar-header')
 export class SidebarHeader extends HeaderBase {
-  @property({ type: Boolean }) collapsed = false;
   render() {
     const runningSessions = this.runningSessions;
 
-    // Collapsed state - just show toggle button
-    if (this.collapsed) {
-      return html`
-        <div
-          class="app-header sidebar-header bg-dark-bg-secondary border-b border-dark-border p-3 flex justify-center"
-          style="padding-top: max(0.75rem, calc(0.75rem + env(safe-area-inset-top)));"
-        >
-          <button
-            class="p-2 text-dark-text-muted hover:text-dark-text rounded-lg hover:bg-dark-bg-tertiary transition-all duration-200"
-            @click=${() => this.dispatchEvent(new CustomEvent('toggle-sidebar'))}
-            title="Expand sidebar"
-          >
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-            </svg>
-          </button>
-        </div>
-      `;
-    }
-
-    // Expanded state - full header
     return html`
       <div
         class="app-header sidebar-header bg-dark-bg-secondary border-b border-dark-border p-3"

@@ -80,29 +80,18 @@ export class SessionHeader extends LitElement {
         style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(0.75rem, env(safe-area-inset-left)); padding-right: max(0.75rem, env(safe-area-inset-right));"
       >
         <div class="flex items-center gap-3 min-w-0 flex-1">
-          <!-- Mobile Hamburger Menu Button (only on phones, only when session is shown) -->
+          <!-- Sidebar Toggle Button (shown when sidebar is collapsed) -->
           ${
             this.showSidebarToggle && this.sidebarCollapsed
               ? html`
                 <button
-                  class="sm:hidden bg-dark-bg-tertiary border border-dark-border rounded-lg p-1 font-mono text-accent-green transition-all duration-300 hover:bg-dark-bg hover:border-accent-green flex-shrink-0"
+                  class="bg-dark-bg-tertiary border border-dark-border rounded-lg p-1.5 font-mono text-dark-text-muted transition-all duration-300 hover:text-dark-text hover:bg-dark-bg hover:border-accent-green flex-shrink-0"
                   @click=${() => this.onSidebarToggle?.()}
-                  title="Show sessions"
+                  title="Show sidebar (Toggle with Cmd+B)"
                 >
-                  <!-- Hamburger menu icon -->
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                  <!-- Right chevron icon to expand sidebar -->
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
                   </svg>
                 </button>
               `
