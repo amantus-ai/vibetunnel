@@ -357,14 +357,23 @@ export class VibeTunnelApp extends LitElement {
             document.title = `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`;
           }
 
-          // Don't redirect away from session view during loadSessions
-          // The session-view component will handle missing sessions
+          // Handle missing sessions after initial load is complete
           if (this.selectedSessionId && this.currentView === 'session') {
             const sessionExists = this.sessions.find((s) => s.id === this.selectedSessionId);
             if (!sessionExists) {
-              logger.warn(
-                `Selected session ${this.selectedSessionId} not found in current sessions list, but keeping session view`
-              );
+              if (this.initialLoadComplete) {
+                // Session doesn't exist and we've finished loading - redirect to list view
+                logger.warn(
+                  `Selected session ${this.selectedSessionId} not found, redirecting to list view`
+                );
+                this.showError(`Session ${this.selectedSessionId} not found`);
+                this.handleNavigateToList();
+              } else {
+                // Still during initial load - wait a bit before deciding
+                logger.warn(
+                  `Selected session ${this.selectedSessionId} not found in current sessions list, but keeping session view during initial load`
+                );
+              }
             }
           }
         } else if (response.status === 401) {
