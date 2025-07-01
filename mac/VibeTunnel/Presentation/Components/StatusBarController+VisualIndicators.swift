@@ -83,9 +83,9 @@ extension StatusBarController {
         if activeCount == 0 {
             String(totalCount)
         } else if activeCount == totalCount {
-            "●\(activeCount)"
+            "● \(activeCount)"
         } else {
-            "\(activeCount)|\(totalCount)"
+            "\(activeCount) | \(totalCount)"
         }
     }
 
