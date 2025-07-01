@@ -127,7 +127,7 @@ export class StreamWatcher {
       // First pass: analyze the stream to find the last clear and track resize events
       const analysisStream = fs.createReadStream(streamPath, { encoding: 'utf8' });
       let lineBuffer = '';
-      const events: Array<[number, string, string | Record<string, number>]> = [];
+      const events: any[] = [];
       let lastClearIndex = -1;
       let lastResizeBeforeClear: [number, string, string] | null = null;
       let currentResize: [number, string, string] | null = null;
@@ -161,7 +161,7 @@ export class StreamWatcher {
                   );
                 }
 
-                events.push(parsed as [number, string, string | Record<string, number>]);
+                events.push(parsed);
               }
             } catch (e) {
               logger.debug(`skipping invalid JSON line during analysis: ${e}`);
@@ -185,7 +185,7 @@ export class StreamWatcher {
                 lastResizeBeforeClear = currentResize;
                 logger.debug(`found clear sequence at event index ${lastClearIndex} (last event)`);
               }
-              events.push(parsed as [number, string, string | Record<string, number>]);
+              events.push(parsed);
             }
           } catch (e) {
             logger.debug(`skipping invalid JSON in line buffer during analysis: ${e}`);
@@ -219,10 +219,10 @@ export class StreamWatcher {
         let exitEventFound = false;
         for (let i = startIndex; i < events.length; i++) {
           const event = events[i];
-          if (event[1] === 'exit') {
+          if (Array.isArray(event) && event[0] === 'exit') {
             exitEventFound = true;
             client.response.write(`data: ${JSON.stringify(event)}\n\n`);
-          } else {
+          } else if (Array.isArray(event) && event.length >= 3) {
             // Set timestamp to 0 for existing content
             const instantEvent = [0, event[1], event[2]];
             client.response.write(`data: ${JSON.stringify(instantEvent)}\n\n`);

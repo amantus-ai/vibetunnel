@@ -44,7 +44,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
     filename: string,
     // biome-ignore lint/suspicious/noExplicitAny: test data headers can have various fields
     header: Record<string, any>,
-    events: Array<[number, string, string | Record<string, number>]>
+    events: any[]
   ): string {
     const filepath = path.join(tempDir, filename);
     const lines = [JSON.stringify(header), ...events.map((event) => JSON.stringify(event))];
@@ -53,7 +53,7 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
   }
 
   // Helper to parse SSE data
-  function parseSSEData(data: string[]): Array<[number, string, string | Record<string, number>]> {
+  function parseSSEData(data: string[]): any[] {
     return data
       .filter((line) => line.startsWith('data: '))
       .map((line) => {
