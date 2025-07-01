@@ -47,6 +47,19 @@ export class SidebarHeader extends HeaderBase {
               @open-settings=${() => this.dispatchEvent(new CustomEvent('open-settings'))}
             ></notification-status>
             
+            <!-- File Browser button -->
+            <button
+              class="p-2 text-dark-text border border-dark-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200 flex-shrink-0"
+              @click=${() => this.dispatchEvent(new CustomEvent('open-file-browser'))}
+              title="Browse Files (⌘O)"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path
+                  d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"
+                />
+              </svg>
+            </button>
+            
             <!-- Create Session button -->
             <button
               class="p-2 text-accent-green border border-accent-green hover:bg-accent-green hover:text-dark-bg rounded-lg transition-all duration-200 flex-shrink-0"
