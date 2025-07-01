@@ -591,10 +591,8 @@ export class SessionList extends LitElement {
                       new CustomEvent('hide-exited-change', { detail: !this.hideExited })
                     )}
                 >
-                  <div class="flex items-center gap-2">
-                    <span>${this.hideExited ? 'Show' : 'Hide'} Exited</span>
-                    <span class="text-dark-text-dim">(${exitedSessions.length})</span>
-                  </div>
+                  ${this.hideExited ? 'Show' : 'Hide'} Exited
+                  <span class="text-dark-text-dim">(${exitedSessions.length})</span>
                 </button>
                 
                 <!-- Clean Exited button (only when Show Exited is active) -->

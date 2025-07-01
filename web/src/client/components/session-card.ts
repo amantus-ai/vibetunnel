@@ -238,7 +238,7 @@ export class SessionCard extends LitElement {
       >
         <!-- Compact Header -->
         <div
-          class="flex justify-between items-center px-3 py-2 border-b border-dark-border bg-dark-bg-secondary"
+          class="flex justify-between items-center px-3 py-2 border-b border-dark-border bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary"
         >
           <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-accent-green">
             <div class="truncate" title="${this.session.name || this.session.command.join(' ')}">
@@ -249,12 +249,10 @@ export class SessionCard extends LitElement {
             this.session.status === 'running' || this.session.status === 'exited'
               ? html`
                 <button
-                  class="btn-ghost ${
-                    this.session.status === 'running' ? 'text-status-error' : 'text-status-warning'
-                  } disabled:opacity-50 flex-shrink-0 p-1 rounded-full hover:bg-opacity-20 transition-all ${
+                  class="p-1 rounded-full transition-all duration-200 disabled:opacity-50 flex-shrink-0 ${
                     this.session.status === 'running'
-                      ? 'hover:bg-status-error'
-                      : 'hover:bg-status-warning'
+                      ? 'text-status-error hover:bg-status-error hover:bg-opacity-20'
+                      : 'text-status-warning hover:bg-status-warning hover:bg-opacity-20'
                   }"
                   @click=${this.handleKillClick}
                   ?disabled=${this.killing}
@@ -349,8 +347,26 @@ export class SessionCard extends LitElement {
                 : ''
             }
           </div>
-          <div class="text-xs opacity-75 min-w-0 mt-1">
-            <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
+          <div class="text-xs min-w-0 mt-1">
+            ${
+              this.session.activityStatus?.specificStatus
+                ? html`
+                  <div class="flex items-center gap-1 text-status-warning">
+                    <span class="flex-shrink-0">
+                      ${this.session.activityStatus.specificStatus.status}
+                    </span>
+                    <span class="text-dark-text-muted/50">·</span>
+                    <span class="truncate opacity-75">
+                      <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
+                    </span>
+                  </div>
+                `
+                : html`
+                  <div class="opacity-75">
+                    <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
+                  </div>
+                `
+            }
           </div>
         </div>
       </div>
@@ -381,6 +397,15 @@ export class SessionCard extends LitElement {
     if (this.session.active === false) {
       return 'bg-dark-text-muted';
     }
-    return this.session.status === 'running' ? 'bg-status-success' : 'bg-status-warning';
+    if (this.session.status === 'running') {
+      if (this.session.activityStatus?.specificStatus) {
+        return 'bg-status-warning animate-pulse'; // Claude active - amber with pulse
+      } else if (this.session.activityStatus?.isActive || this.isActive) {
+        return 'bg-status-success'; // Generic active - solid green
+      } else {
+        return 'bg-status-success ring-1 ring-status-success ring-opacity-50'; // Idle - green with ring
+      }
+    }
+    return 'bg-status-warning';
   }
 }

@@ -118,7 +118,7 @@ export class SessionHeader extends LitElement {
             this.showBackButton
               ? html`
                 <button
-                  class="btn-secondary font-mono text-xs px-3 py-1 flex-shrink-0"
+                  class="bg-dark-bg-elevated border border-dark-border rounded-lg px-3 py-1.5 font-mono text-xs text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
                   @click=${() => this.onBack?.()}
                 >
                   Back

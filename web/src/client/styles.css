@@ -102,8 +102,26 @@
   /* Enhanced card styles */
   .card {
     @apply bg-dark-bg-secondary border border-dark-border rounded-lg p-0;
-    @apply transition-all duration-200 ease-in-out shadow-sm;
-    @apply hover:bg-dark-bg-tertiary hover:border-dark-border-light hover:shadow-card-hover;
+    @apply transition-all duration-300 ease-out shadow-sm;
+    @apply hover:border-dark-border-light hover:shadow-lg hover:-translate-y-1;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Card glow effect for active sessions */
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(0, 255, 136, 0.1) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  .card:hover::before {
+    opacity: 1;
   }
   
   .card-elevated {
@@ -253,6 +271,16 @@
   .badge-ed25519 {
     @apply bg-purple-500 text-white;
   }
+}
+
+/* Width selector specific styles */
+.width-selector-container {
+  @apply backdrop-blur-sm;
+}
+
+/* Ensure width selector button doesn't get clipped */
+.width-selector-button {
+  position: relative;
 }
 
 /* Micro-interactions and animations */
