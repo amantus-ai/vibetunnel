@@ -18,6 +18,24 @@ struct AboutView: View {
         return "\(version) (\(build))"
     }
 
+    // Special thanks contributors sorted by contribution count
+    private let specialContributors = [
+        "Helmut Januschka",
+        "Manuel Maly",
+        "Piotr Gredowski",
+        "Billy Irwin",
+        "Madhava Jay",
+        "Michi Hoffmann",
+        "Chris Reynolds",
+        "Clay Warren",
+        "Davi Andrade",
+        "Igor Tarasenko",
+        "Jeff Hurray",
+        "Nityesh Agarwal",
+        "Zhiqiang Zhou",
+        "noppe"
+    ]
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -114,57 +132,18 @@ struct AboutView: View {
                     .foregroundColor(.secondary)
 
                 VStack(spacing: 4) {
-                    HStack(spacing: 4) {
-                        Text("Helmut Januschka")
-                        Text("•")
-                            .foregroundColor(.secondary)
-                        Text("Manuel Maly")
-                        Text("•")
-                            .foregroundColor(.secondary)
-                        Text("Piotr Gredowski")
+                    ForEach(specialContributors.chunked(into: 3), id: \.self) { row in
+                        HStack(spacing: 4) {
+                            ForEach(Array(row.enumerated()), id: \.offset) { index, contributor in
+                                Text(contributor)
+                                if index < row.count - 1 {
+                                    Text("•")
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .font(.caption)
                     }
-                    .font(.caption)
-
-                    HStack(spacing: 4) {
-                        Text("Billy Irwin")
-                        Text("•")
-                            .foregroundColor(.secondary)
-                        Text("Madhava Jay")
-                        Text("•")
-                            .foregroundColor(.secondary)
-                        Text("Michi Hoffmann")
-                    }
-                    .font(.caption)
-
-                    HStack(spacing: 4) {
-                        Text("Chris Reynolds")
-                        Text("•")
-                            .foregroundColor(.secondary)
-                        Text("Clay Warren")
-                        Text("•")
-                            .foregroundColor(.secondary)
-                        Text("Davi Andrade")
-                    }
-                    .font(.caption)
-
-                    HStack(spacing: 4) {
-                        Text("Igor Tarasenko")
-                        Text("•")
-                            .foregroundColor(.secondary)
-                        Text("Jeff Hurray")
-                        Text("•")
-                            .foregroundColor(.secondary)
-                        Text("Nityesh Agarwal")
-                    }
-                    .font(.caption)
-
-                    HStack(spacing: 4) {
-                        Text("Zhiqiang Zhou")
-                        Text("•")
-                            .foregroundColor(.secondary)
-                        Text("noppe")
-                    }
-                    .font(.caption)
                 }
             }
 
@@ -202,6 +181,16 @@ struct HoverableLink: View {
             withAnimation(.easeInOut(duration: 0.2)) {
                 isHovering = hovering
             }
+        }
+    }
+}
+
+// MARK: - Array Extension
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
 }
