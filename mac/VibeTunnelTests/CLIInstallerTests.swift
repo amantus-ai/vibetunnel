@@ -416,4 +416,34 @@ struct CLIInstallerTests {
         await installer.install()
         #expect(installer.isInstalled)
     }
+
+    // MARK: - PR #153 Regression Test
+
+    @Test("Script with TITLE_MODE_ARGS detected correctly", .tags(.regression))
+    func scriptWithTitleModeArgsDetection() async throws {
+        let script = """
+        #!/bin/bash
+        # VibeTunnel CLI wrapper
+        for TRY_PATH in "/Applications/VibeTunnel.app" "$HOME/Applications/VibeTunnel.app"; do
+            if [ -d "$TRY_PATH" ] && [ -f "$TRY_PATH/Contents/Resources/vibetunnel" ]; then
+                APP_PATH="$TRY_PATH"
+                break
+            fi
+        done
+        VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
+        TITLE_MODE_ARGS="--title-mode dynamic"
+        exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+        """
+
+        let vtPath = tempDirectory.appendingPathComponent("vt").path
+        try script.write(toFile: vtPath, atomically: true, encoding: .utf8)
+
+        let installer = CLIInstaller(binDirectory: tempDirectory.path)
+        installer.checkInstallationStatus()
+
+        // Wait for the async Task in checkInstallationStatus to complete
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(installer.isInstalled)
+    }
 }

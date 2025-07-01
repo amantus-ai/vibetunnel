@@ -888,7 +888,7 @@ class TerminalViewModel {
             }
         }
     }
-    
+
     func sendSpecialKey(_ key: TerminalInput.SpecialKey) {
         sendInput(key.rawValue)
     }

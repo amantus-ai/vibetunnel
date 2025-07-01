@@ -27,28 +27,40 @@ final class CLIInstaller {
     // MARK: - Properties
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "CLIInstaller")
+    private let binDirectory: String
+
+    private var vtTargetPath: String {
+        URL(fileURLWithPath: binDirectory).appendingPathComponent("vt").path
+    }
 
     var isInstalled = false
     var isInstalling = false
     var lastError: String?
+
+    // MARK: - Initialization
+
+    /// Creates a CLI installer
+    /// - Parameters:
+    ///   - binDirectory: Directory for installation (defaults to /usr/local/bin)
+    init(binDirectory: String = "/usr/local/bin") {
+        self.binDirectory = binDirectory
+    }
 
     // MARK: - Public Interface
 
     /// Checks if the CLI tool is installed
     func checkInstallationStatus() {
         Task { @MainActor in
-            let vtPath = "/usr/local/bin/vt"
-
             // Check if vt script exists and is configured correctly
             var isCorrectlyInstalled = false
 
-            if FileManager.default.fileExists(atPath: vtPath) {
+            if FileManager.default.fileExists(atPath: vtTargetPath) {
                 // Check if it contains the correct app path reference
-                if let content = try? String(contentsOfFile: vtPath, encoding: .utf8) {
+                if let content = try? String(contentsOfFile: vtTargetPath, encoding: .utf8) {
                     // Verify it's our wrapper script with all expected components
                     isCorrectlyInstalled = content.contains("VibeTunnel CLI wrapper") &&
                         content.contains("$TRY_PATH/Contents/Resources/vibetunnel") &&
-                        content.contains("exec \"$VIBETUNNEL_BIN\" fwd \"$@\"")
+                        content.contains("exec \"$VIBETUNNEL_BIN\" fwd")
                 }
             }
 
@@ -116,9 +128,6 @@ final class CLIInstaller {
             isInstalling = false
             return
         }
-
-        let vtTargetPath = "/usr/local/bin/vt"
-        let binDirectory = "/usr/local/bin"
 
         // Create the installation script
         let script = """

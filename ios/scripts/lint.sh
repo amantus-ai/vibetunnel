@@ -1,10 +1,9 @@
 #!/bin/bash
 
 # =============================================================================
-# VibeTunnel Swift Linting and Formatting Script
 # =============================================================================
 #
-# This script runs SwiftFormat and SwiftLint on the VibeTunnel codebase
+# This script runs SwiftFormat and SwiftLint on the VibeTunnel iOS codebase
 # to ensure consistent code style and catch potential issues.
 #
 # USAGE:
@@ -42,7 +41,6 @@ if ! find . -name "*.swift" -not -path "./.build/*" -not -path "./build/*" | hea
     exit 0
 fi
 
-# Run SwiftFormat
 print_info "Running SwiftFormat..."
 if command -v swiftformat &> /dev/null; then
     if swiftformat . --config ../apple/.swiftformat --verbose; then
@@ -57,7 +55,6 @@ else
     exit 1
 fi
 
-# Run SwiftLint
 print_info "Running SwiftLint..."
 if command -v swiftlint &> /dev/null; then
     # First run auto-corrections
