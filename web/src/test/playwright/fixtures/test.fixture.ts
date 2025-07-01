@@ -189,6 +189,39 @@ export const test = base.extend<{
       });
 
       console.log('[Test Setup] App is ready');
+
+      // Wait for any overlays to disappear
+      console.log('[Test Setup] Waiting for overlays to clear...');
+      await page.waitForFunction(
+        () => {
+          // Check for any overlays that might block interactions
+          const overlays = document.querySelectorAll(
+            '[class*="fixed"][class*="inset-0"], [class*="fixed"][class*="top-0"][class*="left-0"]'
+          );
+          for (const overlay of overlays) {
+            const styles = window.getComputedStyle(overlay);
+            // Skip if pointer-events are disabled
+            if (styles.pointerEvents === 'none') continue;
+            // Skip if opacity is 0
+            if (styles.opacity === '0') continue;
+            // Skip if display is none
+            if (styles.display === 'none') continue;
+            // Skip if it's transparent
+            if (
+              styles.backgroundColor === 'transparent' ||
+              styles.backgroundColor === 'rgba(0, 0, 0, 0)'
+            )
+              continue;
+
+            console.log('Blocking overlay found:', overlay.className);
+            return false;
+          }
+          return true;
+        },
+        { timeout: 5000 }
+      );
+
+      console.log('[Test Setup] No blocking overlays detected');
     } catch (error) {
       console.error('[Test Setup] Failed to initialize app:', error);
       const html = await page.content();
