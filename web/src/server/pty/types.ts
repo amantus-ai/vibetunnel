@@ -74,8 +74,6 @@ export interface PtySession {
   stdinHandler?: (data: string) => void;
   stdinDataListener?: (data: Buffer) => void;
   stdoutQueue?: WriteQueue;
-  controlPipePath?: string;
-  controlWatcher?: fs.FSWatcher;
   // Terminal title mode
   titleMode?: TitleMode;
   // Track current working directory for title updates

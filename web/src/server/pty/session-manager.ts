@@ -44,7 +44,6 @@ export class SessionManager {
     stdoutPath: string;
     stdinPath: string;
     sessionJsonPath: string;
-    controlPipePath: string;
   } {
     const controlDir = path.join(this.controlPath, sessionId);
 
@@ -291,7 +290,6 @@ export class SessionManager {
     stdoutPath: string;
     stdinPath: string;
     sessionJsonPath: string;
-    controlPipePath: string;
   } | null {
     const sessionDir = path.join(this.controlPath, sessionId);
 
@@ -304,7 +302,6 @@ export class SessionManager {
       stdoutPath: path.join(sessionDir, 'stdout'),
       stdinPath: path.join(sessionDir, 'stdin'),
       sessionJsonPath: path.join(sessionDir, 'session.json'),
-      controlPipePath: path.join(sessionDir, 'control'),
     };
   }
 

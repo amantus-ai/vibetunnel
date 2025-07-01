@@ -35,6 +35,7 @@ import { WriteQueue } from '../utils/write-queue.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
 import { ProcessUtils } from './process-utils.js';
 import { SessionManager } from './session-manager.js';
+import { frameMessage, MessageType } from './socket-protocol.js';
 import {
   type KillControlMessage,
   PtyError,
@@ -349,7 +350,6 @@ export class PtyManager extends EventEmitter {
         controlDir: paths.controlDir,
         stdoutPath: paths.stdoutPath,
         stdinPath: paths.stdinPath,
-        controlPipePath: paths.controlPipePath,
         sessionJsonPath: paths.sessionJsonPath,
         startTime: new Date(),
         titleMode: titleMode || TitleMode.NONE,
@@ -369,10 +369,8 @@ export class PtyManager extends EventEmitter {
       // Setup PTY event handlers
       this.setupPtyHandlers(session, options.forwardToStdout || false, options.onExit);
 
-      // Setup control pipe if forwarding to stdout
+      // Setup stdin forwarding if forwarding to stdout
       if (options.forwardToStdout) {
-        this.setupControlPipe(session);
-
         // Setup stdin forwarding for fwd mode
         this.setupStdinForwarding(session);
         logger.log(chalk.gray('Stdin forwarding enabled'));
@@ -732,76 +730,6 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Setup control pipe for fwd mode to handle resize and kill commands
-   */
-  private setupControlPipe(session: PtySession): void {
-    const controlPipePath = session.controlPipePath;
-    if (!controlPipePath) {
-      logger.warn(`No control pipe path for session ${session.id}`);
-      return;
-    }
-
-    try {
-      // Create control file if it doesn't exist
-      if (!fs.existsSync(controlPipePath)) {
-        fs.writeFileSync(controlPipePath, '');
-      }
-
-      // Use file watching approach for all platforms
-      let lastControlPosition = 0;
-
-      const readNewControlData = () => {
-        try {
-          if (!fs.existsSync(controlPipePath)) return;
-
-          const stats = fs.statSync(controlPipePath);
-          if (stats.size > lastControlPosition) {
-            const fd = fs.openSync(controlPipePath, 'r');
-            const buffer = Buffer.allocUnsafe(stats.size - lastControlPosition);
-            fs.readSync(fd, buffer, 0, buffer.length, lastControlPosition);
-            fs.closeSync(fd);
-            const data = buffer.toString('utf8');
-
-            const lines = data.split('\n');
-            for (const line of lines) {
-              if (line.trim()) {
-                try {
-                  const message = JSON.parse(line);
-                  this.handleControlMessage(session, message);
-                } catch (_e) {
-                  logger.warn(`Invalid control message in session ${session.id}: ${line}`);
-                }
-              }
-            }
-
-            lastControlPosition = stats.size;
-          }
-        } catch (error) {
-          logger.debug(`Failed to read control data for session ${session.id}:`, error);
-        }
-      };
-
-      // Use file watcher
-      const watcher = fs.watch(controlPipePath, (eventType) => {
-        if (eventType === 'change') {
-          readNewControlData();
-        }
-      });
-
-      // Store watcher for cleanup
-      session.controlWatcher = watcher;
-
-      // Unref the watcher so it doesn't keep the process alive
-      watcher.unref();
-
-      // Read any existing data
-      readNewControlData();
-    } catch (error) {
-      logger.error(`Failed to set up control pipe for session ${session.id}:`, error);
-    }
-  }
-
-  /**
    * Setup watcher for session.json changes (for vt title updates)
    */
   private setupSessionJsonWatcher(session: PtySession): void {
@@ -1074,7 +1002,7 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Send a control message to an external session
+   * Send a control message to an external session via socket
    */
   private sendControlMessage(
     sessionId: string,
@@ -1086,10 +1014,34 @@ export class PtyManager extends EventEmitter {
     }
 
     try {
-      const messageStr = `${JSON.stringify(message)}\n`;
-      const controlPipePath = sessionPaths.controlPipePath;
-      fs.appendFileSync(controlPipePath, messageStr);
-      return true;
+      const socketPath = path.join(sessionPaths.controlDir, 'ipc.sock');
+      let socketClient = this.inputSocketClients.get(sessionId);
+
+      if (!socketClient || socketClient.destroyed) {
+        // Try to connect to the socket
+        try {
+          socketClient = net.createConnection(socketPath);
+          socketClient.setNoDelay(true);
+          socketClient.setKeepAlive(true, 0);
+          this.inputSocketClients.set(sessionId, socketClient);
+
+          socketClient.on('error', () => {
+            this.inputSocketClients.delete(sessionId);
+          });
+
+          socketClient.on('close', () => {
+            this.inputSocketClients.delete(sessionId);
+          });
+        } catch (error) {
+          logger.debug(`Failed to connect to control socket for session ${sessionId}:`, error);
+          return false;
+        }
+      }
+
+      if (socketClient && !socketClient.destroyed) {
+        const frameMsg = frameMessage(MessageType.CONTROL_CMD, message);
+        return socketClient.write(frameMsg);
+      }
     } catch (error) {
       logger.error(`Failed to send control message to session ${sessionId}:`, error);
     }
@@ -1796,11 +1748,6 @@ export class PtyManager extends EventEmitter {
       }
     }
 
-    // Close control watcher
-    if (session.controlWatcher) {
-      session.controlWatcher.close();
-    }
-
     // Close session.json watcher and clear debounce timer
     if (session.sessionJsonDebounceTimer) {
       clearTimeout(session.sessionJsonDebounceTimer);
@@ -1814,15 +1761,6 @@ export class PtyManager extends EventEmitter {
     if (session.stdinDataListener) {
       process.stdin.removeListener('data', session.stdinDataListener);
       session.stdinDataListener = undefined;
-    }
-
-    // Remove control pipe
-    if (session.controlPipePath && fs.existsSync(session.controlPipePath)) {
-      try {
-        fs.unlinkSync(session.controlPipePath);
-      } catch (_e) {
-        // Control pipe already removed
-      }
     }
   }
 }
