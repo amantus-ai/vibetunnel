@@ -178,31 +178,31 @@ export class TestSessionManager {
 /**
  * Creates test data factory for consistent test data generation
  */
-export class TestDataFactory {
-  private static counters: Map<string, number> = new Map();
+export namespace TestDataFactory {
+  const counters: Map<string, number> = new Map();
 
   /**
    * Generates sequential IDs for a given prefix
    */
-  static sequentialId(prefix: string): string {
-    const current = TestDataFactory.counters.get(prefix) || 0;
-    TestDataFactory.counters.set(prefix, current + 1);
+  export function sequentialId(prefix: string): string {
+    const current = counters.get(prefix) || 0;
+    counters.set(prefix, current + 1);
     return `${prefix}-${current + 1}`;
   }
 
   /**
    * Generates session name with optional prefix
    */
-  static sessionName(prefix = 'session'): string {
+  export function sessionName(prefix = 'session'): string {
     const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
-    const counter = TestDataFactory.sequentialId(prefix);
+    const counter = sequentialId(prefix);
     return `${counter}-${timestamp}`;
   }
 
   /**
    * Generates command for testing
    */
-  static command(type: 'echo' | 'sleep' | 'env' | 'file' = 'echo'): string {
+  export function command(type: 'echo' | 'sleep' | 'env' | 'file' = 'echo'): string {
     switch (type) {
       case 'echo':
         return `echo "Test output ${Date.now()}"`;
@@ -218,8 +218,8 @@ export class TestDataFactory {
   /**
    * Reset all counters
    */
-  static reset(): void {
-    TestDataFactory.counters.clear();
+  export function reset(): void {
+    counters.clear();
   }
 }
 

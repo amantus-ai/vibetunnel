@@ -5,36 +5,34 @@ import { logger } from './logger';
 /**
  * Optimized wait utilities with reduced timeouts and smarter strategies
  */
-export class OptimizedWaitUtils {
+export namespace OptimizedWaitUtils {
   // Reduced default timeouts for faster test execution
-  private static readonly QUICK_TIMEOUT = TEST_TIMEOUTS.QUICK;
-  private static readonly DEFAULT_TIMEOUT = TEST_TIMEOUTS.DEFAULT;
-  private static readonly LONG_TIMEOUT = TEST_TIMEOUTS.LONG;
-  private static readonly logger = logger;
+  const QUICK_TIMEOUT = TEST_TIMEOUTS.QUICK;
+  const DEFAULT_TIMEOUT = TEST_TIMEOUTS.DEFAULT;
 
   /**
    * Wait for app initialization with optimized checks
    */
-  static async waitForAppReady(page: Page): Promise<void> {
+  export async function waitForAppReady(page: Page): Promise<void> {
     // Wait for app element to attach (reduced timeout)
     await page.waitForSelector('vibetunnel-app', {
       state: 'attached',
-      timeout: OptimizedWaitUtils.DEFAULT_TIMEOUT,
+      timeout: DEFAULT_TIMEOUT,
     });
 
     // Use Promise.allSettled for better reliability
     const results = await Promise.allSettled([
       page.waitForSelector('button[title="Create New Session"]', {
         state: 'visible',
-        timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
+        timeout: QUICK_TIMEOUT,
       }),
       page.waitForSelector('session-card', {
         state: 'visible',
-        timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
+        timeout: QUICK_TIMEOUT,
       }),
       page.waitForSelector('auth-login', {
         state: 'visible',
-        timeout: OptimizedWaitUtils.QUICK_TIMEOUT,
+        timeout: QUICK_TIMEOUT,
       }),
     ]);
 
@@ -52,7 +50,7 @@ export class OptimizedWaitUtils {
   /**
    * Wait for session card with specific name
    */
-  static async waitForSessionCard(
+  export async function waitForSessionCard(
     page: Page,
     sessionName: string,
     timeout = 3000
@@ -65,7 +63,7 @@ export class OptimizedWaitUtils {
   /**
    * Wait for terminal to be ready (optimized)
    */
-  static async waitForTerminalReady(page: Page, timeout = 3000): Promise<void> {
+  export async function waitForTerminalReady(page: Page, timeout = 3000): Promise<void> {
     // Wait for xterm element
     await page.waitForSelector('.xterm', { state: 'visible', timeout });
 
@@ -84,7 +82,7 @@ export class OptimizedWaitUtils {
   /**
    * Wait for session state change
    */
-  static async waitForSessionState(
+  export async function waitForSessionState(
     page: Page,
     sessionName: string,
     expectedState: 'RUNNING' | 'EXITED',
@@ -117,7 +115,7 @@ export class OptimizedWaitUtils {
   /**
    * Smart wait for navigation with fallback
    */
-  static async waitForNavigation(page: Page, url: string, timeout = 3000): Promise<void> {
+  export async function waitForNavigation(page: Page, url: string, timeout = 3000): Promise<void> {
     // Try to wait for URL change
     try {
       await page.waitForURL(url, { timeout });
@@ -133,13 +131,13 @@ export class OptimizedWaitUtils {
   /**
    * Wait for element count with early exit
    */
-  static async waitForElementCount(
+  export async function waitForElementCount(
     page: Page,
     selector: string,
     expectedCount: number,
     options?: { operator?: 'exact' | 'minimum' | 'maximum'; timeout?: number }
   ): Promise<void> {
-    const { operator = 'exact', timeout = OptimizedWaitUtils.DEFAULT_TIMEOUT } = options || {};
+    const { operator = 'exact', timeout = DEFAULT_TIMEOUT } = options || {};
     const pollInterval = 100;
     const maxAttempts = timeout / pollInterval;
 
@@ -164,7 +162,7 @@ export class OptimizedWaitUtils {
   /**
    * Wait for any text content (useful for terminal output)
    */
-  static async waitForAnyText(locator: Locator, timeout = 2000): Promise<string> {
+  export async function waitForAnyText(locator: Locator, timeout = 2000): Promise<string> {
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeout) {
@@ -181,7 +179,7 @@ export class OptimizedWaitUtils {
   /**
    * Fast visibility check with retry
    */
-  static async isEventuallyVisible(locator: Locator, timeout = 1000): Promise<boolean> {
+  export async function isEventuallyVisible(locator: Locator, timeout = 1000): Promise<boolean> {
     try {
       await locator.waitFor({ state: 'visible', timeout });
       return true;
@@ -194,7 +192,10 @@ export class OptimizedWaitUtils {
   /**
    * Wait for network idle with early exit
    */
-  static async waitForNetworkQuiet(page: Page, options?: { timeout?: number }): Promise<void> {
+  export async function waitForNetworkQuiet(
+    page: Page,
+    options?: { timeout?: number }
+  ): Promise<void> {
     const { timeout = TEST_TIMEOUTS.NETWORK_QUIET } = options || {};
 
     // Track pending requests

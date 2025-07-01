@@ -59,18 +59,18 @@ const SHELL_SPECIFIC_PATTERNS = {
   withEscape: /[$>#%❯➜]\s*\x1b\[/,
 };
 
-export class PromptDetector {
+export namespace PromptDetector {
   // Cache for regex test results to avoid repeated tests
-  private static endPromptCache = new Map<string, boolean>();
-  private static onlyPromptCache = new Map<string, boolean>();
-  private static cacheSize = 0;
-  private static readonly MAX_CACHE_SIZE = 1000;
+  const endPromptCache = new Map<string, boolean>();
+  const onlyPromptCache = new Map<string, boolean>();
+  let cacheSize = 0;
+  const MAX_CACHE_SIZE = 1000;
 
   /**
    * Check if the entire output is just a prompt (no other content)
    * Used by activity detector to determine if output is meaningful
    */
-  static isPromptOnly(data: string): boolean {
+  export function isPromptOnly(data: string): boolean {
     // Input validation
     if (data.length > 10000) {
       logger.warn('Unusually long prompt input detected', { length: data.length });
@@ -80,14 +80,15 @@ export class PromptDetector {
     const trimmed = data.trim();
 
     // Check cache first
-    if (PromptDetector.onlyPromptCache.has(trimmed)) {
-      return PromptDetector.onlyPromptCache.get(trimmed) ?? false;
+    if (onlyPromptCache.has(trimmed)) {
+      const cachedResult = onlyPromptCache.get(trimmed);
+      return cachedResult ?? false;
     }
 
     const result = PROMPT_ONLY_REGEX.test(trimmed);
 
     // Cache result
-    PromptDetector.cacheResult(PromptDetector.onlyPromptCache, trimmed, result);
+    cacheResult(onlyPromptCache, trimmed, result);
 
     return result;
   }
@@ -96,14 +97,15 @@ export class PromptDetector {
    * Check if output ends with a prompt (for title injection)
    * This is used to determine when to inject terminal title sequences
    */
-  static endsWithPrompt(data: string): boolean {
+  export function endsWithPrompt(data: string): boolean {
     // For title injection, we need to check the last part of the output
     // Use last 100 chars as cache key to balance cache efficiency and accuracy
     const cacheKey = data.slice(-100);
 
     // Check cache first
-    if (PromptDetector.endPromptCache.has(cacheKey)) {
-      return PromptDetector.endPromptCache.get(cacheKey) ?? false;
+    if (endPromptCache.has(cacheKey)) {
+      const cachedResult = endPromptCache.get(cacheKey);
+      return cachedResult ?? false;
     }
 
     // Strip ANSI codes for more reliable detection
@@ -111,7 +113,7 @@ export class PromptDetector {
     const result = UNIFIED_PROMPT_END_REGEX.test(cleanData);
 
     // Cache result
-    PromptDetector.cacheResult(PromptDetector.endPromptCache, cacheKey, result);
+    cacheResult(endPromptCache, cacheKey, result);
 
     if (result) {
       logger.debug('Detected prompt at end of output');
@@ -124,7 +126,7 @@ export class PromptDetector {
    * Get specific shell type based on prompt pattern
    * This can be used for shell-specific optimizations in the future
    */
-  static getShellType(data: string): keyof typeof SHELL_SPECIFIC_PATTERNS | null {
+  export function getShellType(data: string): keyof typeof SHELL_SPECIFIC_PATTERNS | null {
     const trimmed = data.trim();
 
     // Check each shell pattern
@@ -140,53 +142,53 @@ export class PromptDetector {
   /**
    * Helper to cache results with size limit
    */
-  private static cacheResult(cache: Map<string, boolean>, key: string, value: boolean): void {
-    if (PromptDetector.cacheSize >= PromptDetector.MAX_CACHE_SIZE) {
+  function cacheResult(cache: Map<string, boolean>, key: string, value: boolean): void {
+    if (cacheSize >= MAX_CACHE_SIZE) {
       // Clear oldest entries when cache is full
-      const entriesToDelete = Math.floor(PromptDetector.MAX_CACHE_SIZE * 0.2); // Clear 20%
+      const entriesToDelete = Math.floor(MAX_CACHE_SIZE * 0.2); // Clear 20%
       const iterator = cache.keys();
       for (let i = 0; i < entriesToDelete; i++) {
         const keyToDelete = iterator.next().value;
         if (keyToDelete) {
           cache.delete(keyToDelete);
-          PromptDetector.cacheSize--;
+          cacheSize--;
         }
       }
     }
 
     cache.set(key, value);
-    PromptDetector.cacheSize++;
+    cacheSize++;
   }
 
   /**
    * Clear all caches (useful for tests or memory management)
    */
-  static clearCache(): void {
-    PromptDetector.endPromptCache.clear();
-    PromptDetector.onlyPromptCache.clear();
-    PromptDetector.cacheSize = 0;
+  export function clearCache(): void {
+    endPromptCache.clear();
+    onlyPromptCache.clear();
+    cacheSize = 0;
     logger.debug('Prompt pattern caches cleared');
   }
 
   /**
    * Get cache statistics for monitoring
    */
-  static getCacheStats(): {
+  export function getCacheStats(): {
     size: number;
     maxSize: number;
     hitRate: { end: number; only: number };
   } {
     return {
-      size: PromptDetector.cacheSize,
-      maxSize: PromptDetector.MAX_CACHE_SIZE,
+      size: cacheSize,
+      maxSize: MAX_CACHE_SIZE,
       hitRate: {
-        end: PromptDetector.endPromptCache.size,
-        only: PromptDetector.onlyPromptCache.size,
+        end: endPromptCache.size,
+        only: onlyPromptCache.size,
       },
     };
   }
 }
 
 // Export for backward compatibility
-export const isPromptOnly = PromptDetector.isPromptOnly.bind(PromptDetector);
-export const endsWithPrompt = PromptDetector.endsWithPrompt.bind(PromptDetector);
+export const isPromptOnly = PromptDetector.isPromptOnly;
+export const endsWithPrompt = PromptDetector.endsWithPrompt;
