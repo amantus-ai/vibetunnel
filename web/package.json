@@ -32,7 +32,7 @@
     "prettier:fast": "PRETTIER_EXPERIMENTAL_CLI=1 prettier --write src",
     "check": "./scripts/check-all.sh",
     "check:fix": "./scripts/check-fix-sequential.sh",
-    "precommit": "npm run format && npm run lint:fix && npm run typecheck",
+    "precommit": "pnpm run format && pnpm run lint:fix && pnpm run typecheck",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
