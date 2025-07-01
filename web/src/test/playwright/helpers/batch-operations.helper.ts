@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test';
+import { SESSION_STATE } from '../constants/session.constants';
 import type { SessionInfo } from '../types/session.types';
+import { createLogger } from '../utils/logger';
 
 /**
  * Batch operations helper for efficient test setup/teardown
@@ -8,6 +10,7 @@ import type { SessionInfo } from '../types/session.types';
 export class BatchOperations {
   private page: Page;
   private baseUrl: string;
+  private logger = createLogger('BatchOps');
 
   constructor(page: Page) {
     this.page = page;
@@ -193,10 +196,18 @@ export class BatchOperations {
       }
 
       return sessions.filter((s: SessionInfo) => {
-        if (status === 'RUNNING') {
-          return s.active === true && s.status !== 'EXITED' && s.status !== 'EXIT';
+        if (status === SESSION_STATE.RUNNING) {
+          return (
+            s.active === true &&
+            s.status !== SESSION_STATE.EXITED &&
+            s.status !== SESSION_STATE.EXIT
+          );
         } else {
-          return s.active === false || s.status === 'EXITED' || s.status === 'EXIT';
+          return (
+            s.active === false ||
+            s.status === SESSION_STATE.EXITED ||
+            s.status === SESSION_STATE.EXIT
+          );
         }
       });
     } catch {
@@ -205,7 +216,7 @@ export class BatchOperations {
   }
 
   /**
-   * Wait for sessions to reach a specific state
+   * Wait for sessions to reach a specific state with exponential backoff
    */
   async waitForSessionsState(
     sessionIds: string[],
@@ -213,6 +224,9 @@ export class BatchOperations {
     timeout = 5000
   ): Promise<boolean> {
     const startTime = Date.now();
+    let delay = 50; // Start with 50ms
+    const maxDelay = 500; // Cap at 500ms
+    const backoffFactor = 1.5;
 
     while (Date.now() - startTime < timeout) {
       const sessions = await this.getSessionsByStatus('all');
@@ -220,19 +234,29 @@ export class BatchOperations {
 
       if (targetSessions.length === sessionIds.length) {
         const allMatch = targetSessions.every((s) => {
-          if (expectedState === 'RUNNING') {
-            return s.active === true && s.status !== 'EXITED';
+          if (expectedState === SESSION_STATE.RUNNING) {
+            return s.active === true && s.status !== SESSION_STATE.EXITED;
           } else {
-            return s.active === false || s.status === 'EXITED';
+            return s.active === false || s.status === SESSION_STATE.EXITED;
           }
         });
 
-        if (allMatch) return true;
+        if (allMatch) {
+          // Log success for debugging
+          this.logger.debug(`All ${sessionIds.length} sessions reached ${expectedState} state`);
+          return true;
+        }
       }
 
-      await this.page.waitForTimeout(100);
+      // Wait with exponential backoff
+      await this.page.waitForTimeout(delay);
+      delay = Math.min(delay * backoffFactor, maxDelay);
     }
 
+    // Log timeout for debugging
+    this.logger.warn(
+      `Timeout waiting for sessions to reach ${expectedState} state after ${timeout}ms`
+    );
     return false;
   }
 }

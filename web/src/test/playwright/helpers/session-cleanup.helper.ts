@@ -79,16 +79,29 @@ export class SessionCleanupHelper {
 
       // Filter old sessions
       const toDelete = sessions.filter((s: SessionInfo) => {
+        const timestamp = s.created || s.startTime;
+
         // If no timestamp exists, consider it old and clean it up
-        if (!s.created && !s.startTime) {
+        if (!timestamp) {
+          console.log(`Session ${s.id} has no timestamp, marking for cleanup`);
           return true;
         }
-        const created = new Date(s.created || s.startTime).getTime();
-        // Handle invalid dates (NaN)
+
+        const created = new Date(timestamp).getTime();
+
+        // Handle invalid dates (NaN) - treat as old sessions
         if (Number.isNaN(created)) {
+          console.log(`Session ${s.id} has invalid timestamp: ${timestamp}`);
           return true;
         }
-        return created < cutoffTime;
+
+        const isOld = created < cutoffTime;
+        if (isOld) {
+          const age = Date.now() - created;
+          console.log(`Session ${s.id} is ${Math.round(age / 1000)}s old, marking for cleanup`);
+        }
+
+        return isOld;
       });
 
       if (toDelete.length === 0) return 0;
