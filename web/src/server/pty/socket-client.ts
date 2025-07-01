@@ -65,6 +65,7 @@ export class VibeTunnelSocketClient extends EventEmitter {
 
       const onConnect = () => {
         this.connected = true;
+        this.setupSocketHandlers();
         this.emit('connect');
         this.startHeartbeat();
         cleanup();
@@ -73,6 +74,9 @@ export class VibeTunnelSocketClient extends EventEmitter {
 
       const onError = (error: Error) => {
         cleanup();
+        // Destroy the socket to prevent further errors
+        this.socket?.destroy();
+        this.socket = undefined;
         reject(error);
       };
 
@@ -83,8 +87,6 @@ export class VibeTunnelSocketClient extends EventEmitter {
 
       this.socket.once('connect', onConnect);
       this.socket.once('error', onError);
-
-      this.setupSocketHandlers();
     });
   }
 

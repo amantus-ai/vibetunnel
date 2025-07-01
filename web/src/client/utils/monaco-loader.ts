@@ -160,5 +160,5 @@ export async function ensureMonacoLoaded(): Promise<typeof import('monaco-editor
   return window.monaco;
 }
 
-// Export monaco getter
-export const monaco = window.monaco;
+// Export monaco getter - use a getter to avoid accessing window at module load time
+export const monaco = typeof window !== 'undefined' ? window.monaco : undefined;

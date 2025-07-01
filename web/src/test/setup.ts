@@ -2,6 +2,9 @@
 import { webcrypto } from 'crypto';
 import { vi } from 'vitest';
 
+// Disable SEA loader for tests
+process.env.VIBETUNNEL_SEA = '';
+
 // Polyfill crypto for Node.js environments
 if (!globalThis.crypto) {
   Object.defineProperty(globalThis, 'crypto', {

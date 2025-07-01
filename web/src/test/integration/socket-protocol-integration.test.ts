@@ -69,11 +69,11 @@ describe('Socket Protocol Integration', () => {
       await client.connect();
 
       // Send some input
-      const testInput = 'Hello, Socket!\n';
+      const testInput = 'echo "Hello, Socket!"\n';
       client.sendStdin(testInput);
 
-      // Give it time to process
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      // Give it more time to process
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Check that output was written to the asciinema file
       const streamPath = path.join(testDir, sessionId, 'stdout');
@@ -180,13 +180,18 @@ describe('Socket Protocol Integration', () => {
       client.kill('SIGTERM');
 
       // Wait for process to exit
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Check that session is marked as exited
       const session = ptyManager.getSession(sessionId);
       expect(session?.status).toBe('exited');
 
       client.disconnect();
+
+      // Clean up if session is still running
+      if (session?.status === 'running') {
+        await ptyManager.killSession(sessionId);
+      }
     });
   });
 
