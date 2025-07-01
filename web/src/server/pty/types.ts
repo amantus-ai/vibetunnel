@@ -9,7 +9,7 @@ import type * as net from 'net';
 import type { IPty } from 'node-pty';
 import type { SessionInfo, TitleMode } from '../../shared/types.js';
 import type { ActivityDetector } from '../utils/activity-detector.js';
-import type { AnsiFilter } from '../utils/ansi-filter.js';
+import type { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
 import type { TitleDebouncer } from '../utils/title-debouncer.js';
 import type { WriteQueue } from '../utils/write-queue.js';
 import type { AsciinemaWriter } from './asciinema-writer.js';
@@ -88,8 +88,8 @@ export interface PtySession {
   activityFileWritten?: boolean;
   // Explicit flag for external terminal detection
   isExternalTerminal: boolean;
-  // ANSI filter for handling split escape sequences
-  ansiFilter?: AnsiFilter;
+  // Title sequence filter for removing terminal title sequences
+  titleFilter?: TitleSequenceFilter;
   // Title update debouncer
   titleDebouncer?: TitleDebouncer;
 }

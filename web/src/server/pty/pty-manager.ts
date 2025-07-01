@@ -23,13 +23,12 @@ import type {
 import { TitleMode } from '../../shared/types.js';
 import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
 import { ActivityDetector, type ActivityState } from '../utils/activity-detector.js';
-import { AnsiFilter } from '../utils/ansi-filter.js';
+import { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
 import { createLogger } from '../utils/logger.js';
 import {
   extractCdDirectory,
   generateDynamicTitle,
   generateTitleSequence,
-  injectTitleIfNeeded,
   shouldInjectTitle,
 } from '../utils/terminal-title.js';
 import { TitleDebouncer } from '../utils/title-debouncer.js';
@@ -365,7 +364,7 @@ export class PtyManager extends EventEmitter {
         titleMode: titleMode || TitleMode.NONE,
         isExternalTerminal: !!options.forwardToStdout,
         currentWorkingDir: workingDir,
-        ansiFilter: new AnsiFilter(),
+        titleFilter: new TitleSequenceFilter(),
       };
 
       // Initialize title debouncer for sessions that use title updates
@@ -479,16 +478,19 @@ export class PtyManager extends EventEmitter {
     ptyProcess.onData((data: string) => {
       let processedData = data;
 
+      // If title mode is not NONE, filter out any title sequences the process might
+      // have written to the stream.
+      if (session.titleMode !== undefined && session.titleMode !== TitleMode.NONE) {
+        processedData = session.titleFilter ? session.titleFilter.filter(data) : data;
+      }
+
       // Handle title modes
       switch (session.titleMode) {
         case TitleMode.FILTER:
-          // Filter out all title sequences
-          processedData = session.ansiFilter ? session.ansiFilter.filter(data, true) : data;
+          // Nothing to do here, we already filtered the data above
           break;
 
         case TitleMode.STATIC: {
-          // Filter out app titles and inject static title
-          processedData = session.ansiFilter ? session.ansiFilter.filter(data, true) : data;
           const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
           const titleSequence = generateTitleSequence(
             currentDir,
@@ -502,7 +504,8 @@ export class PtyManager extends EventEmitter {
             // Check if we should inject a title
             if (!session.initialTitleSent || shouldInjectTitle(processedData)) {
               session.titleDebouncer.scheduleUpdate(titleSequence, (title) => {
-                process.stdout.write(title);
+                // TODO: need to write this out down below in the WriteQueues
+                // process.stdout.write(title);
               });
               if (!session.initialTitleSent) {
                 session.initialTitleSent = true;
@@ -513,37 +516,7 @@ export class PtyManager extends EventEmitter {
         }
 
         case TitleMode.DYNAMIC:
-          // Filter out app titles and process through activity detector
-          processedData = session.ansiFilter ? session.ansiFilter.filter(data, true) : data;
-
           if (session.activityDetector) {
-            // Debug: Log raw data when it contains Claude status indicators
-            if (process.env.VIBETUNNEL_CLAUDE_DEBUG === 'true') {
-              if (data.includes('interrupt') || data.includes('tokens') || data.includes('…')) {
-                console.log('[PtyManager] Detected potential Claude output');
-                console.log(
-                  '[PtyManager] Raw data sample:',
-                  data
-                    .substring(0, 200)
-                    .replace(/\n/g, '\\n')
-                    // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes need control characters
-                    .replace(/\x1b/g, '\\x1b')
-                );
-
-                // Also log to file for analysis
-                const debugPath = '/tmp/claude-output-debug.txt';
-                require('fs').appendFileSync(
-                  debugPath,
-                  `\n\n=== ${new Date().toISOString()} ===\n`
-                );
-                require('fs').appendFileSync(debugPath, `Raw: ${data}\n`);
-                require('fs').appendFileSync(
-                  debugPath,
-                  `Hex: ${Buffer.from(data).toString('hex')}\n`
-                );
-              }
-            }
-
             const { filteredData, activity } =
               session.activityDetector.processOutput(processedData);
             processedData = filteredData;
@@ -563,7 +536,8 @@ export class PtyManager extends EventEmitter {
               // Check if we should inject a title
               if (!session.initialTitleSent || shouldInjectTitle(processedData)) {
                 session.titleDebouncer.scheduleUpdate(dynamicTitleSequence, (title) => {
-                  process.stdout.write(title);
+                  // TODO: need to write this out down below in the WriteQueues
+                  // process.stdout.write(title);
                 });
                 if (!session.initialTitleSent) {
                   session.initialTitleSent = true;
@@ -1889,10 +1863,10 @@ export class PtyManager extends EventEmitter {
       session.activityDetector = undefined;
     }
 
-    // Clean up ANSI filter
-    if (session.ansiFilter) {
-      session.ansiFilter.reset();
-      session.ansiFilter = undefined;
+    // Clean up title filter
+    if (session.titleFilter) {
+      // No need to reset, just remove reference
+      session.titleFilter = undefined;
     }
 
     // Clean up title debouncer

@@ -186,5 +186,6 @@ export function createLogger(moduleName: string) {
         writeToFile(fileMsg);
       }
     },
+    setDebugMode: (enabled: boolean) => setDebugMode(enabled),
   };
 }

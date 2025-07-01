@@ -19,6 +19,7 @@ import { PtyManager } from './pty/index.js';
 import { SessionManager } from './pty/session-manager.js';
 import { VibeTunnelSocketClient } from './pty/socket-client.js';
 import { ActivityDetector } from './utils/activity-detector.js';
+import { checkAndPatchClaude } from './utils/claude-patcher.js';
 import { closeLogger, createLogger } from './utils/logger.js';
 import { generateSessionName } from './utils/session-naming.js';
 import { BUILD_DATE, GIT_COMMIT, VERSION } from './version.js';
@@ -63,7 +64,8 @@ function showUsage() {
 export async function startVibeTunnelForward(args: string[]) {
   // Log startup with version (logger already initialized in cli.ts)
   if (process.env.VIBETUNNEL_DEBUG === '1' || process.env.VIBETUNNEL_DEBUG === 'true') {
-    logger.debug('Debug mode enabled');
+    logger.setDebugMode(true);
+    logger.warn('Debug mode enabled');
   }
 
   // Parse command line arguments
@@ -188,13 +190,22 @@ export async function startVibeTunnelForward(args: string[]) {
     }
   }
 
-  const command = remainingArgs;
+  let command = remainingArgs;
 
   if (command.length === 0) {
     logger.error('No command specified');
     showUsage();
     closeLogger();
     process.exit(1);
+  }
+
+  // Check if this is Claude and patch it if necessary (only in debug mode)
+  if (process.env.VIBETUNNEL_DEBUG === '1' || process.env.VIBETUNNEL_DEBUG === 'true') {
+    const patchedCommand = checkAndPatchClaude(command);
+    if (patchedCommand !== command) {
+      command = patchedCommand;
+      logger.debug(`Command updated after patching`);
+    }
   }
 
   // Auto-select dynamic mode for Claude if no mode was explicitly set
@@ -367,7 +378,7 @@ export async function startVibeTunnelForward(args: string[]) {
       const originalStdoutWrite = process.stdout.write.bind(process.stdout);
 
       // Create a proper override that handles all overloads
-      const stdoutWriteOverride = function (
+      const _stdoutWriteOverride = function (
         this: NodeJS.WriteStream,
         chunk: string | Uint8Array,
         encodingOrCallback?: BufferEncoding | ((err?: Error | null) => void),
@@ -392,7 +403,7 @@ export async function startVibeTunnelForward(args: string[]) {
           if (callback) {
             return originalStdoutWrite.call(
               this,
-              filteredData,
+              chunk,
               encodingOrCallback as BufferEncoding | undefined,
               callback
             );
@@ -419,7 +430,7 @@ export async function startVibeTunnelForward(args: string[]) {
       };
 
       // Apply the override
-      process.stdout.write = stdoutWriteOverride as typeof process.stdout.write;
+      // process.stdout.write = stdoutWriteOverride as typeof process.stdout.write;
 
       // Store reference for cleanup
       cleanupStdout = () => {
