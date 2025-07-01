@@ -143,6 +143,15 @@ export async function startVibeTunnelForward(args: string[]) {
     const controlPath = path.join(os.homedir(), '.vibetunnel', 'control');
     const sessionManager = new SessionManager(controlPath);
 
+    // Validate session ID format for security
+    if (!/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
+      logger.error(
+        'Invalid session ID format. Only alphanumeric characters, hyphens, and underscores are allowed.'
+      );
+      closeLogger();
+      process.exit(1);
+    }
+
     try {
       // Load existing session info
       const sessionInfo = sessionManager.loadSessionInfo(sessionId);
@@ -152,11 +161,22 @@ export async function startVibeTunnelForward(args: string[]) {
         process.exit(1);
       }
 
+      // Sanitize the title - limit length and filter out problematic characters
+      const sanitizedTitle = updateTitle
+        .substring(0, 256) // Limit length
+        .split('')
+        .filter((char) => {
+          const code = char.charCodeAt(0);
+          // Allow printable characters (space to ~) and extended ASCII/Unicode
+          return code >= 32 && code !== 127 && (code < 128 || code > 159);
+        })
+        .join('');
+
       // Update the title
-      sessionInfo.name = updateTitle;
+      sessionInfo.name = sanitizedTitle;
       sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
-      logger.log(`Session title updated to: ${updateTitle}`);
+      logger.log(`Session title updated to: ${sanitizedTitle}`);
       closeLogger();
       process.exit(0);
     } catch (error) {

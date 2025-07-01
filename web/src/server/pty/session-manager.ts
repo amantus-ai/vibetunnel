@@ -19,11 +19,24 @@ const logger = createLogger('session-manager');
 
 export class SessionManager {
   private controlPath: string;
+  private static readonly SESSION_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
 
   constructor(controlPath?: string) {
     this.controlPath = controlPath || path.join(os.homedir(), '.vibetunnel', 'control');
     logger.debug(`initializing session manager with control path: ${this.controlPath}`);
     this.ensureControlDirectory();
+  }
+
+  /**
+   * Validate session ID format for security
+   */
+  private validateSessionId(sessionId: string): void {
+    if (!SessionManager.SESSION_ID_REGEX.test(sessionId)) {
+      throw new PtyError(
+        'Invalid session ID format. Only alphanumeric characters, hyphens, and underscores are allowed.',
+        'INVALID_SESSION_ID'
+      );
+    }
   }
 
   /**
@@ -45,6 +58,7 @@ export class SessionManager {
     stdinPath: string;
     sessionJsonPath: string;
   } {
+    this.validateSessionId(sessionId);
     const controlDir = path.join(this.controlPath, sessionId);
 
     // Create session directory
@@ -96,6 +110,7 @@ export class SessionManager {
    * Save session info to JSON file
    */
   saveSessionInfo(sessionId: string, sessionInfo: SessionInfo): void {
+    this.validateSessionId(sessionId);
     try {
       const sessionInfoStr = JSON.stringify(sessionInfo, null, 2);
 
