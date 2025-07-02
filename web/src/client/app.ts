@@ -1,5 +1,6 @@
 // Suppress xterm.js errors globally - must be before any other imports
 import { suppressXtermErrors } from '../shared/suppress-xterm-errors.js';
+
 suppressXtermErrors();
 
 import { html, LitElement } from 'lit';

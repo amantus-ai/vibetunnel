@@ -38,6 +38,15 @@ VibeTunnel is a macOS application that allows users to access their terminal ses
 - Always check current branch with `git branch` before making changes
 - If unsure about branching, ASK THE USER FIRST
 
+### Terminal Title Management with VT
+
+When creating pull requests, use the `vt` command to update the terminal title:
+- Run `vt title "Brief summary - github.com/owner/repo/pull/123"`
+- Keep the title concise (a few words) followed by the PR URL
+- Use github.com URL format (not https://) for easy identification
+- Update the title periodically as work progresses
+- If `vt` command fails (only works inside VibeTunnel), simply ignore the error and continue
+
 ## Web Development Commands
 
 **IMPORTANT**: The user has `pnpm run dev` running - DO NOT manually build the web project!

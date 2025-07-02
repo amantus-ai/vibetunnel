@@ -112,15 +112,40 @@ export class SessionManager {
   saveSessionInfo(sessionId: string, sessionInfo: SessionInfo): void {
     this.validateSessionId(sessionId);
     try {
+      const sessionDir = path.join(this.controlPath, sessionId);
+      const sessionJsonPath = path.join(sessionDir, 'session.json');
+      const tempPath = `${sessionJsonPath}.tmp`;
+
+      // Ensure session directory exists before writing
+      if (!fs.existsSync(sessionDir)) {
+        logger.warn(`Session directory ${sessionDir} does not exist, creating it`);
+        fs.mkdirSync(sessionDir, { recursive: true });
+      }
+
       const sessionInfoStr = JSON.stringify(sessionInfo, null, 2);
 
       // Write to temporary file first, then move to final location (atomic write)
-      const sessionJsonPath = path.join(this.controlPath, sessionId, 'session.json');
-      const tempPath = `${sessionJsonPath}.tmp`;
       fs.writeFileSync(tempPath, sessionInfoStr, 'utf8');
+
+      // Double-check directory still exists before rename (handle race conditions)
+      if (!fs.existsSync(sessionDir)) {
+        logger.error(`Session directory ${sessionDir} was deleted during save operation`);
+        // Clean up temp file if it exists
+        if (fs.existsSync(tempPath)) {
+          fs.unlinkSync(tempPath);
+        }
+        throw new PtyError(
+          `Session directory was deleted during save operation`,
+          'SESSION_DIR_DELETED'
+        );
+      }
+
       fs.renameSync(tempPath, sessionJsonPath);
       logger.debug(`session info saved for ${sessionId}`);
     } catch (error) {
+      if (error instanceof PtyError) {
+        throw error;
+      }
       throw new PtyError(
         `Failed to save session info: ${error instanceof Error ? error.message : String(error)}`,
         'SAVE_SESSION_FAILED'
@@ -278,9 +303,19 @@ export class SessionManager {
       const sessionDir = path.join(this.controlPath, sessionId);
 
       if (fs.existsSync(sessionDir)) {
+        logger.debug(`Cleaning up session directory: ${sessionDir}`);
+
+        // Log session info before cleanup for debugging
+        const sessionInfo = this.loadSessionInfo(sessionId);
+        if (sessionInfo) {
+          logger.debug(`Cleaning up session ${sessionId} with status: ${sessionInfo.status}`);
+        }
+
         // Remove directory and all contents
         fs.rmSync(sessionDir, { recursive: true, force: true });
         logger.log(chalk.green(`session ${sessionId} cleaned up`));
+      } else {
+        logger.debug(`Session directory ${sessionDir} does not exist, nothing to clean up`);
       }
     } catch (error) {
       throw new PtyError(

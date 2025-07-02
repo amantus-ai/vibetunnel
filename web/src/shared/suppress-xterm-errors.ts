@@ -9,17 +9,17 @@
  */
 
 // Type declaration for our global flag
+// Type declarations for the suppression flag
+// We use 'any' type for globalObj to avoid TypeScript errors in different environments
 declare global {
-  interface Window {
-    __xtermErrorsSuppressed?: boolean;
-  }
-
   namespace NodeJS {
     interface Global {
       __xtermErrorsSuppressed?: boolean;
     }
   }
 }
+
+// Browser Window interface is extended conditionally at runtime
 
 /**
  * Suppresses xterm.js parsing errors by overriding console methods
@@ -28,7 +28,7 @@ declare global {
 export function suppressXtermErrors(): void {
   // Detect environment
   const isNode = typeof process !== 'undefined' && process.versions?.node;
-  const globalObj: any = isNode ? global : typeof window !== 'undefined' ? window : global;
+  const globalObj: any = isNode ? global : typeof globalThis !== 'undefined' ? globalThis : global;
 
   // Check if already suppressed to avoid multiple overrides
   if ((globalObj as any).__xtermErrorsSuppressed) {
@@ -94,7 +94,7 @@ export function restoreConsole(): void {
   // This would need to store the originals somewhere accessible
   // For now, this is a placeholder for potential future use
   const isNode = typeof process !== 'undefined' && process.versions?.node;
-  const globalObj: any = isNode ? global : typeof window !== 'undefined' ? window : global;
+  const globalObj: any = isNode ? global : typeof globalThis !== 'undefined' ? globalThis : global;
 
   if ((globalObj as any).__xtermErrorsSuppressed) {
     delete (globalObj as any).__xtermErrorsSuppressed;
