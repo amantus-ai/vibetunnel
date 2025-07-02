@@ -606,11 +606,6 @@ export class PtyManager extends EventEmitter {
 
     // Setup IPC socket for all communication
     this.setupIPCSocket(session);
-
-    // Setup file watching for external session.json changes
-    if (forwardToStdout) {
-      this.setupSessionFileWatcher(session);
-    }
   }
 
   /**
@@ -684,72 +679,6 @@ export class PtyManager extends EventEmitter {
     }
 
     // All IPC goes through this socket
-  }
-
-  /**
-   * Setup file watcher for session.json changes
-   */
-  private setupSessionFileWatcher(session: PtySession): void {
-    const { sessionJsonPath } = session;
-    let debounceTimer: NodeJS.Timeout | undefined;
-
-    try {
-      // Watch the session.json file for changes
-      session.sessionFileWatcher = fs.watch(sessionJsonPath, (eventType) => {
-        if (eventType === 'change') {
-          // Debounce rapid changes
-          if (debounceTimer) {
-            clearTimeout(debounceTimer);
-          }
-          debounceTimer = setTimeout(() => {
-            this.handleExternalSessionUpdate(session);
-          }, 100);
-        }
-      });
-
-      logger.debug(`Setup file watcher for session ${session.id} at ${sessionJsonPath}`);
-
-      // Clean up watcher on error
-      session.sessionFileWatcher.on('error', (error) => {
-        logger.error(`File watcher error for session ${session.id}:`, error);
-        session.sessionFileWatcher?.close();
-        session.sessionFileWatcher = undefined;
-      });
-    } catch (error) {
-      logger.error(`Failed to setup file watcher for session ${session.id}:`, error);
-    }
-  }
-
-  /**
-   * Handle external updates to session.json
-   */
-  private handleExternalSessionUpdate(session: PtySession): void {
-    try {
-      // Reload session info from disk
-      const updatedInfo = this.sessionManager.loadSessionInfo(session.id);
-      if (!updatedInfo) {
-        logger.warn(`Failed to reload session info for ${session.id}`);
-        return;
-      }
-
-      // Check if session name changed
-      if (updatedInfo.name !== session.sessionInfo.name) {
-        logger.debug(
-          `[File Watch] Session name changed from "${session.sessionInfo.name}" to "${updatedInfo.name}" for session ${session.id}`
-        );
-
-        // Update in-memory session info
-        session.sessionInfo.name = updatedInfo.name;
-
-        // For session name changes, always update title regardless of mode
-        this.updateTerminalTitleForSessionName(session);
-
-        // Emit event for other listeners
-        this.trackAndEmit('sessionNameChanged', session.id, updatedInfo.name);
-      }
-    } catch (error) {
-      logger.error(`Failed to handle external session update for ${session.id}:`, error);
-    }
   }
 
   /**
@@ -1797,13 +1726,6 @@ export class PtyManager extends EventEmitter {
     if (session.titleFilter) {
       // No need to reset, just remove reference
       session.titleFilter = undefined;
-    }
-
-    // Clean up file watcher
-    if (session.sessionFileWatcher) {
-      session.sessionFileWatcher.close();
-      session.sessionFileWatcher = undefined;
-      logger.debug(`Closed file watcher for session ${session.id}`);
     }
 
     // Clean up input socket server

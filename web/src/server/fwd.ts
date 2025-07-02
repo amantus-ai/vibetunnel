@@ -15,7 +15,7 @@ import chalk from 'chalk';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { TitleMode } from '../shared/types.js';
+import { type SessionInfo, TitleMode } from '../shared/types.js';
 import { PtyManager } from './pty/index.js';
 import { SessionManager } from './pty/session-manager.js';
 import { VibeTunnelSocketClient } from './pty/socket-client.js';
@@ -23,6 +23,7 @@ import { ActivityDetector } from './utils/activity-detector.js';
 import { checkAndPatchClaude } from './utils/claude-patcher.js';
 import { closeLogger, createLogger } from './utils/logger.js';
 import { generateSessionName } from './utils/session-naming.js';
+import { generateTitleSequence } from './utils/terminal-title.js';
 import { BUILD_DATE, GIT_COMMIT, VERSION } from './version.js';
 
 const logger = createLogger('fwd');
@@ -308,6 +309,10 @@ export async function startVibeTunnelForward(args: string[]) {
       logger.log(chalk.cyan(`✓ ${modeDescriptions[titleMode]}`));
     }
 
+    // Variables that need to be accessible in cleanup
+    let sessionFileWatcher: fs.FSWatcher | undefined;
+    let fileWatchDebounceTimer: NodeJS.Timeout | undefined;
+
     const sessionOptions: Parameters<typeof ptyManager.createSession>[1] = {
       sessionId: finalSessionId,
       name: sessionName,
@@ -339,6 +344,16 @@ export async function startVibeTunnelForward(args: string[]) {
         // Restore original stdout.write if we hooked it
         if (cleanupStdout) {
           cleanupStdout();
+        }
+
+        // Clean up file watcher
+        if (sessionFileWatcher) {
+          sessionFileWatcher.close();
+          sessionFileWatcher = undefined;
+          logger.debug('Closed session file watcher');
+        }
+        if (fileWatchDebounceTimer) {
+          clearTimeout(fileWatchDebounceTimer);
         }
 
         // Shutdown PTY manager and exit
@@ -400,6 +415,77 @@ export async function startVibeTunnelForward(args: string[]) {
 
     // Listen for terminal resize events
     process.stdout.on('resize', resizeHandler);
+
+    // Set up file watcher for session.json changes (for external updates)
+    const sessionJsonPath = path.join(controlPath, result.sessionId, 'session.json');
+    let lastKnownSessionName = result.sessionInfo.name;
+
+    // Wait a moment for the file to be created
+    setTimeout(() => {
+      try {
+        // Check if file exists first
+        if (!fs.existsSync(sessionJsonPath)) {
+          logger.warn(`Session file does not exist yet: ${sessionJsonPath}`);
+          return;
+        }
+
+        logger.debug(`Setting up file watcher for: ${sessionJsonPath}`);
+        sessionFileWatcher = fs.watch(sessionJsonPath, (eventType) => {
+          logger.debug(`[File Watch] Detected ${eventType} event on session.json`);
+          if (eventType === 'change') {
+            // Debounce rapid changes
+            if (fileWatchDebounceTimer) {
+              clearTimeout(fileWatchDebounceTimer);
+            }
+            fileWatchDebounceTimer = setTimeout(() => {
+              // Reload session info from disk
+              try {
+                const sessionContent = fs.readFileSync(sessionJsonPath, 'utf-8');
+                const updatedInfo = JSON.parse(sessionContent) as SessionInfo;
+
+                // Check if session name changed
+                if (updatedInfo.name !== lastKnownSessionName) {
+                  logger.debug(
+                    `[File Watch] Session name changed from "${lastKnownSessionName}" to "${updatedInfo.name}"`
+                  );
+                  lastKnownSessionName = updatedInfo.name;
+
+                  // Always update terminal title when session name changes
+                  // Generate new title sequence based on title mode
+                  let titleSequence: string;
+                  if (titleMode === TitleMode.NONE || titleMode === TitleMode.FILTER) {
+                    // For NONE and FILTER modes, just use the session name
+                    titleSequence = `\x1B]2;${updatedInfo.name}\x07`;
+                  } else {
+                    // For STATIC and DYNAMIC, use the full format with path and command
+                    titleSequence = generateTitleSequence(cwd, command, updatedInfo.name);
+                  }
+
+                  // Write title sequence to terminal
+                  process.stdout.write(titleSequence);
+                  logger.debug(
+                    `Updated terminal title to "${updatedInfo.name}" (mode: ${titleMode})`
+                  );
+                }
+              } catch (error) {
+                logger.error('Failed to handle session.json change:', error);
+              }
+            }, 100);
+          }
+        });
+
+        logger.debug(`Set up file watcher for session.json`);
+
+        // Clean up watcher on error
+        sessionFileWatcher.on('error', (error) => {
+          logger.error('File watcher error:', error);
+          sessionFileWatcher?.close();
+          sessionFileWatcher = undefined;
+        });
+      } catch (error) {
+        logger.error('Failed to set up file watcher:', error);
+      }
+    }, 500); // Wait 500ms for file to be created
 
     // Set up activity detector for Claude status updates
     let activityDetector: ActivityDetector | undefined;
