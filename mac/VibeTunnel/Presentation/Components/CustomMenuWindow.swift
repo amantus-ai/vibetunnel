@@ -21,6 +21,7 @@ final class CustomMenuWindow: NSPanel {
     private var _isWindowVisible = false
     private var frameObserver: Any?
     private var lastBounds: CGRect = .zero
+    private var maskLayer: CAShapeLayer?
 
     /// Closure to be called when window hides
     var onHide: (() -> Void)?
@@ -77,6 +78,7 @@ final class CustomMenuWindow: NSPanel {
                 cornerRadius: DesignConstants.menuCornerRadius
             )
             contentView.layer?.mask = maskLayer
+            self.maskLayer = maskLayer
             lastBounds = contentView.bounds
 
             // Update mask when bounds change
@@ -91,7 +93,7 @@ final class CustomMenuWindow: NSPanel {
                     let currentBounds = contentView.bounds
                     guard currentBounds != self.lastBounds else { return }
                     self.lastBounds = currentBounds
-                    maskLayer.path = self.createSideRoundedPath(
+                    self.maskLayer?.path = self.createSideRoundedPath(
                         in: currentBounds,
                         cornerRadius: DesignConstants.menuCornerRadius
                     )
