@@ -213,6 +213,13 @@ export class VibeTunnelSocketClient extends EventEmitter {
   }
 
   /**
+   * Send update title command
+   */
+  updateTitle(title: string): boolean {
+    return this.send(MessageBuilder.updateTitle(title));
+  }
+
+  /**
    * Send status update
    */
   sendStatus(app: string, status: string, extra?: Record<string, unknown>): boolean {

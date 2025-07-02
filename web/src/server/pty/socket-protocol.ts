@@ -46,6 +46,11 @@ export interface ResetSizeCommand extends ControlCommand {
   cmd: 'reset-size';
 }
 
+export interface UpdateTitleCommand extends ControlCommand {
+  cmd: 'update-title';
+  title: string;
+}
+
 /**
  * Status update payload
  */
@@ -148,6 +153,10 @@ export class MessageBuilder {
 
   static resetSize(): Buffer {
     return frameMessage(MessageType.CONTROL_CMD, { cmd: 'reset-size' });
+  }
+
+  static updateTitle(title: string): Buffer {
+    return frameMessage(MessageType.CONTROL_CMD, { cmd: 'update-title', title });
   }
 
   static status(app: string, status: string, extra?: Record<string, unknown>): Buffer {

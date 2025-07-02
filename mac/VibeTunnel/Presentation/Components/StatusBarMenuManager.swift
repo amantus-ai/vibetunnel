@@ -114,6 +114,9 @@ final class StatusBarMenuManager: NSObject {
         DispatchQueue.main.async {
             button.state = .on
         }
+        
+        // Update Window menu item state
+        WindowMenuManager.shared.updateMenuItemState(isVisible: true)
 
         // Create SessionService instance
         let sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
@@ -144,6 +147,8 @@ final class StatusBarMenuManager: NSObject {
                 // Ensure state is reset on main thread
                 Task { @MainActor in
                     self?.updateMenuState(.none)
+                    // Update Window menu item state
+                    WindowMenuManager.shared.updateMenuItemState(isVisible: false)
                 }
             }
         } else {
@@ -156,6 +161,8 @@ final class StatusBarMenuManager: NSObject {
             customWindow?.onHide = { [weak self] in
                 Task { @MainActor in
                     self?.updateMenuState(.none)
+                    // Update Window menu item state
+                    WindowMenuManager.shared.updateMenuItemState(isVisible: false)
                 }
             }
         }
@@ -174,6 +181,9 @@ final class StatusBarMenuManager: NSObject {
         // Reset new session state when hiding
         isNewSessionActive = false
         // Button state will be reset by updateMenuState(.none) in the onHide callback
+        
+        // Update Window menu item state
+        WindowMenuManager.shared.updateMenuItemState(isVisible: false)
     }
 
     var isCustomWindowVisible: Bool {

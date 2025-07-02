@@ -259,6 +259,11 @@ final class StatusBarController: NSObject {
         guard let button = statusItem?.button else { return }
         menuManager.showCustomWindow(relativeTo: button)
     }
+    
+    func toggleCustomWindow() {
+        guard let button = statusItem?.button else { return }
+        menuManager.toggleCustomWindow(relativeTo: button)
+    }
 
     // MARK: - Cleanup
 

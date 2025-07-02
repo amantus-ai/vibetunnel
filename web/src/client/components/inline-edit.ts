@@ -139,12 +139,18 @@ export class InlineEdit extends LitElement {
             placeholder=${this.placeholder}
           />
           <div class="action-buttons">
-            <button class="save" @click=${this.handleSave} title="Save (Enter)">
+            <button class="save" @click=${(e: Event) => {
+              e.stopPropagation();
+              this.handleSave();
+            }} title="Save (Enter)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
             </button>
-            <button class="cancel" @click=${this.handleCancel} title="Cancel (Esc)">
+            <button class="cancel" @click=${(e: Event) => {
+              e.stopPropagation();
+              this.handleCancel();
+            }} title="Cancel (Esc)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -160,7 +166,10 @@ export class InlineEdit extends LitElement {
         <span class="display-text" title=${this.value}>${this.value}</span>
         <svg
           class="edit-icon"
-          @click=${this.startEdit}
+          @click=${(e: Event) => {
+            e.stopPropagation();
+            this.startEdit();
+          }}
           width="14"
           height="14"
           viewBox="0 0 24 24"

@@ -75,7 +75,6 @@ export class PtyManager extends EventEmitter {
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
   private activityFileWarningsLogged = new Set<string>(); // Track which sessions we've logged warnings for
   private lastWrittenActivityState = new Map<string, string>(); // Track last written activity state to avoid unnecessary writes
-  private externalSessionWatchers = new Map<string, fs.FSWatcher>(); // Track file watchers for external sessions
 
   constructor(controlPath?: string) {
     super();
@@ -386,9 +385,6 @@ export class PtyManager extends EventEmitter {
       this.setupPtyHandlers(session, options.forwardToStdout || false, options.onExit);
 
       // Note: stdin forwarding is now handled via IPC socket
-
-      // Setup session.json watcher for title updates (vt title command) if needed
-      this.ensureSessionJsonWatcher(session);
 
       // Initial title will be set when the first output is received
       // Do not write title sequence to PTY input as it would be sent to the shell
@@ -723,214 +719,6 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Ensure session.json watcher is initialized when needed
-   */
-  private ensureSessionJsonWatcher(session: PtySession): void {
-    if (
-      !session.sessionJsonWatcher &&
-      (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
-    ) {
-      this.setupSessionJsonWatcher(session);
-    }
-  }
-
-  /**
-   * Setup watcher for session.json changes (for vt title updates)
-   */
-  private setupSessionJsonWatcher(session: PtySession): void {
-    logger.debug(
-      `[SessionJsonWatcher] Setting up watcher for session ${session.id} at path: ${session.sessionJsonPath}`
-    );
-    try {
-      const { sessionJsonPath } = session;
-      let debounceTimer: NodeJS.Timeout | null = null;
-
-      // Watch for changes to session.json
-      const watcher = fs.watch(sessionJsonPath, (eventType) => {
-        logger.debug(`[SessionJsonWatcher] File event '${eventType}' for session ${session.id}`);
-        if (eventType === 'change') {
-          // Debounce file changes to avoid multiple rapid updates
-          if (debounceTimer) {
-            clearTimeout(debounceTimer);
-          }
-
-          const timer = setTimeout(() => {
-            this.handleSessionJsonChange(session);
-            // Clear both timer references after execution
-            session.sessionJsonDebounceTimer = null;
-            debounceTimer = null;
-          }, 100);
-
-          // Update both timer references
-          session.sessionJsonDebounceTimer = timer;
-          debounceTimer = timer;
-        }
-      });
-
-      // Store watcher for cleanup BEFORE setting up error handler
-      session.sessionJsonWatcher = watcher;
-
-      // Add error handling for watcher
-      watcher.on('error', (error) => {
-        logger.error(`Session.json watcher failed for ${session.id}:`, error);
-        this.emit('watcherError', session.id, error);
-
-        // Clean up the failed watcher
-        if (session.sessionJsonWatcher) {
-          session.sessionJsonWatcher.close();
-          session.sessionJsonWatcher = undefined;
-        }
-      });
-
-      // Unref the watcher so it doesn't keep the process alive
-      watcher.unref();
-
-      logger.debug(`Session.json watcher setup for session ${session.id}`);
-    } catch (error) {
-      logger.warn(`Failed to setup session.json watcher for session ${session.id}:`, error);
-      this.emit('watcherError', session.id, error);
-    }
-  }
-
-  /**
-   * Handle session.json file changes (debounced)
-   */
-  private handleSessionJsonChange(session: PtySession): void {
-    logger.debug(`[SessionJsonWatcher] Handling session.json change for session ${session.id}`);
-    try {
-      // Reload session info
-      const newSessionInfo = this.sessionManager.loadSessionInfo(session.id);
-      if (!newSessionInfo) {
-        logger.warn(`[SessionJsonWatcher] Could not load session info for ${session.id}`);
-        return;
-      }
-
-      logger.debug(
-        `[SessionJsonWatcher] Loaded session info - old name: "${session.sessionInfo.name}", new name: "${newSessionInfo.name}"`
-      );
-
-      // Check if name changed
-      if (newSessionInfo.name !== session.sessionInfo.name) {
-        logger.log(
-          chalk.cyan(
-            `Session ${session.id} name changed: "${session.sessionInfo.name}" → "${newSessionInfo.name}"`
-          )
-        );
-
-        // Update in-memory session info
-        session.sessionInfo.name = newSessionInfo.name;
-
-        // Mark title for update and trigger immediate check
-        if (session.titleMode !== TitleMode.NONE) {
-          session.titleUpdateNeeded = true;
-          this.checkAndUpdateTitle(session);
-          logger.debug(`[SessionJsonWatcher] Triggered title update for session ${session.id}`);
-        }
-
-        // Emit event for clients
-        this.trackAndEmit('sessionNameChanged', session.id, newSessionInfo.name);
-      } else {
-        logger.debug(`[SessionJsonWatcher] Session name unchanged for ${session.id}`);
-      }
-    } catch (error) {
-      logger.warn(`Failed to handle session.json change for session ${session.id}:`, error);
-      this.emit('watcherError', session.id, error);
-    }
-  }
-
-  /**
-   * Setup file watcher for external session's session.json file
-   */
-  private ensureExternalSessionWatcher(sessionId: string, sessionJsonPath: string): void {
-    // Skip if we already have a watcher for this session
-    if (this.externalSessionWatchers.has(sessionId)) {
-      return;
-    }
-
-    try {
-      logger.debug(`Setting up external session watcher for ${sessionId}`);
-      let debounceTimer: NodeJS.Timeout | null = null;
-
-      // Watch for changes to session.json
-      const watcher = fs.watch(sessionJsonPath, (eventType) => {
-        if (eventType === 'change') {
-          // Debounce file changes to avoid multiple rapid updates
-          if (debounceTimer) {
-            clearTimeout(debounceTimer);
-          }
-
-          debounceTimer = setTimeout(() => {
-            this.handleExternalSessionJsonChange(sessionId);
-            debounceTimer = null;
-          }, 100);
-        }
-      });
-
-      // Store watcher for cleanup
-      this.externalSessionWatchers.set(sessionId, watcher);
-
-      // Add error handling for watcher
-      watcher.on('error', (error) => {
-        logger.error(`External session.json watcher failed for ${sessionId}:`, error);
-        this.emit('watcherError', sessionId, error);
-
-        // Clean up the failed watcher
-        watcher.close();
-        this.externalSessionWatchers.delete(sessionId);
-      });
-
-      // Unref the watcher so it doesn't keep the process alive
-      watcher.unref();
-
-      logger.debug(`External session.json watcher setup for session ${sessionId}`);
-    } catch (error) {
-      logger.warn(`Failed to setup external session.json watcher for session ${sessionId}:`, error);
-      this.emit('watcherError', sessionId, error);
-    }
-  }
-
-  /**
-   * Handle external session.json file changes (debounced)
-   */
-  private handleExternalSessionJsonChange(sessionId: string): void {
-    try {
-      // Reload session info
-      const newSessionInfo = this.sessionManager.loadSessionInfo(sessionId);
-      if (!newSessionInfo) {
-        logger.warn(`Failed to load session info for external session ${sessionId}`);
-        return;
-      }
-
-      logger.log(chalk.cyan(`External session ${sessionId} updated: "${newSessionInfo.name}"`));
-
-      // Check if this external session is being forwarded by fwd.ts (has an active PTY session)
-      const memorySession = this.sessions.get(sessionId);
-      if (memorySession) {
-        // Update the in-memory session info so title generation uses the new name
-        const oldName = memorySession.sessionInfo.name;
-        memorySession.sessionInfo.name = newSessionInfo.name;
-
-        logger.debug(
-          `[External Session Update] Updated in-memory session name from "${oldName}" to "${newSessionInfo.name}"`
-        );
-
-        // Trigger immediate title update if title mode is active
-        if (memorySession.titleMode && memorySession.titleMode !== TitleMode.NONE) {
-          memorySession.titleUpdateNeeded = true;
-          this.checkAndUpdateTitle(memorySession);
-          logger.debug(`[External Session Update] Triggered title update for session ${sessionId}`);
-        }
-      }
-
-      // Emit event for clients to refresh their session data
-      this.trackAndEmit('sessionNameChanged', sessionId, newSessionInfo.name);
-    } catch (error) {
-      logger.warn(`Failed to handle external session.json change for session ${sessionId}:`, error);
-      this.emit('watcherError', sessionId, error);
-    }
-  }
-
-  /**
    * Handle control messages from control pipe
    */
   private handleControlMessage(session: PtySession, message: Record<string, unknown>): void {
@@ -975,6 +763,10 @@ export class PtyManager extends EventEmitter {
       } catch (error) {
         logger.warn(`Failed to reset session ${session.id} size to terminal size:`, error);
       }
+    } else if (message.cmd === 'update-title' && typeof message.title === 'string') {
+      // Handle title update via IPC (used by vt title command)
+      logger.debug(`[IPC] Received title update for session ${session.id}: "${message.title}"`);
+      this.updateSessionName(session.id, message.title);
     }
   }
 
@@ -1252,6 +1044,9 @@ export class PtyManager extends EventEmitter {
     } else {
       logger.debug(`[PtyManager] No in-memory session found for ${sessionId}`);
     }
+
+    // Emit event for clients to refresh their session data
+    this.trackAndEmit('sessionNameChanged', sessionId, name);
 
     logger.log(`[PtyManager] Updated session ${sessionId} name to: ${name}`);
   }
@@ -1572,11 +1367,6 @@ export class PtyManager extends EventEmitter {
           return session;
         }
 
-        // For external sessions, ensure we have a file watcher set up
-        if (!this.sessions.has(session.id)) {
-          this.ensureExternalSessionWatcher(session.id, sessionPaths.sessionJsonPath);
-        }
-
         const activityPath = path.join(sessionPaths.controlDir, 'claude-activity.json');
 
         if (fs.existsSync(activityPath)) {
@@ -1639,11 +1429,6 @@ export class PtyManager extends EventEmitter {
       return null;
     }
 
-    // For external sessions, ensure we have a file watcher set up
-    if (!this.sessions.has(sessionId)) {
-      this.ensureExternalSessionWatcher(sessionId, paths.sessionJsonPath);
-    }
-
     // Create Session object with the id field
     const session: Session = {
       ...sessionInfo,
@@ -1683,14 +1468,6 @@ export class PtyManager extends EventEmitter {
     if (socket) {
       socket.destroy();
       this.inputSocketClients.delete(sessionId);
-    }
-
-    // Clean up external session watcher if any
-    const watcher = this.externalSessionWatchers.get(sessionId);
-    if (watcher) {
-      watcher.close();
-      this.externalSessionWatchers.delete(sessionId);
-      logger.debug(`Cleaned up external session watcher for ${sessionId}`);
     }
   }
 
@@ -1828,17 +1605,6 @@ export class PtyManager extends EventEmitter {
     }
     this.inputSocketClients.clear();
 
-    // Clean up all external session watchers
-    for (const [sessionId, watcher] of this.externalSessionWatchers.entries()) {
-      try {
-        watcher.close();
-        logger.debug(`Closed external session watcher for ${sessionId}`);
-      } catch (error) {
-        logger.error(`Failed to close external session watcher for ${sessionId}:`, error);
-      }
-    }
-    this.externalSessionWatchers.clear();
-
     // Clean up resize event listeners
     for (const removeListener of this.resizeEventListeners) {
       try {
@@ -1956,15 +1722,6 @@ export class PtyManager extends EventEmitter {
       } catch (_e) {
         // Socket already removed
       }
-    }
-
-    // Close session.json watcher and clear debounce timer
-    if (session.sessionJsonDebounceTimer) {
-      clearTimeout(session.sessionJsonDebounceTimer);
-      session.sessionJsonDebounceTimer = null;
-    }
-    if (session.sessionJsonWatcher) {
-      session.sessionJsonWatcher.close();
     }
 
     // Note: stdin handling is done via IPC socket, no global listeners to clean up

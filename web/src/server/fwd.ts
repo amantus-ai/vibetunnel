@@ -12,6 +12,7 @@
  */
 
 import chalk from 'chalk';
+import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { TitleMode } from '../shared/types.js';
@@ -174,11 +175,44 @@ export async function startVibeTunnelForward(args: string[]) {
         })
         .join('');
 
-      // Update the title
+      // Update the title via IPC if session is active
+      const socketPath = path.join(controlPath, sessionId, 'ipc.sock');
+
+      // Check if IPC socket exists (session is active)
+      if (fs.existsSync(socketPath)) {
+        logger.debug(`IPC socket found, sending title update via IPC`);
+
+        // Connect to IPC socket and send update-title command
+        const socketClient = new VibeTunnelSocketClient(socketPath, {
+          autoReconnect: false, // One-shot operation
+        });
+
+        try {
+          await socketClient.connect();
+
+          // Send update-title command
+          const sent = socketClient.updateTitle(sanitizedTitle);
+
+          if (sent) {
+            logger.log(`Session title updated via IPC to: ${sanitizedTitle}`);
+          } else {
+            logger.warn(`Failed to send title update via IPC, falling back to file update`);
+          }
+
+          // Disconnect after sending
+          socketClient.disconnect();
+        } catch (ipcError) {
+          logger.warn(`IPC connection failed: ${ipcError}, falling back to file update`);
+        }
+      } else {
+        logger.debug(`No IPC socket found, session might not be active`);
+      }
+
+      // Always update the file for persistence
       sessionInfo.name = sanitizedTitle;
       sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
-      logger.log(`Session title updated to: ${sanitizedTitle}`);
+      logger.log(`Session title persisted to: ${sanitizedTitle}`);
       closeLogger();
       process.exit(0);
     } catch (error) {
