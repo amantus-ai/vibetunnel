@@ -262,6 +262,10 @@ struct VibeTunnelMenuView: View {
 
 // MARK: - Server Info Header
 
+/// Header section of the menu showing server status and connection info.
+///
+/// Displays the VibeTunnel logo, server running status, and available
+/// connection addresses including local, ngrok, and Tailscale endpoints.
 struct ServerInfoHeader: View {
     @Environment(ServerManager.self)
     var serverManager
@@ -269,8 +273,8 @@ struct ServerInfoHeader: View {
     var ngrokService
     @Environment(TailscaleService.self)
     var tailscaleService
-    @Environment(GitRepositoryMonitor.self)
-    var gitRepositoryMonitor
+    @Environment(\.colorScheme)
+    private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -313,17 +317,16 @@ struct ServerInfoHeader: View {
                             url: URL(string: "http://\(hostname):\(serverManager.port)")
                         )
                     }
-
-                    // Show current repository if available
-                    if let currentRepo = gitRepositoryMonitor.currentRepository {
-                        GitRepositoryRow(repository: currentRepo)
-                    }
                 }
             }
         }
     }
 }
 
+/// Displays a clickable server address with an icon and label.
+///
+/// Shows connection endpoints that can be clicked to open in the browser,
+/// with support for local addresses, ngrok tunnels, and Tailscale connections.
 struct ServerAddressRow: View {
     let icon: String
     let label: String
@@ -332,6 +335,8 @@ struct ServerAddressRow: View {
 
     @Environment(ServerManager.self)
     var serverManager
+    @Environment(\.colorScheme)
+    private var colorScheme
 
     init(
         icon: String = "server.rack",
@@ -349,7 +354,7 @@ struct ServerAddressRow: View {
         HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.system(size: 10))
-                .foregroundColor(.green)
+                .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
             Text(label)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
@@ -368,7 +373,7 @@ struct ServerAddressRow: View {
             }) {
                 Text(computedAddress)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.green)
+                    .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
                     .underline()
             }
             .buttonStyle(.plain)
@@ -393,27 +398,33 @@ struct ServerAddressRow: View {
     }
 }
 
+/// Visual indicator for server running status.
+///
+/// Shows a colored badge with status text indicating whether
+/// the VibeTunnel server is currently running or stopped.
 struct ServerStatusBadge: View {
     let isRunning: Bool
+    @Environment(\.colorScheme)
+    private var colorScheme
 
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0) : Color.red)
+                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : Color.red)
                 .frame(width: 6, height: 6)
             Text(isRunning ? "Running" : "Stopped")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundColor(isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0) : .red)
+                .foregroundColor(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : .red)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
             Capsule()
-                .fill(isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0).opacity(0.1) : Color.red.opacity(0.1))
+                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.1) : Color.red.opacity(0.1))
                 .overlay(
                     Capsule()
                         .stroke(
-                            isRunning ? Color(red: 0.0, green: 0.7, blue: 0.0).opacity(0.3) : Color.red.opacity(0.3),
+                            isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.3) : Color.red.opacity(0.3),
                             lineWidth: 0.5
                         )
                 )
@@ -423,6 +434,10 @@ struct ServerStatusBadge: View {
 
 // MARK: - Session Components
 
+/// Section header for grouping sessions by status.
+///
+/// Displays a section title (Active/Idle) with a count of sessions
+/// in that category for better visual organization.
 struct SessionSectionHeader: View {
     let title: String
     let count: Int
@@ -442,6 +457,11 @@ struct SessionSectionHeader: View {
     }
 }
 
+/// Row component displaying a single terminal session.
+///
+/// Shows session information including command, directory, git status,
+/// activity indicators, and provides interaction for opening, renaming,
+/// and terminating sessions. Supports both window and web-based sessions.
 struct SessionRow: View {
     let session: (key: String, value: ServerSessionInfo)
     let isHovered: Bool
@@ -472,10 +492,30 @@ struct SessionRow: View {
             content
         }
         .buttonStyle(PlainButtonStyle())
-        .task {
+        .task(id: session.value.workingDir) {
             // Fetch git repository info for this session
-            if let repo = await gitRepositoryMonitor.findRepository(for: session.value.workingDir) {
-                gitRepository = repo
+            gitRepository = await gitRepositoryMonitor.findRepository(for: session.value.workingDir)
+        }
+        .onChange(of: session.value.workingDir) { oldValue, newValue in
+            Task {
+                gitRepository = await gitRepositoryMonitor.findRepository(for: newValue)
+            }
+        }
+        .onAppear {
+            // Set up periodic refresh for git status
+            Task {
+                // Initial delay to ensure smooth UI
+                try? await Task.sleep(for: .milliseconds(100))
+                
+                // Refresh every 5 seconds while the view is visible
+                while !Task.isCancelled {
+                    if let repo = await gitRepositoryMonitor.findRepository(for: session.value.workingDir) {
+                        await MainActor.run {
+                            gitRepository = repo
+                        }
+                    }
+                    try? await Task.sleep(for: .seconds(5))
+                }
             }
         }
     }
@@ -497,6 +537,7 @@ struct SessionRow: View {
 
             // Session info - use flexible width
             VStack(alignment: .leading, spacing: 2) {
+                // First row: Command name, session name, and window indicator
                 HStack(spacing: 4) {
                     if isEditing {
                         TextField("Session Name", text: $editedName)
@@ -554,74 +595,68 @@ struct SessionRow: View {
                     }
                 }
 
+                // Second row: Full path with git info
+                HStack(spacing: 0) {
+                    // Clickable folder and path area
+                    HStack(spacing: 4) {
+                        Image(systemName: gitRepository != nil ? "folder.badge.gearshape" : "folder")
+                            .font(.system(size: 9))
+                            .foregroundColor(isHoveringGitFolder ? .accentColor : .secondary)
+                            .scaleEffect(isHoveringGitFolder ? 1.1 : 1.0)
+                            .animation(.easeInOut(duration: 0.15), value: isHoveringGitFolder)
+                        
+                        Text(compactPath)
+                            .font(.system(size: 10))
+                            .foregroundColor(isHoveringGitFolder ? .primary : .secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .layoutPriority(1)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        let pathToOpen = gitRepository?.path ?? session.value.workingDir
+                        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: pathToOpen)
+                    }
+                    .onHover { hovering in
+                        isHoveringGitFolder = hovering
+                        if hovering {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.pop()
+                        }
+                    }
+                    
+                    // Git branch and status on the right
+                    if let repo = gitRepository {
+                        Spacer(minLength: 4)
+                        
+                        if let branch = repo.currentBranch {
+                            Text(branch)
+                                .font(.system(size: 10))
+                                .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
+                        }
+                        
+                        if repo.hasChanges {
+                            Text("•")
+                                .foregroundColor(.secondary.opacity(0.6))
+                            Text(repo.statusText)
+                                .font(.system(size: 10))
+                                .foregroundColor(AppColors.Fallback.gitChanges(for: colorScheme))
+                        }
+                    }
+                }
+                .frame(height: 14) // Fixed height to prevent layout jumping
+                
+                // Third row: Activity status (if present)
                 if let activityStatus = session.value.activityStatus?.specificStatus?.status {
                     HStack(spacing: 4) {
                         Text(activityStatus)
                             .font(.system(size: 10))
-                            .foregroundColor(Color(red: 0.8, green: 0.4, blue: 0.0))
-
-                        Spacer(minLength: 4)
-
-                        Text(compactPath)
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppColors.Fallback.activityIndicator(for: colorScheme))
                             .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                } else {
-                    HStack(spacing: 4) {
-                        Text(compactPath)
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-
-                        // Git status display
-                        if let repo = gitRepository {
-                            Text("•")
-                                .foregroundColor(.secondary.opacity(0.6))
-
-                            HStack(spacing: 2) {
-                                Image(systemName: "folder.badge.gearshape")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(isHoveringGitFolder ? .accentColor : .secondary)
-                                    .scaleEffect(isHoveringGitFolder ? 1.1 : 1.0)
-                                    .animation(.easeInOut(duration: 0.15), value: isHoveringGitFolder)
-
-                                Text(repo.folderName)
-                                    .font(.system(size: 10))
-                                    .foregroundColor(isHoveringGitFolder ? .accentColor : .secondary)
-                                    .underline(isHoveringGitFolder, color: .accentColor)
-                                    .animation(.easeInOut(duration: 0.15), value: isHoveringGitFolder)
-
-                                if let branch = repo.currentBranch {
-                                    Text("•")
-                                        .foregroundColor(.secondary.opacity(0.6))
-                                    Text(branch)
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.orange)
-                                }
-
-                                if repo.hasChanges {
-                                    Text("•")
-                                        .foregroundColor(.secondary.opacity(0.6))
-                                    Text("\(repo.totalChangedFiles) changed")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.yellow)
-                                }
-                            }
-                            .onTapGesture {
-                                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repo.path)
-                            }
-                            .onHover { hovering in
-                                isHoveringGitFolder = hovering
-                                if hovering {
-                                    NSCursor.pointingHand.push()
-                                } else {
-                                    NSCursor.pop()
-                                }
-                            }
-                        }
+                            .truncationMode(.tail)
+                        
+                        Spacer()
                     }
                 }
             }
@@ -858,9 +893,9 @@ struct SessionRow: View {
 
     private var activityColor: Color {
         if isActive {
-            Color(red: 0.8, green: 0.4, blue: 0.0) // Darker orange for better contrast
+            AppColors.Fallback.activityIndicator(for: colorScheme)
         } else {
-            Color(red: 0.0, green: 0.7, blue: 0.0) // Darker, more visible green
+            AppColors.Fallback.gitClean(for: colorScheme)
         }
     }
 
@@ -910,15 +945,21 @@ struct SessionRow: View {
 
 // MARK: - Git Repository Row
 
+/// Displays git repository information in a compact row.
+///
+/// Shows repository folder name, current branch, and change status
+/// with clickable navigation to open the repository in Finder.
 struct GitRepositoryRow: View {
     let repository: GitRepository
     @State private var isHovering = false
+    @Environment(\.colorScheme)
+    private var colorScheme
 
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "folder.badge.gearshape")
                 .font(.system(size: 10))
-                .foregroundColor(repository.hasChanges ? .yellow : .green)
+                .foregroundColor(repository.hasChanges ? AppColors.Fallback.gitChanges(for: colorScheme) : AppColors.Fallback.gitClean(for: colorScheme))
 
             Text("Git:")
                 .font(.system(size: 11))
@@ -936,13 +977,13 @@ struct GitRepositoryRow: View {
                     if let branch = repository.currentBranch {
                         Text("(\(branch))")
                             .font(.system(size: 11))
-                            .foregroundColor(.orange)
+                            .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
                     }
 
                     if repository.hasChanges {
                         Text("• \(repository.statusText)")
                             .font(.system(size: 11))
-                            .foregroundColor(.yellow)
+                            .foregroundColor(AppColors.Fallback.gitChanges(for: colorScheme))
                     }
                 }
             }
@@ -955,6 +996,10 @@ struct GitRepositoryRow: View {
     }
 }
 
+/// Placeholder view shown when no sessions are active.
+///
+/// Displays a friendly message with an animated terminal icon
+/// and optional link to open the dashboard when the server is running.
 struct EmptySessionsView: View {
     @Environment(ServerManager.self)
     var serverManager

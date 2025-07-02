@@ -4,6 +4,14 @@
 
 ### ✨ New Features
 
+#### **Git Repository Monitoring** 🆕
+- **Real-time Git Status** - Session rows now display git information including branch name and change counts
+- **Visual Indicators** - Color-coded status: orange for branches, yellow for uncommitted changes
+- **Quick Navigation** - Click folder icons to open repositories in Finder
+- **GitHub Integration** - Context menu option to open repositories directly on GitHub
+- **Smart Caching** - 5-second cache prevents excessive git commands while keeping info fresh
+- **Repository Detection** - Automatically finds git repositories in parent directories
+
 #### **Enhanced Command-Line Tool**
 - **Version Information** - `vt help` now displays binary path, version, build date, and platform information for easier troubleshooting
 - **Apple Silicon Support** - Automatic detection of Homebrew installations on ARM Macs (/opt/homebrew path)
