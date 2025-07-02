@@ -98,10 +98,7 @@ struct VibeTunnelMenuView: View {
             // Bottom action bar
             MenuActionBar(
                 showingNewSession: $showingNewSession,
-                focusedField: Binding(
-                    get: { focusedField },
-                    set: { focusedField = $0 }
-                ),
+                focusedField: $focusedField,
                 hasStartedKeyboardNavigation: hasStartedKeyboardNavigation
             )
         }

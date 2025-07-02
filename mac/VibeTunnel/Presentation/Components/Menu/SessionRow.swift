@@ -391,11 +391,7 @@ struct SessionRow: View {
     }
 
     private var activityColor: Color {
-        if isActive {
-            AppColors.Fallback.activityIndicator(for: colorScheme)
-        } else {
-            AppColors.Fallback.gitClean(for: colorScheme)
-        }
+        isActive ? AppColors.Fallback.activityIndicator(for: colorScheme) : AppColors.Fallback.gitClean(for: colorScheme)
     }
 
     private var hasWindow: Bool {

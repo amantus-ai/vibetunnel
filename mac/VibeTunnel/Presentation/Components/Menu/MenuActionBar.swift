@@ -52,7 +52,7 @@ struct MenuActionBar: View {
             )
 
             Button(action: {
-                openWindow(id: "settings")
+                SettingsOpener.openSettings()
             }) {
                 Label("Settings", systemImage: "gearshape")
                     .font(.system(size: 12))
