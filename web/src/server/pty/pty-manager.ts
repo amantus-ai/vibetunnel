@@ -791,10 +791,9 @@ export class PtyManager extends EventEmitter {
 
         // Mark title for update and trigger immediate check
         if (session.titleMode !== TitleMode.NONE) {
-          logger.debug(
-            `[SessionJsonWatcher] Triggering immediate title update for session ${session.id}`
-          );
-          this.markTitleUpdateNeeded(session);
+          session.titleUpdateNeeded = true;
+          this.checkAndUpdateTitle(session);
+          logger.debug(`[SessionJsonWatcher] Triggered title update for session ${session.id}`);
         }
 
         // Emit event for clients
@@ -879,12 +878,15 @@ export class PtyManager extends EventEmitter {
         // Update the in-memory session info so title generation uses the new name
         const oldName = memorySession.sessionInfo.name;
         memorySession.sessionInfo.name = newSessionInfo.name;
-        
-        logger.debug(`[External Session Update] Updated in-memory session name from "${oldName}" to "${newSessionInfo.name}"`);
-        
+
+        logger.debug(
+          `[External Session Update] Updated in-memory session name from "${oldName}" to "${newSessionInfo.name}"`
+        );
+
         // Trigger immediate title update if title mode is active
         if (memorySession.titleMode && memorySession.titleMode !== TitleMode.NONE) {
-          this.markTitleUpdateNeeded(memorySession);
+          memorySession.titleUpdateNeeded = true;
+          this.checkAndUpdateTitle(memorySession);
           logger.debug(`[External Session Update] Triggered title update for session ${sessionId}`);
         }
       }

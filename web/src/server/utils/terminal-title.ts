@@ -68,7 +68,7 @@ export function generateTitleSequence(
 function isRedundantSessionName(
   sessionName: string,
   cmdName: string,
-  displayPath: string
+  _displayPath: string
 ): boolean {
   // Check for simple duplication patterns like "claude · claude"
   if (sessionName === `${cmdName} · ${cmdName}`) {
