@@ -100,7 +100,7 @@ struct ConnectionView: View {
                     isPresented: $viewModel.showLoginView,
                     serverConfig: config,
                     authenticationService: authService
-                ) {
+                ) { _, _ in
                     // Authentication successful, mark as connected
                     connectionManager.isConnected = true
                 }

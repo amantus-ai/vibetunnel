@@ -6,7 +6,7 @@ struct EnhancedConnectionView: View {
     var connectionManager
     @State private var networkMonitor = NetworkMonitor.shared
     @State private var viewModel = ConnectionViewModel()
-    @State private var profilesViewModel = ServerProfilesViewModel()
+    @State private var profilesViewModel = ServerListViewModel()
     @State private var logoScale: CGFloat = 0.8
     @State private var contentOpacity: Double = 0
     @State private var showingNewServerForm = false
@@ -87,7 +87,7 @@ struct EnhancedConnectionView: View {
                         isPresented: $viewModel.showLoginView,
                         serverConfig: config,
                         authenticationService: authService
-                    ) {
+                    ) { _, _ in
                         // Authentication successful, mark as connected
                         connectionManager.isConnected = true
                     }
@@ -231,15 +231,13 @@ struct EnhancedConnectionView: View {
 
         Task {
             do {
-                try await profilesViewModel.connectToProfile(profile, connectionManager: connectionManager)
-                
-                // Check if we need to show login view for authentication
-                // This happens when auto-login failed and manual login is required
-                if let authService = connectionManager.authenticationService,
-                   !authService.isAuthenticated {
-                    viewModel.showLoginView = true
-                }
+                try await profilesViewModel.connectToProfile(profile)
+                // Connection successful - no further action needed
+            } catch _ as AuthenticationError {
+                // Auto-login failed, show login modal for manual authentication
+                viewModel.showLoginView = true
             } catch {
+                // Network, server, or other errors
                 viewModel.errorMessage = "Failed to connect: \(error.localizedDescription)"
             }
         }
@@ -277,97 +275,6 @@ struct EnhancedConnectionView: View {
     }
 }
 
-// MARK: - Server Profile Card
-
-struct ServerProfileCard: View {
-    let profile: ServerProfile
-    let isLoading: Bool
-    let onConnect: () -> Void
-    let onEdit: () -> Void
-
-    @State private var isPressed = false
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.medium) {
-            // Icon
-            Image(systemName: profile.iconSymbol)
-                .font(.system(size: 24))
-                .foregroundColor(Theme.Colors.primaryAccent)
-                .frame(width: 40, height: 40)
-                .background(Theme.Colors.primaryAccent.opacity(0.1))
-                .cornerRadius(Theme.CornerRadius.small)
-
-            // Server Info
-            VStack(alignment: .leading, spacing: 2) {
-                Text(profile.name)
-                    .font(Theme.Typography.terminalSystem(size: 16, weight: .medium))
-                    .foregroundColor(Theme.Colors.terminalForeground)
-
-                HStack(spacing: 4) {
-                    Text(profile.url)
-                        .font(Theme.Typography.terminalSystem(size: 12))
-                        .foregroundColor(Theme.Colors.secondaryText)
-
-                    if profile.requiresAuth {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(Theme.Colors.warningAccent)
-                    }
-                }
-
-                if let lastConnected = profile.lastConnected {
-                    Text(RelativeDateTimeFormatter().localizedString(for: lastConnected, relativeTo: Date()))
-                        .font(Theme.Typography.terminalSystem(size: 11))
-                        .foregroundColor(Theme.Colors.secondaryText.opacity(0.7))
-                }
-            }
-
-            Spacer()
-
-            // Action Buttons
-            HStack(spacing: Theme.Spacing.small) {
-                Button(action: onEdit) {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 20))
-                        .foregroundColor(Theme.Colors.secondaryText)
-                }
-                .buttonStyle(.plain)
-
-                Button(action: onConnect) {
-                    HStack(spacing: 4) {
-                        if isLoading {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        } else {
-                            Image(systemName: "arrow.right.circle.fill")
-                                .font(.system(size: 24))
-                        }
-                    }
-                    .foregroundColor(Theme.Colors.primaryAccent)
-                }
-                .buttonStyle(.plain)
-                .disabled(isLoading)
-            }
-        }
-        .padding(Theme.Spacing.medium)
-        .background(Theme.Colors.cardBackground)
-        .cornerRadius(Theme.CornerRadius.card)
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-        )
-        .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: isPressed)
-        .onTapGesture {
-            onConnect()
-        }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
-    }
-}
 
 // MARK: - Server Profile Edit View
 
@@ -459,5 +366,5 @@ struct ServerProfileEditView: View {
 
 #Preview {
     EnhancedConnectionView()
-        .environment(ConnectionManager())
+        .environment(ConnectionManager.shared)
 }
