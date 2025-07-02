@@ -1,5 +1,18 @@
 import AppKit
+import Combine
 import SwiftUI
+
+/// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
+/// Didn't manage to keep the highlighted state reliable active with any other way.
+extension NSStatusBarButton {
+    override public func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+        self.highlight(true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) {
+            self.highlight(AppDelegate.shared?.statusBarController?.menuManager.customWindow?.isWindowVisible ?? false)
+        }
+    }
+}
 
 /// Manages status bar menu behavior, providing left-click custom view and right-click context menu functionality.
 @MainActor
@@ -21,18 +34,28 @@ final class StatusBarMenuManager: NSObject {
     private var terminalLauncher: TerminalLauncher?
 
     // Custom window management
-    private var customWindow: CustomMenuWindow?
+    fileprivate var customWindow: CustomMenuWindow?
     private weak var statusBarButton: NSStatusBarButton?
     private weak var currentStatusItem: NSStatusItem?
 
-    // State management
+    /// State management
     private var menuState: MenuState = .none
-    private var highlightTask: Task<Void, Never>?
+
+    // Track new session state
+    @Published private var isNewSessionActive = false
+    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
 
     override init() {
         super.init()
+
+        // Subscribe to new session state changes to update window
+        $isNewSessionActive
+            .sink { [weak self] isActive in
+                self?.customWindow?.isNewSessionActive = isActive
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Configuration
@@ -58,9 +81,6 @@ final class StatusBarMenuManager: NSObject {
     // MARK: - State Management
 
     private func updateMenuState(_ newState: MenuState, button: NSStatusBarButton? = nil) {
-        // Cancel any pending highlight task
-        highlightTask?.cancel()
-
         // Update state
         menuState = newState
 
@@ -95,62 +115,57 @@ final class StatusBarMenuManager: NSObject {
         // Update menu state to custom window FIRST before any async operations
         updateMenuState(.customWindow, button: button)
 
-        // Ensure button state is set immediately and persistently
-        button.state = .on
-
-        // Force another button state update to ensure it sticks
-        DispatchQueue.main.async {
-            button.state = .on
-        }
-
         // Create SessionService instance
         let sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
 
-        // Create the main view with all dependencies
-        let mainView = VibeTunnelMenuView()
-            .environment(sessionMonitor)
-            .environment(serverManager)
-            .environment(ngrokService)
-            .environment(tailscaleService)
-            .environment(terminalLauncher)
-            .environment(sessionService)
+        // Create the main view with all dependencies and binding
+        let mainView = VibeTunnelMenuView(isNewSessionActive: Binding(
+            get: { [weak self] in self?.isNewSessionActive ?? false },
+            set: { [weak self] in self?.isNewSessionActive = $0 }
+        ))
+        .environment(sessionMonitor)
+        .environment(serverManager)
+        .environment(ngrokService)
+        .environment(tailscaleService)
+        .environment(terminalLauncher)
+        .environment(sessionService)
 
         // Wrap in custom container for proper styling
         let containerView = CustomMenuContainer {
             mainView
         }
 
-        // Create custom window if needed
-        if customWindow == nil {
-            customWindow = CustomMenuWindow(contentView: containerView)
+        // Hide and cleanup old window before creating new one
+        customWindow?.hide()
+        customWindow = nil
+        customWindow = CustomMenuWindow(contentView: containerView)
 
-            // Set up callback to reset state when window hides
-            customWindow?.onHide = { [weak self] in
-                // Ensure state is reset on main thread
-                Task { @MainActor in
-                    self?.updateMenuState(.none)
-                }
-            }
-        } else {
-            // Hide and cleanup old window before creating new one
-            customWindow?.hide()
-            customWindow = nil
+        // Set up callback to reset state when window hides
+        customWindow?.onHide = { [weak self] in
+            self?.statusBarButton?.highlight(false)
 
-            // Create new window with updated content
-            customWindow = CustomMenuWindow(contentView: containerView)
-            customWindow?.onHide = { [weak self] in
-                Task { @MainActor in
-                    self?.updateMenuState(.none)
-                }
+            // Ensure state is reset on main thread
+            Task { @MainActor in
+                self?.updateMenuState(.none)
             }
+        }
+
+        // Sync the new session state with the window
+        if let window = customWindow {
+            window.isNewSessionActive = isNewSessionActive
         }
 
         // Show the custom window
         customWindow?.show(relativeTo: button)
+        statusBarButton?.highlight(true)
     }
 
     func hideCustomWindow() {
-        customWindow?.hide()
+        if customWindow?.isWindowVisible ?? false {
+            customWindow?.hide()
+        }
+        // Reset new session state when hiding
+        isNewSessionActive = false
         // Button state will be reset by updateMenuState(.none) in the onHide callback
     }
 
@@ -278,7 +293,7 @@ final class StatusBarMenuManager: NSObject {
     @objc
     private func openDashboard() {
         guard let serverManager else { return }
-        if let url = URL(string: "http://127.0.0.1:\(serverManager.port)") {
+        if let url = DashboardURLBuilder.dashboardURL(port: serverManager.port) {
             NSWorkspace.shared.open(url)
         }
     }

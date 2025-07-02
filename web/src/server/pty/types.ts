@@ -4,7 +4,6 @@
  * These types match the tty-fwd format to ensure compatibility
  */
 
-import type * as fs from 'fs';
 import type * as net from 'net';
 import type { IPty } from 'node-pty';
 import type { SessionInfo, TitleMode } from '../../shared/types.js';
@@ -70,8 +69,6 @@ export interface PtySession {
   startTime: Date;
   // Optional fields for resource cleanup
   inputSocketServer?: net.Server;
-  sessionJsonWatcher?: fs.FSWatcher;
-  sessionJsonDebounceTimer?: NodeJS.Timeout | null;
   stdoutQueue?: WriteQueue;
   // Terminal title mode
   titleMode?: TitleMode;

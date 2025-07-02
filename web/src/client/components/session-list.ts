@@ -22,6 +22,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import type { Session } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
+import './inline-edit.js';
 import { formatSessionDuration } from '../../shared/utils/time.js';
 import { createLogger } from '../utils/logger.js';
 import { formatPathForDisplay } from '../utils/path-utils.js';
@@ -87,6 +88,65 @@ export class SessionList extends LitElement {
       })
     );
   }
+
+  private async handleRename(sessionId: string, newName: string) {
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.authClient.getAuthHeader(),
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        logger.error('Failed to rename session', { errorData, sessionId });
+        throw new Error(`Rename failed: ${response.status}`);
+      }
+
+      // Update the local session object
+      const sessionIndex = this.sessions.findIndex((s) => s.id === sessionId);
+      if (sessionIndex >= 0) {
+        this.sessions[sessionIndex] = { ...this.sessions[sessionIndex], name: newName };
+        this.requestUpdate();
+      }
+
+      logger.log(`Session ${sessionId} renamed to: ${newName}`);
+    } catch (error) {
+      logger.error('Error renaming session', { error, sessionId });
+
+      // Show error to user
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: `Failed to rename session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      );
+    }
+  }
+
+  private handleSessionRenamed = (e: CustomEvent) => {
+    const { sessionId, newName } = e.detail;
+    // Update the local session object
+    const sessionIndex = this.sessions.findIndex((s) => s.id === sessionId);
+    if (sessionIndex >= 0) {
+      this.sessions[sessionIndex] = { ...this.sessions[sessionIndex], name: newName };
+      this.requestUpdate();
+    }
+  };
+
+  private handleSessionRenameError = (e: CustomEvent) => {
+    const { sessionId, error } = e.detail;
+    logger.error(`failed to rename session ${sessionId}:`, error);
+
+    // Dispatch error event to parent for user notification
+    this.dispatchEvent(
+      new CustomEvent('error', {
+        detail: `Failed to rename session: ${error}`,
+      })
+    );
+  };
 
   public async handleCleanupExited() {
     if (this.cleaningExited) return;
@@ -301,19 +361,21 @@ export class SessionList extends LitElement {
                                     ? 'text-accent-primary font-medium'
                                     : 'text-dark-text group-hover:text-accent-primary transition-colors'
                                 }"
-                                title="${
-                                  session.name ||
-                                  (Array.isArray(session.command)
-                                    ? session.command.join(' ')
-                                    : session.command)
-                                }"
                               >
-                                ${
-                                  session.name ||
-                                  (Array.isArray(session.command)
-                                    ? session.command.join(' ')
-                                    : session.command)
-                                }
+                                <inline-edit
+                                  .value=${
+                                    session.name ||
+                                    (Array.isArray(session.command)
+                                      ? session.command.join(' ')
+                                      : session.command)
+                                  }
+                                  .placeholder=${
+                                    Array.isArray(session.command)
+                                      ? session.command.join(' ')
+                                      : session.command
+                                  }
+                                  .onSave=${(newName: string) => this.handleRename(session.id, newName)}
+                                ></inline-edit>
                               </div>
                               <div class="text-xs text-dark-text-muted truncate flex items-center gap-1">
                                 ${(() => {
@@ -417,6 +479,8 @@ export class SessionList extends LitElement {
                             @session-select=${this.handleSessionSelect}
                             @session-killed=${this.handleSessionKilled}
                             @session-kill-error=${this.handleSessionKillError}
+                            @session-renamed=${this.handleSessionRenamed}
+                            @session-rename-error=${this.handleSessionRenameError}
                           >
                           </session-card>
                         `
@@ -546,6 +610,8 @@ export class SessionList extends LitElement {
                                     @session-select=${this.handleSessionSelect}
                                     @session-killed=${this.handleSessionKilled}
                                     @session-kill-error=${this.handleSessionKillError}
+                                    @session-renamed=${this.handleSessionRenamed}
+                                    @session-rename-error=${this.handleSessionRenameError}
                                   >
                                   </session-card>
                                 `
@@ -574,7 +640,7 @@ export class SessionList extends LitElement {
     if (exitedSessions.length === 0 && runningSessions.length === 0) return '';
 
     return html`
-      <div class="sticky bottom-0 border-t border-dark-border bg-dark-bg-secondary p-3 flex flex-wrap gap-2 shadow-lg">
+      <div class="sticky bottom-0 border-t border-dark-border bg-dark-bg-secondary p-3 flex flex-wrap gap-2 shadow-lg z-10">
         <!-- Control buttons with consistent styling -->
         ${
           exitedSessions.length > 0

@@ -375,21 +375,21 @@ export class SessionCreateForm extends LitElement {
     }
 
     return html`
-      <div class="modal-backdrop flex items-center justify-center">
+      <div class="modal-backdrop flex items-center justify-center p-2 sm:p-4">
         <div
-          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] mx-2 sm:mx-4"
+          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] flex flex-col"
           style="view-transition-name: create-session-modal"
         >
-          <div class="p-6 pb-4 mb-3 border-b border-dark-border relative bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary">
-            <h2 class="text-primary text-xl font-bold">New Session</h2>
+          <div class="p-4 sm:p-6 sm:pb-4 mb-2 sm:mb-3 border-b border-dark-border relative bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary flex-shrink-0">
+            <h2 class="text-primary text-lg sm:text-xl font-bold">New Session</h2>
             <button
-              class="absolute top-6 right-6 text-dark-text-muted hover:text-dark-text transition-all duration-200 p-2 hover:bg-dark-bg-tertiary rounded-lg"
+              class="absolute top-4 right-4 sm:top-6 sm:right-6 text-dark-text-muted hover:text-dark-text transition-all duration-200 p-1.5 sm:p-2 hover:bg-dark-bg-tertiary rounded-lg"
               @click=${this.handleCancel}
               title="Close (Esc)"
               aria-label="Close modal"
             >
               <svg
-                class="w-5 h-5"
+                class="w-4 h-4 sm:w-5 sm:h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -405,13 +405,13 @@ export class SessionCreateForm extends LitElement {
             </button>
           </div>
 
-          <div class="p-6">
+          <div class="p-4 sm:p-6 overflow-y-auto flex-grow">
             <!-- Session Name -->
-            <div class="mb-5">
-              <label class="form-label text-dark-text-muted">Session Name (Optional):</label>
+            <div class="mb-3 sm:mb-5">
+              <label class="form-label text-dark-text-muted text-xs sm:text-sm">Session Name (Optional):</label>
               <input
                 type="text"
-                class="input-field"
+                class="input-field py-2 sm:py-3 text-sm"
                 .value=${this.sessionName}
                 @input=${this.handleSessionNameChange}
                 placeholder="My Session"
@@ -420,11 +420,11 @@ export class SessionCreateForm extends LitElement {
             </div>
 
             <!-- Command -->
-            <div class="mb-5">
-              <label class="form-label text-dark-text-muted">Command:</label>
+            <div class="mb-3 sm:mb-5">
+              <label class="form-label text-dark-text-muted text-xs sm:text-sm">Command:</label>
               <input
                 type="text"
-                class="input-field"
+                class="input-field py-2 sm:py-3 text-sm"
                 .value=${this.command}
                 @input=${this.handleCommandChange}
                 placeholder="zsh"
@@ -433,24 +433,24 @@ export class SessionCreateForm extends LitElement {
             </div>
 
             <!-- Working Directory -->
-            <div class="mb-5">
-              <label class="form-label text-dark-text-muted">Working Directory:</label>
+            <div class="mb-3 sm:mb-5">
+              <label class="form-label text-dark-text-muted text-xs sm:text-sm">Working Directory:</label>
               <div class="flex gap-2">
                 <input
                   type="text"
-                  class="input-field"
+                  class="input-field py-2 sm:py-3 text-sm"
                   .value=${this.workingDir}
                   @input=${this.handleWorkingDirChange}
                   placeholder="~/"
                   ?disabled=${this.disabled || this.isCreating}
                 />
                 <button
-                  class="bg-dark-bg-elevated border border-dark-border rounded-lg p-3 font-mono text-dark-text-muted transition-all duration-200 hover:text-primary hover:bg-dark-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
+                  class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 sm:p-3 font-mono text-dark-text-muted transition-all duration-200 hover:text-primary hover:bg-dark-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
                   @click=${this.handleBrowse}
                   ?disabled=${this.disabled || this.isCreating}
                   title="Browse directories"
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <svg width="14" height="14" class="sm:w-4 sm:h-4" viewBox="0 0 16 16" fill="currentColor">
                     <path
                       d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"
                     />
@@ -460,22 +460,22 @@ export class SessionCreateForm extends LitElement {
             </div>
 
             <!-- Spawn Window Toggle -->
-            <div class="mb-5 flex items-center justify-between bg-dark-bg-elevated border border-dark-border rounded-lg p-4">
-              <div class="flex-1 pr-4">
-                <span class="text-dark-text text-sm font-medium">Spawn window</span>
-                <p class="text-xs text-dark-text-muted mt-0.5">Opens native terminal window</p>
+            <div class="mb-3 sm:mb-5 flex items-center justify-between bg-dark-bg-elevated border border-dark-border rounded-lg p-3 sm:p-4">
+              <div class="flex-1 pr-3 sm:pr-4">
+                <span class="text-dark-text text-xs sm:text-sm font-medium">Spawn window</span>
+                <p class="text-xs text-dark-text-muted mt-0.5 hidden sm:block">Opens native terminal window</p>
               </div>
               <button
                 role="switch"
                 aria-checked="${this.spawnWindow}"
                 @click=${this.handleSpawnWindowChange}
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-dark-bg ${
+                class="relative inline-flex h-5 w-10 sm:h-6 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-dark-bg ${
                   this.spawnWindow ? 'bg-primary' : 'bg-dark-border'
                 }"
                 ?disabled=${this.disabled || this.isCreating}
               >
                 <span
-                  class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                  class="inline-block h-4 w-4 sm:h-5 sm:w-5 transform rounded-full bg-white transition-transform ${
                     this.spawnWindow ? 'translate-x-5' : 'translate-x-0.5'
                   }"
                 ></span>
@@ -483,10 +483,10 @@ export class SessionCreateForm extends LitElement {
             </div>
 
             <!-- Terminal Title Mode -->
-            <div class="mb-6 flex items-center justify-between bg-dark-bg-elevated border border-dark-border rounded-lg p-4">
-              <div class="flex-1 pr-4">
-                <span class="text-dark-text text-sm font-medium">Terminal Title Mode</span>
-                <p class="text-xs text-dark-text-muted mt-0.5">
+            <div class="mb-4 sm:mb-6 flex items-center justify-between bg-dark-bg-elevated border border-dark-border rounded-lg p-3 sm:p-4">
+              <div class="flex-1 pr-3 sm:pr-4">
+                <span class="text-dark-text text-xs sm:text-sm font-medium">Terminal Title Mode</span>
+                <p class="text-xs text-dark-text-muted mt-0.5 hidden sm:block">
                   ${this.getTitleModeDescription()}
                 </p>
               </div>
@@ -494,8 +494,8 @@ export class SessionCreateForm extends LitElement {
                 <select
                   .value=${this.titleMode}
                   @change=${this.handleTitleModeChange}
-                  class="bg-dark-bg-secondary border border-dark-border rounded-lg px-3 py-2 pr-8 text-dark-text text-sm transition-all duration-200 hover:border-primary-hover focus:border-primary focus:outline-none appearance-none cursor-pointer"
-                  style="min-width: 140px"
+                  class="bg-dark-bg-secondary border border-dark-border rounded-lg px-2 py-1.5 pr-7 sm:px-3 sm:py-2 sm:pr-8 text-dark-text text-xs sm:text-sm transition-all duration-200 hover:border-primary-hover focus:border-primary focus:outline-none appearance-none cursor-pointer"
+                  style="min-width: 100px"
                   ?disabled=${this.disabled || this.isCreating}
                 >
                   <option value="${TitleMode.NONE}" class="bg-dark-bg-secondary text-dark-text" ?selected=${this.titleMode === TitleMode.NONE}>None</option>
@@ -503,8 +503,8 @@ export class SessionCreateForm extends LitElement {
                   <option value="${TitleMode.STATIC}" class="bg-dark-bg-secondary text-dark-text" ?selected=${this.titleMode === TitleMode.STATIC}>Static</option>
                   <option value="${TitleMode.DYNAMIC}" class="bg-dark-bg-secondary text-dark-text" ?selected=${this.titleMode === TitleMode.DYNAMIC}>Dynamic</option>
                 </select>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-dark-text-muted">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 sm:px-2 text-dark-text-muted">
+                  <svg class="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
@@ -512,41 +512,41 @@ export class SessionCreateForm extends LitElement {
             </div>
 
             <!-- Quick Start Section -->
-            <div class="mb-6">
-              <label class="form-label text-dark-text-muted uppercase text-xs tracking-wider mb-3"
+            <div class="mb-4 sm:mb-6">
+              <label class="form-label text-dark-text-muted uppercase text-xs tracking-wider mb-2 sm:mb-3"
                 >Quick Start</label
               >
-              <div class="grid grid-cols-2 gap-3 mt-2">
+              <div class="grid grid-cols-2 gap-2 sm:gap-3 mt-2">
                 ${this.quickStartCommands.map(
                   ({ label, command }) => html`
                     <button
                       @click=${() => this.handleQuickStart(command)}
                       class="${
                         this.command === command
-                          ? 'px-4 py-3 rounded-lg border text-left transition-all bg-primary bg-opacity-10 border-primary text-primary hover:bg-opacity-20 font-medium'
-                          : 'px-4 py-3 rounded-lg border text-left transition-all bg-dark-bg-elevated border-dark-border text-dark-text hover:bg-dark-surface-hover hover:border-primary hover:text-primary'
+                          ? 'px-2 py-2 sm:px-4 sm:py-3 rounded-lg border text-left transition-all bg-primary bg-opacity-10 border-primary text-primary hover:bg-opacity-20 font-medium text-xs sm:text-sm'
+                          : 'px-2 py-2 sm:px-4 sm:py-3 rounded-lg border text-left transition-all bg-dark-bg-elevated border-dark-border text-dark-text hover:bg-dark-surface-hover hover:border-primary hover:text-primary text-xs sm:text-sm'
                       }"
                       ?disabled=${this.disabled || this.isCreating}
                     >
-                      ${label === 'gemini' ? '✨ ' : ''}${label === 'claude' ? '✨ ' : ''}${
+                      <span class="hidden sm:inline">${label === 'gemini' ? '✨ ' : ''}${label === 'claude' ? '✨ ' : ''}${
                         label === 'pnpm run dev' ? '▶️ ' : ''
-                      }${label}
+                      }</span>${label}
                     </button>
                   `
                 )}
               </div>
             </div>
 
-            <div class="flex gap-3 mt-6">
+            <div class="flex gap-2 sm:gap-3 mt-4 sm:mt-6">
               <button
-                class="flex-1 bg-dark-bg-elevated border border-dark-border text-dark-text px-6 py-3 rounded-lg font-mono text-sm transition-all duration-200 hover:bg-dark-surface-hover hover:border-dark-border-light"
+                class="flex-1 bg-dark-bg-elevated border border-dark-border text-dark-text px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-mono text-xs sm:text-sm transition-all duration-200 hover:bg-dark-surface-hover hover:border-dark-border-light"
                 @click=${this.handleCancel}
                 ?disabled=${this.isCreating}
               >
                 Cancel
               </button>
               <button
-                class="flex-1 bg-primary text-black px-6 py-3 rounded-lg font-mono text-sm font-medium transition-all duration-200 hover:bg-primary-hover hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                class="flex-1 bg-primary text-black px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-mono text-xs sm:text-sm font-medium transition-all duration-200 hover:bg-primary-hover hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 @click=${this.handleCreate}
                 ?disabled=${
                   this.disabled ||

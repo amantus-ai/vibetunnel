@@ -53,39 +53,64 @@ export class ControlDirWatcher {
     const sessionJsonPath = path.join(sessionPath, 'session.json');
 
     try {
-      // Give it a moment for the session.json to be written
-      logger.debug(`Waiting 100ms for session.json to be written for ${filename}`);
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Check if this is a directory creation event
+      if (fs.existsSync(sessionPath) && fs.statSync(sessionPath).isDirectory()) {
+        // This is a new session directory, wait for session.json with retries
+        const maxRetries = 5;
+        const baseDelay = 100;
+        let sessionData: Record<string, unknown> | null = null;
 
-      if (fs.existsSync(sessionJsonPath)) {
-        // Session was created
-        const sessionData = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
-        const sessionId = sessionData.session_id || filename;
+        for (let i = 0; i < maxRetries; i++) {
+          const delay = baseDelay * 2 ** i; // Exponential backoff: 100, 200, 400, 800, 1600ms
+          logger.debug(
+            `Attempt ${i + 1}/${maxRetries}: Waiting ${delay}ms for session.json for ${filename}`
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay));
 
-        logger.log(chalk.blue(`Detected new external session: ${sessionId}`));
-
-        // Check if PtyManager already knows about this session
-        if (this.config.ptyManager) {
-          const existingSession = this.config.ptyManager.getSession(sessionId);
-          if (!existingSession) {
-            // This is a new external session, PtyManager needs to track it
-            logger.log(chalk.green(`Attaching to external session: ${sessionId}`));
-            // PtyManager will pick it up through its own session listing
-            // since it reads from the control directory
+          if (fs.existsSync(sessionJsonPath)) {
+            try {
+              const content = fs.readFileSync(sessionJsonPath, 'utf8');
+              sessionData = JSON.parse(content);
+              logger.debug(`Successfully read session.json for ${filename} on attempt ${i + 1}`);
+              break;
+            } catch (error) {
+              logger.debug(`Failed to read/parse session.json on attempt ${i + 1}:`, error);
+              // Continue to next retry
+            }
           }
         }
 
-        // If we're a remote server registered with HQ, immediately notify HQ
-        if (this.config.hqClient && !isShuttingDown()) {
-          try {
-            await this.notifyHQAboutSession(sessionId, 'created');
-          } catch (error) {
-            logger.error(`Failed to notify HQ about new session ${sessionId}:`, error);
-          }
-        }
+        if (sessionData) {
+          // Session was created
+          const sessionId = (sessionData.id || sessionData.session_id || filename) as string;
 
-        // If we're in HQ mode and this is a local session, no special handling needed
-        // The session is already tracked locally
+          logger.log(chalk.blue(`Detected new external session: ${sessionId}`));
+
+          // Check if PtyManager already knows about this session
+          if (this.config.ptyManager) {
+            const existingSession = this.config.ptyManager.getSession(sessionId);
+            if (!existingSession) {
+              // This is a new external session, PtyManager needs to track it
+              logger.log(chalk.green(`Attaching to external session: ${sessionId}`));
+              // PtyManager will pick it up through its own session listing
+              // since it reads from the control directory
+            }
+          }
+
+          // If we're a remote server registered with HQ, immediately notify HQ
+          if (this.config.hqClient && !isShuttingDown()) {
+            try {
+              await this.notifyHQAboutSession(sessionId, 'created');
+            } catch (error) {
+              logger.error(`Failed to notify HQ about new session ${sessionId}:`, error);
+            }
+          }
+
+          // If we're in HQ mode and this is a local session, no special handling needed
+          // The session is already tracked locally
+        } else {
+          logger.warn(`Session.json not found for ${filename} after ${maxRetries} retries`);
+        }
       } else if (!fs.existsSync(sessionPath)) {
         // Session directory was removed
         const sessionId = filename;

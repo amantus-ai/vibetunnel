@@ -23,6 +23,12 @@ final class CustomMenuWindow: NSPanel {
     private var lastBounds: CGRect = .zero
     private var maskLayer: CAShapeLayer?
 
+    /// Tracks whether the new session form is currently active
+    var isNewSessionActive = false
+
+    /// Closure to be called when window shows
+    var onShow: (() -> Void)?
+
     /// Closure to be called when window hides
     var onHide: (() -> Void)?
 
@@ -191,6 +197,8 @@ final class CustomMenuWindow: NSPanel {
 
         // Commit all changes at once
         CATransaction.commit()
+
+        onShow?()
     }
 
     private func displayWindowSafely() {
@@ -271,6 +279,7 @@ final class CustomMenuWindow: NSPanel {
     func hide() {
         // Mark window as not visible
         _isWindowVisible = false
+        isNewSessionActive = false  // Always reset this state
 
         // Button state will be reset by StatusBarMenuManager via onHide callback
         orderOut(nil)
@@ -293,10 +302,28 @@ final class CustomMenuWindow: NSPanel {
 
         guard isVisible else { return }
 
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [
+            .leftMouseDown,
+            .rightMouseDown
+        ]) { [weak self] _ in
             guard let self, self.isVisible else { return }
 
             let mouseLocation = NSEvent.mouseLocation
+
+            // Don't dismiss if new session is active
+            if self.isNewSessionActive {
+                // Check if clicking on status bar button to allow closing via menu icon
+                if let button = self.statusBarButton,
+                   let buttonWindow = button.window
+                {
+                    let buttonFrame = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
+                    if buttonFrame.contains(mouseLocation) {
+                        // User clicked the menu bar icon, dismiss even with new session active
+                        self.hide()
+                    }
+                }
+                return
+            }
 
             if !self.frame.contains(mouseLocation) {
                 self.hide()

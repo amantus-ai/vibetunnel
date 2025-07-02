@@ -18,7 +18,7 @@ interface CreateSessionOptions {
   name?: string;
   command?: string[];
   workingDir?: string;
-  status?: 'running' | 'stopped';
+  status?: 'running' | 'exited' | 'stopped';
   exitCode?: number;
   startedAt?: string;
   pid?: number;
@@ -66,7 +66,7 @@ export function createTestSession(options: CreateSessionOptions = {}): Session {
     name: options.name || `Test Session ${id}`,
     command: options.command || ['/bin/bash', '-l'],
     workingDir: options.workingDir || '/home/test',
-    status: options.status || 'running',
+    status: options.status === 'stopped' ? 'exited' : options.status || 'running',
     exitCode: options.exitCode,
     startedAt: options.startedAt || now.toISOString(),
     pid: options.pid || 12345 + sessionCounter,

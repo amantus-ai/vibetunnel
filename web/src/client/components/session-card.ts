@@ -21,6 +21,7 @@ const logger = createLogger('session-card');
 import './vibe-terminal-buffer.js';
 import './copy-icon.js';
 import './clickable-path.js';
+import './inline-edit.js';
 
 @customElement('session-card')
 export class SessionCard extends LitElement {
@@ -194,6 +195,56 @@ export class SessionCard extends LitElement {
     return frames[this.killingFrame % frames.length];
   }
 
+  private async handleRename(newName: string) {
+    try {
+      const response = await fetch(`/api/sessions/${this.session.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.authClient.getAuthHeader(),
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        logger.error('Failed to rename session', { errorData, sessionId: this.session.id });
+        throw new Error(`Rename failed: ${response.status}`);
+      }
+
+      // Update the local session object
+      this.session = { ...this.session, name: newName };
+
+      // Dispatch event to notify parent components
+      this.dispatchEvent(
+        new CustomEvent('session-renamed', {
+          detail: {
+            sessionId: this.session.id,
+            newName: newName,
+          },
+          bubbles: true,
+          composed: true,
+        })
+      );
+
+      logger.log(`Session ${this.session.id} renamed to: ${newName}`);
+    } catch (error) {
+      logger.error('Error renaming session', { error, sessionId: this.session.id });
+
+      // Show error to user
+      this.dispatchEvent(
+        new CustomEvent('session-rename-error', {
+          detail: {
+            sessionId: this.session.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
+  }
+
   private async handlePidClick(e: Event) {
     e.stopPropagation();
     e.preventDefault();
@@ -241,9 +292,18 @@ export class SessionCard extends LitElement {
           class="flex justify-between items-center px-3 py-2 border-b border-dark-border bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary"
         >
           <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-accent-green">
-            <div class="truncate" title="${this.session.name || this.session.command.join(' ')}">
-              ${this.session.name || this.session.command.join(' ')}
-            </div>
+            <inline-edit
+              .value=${this.session.name || this.session.command?.join(' ') || ''}
+              .placeholder=${this.session.command?.join(' ') || ''}
+              .onSave=${async (newName: string) => {
+                try {
+                  await this.handleRename(newName);
+                } catch (error) {
+                  // Error is already handled in handleRename
+                  logger.debug('Rename error caught in onSave', { error });
+                }
+              }}
+            ></inline-edit>
           </div>
           ${
             this.session.status === 'running' || this.session.status === 'exited'

@@ -101,6 +101,13 @@ struct VibeTunnelApp: App {
 /// Manages app lifecycle, single instance enforcement, and core services
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
+    // Needed for some gross menu item highlight hack
+    static weak var shared: AppDelegate?
+    override init() {
+        super.init()
+        Self.shared = self
+    }
+
     private(set) var sparkleUpdaterManager: SparkleUpdaterManager?
     var app: VibeTunnelApp?
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AppDelegate")

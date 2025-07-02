@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { fixture, html } from '@open-wc/testing';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getTextContent, setupFetchMock } from '@/test/utils/component-helpers';
+import { setupFetchMock } from '@/test/utils/component-helpers';
 import { createMockSession } from '@/test/utils/lit-test-utils';
 import { resetFactoryCounters } from '@/test/utils/test-factories';
 import type { AuthClient } from '../services/auth-client';
@@ -9,9 +9,10 @@ import type { AuthClient } from '../services/auth-client';
 // Mock AuthClient
 vi.mock('../services/auth-client');
 
-// Mock copyToClipboard
+// Mock copyToClipboard and formatPathForDisplay
 vi.mock('../utils/path-utils', () => ({
   copyToClipboard: vi.fn(() => Promise.resolve(true)),
+  formatPathForDisplay: vi.fn((path) => path), // Just return the path as-is for tests
 }));
 
 // Import component type
@@ -28,6 +29,7 @@ describe('SessionCard', () => {
     await import('./vibe-terminal-buffer');
     await import('./copy-icon');
     await import('./clickable-path');
+    await import('./inline-edit');
   });
 
   beforeEach(async () => {
@@ -54,7 +56,7 @@ describe('SessionCard', () => {
   });
 
   afterEach(() => {
-    element.remove();
+    element?.remove();
     fetchMock.clear();
     vi.clearAllMocks();
   });
@@ -66,9 +68,17 @@ describe('SessionCard', () => {
       expect(element.isActive).toBe(false);
     });
 
-    it('should render session details', () => {
-      const sessionName = getTextContent(element, '.text-accent-green');
-      expect(sessionName).toBeTruthy();
+    it('should render session details', async () => {
+      // Wait for inline-edit to render
+      await element.updateComplete;
+
+      const inlineEdit = element.querySelector('inline-edit') as HTMLElement & { value: string };
+      expect(inlineEdit).toBeTruthy();
+
+      // Check that inline-edit has the correct value
+      const sessionText = inlineEdit?.value;
+      expect(sessionText).toBeTruthy();
+      expect(sessionText).toContain('Test Session');
 
       // Should have status indicator
       const statusText = element.textContent;
@@ -91,15 +101,19 @@ describe('SessionCard', () => {
       element.session = createMockSession({ name: 'Test Session' });
       await element.updateComplete;
 
-      let displayText = getTextContent(element, '.text-accent-green');
-      expect(displayText).toContain('Test Session');
+      let inlineEdit = element.querySelector('inline-edit') as HTMLElement & { value: string };
+      expect(inlineEdit).toBeTruthy();
+      expect(inlineEdit.value).toContain('Test Session');
 
       // Test without name (falls back to command)
-      element.session = { ...createMockSession({ name: '' }), command: ['npm', 'run', 'dev'] };
+      const sessionWithoutName = createMockSession({ command: ['npm', 'run', 'dev'] });
+      sessionWithoutName.name = ''; // Explicitly set to empty string
+      element.session = sessionWithoutName;
       await element.updateComplete;
 
-      displayText = getTextContent(element, '.text-accent-green');
-      expect(displayText).toContain('npm run dev');
+      inlineEdit = element.querySelector('inline-edit') as HTMLElement & { value: string };
+      expect(inlineEdit).toBeTruthy();
+      expect(inlineEdit.value).toBe('npm run dev');
     });
 
     it('should show running status with success color', async () => {

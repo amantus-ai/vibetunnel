@@ -69,7 +69,7 @@ export class PtyManager extends EventEmitter {
     string,
     { cols: number; rows: number; source: 'browser' | 'terminal'; timestamp: number }
   >();
-  private sessionEventListeners = new Map<string, Set<(...args: any[]) => void>>();
+  private sessionEventListeners = new Map<string, Set<(...args: unknown[]) => void>>();
   private lastBellTime = new Map<string, number>(); // Track last bell time per session
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
@@ -386,9 +386,6 @@ export class PtyManager extends EventEmitter {
 
       // Note: stdin forwarding is now handled via IPC socket
 
-      // Setup session.json watcher for title updates (vt title command) if needed
-      this.ensureSessionJsonWatcher(session);
-
       // Initial title will be set when the first output is received
       // Do not write title sequence to PTY input as it would be sent to the shell
 
@@ -452,10 +449,41 @@ export class PtyManager extends EventEmitter {
       session.titleMode !== TitleMode.FILTER &&
       forwardToStdout
     ) {
+      // Track last known activity state for change detection
+      let lastKnownActivityState: {
+        isActive: boolean;
+        specificStatus?: string;
+      } | null = null;
+
       session.titleUpdateInterval = setInterval(() => {
-        // Update activity state file if needed (dynamic mode only)
+        // For dynamic mode, check for activity state changes
         if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
           const activityState = session.activityDetector.getActivityState();
+
+          // Check if activity state has changed
+          const activityChanged =
+            lastKnownActivityState === null ||
+            activityState.isActive !== lastKnownActivityState.isActive ||
+            activityState.specificStatus?.status !== lastKnownActivityState.specificStatus;
+
+          if (activityChanged) {
+            // Update last known state
+            lastKnownActivityState = {
+              isActive: activityState.isActive,
+              specificStatus: activityState.specificStatus?.status,
+            };
+
+            // Mark title for update
+            this.markTitleUpdateNeeded(session);
+
+            logger.debug(
+              `Activity state changed for session ${session.id}: ` +
+                `active=${activityState.isActive}, ` +
+                `status=${activityState.specificStatus?.status || 'none'}`
+            );
+          }
+
+          // Always write activity state for external tools
           this.writeActivityState(session, activityState);
         }
 
@@ -482,7 +510,7 @@ export class PtyManager extends EventEmitter {
         // Check if activity status changed
         if (activity.specificStatus?.status !== session.lastActivityStatus) {
           session.lastActivityStatus = activity.specificStatus?.status;
-          session.titleUpdateNeeded = true;
+          this.markTitleUpdateNeeded(session);
         }
       }
 
@@ -490,7 +518,7 @@ export class PtyManager extends EventEmitter {
       if (session.titleMode === TitleMode.STATIC && forwardToStdout) {
         // Check if we should update title based on data content
         if (!session.initialTitleSent || shouldInjectTitle(processedData)) {
-          session.titleUpdateNeeded = true;
+          this.markTitleUpdateNeeded(session);
           if (!session.initialTitleSent) {
             session.initialTitleSent = true;
           }
@@ -571,7 +599,7 @@ export class PtyManager extends EventEmitter {
       forwardToStdout &&
       (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
     ) {
-      session.titleUpdateNeeded = true;
+      this.markTitleUpdateNeeded(session);
       session.initialTitleSent = true;
       logger.debug(`Marked initial title update for session ${session.id}`);
     }
@@ -691,106 +719,6 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Ensure session.json watcher is initialized when needed
-   */
-  private ensureSessionJsonWatcher(session: PtySession): void {
-    if (
-      !session.sessionJsonWatcher &&
-      (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
-    ) {
-      this.setupSessionJsonWatcher(session);
-    }
-  }
-
-  /**
-   * Setup watcher for session.json changes (for vt title updates)
-   */
-  private setupSessionJsonWatcher(session: PtySession): void {
-    try {
-      const { sessionJsonPath } = session;
-      let debounceTimer: NodeJS.Timeout | null = null;
-
-      // Watch for changes to session.json
-      const watcher = fs.watch(sessionJsonPath, (eventType) => {
-        if (eventType === 'change') {
-          // Debounce file changes to avoid multiple rapid updates
-          if (debounceTimer) {
-            clearTimeout(debounceTimer);
-          }
-
-          const timer = setTimeout(() => {
-            this.handleSessionJsonChange(session);
-            // Clear both timer references after execution
-            session.sessionJsonDebounceTimer = null;
-            debounceTimer = null;
-          }, 100);
-
-          // Update both timer references
-          session.sessionJsonDebounceTimer = timer;
-          debounceTimer = timer;
-        }
-      });
-
-      // Store watcher for cleanup BEFORE setting up error handler
-      session.sessionJsonWatcher = watcher;
-
-      // Add error handling for watcher
-      watcher.on('error', (error) => {
-        logger.error(`Session.json watcher failed for ${session.id}:`, error);
-        this.emit('watcherError', session.id, error);
-
-        // Clean up the failed watcher
-        if (session.sessionJsonWatcher) {
-          session.sessionJsonWatcher.close();
-          session.sessionJsonWatcher = undefined;
-        }
-      });
-
-      // Unref the watcher so it doesn't keep the process alive
-      watcher.unref();
-
-      logger.debug(`Session.json watcher setup for session ${session.id}`);
-    } catch (error) {
-      logger.warn(`Failed to setup session.json watcher for session ${session.id}:`, error);
-      this.emit('watcherError', session.id, error);
-    }
-  }
-
-  /**
-   * Handle session.json file changes (debounced)
-   */
-  private handleSessionJsonChange(session: PtySession): void {
-    try {
-      // Reload session info
-      const newSessionInfo = this.sessionManager.loadSessionInfo(session.id);
-      if (!newSessionInfo) return;
-
-      // Check if name changed
-      if (newSessionInfo.name !== session.sessionInfo.name) {
-        logger.log(
-          chalk.cyan(
-            `Session ${session.id} name changed: "${session.sessionInfo.name}" → "${newSessionInfo.name}"`
-          )
-        );
-
-        // Update in-memory session info
-        session.sessionInfo.name = newSessionInfo.name;
-
-        // Mark title for update
-        if (session.titleMode !== TitleMode.NONE) {
-          session.titleUpdateNeeded = true;
-        }
-
-        // Emit event for clients
-        this.trackAndEmit('sessionNameChanged', session.id, newSessionInfo.name);
-      }
-    } catch (error) {
-      logger.warn(`Failed to handle session.json change for session ${session.id}:`, error);
-      this.emit('watcherError', session.id, error);
-    }
-  }
-
-  /**
    * Handle control messages from control pipe
    */
   private handleControlMessage(session: PtySession, message: Record<string, unknown>): void {
@@ -835,6 +763,11 @@ export class PtyManager extends EventEmitter {
       } catch (error) {
         logger.warn(`Failed to reset session ${session.id} size to terminal size:`, error);
       }
+    } else if (message.cmd === 'update-title' && typeof message.title === 'string') {
+      // Handle title update via IPC (used by vt title command)
+      logger.debug(`[IPC] Received title update for session ${session.id}: "${message.title}"`);
+      logger.debug(`[IPC] Current session name before update: "${session.sessionInfo.name}"`);
+      this.updateSessionName(session.id, message.title);
     }
   }
 
@@ -876,7 +809,7 @@ export class PtyManager extends EventEmitter {
           );
           if (newDir) {
             memorySession.currentWorkingDir = newDir;
-            memorySession.titleUpdateNeeded = true;
+            this.markTitleUpdateNeeded(memorySession);
             logger.debug(`Session ${sessionId} changed directory to: ${newDir}`);
           }
         }
@@ -1098,11 +1031,39 @@ export class PtyManager extends EventEmitter {
     // Update in-memory session if it exists
     const memorySession = this.sessions.get(sessionId);
     if (memorySession?.sessionInfo) {
-      logger.debug(`[PtyManager] Updating in-memory session info`);
+      logger.debug(`[PtyManager] Found in-memory session, updating...`);
+      const oldName = memorySession.sessionInfo.name;
       memorySession.sessionInfo.name = name;
+
+      logger.debug(`[PtyManager] Session info after update:`, {
+        sessionId: memorySession.id,
+        newName: memorySession.sessionInfo.name,
+        oldCurrentTitle: `${memorySession.currentTitle?.substring(0, 50)}...`,
+      });
+
+      // Force immediate title update for active sessions
+      // For session name changes, always update title regardless of mode
+      if (memorySession.isExternalTerminal && memorySession.stdoutQueue) {
+        logger.debug(`[PtyManager] Forcing immediate title update for session ${sessionId}`, {
+          titleMode: memorySession.titleMode,
+          hadCurrentTitle: !!memorySession.currentTitle,
+          titleUpdateNeeded: memorySession.titleUpdateNeeded,
+        });
+        // Clear current title to force regeneration
+        memorySession.currentTitle = undefined;
+        this.updateTerminalTitleForSessionName(memorySession);
+      }
+
+      logger.log(`[PtyManager] Updated session ${sessionId} name from "${oldName}" to "${name}"`);
     } else {
-      logger.debug(`[PtyManager] No in-memory session found for ${sessionId}`);
+      logger.debug(`[PtyManager] No in-memory session found for ${sessionId}`, {
+        sessionsMapSize: this.sessions.size,
+        sessionIds: Array.from(this.sessions.keys()),
+      });
     }
+
+    // Emit event for clients to refresh their session data
+    this.trackAndEmit('sessionNameChanged', sessionId, name);
 
     logger.log(`[PtyManager] Updated session ${sessionId} name to: ${name}`);
   }
@@ -1422,6 +1383,7 @@ export class PtyManager extends EventEmitter {
         if (!sessionPaths) {
           return session;
         }
+
         const activityPath = path.join(sessionPaths.controlDir, 'claude-activity.json');
 
         if (fs.existsSync(activityPath)) {
@@ -1728,8 +1690,8 @@ export class PtyManager extends EventEmitter {
   /**
    * Track and emit events for proper cleanup
    */
-  private trackAndEmit(event: string, sessionId: string, ...args: any[]): void {
-    const listeners = this.listeners(event) as ((...args: any[]) => void)[];
+  private trackAndEmit(event: string, sessionId: string, ...args: unknown[]): void {
+    const listeners = this.listeners(event) as ((...args: unknown[]) => void)[];
     if (!this.sessionEventListeners.has(sessionId)) {
       this.sessionEventListeners.set(sessionId, new Set());
     }
@@ -1779,15 +1741,6 @@ export class PtyManager extends EventEmitter {
       }
     }
 
-    // Close session.json watcher and clear debounce timer
-    if (session.sessionJsonDebounceTimer) {
-      clearTimeout(session.sessionJsonDebounceTimer);
-      session.sessionJsonDebounceTimer = null;
-    }
-    if (session.sessionJsonWatcher) {
-      session.sessionJsonWatcher.close();
-    }
-
     // Note: stdin handling is done via IPC socket, no global listeners to clean up
 
     // Remove all event listeners for this session
@@ -1812,25 +1765,113 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Check if title needs updating and write if changed
+   * Mark session for title update and trigger immediate check
    */
-  private checkAndUpdateTitle(session: PtySession): void {
-    if (!session.titleUpdateNeeded || !session.stdoutQueue || !session.isExternalTerminal) {
+  private markTitleUpdateNeeded(session: PtySession): void {
+    logger.debug(`[markTitleUpdateNeeded] Called for session ${session.id}`, {
+      titleMode: session.titleMode,
+      sessionName: session.sessionInfo.name,
+      titleUpdateNeeded: session.titleUpdateNeeded,
+    });
+
+    if (!session.titleMode || session.titleMode === TitleMode.NONE) {
+      logger.debug(`[markTitleUpdateNeeded] Skipping - title mode is NONE or undefined`);
       return;
     }
 
-    // Generate new title
-    const newTitle = this.generateTerminalTitle(session);
+    session.titleUpdateNeeded = true;
+    logger.debug(`[markTitleUpdateNeeded] Set titleUpdateNeeded=true, calling checkAndUpdateTitle`);
+    this.checkAndUpdateTitle(session);
+  }
 
-    // Only proceed if title changed
+  /**
+   * Update terminal title specifically for session name changes
+   * This bypasses title mode checks to ensure name changes are always reflected
+   */
+  private updateTerminalTitleForSessionName(session: PtySession): void {
+    if (!session.stdoutQueue || !session.isExternalTerminal) {
+      logger.debug(
+        `[updateTerminalTitleForSessionName] Early return - no stdout queue or not external terminal`
+      );
+      return;
+    }
+
+    // For NONE mode, just use the session name
+    // For other modes, regenerate the title with the new name
+    let newTitle: string | null = null;
+
+    if (
+      !session.titleMode ||
+      session.titleMode === TitleMode.NONE ||
+      session.titleMode === TitleMode.FILTER
+    ) {
+      // In NONE or FILTER mode, use simple session name
+      newTitle = generateTitleSequence(
+        session.currentWorkingDir || session.sessionInfo.workingDir,
+        session.sessionInfo.command,
+        session.sessionInfo.name || 'VibeTunnel'
+      );
+    } else {
+      // For STATIC and DYNAMIC modes, use the standard generation logic
+      newTitle = this.generateTerminalTitle(session);
+    }
+
     if (newTitle && newTitle !== session.currentTitle) {
-      // Store pending title
+      logger.debug(`[updateTerminalTitleForSessionName] Updating title for session name change`);
       session.pendingTitleToInject = newTitle;
+      session.titleUpdateNeeded = true;
 
       // Start injection monitor if not already running
       if (!session.titleInjectionTimer) {
         this.startTitleInjectionMonitor(session);
       }
+    }
+  }
+
+  /**
+   * Check if title needs updating and write if changed
+   */
+  private checkAndUpdateTitle(session: PtySession): void {
+    logger.debug(`[checkAndUpdateTitle] Called for session ${session.id}`, {
+      titleUpdateNeeded: session.titleUpdateNeeded,
+      hasStdoutQueue: !!session.stdoutQueue,
+      isExternalTerminal: session.isExternalTerminal,
+      sessionName: session.sessionInfo.name,
+    });
+
+    if (!session.titleUpdateNeeded || !session.stdoutQueue || !session.isExternalTerminal) {
+      logger.debug(`[checkAndUpdateTitle] Early return - conditions not met`);
+      return;
+    }
+
+    // Generate new title
+    logger.debug(`[checkAndUpdateTitle] Generating new title...`);
+    const newTitle = this.generateTerminalTitle(session);
+
+    // Debug logging for title updates
+    logger.debug(`[Title Update] Session ${session.id}:`, {
+      sessionName: session.sessionInfo.name,
+      newTitle: newTitle ? `${newTitle.substring(0, 50)}...` : null,
+      currentTitle: session.currentTitle ? `${session.currentTitle.substring(0, 50)}...` : null,
+      titleChanged: newTitle !== session.currentTitle,
+    });
+
+    // Only proceed if title changed
+    if (newTitle && newTitle !== session.currentTitle) {
+      logger.debug(`[checkAndUpdateTitle] Title changed, queueing for injection`);
+      // Store pending title
+      session.pendingTitleToInject = newTitle;
+
+      // Start injection monitor if not already running
+      if (!session.titleInjectionTimer) {
+        logger.debug(`[checkAndUpdateTitle] Starting title injection monitor`);
+        this.startTitleInjectionMonitor(session);
+      }
+    } else {
+      logger.debug(`[checkAndUpdateTitle] Title unchanged or null, skipping injection`, {
+        newTitleNull: !newTitle,
+        titlesEqual: newTitle === session.currentTitle,
+      });
     }
 
     // Clear flag
@@ -1874,6 +1915,10 @@ export class PtyManager extends EventEmitter {
 
         session.stdoutQueue.enqueue(async () => {
           try {
+            logger.debug(`[Title Injection] Writing title to stdout for session ${session.id}:`, {
+              title: `${titleToInject.substring(0, 50)}...`,
+            });
+
             const canWrite = process.stdout.write(titleToInject);
 
             if (!canWrite) {
@@ -1882,6 +1927,8 @@ export class PtyManager extends EventEmitter {
 
             // Update tracking after successful write
             session.currentTitle = titleToInject;
+
+            logger.debug(`[Title Injection] Successfully injected title for session ${session.id}`);
 
             // Clear pending title only after successful write
             if (session.pendingTitleToInject === titleToInject) {
@@ -1916,6 +1963,15 @@ export class PtyManager extends EventEmitter {
 
     const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
 
+    logger.debug(`[generateTerminalTitle] Session ${session.id}:`, {
+      titleMode: session.titleMode,
+      sessionName: session.sessionInfo.name,
+      sessionInfoObjectId: session.sessionInfo,
+      currentDir,
+      command: session.sessionInfo.command,
+      activityDetectorExists: !!session.activityDetector,
+    });
+
     if (session.titleMode === TitleMode.STATIC) {
       return generateTitleSequence(
         currentDir,
@@ -1924,6 +1980,12 @@ export class PtyManager extends EventEmitter {
       );
     } else if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
       const activity = session.activityDetector.getActivityState();
+      logger.debug(`[generateTerminalTitle] Calling generateDynamicTitle with:`, {
+        currentDir,
+        command: session.sessionInfo.command,
+        sessionName: session.sessionInfo.name,
+        activity: activity,
+      });
       return generateDynamicTitle(
         currentDir,
         session.sessionInfo.command,

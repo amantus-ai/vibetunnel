@@ -81,6 +81,16 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     if (!this.session) return;
 
+    // Check if we're in an inline-edit component FIRST
+    // Since inline-edit uses Shadow DOM, we need to check the composed path
+    const composedPath = e.composedPath();
+    for (const element of composedPath) {
+      if (element instanceof HTMLElement && element.tagName?.toLowerCase() === 'inline-edit') {
+        // Allow the event to pass through to the inline-edit component
+        return;
+      }
+    }
+
     // Check if this is a browser shortcut we should allow
     const inputManager = this.callbacks.getInputManager();
     if (inputManager?.isKeyboardShortcut(e)) {

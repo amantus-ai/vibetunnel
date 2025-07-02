@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 // Entry point for the server - imports the modular server which starts automatically
+
+// Suppress xterm.js errors globally - must be before any other imports
+import { suppressXtermErrors } from './shared/suppress-xterm-errors.js';
+
+suppressXtermErrors();
+
 import { startVibeTunnelForward } from './server/fwd.js';
 import { startVibeTunnelServer } from './server/server.js';
 import { closeLogger, createLogger, initLogger } from './server/utils/logger.js';

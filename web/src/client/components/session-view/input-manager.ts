@@ -248,7 +248,8 @@ export class InputManager {
       target.contentEditable === 'true' ||
       target.closest('.monaco-editor') ||
       target.closest('[data-keybinding-context]') ||
-      target.closest('.editor-container')
+      target.closest('.editor-container') ||
+      target.closest('inline-edit') // Allow typing in inline-edit component
     ) {
       // Allow normal input in form fields and editors
       return false;

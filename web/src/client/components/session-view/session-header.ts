@@ -9,6 +9,7 @@ import { customElement, property } from 'lit/decorators.js';
 import type { Session } from '../session-list.js';
 import '../clickable-path.js';
 import './width-selector.js';
+import '../inline-edit.js';
 
 @customElement('session-header')
 export class SessionHeader extends LitElement {
@@ -127,21 +128,21 @@ export class SessionHeader extends LitElement {
               : ''
           }
           <div class="text-dark-text min-w-0 flex-1 overflow-hidden max-w-[50vw] sm:max-w-none">
-            <div
-              class="text-dark-text-bright font-medium text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap"
-              title="${
-                this.session.name ||
-                (Array.isArray(this.session.command)
-                  ? this.session.command.join(' ')
-                  : this.session.command)
-              }"
-            >
-              ${
-                this.session.name ||
-                (Array.isArray(this.session.command)
-                  ? this.session.command.join(' ')
-                  : this.session.command)
-              }
+            <div class="text-dark-text-bright font-medium text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap">
+              <inline-edit
+                .value=${
+                  this.session.name ||
+                  (Array.isArray(this.session.command)
+                    ? this.session.command.join(' ')
+                    : this.session.command)
+                }
+                .placeholder=${
+                  Array.isArray(this.session.command)
+                    ? this.session.command.join(' ')
+                    : this.session.command
+                }
+                .onSave=${(newName: string) => this.handleRename(newName)}
+              ></inline-edit>
             </div>
             <div class="text-xs opacity-75 mt-0.5 overflow-hidden">
               <clickable-path 
@@ -219,5 +220,21 @@ export class SessionHeader extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private handleRename(newName: string) {
+    if (!this.session) return;
+
+    // Dispatch event to parent component to handle the rename
+    this.dispatchEvent(
+      new CustomEvent('session-rename', {
+        detail: {
+          sessionId: this.session.id,
+          newName: newName,
+        },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 }

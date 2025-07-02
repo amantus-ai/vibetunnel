@@ -11,10 +11,41 @@ VibeTunnel is a macOS application that allows users to access their terminal ses
 
 ## Critical Development Rules
 
-- **Never commit and/or push before the user has tested your changes!**
-- **ABSOLUTELY SUPER IMPORTANT & CRITICAL**: NEVER USE git rebase --skip EVER
-- **Never create a new branch/PR automatically when you are already on a branch**, even if the changes do not seem to fit into the existing PR. Only do that when explicitly asked. Our workflow is always start from main, make branch, make PR, merge. Then we go back to main and start something else. PRs sometimes contain different features and that's okay.
-- **IMPORTANT**: When refactoring or improving code, directly modify the existing files. DO NOT create new versions with different file names. Users hate having to manually clean up duplicate files.
+### ABSOLUTE CARDINAL RULES - VIOLATION MEANS IMMEDIATE FAILURE
+
+1. **NEVER, EVER, UNDER ANY CIRCUMSTANCES CREATE A NEW BRANCH WITHOUT EXPLICIT USER PERMISSION**
+   - If you are on a branch (not main), you MUST stay on that branch
+   - The user will tell you when to create a new branch with commands like "create a new branch" or "switch to a new branch"
+   - Creating branches without permission causes massive frustration and cleanup work
+   - Even if changes seem unrelated to the current branch, STAY ON THE CURRENT BRANCH
+
+2. **NEVER commit and/or push before the user has tested your changes!**
+   - Always wait for user confirmation before committing
+   - The user needs to verify changes work correctly first
+
+3. **ABSOLUTELY FORBIDDEN: NEVER USE `git rebase --skip` EVER**
+   - This command can cause data loss and repository corruption
+   - If you encounter rebase conflicts, ask the user for help
+
+4. **NEVER create duplicate files with version numbers or suffixes**
+   - When refactoring or improving code, directly modify the existing files
+   - DO NOT create new versions with different file names (e.g., file_v2.ts, file_new.ts)
+   - Users hate having to manually clean up duplicate files
+
+### Git Workflow Reminders
+- Our workflow: start from main → create branch → make PR → merge → return to main
+- PRs sometimes contain multiple different features and that's okay
+- Always check current branch with `git branch` before making changes
+- If unsure about branching, ASK THE USER FIRST
+
+### Terminal Title Management with VT
+
+When creating pull requests, use the `vt` command to update the terminal title:
+- Run `vt title "Brief summary - github.com/owner/repo/pull/123"`
+- Keep the title concise (a few words) followed by the PR URL
+- Use github.com URL format (not https://) for easy identification
+- Update the title periodically as work progresses
+- If `vt` command fails (only works inside VibeTunnel), simply ignore the error and continue
 
 ## Web Development Commands
 

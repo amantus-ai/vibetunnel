@@ -1135,9 +1135,10 @@ final class WindowTracker {
                 }
             }
 
+            let runningCount = sessions.count { $0.isRunning }
             logger
                 .debug(
-                    "Updated window tracker: \(self.sessionWindowMap.count) active windows, \(sessions.count) total sessions"
+                    "Sessions updated: \(sessions.count) total, \(runningCount) running, \(self.sessionWindowMap.count) tracked windows"
                 )
         }
     }

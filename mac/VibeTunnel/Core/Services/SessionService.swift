@@ -28,6 +28,7 @@ final class SessionService {
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("localhost", forHTTPHeaderField: "Host")
+        try serverManager.authenticate(request: &request)
 
         let body = ["name": trimmedName]
         request.httpBody = try JSONEncoder().encode(body)
@@ -53,6 +54,7 @@ final class SessionService {
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         request.setValue("localhost", forHTTPHeaderField: "Host")
+        try serverManager.authenticate(request: &request)
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
@@ -91,7 +93,7 @@ final class SessionService {
             "titleMode": titleMode
         ]
 
-        if let name, !name.isEmpty {
+        if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
             body["name"] = name
         }
 
@@ -107,6 +109,7 @@ final class SessionService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("localhost", forHTTPHeaderField: "Host")
+        try serverManager.authenticate(request: &request)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await URLSession.shared.data(for: request)

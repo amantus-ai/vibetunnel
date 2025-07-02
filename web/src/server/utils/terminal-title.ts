@@ -28,25 +28,18 @@ export function generateTitleSequence(
   command: string[],
   sessionName?: string
 ): string {
-  // Convert absolute path to use ~ for home directory
-  const homeDir = os.homedir();
-  const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
-
-  // Get the command name (first element of command array)
-  // Extract just the process name from the full path
-  const fullCmd = command[0] || 'shell';
-  const cmdName = path.basename(fullCmd);
-
-  // Build title parts
-  const parts = [displayPath, cmdName];
-
-  // Add session name if provided
+  // If we have a session name, use only that
   if (sessionName?.trim()) {
-    parts.push(sessionName);
+    // OSC 2 sequence: ESC ] 2 ; <title> BEL
+    return `\x1B]2;${sessionName}\x07`;
   }
 
-  // Format: path · command · session name
-  const title = parts.join(' · ');
+  // Otherwise, fall back to path · command format
+  const homeDir = os.homedir();
+  const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
+  const fullCmd = command[0] || 'shell';
+  const cmdName = path.basename(fullCmd);
+  const title = `${displayPath} · ${cmdName}`;
 
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
   return `\x1B]2;${title}\x07`;
@@ -145,36 +138,35 @@ export function generateDynamicTitle(
   activity: ActivityState,
   sessionName?: string
 ): string {
-  const homeDir = os.homedir();
-  const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
-  const fullCmd = command[0] || 'shell';
-  const cmdName = path.basename(fullCmd);
-
-  // Build base parts
-  const baseParts = [displayPath, cmdName];
-
-  // Add session name if provided
+  // Determine base title
+  let baseTitle: string;
   if (sessionName?.trim()) {
-    baseParts.push(sessionName);
+    // Use only the session name
+    baseTitle = sessionName;
+  } else {
+    // Fall back to path · command format
+    const homeDir = os.homedir();
+    const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
+    const fullCmd = command[0] || 'shell';
+    const cmdName = path.basename(fullCmd);
+    baseTitle = `${displayPath} · ${cmdName}`;
   }
 
-  // If we have Claude-specific status, put it first
+  // Add activity indicators as prefix
   if (activity.specificStatus) {
-    // Format: status · path · command · session name
-    const title = `${activity.specificStatus.status} · ${baseParts.join(' · ')}`;
+    // Format: status · base title
+    const title = `${activity.specificStatus.status} · ${baseTitle}`;
     return `\x1B]2;${title}\x07`;
   }
 
   // Otherwise use generic activity indicator (only when active)
   if (activity.isActive) {
-    // Format: ● path · command · session name
-    const title = `● ${baseParts.join(' · ')}`;
+    // Format: ● base title
+    const title = `● ${baseTitle}`;
     return `\x1B]2;${title}\x07`;
   }
 
-  // When idle, no indicator - just path · command · session name
-  const title = baseParts.join(' · ');
-
+  // When idle, no indicator - just the base title
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
-  return `\x1B]2;${title}\x07`;
+  return `\x1B]2;${baseTitle}\x07`;
 }

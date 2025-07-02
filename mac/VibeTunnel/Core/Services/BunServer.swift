@@ -1,4 +1,5 @@
 import CryptoKit
+import Darwin
 import Foundation
 import OSLog
 
@@ -207,7 +208,7 @@ final class BunServer {
         environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128"
 
         // Copy only essential environment variables
-        let essentialVars = ["PATH", "HOME", "USER", "SHELL", "LANG", "LC_ALL", "LC_CTYPE"]
+        let essentialVars = ["PATH", "HOME", "USER", "SHELL", "LANG", "LC_ALL", "LC_CTYPE", "VIBETUNNEL_DEBUG"]
         for key in essentialVars {
             if let value = ProcessInfo.processInfo.environment[key] {
                 environment[key] = value
@@ -429,24 +430,55 @@ final class BunServer {
             }
 
             source.setEventHandler { [logHandler] in
-                let data = handle.availableData
-                if data.isEmpty {
-                    // EOF reached
-                    cancelSource()
-                    return
+                // Read data in a non-blocking way to prevent hangs on large output
+                var buffer = Data()
+                let maxBytesPerRead = 65_536 // 64KB chunks
+
+                // Read available data without blocking
+                while true {
+                    var readBuffer = Data(count: maxBytesPerRead)
+                    let bytesRead = readBuffer.withUnsafeMutableBytes { bytes in
+                        guard let baseAddress = bytes.baseAddress else {
+                            logger.error("Failed to get base address for read buffer")
+                            return -1
+                        }
+                        return Darwin.read(handle.fileDescriptor, baseAddress, maxBytesPerRead)
+                    }
+
+                    if bytesRead > 0 {
+                        buffer.append(readBuffer.prefix(bytesRead))
+
+                        // Check if more data is immediately available
+                        var pollfd = pollfd(fd: handle.fileDescriptor, events: Int16(POLLIN), revents: 0)
+                        let pollResult = poll(&pollfd, 1, 0) // 0 timeout = non-blocking
+
+                        if pollResult <= 0 || (pollfd.revents & Int16(POLLIN)) == 0 {
+                            break // No more data immediately available
+                        }
+                    } else if bytesRead == 0 {
+                        // EOF reached
+                        cancelSource()
+                        return
+                    } else {
+                        // Error occurred
+                        if errno != EAGAIN && errno != EWOULDBLOCK {
+                            logger.error("Read error on stdout: \(String(cString: strerror(errno)))")
+                            cancelSource()
+                            return
+                        }
+                        break // No data available right now
+                    }
                 }
 
-                if let output = String(data: data, encoding: .utf8) {
-                    let lines = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                        .components(separatedBy: .newlines)
-                    for line in lines where !line.isEmpty {
-                        // Skip shell initialization messages
-                        if line.contains("zsh:") || line.hasPrefix("Last login:") {
-                            continue
-                        }
-
-                        // Log to OSLog with appropriate level
-                        logHandler.log(line, isError: false)
+                // Process accumulated data
+                if !buffer.isEmpty {
+                    if let output = String(data: buffer, encoding: .utf8) {
+                        Self.processOutputStatic(output, logHandler: logHandler, isError: false)
+                    } else {
+                        // If UTF-8 decoding fails, try to decode what we can
+                        // Use String(decoding:as:) for lossy conversion
+                        let output = String(decoding: buffer, as: UTF8.self)
+                        Self.processOutputStatic(output, logHandler: logHandler, isError: false)
                     }
                 }
             }
@@ -482,19 +514,55 @@ final class BunServer {
             }
 
             source.setEventHandler { [logHandler] in
-                let data = handle.availableData
-                if data.isEmpty {
-                    // EOF reached
-                    cancelSource()
-                    return
+                // Read data in a non-blocking way to prevent hangs on large output
+                var buffer = Data()
+                let maxBytesPerRead = 65_536 // 64KB chunks
+
+                // Read available data without blocking
+                while true {
+                    var readBuffer = Data(count: maxBytesPerRead)
+                    let bytesRead = readBuffer.withUnsafeMutableBytes { bytes in
+                        guard let baseAddress = bytes.baseAddress else {
+                            logger.error("Failed to get base address for read buffer")
+                            return -1
+                        }
+                        return Darwin.read(handle.fileDescriptor, baseAddress, maxBytesPerRead)
+                    }
+
+                    if bytesRead > 0 {
+                        buffer.append(readBuffer.prefix(bytesRead))
+
+                        // Check if more data is immediately available
+                        var pollfd = pollfd(fd: handle.fileDescriptor, events: Int16(POLLIN), revents: 0)
+                        let pollResult = poll(&pollfd, 1, 0) // 0 timeout = non-blocking
+
+                        if pollResult <= 0 || (pollfd.revents & Int16(POLLIN)) == 0 {
+                            break // No more data immediately available
+                        }
+                    } else if bytesRead == 0 {
+                        // EOF reached
+                        cancelSource()
+                        return
+                    } else {
+                        // Error occurred
+                        if errno != EAGAIN && errno != EWOULDBLOCK {
+                            logger.error("Read error on stderr: \(String(cString: strerror(errno)))")
+                            cancelSource()
+                            return
+                        }
+                        break // No data available right now
+                    }
                 }
 
-                if let output = String(data: data, encoding: .utf8) {
-                    let lines = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                        .components(separatedBy: .newlines)
-                    for line in lines where !line.isEmpty {
-                        // Log stderr as errors/warnings
-                        logHandler.log(line, isError: true)
+                // Process accumulated data
+                if !buffer.isEmpty {
+                    if let output = String(data: buffer, encoding: .utf8) {
+                        Self.processOutputStatic(output, logHandler: logHandler, isError: true)
+                    } else {
+                        // If UTF-8 decoding fails, try to decode what we can
+                        // Use String(decoding:as:) for lossy conversion
+                        let output = String(decoding: buffer, as: UTF8.self)
+                        Self.processOutputStatic(output, logHandler: logHandler, isError: true)
                     }
                 }
             }
@@ -607,6 +675,50 @@ enum BunServerError: LocalizedError {
             "Server port is not configured"
         case .invalidState:
             "Server is in an invalid state for this operation"
+        }
+    }
+}
+
+// MARK: - Private Output Processing
+
+extension BunServer {
+    /// Process output with chunking for large lines and rate limiting awareness
+    fileprivate nonisolated static func processOutputStatic(_ output: String, logHandler: LogHandler, isError: Bool) {
+        let maxLineLength = 4_096 // Max chars per log line to avoid os.log truncation
+        let lines = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: .newlines)
+
+        for line in lines where !line.isEmpty {
+            // Skip shell initialization messages
+            if line.contains("zsh:") || line.hasPrefix("Last login:") {
+                continue
+            }
+
+            // If line is too long, chunk it to avoid os.log limits
+            if line.count > maxLineLength {
+                // Log that we're chunking a large line
+                logHandler.log("[Large output: \(line.count) chars, chunking...]", isError: isError)
+
+                // Chunk the line
+                var startIndex = line.startIndex
+                var chunkNumber = 1
+                while startIndex < line.endIndex {
+                    let endIndex = line.index(startIndex, offsetBy: maxLineLength, limitedBy: line.endIndex) ?? line
+                        .endIndex
+                    let chunk = String(line[startIndex..<endIndex])
+                    logHandler.log("[Chunk \(chunkNumber)] \(chunk)", isError: isError)
+                    startIndex = endIndex
+                    chunkNumber += 1
+
+                    // Add small delay between chunks to avoid rate limiting
+                    if chunkNumber % 10 == 0 {
+                        usleep(1_000) // 1ms delay every 10 chunks
+                    }
+                }
+            } else {
+                // Log normally
+                logHandler.log(line, isError: isError)
+            }
         }
     }
 }

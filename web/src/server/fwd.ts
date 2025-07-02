@@ -12,9 +12,10 @@
  */
 
 import chalk from 'chalk';
+import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { TitleMode } from '../shared/types.js';
+import { type SessionInfo, TitleMode } from '../shared/types.js';
 import { PtyManager } from './pty/index.js';
 import { SessionManager } from './pty/session-manager.js';
 import { VibeTunnelSocketClient } from './pty/socket-client.js';
@@ -22,6 +23,7 @@ import { ActivityDetector } from './utils/activity-detector.js';
 import { checkAndPatchClaude } from './utils/claude-patcher.js';
 import { closeLogger, createLogger } from './utils/logger.js';
 import { generateSessionName } from './utils/session-naming.js';
+import { generateTitleSequence } from './utils/terminal-title.js';
 import { BUILD_DATE, GIT_COMMIT, VERSION } from './version.js';
 
 const logger = createLogger('fwd');
@@ -174,11 +176,48 @@ export async function startVibeTunnelForward(args: string[]) {
         })
         .join('');
 
-      // Update the title
+      // Update the title via IPC if session is active
+      const socketPath = path.join(controlPath, sessionId, 'ipc.sock');
+
+      // Check if IPC socket exists (session is active)
+      if (fs.existsSync(socketPath)) {
+        logger.debug(`IPC socket found, sending title update via IPC`);
+
+        // Connect to IPC socket and send update-title command
+        const socketClient = new VibeTunnelSocketClient(socketPath, {
+          autoReconnect: false, // One-shot operation
+        });
+
+        try {
+          await socketClient.connect();
+
+          // Send update-title command
+          const sent = socketClient.updateTitle(sanitizedTitle);
+
+          if (sent) {
+            logger.log(`Session title updated via IPC to: ${sanitizedTitle}`);
+            // IPC update succeeded, server will handle the file update
+            socketClient.disconnect();
+            closeLogger();
+            process.exit(0);
+          } else {
+            logger.warn(`Failed to send title update via IPC, falling back to file update`);
+          }
+
+          // Disconnect after sending
+          socketClient.disconnect();
+        } catch (ipcError) {
+          logger.warn(`IPC connection failed: ${ipcError}, falling back to file update`);
+        }
+      } else {
+        logger.debug(`No IPC socket found, session might not be active`);
+      }
+
+      // Only update the file if IPC failed or socket doesn't exist
       sessionInfo.name = sanitizedTitle;
       sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
-      logger.log(`Session title updated to: ${sanitizedTitle}`);
+      logger.log(`Session title persisted to file: ${sanitizedTitle}`);
       closeLogger();
       process.exit(0);
     } catch (error) {
@@ -274,6 +313,10 @@ export async function startVibeTunnelForward(args: string[]) {
       logger.log(chalk.cyan(`✓ ${modeDescriptions[titleMode]}`));
     }
 
+    // Variables that need to be accessible in cleanup
+    let sessionFileWatcher: fs.FSWatcher | undefined;
+    let fileWatchDebounceTimer: NodeJS.Timeout | undefined;
+
     const sessionOptions: Parameters<typeof ptyManager.createSession>[1] = {
       sessionId: finalSessionId,
       name: sessionName,
@@ -306,6 +349,18 @@ export async function startVibeTunnelForward(args: string[]) {
         if (cleanupStdout) {
           cleanupStdout();
         }
+
+        // Clean up file watchers
+        if (sessionFileWatcher) {
+          sessionFileWatcher.close();
+          sessionFileWatcher = undefined;
+          logger.debug('Closed session file watcher');
+        }
+        if (fileWatchDebounceTimer) {
+          clearTimeout(fileWatchDebounceTimer);
+        }
+        // Stop watching the file
+        fs.unwatchFile(sessionJsonPath);
 
         // Shutdown PTY manager and exit
         logger.debug('Shutting down PTY manager');
@@ -366,6 +421,119 @@ export async function startVibeTunnelForward(args: string[]) {
 
     // Listen for terminal resize events
     process.stdout.on('resize', resizeHandler);
+
+    // Set up file watcher for session.json changes (for external updates)
+    const sessionJsonPath = path.join(controlPath, result.sessionId, 'session.json');
+    let lastKnownSessionName = result.sessionInfo.name;
+
+    // Set up file watcher with retry logic
+    const setupFileWatcher = async (retryCount = 0) => {
+      const maxRetries = 5;
+      const retryDelay = 500 * 2 ** retryCount; // Exponential backoff
+
+      try {
+        // Check if file exists
+        if (!fs.existsSync(sessionJsonPath)) {
+          if (retryCount < maxRetries) {
+            logger.debug(
+              `Session file not found, retrying in ${retryDelay}ms (attempt ${retryCount + 1}/${maxRetries})`
+            );
+            setTimeout(() => setupFileWatcher(retryCount + 1), retryDelay);
+            return;
+          } else {
+            logger.warn(`Session file not found after ${maxRetries} attempts: ${sessionJsonPath}`);
+            return;
+          }
+        }
+
+        logger.log(`Setting up file watcher for session name changes`);
+
+        // Function to check and update title if session name changed
+        const checkSessionNameChange = () => {
+          try {
+            // Check file still exists before reading
+            if (!fs.existsSync(sessionJsonPath)) {
+              return;
+            }
+
+            const sessionContent = fs.readFileSync(sessionJsonPath, 'utf-8');
+            const updatedInfo = JSON.parse(sessionContent) as SessionInfo;
+
+            // Check if session name changed
+            if (updatedInfo.name !== lastKnownSessionName) {
+              logger.debug(
+                `[File Watch] Session name changed from "${lastKnownSessionName}" to "${updatedInfo.name}"`
+              );
+              lastKnownSessionName = updatedInfo.name;
+
+              // Always update terminal title when session name changes
+              // Generate new title sequence based on title mode
+              let titleSequence: string;
+              if (titleMode === TitleMode.NONE || titleMode === TitleMode.FILTER) {
+                // For NONE and FILTER modes, just use the session name
+                titleSequence = `\x1B]2;${updatedInfo.name}\x07`;
+              } else {
+                // For STATIC and DYNAMIC, use the full format with path and command
+                titleSequence = generateTitleSequence(cwd, command, updatedInfo.name);
+              }
+
+              // Write title sequence to terminal
+              process.stdout.write(titleSequence);
+              logger.log(`Updated terminal title to "${updatedInfo.name}" via file watcher`);
+            }
+          } catch (error) {
+            logger.error('Failed to check session.json:', error);
+          }
+        };
+
+        // Use fs.watchFile for more reliable file monitoring (polling-based)
+        fs.watchFile(sessionJsonPath, { interval: 500 }, (curr, prev) => {
+          logger.debug(`[File Watch] File stats changed - mtime: ${curr.mtime} vs ${prev.mtime}`);
+          if (curr.mtime !== prev.mtime) {
+            checkSessionNameChange();
+          }
+        });
+
+        // Also use fs.watch as a fallback for immediate notifications
+        try {
+          const sessionDir = path.dirname(sessionJsonPath);
+          sessionFileWatcher = fs.watch(sessionDir, (eventType, filename) => {
+            // Only log in debug mode to avoid noise
+            logger.debug(`[File Watch] Directory event: ${eventType} on ${filename || 'unknown'}`);
+
+            // Check if it's our file
+            // On macOS, filename might be undefined, so we can't filter properly
+            // In that case, skip fs.watch events and rely on fs.watchFile instead
+            if (filename && (filename === 'session.json' || filename === 'session.json.tmp')) {
+              // Debounce rapid changes
+              if (fileWatchDebounceTimer) {
+                clearTimeout(fileWatchDebounceTimer);
+              }
+              fileWatchDebounceTimer = setTimeout(checkSessionNameChange, 100);
+            }
+          });
+        } catch (error) {
+          logger.warn('Failed to set up fs.watch, relying on fs.watchFile:', error);
+        }
+
+        logger.log(`File watcher successfully set up with polling fallback`);
+
+        // Clean up watcher on error if it was created
+        sessionFileWatcher?.on('error', (error) => {
+          logger.error('File watcher error:', error);
+          sessionFileWatcher?.close();
+          sessionFileWatcher = undefined;
+        });
+      } catch (error) {
+        logger.error('Failed to set up file watcher:', error);
+        if (retryCount < maxRetries) {
+          setTimeout(() => setupFileWatcher(retryCount + 1), retryDelay);
+        }
+      }
+    };
+
+    // Start setting up the file watcher after a short delay
+    setTimeout(() => setupFileWatcher(), 500);
 
     // Set up activity detector for Claude status updates
     let activityDetector: ActivityDetector | undefined;

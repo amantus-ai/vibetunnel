@@ -2,6 +2,7 @@ import { Terminal as XtermTerminal } from '@xterm/headless';
 import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ErrorDeduplicator, formatErrorSummary } from '../utils/error-deduplicator.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('terminal-manager');
@@ -36,9 +37,33 @@ export class TerminalManager {
   private controlDir: string;
   private bufferListeners: Map<string, Set<BufferChangeListener>> = new Map();
   private changeTimers: Map<string, NodeJS.Timeout> = new Map();
+  private errorDeduplicator = new ErrorDeduplicator({
+    keyExtractor: (error, context) => {
+      // Use session ID and line prefix as context for xterm parsing errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return `${context}:${errorMessage}`;
+    },
+  });
+  private originalConsoleWarn: typeof console.warn;
 
   constructor(controlDir: string) {
     this.controlDir = controlDir;
+
+    // Override console.warn to suppress xterm.js parsing warnings
+    this.originalConsoleWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      const message = args[0];
+      if (
+        typeof message === 'string' &&
+        (message.includes('xterm.js parsing error') ||
+          message.includes('Unable to process character') ||
+          message.includes('Cannot read properties of undefined'))
+      ) {
+        // Suppress xterm.js parsing warnings
+        return;
+      }
+      this.originalConsoleWarn.apply(console, args);
+    };
   }
 
   /**
@@ -191,7 +216,25 @@ export class TerminalManager {
         // Ignore 'i' (input) events
       }
     } catch (error) {
-      logger.error(`Failed to parse stream line for session ${sessionId}:`, error);
+      // Use deduplicator to check if we should log this error
+      // Use a more generic context key to group similar parsing errors together
+      const contextKey = `${sessionId}:parse-stream-line`;
+
+      if (this.errorDeduplicator.shouldLog(error, contextKey)) {
+        const stats = this.errorDeduplicator.getErrorStats(error, contextKey);
+
+        if (stats && stats.count > 1) {
+          // Log summary for repeated errors
+          logger.warn(formatErrorSummary(error, stats, `session ${sessionId}`));
+        } else {
+          // First occurrence - log the error with details
+          const truncatedLine = line.length > 100 ? `${line.substring(0, 100)}...` : line;
+          logger.error(`Failed to parse stream line for session ${sessionId}: ${truncatedLine}`);
+          if (error instanceof Error && error.stack) {
+            logger.debug(`Parse error details: ${error.message}`);
+          }
+        }
+      }
     }
   }
 
@@ -705,5 +748,24 @@ export class TerminalManager {
     } catch (error) {
       logger.error(`Error getting buffer snapshot for notification ${sessionId}:`, error);
     }
+  }
+
+  /**
+   * Destroy the terminal manager and restore console overrides
+   */
+  destroy(): void {
+    // Close all terminals
+    for (const sessionId of this.terminals.keys()) {
+      this.closeTerminal(sessionId);
+    }
+
+    // Clear all timers
+    for (const timer of this.changeTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.changeTimers.clear();
+
+    // Restore original console.warn
+    console.warn = this.originalConsoleWarn;
   }
 }

@@ -55,10 +55,10 @@ describe('SessionView Drag & Drop and Paste', () => {
       name: 'Test Session',
       command: ['bash'],
       workingDir: '/test',
-      status: 'running',
+      status: 'running' as const,
       startedAt: new Date().toISOString(),
       lastModified: new Date().toISOString(),
-    } as any;
+    };
   });
 
   afterEach(() => {
