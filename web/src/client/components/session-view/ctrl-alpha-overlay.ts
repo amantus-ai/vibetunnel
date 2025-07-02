@@ -34,7 +34,7 @@ export class CtrlAlphaOverlay extends LitElement {
       <modal-wrapper
         .visible=${this.visible}
         modalClass="z-50"
-        contentClass="fixed inset-0 flex flex-col"
+        contentClass="fixed inset-0 flex flex-col z-50"
         ariaLabel="Ctrl key sequence builder"
         @close=${() => this.onCancel?.()}
         .closeOnBackdrop=${true}

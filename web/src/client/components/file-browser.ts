@@ -496,7 +496,7 @@ export class FileBrowser extends LitElement {
       <modal-wrapper
         .visible=${this.visible}
         modalClass="z-50"
-        contentClass="fixed inset-0 bg-dark-bg flex flex-col"
+        contentClass="fixed inset-0 bg-dark-bg flex flex-col z-50"
         ariaLabel="File Browser"
         @close=${this.handleCancel}
         .closeOnBackdrop=${true}
