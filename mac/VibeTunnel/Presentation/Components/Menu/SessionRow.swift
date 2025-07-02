@@ -133,12 +133,6 @@ struct SessionRow: View {
                             Text(duration)
                                 .font(.system(size: 9))
                                 .foregroundColor(.secondary.opacity(0.6))
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(
-                                    Capsule()
-                                        .fill(AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.6))
-                                )
                         }
 
                         // Show X button on hover
@@ -389,8 +383,8 @@ struct SessionRow: View {
     }
 
     private var hasWindow: Bool {
-        // Check if WindowTracker has a window registered for this session
-        WindowTracker.shared.windowInfo(for: session.key) != nil
+        // Check if session was attached via VT (has a terminal window)
+        session.value.attachedViaVT ?? false
     }
 
     private var hoverBackgroundColor: Color {

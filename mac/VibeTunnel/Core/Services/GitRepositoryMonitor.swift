@@ -40,7 +40,7 @@ public final class GitRepositoryMonitor {
     // MARK: - Private Properties
     
     /// Operation queue for rate limiting git operations
-    nonisolated(unsafe) private let gitOperationQueue = OperationQueue()
+    private let gitOperationQueue = OperationQueue()
 
     /// Path to the git binary
     private let gitPath: String = {

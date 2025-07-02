@@ -62,10 +62,6 @@ struct GitRepositoryRow: View {
                             .foregroundColor(AppColors.Fallback.gitUntracked(for: colorScheme))
                     }
                 }
-            } else {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 9))
-                    .foregroundColor(AppColors.Fallback.gitClean(for: colorScheme))
             }
         }
     }
