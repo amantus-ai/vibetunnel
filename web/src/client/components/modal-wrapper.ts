@@ -32,7 +32,8 @@ export class ModalWrapper extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    // Event listener is managed in updated() method based on visibility
+    // Remove the keydown listener if it was added
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
   updated(changedProperties: PropertyValues) {

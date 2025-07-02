@@ -193,9 +193,10 @@ export async function createMultipleSessions(
 export async function waitForSessionState(
   page: Page,
   sessionName: string,
-  targetState: 'RUNNING' | 'EXITED' | 'KILLED',
-  timeout = 5000
+  targetState: 'RUNNING' | 'EXITED' | 'KILLED' | 'running' | 'exited' | 'killed',
+  options: { timeout?: number } = {}
 ): Promise<void> {
+  const { timeout = 5000 } = options;
   const _startTime = Date.now();
 
   // Use waitForFunction instead of polling loop
@@ -204,11 +205,23 @@ export async function waitForSessionState(
       ({ name, state }) => {
         const cards = document.querySelectorAll('session-card');
         const sessionCard = Array.from(cards).find((card) => card.textContent?.includes(name));
-        if (!sessionCard) return false;
+        if (!sessionCard) {
+          console.log(`Session card not found for: ${name}`);
+          return false;
+        }
 
         const statusElement = sessionCard.querySelector('span[data-status]');
+        if (!statusElement) {
+          console.log(`Status element not found for session: ${name}`);
+          return false;
+        }
+
         const statusText = statusElement?.textContent?.toLowerCase() || '';
         const dataStatus = statusElement?.getAttribute('data-status')?.toLowerCase() || '';
+
+        console.log(
+          `Session ${name} - data-status: "${dataStatus}", text: "${statusText}", looking for: "${state.toLowerCase()}"`
+        );
 
         return dataStatus === state.toLowerCase() || statusText.includes(state.toLowerCase());
       },
@@ -216,6 +229,8 @@ export async function waitForSessionState(
       { timeout, polling: 500 }
     );
   } catch (_error) {
+    // Take a screenshot for debugging
+    await page.screenshot({ path: `test-debug-session-state-${sessionName}.png` });
     throw new Error(
       `Session ${sessionName} did not reach ${targetState} state within ${timeout}ms`
     );
