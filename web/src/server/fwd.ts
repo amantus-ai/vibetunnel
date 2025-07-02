@@ -350,7 +350,7 @@ export async function startVibeTunnelForward(args: string[]) {
           cleanupStdout();
         }
 
-        // Clean up file watcher
+        // Clean up file watchers
         if (sessionFileWatcher) {
           sessionFileWatcher.close();
           sessionFileWatcher = undefined;
@@ -359,6 +359,8 @@ export async function startVibeTunnelForward(args: string[]) {
         if (fileWatchDebounceTimer) {
           clearTimeout(fileWatchDebounceTimer);
         }
+        // Stop watching the file
+        fs.unwatchFile(sessionJsonPath);
 
         // Shutdown PTY manager and exit
         logger.debug('Shutting down PTY manager');
@@ -445,78 +447,80 @@ export async function startVibeTunnelForward(args: string[]) {
         }
 
         logger.log(`Setting up file watcher for session name changes`);
-        const sessionDir = path.dirname(sessionJsonPath);
-        const sessionFileName = path.basename(sessionJsonPath);
 
-        logger.debug(`Watching directory: ${sessionDir} for file: ${sessionFileName}`);
-
-        sessionFileWatcher = fs.watch(sessionDir, { recursive: false }, (eventType, filename) => {
-          // Use console.log to ensure this shows up in the terminal
-          console.log(`[File Watch] Detected ${eventType} event on ${filename || 'unknown'}`);
-
-          // On macOS, filename might be undefined when watching directories
-          // In that case, we'll process all events and check if our file changed
-          if (filename && filename !== sessionFileName) {
-            return;
-          }
-          if (eventType === 'change' || eventType === 'rename') {
-            // Debounce rapid changes
-            if (fileWatchDebounceTimer) {
-              clearTimeout(fileWatchDebounceTimer);
+        // Function to check and update title if session name changed
+        const checkSessionNameChange = () => {
+          try {
+            // Check file still exists before reading
+            if (!fs.existsSync(sessionJsonPath)) {
+              return;
             }
-            fileWatchDebounceTimer = setTimeout(() => {
-              // Reload session info from disk
-              try {
-                // Check file still exists before reading
-                if (!fs.existsSync(sessionJsonPath)) {
-                  logger.warn('Session file disappeared during watch');
-                  return;
-                }
 
-                const sessionContent = fs.readFileSync(sessionJsonPath, 'utf-8');
-                const updatedInfo = JSON.parse(sessionContent) as SessionInfo;
+            const sessionContent = fs.readFileSync(sessionJsonPath, 'utf-8');
+            const updatedInfo = JSON.parse(sessionContent) as SessionInfo;
 
-                // Check if session name changed
-                if (updatedInfo.name !== lastKnownSessionName) {
-                  logger.debug(
-                    `[File Watch] Session name changed from "${lastKnownSessionName}" to "${updatedInfo.name}"`
-                  );
-                  lastKnownSessionName = updatedInfo.name;
+            // Check if session name changed
+            if (updatedInfo.name !== lastKnownSessionName) {
+              logger.debug(
+                `[File Watch] Session name changed from "${lastKnownSessionName}" to "${updatedInfo.name}"`
+              );
+              lastKnownSessionName = updatedInfo.name;
 
-                  // Always update terminal title when session name changes
-                  // Generate new title sequence based on title mode
-                  let titleSequence: string;
-                  if (titleMode === TitleMode.NONE || titleMode === TitleMode.FILTER) {
-                    // For NONE and FILTER modes, just use the session name
-                    titleSequence = `\x1B]2;${updatedInfo.name}\x07`;
-                  } else {
-                    // For STATIC and DYNAMIC, use the full format with path and command
-                    titleSequence = generateTitleSequence(cwd, command, updatedInfo.name);
-                  }
-
-                  // Write title sequence to terminal
-                  process.stdout.write(titleSequence);
-                  logger.log(`Updated terminal title to "${updatedInfo.name}" via file watcher`);
-                }
-              } catch (error) {
-                logger.error('Failed to handle session.json change:', error);
+              // Always update terminal title when session name changes
+              // Generate new title sequence based on title mode
+              let titleSequence: string;
+              if (titleMode === TitleMode.NONE || titleMode === TitleMode.FILTER) {
+                // For NONE and FILTER modes, just use the session name
+                titleSequence = `\x1B]2;${updatedInfo.name}\x07`;
+              } else {
+                // For STATIC and DYNAMIC, use the full format with path and command
+                titleSequence = generateTitleSequence(cwd, command, updatedInfo.name);
               }
-            }, 100);
+
+              // Write title sequence to terminal
+              process.stdout.write(titleSequence);
+              logger.log(`Updated terminal title to "${updatedInfo.name}" via file watcher`);
+            }
+          } catch (error) {
+            logger.error('Failed to check session.json:', error);
+          }
+        };
+
+        // Use fs.watchFile for more reliable file monitoring (polling-based)
+        fs.watchFile(sessionJsonPath, { interval: 500 }, (curr, prev) => {
+          logger.debug(`[File Watch] File stats changed - mtime: ${curr.mtime} vs ${prev.mtime}`);
+          if (curr.mtime !== prev.mtime) {
+            checkSessionNameChange();
           }
         });
 
-        logger.log(`File watcher successfully set up on session directory`);
+        // Also use fs.watch as a fallback for immediate notifications
+        try {
+          const sessionDir = path.dirname(sessionJsonPath);
+          sessionFileWatcher = fs.watch(sessionDir, (eventType, filename) => {
+            // Only log in debug mode to avoid noise
+            logger.debug(`[File Watch] Directory event: ${eventType} on ${filename || 'unknown'}`);
 
-        // Clean up watcher on error
-        sessionFileWatcher.on('error', (error) => {
+            // Check if it's our file (filename might be undefined on macOS)
+            if (!filename || filename === 'session.json' || filename === 'session.json.tmp') {
+              // Debounce rapid changes
+              if (fileWatchDebounceTimer) {
+                clearTimeout(fileWatchDebounceTimer);
+              }
+              fileWatchDebounceTimer = setTimeout(checkSessionNameChange, 100);
+            }
+          });
+        } catch (error) {
+          logger.warn('Failed to set up fs.watch, relying on fs.watchFile:', error);
+        }
+
+        logger.log(`File watcher successfully set up with polling fallback`);
+
+        // Clean up watcher on error if it was created
+        sessionFileWatcher?.on('error', (error) => {
           logger.error('File watcher error:', error);
           sessionFileWatcher?.close();
           sessionFileWatcher = undefined;
-
-          // Try to re-establish watcher after error
-          if (retryCount < maxRetries) {
-            setTimeout(() => setupFileWatcher(retryCount + 1), retryDelay);
-          }
         });
       } catch (error) {
         logger.error('Failed to set up file watcher:', error);
