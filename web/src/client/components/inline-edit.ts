@@ -3,10 +3,10 @@ import { customElement, property, state } from 'lit/decorators.js';
 
 /**
  * Inline Edit Component
- * 
+ *
  * Provides inline editing functionality with a pencil icon that appears on hover.
  * Supports keyboard shortcuts (Enter to save, Esc to cancel).
- * 
+ *
  * @fires save - When edit is saved (detail: { value: string })
  * @fires cancel - When edit is cancelled
  */
