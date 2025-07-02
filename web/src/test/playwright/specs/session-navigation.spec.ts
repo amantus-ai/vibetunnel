@@ -3,12 +3,16 @@ import { assertUrlHasSession } from '../helpers/assertion.helper';
 import { takeDebugScreenshot } from '../helpers/screenshot.helper';
 import { createMultipleSessions } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { TestDataFactory } from '../utils/test-utils';
+
+// Use a unique prefix for this test suite
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('session-navigation');
 
 test.describe('Session Navigation', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
   });
 
   test.afterEach(async () => {

@@ -9,12 +9,16 @@ import {
   interruptCommand,
 } from '../helpers/terminal-commands.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { TestDataFactory } from '../utils/test-utils';
+
+// Use a unique prefix for this test suite
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('terminal-interaction');
 
 test.describe.skip('Terminal Interaction', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
 
     // Create a session for all tests
     await createAndNavigateToSession(page, {

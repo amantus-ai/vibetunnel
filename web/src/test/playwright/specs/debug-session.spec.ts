@@ -1,11 +1,15 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { TestDataFactory } from '../utils/test-utils';
+
+// Use a unique prefix for this test suite
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('debug-session');
 
 test.describe('Debug Session Tests', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
   });
 
   test.afterEach(async () => {

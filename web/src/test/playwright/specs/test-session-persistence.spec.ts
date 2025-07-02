@@ -5,12 +5,16 @@ import {
   waitForSessionState,
 } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { TestDataFactory } from '../utils/test-utils';
+
+// Use a unique prefix for this test suite
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('test-session-persistence');
 
 test.describe('Session Persistence Tests', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
   });
 
   test.afterEach(async () => {

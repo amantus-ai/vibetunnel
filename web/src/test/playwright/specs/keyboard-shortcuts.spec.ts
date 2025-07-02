@@ -6,6 +6,10 @@ import { interruptCommand } from '../helpers/terminal-commands.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { SessionListPage } from '../pages/session-list.page';
 import { SessionViewPage } from '../pages/session-view.page';
+import { TestDataFactory } from '../utils/test-utils';
+
+// Use a unique prefix for this test suite
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('keyboard-shortcuts');
 
 test.describe('Keyboard Shortcuts', () => {
   let sessionManager: TestSessionManager;
@@ -13,7 +17,7 @@ test.describe('Keyboard Shortcuts', () => {
   let sessionViewPage: SessionViewPage;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
     sessionListPage = new SessionListPage(page);
     sessionViewPage = new SessionViewPage(page);
   });

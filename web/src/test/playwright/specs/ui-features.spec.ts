@@ -3,12 +3,16 @@ import { assertTerminalReady } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { waitForModalClosed } from '../helpers/wait-strategies.helper';
+import { TestDataFactory } from '../utils/test-utils';
+
+// Use a unique prefix for this test suite
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('ui-features');
 
 test.describe('UI Features', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
   });
 
   test.afterEach(async () => {
