@@ -218,44 +218,70 @@ final class AuthenticationService: ObservableObject {
 
     /// Attempt automatic login using stored credentials for a server profile
     func attemptAutoLogin(profile: ServerProfile) async throws {
+        logger.debug("attemptAutoLogin called for profile: \(profile.name) (id: \(profile.id)), isAuthenticated: \(isAuthenticated)")
+        logger.debug("Profile requiresAuth: \(profile.requiresAuth), username: \(profile.username ?? "nil")")
+        
         // Check if we already have valid authentication
         if isAuthenticated {
             let tokenValid = await verifyToken()
             if tokenValid {
-                logger.info("Already authenticated with valid token")
+                logger.info("Already authenticated with valid token for user: \(currentUser ?? "unknown")")
                 return
+            } else {
+                logger.warning("Token verification failed, will attempt fresh login")
             }
+        }
+        
+        // Check if profile requires authentication
+        if !profile.requiresAuth {
+            logger.debug("Profile does not require authentication, but server requires it - treating as credentials not found")
+            throw AuthenticationError.credentialsNotFound
         }
         
         // Get stored password from keychain
-        guard let password = try? KeychainService.getPassword(for: profile.id) else {
-            logger.debug("No stored password found for profile: \(profile.name)")
-            throw AuthenticationError.credentialsNotFound
-        }
-        
-        // Get username from profile or use default
-        guard let username = profile.username else {
-            logger.error("No username configured for profile: \(profile.name)")
-            throw AuthenticationError.credentialsNotFound
-        }
-        
-        // Attempt authentication with stored credentials
         do {
-            try await authenticateWithPassword(username: username, password: password)
-            logger.info("Auto-login successful for user: \(username)")
-        } catch {
-            logger.error("Auto-login failed for user: \(username), error: \(error)")
-            if let apiError = error as? APIError {
-                switch apiError {
-                case .serverError(401, _):
-                    throw AuthenticationError.invalidCredentials
-                case .serverError(let code, let message):
-                    throw AuthenticationError.serverError(message ?? "HTTP \(code)")
+            let password = try KeychainService.getPassword(for: profile.id)
+            logger.debug("Successfully retrieved password from keychain for profile: \(profile.name)")
+            logger.debug("Password length: \(password.count) characters")
+            
+            // Get username from profile or use default
+            guard let username = profile.username else {
+                logger.error("No username configured for profile: \(profile.name)")
+                throw AuthenticationError.credentialsNotFound
+            }
+            
+            logger.debug("Attempting authentication with username: \(username)")
+            
+            // Attempt authentication with stored credentials
+            do {
+                try await authenticateWithPassword(username: username, password: password)
+                logger.info("Auto-login successful for user: \(username)")
+            } catch {
+                logger.error("Auto-login failed for user: \(username), error: \(error)")
+                if let apiError = error as? APIError {
+                    switch apiError {
+                    case .serverError(401, _):
+                        throw AuthenticationError.invalidCredentials
+                    case .serverError(let code, let message):
+                        throw AuthenticationError.serverError(message ?? "HTTP \(code)")
+                    default:
+                        throw AuthenticationError.serverError(apiError.localizedDescription)
+                    }
+                }
+                throw AuthenticationError.invalidCredentials
+            }
+        } catch let keychainError {
+            logger.error("Failed to retrieve password from keychain for profile: \(profile.name), error: \(keychainError)")
+            logger.debug("Looking for keychain item with account: server-\(profile.id)")
+            if let keychainErr = keychainError as? KeychainService.KeychainError {
+                switch keychainErr {
+                case .itemNotFound:
+                    logger.debug("Keychain item not found for profile id: \(profile.id)")
                 default:
-                    throw AuthenticationError.serverError(apiError.localizedDescription)
+                    logger.error("Keychain error: \(keychainErr)")
                 }
             }
-            throw AuthenticationError.invalidCredentials
+            throw AuthenticationError.credentialsNotFound
         }
     }
 
