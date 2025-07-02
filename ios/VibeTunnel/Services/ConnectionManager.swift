@@ -9,6 +9,8 @@ import Observation
 @Observable
 @MainActor
 final class ConnectionManager {
+    static let shared = ConnectionManager()
+    
     // MARK: - Constants
     
     private enum Constants {
@@ -29,7 +31,7 @@ final class ConnectionManager {
     private(set) var authenticationService: AuthenticationService?
     private let storage: PersistentStorage
 
-    init(storage: PersistentStorage = UserDefaultsStorage()) {
+    private init(storage: PersistentStorage = UserDefaultsStorage()) {
         self.storage = storage
         loadSavedConnection()
         restoreConnectionState()
@@ -113,7 +115,3 @@ final class ConnectionManager {
     }
 }
 
-/// Make ConnectionManager accessible globally for APIClient
-extension ConnectionManager {
-    @MainActor static let shared = ConnectionManager()
-}
