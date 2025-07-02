@@ -34,7 +34,7 @@ struct ContentView: View {
             } else if connectionManager.isConnected, connectionManager.serverConfig != nil {
                 SessionListView()
             } else {
-                EnhancedConnectionView()
+                ServerListView()
             }
         }
         .animation(.default, value: connectionManager.isConnected)
