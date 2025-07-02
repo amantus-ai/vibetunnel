@@ -628,7 +628,7 @@ struct SessionRow: View {
             }
         }
     }
-    
+
     private func handleTap() {
         guard !isEditing else { return }
 
