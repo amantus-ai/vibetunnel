@@ -99,25 +99,27 @@ struct SessionRow: View {
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                         }
+                        
+                        // Edit button (pencil icon) - only show on hover
+                        if isHovered && !isEditing {
+                            Button(action: startEditing) {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.primary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Rename session")
+                        }
                     }
 
                     Spacer()
 
-                    // Edit button (pencil icon) - only show on hover
-                    if isHovered && !isEditing {
-                        Button(action: startEditing) {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Rename session")
+                    // Window indicator - only show globe if no window
+                    if !hasWindow {
+                        Image(systemName: "globe")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary.opacity(0.6))
                     }
-
-                    // Window indicator
-                    Image(systemName: hasWindow ? "macwindow" : "globe")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary.opacity(0.6))
                 }
 
                 // Second row: Path, Git info, Duration and X button
@@ -143,7 +145,7 @@ struct SessionRow: View {
                             .padding(.vertical, 2)
                             .background(
                                 RoundedRectangle(cornerRadius: 4)
-                                    .fill(isHoveringFolder ? AppColors.Fallback.controlBackground(for: colorScheme) : Color.clear)
+                                    .fill(isHoveringFolder ? AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.3) : Color.clear)
                             )
                         }
                         .buttonStyle(.plain)
@@ -216,7 +218,7 @@ struct SessionRow: View {
             .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 6)
@@ -412,8 +414,8 @@ struct SessionRow: View {
     }
 
     private var hasWindow: Bool {
-        // Check if WindowTracker has a window registered for this session
-        WindowTracker.shared.windowInfo(for: session.key) != nil
+        // Check if session was attached via VT (has a terminal window)
+        session.value.attachedViaVT ?? false
     }
 
     private var hoverBackgroundColor: Color {

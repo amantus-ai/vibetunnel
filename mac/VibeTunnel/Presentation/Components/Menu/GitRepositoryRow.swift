@@ -61,8 +61,8 @@ struct GitRepositoryRow: View {
     }
 
     private var backgroundFillColor: Color {
-        // Only show background on hover
-        isHovering ? AppColors.Fallback.controlBackground(for: colorScheme) : Color.clear
+        // Only show background on hover - very subtle
+        isHovering ? AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.3) : Color.clear
     }
 
     private var borderView: some View {
