@@ -116,8 +116,8 @@ describe.sequential('Logs API Tests', () => {
         }),
       });
 
-      // Give it a moment to write
-      await sleep(100);
+      // Give it a moment to write (longer in CI environments)
+      await sleep(500);
 
       const response = await fetch(`http://localhost:${server?.port}/api/logs/info`);
 

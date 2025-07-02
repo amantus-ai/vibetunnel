@@ -65,21 +65,21 @@ test.describe('UI Features', () => {
     // Create the session
     const sessionName = sessionManager.generateSessionName('quick-start');
     await page.fill('input[placeholder="My Session"]', sessionName);
-    
+
     // Wait for the create button to be ready and click it
     const createButton = page.locator('button:has-text("Create")');
     await createButton.waitFor({ state: 'visible' });
     await createButton.scrollIntoViewIfNeeded();
-    
+
     // Use Promise.race to handle both navigation and potential modal close
     await Promise.race([
       createButton.click({ timeout: 5000 }),
-      page.waitForURL(/\?session=/, { timeout: 30000 })
+      page.waitForURL(/\?session=/, { timeout: 30000 }),
     ]).catch(async () => {
       // If the first click failed, try force click
       await createButton.click({ force: true });
     });
-    
+
     // Ensure we navigate to the session
     if (!page.url().includes('?session=')) {
       await page.waitForURL(/\?session=/, { timeout: 10000 });
