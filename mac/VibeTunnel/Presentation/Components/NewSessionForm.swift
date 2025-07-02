@@ -61,14 +61,14 @@ struct NewSessionForm: View {
             HStack {
                 Button(action: {
                     isPresented = false
-                }) {
+                }, label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 11, weight: .medium))
                         Text("Sessions")
                             .font(.system(size: 12, weight: .medium))
                     }
-                }
+                })
                 .buttonStyle(.plain)
                 .foregroundColor(.primary.opacity(0.8))
 
@@ -167,7 +167,7 @@ struct NewSessionForm: View {
                                 Button(action: {
                                     command = cmd.0
                                     sessionName = ""
-                                }) {
+                                }, label: {
                                     HStack(spacing: 4) {
                                         if let emoji = cmd.1 {
                                             Text(emoji)
@@ -187,7 +187,7 @@ struct NewSessionForm: View {
                                         RoundedRectangle(cornerRadius: 6)
                                             .stroke(Color.primary.opacity(0.1), lineWidth: 1)
                                     )
-                                }
+                                })
                                 .buttonStyle(.plain)
                             }
                         }
@@ -208,14 +208,14 @@ struct NewSessionForm: View {
 
                             Menu {
                                 ForEach(TitleMode.allCases, id: \.self) { mode in
-                                    Button(action: { titleMode = mode }) {
+                                    Button(action: { titleMode = mode }, label: {
                                         HStack {
                                             Text(mode.displayName)
                                             if mode == titleMode {
                                                 Image(systemName: "checkmark")
                                             }
                                         }
-                                    }
+                                    })
                                 }
                             } label: {
                                 HStack(spacing: 4) {
