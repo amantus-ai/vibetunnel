@@ -207,7 +207,7 @@ final class BunServer {
         environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128"
 
         // Copy only essential environment variables
-        let essentialVars = ["PATH", "HOME", "USER", "SHELL", "LANG", "LC_ALL", "LC_CTYPE"]
+        let essentialVars = ["PATH", "HOME", "USER", "SHELL", "LANG", "LC_ALL", "LC_CTYPE", "VIBETUNNEL_DEBUG"]
         for key in essentialVars {
             if let value = ProcessInfo.processInfo.environment[key] {
                 environment[key] = value

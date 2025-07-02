@@ -168,9 +168,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Initialize dock icon visibility through DockIconManager
         DockIconManager.shared.updateDockVisibility()
-        
-        // Initialize Window menu manager to set up menu items
-        _ = WindowMenuManager.shared
 
         // Show welcome screen when version changes
         let storedWelcomeVersion = UserDefaults.standard.integer(forKey: AppConstants.UserDefaultsKeys.welcomeVersion)
