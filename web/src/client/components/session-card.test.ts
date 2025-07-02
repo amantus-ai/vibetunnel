@@ -72,11 +72,11 @@ describe('SessionCard', () => {
       // Wait for inline-edit to render
       await element.updateComplete;
 
-      const inlineEdit = element.querySelector('inline-edit');
+      const inlineEdit = element.querySelector('inline-edit') as HTMLElement & { value: string };
       expect(inlineEdit).toBeTruthy();
 
       // Check that inline-edit has the correct value
-      const sessionText = (inlineEdit as any)?.value;
+      const sessionText = inlineEdit?.value;
       expect(sessionText).toBeTruthy();
       expect(sessionText).toContain('Test Session');
 
@@ -101,7 +101,7 @@ describe('SessionCard', () => {
       element.session = createMockSession({ name: 'Test Session' });
       await element.updateComplete;
 
-      let inlineEdit = element.querySelector('inline-edit') as any;
+      let inlineEdit = element.querySelector('inline-edit') as HTMLElement & { value: string };
       expect(inlineEdit).toBeTruthy();
       expect(inlineEdit.value).toContain('Test Session');
 
@@ -111,7 +111,7 @@ describe('SessionCard', () => {
       element.session = sessionWithoutName;
       await element.updateComplete;
 
-      inlineEdit = element.querySelector('inline-edit') as any;
+      inlineEdit = element.querySelector('inline-edit') as HTMLElement & { value: string };
       expect(inlineEdit).toBeTruthy();
       expect(inlineEdit.value).toBe('npm run dev');
     });
