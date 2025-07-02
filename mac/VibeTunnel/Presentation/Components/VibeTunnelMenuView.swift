@@ -64,7 +64,8 @@ struct VibeTunnelMenuView: View {
         VStack(spacing: 0) {
             // Header with server info
             ServerInfoHeader()
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
                 .background(
                     LinearGradient(
                         colors: colorScheme == .dark ? MenuStyles.headerGradientDark : MenuStyles.headerGradientLight,

@@ -61,8 +61,8 @@ struct GitRepositoryRow: View {
     }
 
     private var backgroundFillColor: Color {
-        let baseColor = AppColors.Fallback.gitBackground(for: colorScheme)
-        return isHovering ? baseColor.opacity(0.5) : baseColor.opacity(0.3)
+        // Only show background on hover
+        isHovering ? AppColors.Fallback.controlBackground(for: colorScheme) : Color.clear
     }
 
     private var borderView: some View {
@@ -71,8 +71,8 @@ struct GitRepositoryRow: View {
     }
 
     private var borderColor: Color {
-        let baseColor = AppColors.Fallback.gitBorder(for: colorScheme)
-        return isHovering ? baseColor.opacity(0.5) : baseColor.opacity(0.2)
+        // Only show border on hover
+        isHovering ? AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.2) : Color.clear
     }
 
     var body: some View {
