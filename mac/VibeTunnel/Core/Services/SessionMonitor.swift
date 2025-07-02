@@ -20,6 +20,7 @@ struct ServerSessionInfo: Codable {
     let initialRows: Int? // Added missing field
     let activityStatus: ActivityStatus?
     let source: String? // Added for HQ mode
+    let attachedViaVT: Bool? // Added for VT attachment tracking
 
     var isRunning: Bool {
         status == "running"

@@ -21,6 +21,9 @@ final class WindowFocuser {
             focusiTerm2Window(windowInfo)
         case .ghostty:
             focusGhosttyWindow(windowInfo)
+        case .warp, .alacritty, .hyper, .wezterm, .kitty:
+            // For other terminals, use accessibility API
+            focusWindowUsingAccessibility(windowInfo)
         }
     }
 

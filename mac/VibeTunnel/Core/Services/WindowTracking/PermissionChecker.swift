@@ -37,25 +37,14 @@ final class PermissionChecker {
 
     /// Request accessibility permissions.
     func requestPermissions() {
-        requestPermissionsDirectly()
+        // Open System Settings directly to the right pane
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     /// Check permissions without prompting.
     private func checkPermissionsDirectly() -> Bool {
         AXIsProcessTrusted()
-    }
-
-    /// Open System Preferences to request permissions.
-    private func requestPermissionsDirectly() {
-        let options: [String: Any] = [
-            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
-        ]
-
-        AXIsProcessTrustedWithOptions(options as CFDictionary)
-
-        // Also try to open System Settings directly to the right pane
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
     }
 }

@@ -61,16 +61,6 @@ struct SessionListSection: View {
                             onHover(hovering ? session.key : nil)
                         }
                         .focusable()
-                        .focused(
-                            Binding(
-                                get: { focusedField == .sessionRow(session.key) },
-                                set: { isFocused in
-                                    if isFocused {
-                                        onFocus(.sessionRow(session.key))
-                                    }
-                                }
-                            )
-                        )
                         .transition(.asymmetric(
                             insertion: .opacity.combined(with: .move(edge: .top)),
                             removal: .opacity.combined(with: .scale)
@@ -93,16 +83,6 @@ struct SessionListSection: View {
                             onHover(hovering ? session.key : nil)
                         }
                         .focusable()
-                        .focused(
-                            Binding(
-                                get: { focusedField == .sessionRow(session.key) },
-                                set: { isFocused in
-                                    if isFocused {
-                                        onFocus(.sessionRow(session.key))
-                                    }
-                                }
-                            )
-                        )
                         .transition(.asymmetric(
                             insertion: .opacity.combined(with: .move(edge: .top)),
                             removal: .opacity.combined(with: .scale)

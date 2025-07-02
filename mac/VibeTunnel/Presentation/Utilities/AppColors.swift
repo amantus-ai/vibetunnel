@@ -89,6 +89,55 @@ enum AppColors {
         static func secondaryText(for colorScheme: ColorScheme) -> Color {
             Color.secondary
         }
+
+        // Git-specific colors
+        static func gitFolder(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color(red: 0.4, green: 0.6, blue: 0.8) // Light blue in dark mode
+                : Color(red: 0.2, green: 0.4, blue: 0.6) // Darker blue in light mode
+        }
+
+        static func gitFolderHover(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color(red: 0.5, green: 0.7, blue: 0.9) // Lighter blue in dark mode
+                : Color(red: 0.1, green: 0.3, blue: 0.5) // Even darker blue in light mode
+        }
+
+        static func gitModified(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color(red: 0.9, green: 0.7, blue: 0.3) // Yellow in dark mode
+                : Color(red: 0.7, green: 0.5, blue: 0.1) // Darker yellow in light mode
+        }
+
+        static func gitAdded(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color(red: 0.3, green: 0.8, blue: 0.3) // Green in dark mode
+                : Color(red: 0.1, green: 0.6, blue: 0.1) // Darker green in light mode
+        }
+
+        static func gitDeleted(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color(red: 0.9, green: 0.3, blue: 0.3) // Red in dark mode
+                : Color(red: 0.7, green: 0.1, blue: 0.1) // Darker red in light mode
+        }
+
+        static func gitUntracked(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color(red: 0.6, green: 0.6, blue: 0.6) // Gray in dark mode
+                : Color(red: 0.4, green: 0.4, blue: 0.4) // Darker gray in light mode
+        }
+
+        static func gitBackground(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.gray.opacity(0.2)
+                : Color.gray.opacity(0.1)
+        }
+
+        static func gitBorder(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.gray.opacity(0.3)
+                : Color.gray.opacity(0.2)
+        }
     }
 }
 

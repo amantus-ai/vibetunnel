@@ -114,6 +114,19 @@ enum Terminal: String, CaseIterable {
         rawValue
     }
 
+    var applicationName: String {
+        switch self {
+        case .terminal: "Terminal"
+        case .iTerm2: "iTerm2"
+        case .ghostty: "Ghostty"
+        case .warp: "Warp"
+        case .alacritty: "Alacritty"
+        case .hyper: "Hyper"
+        case .wezterm: "WezTerm"
+        case .kitty: "kitty"
+        }
+    }
+
     var isInstalled: Bool {
         if self == .terminal {
             return true // Terminal is always installed

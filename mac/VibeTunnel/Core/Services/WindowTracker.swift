@@ -184,7 +184,7 @@ final class WindowTracker {
         // For sessions without registered windows, try to find them
         // This handles sessions that were attached via `vt` command
         for session in sessions {
-            if windowInfo(for: session.id) == nil && session.attachedViaVT {
+            if windowInfo(for: session.id) == nil && (session.attachedViaVT ?? false) {
                 // Try to find the window for this session
                 if let foundWindow = findWindowForSession(session.id, sessionInfo: session) {
                     mapLock.withLock {

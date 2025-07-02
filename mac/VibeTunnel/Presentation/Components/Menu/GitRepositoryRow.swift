@@ -10,51 +10,54 @@ struct GitRepositoryRow: View {
     @Environment(\.colorScheme)
     private var colorScheme
 
-    var body: some View {
-        HStack(spacing: 4) {
-            // Git folder icon with hover effect
-            Image(systemName: "folder.badge.gearshape")
+    private var folderIcon: some View {
+        Image(systemName: "folder.badge.gearshape")
+            .font(.system(size: 10))
+            .foregroundColor(folderIconColor)
+            .scaleEffect(isHovering ? 1.05 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: isHovering)
+    }
+
+    private var folderIconColor: Color {
+        isHovering ? AppColors.Fallback.gitFolderHover(for: colorScheme) : AppColors.Fallback.gitFolder(for: colorScheme)
+    }
+
+    private var branchInfo: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "arrow.branch")
+                .font(.system(size: 9))
+                .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
+
+            Text(repository.currentBranch ?? "detached")
                 .font(.system(size: 10))
-                .foregroundColor(isHovering ? AppColors.Fallback.gitFolderHover(for: colorScheme) : AppColors.Fallback
-                    .gitFolder(for: colorScheme)
-                )
-                .scaleEffect(isHovering ? 1.05 : 1.0)
-                .animation(.easeInOut(duration: 0.15), value: isHovering)
+                .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: 60)
+        }
+    }
 
-            // Branch icon and name
-            HStack(spacing: 2) {
-                Image(systemName: "arrow.branch")
-                    .font(.system(size: 9))
-                    .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
-
-                Text(repository.branch)
-                    .font(.system(size: 10))
-                    .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .frame(maxWidth: 60)
-            }
-
-            // Change indicators
+    private var changeIndicators: some View {
+        Group {
             if repository.hasChanges {
                 HStack(spacing: 2) {
-                    if repository.modifiedFiles > 0 {
-                        Text("M:\(repository.modifiedFiles)")
+                    if repository.modifiedCount > 0 {
+                        Text("M:\(repository.modifiedCount)")
                             .font(.system(size: 9, weight: .medium))
                             .foregroundColor(AppColors.Fallback.gitModified(for: colorScheme))
                     }
-                    if repository.addedFiles > 0 {
-                        Text("A:\(repository.addedFiles)")
+                    if repository.addedCount > 0 {
+                        Text("A:\(repository.addedCount)")
                             .font(.system(size: 9, weight: .medium))
                             .foregroundColor(AppColors.Fallback.gitAdded(for: colorScheme))
                     }
-                    if repository.deletedFiles > 0 {
-                        Text("D:\(repository.deletedFiles)")
+                    if repository.deletedCount > 0 {
+                        Text("D:\(repository.deletedCount)")
                             .font(.system(size: 9, weight: .medium))
                             .foregroundColor(AppColors.Fallback.gitDeleted(for: colorScheme))
                     }
-                    if repository.untrackedFiles > 0 {
-                        Text("U:\(repository.untrackedFiles)")
+                    if repository.untrackedCount > 0 {
+                        Text("U:\(repository.untrackedCount)")
                             .font(.system(size: 9, weight: .medium))
                             .foregroundColor(AppColors.Fallback.gitUntracked(for: colorScheme))
                     }
@@ -65,22 +68,38 @@ struct GitRepositoryRow: View {
                     .foregroundColor(AppColors.Fallback.gitClean(for: colorScheme))
             }
         }
+    }
+
+    private var backgroundView: some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(backgroundFillColor)
+    }
+
+    private var backgroundFillColor: Color {
+        let baseColor = AppColors.Fallback.gitBackground(for: colorScheme)
+        return isHovering ? baseColor.opacity(0.5) : baseColor.opacity(0.3)
+    }
+
+    private var borderView: some View {
+        RoundedRectangle(cornerRadius: 4)
+            .strokeBorder(borderColor, lineWidth: 0.5)
+    }
+
+    private var borderColor: Color {
+        let baseColor = AppColors.Fallback.gitBorder(for: colorScheme)
+        return isHovering ? baseColor.opacity(0.5) : baseColor.opacity(0.2)
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            folderIcon
+            branchInfo
+            changeIndicators
+        }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
-        .background(
-            RoundedRectangle(cornerRadius: 4)
-                .fill(isHovering ? AppColors.Fallback.gitBackground(for: colorScheme).opacity(0.5) : AppColors.Fallback
-                    .gitBackground(for: colorScheme).opacity(0.3)
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(
-                    isHovering ? AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.5) : AppColors.Fallback
-                        .gitBorder(for: colorScheme).opacity(0.2),
-                    lineWidth: 0.5
-                )
-        )
+        .background(backgroundView)
+        .overlay(borderView)
         .onHover { hovering in
             isHovering = hovering
         }
@@ -105,7 +124,7 @@ struct GitRepositoryRow: View {
 
             Button("Copy Branch Name") {
                 NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(repository.branch, forType: .string)
+                NSPasteboard.general.setString(repository.currentBranch ?? "detached", forType: .string)
             }
 
             Button("Copy Repository Path") {

@@ -41,7 +41,6 @@ struct MenuActionBar: View {
                 isHoveringNewSession = hovering
             }
             .focusable()
-            .focused($focusedField, equals: .newSessionButton)
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(
@@ -73,7 +72,6 @@ struct MenuActionBar: View {
                 isHoveringSettings = hovering
             }
             .focusable()
-            .focused($focusedField, equals: .settingsButton)
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(
@@ -107,7 +105,6 @@ struct MenuActionBar: View {
                 isHoveringQuit = hovering
             }
             .focusable()
-            .focused($focusedField, equals: .quitButton)
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(
