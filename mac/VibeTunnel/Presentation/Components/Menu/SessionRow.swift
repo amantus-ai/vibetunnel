@@ -28,7 +28,7 @@ struct SessionRow: View {
     @State private var isEditing = false
     @State private var editedName = ""
     @State private var gitRepository: GitRepository?
-    @State private var isHoveringGitFolder = false
+    @State private var isHoveringFolder = false
     @FocusState private var isEditFieldFocused: Bool
 
     var body: some View {
@@ -112,7 +112,21 @@ struct SessionRow: View {
                 // Second row: Path, Git info, Duration and X button
                 HStack(spacing: 6) {
                     // Left side: Path and git info
-                    HStack(spacing: 6) {
+                    HStack(spacing: 4) {
+                        // Folder icon - clickable
+                        Button(action: {
+                            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
+                        }) {
+                            Image(systemName: "folder.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(isHoveringFolder ? AppColors.Fallback.gitFolderHover(for: colorScheme) : AppColors.Fallback.gitFolder(for: colorScheme))
+                        }
+                        .buttonStyle(.plain)
+                        .onHover { hovering in
+                            isHoveringFolder = hovering
+                        }
+                        .help("Open in Finder")
+                        
                         Text(compactPath)
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundColor(.secondary)

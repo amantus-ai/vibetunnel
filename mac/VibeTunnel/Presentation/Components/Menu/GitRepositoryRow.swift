@@ -10,17 +10,6 @@ struct GitRepositoryRow: View {
     @Environment(\.colorScheme)
     private var colorScheme
 
-    private var folderIcon: some View {
-        Image(systemName: "folder.badge.gearshape")
-            .font(.system(size: 10))
-            .foregroundColor(folderIconColor)
-            .scaleEffect(isHovering ? 1.05 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: isHovering)
-    }
-
-    private var folderIconColor: Color {
-        isHovering ? AppColors.Fallback.gitFolderHover(for: colorScheme) : AppColors.Fallback.gitFolder(for: colorScheme)
-    }
 
     private var branchInfo: some View {
         HStack(spacing: 2) {
@@ -88,7 +77,6 @@ struct GitRepositoryRow: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            folderIcon
             branchInfo
             changeIndicators
         }
