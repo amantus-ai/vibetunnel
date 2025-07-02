@@ -453,10 +453,41 @@ export class PtyManager extends EventEmitter {
       session.titleMode !== TitleMode.FILTER &&
       forwardToStdout
     ) {
+      // Track last known activity state for change detection
+      let lastKnownActivityState: {
+        isActive: boolean;
+        specificStatus?: string;
+      } | null = null;
+
       session.titleUpdateInterval = setInterval(() => {
-        // Update activity state file if needed (dynamic mode only)
+        // For dynamic mode, check for activity state changes
         if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
           const activityState = session.activityDetector.getActivityState();
+
+          // Check if activity state has changed
+          const activityChanged =
+            lastKnownActivityState === null ||
+            activityState.isActive !== lastKnownActivityState.isActive ||
+            activityState.specificStatus?.status !== lastKnownActivityState.specificStatus;
+
+          if (activityChanged) {
+            // Update last known state
+            lastKnownActivityState = {
+              isActive: activityState.isActive,
+              specificStatus: activityState.specificStatus?.status,
+            };
+
+            // Mark title for update
+            this.markTitleUpdateNeeded(session);
+
+            logger.debug(
+              `Activity state changed for session ${session.id}: ` +
+                `active=${activityState.isActive}, ` +
+                `status=${activityState.specificStatus?.status || 'none'}`
+            );
+          }
+
+          // Always write activity state for external tools
           this.writeActivityState(session, activityState);
         }
 

@@ -291,20 +291,10 @@ export class ActivityDetector {
       }
     }
 
-    // Generic activity detection
+    // Generic activity detection - use getActivityState for consistent time-based checking
     return {
       filteredData: data,
-      activity: {
-        isActive: isMeaningfulOutput,
-        lastActivityTime: this.lastActivityTime,
-        specificStatus:
-          this.currentStatus && this.detector
-            ? {
-                app: this.detector.name,
-                status: this.currentStatus.displayText,
-              }
-            : undefined,
-      },
+      activity: this.getActivityState(),
     };
   }
 
