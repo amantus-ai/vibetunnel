@@ -359,6 +359,12 @@ export class SessionCreateForm extends LitElement {
     this.dispatchEvent(new CustomEvent('cancel'));
   }
 
+  private handleBackdropClick(e: Event) {
+    if (e.target === e.currentTarget) {
+      this.handleCancel();
+    }
+  }
+
   private handleQuickStart(command: string) {
     this.command = command;
     this.selectedQuickStart = command;
@@ -375,10 +381,11 @@ export class SessionCreateForm extends LitElement {
     }
 
     return html`
-      <div class="modal-backdrop flex items-center justify-center">
+      <div class="modal-backdrop flex items-center justify-center" @click=${this.handleBackdropClick}>
         <div
           class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] mx-2 sm:mx-4"
-          style="view-transition-name: create-session-modal"
+          style="view-transition-name: create-session-modal; pointer-events: auto;"
+          @click=${(e: Event) => e.stopPropagation()}
         >
           <div class="p-4 sm:p-6 sm:pb-4 mb-2 sm:mb-3 border-b border-dark-border relative bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary flex-shrink-0">
             <h2 id="modal-title" class="text-primary text-lg sm:text-xl font-bold">New Session</h2>

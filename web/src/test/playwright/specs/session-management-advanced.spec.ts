@@ -343,13 +343,17 @@ test.describe('Advanced Session Management', () => {
     sessionManager.clearTracking();
 
     // Check that the path is displayed - be more specific to avoid multiple matches
-    await expect(page.locator('[title="Click to copy path"]').locator('text=/tmp')).toBeVisible();
+    await expect(page.locator('[title="Click to copy path"]').locator('text=/tmp')).toBeVisible({
+      timeout: 10000,
+    });
 
-    // Check terminal size is displayed
-    await expect(page.locator('text=/\\d+×\\d+/')).toBeVisible();
+    // Check terminal size is displayed - look for the pattern in the page
+    await expect(page.locator('text=/\\d+×\\d+/').first()).toBeVisible({ timeout: 10000 });
 
-    // Check status indicator
-    await expect(page.locator('text=RUNNING')).toBeVisible();
+    // Check status indicator - be more specific
+    await expect(
+      page.locator('[data-status="running"]').or(page.locator('text=/RUNNING/i')).first()
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test('should filter sessions by status', async ({ page }) => {

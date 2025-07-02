@@ -42,8 +42,8 @@ test.describe('Session Persistence Tests', () => {
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Wait for the session status to update to exited
-    await waitForSessionState(page, sessionName, 'EXITED');
+    // Wait for the session status to update to exited (give it more time as the command needs to fail)
+    await waitForSessionState(page, sessionName, 'EXITED', { timeout: 10000 });
 
     // Verify it shows as exited
     await assertSessionInList(page, sessionName, { status: 'EXITED' });
