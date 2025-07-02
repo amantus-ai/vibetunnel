@@ -40,7 +40,7 @@ public final class GitRepositoryMonitor {
     // MARK: - Private Properties
     
     /// Operation queue for rate limiting git operations
-    private let gitOperationQueue = OperationQueue()
+    nonisolated(unsafe) private let gitOperationQueue = OperationQueue()
 
     /// Path to the git binary
     private let gitPath: String = {
@@ -214,37 +214,42 @@ public final class GitRepositoryMonitor {
 
     /// Get repository status by running git status
     private nonisolated func getRepositoryStatus(at repoPath: String) async -> GitRepository? {
-        await Task.detached(priority: .userInitiated) {
-            // Sanitize the path before using it
-            guard let sanitizedPath = self.sanitizePath(repoPath) else {
-                return nil
-            }
-
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: self.gitPath)
-            process.arguments = ["status", "--porcelain", "--branch"]
-            process.currentDirectoryURL = URL(fileURLWithPath: sanitizedPath)
-
-            let outputPipe = Pipe()
-            process.standardOutput = outputPipe
-            process.standardError = Pipe() // Suppress error output
-
-            do {
-                try process.run()
-                process.waitUntilExit()
-
-                guard process.terminationStatus == 0 else {
-                    return nil
+        await withCheckedContinuation { continuation in
+            self.gitOperationQueue.addOperation {
+                // Sanitize the path before using it
+                guard let sanitizedPath = self.sanitizePath(repoPath) else {
+                    continuation.resume(returning: nil)
+                    return
                 }
 
-                let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: outputData, encoding: .utf8) ?? ""
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: self.gitPath)
+                process.arguments = ["status", "--porcelain", "--branch"]
+                process.currentDirectoryURL = URL(fileURLWithPath: sanitizedPath)
 
-                return Self.parseGitStatus(output: output, repoPath: repoPath)
-            } catch {
-                return nil
+                let outputPipe = Pipe()
+                process.standardOutput = outputPipe
+                process.standardError = Pipe() // Suppress error output
+
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+
+                    guard process.terminationStatus == 0 else {
+                        continuation.resume(returning: nil)
+                        return
+                    }
+
+                    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: outputData, encoding: .utf8) ?? ""
+
+                    let result = Self.parseGitStatus(output: output, repoPath: repoPath)
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(returning: nil)
+                }
             }
-        }.value
+        }
     }
 
     /// Parse git status --porcelain output
