@@ -72,6 +72,12 @@ export class LifecycleEventManager extends ManagerEventEmitter {
   keyboardHandler = (e: KeyboardEvent): void => {
     if (!this.callbacks) return;
 
+    // Check if focus management is disabled (e.g., when overlays/modals are active)
+    if (this.callbacks.getDisableFocusManagement()) {
+      // Don't capture keyboard input when overlays are active
+      return;
+    }
+
     // Handle Cmd+O / Ctrl+O to open file browser
     if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
       e.preventDefault();
