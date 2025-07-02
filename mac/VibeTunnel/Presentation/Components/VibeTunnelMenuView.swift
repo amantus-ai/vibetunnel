@@ -71,11 +71,11 @@ struct VibeTunnelMenuView: View {
                 .background(
                     LinearGradient(
                         colors: colorScheme == .dark ? [
-                            Color(NSColor.controlBackgroundColor).opacity(0.6),
-                            Color(NSColor.controlBackgroundColor).opacity(0.3)
+                            AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.6),
+                            AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.3)
                         ] : [
-                            Color(NSColor.controlBackgroundColor),
-                            Color(NSColor.controlBackgroundColor).opacity(0.8)
+                            AppColors.Fallback.controlBackground(for: colorScheme),
+                            AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.8)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -164,7 +164,7 @@ struct VibeTunnelMenuView: View {
                         .padding(.vertical, 3)
                         .background(
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(isHoveringNewSession ? Color.accentColor.opacity(0.05) : Color.clear)
+                                .fill(isHoveringNewSession ? AppColors.Fallback.accentHover(for: colorScheme).opacity(0.6) : Color.clear)
                                 .animation(.easeInOut(duration: 0.2), value: isHoveringNewSession)
                         )
                 }
@@ -178,8 +178,7 @@ struct VibeTunnelMenuView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
                         .strokeBorder(
-                            focusedField == .newSessionButton && hasStartedKeyboardNavigation ? Color.accentColor
-                                .opacity(0.3) : Color.clear,
+                            focusedField == .newSessionButton && hasStartedKeyboardNavigation ? AppColors.Fallback.accentHover(for: colorScheme).opacity(2) : Color.clear,
                             lineWidth: 1
                         )
                         .animation(.easeInOut(duration: 0.15), value: focusedField)
@@ -196,7 +195,7 @@ struct VibeTunnelMenuView: View {
                         .padding(.vertical, 3)
                         .background(
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(isHoveringSettings ? Color.accentColor.opacity(0.05) : Color.clear)
+                                .fill(isHoveringSettings ? AppColors.Fallback.accentHover(for: colorScheme).opacity(0.6) : Color.clear)
                                 .animation(.easeInOut(duration: 0.2), value: isHoveringSettings)
                         )
                 }
@@ -210,8 +209,7 @@ struct VibeTunnelMenuView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
                         .strokeBorder(
-                            focusedField == .settingsButton && hasStartedKeyboardNavigation ? Color.accentColor
-                                .opacity(0.3) : Color.clear,
+                            focusedField == .settingsButton && hasStartedKeyboardNavigation ? AppColors.Fallback.accentHover(for: colorScheme).opacity(2) : Color.clear,
                             lineWidth: 1
                         )
                         .animation(.easeInOut(duration: 0.15), value: focusedField)
@@ -228,7 +226,7 @@ struct VibeTunnelMenuView: View {
                         .padding(.vertical, 3)
                         .background(
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(isHoveringQuit ? Color.red.opacity(0.05) : Color.clear)
+                                .fill(isHoveringQuit ? AppColors.Fallback.destructive(for: colorScheme).opacity(0.05) : Color.clear)
                                 .animation(.easeInOut(duration: 0.2), value: isHoveringQuit)
                         )
                 }
@@ -242,8 +240,7 @@ struct VibeTunnelMenuView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
                         .strokeBorder(
-                            focusedField == .quitButton && hasStartedKeyboardNavigation ? Color.accentColor
-                                .opacity(0.3) : Color.clear,
+                            focusedField == .quitButton && hasStartedKeyboardNavigation ? AppColors.Fallback.accentHover(for: colorScheme).opacity(2) : Color.clear,
                             lineWidth: 1
                         )
                         .animation(.easeInOut(duration: 0.15), value: focusedField)
@@ -445,21 +442,21 @@ struct ServerStatusBadge: View {
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : Color.red)
+                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback.destructive(for: colorScheme))
                 .frame(width: 6, height: 6)
             Text(isRunning ? "Running" : "Stopped")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundColor(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : .red)
+                .foregroundColor(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback.destructive(for: colorScheme))
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
             Capsule()
-                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.1) : Color.red.opacity(0.1))
+                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.1) : AppColors.Fallback.destructive(for: colorScheme).opacity(0.1))
                 .overlay(
                     Capsule()
                         .stroke(
-                            isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.3) : Color.red.opacity(0.3),
+                            isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.3) : AppColors.Fallback.destructive(for: colorScheme).opacity(0.3),
                             lineWidth: 0.5
                         )
                 )
@@ -498,7 +495,7 @@ struct SessionSectionHeader: View {
                 .foregroundColor(.secondary)
             Text("(\(count))")
                 .font(.system(size: 11))
-                .foregroundColor(Color.secondary.opacity(0.6))
+                .foregroundColor(AppColors.Fallback.secondaryText(for: colorScheme).opacity(0.6))
             Spacer()
         }
         .padding(.horizontal, 12)
@@ -651,7 +648,7 @@ struct SessionRow: View {
                             .padding(.vertical, 2)
                             .background(
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(isHoveringGitFolder ? Color.gray.opacity(0.15) : Color.clear)
+                                    .fill(isHoveringGitFolder ? AppColors.Fallback.hoverBackground(for: colorScheme) : Color.clear)
                             )
                         }
                         .buttonStyle(.plain)
@@ -697,7 +694,7 @@ struct SessionRow: View {
                         // Always show time (hidden when hovering)
                         Text(duration)
                             .font(.system(size: 10))
-                            .foregroundColor(Color.secondary.opacity(0.6))
+                            .foregroundColor(AppColors.Fallback.secondaryText(for: colorScheme).opacity(0.6))
                             .opacity(isHovered || isTerminating ? 0 : 1)
                         
                         // Show X button on hover
@@ -705,14 +702,14 @@ struct SessionRow: View {
                             Button(action: terminateSession) {
                                 ZStack {
                                     Circle()
-                                        .fill(Color.red.opacity(0.1))
+                                        .fill(AppColors.Fallback.destructive(for: colorScheme).opacity(0.1))
                                         .frame(width: 14, height: 14)
                                     Circle()
-                                        .strokeBorder(Color.red.opacity(0.3), lineWidth: 0.5)
+                                        .strokeBorder(AppColors.Fallback.destructive(for: colorScheme).opacity(0.3), lineWidth: 0.5)
                                         .frame(width: 14, height: 14)
                                     Image(systemName: "xmark")
                                         .font(.system(size: 8, weight: .medium))
-                                        .foregroundColor(.red.opacity(0.8))
+                                        .foregroundColor(AppColors.Fallback.destructive(for: colorScheme).opacity(0.8))
                                 }
                             }
                             .buttonStyle(.plain)
@@ -754,7 +751,7 @@ struct SessionRow: View {
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(
-                    isFocused ? Color.accentColor.opacity(0.3) : Color.clear,
+                    isFocused ? AppColors.Fallback.accentHover(for: colorScheme).opacity(2) : Color.clear,
                     lineWidth: 1
                 )
         )
@@ -950,7 +947,7 @@ struct SessionRow: View {
     }
 
     private var hoverBackgroundColor: Color {
-        colorScheme == .dark ? Color.accentColor.opacity(0.08) : Color.accentColor.opacity(0.15)
+        AppColors.Fallback.accentHover(for: colorScheme)
     }
 
     private var duration: String {
@@ -1056,7 +1053,7 @@ struct EmptySessionsView: View {
                 .font(.system(size: 32))
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [Color.secondary, Color.secondary.opacity(0.6)],
+                        colors: [AppColors.Fallback.secondaryText(for: colorScheme), AppColors.Fallback.secondaryText(for: colorScheme).opacity(0.6)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )

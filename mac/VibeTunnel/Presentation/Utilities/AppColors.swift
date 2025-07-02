@@ -63,6 +63,32 @@ enum AppColors {
                 ? Color(red: 0.9, green: 0.5, blue: 0.2)  // Lighter in dark mode
                 : Color(red: 0.7, green: 0.35, blue: 0.0) // Darker in light mode
         }
+        
+        static func hoverBackground(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.gray.opacity(0.15)
+                : Color.gray.opacity(0.1)
+        }
+        
+        static func accentHover(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.accentColor.opacity(0.08)
+                : Color.accentColor.opacity(0.15)
+        }
+        
+        static func destructive(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.red.opacity(0.9)
+                : Color.red
+        }
+        
+        static func controlBackground(for colorScheme: ColorScheme) -> Color {
+            Color(NSColor.controlBackgroundColor)
+        }
+        
+        static func secondaryText(for colorScheme: ColorScheme) -> Color {
+            Color.secondary
+        }
     }
 }
 

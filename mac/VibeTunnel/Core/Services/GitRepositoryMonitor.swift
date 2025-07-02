@@ -13,6 +13,11 @@ public final class GitRepositoryMonitor {
     // MARK: - Lifecycle
 
     public init() {}
+    
+    // MARK: - Private Properties
+    
+    /// Concurrent queue for thread-safe cache access
+    private let cacheQueue = DispatchQueue(label: "git.cache", attributes: .concurrent)
 
     // MARK: - Public Methods
     
@@ -20,22 +25,26 @@ public final class GitRepositoryMonitor {
     /// - Parameter filePath: Path to a file within a potential Git repository
     /// - Returns: Cached GitRepository information if available, nil otherwise
     public func getCachedRepository(for filePath: String) -> GitRepository? {
-        // Check if we already know the repo path for this file
-        if let cachedRepoPath = fileToRepoCache[filePath],
-           let cached = repositoryCache[cachedRepoPath] {
+        cacheQueue.sync {
+            guard let cachedRepoPath = fileToRepoCache[filePath],
+                  let cached = repositoryCache[cachedRepoPath] else {
+                return nil
+            }
             return cached
         }
-        return nil
     }
 
     /// Find Git repository for a given file path and return its status
     /// - Parameter filePath: Path to a file within a potential Git repository
     /// - Returns: GitRepository information if found, nil otherwise
     public func findRepository(for filePath: String) async -> GitRepository? {
-        // Check if we already know the repo path for this file
-        if let cachedRepoPath = fileToRepoCache[filePath],
-           let cached = repositoryCache[cachedRepoPath] {
-            // Return cached data immediately (no matter how old)
+        // Validate path first
+        guard validatePath(filePath) else {
+            return nil
+        }
+        
+        // Check cache first
+        if let cached = getCachedRepository(for: filePath) {
             return cached
         }
         
@@ -44,13 +53,14 @@ public final class GitRepositoryMonitor {
             return nil
         }
         
-        // Cache the file->repo mapping
-        fileToRepoCache[filePath] = repoPath
-        
         // Check if we already have this repository cached
-        if let cached = repositoryCache[repoPath] {
-            // Return cached data immediately (no matter how old)
-            return cached
+        let cachedRepo = cacheQueue.sync { repositoryCache[repoPath] }
+        if let cachedRepo {
+            // Cache the file->repo mapping
+            cacheQueue.async(flags: .barrier) {
+                self.fileToRepoCache[filePath] = repoPath
+            }
+            return cachedRepo
         }
         
         // Get repository status
@@ -66,8 +76,10 @@ public final class GitRepositoryMonitor {
 
     /// Clear the repository cache
     public func clearCache() {
-        repositoryCache.removeAll()
-        fileToRepoCache.removeAll()
+        cacheQueue.async(flags: .barrier) {
+            self.repositoryCache.removeAll()
+            self.fileToRepoCache.removeAll()
+        }
     }
     
     /// Start monitoring and refreshing all cached repositories
@@ -92,11 +104,11 @@ public final class GitRepositoryMonitor {
     
     /// Refresh all cached repositories
     private func refreshAllCached() async {
-        let repoPaths = Array(repositoryCache.keys)
+        let repoPaths = cacheQueue.sync { Array(repositoryCache.keys) }
         for repoPath in repoPaths {
             if let fresh = await getRepositoryStatus(at: repoPath) {
-                await MainActor.run {
-                    repositoryCache[repoPath] = fresh
+                cacheQueue.async(flags: .barrier) {
+                    self.repositoryCache[repoPath] = fresh
                 }
             }
         }
@@ -116,12 +128,24 @@ public final class GitRepositoryMonitor {
     // MARK: - Private Methods
 
     private func cacheRepository(_ repository: GitRepository) {
-        repositoryCache[repository.path] = repository
+        cacheQueue.async(flags: .barrier) {
+            self.fileToRepoCache[repository.path] = repository.path
+            self.repositoryCache[repository.path] = repository
+        }
+    }
+    
+    /// Validate and sanitize paths
+    private func validatePath(_ path: String) -> Bool {
+        let expandedPath = NSString(string: path).expandingTildeInPath
+        let url = URL(fileURLWithPath: expandedPath)
+        // Ensure path is absolute and exists
+        return url.path.hasPrefix("/") && FileManager.default.fileExists(atPath: url.path)
     }
 
     /// Find the Git repository root starting from a given path
     private nonisolated func findGitRoot(from path: String) async -> String? {
-        var currentPath = URL(fileURLWithPath: path)
+        let expandedPath = NSString(string: path).expandingTildeInPath
+        var currentPath = URL(fileURLWithPath: expandedPath)
 
         // If it's a file, start from its directory
         if !currentPath.hasDirectoryPath {
