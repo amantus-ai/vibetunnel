@@ -147,9 +147,12 @@ final class SessionMonitor {
             // Pre-cache Git data for all sessions
             if let gitMonitor = gitRepositoryMonitor {
                 for session in sessionsArray {
-                    Task {
-                        // This will cache the data for immediate access later
-                        _ = await gitMonitor.findRepository(for: session.workingDir)
+                    // Only fetch if not already cached
+                    if gitMonitor.getCachedRepository(for: session.workingDir) == nil {
+                        Task {
+                            // This will cache the data for immediate access later
+                            _ = await gitMonitor.findRepository(for: session.workingDir)
+                        }
                     }
                 }
             }

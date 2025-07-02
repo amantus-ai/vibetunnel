@@ -110,6 +110,7 @@ public final class GitRepositoryMonitor {
     public func clearCache() {
         repositoryCache.removeAll()
         fileToRepoCache.removeAll()
+        githubURLCache.removeAll()
     }
 
     /// Start monitoring and refreshing all cached repositories
@@ -149,6 +150,9 @@ public final class GitRepositoryMonitor {
 
     /// Cache mapping file paths to their repository paths
     private var fileToRepoCache: [String: String] = [:]
+    
+    /// Cache for GitHub URLs by repository path
+    private var githubURLCache: [String: URL] = [:]
 
     /// Timer for periodic monitoring
     private var monitoringTimer: Timer?
@@ -213,7 +217,37 @@ public final class GitRepositoryMonitor {
     }
 
     /// Get repository status by running git status
-    private nonisolated func getRepositoryStatus(at repoPath: String) async -> GitRepository? {
+    private func getRepositoryStatus(at repoPath: String) async -> GitRepository? {
+        // First get the basic git status
+        let basicRepository = await getBasicGitStatus(at: repoPath)
+        
+        guard var repository = basicRepository else {
+            return nil
+        }
+        
+        // Check if we have a cached GitHub URL
+        if let cachedURL = githubURLCache[repoPath] {
+            repository = GitRepository(
+                path: repository.path,
+                modifiedCount: repository.modifiedCount,
+                addedCount: repository.addedCount,
+                deletedCount: repository.deletedCount,
+                untrackedCount: repository.untrackedCount,
+                currentBranch: repository.currentBranch,
+                githubURL: cachedURL
+            )
+        } else {
+            // Fetch GitHub URL in background (non-blocking)
+            Task {
+                fetchGitHubURLInBackground(for: repoPath)
+            }
+        }
+        
+        return repository
+    }
+    
+    /// Get basic repository status without GitHub URL
+    private nonisolated func getBasicGitStatus(at repoPath: String) async -> GitRepository? {
         await withCheckedContinuation { continuation in
             self.gitOperationQueue.addOperation {
                 // Sanitize the path before using it
@@ -315,5 +349,39 @@ public final class GitRepositoryMonitor {
             untrackedCount: untrackedCount,
             currentBranch: currentBranch
         )
+    }
+    
+    /// Fetch GitHub URL in background and cache it
+    @MainActor
+    private func fetchGitHubURLInBackground(for repoPath: String) {
+        // Check if already cached
+        if githubURLCache[repoPath] != nil {
+            return
+        }
+        
+        // Fetch in background
+        Task {
+            gitOperationQueue.addOperation {
+                if let githubURL = GitRepository.getGitHubURL(for: repoPath) {
+                    Task { @MainActor in
+                        self.githubURLCache[repoPath] = githubURL
+                        
+                        // Update cached repository with GitHub URL
+                        if var cachedRepo = self.repositoryCache[repoPath] {
+                            cachedRepo = GitRepository(
+                                path: cachedRepo.path,
+                                modifiedCount: cachedRepo.modifiedCount,
+                                addedCount: cachedRepo.addedCount,
+                                deletedCount: cachedRepo.deletedCount,
+                                untrackedCount: cachedRepo.untrackedCount,
+                                currentBranch: cachedRepo.currentBranch,
+                                githubURL: githubURL
+                            )
+                            self.repositoryCache[repoPath] = cachedRepo
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -26,6 +26,9 @@ public struct GitRepository: Sendable, Equatable, Hashable {
 
     /// Current branch name
     public let currentBranch: String?
+    
+    /// GitHub URL for the repository (cached, not computed)
+    public let githubURL: URL?
 
     // MARK: - Computed Properties
 
@@ -42,11 +45,6 @@ public struct GitRepository: Sendable, Equatable, Hashable {
     /// Folder name for display
     public var folderName: String {
         URL(fileURLWithPath: path).lastPathComponent
-    }
-
-    /// GitHub URL for the repository if it's hosted on GitHub
-    public var githubURL: URL? {
-        Self.getGitHubURL(for: path)
     }
 
     /// Status text for display
@@ -79,7 +77,8 @@ public struct GitRepository: Sendable, Equatable, Hashable {
         addedCount: Int = 0,
         deletedCount: Int = 0,
         untrackedCount: Int = 0,
-        currentBranch: String? = nil
+        currentBranch: String? = nil,
+        githubURL: URL? = nil
     ) {
         self.path = path
         self.modifiedCount = modifiedCount
@@ -87,12 +86,13 @@ public struct GitRepository: Sendable, Equatable, Hashable {
         self.deletedCount = deletedCount
         self.untrackedCount = untrackedCount
         self.currentBranch = currentBranch
+        self.githubURL = githubURL
     }
 
-    // MARK: - Private Methods
+    // MARK: - Internal Methods
 
     /// Extract GitHub URL from a repository path
-    private static func getGitHubURL(for repoPath: String) -> URL? {
+    internal static func getGitHubURL(for repoPath: String) -> URL? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = ["remote", "get-url", "origin"]
@@ -121,7 +121,7 @@ public struct GitRepository: Sendable, Equatable, Hashable {
     }
 
     /// Parse GitHub URL from git remote output
-    private static func parseGitHubURL(from remoteURL: String) -> URL? {
+    internal static func parseGitHubURL(from remoteURL: String) -> URL? {
         // Handle HTTPS URLs: https://github.com/user/repo.git
         if remoteURL.hasPrefix("https://github.com/") {
             let cleanURL = remoteURL.hasSuffix(".git") ? String(remoteURL.dropLast(4)) : remoteURL
