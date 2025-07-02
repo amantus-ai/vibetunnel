@@ -129,15 +129,6 @@ final class SessionMonitor {
                     "Fetched \(sessionsArray.count) sessions, \(sessionsDict.values.count { $0.isRunning }) running"
                 )
 
-            // Debug: Log session details
-            for session in sessionsArray {
-                let pidStr = session.pid.map { String($0) } ?? "nil"
-                logger
-                    .debug(
-                        "Session \(session.id): status=\(session.status), isRunning=\(session.isRunning), pid=\(pidStr)"
-                    )
-            }
-
             // Update WindowTracker
             WindowTracker.shared.updateFromSessions(sessionsArray)
         } catch {
