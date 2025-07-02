@@ -44,9 +44,26 @@ export class TerminalManager {
       return `${context}:${errorMessage}`;
     },
   });
+  private originalConsoleWarn: typeof console.warn;
 
   constructor(controlDir: string) {
     this.controlDir = controlDir;
+
+    // Override console.warn to suppress xterm.js parsing warnings
+    this.originalConsoleWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      const message = args[0];
+      if (
+        typeof message === 'string' &&
+        (message.includes('xterm.js parsing error') ||
+          message.includes('Unable to process character') ||
+          message.includes('Cannot read properties of undefined'))
+      ) {
+        // Suppress xterm.js parsing warnings
+        return;
+      }
+      this.originalConsoleWarn.apply(console, args);
+    };
   }
 
   /**
@@ -731,5 +748,24 @@ export class TerminalManager {
     } catch (error) {
       logger.error(`Error getting buffer snapshot for notification ${sessionId}:`, error);
     }
+  }
+
+  /**
+   * Destroy the terminal manager and restore console overrides
+   */
+  destroy(): void {
+    // Close all terminals
+    for (const sessionId of this.terminals.keys()) {
+      this.closeTerminal(sessionId);
+    }
+
+    // Clear all timers
+    for (const timer of this.changeTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.changeTimers.clear();
+
+    // Restore original console.warn
+    console.warn = this.originalConsoleWarn;
   }
 }

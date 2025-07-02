@@ -290,10 +290,14 @@ export class Terminal extends LitElement {
 
         // Override console methods to filter xterm.js parsing errors
         console.error = (...args: unknown[]) => {
+          const message = args[0];
           if (
-            args[0] &&
-            typeof args[0] === 'string' &&
-            args[0].includes('xterm.js: Parsing error:')
+            message &&
+            typeof message === 'string' &&
+            (message.includes('xterm.js: Parsing error:') ||
+              message.includes('xterm.js parsing error') ||
+              message.includes('Unable to process character') ||
+              message.includes('Cannot read properties of undefined'))
           ) {
             // Suppress xterm.js parsing errors - they're harmless but noisy
             return;

@@ -1,3 +1,23 @@
+// Global xterm.js error suppression - must be at the very top
+(() => {
+  const originalError = console.error;
+  const originalWarn = console.warn;
+
+  console.error = (...args: unknown[]) => {
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('xterm.js: Parsing error:')) {
+      return; // Suppress xterm.js parsing errors
+    }
+    originalError.apply(console, args);
+  };
+
+  console.warn = (...args: unknown[]) => {
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('xterm.js: Parsing error:')) {
+      return; // Suppress xterm.js parsing warnings
+    }
+    originalWarn.apply(console, args);
+  };
+})();
+
 import { html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
