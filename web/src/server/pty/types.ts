@@ -89,6 +89,10 @@ export interface PtySession {
   isExternalTerminal: boolean;
   // Title sequence filter for removing terminal title sequences
   titleFilter?: TitleSequenceFilter;
+  // Title update tracking
+  titleUpdateNeeded?: boolean;
+  currentTitle?: string;
+  lastActivityStatus?: string;
 }
 
 export class PtyError extends Error {
