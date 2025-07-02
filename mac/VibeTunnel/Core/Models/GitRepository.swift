@@ -26,7 +26,7 @@ public struct GitRepository: Sendable, Equatable, Hashable {
 
     /// Current branch name
     public let currentBranch: String?
-    
+
     /// GitHub URL for the repository (cached, not computed)
     public let githubURL: URL?
 
@@ -92,7 +92,7 @@ public struct GitRepository: Sendable, Equatable, Hashable {
     // MARK: - Internal Methods
 
     /// Extract GitHub URL from a repository path
-    internal static func getGitHubURL(for repoPath: String) -> URL? {
+    static func getGitHubURL(for repoPath: String) -> URL? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = ["remote", "get-url", "origin"]
@@ -121,7 +121,7 @@ public struct GitRepository: Sendable, Equatable, Hashable {
     }
 
     /// Parse GitHub URL from git remote output
-    internal static func parseGitHubURL(from remoteURL: String) -> URL? {
+    static func parseGitHubURL(from remoteURL: String) -> URL? {
         // Handle HTTPS URLs: https://github.com/user/repo.git
         if remoteURL.hasPrefix("https://github.com/") {
             let cleanURL = remoteURL.hasSuffix(".git") ? String(remoteURL.dropLast(4)) : remoteURL

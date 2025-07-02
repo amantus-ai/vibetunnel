@@ -35,11 +35,11 @@ struct ServerInfoHeader: View {
 
                 ServerStatusBadge(
                     isRunning: serverManager.isRunning
-                )                    {
-                        Task {
-                            await serverManager.restart()
-                        }
+                ) {
+                    Task {
+                        await serverManager.restart()
                     }
+                }
             }
 
             // Server address

@@ -99,7 +99,7 @@ struct SessionRow: View {
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                         }
-                        
+
                         // Edit button (pencil icon) - only show on hover
                         if isHovered && !isEditing {
                             Button(action: startEditing) {
@@ -123,9 +123,9 @@ struct SessionRow: View {
                 }
 
                 // Second row: Path, Git info, Duration and X button
-                HStack(spacing: 6) {
+                HStack(alignment: .center, spacing: 6) {
                     // Left side: Path and git info
-                    HStack(spacing: 6) {
+                    HStack(alignment: .center, spacing: 6) {
                         // Folder icon and path - clickable as one unit
                         Button(action: {
                             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
@@ -134,7 +134,7 @@ struct SessionRow: View {
                                 Image(systemName: "folder")
                                     .font(.system(size: 10))
                                     .foregroundColor(.secondary)
-                                
+
                                 Text(compactPath)
                                     .font(.system(size: 10, design: .monospaced))
                                     .foregroundColor(.secondary)
@@ -145,7 +145,9 @@ struct SessionRow: View {
                             .padding(.vertical, 2)
                             .background(
                                 RoundedRectangle(cornerRadius: 4)
-                                    .fill(isHoveringFolder ? AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.3) : Color.clear)
+                                    .fill(isHoveringFolder ? AppColors.Fallback.controlBackground(for: colorScheme)
+                                        .opacity(0.15) : Color.clear
+                                    )
                             )
                         }
                         .buttonStyle(.plain)
@@ -154,26 +156,23 @@ struct SessionRow: View {
                         }
                         .help("Open in Finder")
 
-                        if let repo = gitRepository, isHovered {
+                        if let repo = gitRepository {
                             GitRepositoryRow(repository: repo)
-                                .padding(.leading, 2)
-                                .transition(.opacity.combined(with: .scale(scale: 0.95)))
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    // Right side: Duration and X button - always take up space
-                    HStack(spacing: 4) {
-                        // Duration label - always visible but change opacity
-                        if !duration.isEmpty {
+                    // Right side: Duration and X button overlay
+                    ZStack {
+                        // Duration label (hidden on hover)
+                        if !duration.isEmpty && !isHovered && !isTerminating {
                             Text(duration)
-                                .font(.system(size: 9))
+                                .font(.system(size: 10))
                                 .foregroundColor(.secondary.opacity(0.6))
-                                .opacity(isHovered && !isTerminating ? 0 : 1)
                         }
 
-                        // X button container - always takes up space
-                        if !isTerminating {
+                        // Show X button on hover (overlays duration)
+                        if !isTerminating && isHovered {
                             Button(action: terminateSession) {
                                 ZStack {
                                     Circle()
@@ -191,15 +190,16 @@ struct SessionRow: View {
                                 }
                             }
                             .buttonStyle(.plain)
-                            .opacity(isHovered ? 1 : 0)
-                        } else {
-                            // Show progress indicator while terminating
+                        }
+
+                        // Show progress indicator while terminating
+                        if isTerminating {
                             ProgressView()
                                 .scaleEffect(0.5)
                                 .frame(width: 14, height: 14)
                         }
                     }
-                    .frame(minWidth: 50, alignment: .trailing)
+                    .frame(width: 30, height: 16)
                 }
 
                 // Third row: Activity status (if present)
@@ -410,12 +410,14 @@ struct SessionRow: View {
     }
 
     private var activityColor: Color {
-        isActive ? AppColors.Fallback.activityIndicator(for: colorScheme) : AppColors.Fallback.gitClean(for: colorScheme)
+        isActive ? AppColors.Fallback.activityIndicator(for: colorScheme) : AppColors.Fallback
+            .gitClean(for: colorScheme)
     }
 
     private var hasWindow: Bool {
-        // Check if session was attached via VT (has a terminal window)
-        session.value.attachedViaVT ?? false
+        // Check if WindowTracker has found a window for this session
+        // This includes both spawned terminals and those attached via vt
+        WindowTracker.shared.windowInfo(for: session.key) != nil
     }
 
     private var hoverBackgroundColor: Color {

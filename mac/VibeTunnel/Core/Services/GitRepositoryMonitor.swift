@@ -36,9 +36,8 @@ public final class GitRepositoryMonitor {
         gitOperationQueue.maxConcurrentOperationCount = 3 // Limit concurrent git processes
     }
 
-
     // MARK: - Private Properties
-    
+
     /// Operation queue for rate limiting git operations
     private let gitOperationQueue = OperationQueue()
 
@@ -111,6 +110,7 @@ public final class GitRepositoryMonitor {
         repositoryCache.removeAll()
         fileToRepoCache.removeAll()
         githubURLCache.removeAll()
+        githubURLFetchesInProgress.removeAll()
     }
 
     /// Start monitoring and refreshing all cached repositories
@@ -150,9 +150,12 @@ public final class GitRepositoryMonitor {
 
     /// Cache mapping file paths to their repository paths
     private var fileToRepoCache: [String: String] = [:]
-    
+
     /// Cache for GitHub URLs by repository path
     private var githubURLCache: [String: URL] = [:]
+
+    /// Set to track in-progress GitHub URL fetches to prevent duplicates
+    private var githubURLFetchesInProgress: Set<String> = []
 
     /// Timer for periodic monitoring
     private var monitoringTimer: Timer?
@@ -161,9 +164,9 @@ public final class GitRepositoryMonitor {
 
     private func cacheRepository(_ repository: GitRepository, originalFilePath: String? = nil) {
         repositoryCache[repository.path] = repository
-        
+
         // Also map the original file path if different from repository path
-        if let originalFilePath = originalFilePath, originalFilePath != repository.path {
+        if let originalFilePath, originalFilePath != repository.path {
             fileToRepoCache[originalFilePath] = repository.path
         }
     }
@@ -188,8 +191,8 @@ public final class GitRepositoryMonitor {
             return nil
         }
 
-        // Escape special characters for shell
-        return url.path.replacingOccurrences(of: "'", with: "'\\''")
+        // Return raw path - Process doesn't need shell escaping
+        return url.path
     }
 
     /// Find the Git repository root starting from a given path
@@ -220,11 +223,11 @@ public final class GitRepositoryMonitor {
     private func getRepositoryStatus(at repoPath: String) async -> GitRepository? {
         // First get the basic git status
         let basicRepository = await getBasicGitStatus(at: repoPath)
-        
+
         guard var repository = basicRepository else {
             return nil
         }
-        
+
         // Check if we have a cached GitHub URL
         if let cachedURL = githubURLCache[repoPath] {
             repository = GitRepository(
@@ -242,10 +245,10 @@ public final class GitRepositoryMonitor {
                 fetchGitHubURLInBackground(for: repoPath)
             }
         }
-        
+
         return repository
     }
-    
+
     /// Get basic repository status without GitHub URL
     private nonisolated func getBasicGitStatus(at repoPath: String) async -> GitRepository? {
         await withCheckedContinuation { continuation in
@@ -350,22 +353,25 @@ public final class GitRepositoryMonitor {
             currentBranch: currentBranch
         )
     }
-    
+
     /// Fetch GitHub URL in background and cache it
     @MainActor
     private func fetchGitHubURLInBackground(for repoPath: String) {
-        // Check if already cached
-        if githubURLCache[repoPath] != nil {
+        // Check if already cached or fetch in progress
+        if githubURLCache[repoPath] != nil || githubURLFetchesInProgress.contains(repoPath) {
             return
         }
-        
+
+        // Mark as in progress
+        githubURLFetchesInProgress.insert(repoPath)
+
         // Fetch in background
         Task {
             gitOperationQueue.addOperation {
                 if let githubURL = GitRepository.getGitHubURL(for: repoPath) {
                     Task { @MainActor in
                         self.githubURLCache[repoPath] = githubURL
-                        
+
                         // Update cached repository with GitHub URL
                         if var cachedRepo = self.repositoryCache[repoPath] {
                             cachedRepo = GitRepository(
@@ -379,6 +385,14 @@ public final class GitRepositoryMonitor {
                             )
                             self.repositoryCache[repoPath] = cachedRepo
                         }
+
+                        // Remove from in-progress set
+                        self.githubURLFetchesInProgress.remove(repoPath)
+                    }
+                } else {
+                    Task { @MainActor in
+                        // Remove from in-progress set even if fetch failed
+                        self.githubURLFetchesInProgress.remove(repoPath)
                     }
                 }
             }

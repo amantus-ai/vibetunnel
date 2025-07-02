@@ -126,47 +126,83 @@ final class WindowMatcher {
     {
         // First try to find window by process PID traversal
         if let sessionPID = sessionInfo.pid {
-            logger.debug("Scanning by process PID: \(sessionPID)")
+            logger.debug("Scanning for window by process PID: \(sessionPID) for session \(sessionID)")
+            
+            // Log the process tree for debugging
+            processTracker.logProcessTree(for: pid_t(sessionPID))
 
-            // Try to find the parent process (shell) that owns this session
-            if let parentPID = processTracker.getParentProcessID(of: pid_t(sessionPID)) {
-                logger.debug("Found parent process PID (scan): \(parentPID)")
-
-                // Look for a window owned by the parent process
+            // Try to traverse up the process tree to find a terminal window
+            var currentPID = pid_t(sessionPID)
+            var depth = 0
+            let maxDepth = 20 // Increased depth for deeply nested sessions
+            
+            while depth < maxDepth {
+                // Check if any window is owned by this PID
                 if let matchingWindow = allWindows.first(where: { window in
-                    window.ownerPID == parentPID
+                    window.ownerPID == currentPID
                 }) {
-                    logger
-                        .info("Found window by parent process match (scan): PID \(parentPID) for session \(sessionID)")
+                    logger.info("Found window by PID \(currentPID) at depth \(depth) for session \(sessionID)")
                     return matchingWindow
                 }
+                
+                // Move up to parent process
+                if let parentPID = processTracker.getParentProcessID(of: currentPID) {
+                    if parentPID == 0 || parentPID == 1 {
+                        // Reached root process
+                        break
+                    }
+                    currentPID = parentPID
+                    depth += 1
+                } else {
+                    break
+                }
             }
+            
+            logger.debug("Process traversal completed at depth \(depth) without finding window")
         }
 
         // Fallback: Find by working directory
         let workingDir = sessionInfo.workingDir
         let dirName = (workingDir as NSString).lastPathComponent
+        
+        logger.debug("Trying to match by directory: \(dirName) or full path: \(workingDir)")
 
         // Look for windows whose title contains the directory name
         if let matchingWindow = allWindows.first(where: { window in
-            WindowEnumerator.windowTitleContains(window, identifier: dirName) ||
-                WindowEnumerator.windowTitleContains(window, identifier: workingDir)
+            if let title = window.title {
+                let matches = title.contains(dirName) || title.contains(workingDir)
+                if matches {
+                    logger.debug("Window title '\(title)' matches directory")
+                }
+                return matches
+            }
+            return false
         }) {
-            logger.info("Found window by directory match (scan): \(dirName) for session \(sessionID)")
+            logger.info("Found window by directory match: \(dirName) for session \(sessionID)")
             return matchingWindow
         }
 
         // Try to match by activity status (for sessions with specific activities)
-        if let activity = sessionInfo.activityStatus?.specificStatus?.status {
+        if let activity = sessionInfo.activityStatus?.specificStatus?.status, !activity.isEmpty {
+            logger.debug("Trying to match by activity: \(activity)")
+            
             if let matchingWindow = allWindows.first(where: { window in
-                WindowEnumerator.windowTitleContains(window, identifier: activity)
+                if let title = window.title {
+                    return title.contains(activity)
+                }
+                return false
             }) {
-                logger.info("Found window by activity match (scan): \(activity) for session \(sessionID)")
+                logger.info("Found window by activity match: \(activity) for session \(sessionID)")
                 return matchingWindow
             }
         }
 
-        logger.warning("Could not find window for session \(sessionID) during scan")
+        logger.warning("Could not find window for session \(sessionID) after all attempts")
+        logger.debug("Available windows: \(allWindows.count)")
+        for (index, window) in allWindows.enumerated() {
+            logger.debug("  Window \(index): PID=\(window.ownerPID), Terminal=\(window.terminalApp.rawValue), Title=\(window.title ?? "<no title>")")
+        }
+        
         return nil
     }
 

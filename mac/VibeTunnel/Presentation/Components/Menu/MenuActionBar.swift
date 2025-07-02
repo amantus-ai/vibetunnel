@@ -28,11 +28,12 @@ struct MenuActionBar: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 3)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(isHoveringNewSession ? AppColors.Fallback.accentHover(for: colorScheme)
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(isHoveringNewSession ? AppColors.Fallback.controlBackground(for: colorScheme)
                                 .opacity(0.15) : Color.clear
                             )
-                            .animation(.easeInOut(duration: 0.2), value: isHoveringNewSession)
+                            .scaleEffect(isHoveringNewSession ? 1.1 : 1.0)
+                            .animation(.easeInOut(duration: 0.15), value: isHoveringNewSession)
                     )
             }
             .buttonStyle(.plain)
@@ -59,11 +60,12 @@ struct MenuActionBar: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 3)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(isHoveringSettings ? AppColors.Fallback.accentHover(for: colorScheme)
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(isHoveringSettings ? AppColors.Fallback.controlBackground(for: colorScheme)
                                 .opacity(0.15) : Color.clear
                             )
-                            .animation(.easeInOut(duration: 0.2), value: isHoveringSettings)
+                            .scaleEffect(isHoveringSettings ? 1.1 : 1.0)
+                            .animation(.easeInOut(duration: 0.15), value: isHoveringSettings)
                     )
             }
             .buttonStyle(.plain)
@@ -92,11 +94,12 @@ struct MenuActionBar: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 3)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(isHoveringQuit ? AppColors.Fallback.destructive(for: colorScheme)
-                                .opacity(0.08) : Color.clear
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(isHoveringQuit ? AppColors.Fallback.controlBackground(for: colorScheme)
+                                .opacity(0.15) : Color.clear
                             )
-                            .animation(.easeInOut(duration: 0.2), value: isHoveringQuit)
+                            .scaleEffect(isHoveringQuit ? 1.1 : 1.0)
+                            .animation(.easeInOut(duration: 0.15), value: isHoveringQuit)
                     )
             }
             .buttonStyle(.plain)

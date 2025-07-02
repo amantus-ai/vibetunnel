@@ -10,7 +10,6 @@ struct GitRepositoryRow: View {
     @Environment(\.colorScheme)
     private var colorScheme
 
-
     private var branchInfo: some View {
         HStack(spacing: 2) {
             Image(systemName: "arrow.branch")
@@ -62,7 +61,7 @@ struct GitRepositoryRow: View {
 
     private var backgroundFillColor: Color {
         // Only show background on hover - very subtle
-        isHovering ? AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.3) : Color.clear
+        isHovering ? AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.15) : Color.clear
     }
 
     private var borderView: some View {
@@ -76,8 +75,15 @@ struct GitRepositoryRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             branchInfo
+
+            if repository.hasChanges {
+                Text("•")
+                    .font(.system(size: 8))
+                    .foregroundColor(.secondary.opacity(0.5))
+            }
+
             changeIndicators
         }
         .padding(.horizontal, 6)
@@ -95,7 +101,7 @@ struct GitRepositoryRow: View {
             Button("Open in Tower") {
                 openInGitApp()
             }
-            
+
             Button("Open Repository in Finder") {
                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
             }
@@ -122,7 +128,7 @@ struct GitRepositoryRow: View {
         }
         .animation(.easeInOut(duration: 0.15), value: isHovering)
     }
-    
+
     private func openInGitApp() {
         // Try to open in Tower first, fall back to SourceTree, then GitKraken
         let gitApps = [
@@ -131,17 +137,21 @@ struct GitRepositoryRow: View {
             "com.torusknot.SourceTreeNotMAS",
             "com.axosoft.gitkraken"
         ]
-        
+
         let url = URL(fileURLWithPath: repository.path)
-        
+
         // Try each app in order
         for appIdentifier in gitApps {
             if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: appIdentifier) {
-                NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration: NSWorkspace.OpenConfiguration())
+                NSWorkspace.shared.open(
+                    [url],
+                    withApplicationAt: appURL,
+                    configuration: NSWorkspace.OpenConfiguration()
+                )
                 return
             }
         }
-        
+
         // If no git app found, open in Finder as fallback
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
     }

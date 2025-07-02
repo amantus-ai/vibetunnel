@@ -90,7 +90,7 @@ enum AppColors {
             Color.secondary
         }
 
-        // Git-specific colors
+        /// Git-specific colors
         static func gitFolder(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
                 ? Color(red: 0.4, green: 0.6, blue: 0.8) // Light blue in dark mode

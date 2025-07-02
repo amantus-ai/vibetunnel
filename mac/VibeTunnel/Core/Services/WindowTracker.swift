@@ -165,7 +165,7 @@ final class WindowTracker {
     /// Updates window tracking based on current sessions.
     /// This method is called periodically to:
     /// 1. Remove windows for sessions that no longer exist
-    /// 2. Try to find windows for sessions that were attached via `vt`
+    /// 2. Try to find windows for ALL sessions without registered windows
     func updateFromSessions(_ sessions: [ServerSessionInfo]) {
         let sessionIDs = Set(sessions.map(\.id))
 
@@ -181,16 +181,26 @@ final class WindowTracker {
             }
         }
 
-        // For sessions without registered windows, try to find them
-        // This handles sessions that were attached via `vt` command
-        for session in sessions {
-            if windowInfo(for: session.id) == nil && (session.attachedViaVT ?? false) {
+        // For ALL sessions without registered windows, try to find them
+        // This handles:
+        // 1. Sessions attached via `vt` command
+        // 2. Sessions spawned through the app but window registration failed
+        // 3. Any other session that has a terminal window
+        for session in sessions where session.isRunning {
+            if windowInfo(for: session.id) == nil {
+                logger.debug("Session \(session.id) has no window registered, attempting to find it...")
+
                 // Try to find the window for this session
                 if let foundWindow = findWindowForSession(session.id, sessionInfo: session) {
                     mapLock.withLock {
                         sessionWindowMap[session.id] = foundWindow
                     }
-                    logger.info("Found and registered window for attached session: \(session.id)")
+                    logger
+                        .info(
+                            "Found and registered window for session: \(session.id) (attachedViaVT: \(session.attachedViaVT ?? false))"
+                        )
+                } else {
+                    logger.debug("Could not find window for session: \(session.id)")
                 }
             }
         }
