@@ -7,10 +7,10 @@ import SwiftUI
 struct SessionSectionHeader: View {
     let title: String
     let count: Int
-    
+
     @Environment(\.colorScheme)
     private var colorScheme
-    
+
     var body: some View {
         HStack {
             Text(title)
@@ -38,7 +38,7 @@ struct SessionListSection: View {
     let hasStartedKeyboardNavigation: Bool
     let onHover: (String?) -> Void
     let onFocus: (VibeTunnelMenuView.FocusField?) -> Void
-    
+
     var body: some View {
         VStack(spacing: 1) {
             if activeSessions.isEmpty && idleSessions.isEmpty {
@@ -77,7 +77,7 @@ struct SessionListSection: View {
                         ))
                     }
                 }
-                
+
                 // Idle sessions section
                 if !idleSessions.isEmpty {
                     SessionSectionHeader(title: "Idle", count: idleSessions.count)

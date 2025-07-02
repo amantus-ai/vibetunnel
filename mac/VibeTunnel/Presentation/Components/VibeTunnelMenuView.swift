@@ -18,26 +18,26 @@ struct VibeTunnelMenuView: View {
     private var openWindow
     @Environment(\.colorScheme)
     private var colorScheme
-    
+
     @State private var hoveredSessionId: String?
     @State private var hasStartedKeyboardNavigation = false
     @State private var showingNewSession = false
     @FocusState private var focusedField: FocusField?
-    
+
     /// Binding to allow external control of new session state
     @Binding var isNewSessionActive: Bool
-    
+
     init(isNewSessionActive: Binding<Bool> = .constant(false)) {
         self._isNewSessionActive = isNewSessionActive
     }
-    
+
     enum FocusField: Hashable {
         case sessionRow(String)
         case settingsButton
         case newSessionButton
         case quitButton
     }
-    
+
     var body: some View {
         if showingNewSession {
             NewSessionForm(isPresented: Binding(
@@ -59,7 +59,7 @@ struct VibeTunnelMenuView: View {
                 ))
         }
     }
-    
+
     private var mainContent: some View {
         VStack(spacing: 0) {
             // Header with server info
@@ -72,9 +72,9 @@ struct VibeTunnelMenuView: View {
                         endPoint: .bottom
                     )
                 )
-            
+
             Divider()
-            
+
             // Session list
             ScrollView {
                 SessionListSection(
@@ -92,9 +92,9 @@ struct VibeTunnelMenuView: View {
                 )
             }
             .frame(maxHeight: 400)
-            
+
             Divider()
-            
+
             // Bottom action bar
             MenuActionBar(
                 showingNewSession: $showingNewSession,
@@ -113,19 +113,19 @@ struct VibeTunnelMenuView: View {
             return .ignored
         }
     }
-    
+
     private var activeSessions: [(key: String, value: ServerSessionInfo)] {
         sessionMonitor.sessions
             .filter { $0.value.isRunning && hasActivity($0.value) }
             .sorted { $0.value.startedAt > $1.value.startedAt }
     }
-    
+
     private var idleSessions: [(key: String, value: ServerSessionInfo)] {
         sessionMonitor.sessions
             .filter { $0.value.isRunning && !hasActivity($0.value) }
             .sorted { $0.value.startedAt > $1.value.startedAt }
     }
-    
+
     private func hasActivity(_ session: ServerSessionInfo) -> Bool {
         if let activityStatus = session.activityStatus?.specificStatus?.status {
             return !activityStatus.isEmpty

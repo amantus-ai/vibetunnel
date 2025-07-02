@@ -9,22 +9,24 @@ struct GitRepositoryRow: View {
     @State private var isHovering = false
     @Environment(\.colorScheme)
     private var colorScheme
-    
+
     var body: some View {
         HStack(spacing: 4) {
             // Git folder icon with hover effect
             Image(systemName: "folder.badge.gearshape")
                 .font(.system(size: 10))
-                .foregroundColor(isHovering ? AppColors.Fallback.gitFolderHover(for: colorScheme) : AppColors.Fallback.gitFolder(for: colorScheme))
+                .foregroundColor(isHovering ? AppColors.Fallback.gitFolderHover(for: colorScheme) : AppColors.Fallback
+                    .gitFolder(for: colorScheme)
+                )
                 .scaleEffect(isHovering ? 1.05 : 1.0)
                 .animation(.easeInOut(duration: 0.15), value: isHovering)
-            
+
             // Branch icon and name
             HStack(spacing: 2) {
                 Image(systemName: "arrow.branch")
                     .font(.system(size: 9))
                     .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
-                
+
                 Text(repository.branch)
                     .font(.system(size: 10))
                     .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
@@ -32,7 +34,7 @@ struct GitRepositoryRow: View {
                     .truncationMode(.middle)
                     .frame(maxWidth: 60)
             }
-            
+
             // Change indicators
             if repository.hasChanges {
                 HStack(spacing: 2) {
@@ -67,12 +69,15 @@ struct GitRepositoryRow: View {
         .padding(.vertical, 2)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isHovering ? AppColors.Fallback.gitBackground(for: colorScheme).opacity(0.5) : AppColors.Fallback.gitBackground(for: colorScheme).opacity(0.3))
+                .fill(isHovering ? AppColors.Fallback.gitBackground(for: colorScheme).opacity(0.5) : AppColors.Fallback
+                    .gitBackground(for: colorScheme).opacity(0.3)
+                )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 4)
                 .strokeBorder(
-                    isHovering ? AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.5) : AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.2),
+                    isHovering ? AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.5) : AppColors.Fallback
+                        .gitBorder(for: colorScheme).opacity(0.2),
                     lineWidth: 0.5
                 )
         )
@@ -87,7 +92,7 @@ struct GitRepositoryRow: View {
             Button("Open Repository in Finder") {
                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
             }
-            
+
             if repository.githubURL != nil {
                 Button("Open on GitHub") {
                     if let url = repository.githubURL {
@@ -95,14 +100,14 @@ struct GitRepositoryRow: View {
                     }
                 }
             }
-            
+
             Divider()
-            
+
             Button("Copy Branch Name") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(repository.branch, forType: .string)
             }
-            
+
             Button("Copy Repository Path") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(repository.path, forType: .string)

@@ -8,16 +8,16 @@ struct MenuActionBar: View {
     @Binding var showingNewSession: Bool
     @Binding var focusedField: VibeTunnelMenuView.FocusField?
     let hasStartedKeyboardNavigation: Bool
-    
+
     @Environment(\.openWindow)
     private var openWindow
     @Environment(\.colorScheme)
     private var colorScheme
-    
+
     @State private var isHoveringNewSession = false
     @State private var isHoveringSettings = false
     @State private var isHoveringQuit = false
-    
+
     var body: some View {
         HStack(spacing: 8) {
             Button(action: {
@@ -29,7 +29,9 @@ struct MenuActionBar: View {
                     .padding(.vertical, 3)
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(isHoveringNewSession ? AppColors.Fallback.accentHover(for: colorScheme).opacity(0.1) : Color.clear)
+                            .fill(isHoveringNewSession ? AppColors.Fallback.accentHover(for: colorScheme)
+                                .opacity(0.1) : Color.clear
+                            )
                             .animation(.easeInOut(duration: 0.2), value: isHoveringNewSession)
                     )
             }
@@ -43,12 +45,13 @@ struct MenuActionBar: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(
-                        focusedField == .newSessionButton && hasStartedKeyboardNavigation ? AppColors.Fallback.accentHover(for: colorScheme).opacity(2) : Color.clear,
+                        focusedField == .newSessionButton && hasStartedKeyboardNavigation ? AppColors.Fallback
+                            .accentHover(for: colorScheme).opacity(2) : Color.clear,
                         lineWidth: 1
                     )
                     .animation(.easeInOut(duration: 0.15), value: focusedField)
             )
-            
+
             Button(action: {
                 openWindow(id: "settings")
             }) {
@@ -58,7 +61,9 @@ struct MenuActionBar: View {
                     .padding(.vertical, 3)
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(isHoveringSettings ? AppColors.Fallback.accentHover(for: colorScheme).opacity(0.1) : Color.clear)
+                            .fill(isHoveringSettings ? AppColors.Fallback.accentHover(for: colorScheme)
+                                .opacity(0.1) : Color.clear
+                            )
                             .animation(.easeInOut(duration: 0.2), value: isHoveringSettings)
                     )
             }
@@ -72,14 +77,15 @@ struct MenuActionBar: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(
-                        focusedField == .settingsButton && hasStartedKeyboardNavigation ? AppColors.Fallback.accentHover(for: colorScheme).opacity(2) : Color.clear,
+                        focusedField == .settingsButton && hasStartedKeyboardNavigation ? AppColors.Fallback
+                            .accentHover(for: colorScheme).opacity(2) : Color.clear,
                         lineWidth: 1
                     )
                     .animation(.easeInOut(duration: 0.15), value: focusedField)
             )
-            
+
             Spacer()
-            
+
             Button(action: {
                 NSApplication.shared.terminate(nil)
             }) {
@@ -89,7 +95,9 @@ struct MenuActionBar: View {
                     .padding(.vertical, 3)
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(isHoveringQuit ? AppColors.Fallback.destructive(for: colorScheme).opacity(0.05) : Color.clear)
+                            .fill(isHoveringQuit ? AppColors.Fallback.destructive(for: colorScheme)
+                                .opacity(0.05) : Color.clear
+                            )
                             .animation(.easeInOut(duration: 0.2), value: isHoveringQuit)
                     )
             }
@@ -103,7 +111,8 @@ struct MenuActionBar: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(
-                        focusedField == .quitButton && hasStartedKeyboardNavigation ? AppColors.Fallback.accentHover(for: colorScheme).opacity(2) : Color.clear,
+                        focusedField == .quitButton && hasStartedKeyboardNavigation ? AppColors.Fallback
+                            .accentHover(for: colorScheme).opacity(2) : Color.clear,
                         lineWidth: 1
                     )
                     .animation(.easeInOut(duration: 0.15), value: focusedField)

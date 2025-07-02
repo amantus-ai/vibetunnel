@@ -14,10 +14,10 @@ public struct GitRepository: Sendable, Equatable, Hashable {
 
     /// Number of modified files
     public let modifiedCount: Int
-    
+
     /// Number of added files
     public let addedCount: Int
-    
+
     /// Number of deleted files
     public let deletedCount: Int
 

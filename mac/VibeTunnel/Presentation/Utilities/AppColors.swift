@@ -7,109 +7,109 @@ enum AppColors {
         Color("GitBranch", bundle: nil)
             .opacity(1.0)
     }
-    
+
     /// Git changes color - yellow/amber tone
     static var gitChanges: Color {
         Color("GitChanges", bundle: nil)
             .opacity(1.0)
     }
-    
+
     /// Git clean/success color - green tone
     static var gitClean: Color {
         Color("GitClean", bundle: nil)
             .opacity(1.0)
     }
-    
+
     /// Server running status - green
     static var serverRunning: Color {
         Color("ServerRunning", bundle: nil)
             .opacity(1.0)
     }
-    
+
     /// Activity indicator - orange
     static var activityIndicator: Color {
         Color("ActivityIndicator", bundle: nil)
             .opacity(1.0)
     }
-    
-    // Fallback colors if asset catalog colors are not defined
-    struct Fallback {
+
+    /// Fallback colors if asset catalog colors are not defined
+    enum Fallback {
         static func gitBranch(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
-                ? Color(red: 0.7, green: 0.5, blue: 0.8)  // Subtle purple in dark mode
-                : Color(red: 0.5, green: 0.3, blue: 0.6)  // Darker purple in light mode
+                ? Color(red: 0.7, green: 0.5, blue: 0.8) // Subtle purple in dark mode
+                : Color(red: 0.5, green: 0.3, blue: 0.6) // Darker purple in light mode
         }
-        
+
         static func gitChanges(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
-                ? Color(red: 0.8, green: 0.7, blue: 0.4)  // Muted gold in dark mode
-                : Color(red: 0.6, green: 0.5, blue: 0.2)  // Darker gold in light mode
+                ? Color(red: 0.8, green: 0.7, blue: 0.4) // Muted gold in dark mode
+                : Color(red: 0.6, green: 0.5, blue: 0.2) // Darker gold in light mode
         }
-        
+
         static func gitClean(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
-                ? Color(red: 0.3, green: 0.8, blue: 0.3)  // Lighter in dark mode
-                : Color(red: 0.0, green: 0.6, blue: 0.0)  // Darker in light mode
+                ? Color(red: 0.3, green: 0.8, blue: 0.3) // Lighter in dark mode
+                : Color(red: 0.0, green: 0.6, blue: 0.0) // Darker in light mode
         }
-        
+
         static func serverRunning(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
-                ? Color(red: 0.3, green: 0.8, blue: 0.3)  // Lighter in dark mode
-                : Color(red: 0.0, green: 0.6, blue: 0.0)  // Darker in light mode
+                ? Color(red: 0.3, green: 0.8, blue: 0.3) // Lighter in dark mode
+                : Color(red: 0.0, green: 0.6, blue: 0.0) // Darker in light mode
         }
-        
+
         static func activityIndicator(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
-                ? Color(red: 0.9, green: 0.5, blue: 0.2)  // Lighter in dark mode
+                ? Color(red: 0.9, green: 0.5, blue: 0.2) // Lighter in dark mode
                 : Color(red: 0.7, green: 0.35, blue: 0.0) // Darker in light mode
         }
-        
+
         static func hoverBackground(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
                 ? Color.gray.opacity(0.15)
                 : Color.gray.opacity(0.1)
         }
-        
+
         static func accentHover(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
                 ? Color.accentColor.opacity(0.08)
                 : Color.accentColor.opacity(0.15)
         }
-        
+
         static func destructive(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
                 ? Color.red.opacity(0.9)
                 : Color.red
         }
-        
+
         static func controlBackground(for colorScheme: ColorScheme) -> Color {
             Color(NSColor.controlBackgroundColor)
         }
-        
+
         static func secondaryText(for colorScheme: ColorScheme) -> Color {
             Color.secondary
         }
     }
 }
 
-// Extension to use fallback colors when needed
+/// Extension to use fallback colors when needed
 extension View {
     func gitBranchColor(_ colorScheme: ColorScheme) -> Color {
         AppColors.Fallback.gitBranch(for: colorScheme)
     }
-    
+
     func gitChangesColor(_ colorScheme: ColorScheme) -> Color {
         AppColors.Fallback.gitChanges(for: colorScheme)
     }
-    
+
     func gitCleanColor(_ colorScheme: ColorScheme) -> Color {
         AppColors.Fallback.gitClean(for: colorScheme)
     }
-    
+
     func serverRunningColor(_ colorScheme: ColorScheme) -> Color {
         AppColors.Fallback.serverRunning(for: colorScheme)
     }
-    
+
     func activityIndicatorColor(_ colorScheme: ColorScheme) -> Color {
         AppColors.Fallback.activityIndicator(for: colorScheme)
     }

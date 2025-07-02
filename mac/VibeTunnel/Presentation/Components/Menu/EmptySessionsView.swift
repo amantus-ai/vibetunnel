@@ -10,14 +10,17 @@ struct EmptySessionsView: View {
     @Environment(\.colorScheme)
     private var colorScheme
     @State private var isAnimating = false
-    
+
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: "terminal")
                 .font(.system(size: 32))
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [AppColors.Fallback.secondaryText(for: colorScheme), AppColors.Fallback.secondaryText(for: colorScheme).opacity(0.6)],
+                        colors: [
+                            AppColors.Fallback.secondaryText(for: colorScheme),
+                            AppColors.Fallback.secondaryText(for: colorScheme).opacity(0.6)
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -25,11 +28,11 @@ struct EmptySessionsView: View {
                 .scaleEffect(isAnimating ? 1.05 : 1.0)
                 .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isAnimating)
                 .onAppear { isAnimating = true }
-            
+
             Text("No active sessions")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
-            
+
             if serverManager.isRunning {
                 Button("Open Dashboard") {
                     if let url = DashboardURLBuilder.dashboardURL(port: serverManager.port) {

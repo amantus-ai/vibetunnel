@@ -11,34 +11,31 @@ import Observation
 @Observable
 public final class GitRepositoryMonitor {
     // MARK: - Types
-    
+
     /// Errors that can occur during Git operations
     public enum GitError: LocalizedError {
         case gitNotFound
         case invalidRepository
         case commandFailed(String)
-        
+
         public var errorDescription: String? {
             switch self {
             case .gitNotFound:
-                return "Git command not found"
+                "Git command not found"
             case .invalidRepository:
-                return "Not a valid git repository"
+                "Not a valid git repository"
             case .commandFailed(let error):
-                return "Git command failed: \(error)"
+                "Git command failed: \(error)"
             }
         }
     }
-    
+
     // MARK: - Lifecycle
 
     public init() {}
-    
+
     // MARK: - Private Properties
-    
-    /// Concurrent queue for thread-safe cache access
-    private let cacheQueue = DispatchQueue(label: "git.cache", attributes: .concurrent)
-    
+
     /// Path to the git binary
     private let gitPath: String = {
         // Check common locations
@@ -52,18 +49,17 @@ public final class GitRepositoryMonitor {
     }()
 
     // MARK: - Public Methods
-    
+
     /// Get cached repository information synchronously
     /// - Parameter filePath: Path to a file within a potential Git repository
     /// - Returns: Cached GitRepository information if available, nil otherwise
     public func getCachedRepository(for filePath: String) -> GitRepository? {
-        cacheQueue.sync {
-            guard let cachedRepoPath = fileToRepoCache[filePath],
-                  let cached = repositoryCache[cachedRepoPath] else {
-                return nil
-            }
-            return cached
+        guard let cachedRepoPath = fileToRepoCache[filePath],
+              let cached = repositoryCache[cachedRepoPath]
+        else {
+            return nil
         }
+        return cached
     }
 
     /// Find Git repository for a given file path and return its status
@@ -74,50 +70,46 @@ public final class GitRepositoryMonitor {
         guard validatePath(filePath) else {
             return nil
         }
-        
+
         // Check cache first
         if let cached = getCachedRepository(for: filePath) {
             return cached
         }
-        
+
         // Find the Git repository root
         guard let repoPath = await findGitRoot(from: filePath) else {
             return nil
         }
-        
+
         // Check if we already have this repository cached
-        let cachedRepo = cacheQueue.sync { repositoryCache[repoPath] }
+        let cachedRepo = repositoryCache[repoPath]
         if let cachedRepo {
             // Cache the file->repo mapping
-            cacheQueue.async(flags: .barrier) {
-                self.fileToRepoCache[filePath] = repoPath
-            }
+            fileToRepoCache[filePath] = repoPath
             return cachedRepo
         }
-        
+
         // Get repository status
         let repository = await getRepositoryStatus(at: repoPath)
-        
+
         // Cache the result by repository path
         if let repository {
             cacheRepository(repository)
         }
-        
+
         return repository
     }
 
     /// Clear the repository cache
     public func clearCache() {
-        cacheQueue.async(flags: .barrier) {
-            self.repositoryCache.removeAll()
-            self.fileToRepoCache.removeAll()
-        }
+        repositoryCache.removeAll()
+        fileToRepoCache.removeAll()
     }
-    
+
     /// Start monitoring and refreshing all cached repositories
     public func startMonitoring() {
         stopMonitoring()
-        
+
         // Set up periodic refresh of all cached repositories
         monitoringTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
             Task { @MainActor in
@@ -125,23 +117,21 @@ public final class GitRepositoryMonitor {
             }
         }
     }
-    
+
     /// Stop monitoring
     public func stopMonitoring() {
         monitoringTimer?.invalidate()
         monitoringTimer = nil
     }
-    
+
     // MARK: - Private Methods
-    
+
     /// Refresh all cached repositories
     private func refreshAllCached() async {
-        let repoPaths = cacheQueue.sync { Array(repositoryCache.keys) }
+        let repoPaths = Array(repositoryCache.keys)
         for repoPath in repoPaths {
             if let fresh = await getRepositoryStatus(at: repoPath) {
-                cacheQueue.async(flags: .barrier) {
-                    self.repositoryCache[repoPath] = fresh
-                }
+                repositoryCache[repoPath] = fresh
             }
         }
     }
@@ -150,7 +140,7 @@ public final class GitRepositoryMonitor {
 
     /// Cache for repository information by repository path (not file path)
     private var repositoryCache: [String: GitRepository] = [:]
-    
+
     /// Cache mapping file paths to their repository paths
     private var fileToRepoCache: [String: String] = [:]
 
@@ -160,12 +150,10 @@ public final class GitRepositoryMonitor {
     // MARK: - Private Methods
 
     private func cacheRepository(_ repository: GitRepository) {
-        cacheQueue.async(flags: .barrier) {
-            self.fileToRepoCache[repository.path] = repository.path
-            self.repositoryCache[repository.path] = repository
-        }
+        // Don't map repository path to itself - this is for file->repo mapping
+        repositoryCache[repository.path] = repository
     }
-    
+
     /// Validate and sanitize paths
     private func validatePath(_ path: String) -> Bool {
         let expandedPath = NSString(string: path).expandingTildeInPath
@@ -173,18 +161,19 @@ public final class GitRepositoryMonitor {
         // Ensure path is absolute and exists
         return url.path.hasPrefix("/") && FileManager.default.fileExists(atPath: url.path)
     }
-    
+
     /// Sanitize path for safe shell execution
     private nonisolated func sanitizePath(_ path: String) -> String? {
         let expandedPath = NSString(string: path).expandingTildeInPath
         let url = URL(fileURLWithPath: expandedPath)
-        
+
         // Validate it's an absolute path and exists
         guard url.path.hasPrefix("/"),
-              FileManager.default.fileExists(atPath: url.path) else {
+              FileManager.default.fileExists(atPath: url.path)
+        else {
             return nil
         }
-        
+
         // Escape special characters for shell
         return url.path.replacingOccurrences(of: "'", with: "'\\''")
     }
@@ -203,7 +192,7 @@ public final class GitRepositoryMonitor {
         let homeDirectory = FileManager.default.homeDirectoryForCurrentUser.path
 
         // Search up the directory tree
-        while currentPath.path != "/", currentPath.path.hasPrefix(homeDirectory) {
+        while currentPath.path != "/" && currentPath.path.hasPrefix(homeDirectory) {
             let gitPath = currentPath.appendingPathComponent(".git")
 
             if FileManager.default.fileExists(atPath: gitPath.path) {
@@ -223,7 +212,7 @@ public final class GitRepositoryMonitor {
             guard let sanitizedPath = self.sanitizePath(repoPath) else {
                 return nil
             }
-            
+
             let process = Process()
             process.executableURL = URL(fileURLWithPath: self.gitPath)
             process.arguments = ["status", "--porcelain", "--branch"]

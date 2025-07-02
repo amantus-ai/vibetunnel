@@ -209,7 +209,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Start the terminal spawn service
         TerminalSpawnService.shared.start()
-        
+
         // Start Git monitoring early
         app?.gitRepositoryMonitor.startMonitoring()
 
@@ -241,7 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
             {
                 // Connect GitRepositoryMonitor to SessionMonitor for pre-caching
                 sessionMonitor.gitRepositoryMonitor = gitRepositoryMonitor
-                
+
                 statusBarController = StatusBarController(
                     sessionMonitor: sessionMonitor,
                     serverManager: serverManager,

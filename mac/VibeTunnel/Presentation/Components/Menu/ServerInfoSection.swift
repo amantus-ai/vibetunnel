@@ -16,7 +16,7 @@ struct ServerInfoHeader: View {
     var tailscaleService
     @Environment(\.colorScheme)
     private var colorScheme
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Title and status
@@ -26,28 +26,27 @@ struct ServerInfoHeader: View {
                         .resizable()
                         .frame(width: 24, height: 24)
                         .cornerRadius(4)
-                    
+
                     Text("VibeTunnel")
                         .font(.system(size: 14, weight: .semibold))
                 }
-                
+
                 Spacer()
-                
+
                 ServerStatusBadge(
-                    isRunning: serverManager.isRunning,
-                    onRestart: {
+                    isRunning: serverManager.isRunning
+                )                    {
                         Task {
                             await serverManager.restart()
                         }
                     }
-                )
             }
-            
+
             // Server address
             if serverManager.isRunning {
                 VStack(alignment: .leading, spacing: 4) {
                     ServerAddressRow()
-                    
+
                     if ngrokService.isActive, let publicURL = ngrokService.publicUrl {
                         ServerAddressRow(
                             icon: "network",
@@ -56,7 +55,7 @@ struct ServerInfoHeader: View {
                             url: URL(string: publicURL)
                         )
                     }
-                    
+
                     if tailscaleService.isRunning, let hostname = tailscaleService.tailscaleHostname {
                         ServerAddressRow(
                             icon: "shield",
@@ -80,12 +79,12 @@ struct ServerAddressRow: View {
     let label: String
     let address: String
     let url: URL?
-    
+
     @Environment(ServerManager.self)
     var serverManager
     @Environment(\.colorScheme)
     private var colorScheme
-    
+
     init(
         icon: String = "server.rack",
         label: String = "Local:",
@@ -97,7 +96,7 @@ struct ServerAddressRow: View {
         self.address = address ?? ""
         self.url = url
     }
-    
+
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
@@ -128,12 +127,12 @@ struct ServerAddressRow: View {
             .pointingHandCursor()
         }
     }
-    
+
     private var computedAddress: String {
         if !address.isEmpty {
             return address
         }
-        
+
         // Default behavior for local server
         let bindAddress = serverManager.bindAddress
         if bindAddress == "127.0.0.1" {
@@ -154,29 +153,36 @@ struct ServerAddressRow: View {
 struct ServerStatusBadge: View {
     let isRunning: Bool
     let onRestart: (() -> Void)?
-    
+
     @Environment(\.colorScheme)
     private var colorScheme
     @State private var isHovered = false
-    
+
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback.destructive(for: colorScheme))
+                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback
+                    .destructive(for: colorScheme)
+                )
                 .frame(width: 6, height: 6)
             Text(isRunning ? "Running" : "Stopped")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundColor(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback.destructive(for: colorScheme))
+                .foregroundColor(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback
+                    .destructive(for: colorScheme)
+                )
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
             Capsule()
-                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.1) : AppColors.Fallback.destructive(for: colorScheme).opacity(0.1))
+                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.1) : AppColors.Fallback
+                    .destructive(for: colorScheme).opacity(0.1)
+                )
                 .overlay(
                     Capsule()
                         .stroke(
-                            isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.3) : AppColors.Fallback.destructive(for: colorScheme).opacity(0.3),
+                            isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.3) : AppColors
+                                .Fallback.destructive(for: colorScheme).opacity(0.3),
                             lineWidth: 0.5
                         )
                 )

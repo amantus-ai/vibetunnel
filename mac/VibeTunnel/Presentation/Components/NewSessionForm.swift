@@ -299,7 +299,9 @@ struct NewSessionForm: View {
                 .foregroundColor(command.isEmpty || workingDirectory.isEmpty ? .secondary.opacity(0.5) : .secondary)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(isHoveringCreate && !command.isEmpty && !workingDirectory.isEmpty ? Color.accentColor.opacity(0.05) : Color.clear)
+                        .fill(isHoveringCreate && !command.isEmpty && !workingDirectory.isEmpty ? Color.accentColor
+                            .opacity(0.05) : Color.clear
+                        )
                         .animation(.easeInOut(duration: 0.2), value: isHoveringCreate)
                 )
                 .disabled(isCreating || command.isEmpty || workingDirectory.isEmpty)
