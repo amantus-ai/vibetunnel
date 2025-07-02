@@ -84,11 +84,8 @@ export class SessionCreateForm extends LitElement {
     // Only handle events when modal is visible
     if (!this.visible) return;
 
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      this.handleCancel();
-    } else if (e.key === 'Enter') {
+    // Only handle Enter key - Escape is now handled by modal-wrapper
+    if (e.key === 'Enter') {
       // Don't interfere with Enter in textarea elements
       if (e.target instanceof HTMLTextAreaElement) return;
 

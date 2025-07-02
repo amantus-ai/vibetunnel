@@ -7,7 +7,7 @@
  *
  * @fires close - When the modal is closed via backdrop click or escape key
  */
-import { html, LitElement } from 'lit';
+import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
 @customElement('modal-wrapper')
@@ -28,14 +28,22 @@ export class ModalWrapper extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    if (this.closeOnEscape) {
-      document.addEventListener('keydown', this.handleKeyDown);
-    }
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  updated(changedProperties: PropertyValues) {
+    super.updated(changedProperties);
+    if (changedProperties.has('visible') || changedProperties.has('closeOnEscape')) {
+      if (this.visible && this.closeOnEscape) {
+        document.addEventListener('keydown', this.handleKeyDown);
+      } else {
+        document.removeEventListener('keydown', this.handleKeyDown);
+      }
+    }
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {

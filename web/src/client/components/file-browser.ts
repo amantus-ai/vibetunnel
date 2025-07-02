@@ -874,12 +874,13 @@ export class FileBrowser extends LitElement {
     if (!this.visible) return;
 
     if (e.key === 'Escape') {
-      e.preventDefault();
+      // Only handle escape when editing path - modal-wrapper handles the general escape
       if (this.editingPath) {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent modal-wrapper from also handling it
         this.cancelPathEdit();
-      } else {
-        this.handleCancel();
       }
+      // Let modal-wrapper handle the escape for closing the modal
     } else if (
       e.key === 'Enter' &&
       this.selectedFile &&

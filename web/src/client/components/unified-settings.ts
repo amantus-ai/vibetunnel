@@ -83,12 +83,10 @@ export class UnifiedSettings extends LitElement {
   protected willUpdate(changedProperties: PropertyValues) {
     if (changedProperties.has('visible')) {
       if (this.visible) {
-        document.addEventListener('keydown', this.handleKeyDown);
+        // No need to add keyboard listener - modal-wrapper handles escape
         document.startViewTransition?.(() => {
           this.requestUpdate();
         });
-      } else {
-        document.removeEventListener('keydown', this.handleKeyDown);
       }
     }
   }
@@ -137,12 +135,6 @@ export class UnifiedSettings extends LitElement {
       logger.error('Failed to save app preferences', error);
     }
   }
-
-  private handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && this.visible) {
-      this.handleClose();
-    }
-  };
 
   private handleClose() {
     this.dispatchEvent(new CustomEvent('close'));
