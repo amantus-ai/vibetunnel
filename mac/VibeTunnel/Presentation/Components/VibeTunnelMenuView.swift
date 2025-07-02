@@ -606,13 +606,13 @@ struct SessionRow: View {
                     HStack(spacing: 4) {
                         Image(systemName: gitRepository != nil ? "folder.badge.gearshape" : "folder")
                             .font(.system(size: 9))
-                            .foregroundColor(isHoveringGitFolder ? .accentColor : .secondary)
+                            .foregroundColor(isHoveringGitFolder ? Color(red: 0.0, green: 0.5, blue: 0.0) : .secondary)
                             .scaleEffect(isHoveringGitFolder ? 1.1 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringGitFolder)
                         
                         Text(compactPath)
                             .font(.system(size: 10))
-                            .foregroundColor(isHoveringGitFolder ? .primary : .secondary)
+                            .foregroundColor(isHoveringGitFolder ? Color(red: 0.0, green: 0.5, blue: 0.0) : .secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .layoutPriority(1)
