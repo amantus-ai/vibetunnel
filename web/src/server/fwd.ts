@@ -448,13 +448,17 @@ export async function startVibeTunnelForward(args: string[]) {
         const sessionDir = path.dirname(sessionJsonPath);
         const sessionFileName = path.basename(sessionJsonPath);
 
-        sessionFileWatcher = fs.watch(sessionDir, (eventType, filename) => {
-          // Only process events for session.json
-          if (filename !== sessionFileName) {
+        logger.debug(`Watching directory: ${sessionDir} for file: ${sessionFileName}`);
+
+        sessionFileWatcher = fs.watch(sessionDir, { recursive: false }, (eventType, filename) => {
+          // Use console.log to ensure this shows up in the terminal
+          console.log(`[File Watch] Detected ${eventType} event on ${filename || 'unknown'}`);
+
+          // On macOS, filename might be undefined when watching directories
+          // In that case, we'll process all events and check if our file changed
+          if (filename && filename !== sessionFileName) {
             return;
           }
-
-          logger.debug(`[File Watch] Detected ${eventType} event on ${filename}`);
           if (eventType === 'change' || eventType === 'rename') {
             // Debounce rapid changes
             if (fileWatchDebounceTimer) {
