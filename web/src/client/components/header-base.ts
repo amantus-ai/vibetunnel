@@ -27,6 +27,9 @@ export abstract class HeaderBase extends LitElement {
   }
 
   protected handleCreateSession(e: MouseEvent) {
+    console.log('🔧 HeaderBase: handleCreateSession called');
+    console.log('Stack trace:', new Error().stack);
+
     // Capture button position for view transition
     const button = e.currentTarget as HTMLButtonElement;
     const rect = button.getBoundingClientRect();
@@ -72,6 +75,7 @@ export abstract class HeaderBase extends LitElement {
 
   protected handleOpenSettings() {
     console.log('🔧 HeaderBase: handleOpenSettings called');
+    console.log('Stack trace:', new Error().stack);
     this.showUserMenu = false;
     this.dispatchEvent(new CustomEvent('open-settings'));
   }

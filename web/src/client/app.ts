@@ -71,6 +71,7 @@ export class VibeTunnelApp extends LitElement {
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   @state() private showLogLink = false;
   @state() private hasActiveOverlay = false;
+  @state() private authCheckComplete = false;
   private initialLoadComplete = false;
   private responsiveObserverInitialized = false;
   private initialRenderComplete = false;
@@ -199,9 +200,11 @@ export class VibeTunnelApp extends LitElement {
           logger.log('🔓 No auth required, bypassing authentication');
           this.isAuthenticated = true;
           this.currentView = 'list';
+          this.authCheckComplete = true; // Mark auth check as complete
           await this.initializeServices(noAuthEnabled); // Initialize services with no-auth flag
           await this.loadSessions(); // Wait for sessions to load
           this.startAutoRefresh();
+          this.initialLoadComplete = true;
           return;
         }
       }
@@ -217,9 +220,13 @@ export class VibeTunnelApp extends LitElement {
       await this.initializeServices(noAuthEnabled); // Initialize services with no-auth flag
       await this.loadSessions(); // Wait for sessions to load
       this.startAutoRefresh();
+      this.initialLoadComplete = true;
     } else {
       this.currentView = 'auth';
     }
+
+    // Mark auth check as complete in all cases
+    this.authCheckComplete = true;
   }
 
   private async handleAuthSuccess() {
@@ -229,6 +236,7 @@ export class VibeTunnelApp extends LitElement {
     await this.initializeServices(false); // Initialize services after auth (auth is enabled)
     await this.loadSessions();
     this.startAutoRefresh();
+    this.initialLoadComplete = true;
 
     // Check if there was a session ID in the URL that we should navigate to
     const url = new URL(window.location.href);
@@ -411,7 +419,11 @@ export class VibeTunnelApp extends LitElement {
         this.showError('Failed to load sessions');
       } finally {
         this.loading = false;
-        this.initialLoadComplete = true;
+        // Only mark initial load as complete if we're authenticated
+        // This prevents modal events from firing during auth view
+        if (this.isAuthenticated) {
+          this.initialLoadComplete = true;
+        }
       }
     };
 
@@ -613,13 +625,24 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private handleCreateSession() {
-    // Check if View Transitions API is supported
-    if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
-      document.startViewTransition(() => {
+    logger.log('🎯 handleCreateSession called in app.ts');
+    logger.log('Stack trace:', new Error().stack);
+    logger.log('Current view:', this.currentView);
+    logger.log('Is authenticated:', this.isAuthenticated);
+    logger.log('Initial load complete:', this.initialLoadComplete);
+
+    // Only show create modal if we're authenticated and ready
+    if (this.isAuthenticated && this.initialLoadComplete) {
+      // Check if View Transitions API is supported
+      if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
+        document.startViewTransition(() => {
+          this.showCreateModal = true;
+        });
+      } else {
         this.showCreateModal = true;
-      });
+      }
     } else {
-      this.showCreateModal = true;
+      logger.warn('Ignoring create-session event - not ready yet');
     }
   }
 
@@ -1101,7 +1124,17 @@ export class VibeTunnelApp extends LitElement {
 
   private handleOpenSettings = () => {
     logger.log('🎯 handleOpenSettings called in app.ts');
-    this.showSettings = true;
+    logger.log('Stack trace:', new Error().stack);
+    logger.log('Current view:', this.currentView);
+    logger.log('Is authenticated:', this.isAuthenticated);
+    logger.log('Initial load complete:', this.initialLoadComplete);
+
+    // Only show settings if we're authenticated and ready
+    if (this.isAuthenticated && this.initialLoadComplete) {
+      this.showSettings = true;
+    } else {
+      logger.warn('Ignoring open-settings event - not ready yet');
+    }
   };
 
   private handleCloseSettings = () => {
@@ -1252,6 +1285,16 @@ export class VibeTunnelApp extends LitElement {
   }
 
   render() {
+    // Don't render anything until we've checked auth config
+    // This prevents the auth-login component from rendering in no-auth mode
+    if (!this.authCheckComplete) {
+      return html`
+        <div class="flex items-center justify-center h-screen bg-dark-bg">
+          <div class="text-dark-text-muted font-mono">Loading...</div>
+        </div>
+      `;
+    }
+
     const showSplitView = this.showSplitView;
     const selectedSession = this.selectedSession;
 

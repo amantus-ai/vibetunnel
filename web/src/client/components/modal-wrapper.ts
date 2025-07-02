@@ -20,7 +20,7 @@ export class ModalWrapper extends LitElement {
   @property({ type: Boolean }) visible = false;
   @property({ type: String }) modalClass = '';
   @property({ type: String }) contentClass =
-    'modal-content modal-positioned font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl';
+    'modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl';
   @property({ type: String }) transitionName = '';
   @property({ type: String }) ariaLabel = 'Modal dialog';
   @property({ type: Boolean }) closeOnBackdrop = true;
@@ -87,24 +87,24 @@ export class ModalWrapper extends LitElement {
     const contentStyle = this.transitionName ? `view-transition-name: ${this.transitionName}` : '';
 
     return html`
-      <!-- Backdrop as separate element -->
+      <!-- Modal container with backdrop and centered content -->
       <div 
-        class="modal-backdrop ${this.modalClass}"
+        class="modal-backdrop flex items-center justify-center p-2 sm:p-4 ${this.modalClass}"
         @click=${this.handleBackdropClick}
         data-testid="modal-backdrop"
-        aria-hidden="true"
-      ></div>
-      
-      <!-- Modal content as sibling, positioned independently -->
-      <div
-        class="${this.contentClass}"
-        style="${contentStyle}"
-        role="dialog"
-        aria-modal="true"
-        aria-label="${this.ariaLabel}"
-        data-testid="modal-content"
       >
-        <slot></slot>
+        <!-- Modal content centered within backdrop -->
+        <div
+          class="${this.contentClass}"
+          style="${contentStyle}"
+          role="dialog"
+          aria-modal="true"
+          aria-label="${this.ariaLabel}"
+          data-testid="modal-content"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <slot></slot>
+        </div>
       </div>
     `;
   }

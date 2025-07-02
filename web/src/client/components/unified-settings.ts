@@ -82,6 +82,14 @@ export class UnifiedSettings extends LitElement {
 
   protected willUpdate(changedProperties: PropertyValues) {
     if (changedProperties.has('visible')) {
+      logger.log(
+        'unified-settings visible changed from',
+        changedProperties.get('visible'),
+        'to',
+        this.visible
+      );
+      logger.log('Stack trace:', new Error().stack);
+
       if (this.visible) {
         // No need to add keyboard listener - modal-wrapper handles escape
         document.startViewTransition?.(() => {
@@ -268,7 +276,7 @@ export class UnifiedSettings extends LitElement {
     return html`
       <modal-wrapper
         .visible=${this.visible}
-        contentClass="modal-content modal-positioned font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col"
+        contentClass="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col"
         transitionName="settings-modal"
         ariaLabel="Settings"
         @close=${this.handleClose}

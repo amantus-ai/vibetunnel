@@ -169,6 +169,14 @@ export class SessionCreateForm extends LitElement {
 
     // Handle visibility changes
     if (changedProperties.has('visible')) {
+      logger.log(
+        'session-create-form visible changed from',
+        changedProperties.get('visible'),
+        'to',
+        this.visible
+      );
+      logger.log('Stack trace:', new Error().stack);
+
       if (this.visible) {
         // Load from localStorage when form becomes visible
         this.loadFromLocalStorage();
@@ -371,7 +379,7 @@ export class SessionCreateForm extends LitElement {
     return html`
       <modal-wrapper
         .visible=${this.visible}
-        contentClass="modal-content modal-positioned font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] flex flex-col"
+        contentClass="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] flex flex-col"
         transitionName="create-session-modal"
         ariaLabel="Create new session"
         @close=${this.handleCancel}

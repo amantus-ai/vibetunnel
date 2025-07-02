@@ -34,10 +34,11 @@ export class AppHeader extends LitElement {
 
   private forwardEvent = (e: Event) => {
     // Forward events from child components to parent
+    // Don't bubble to prevent unintended propagation
     this.dispatchEvent(
       new CustomEvent(e.type, {
         detail: (e as CustomEvent).detail,
-        bubbles: true,
+        bubbles: false,
       })
     );
   };
