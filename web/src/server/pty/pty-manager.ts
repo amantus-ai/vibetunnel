@@ -482,7 +482,7 @@ export class PtyManager extends EventEmitter {
         // Check if activity status changed
         if (activity.specificStatus?.status !== session.lastActivityStatus) {
           session.lastActivityStatus = activity.specificStatus?.status;
-          session.titleUpdateNeeded = true;
+          this.markTitleUpdateNeeded(session);
         }
       }
 
@@ -490,7 +490,7 @@ export class PtyManager extends EventEmitter {
       if (session.titleMode === TitleMode.STATIC && forwardToStdout) {
         // Check if we should update title based on data content
         if (!session.initialTitleSent || shouldInjectTitle(processedData)) {
-          session.titleUpdateNeeded = true;
+          this.markTitleUpdateNeeded(session);
           if (!session.initialTitleSent) {
             session.initialTitleSent = true;
           }
@@ -571,7 +571,7 @@ export class PtyManager extends EventEmitter {
       forwardToStdout &&
       (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
     ) {
-      session.titleUpdateNeeded = true;
+      this.markTitleUpdateNeeded(session);
       session.initialTitleSent = true;
       logger.debug(`Marked initial title update for session ${session.id}`);
     }
@@ -706,12 +706,16 @@ export class PtyManager extends EventEmitter {
    * Setup watcher for session.json changes (for vt title updates)
    */
   private setupSessionJsonWatcher(session: PtySession): void {
+    logger.debug(
+      `[SessionJsonWatcher] Setting up watcher for session ${session.id} at path: ${session.sessionJsonPath}`
+    );
     try {
       const { sessionJsonPath } = session;
       let debounceTimer: NodeJS.Timeout | null = null;
 
       // Watch for changes to session.json
       const watcher = fs.watch(sessionJsonPath, (eventType) => {
+        logger.debug(`[SessionJsonWatcher] File event '${eventType}' for session ${session.id}`);
         if (eventType === 'change') {
           // Debounce file changes to avoid multiple rapid updates
           if (debounceTimer) {
@@ -760,10 +764,18 @@ export class PtyManager extends EventEmitter {
    * Handle session.json file changes (debounced)
    */
   private handleSessionJsonChange(session: PtySession): void {
+    logger.debug(`[SessionJsonWatcher] Handling session.json change for session ${session.id}`);
     try {
       // Reload session info
       const newSessionInfo = this.sessionManager.loadSessionInfo(session.id);
-      if (!newSessionInfo) return;
+      if (!newSessionInfo) {
+        logger.warn(`[SessionJsonWatcher] Could not load session info for ${session.id}`);
+        return;
+      }
+
+      logger.debug(
+        `[SessionJsonWatcher] Loaded session info - old name: "${session.sessionInfo.name}", new name: "${newSessionInfo.name}"`
+      );
 
       // Check if name changed
       if (newSessionInfo.name !== session.sessionInfo.name) {
@@ -776,13 +788,18 @@ export class PtyManager extends EventEmitter {
         // Update in-memory session info
         session.sessionInfo.name = newSessionInfo.name;
 
-        // Mark title for update
+        // Mark title for update and trigger immediate check
         if (session.titleMode !== TitleMode.NONE) {
-          session.titleUpdateNeeded = true;
+          logger.debug(
+            `[SessionJsonWatcher] Triggering immediate title update for session ${session.id}`
+          );
+          this.markTitleUpdateNeeded(session);
         }
 
         // Emit event for clients
         this.trackAndEmit('sessionNameChanged', session.id, newSessionInfo.name);
+      } else {
+        logger.debug(`[SessionJsonWatcher] Session name unchanged for ${session.id}`);
       }
     } catch (error) {
       logger.warn(`Failed to handle session.json change for session ${session.id}:`, error);
@@ -876,7 +893,7 @@ export class PtyManager extends EventEmitter {
           );
           if (newDir) {
             memorySession.currentWorkingDir = newDir;
-            memorySession.titleUpdateNeeded = true;
+            this.markTitleUpdateNeeded(memorySession);
             logger.debug(`Session ${sessionId} changed directory to: ${newDir}`);
           }
         }
@@ -1099,7 +1116,16 @@ export class PtyManager extends EventEmitter {
     const memorySession = this.sessions.get(sessionId);
     if (memorySession?.sessionInfo) {
       logger.debug(`[PtyManager] Updating in-memory session info`);
+      const oldName = memorySession.sessionInfo.name;
       memorySession.sessionInfo.name = name;
+
+      // Force immediate title update for active sessions
+      if (memorySession.titleMode && memorySession.titleMode !== TitleMode.NONE) {
+        logger.debug(`[PtyManager] Forcing immediate title update for session ${sessionId}`);
+        this.markTitleUpdateNeeded(memorySession);
+      }
+
+      logger.log(`[PtyManager] Updated session ${sessionId} name from "${oldName}" to "${name}"`);
     } else {
       logger.debug(`[PtyManager] No in-memory session found for ${sessionId}`);
     }
@@ -1809,6 +1835,18 @@ export class PtyManager extends EventEmitter {
       clearInterval(session.titleInjectionTimer);
       session.titleInjectionTimer = undefined;
     }
+  }
+
+  /**
+   * Mark session for title update and trigger immediate check
+   */
+  private markTitleUpdateNeeded(session: PtySession): void {
+    if (!session.titleMode || session.titleMode === TitleMode.NONE) {
+      return;
+    }
+
+    session.titleUpdateNeeded = true;
+    this.checkAndUpdateTitle(session);
   }
 
   /**
