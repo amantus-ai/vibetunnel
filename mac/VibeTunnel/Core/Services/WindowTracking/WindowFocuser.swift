@@ -16,13 +16,13 @@ final class WindowFocuser {
     func focusWindow(_ windowInfo: WindowEnumerator.WindowInfo) {
         switch windowInfo.terminalApp {
         case .terminal:
+            // Terminal.app has special AppleScript support for tab selection
             focusTerminalAppWindow(windowInfo)
         case .iTerm2:
+            // iTerm2 uses its own tab system, needs special handling
             focusiTerm2Window(windowInfo)
-        case .ghostty:
-            focusGhosttyWindow(windowInfo)
-        case .warp, .alacritty, .hyper, .wezterm, .kitty:
-            // For other terminals, use accessibility API
+        default:
+            // All other terminals that use macOS standard tabs
             focusWindowUsingAccessibility(windowInfo)
         }
     }
@@ -74,144 +74,100 @@ final class WindowFocuser {
 
     /// Focuses an iTerm2 window.
     private func focusiTerm2Window(_ windowInfo: WindowEnumerator.WindowInfo) {
-        if let windowID = windowInfo.tabID {
-            // Use window ID for focusing (stored in tabID for consistency)
-            // iTerm2 uses 'select' to bring window to front
-            let script = """
-            tell application "iTerm2"
-                activate
-                tell window id "\(windowID)"
-                    select
-                end tell
-            end tell
-            """
-
-            do {
-                try AppleScriptExecutor.shared.execute(script)
-                logger.info("Focused iTerm2 window using ID: \(windowID)")
-            } catch {
-                logger.error("Failed to focus iTerm2 window: \(error)")
-                // Fallback to accessibility
-                focusWindowUsingAccessibility(windowInfo)
-            }
-        } else {
-            // Fallback to window focusing
-            focusWindowUsingAccessibility(windowInfo)
-        }
-    }
-
-    /// Focuses a Ghostty window with macOS standard tabs.
-    private func focusGhosttyWindow(_ windowInfo: WindowEnumerator.WindowInfo) {
-        logger
-            .info(
-                "Attempting to focus Ghostty window - windowID: \(windowInfo.windowID), ownerPID: \(windowInfo.ownerPID), sessionID: \(windowInfo.sessionID)"
-            )
-
-        // First bring the application to front
-        if let app = NSRunningApplication(processIdentifier: windowInfo.ownerPID) {
-            app.activate()
-        }
-
-        // Ghostty uses macOS standard tabs, so we need to:
-        // 1. Focus the window
-        // 2. Find and select the correct tab
-
-        // Use Accessibility API to handle tab selection
-        let axApp = AXUIElementCreateApplication(windowInfo.ownerPID)
-
-        var windowsValue: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsValue)
-
-        guard result == .success,
-              let windows = windowsValue as? [AXUIElement],
-              !windows.isEmpty
-        else {
-            logger.error("Failed to get Ghostty windows via Accessibility API")
-            focusWindowUsingAccessibility(windowInfo)
-            return
-        }
-
-        logger.info("Found \(windows.count) Ghostty windows, looking for window ID \(windowInfo.windowID)")
-
-        // Get session info for tab matching
+        // iTerm2 has its own tab system that doesn't use standard macOS tabs
+        // We need to use AppleScript to find and select the correct tab
+        
         let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
+        let workingDir = sessionInfo?.workingDir ?? ""
+        let dirName = (workingDir as NSString).lastPathComponent
+        
+        // Try to find and focus the tab with matching content
+        let script = """
+        tell application "iTerm2"
+            activate
+            
+            -- Look through all windows
+            repeat with w in windows
+                -- Look through all tabs in the window
+                repeat with t in tabs of w
+                    -- Look through all sessions in the tab
+                    repeat with s in sessions of t
+                        -- Check if the session's name or working directory matches
+                        set sessionName to name of s
+                        
+                        -- Try to match by session content
+                        if sessionName contains "\(windowInfo.sessionID)" or sessionName contains "\(dirName)" then
+                            -- Found it! Select this tab and window
+                            select w
+                            select t
+                            select s
+                            return "Found and selected session"
+                        end if
+                    end repeat
+                end repeat
+            end repeat
+            
+            -- If we have a window ID, at least focus that window
+            if "\(windowInfo.tabID ?? "")" is not "" then
+                try
+                    tell window id "\(windowInfo.tabID ?? "")"
+                        select
+                    end tell
+                end try
+            end if
+        end tell
+        """
 
-        // Find windows with matching tabs
-        var windowWithMatchingTab: (window: AXUIElement, tabs: [AXUIElement])?
-
-        for (windowIndex, window) in windows.enumerated() {
-            // Check if this window has tabs
-            var tabsValue: CFTypeRef?
-            if AXUIElementCopyAttributeValue(window, kAXTabsAttribute as CFString, &tabsValue) == .success,
-               let tabs = tabsValue as? [AXUIElement],
-               !tabs.isEmpty
-            {
-                logger.debug("Window \(windowIndex) has \(tabs.count) tabs")
-
-                // Check if any tab matches our session
-                if windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) != nil {
-                    windowWithMatchingTab = (window, tabs)
-                    logger.debug("Window \(windowIndex) has a matching tab")
-                }
-            }
-
-            // Check if this is the window we're looking for by window ID
-            var windowIDValue: CFTypeRef?
-            let windowIDResult = AXUIElementCopyAttributeValue(window, "_AXWindowNumber" as CFString, &windowIDValue)
-
-            if windowIDResult == .success {
-                if let axWindowID = windowIDValue as? Int, axWindowID == windowInfo.windowID {
-                    logger.debug("Window \(windowIndex): Matched by AX window ID: \(axWindowID)")
-
-                    // This is our window - make it main and focused
-                    AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
-                    AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
-
-                    // If it has tabs, select the correct one
-                    if let tabsValue = tabsValue as? [AXUIElement], !tabsValue.isEmpty {
-                        selectGhosttyTab(tabs: tabsValue, windowInfo: windowInfo, sessionInfo: sessionInfo)
-                    }
-
-                    logger.info("Focused Ghostty window with ID \(windowInfo.windowID)")
-                    return
-                }
-            }
+        do {
+            let result = try AppleScriptExecutor.shared.executeWithResult(script)
+            logger.info("iTerm2 focus result: \(result)")
+        } catch {
+            logger.error("Failed to focus iTerm2 window/tab: \(error)")
+            // Fallback to accessibility
+            focusWindowUsingAccessibility(windowInfo)
         }
-
-        // If we couldn't find by window ID but found a window with matching tab content, use that
-        if let matchingWindow = windowWithMatchingTab {
-            AXUIElementSetAttributeValue(matchingWindow.window, kAXMainAttribute as CFString, true as CFTypeRef)
-            AXUIElementSetAttributeValue(matchingWindow.window, kAXFocusedAttribute as CFString, true as CFTypeRef)
-
-            // Select the correct tab
-            selectGhosttyTab(tabs: matchingWindow.tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
-
-            logger.info("Focused Ghostty window by tab content match (no window ID match)")
-            return
-        }
-
-        // Fallback if we couldn't find the specific window
-        logger.warning("Could not find matching Ghostty window with ID \(windowInfo.windowID), using fallback")
-        focusWindowUsingAccessibility(windowInfo)
     }
 
-    /// Select the correct Ghostty tab
-    private func selectGhosttyTab(
+    /// Select the correct tab in a window that uses macOS standard tabs
+    private func selectTab(
         tabs: [AXUIElement],
         windowInfo: WindowEnumerator.WindowInfo,
         sessionInfo: ServerSessionInfo?
     ) {
+        logger.debug("Attempting to select tab for session \(windowInfo.sessionID) from \(tabs.count) tabs")
+        
         // Try to find the correct tab
         if let matchingTab = windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) {
-            AXUIElementPerformAction(matchingTab, kAXPressAction as CFString)
-            logger.info("Selected matching Ghostty tab")
+            // Found matching tab - select it
+            let result = AXUIElementPerformAction(matchingTab, kAXPressAction as CFString)
+            if result == .success {
+                logger.info("Successfully selected matching tab for session \(windowInfo.sessionID)")
+            } else {
+                logger.warning("Failed to select tab, error: \(result.rawValue)")
+                
+                // Try alternative selection method - set as selected
+                var selectedValue: CFTypeRef?
+                if AXUIElementCopyAttributeValue(matchingTab, kAXSelectedAttribute as CFString, &selectedValue) == .success {
+                    AXUIElementSetAttributeValue(matchingTab, kAXSelectedAttribute as CFString, true as CFTypeRef)
+                    logger.info("Selected tab using AXSelected attribute")
+                }
+            }
         } else if tabs.count == 1 {
             // If only one tab, select it
             AXUIElementPerformAction(tabs[0], kAXPressAction as CFString)
-            logger.info("Selected only Ghostty tab")
+            logger.info("Selected the only available tab")
         } else {
-            // Multiple tabs but no match - log warning
-            logger.warning("Multiple Ghostty tabs but could not identify correct one")
+            // Multiple tabs but no match - try to find by index or select first
+            logger.warning("Multiple tabs (\(tabs.count)) but could not identify correct one for session \(windowInfo.sessionID)")
+            
+            // Log tab titles for debugging
+            for (index, tab) in tabs.enumerated() {
+                var titleValue: CFTypeRef?
+                if AXUIElementCopyAttributeValue(tab, kAXTitleAttribute as CFString, &titleValue) == .success,
+                   let title = titleValue as? String {
+                    logger.debug("  Tab \(index): \(title)")
+                }
+            }
         }
     }
 
@@ -237,38 +193,71 @@ final class WindowFocuser {
             return
         }
 
-        // Try to find the window by comparing window IDs
-        for window in windows {
+        logger.debug("Found \(windows.count) windows for \(windowInfo.terminalApp.rawValue)")
+
+        // Get session info for tab matching
+        let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
+        
+        // First, try to find window with matching tab content
+        var foundWindowWithTab = false
+        
+        for (index, window) in windows.enumerated() {
+            // Check different window ID attributes (different apps use different ones)
+            var windowMatches = false
+            
+            // Try _AXWindowNumber (used by many apps)
             var windowIDValue: CFTypeRef?
-            if AXUIElementCopyAttributeValue(window, kAXWindowAttribute as CFString, &windowIDValue) == .success,
-               let windowNumber = windowIDValue as? Int,
-               windowNumber == windowInfo.windowID
+            if AXUIElementCopyAttributeValue(window, "_AXWindowNumber" as CFString, &windowIDValue) == .success,
+               let axWindowID = windowIDValue as? Int
             {
-                // Found the matching window, make it main and focused
+                windowMatches = (axWindowID == windowInfo.windowID)
+                logger.debug("Window \(index) _AXWindowNumber: \(axWindowID), matches: \(windowMatches)")
+            }
+            
+            // Check if this window has tabs
+            var tabsValue: CFTypeRef?
+            let hasTabsResult = AXUIElementCopyAttributeValue(window, kAXTabsAttribute as CFString, &tabsValue)
+            
+            if hasTabsResult == .success,
+               let tabs = tabsValue as? [AXUIElement],
+               !tabs.isEmpty
+            {
+                logger.info("Window \(index) has \(tabs.count) tabs")
+                
+                // Try to find matching tab
+                if let matchingTab = windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) {
+                    // Found the tab! Focus the window and select the tab
+                    logger.info("Found matching tab in window \(index)")
+                    
+                    // Make window main and focused
+                    AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
+                    AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
+                    
+                    // Select the tab
+                    selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
+                    
+                    foundWindowWithTab = true
+                    return
+                }
+            } else if windowMatches {
+                // Window matches by ID but has no tabs (or tabs not accessible)
+                logger.info("Window \(index) matches by ID but has no accessible tabs")
+                
+                // Focus the window anyway
                 AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
                 AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
-
-                // For terminals that use macOS standard tabs, try to select the correct tab
-                var tabsValue: CFTypeRef?
-                if AXUIElementCopyAttributeValue(window, kAXTabsAttribute as CFString, &tabsValue) == .success,
-                   let tabs = tabsValue as? [AXUIElement],
-                   !tabs.isEmpty
-                {
-                    logger.info("Terminal has \(tabs.count) tabs, attempting to find correct one")
-
-                    // Try to find the tab with matching session info
-                    let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
-                    if let matchingTab = windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) {
-                        AXUIElementPerformAction(matchingTab, kAXPressAction as CFString)
-                        logger.info("Selected matching tab for terminal \(windowInfo.terminalApp.rawValue)")
-                    }
-                }
-
-                logger.info("Focused window using Accessibility API")
+                
+                logger.info("Focused window \(windowInfo.windowID) without tab selection")
                 return
             }
         }
 
-        logger.warning("Could not find matching window in AXUIElement list")
+        // If we didn't find a window with matching tab, just focus the first window
+        if !foundWindowWithTab && !windows.isEmpty {
+            logger.warning("No window found with matching tab, focusing first window")
+            let firstWindow = windows[0]
+            AXUIElementSetAttributeValue(firstWindow, kAXMainAttribute as CFString, true as CFTypeRef)
+            AXUIElementSetAttributeValue(firstWindow, kAXFocusedAttribute as CFString, true as CFTypeRef)
+        }
     }
 }

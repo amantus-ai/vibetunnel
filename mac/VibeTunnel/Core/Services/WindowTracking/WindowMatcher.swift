@@ -214,32 +214,60 @@ final class WindowMatcher {
         let dirName = (workingDir as NSString).lastPathComponent
         let sessionID = sessionInfo.id
         let activityStatus = sessionInfo.activityStatus?.specificStatus?.status
+        let sessionName = sessionInfo.name
+        
+        logger.debug("Looking for tab matching session \(sessionID) in \(tabs.count) tabs")
+        logger.debug("  Working dir: \(workingDir)")
+        logger.debug("  Dir name: \(dirName)")
+        logger.debug("  Session name: \(sessionName ?? "none")")
+        logger.debug("  Activity: \(activityStatus ?? "none")")
 
-        for tab in tabs {
+        for (index, tab) in tabs.enumerated() {
             var titleValue: CFTypeRef?
             if AXUIElementCopyAttributeValue(tab, kAXTitleAttribute as CFString, &titleValue) == .success,
                let title = titleValue as? String
             {
+                logger.debug("Tab \(index) title: \(title)")
+                
                 // Check for session ID match first (most precise)
                 if title.contains(sessionID) || title.contains("TTY_SESSION_ID=\(sessionID)") {
-                    logger.info("Found tab by session ID match")
+                    logger.info("Found tab by session ID match at index \(index)")
+                    return tab
+                }
+                
+                // Check for session name match
+                if let name = sessionName, !name.isEmpty, title.contains(name) {
+                    logger.info("Found tab by session name match: \(name) at index \(index)")
                     return tab
                 }
 
                 // Check for activity status match
                 if let activity = activityStatus, !activity.isEmpty, title.contains(activity) {
-                    logger.info("Found tab by activity match: \(activity)")
+                    logger.info("Found tab by activity match: \(activity) at index \(index)")
                     return tab
                 }
 
-                // Check for directory match
-                if title.contains(dirName) || title.contains(workingDir) {
-                    logger.info("Found tab by directory match")
+                // Check for directory match - be more flexible
+                let titleLower = title.lowercased()
+                let dirNameLower = dirName.lowercased()
+                let workingDirLower = workingDir.lowercased()
+                
+                if titleLower.contains(dirNameLower) || titleLower.contains(workingDirLower) {
+                    logger.info("Found tab by directory match at index \(index)")
                     return tab
                 }
+                
+                // Check if the tab title ends with the directory name (common pattern)
+                if title.hasSuffix(dirName) || title.hasSuffix(" - \(dirName)") {
+                    logger.info("Found tab by directory suffix match at index \(index)")
+                    return tab
+                }
+            } else {
+                logger.debug("Tab \(index): Could not get title")
             }
         }
-
+        
+        logger.warning("No matching tab found for session \(sessionID)")
         return nil
     }
 }
