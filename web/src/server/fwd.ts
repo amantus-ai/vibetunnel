@@ -196,6 +196,10 @@ export async function startVibeTunnelForward(args: string[]) {
 
           if (sent) {
             logger.log(`Session title updated via IPC to: ${sanitizedTitle}`);
+            // IPC update succeeded, server will handle the file update
+            socketClient.disconnect();
+            closeLogger();
+            process.exit(0);
           } else {
             logger.warn(`Failed to send title update via IPC, falling back to file update`);
           }
@@ -209,11 +213,11 @@ export async function startVibeTunnelForward(args: string[]) {
         logger.debug(`No IPC socket found, session might not be active`);
       }
 
-      // Always update the file for persistence
+      // Only update the file if IPC failed or socket doesn't exist
       sessionInfo.name = sanitizedTitle;
       sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
-      logger.log(`Session title persisted to: ${sanitizedTitle}`);
+      logger.log(`Session title persisted to file: ${sanitizedTitle}`);
       closeLogger();
       process.exit(0);
     } catch (error) {
@@ -441,9 +445,17 @@ export async function startVibeTunnelForward(args: string[]) {
         }
 
         logger.log(`Setting up file watcher for session name changes`);
-        sessionFileWatcher = fs.watch(sessionJsonPath, (eventType) => {
-          logger.debug(`[File Watch] Detected ${eventType} event on session.json`);
-          if (eventType === 'change') {
+        const sessionDir = path.dirname(sessionJsonPath);
+        const sessionFileName = path.basename(sessionJsonPath);
+
+        sessionFileWatcher = fs.watch(sessionDir, (eventType, filename) => {
+          // Only process events for session.json
+          if (filename !== sessionFileName) {
+            return;
+          }
+
+          logger.debug(`[File Watch] Detected ${eventType} event on ${filename}`);
+          if (eventType === 'change' || eventType === 'rename') {
             // Debounce rapid changes
             if (fileWatchDebounceTimer) {
               clearTimeout(fileWatchDebounceTimer);
@@ -489,7 +501,7 @@ export async function startVibeTunnelForward(args: string[]) {
           }
         });
 
-        logger.log(`File watcher successfully set up for session name changes`);
+        logger.log(`File watcher successfully set up on session directory`);
 
         // Clean up watcher on error
         sessionFileWatcher.on('error', (error) => {
