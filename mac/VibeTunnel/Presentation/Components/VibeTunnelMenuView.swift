@@ -141,7 +141,7 @@ struct VibeTunnelMenuView: View {
                     }
                 }
                 .padding(.vertical, 4)
-                .animation(.easeInOut(duration: 0.3), value: sessionMonitor.sessions.count)
+                .animation(.easeInOut(duration: 0.3), value: sessionMonitor.sessions.keys.sorted())
             }
             .frame(maxHeight: 400)
 
@@ -228,6 +228,9 @@ struct VibeTunnelMenuView: View {
                     focusedField = nil
                 }
             }
+            
+            // Refresh all cached git repositories when menu opens
+            gitRepositoryMonitor.refreshAllCached()
         }
         .onKeyPress { keyPress in
             if keyPress.key == .tab && !hasStartedKeyboardNavigation {
@@ -493,28 +496,23 @@ struct SessionRow: View {
         }
         .buttonStyle(PlainButtonStyle())
         .task(id: session.value.workingDir) {
-            // Fetch git repository info for this session
+            // Fetch git repository info for this session - will return cached data immediately
             gitRepository = await gitRepositoryMonitor.findRepository(for: session.value.workingDir)
-        }
-        .onChange(of: session.value.workingDir) { oldValue, newValue in
-            Task {
-                gitRepository = await gitRepositoryMonitor.findRepository(for: newValue)
-            }
         }
         .onAppear {
             // Set up periodic refresh for git status
             refreshTask = Task {
-                // Initial delay to ensure smooth UI
-                try? await Task.sleep(for: .milliseconds(100))
-                
                 // Refresh every 5 seconds while the view is visible
                 while !Task.isCancelled {
-                    if let repo = await gitRepositoryMonitor.findRepository(for: session.value.workingDir) {
+                    try? await Task.sleep(for: .seconds(5))
+                    let repo = await gitRepositoryMonitor.findRepository(for: session.value.workingDir)
+                    if !Task.isCancelled, let repo = repo {
                         await MainActor.run {
-                            gitRepository = repo
+                            if self.gitRepository != repo {
+                                self.gitRepository = repo
+                            }
                         }
                     }
-                    try? await Task.sleep(for: .seconds(5))
                 }
             }
         }
@@ -542,7 +540,7 @@ struct SessionRow: View {
 
             // Session info - use flexible width
             VStack(alignment: .leading, spacing: 2) {
-                // First row: Command name, session name, and window indicator
+                // First row: Command name, session name, and window indicator - FULL WIDTH
                 HStack(spacing: 4) {
                     if isEditing {
                         TextField("Session Name", text: $editedName)
@@ -600,57 +598,102 @@ struct SessionRow: View {
                     }
                 }
 
-                // Second row: Full path with git info
+                // Second row: Path/git info on left, time/close on right
                 HStack(spacing: 0) {
-                    // Clickable folder and path area
-                    HStack(spacing: 4) {
+                    // Left side: folder, path, git info
+                    HStack(spacing: 0) {
+                        // Clickable folder icon
                         Image(systemName: gitRepository != nil ? "folder.badge.gearshape" : "folder")
                             .font(.system(size: 9))
                             .foregroundColor(isHoveringGitFolder ? Color(red: 0.0, green: 0.5, blue: 0.0) : .secondary)
                             .scaleEffect(isHoveringGitFolder ? 1.1 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringGitFolder)
+                            .onTapGesture {
+                                let pathToOpen = gitRepository?.path ?? session.value.workingDir
+                                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: pathToOpen)
+                            }
+                            .onHover { hovering in
+                                withTransaction(Transaction(animation: nil)) {
+                                    isHoveringGitFolder = hovering
+                                }
+                                if hovering {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
+                            }
                         
+                        Text(" ")
+                            .font(.system(size: 10))
+                        
+                        // Path
                         Text(compactPath)
                             .font(.system(size: 10))
-                            .foregroundColor(isHoveringGitFolder ? Color(red: 0.0, green: 0.5, blue: 0.0) : .secondary)
+                            .foregroundColor(.secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
-                            .layoutPriority(1)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        let pathToOpen = gitRepository?.path ?? session.value.workingDir
-                        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: pathToOpen)
-                    }
-                    .onHover { hovering in
-                        isHoveringGitFolder = hovering
-                        if hovering {
-                            NSCursor.pointingHand.push()
-                        } else {
-                            NSCursor.pop()
+                        
+                        // Git info inline with branch symbol
+                        if let repo = gitRepository {
+                            Text(" ⎇ ")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary.opacity(0.6))
+                            
+                            if let branch = repo.currentBranch {
+                                Text(branch)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
+                            }
+                            
+                            if repo.hasChanges {
+                                Text(" • ")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary.opacity(0.6))
+                                
+                                Text(repo.statusText)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(AppColors.Fallback.gitChanges(for: colorScheme))
+                            }
                         }
                     }
                     
-                    // Git branch and status on the right
-                    if let repo = gitRepository {
-                        Spacer(minLength: 4)
-                        
-                        if let branch = repo.currentBranch {
-                            Text(branch)
+                    Spacer(minLength: 8)
+                    
+                    // Right side: time/close button
+                    ZStack {
+                        if isHovered && !isTerminating {
+                            // Show X button on hover
+                            Button(action: terminateSession) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.red.opacity(0.1))
+                                        .frame(width: 16, height: 16)
+                                    Circle()
+                                        .strokeBorder(Color.red.opacity(0.3), lineWidth: 0.5)
+                                        .frame(width: 16, height: 16)
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(.red.opacity(0.8))
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.scale.combined(with: .opacity))
+                        } else if isTerminating {
+                            // Show progress indicator while terminating
+                            ProgressView()
+                                .scaleEffect(0.6)
+                                .frame(width: 14, height: 14)
+                        } else {
+                            // Show time when not hovering
+                            Text(duration)
                                 .font(.system(size: 10))
-                                .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
-                        }
-                        
-                        if repo.hasChanges {
-                            Text("•")
-                                .foregroundColor(.secondary.opacity(0.6))
-                            Text(repo.statusText)
-                                .font(.system(size: 10))
-                                .foregroundColor(AppColors.Fallback.gitChanges(for: colorScheme))
+                                .foregroundColor(Color.secondary.opacity(0.6))
+                                .transition(.opacity)
                         }
                     }
+                    .frame(width: 40, alignment: .trailing)
+                    .animation(.easeInOut(duration: 0.15), value: isHovered)
                 }
-                .frame(height: 14) // Fixed height to prevent layout jumping
                 
                 // Third row: Activity status (if present)
                 if let activityStatus = session.value.activityStatus?.specificStatus?.status {
@@ -666,41 +709,6 @@ struct SessionRow: View {
                 }
             }
             .frame(maxWidth: .infinity)
-
-            // Fixed width area for time/close button
-            ZStack {
-                if isHovered && !isTerminating {
-                    // Show X button on hover
-                    Button(action: terminateSession) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.red.opacity(0.1))
-                                .frame(width: 16, height: 16)
-                            Circle()
-                                .strokeBorder(Color.red.opacity(0.3), lineWidth: 0.5)
-                                .frame(width: 16, height: 16)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.red.opacity(0.8))
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .transition(.scale.combined(with: .opacity))
-                } else if isTerminating {
-                    // Show progress indicator while terminating
-                    ProgressView()
-                        .scaleEffect(0.6)
-                        .frame(width: 14, height: 14)
-                } else {
-                    // Show time when not hovering
-                    Text(duration)
-                        .font(.system(size: 10))
-                        .foregroundColor(Color.secondary.opacity(0.6))
-                        .transition(.opacity)
-                }
-            }
-            .frame(width: 40, alignment: .trailing)
-            .animation(.easeInOut(duration: 0.15), value: isHovered)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)

@@ -2,7 +2,11 @@ import Combine
 import Foundation
 import Observation
 
-/// Monitors Git repositories and provides status information
+/// Monitors and caches Git repository status information for efficient UI updates.
+///
+/// `GitRepositoryMonitor` provides real-time Git repository information for terminal sessions
+/// in VibeTunnel. It efficiently tracks repository states with intelligent caching to minimize
+/// Git command executions while keeping the UI responsive.
 @MainActor
 @Observable
 public final class GitRepositoryMonitor {
@@ -18,7 +22,8 @@ public final class GitRepositoryMonitor {
     public func findRepository(for filePath: String) async -> GitRepository? {
         // Check if we already know the repo path for this file
         if let cachedRepoPath = fileToRepoCache[filePath],
-           let cached = getCachedRepository(forRepoPath: cachedRepoPath) {
+           let cached = repositoryCache[cachedRepoPath] {
+            // Return cached data immediately (no matter how old)
             return cached
         }
         
@@ -31,7 +36,8 @@ public final class GitRepositoryMonitor {
         fileToRepoCache[filePath] = repoPath
         
         // Check if we already have this repository cached
-        if let cached = getCachedRepository(forRepoPath: repoPath) {
+        if let cached = repositoryCache[repoPath] {
+            // Return cached data immediately (no matter how old)
             return cached
         }
         
@@ -49,10 +55,38 @@ public final class GitRepositoryMonitor {
     /// Clear the repository cache
     public func clearCache() {
         repositoryCache.removeAll()
-        cacheTimestamps.removeAll()
         fileToRepoCache.removeAll()
     }
+    
+    /// Refresh all cached repositories
+    public func refreshAllCached() {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        
+        Task {
+            let repoPaths = Set(repositoryCache.keys)
+            for repoPath in repoPaths {
+                if let fresh = await getRepositoryStatus(at: repoPath) {
+                    await MainActor.run {
+                        repositoryCache[repoPath] = fresh
+                    }
+                }
+            }
+            await MainActor.run {
+                isRefreshing = false
+            }
+        }
+    }
 
+    /// Pre-warm the cache for a list of directories
+    public func prewarmCache(for directories: [String]) {
+        Task {
+            for directory in directories {
+                _ = await findRepository(for: directory)
+            }
+        }
+    }
+    
     /// Monitor a specific directory for git changes
     public func startMonitoring(directory: String) {
         monitoringTimer?.invalidate()
@@ -84,30 +118,16 @@ public final class GitRepositoryMonitor {
     /// Cache mapping file paths to their repository paths
     private var fileToRepoCache: [String: String] = [:]
 
-    /// Cache timeout interval (5 seconds)
-    private let cacheTimeout: TimeInterval = 5.0
-
-    /// Timestamps for cached entries (by repository path)
-    private var cacheTimestamps: [String: Date] = [:]
+    /// Whether we're currently refreshing the cache
+    private var isRefreshing = false
 
     /// Timer for periodic monitoring
     private var monitoringTimer: Timer?
 
     // MARK: - Private Methods
 
-    private func getCachedRepository(forRepoPath repoPath: String) -> GitRepository? {
-        guard let timestamp = cacheTimestamps[repoPath],
-              Date().timeIntervalSince(timestamp) < cacheTimeout,
-              let cached = repositoryCache[repoPath]
-        else {
-            return nil
-        }
-        return cached
-    }
-
     private func cacheRepository(_ repository: GitRepository) {
         repositoryCache[repository.path] = repository
-        cacheTimestamps[repository.path] = Date()
     }
 
     /// Find the Git repository root starting from a given path

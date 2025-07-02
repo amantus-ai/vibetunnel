@@ -1,6 +1,11 @@
 import Foundation
 
-/// Represents information about a Git repository
+/// Represents the current state and metadata of a Git repository.
+///
+/// `GitRepository` provides a comprehensive snapshot of a Git repository's status,
+/// including file change counts, current branch, and remote URL information.
+/// It's designed to be used with ``GitRepositoryMonitor`` for real-time monitoring
+/// of repository states in the VibeTunnel menu bar interface.
 public struct GitRepository: Sendable, Equatable, Hashable {
     // MARK: - Properties
 
