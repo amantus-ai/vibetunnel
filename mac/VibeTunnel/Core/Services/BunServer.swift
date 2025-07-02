@@ -438,7 +438,11 @@ final class BunServer {
                 while true {
                     var readBuffer = Data(count: maxBytesPerRead)
                     let bytesRead = readBuffer.withUnsafeMutableBytes { bytes in
-                        Darwin.read(handle.fileDescriptor, bytes.baseAddress, maxBytesPerRead)
+                        guard let baseAddress = bytes.baseAddress else {
+                            logger.error("Failed to get base address for read buffer")
+                            return -1
+                        }
+                        return Darwin.read(handle.fileDescriptor, baseAddress, maxBytesPerRead)
                     }
 
                     if bytesRead > 0 {
@@ -518,7 +522,11 @@ final class BunServer {
                 while true {
                     var readBuffer = Data(count: maxBytesPerRead)
                     let bytesRead = readBuffer.withUnsafeMutableBytes { bytes in
-                        Darwin.read(handle.fileDescriptor, bytes.baseAddress, maxBytesPerRead)
+                        guard let baseAddress = bytes.baseAddress else {
+                            logger.error("Failed to get base address for read buffer")
+                            return -1
+                        }
+                        return Darwin.read(handle.fileDescriptor, baseAddress, maxBytesPerRead)
                     }
 
                     if bytesRead > 0 {
