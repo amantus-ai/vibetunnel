@@ -307,7 +307,7 @@ export class SessionListPage extends BasePage {
       // Try force click as last resort
       try {
         await submitButton.click({ force: true });
-      } catch (forceError) {
+      } catch (_forceError) {
         console.log('Force click also failed, trying JavaScript click...');
         await this.page.evaluate(() => {
           const button =
