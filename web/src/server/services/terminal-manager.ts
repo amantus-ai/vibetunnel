@@ -2,6 +2,7 @@ import { Terminal as XtermTerminal } from '@xterm/headless';
 import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ErrorDeduplicator, formatErrorSummary } from '../utils/error-deduplicator.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('terminal-manager');
@@ -36,7 +37,13 @@ export class TerminalManager {
   private controlDir: string;
   private bufferListeners: Map<string, Set<BufferChangeListener>> = new Map();
   private changeTimers: Map<string, NodeJS.Timeout> = new Map();
-  private errorCache: Map<string, { count: number; lastLogged: number }> = new Map();
+  private errorDeduplicator = new ErrorDeduplicator({
+    keyExtractor: (error, context) => {
+      // Use session ID and line prefix as context for xterm parsing errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return `${context}:${errorMessage}`;
+    },
+  });
 
   constructor(controlDir: string) {
     this.controlDir = controlDir;
@@ -192,39 +199,21 @@ export class TerminalManager {
         // Ignore 'i' (input) events
       }
     } catch (error) {
-      // Deduplicate parsing errors to avoid log spam
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorKey = `${sessionId}:${errorMessage}:${line.substring(0, 30)}`;
-      const errorInfo = this.errorCache.get(errorKey);
-      const now = Date.now();
+      // Use deduplicator to check if we should log this error
+      const contextKey = `${sessionId}:${line.substring(0, 30)}`;
 
-      if (!errorInfo || now - errorInfo.lastLogged > 60000) {
-        // Log every minute max
-        // Only log first 100 chars of the line to avoid huge logs
-        const truncatedLine = line.length > 100 ? `${line.substring(0, 100)}...` : line;
-        logger.error(`Failed to parse stream line for session ${sessionId}: ${truncatedLine}`);
-        if (error instanceof Error && error.stack) {
-          logger.debug(`Parse error details: ${errorMessage}`);
-        }
-        this.errorCache.set(errorKey, { count: 1, lastLogged: now });
-      } else {
-        // Increment count silently
-        errorInfo.count++;
+      if (this.errorDeduplicator.shouldLog(error, contextKey)) {
+        const stats = this.errorDeduplicator.getErrorStats(error, contextKey);
 
-        // Log summary every 100 errors
-        if (errorInfo.count % 100 === 0) {
-          logger.warn(
-            `Repeated parsing errors for session ${sessionId}: ${errorInfo.count} occurrences of similar error (${errorMessage})`
-          );
-        }
-      }
-
-      // Clean up old error cache entries periodically
-      if (this.errorCache.size > 100) {
-        const cutoff = now - 300000; // 5 minutes
-        for (const [key, info] of this.errorCache.entries()) {
-          if (info.lastLogged < cutoff) {
-            this.errorCache.delete(key);
+        if (stats && stats.count > 1) {
+          // Log summary for repeated errors
+          logger.warn(formatErrorSummary(error, stats, `session ${sessionId}`));
+        } else {
+          // First occurrence - log the error with details
+          const truncatedLine = line.length > 100 ? `${line.substring(0, 100)}...` : line;
+          logger.error(`Failed to parse stream line for session ${sessionId}: ${truncatedLine}`);
+          if (error instanceof Error && error.stack) {
+            logger.debug(`Parse error details: ${error.message}`);
           }
         }
       }
