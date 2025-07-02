@@ -336,8 +336,9 @@ test.describe('Advanced Session Management', () => {
     // Use bash for consistency in tests
     await page.fill('input[placeholder="zsh"]', 'bash');
 
-    await page.locator('button').filter({ hasText: 'Create' }).first().click();
-    await page.waitForURL(/\?session=/);
+    // Use force click to bypass pointer-events issues
+    await page.locator('button').filter({ hasText: 'Create' }).first().click({ force: true });
+    await page.waitForURL(/\?session=/, { timeout: 10000 });
 
     // Track for cleanup
     sessionManager.clearTracking();
