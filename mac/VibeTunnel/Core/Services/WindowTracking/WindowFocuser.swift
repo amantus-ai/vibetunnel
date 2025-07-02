@@ -225,7 +225,7 @@ final class WindowFocuser {
                 logger.info("Window \(index) has \(tabs.count) tabs")
                 
                 // Try to find matching tab
-                if let matchingTab = windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) {
+                if windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) != nil {
                     // Found the tab! Focus the window and select the tab
                     logger.info("Found matching tab in window \(index)")
                     

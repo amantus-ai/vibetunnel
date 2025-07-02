@@ -185,8 +185,4 @@ final class SessionMonitor {
             }
         }
     }
-    
-    deinit {
-        refreshTimer?.invalidate()
-    }
 }
