@@ -433,6 +433,12 @@ struct SessionRow: View {
     @FocusState private var isEditFieldFocused: Bool
 
     var body: some View {
+        Button(action: handleTap) {
+            content
+        }
+    }
+
+    var content: some View {
         HStack(spacing: 8) {
             // Activity indicator with subtle glow
             ZStack {
@@ -568,18 +574,6 @@ struct SessionRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .contentShape(Rectangle())
-        .onTapGesture {
-            guard !isEditing else { return }
-
-            if hasWindow {
-                WindowTracker.shared.focusWindow(for: session.key)
-            } else {
-                // Open browser for sessions without windows
-                if let url = DashboardURLBuilder.dashboardURL(port: serverManager.port, sessionId: session.key) {
-                    NSWorkspace.shared.open(url)
-                }
-            }
-        }
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(isHovered ? hoverBackgroundColor : Color.clear)
@@ -630,6 +624,19 @@ struct SessionRow: View {
             Button("Copy Session ID") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(session.key, forType: .string)
+            }
+        }
+    }
+    
+    private func handleTap() {
+        guard !isEditing else { return }
+
+        if hasWindow {
+            WindowTracker.shared.focusWindow(for: session.key)
+        } else {
+            // Open browser for sessions without windows
+            if let url = DashboardURLBuilder.dashboardURL(port: serverManager.port, sessionId: session.key) {
+                NSWorkspace.shared.open(url)
             }
         }
     }
