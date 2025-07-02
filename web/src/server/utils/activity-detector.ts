@@ -181,7 +181,7 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
     // So "6.0" means 6.0k tokens, not 6.0 tokens
     const formattedTokens = `${tokens}k`;
     // No spinner - just action and stats for stable comparison
-    displayText = `${action} (${duration}s, ${direction}${formattedTokens})`;
+    displayText = `${action} (${duration}s, ${direction} ${formattedTokens})`;
   } else {
     // Simple format without token info
     displayText = `${action} (${duration}s)`;
