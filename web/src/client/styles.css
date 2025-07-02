@@ -186,9 +186,8 @@
 
   /* Modal backdrop */
   .modal-backdrop {
-    @apply fixed inset-0 bg-black bg-opacity-80;
+    @apply fixed inset-0 bg-black bg-opacity-80 z-40;
     backdrop-filter: blur(4px);
-    z-index: 1000;
   }
 
   /* Modal content */

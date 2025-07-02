@@ -1,4 +1,5 @@
 import { chromium, type FullConfig } from '@playwright/test';
+import type { Session } from '../../shared/types.js';
 import { testConfig } from './test-config';
 
 async function globalSetup(config: FullConfig) {
@@ -54,7 +55,7 @@ async function globalSetup(config: FullConfig) {
 
       // Filter test sessions (older than 1 hour)
       const oneHourAgo = Date.now() - 60 * 60 * 1000;
-      const testSessions = sessions.filter((s: any) => {
+      const testSessions = sessions.filter((s: Session) => {
         const isTestSession =
           s.name?.includes('test-') ||
           s.name?.includes('nav-test') ||

@@ -9,6 +9,20 @@ export interface SessionOptions {
   command?: string;
 }
 
+interface TestResponse {
+  url: string;
+  method: string;
+  data: {
+    sessionId?: string;
+  };
+}
+
+declare global {
+  interface Window {
+    __testResponses?: TestResponse[];
+  }
+}
+
 /**
  * Creates a new session and navigates to it, handling all the common setup
  */
@@ -52,9 +66,9 @@ export async function createAndNavigateToSession(
       // Try to find session ID from the page or recent requests
       const sessionResponse = await page.evaluate(async () => {
         // Check if there's a recent session creation response in memory
-        const responses = (window as any).__testResponses || [];
+        const responses = window.__testResponses || [];
         const sessionResponse = responses.find(
-          (r: any) => r.url.includes('/api/sessions') && r.method === 'POST'
+          (r: TestResponse) => r.url.includes('/api/sessions') && r.method === 'POST'
         );
         return sessionResponse?.data;
       });

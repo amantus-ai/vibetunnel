@@ -1,6 +1,5 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import './modal-wrapper.js';
 import {
   type NotificationPreferences,
   type PushSubscription,
@@ -78,23 +77,19 @@ export class UnifiedSettings extends LitElement {
     if (this.unsubscribeResponsive) {
       this.unsubscribeResponsive();
     }
+    // Clean up keyboard listener
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
   protected willUpdate(changedProperties: PropertyValues) {
     if (changedProperties.has('visible')) {
-      logger.log(
-        'unified-settings visible changed from',
-        changedProperties.get('visible'),
-        'to',
-        this.visible
-      );
-      logger.log('Stack trace:', new Error().stack);
-
       if (this.visible) {
-        // No need to add keyboard listener - modal-wrapper handles escape
+        document.addEventListener('keydown', this.handleKeyDown);
         document.startViewTransition?.(() => {
           this.requestUpdate();
         });
+      } else {
+        document.removeEventListener('keydown', this.handleKeyDown);
       }
     }
   }
@@ -144,8 +139,20 @@ export class UnifiedSettings extends LitElement {
     }
   }
 
+  private handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && this.visible) {
+      this.handleClose();
+    }
+  };
+
   private handleClose() {
     this.dispatchEvent(new CustomEvent('close'));
+  }
+
+  private handleBackdropClick(e: Event) {
+    if (e.target === e.currentTarget) {
+      this.handleClose();
+    }
   }
 
   private async handleToggleNotifications() {
@@ -273,14 +280,14 @@ export class UnifiedSettings extends LitElement {
   }
 
   render() {
+    if (!this.visible) return html``;
+
     return html`
-      <modal-wrapper
-        .visible=${this.visible}
-        contentClass="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col"
-        transitionName="settings-modal"
-        ariaLabel="Settings"
-        @close=${this.handleClose}
-      >
+      <div class="modal-backdrop flex items-center justify-center" @click=${this.handleBackdropClick}>
+        <div
+          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl mx-2 sm:mx-4 max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col"
+          style="view-transition-name: settings-modal"
+        >
           <!-- Header -->
           <div class="p-4 pb-4 border-b border-dark-border relative flex-shrink-0">
             <h2 class="text-accent-green text-lg font-bold">Settings</h2>
@@ -301,7 +308,8 @@ export class UnifiedSettings extends LitElement {
             ${this.renderNotificationSettings()}
             ${this.renderAppSettings()}
           </div>
-        </modal-wrapper>
+        </div>
+      </div>
     `;
   }
 

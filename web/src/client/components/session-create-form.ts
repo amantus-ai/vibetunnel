@@ -14,7 +14,6 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
-import './modal-wrapper.js';
 import { TitleMode } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
@@ -84,8 +83,11 @@ export class SessionCreateForm extends LitElement {
     // Only handle events when modal is visible
     if (!this.visible) return;
 
-    // Only handle Enter key - Escape is now handled by modal-wrapper
-    if (e.key === 'Enter') {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      this.handleCancel();
+    } else if (e.key === 'Enter') {
       // Don't interfere with Enter in textarea elements
       if (e.target instanceof HTMLTextAreaElement) return;
 
@@ -169,14 +171,6 @@ export class SessionCreateForm extends LitElement {
 
     // Handle visibility changes
     if (changedProperties.has('visible')) {
-      logger.log(
-        'session-create-form visible changed from',
-        changedProperties.get('visible'),
-        'to',
-        this.visible
-      );
-      logger.log('Stack trace:', new Error().stack);
-
       if (this.visible) {
         // Load from localStorage when form becomes visible
         this.loadFromLocalStorage();
@@ -376,14 +370,16 @@ export class SessionCreateForm extends LitElement {
   }
 
   render() {
+    if (!this.visible) {
+      return html``;
+    }
+
     return html`
-      <modal-wrapper
-        .visible=${this.visible}
-        contentClass="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] flex flex-col"
-        transitionName="create-session-modal"
-        ariaLabel="Create new session"
-        @close=${this.handleCancel}
-      >
+      <div class="modal-backdrop flex items-center justify-center">
+        <div
+          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] mx-2 sm:mx-4"
+          style="view-transition-name: create-session-modal"
+        >
           <div class="p-4 sm:p-6 sm:pb-4 mb-2 sm:mb-3 border-b border-dark-border relative bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary flex-shrink-0">
             <h2 id="modal-title" class="text-primary text-lg sm:text-xl font-bold">New Session</h2>
             <button
@@ -568,7 +564,8 @@ export class SessionCreateForm extends LitElement {
               </button>
             </div>
           </div>
-        </modal-wrapper>
+        </div>
+      </div>
 
       <file-browser
         .visible=${this.showFileBrowser}

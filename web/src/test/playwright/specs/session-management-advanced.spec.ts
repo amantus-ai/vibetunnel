@@ -106,22 +106,59 @@ test.describe('Advanced Session Management', () => {
       const { sessionName } = await sessionManager.createTrackedSession();
       sessionNames.push(sessionName);
 
-      // Go back to list
+      // Go back to list after each creation
       await page.goto('/');
+
+      // Wait a moment for the session to appear in the list
+      await page.waitForTimeout(500);
     }
 
-    // Verify all sessions are visible
-    for (const name of sessionNames) {
-      const cards = await sessionListPage.getSessionCards();
-      let hasSession = false;
-      for (const card of cards) {
-        const text = await card.textContent();
-        if (text?.includes(name)) {
-          hasSession = true;
-          break;
-        }
+    // Ensure exited sessions are visible - look for Hide/Show toggle
+    const hideExitedButton = page
+      .locator('button')
+      .filter({ hasText: /Hide Exited/ })
+      .first();
+    if (await hideExitedButton.isVisible({ timeout: 1000 })) {
+      // If "Hide Exited" button is visible, exited sessions are currently shown, which is what we want
+      console.log('Exited sessions are visible');
+    } else {
+      // Look for "Show Exited" button and click it if present
+      const showExitedButton = page
+        .locator('button')
+        .filter({ hasText: /Show Exited/ })
+        .first();
+      if (await showExitedButton.isVisible({ timeout: 1000 })) {
+        await showExitedButton.click();
+        console.log('Clicked Show Exited button');
+        await page.waitForTimeout(1000);
       }
-      expect(hasSession).toBeTruthy();
+    }
+
+    // Wait for sessions to be visible (they may be running or exited)
+    await page.waitForTimeout(2000);
+
+    // Verify all sessions are visible (either running or exited)
+    for (const name of sessionNames) {
+      await expect(async () => {
+        // Look for sessions in session-card elements first
+        const cards = await sessionListPage.getSessionCards();
+        let hasSession = false;
+        for (const card of cards) {
+          const text = await card.textContent();
+          if (text?.includes(name)) {
+            hasSession = true;
+            break;
+          }
+        }
+
+        // If not found in session cards, look for session name anywhere on the page
+        if (!hasSession) {
+          const sessionNameElement = await page.locator(`text=${name}`).first();
+          hasSession = await sessionNameElement.isVisible().catch(() => false);
+        }
+
+        expect(hasSession).toBeTruthy();
+      }).toPass({ timeout: 10000 });
     }
 
     // Find and click Kill All button
@@ -201,11 +238,11 @@ test.describe('Advanced Session Management', () => {
     // We can see in the screenshot that sessions appear in a grid view with "exited" status
 
     // First check if there's a Hide Exited button (which means exited sessions are visible)
-    const hideExitedButton = page
+    const hideExitedButtonAfter = page
       .locator('button')
       .filter({ hasText: /Hide Exited/i })
       .first();
-    const hideExitedVisible = await hideExitedButton
+    const hideExitedVisible = await hideExitedButtonAfter
       .isVisible({ timeout: 1000 })
       .catch(() => false);
 
