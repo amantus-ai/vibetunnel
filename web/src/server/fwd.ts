@@ -501,8 +501,10 @@ export async function startVibeTunnelForward(args: string[]) {
             // Only log in debug mode to avoid noise
             logger.debug(`[File Watch] Directory event: ${eventType} on ${filename || 'unknown'}`);
 
-            // Check if it's our file (filename might be undefined on macOS)
-            if (!filename || filename === 'session.json' || filename === 'session.json.tmp') {
+            // Check if it's our file
+            // On macOS, filename might be undefined, so we can't filter properly
+            // In that case, skip fs.watch events and rely on fs.watchFile instead
+            if (filename && (filename === 'session.json' || filename === 'session.json.tmp')) {
               // Debounce rapid changes
               if (fileWatchDebounceTimer) {
                 clearTimeout(fileWatchDebounceTimer);
