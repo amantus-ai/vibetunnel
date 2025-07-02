@@ -142,17 +142,17 @@ struct SessionRow: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    // Right side: Duration and X button
-                    HStack(spacing: 4) {
-                        // Duration label
-                        if !duration.isEmpty {
+                    // Right side: Duration and X button overlay
+                    ZStack {
+                        // Duration label (hidden on hover)
+                        if !duration.isEmpty && !isHovered && !isTerminating {
                             Text(duration)
                                 .font(.system(size: 9))
                                 .foregroundColor(.secondary.opacity(0.6))
                         }
 
-                        // Show X button on hover
-                        if !isTerminating {
+                        // Show X button on hover (overlays duration)
+                        if !isTerminating && isHovered {
                             Button(action: terminateSession) {
                                 ZStack {
                                     Circle()
@@ -170,7 +170,6 @@ struct SessionRow: View {
                                 }
                             }
                             .buttonStyle(.plain)
-                            .opacity(isHovered ? 1 : 0)
                         }
 
                         // Show progress indicator while terminating
@@ -180,7 +179,7 @@ struct SessionRow: View {
                                 .frame(width: 14, height: 14)
                         }
                     }
-                    .frame(width: 40, height: 16, alignment: .trailing)
+                    .frame(width: 30, height: 16)
                 }
 
                 // Third row: Activity status (if present)
