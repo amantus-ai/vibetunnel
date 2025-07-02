@@ -8,6 +8,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const execAsync = promisify(exec);
 
+interface ExecError extends Error {
+  code?: number;
+  stderr?: string;
+}
+
 describe('vt title Command Integration', () => {
   let testControlDir: string;
   let vtScriptPath: string;
@@ -38,9 +43,10 @@ describe('vt title Command Integration', () => {
       // Should not reach here
       expect.fail('Command should have failed');
     } catch (error) {
-      expect((error as any).code).toBeGreaterThan(0);
-      expect((error as any).stderr).toContain("'vt title' can only be used inside a VibeTunnel session");
-      expect((error as any).stderr).toContain('Start a session first');
+      const execError = error as ExecError;
+      expect(execError.code).toBeGreaterThan(0);
+      expect(execError.stderr).toContain("'vt title' can only be used inside a VibeTunnel session");
+      expect(execError.stderr).toContain('Start a session first');
     }
   });
 
@@ -172,8 +178,9 @@ describe('vt title Command Integration', () => {
       await execAsync(`${vtScriptPath} title "Test"`, { env });
       expect.fail('Should have failed');
     } catch (error) {
-      expect((error as any).code).toBeGreaterThan(0);
-      expect((error as any).stderr).toContain('Session file not found');
+      const execError = error as ExecError;
+      expect(execError.code).toBeGreaterThan(0);
+      expect(execError.stderr).toContain('Session file not found');
     }
   });
 
