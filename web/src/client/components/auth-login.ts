@@ -145,8 +145,6 @@ export class AuthLogin extends LitElement {
   }
 
   private handleOpenSettings = () => {
-    console.log('🔧 Auth-login: handleOpenSettings called');
-    console.log('Stack trace:', new Error().stack);
     // Don't bubble - let parent handle via direct event listener
     this.dispatchEvent(new CustomEvent('open-settings'));
   };
