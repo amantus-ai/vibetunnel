@@ -169,14 +169,14 @@ test.describe('Session Navigation', () => {
     // Navigate back to first session to get its URL
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    
+
     const sessionListPage = await import('../pages/session-list.page').then(
       (m) => new m.SessionListPage(page)
     );
-    
+
     // Wait for the session list to be visible
     await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
-    
+
     await sessionListPage.clickSession(sessionName1);
     const session1Url = page.url();
 
@@ -184,7 +184,7 @@ test.describe('Session Navigation', () => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
-    
+
     // Navigate back to second session
     await sessionListPage.clickSession(sessionName2);
 
