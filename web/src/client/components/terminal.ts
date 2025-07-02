@@ -73,10 +73,6 @@ export class Terminal extends LitElement {
   private momentumAnimation: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
-  // Store original console methods for restoration
-  private originalConsoleError: typeof console.error | null = null;
-  private originalConsoleWarn: typeof console.warn | null = null;
-
   // Operation queue for batching buffer modifications
   private operationQueue: (() => void | Promise<void>)[] = [];
 
@@ -218,16 +214,6 @@ export class Terminal extends LitElement {
       this.terminal.dispose();
       this.terminal = null;
     }
-
-    // Restore original console methods
-    if (this.originalConsoleError) {
-      console.error = this.originalConsoleError;
-      this.originalConsoleError = null;
-    }
-    if (this.originalConsoleWarn) {
-      console.warn = this.originalConsoleWarn;
-      this.originalConsoleWarn = null;
-    }
   }
 
   firstUpdated() {
@@ -283,41 +269,6 @@ export class Terminal extends LitElement {
 
   private async setupTerminal() {
     try {
-      // Suppress xterm.js parsing errors if not already done
-      if (!this.originalConsoleError) {
-        this.originalConsoleError = console.error;
-        this.originalConsoleWarn = console.warn;
-
-        // Override console methods to filter xterm.js parsing errors
-        console.error = (...args: unknown[]) => {
-          const message = args[0];
-          if (
-            message &&
-            typeof message === 'string' &&
-            (message.includes('xterm.js: Parsing error:') ||
-              message.includes('xterm.js parsing error') ||
-              message.includes('Unable to process character') ||
-              message.includes('Cannot read properties of undefined'))
-          ) {
-            // Suppress xterm.js parsing errors - they're harmless but noisy
-            return;
-          }
-          this.originalConsoleError?.apply(console, args);
-        };
-
-        console.warn = (...args: unknown[]) => {
-          if (
-            args[0] &&
-            typeof args[0] === 'string' &&
-            args[0].includes('xterm.js: Parsing error:')
-          ) {
-            // Suppress xterm.js parsing warnings too
-            return;
-          }
-          this.originalConsoleWarn?.apply(console, args);
-        };
-      }
-
       // Create regular terminal but don't call .open() to make it headless
       this.terminal = new XtermTerminal({
         cursorBlink: true,
