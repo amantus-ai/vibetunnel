@@ -389,7 +389,21 @@ test.describe('Advanced Session Management', () => {
 
     // Go back to list
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible' });
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for session cards or no sessions message
+    await page.waitForFunction(
+      () => {
+        const cards = document.querySelectorAll('session-card');
+        const noSessionsMsg = document.querySelector('.text-dark-text-muted');
+        return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
+      },
+      { timeout: 10000 }
+    );
+    
+    // Verify both sessions are visible before proceeding
+    await expect(page.locator('session-card').filter({ hasText: runningSessionName })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('session-card').filter({ hasText: exitedSessionName })).toBeVisible({ timeout: 10000 });
 
     // Kill this session using page object
     const sessionListPage = await import('../pages/session-list.page').then(
