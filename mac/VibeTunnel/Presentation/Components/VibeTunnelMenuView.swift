@@ -436,6 +436,7 @@ struct SessionRow: View {
         Button(action: handleTap) {
             content
         }
+        .buttonStyle(PlainButtonStyle())
     }
 
     var content: some View {
