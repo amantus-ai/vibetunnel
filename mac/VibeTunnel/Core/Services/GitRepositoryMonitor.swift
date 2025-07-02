@@ -32,9 +32,15 @@ public final class GitRepositoryMonitor {
 
     // MARK: - Lifecycle
 
-    public init() {}
+    public init() {
+        gitOperationQueue.maxConcurrentOperationCount = 3 // Limit concurrent git processes
+    }
+
 
     // MARK: - Private Properties
+    
+    /// Operation queue for rate limiting git operations
+    private let gitOperationQueue = OperationQueue()
 
     /// Path to the git binary
     private let gitPath: String = {
@@ -94,7 +100,7 @@ public final class GitRepositoryMonitor {
 
         // Cache the result by repository path
         if let repository {
-            cacheRepository(repository)
+            cacheRepository(repository, originalFilePath: filePath)
         }
 
         return repository
@@ -149,9 +155,13 @@ public final class GitRepositoryMonitor {
 
     // MARK: - Private Methods
 
-    private func cacheRepository(_ repository: GitRepository) {
-        // Don't map repository path to itself - this is for file->repo mapping
+    private func cacheRepository(_ repository: GitRepository, originalFilePath: String? = nil) {
         repositoryCache[repository.path] = repository
+        
+        // Also map the original file path if different from repository path
+        if let originalFilePath = originalFilePath, originalFilePath != repository.path {
+            fileToRepoCache[originalFilePath] = repository.path
+        }
     }
 
     /// Validate and sanitize paths
@@ -188,11 +198,8 @@ public final class GitRepositoryMonitor {
             currentPath = currentPath.deletingLastPathComponent()
         }
 
-        // Get home directory path to stop searching
-        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser.path
-
-        // Search up the directory tree
-        while currentPath.path != "/" && currentPath.path.hasPrefix(homeDirectory) {
+        // Search up the directory tree to the root
+        while currentPath.path != "/" {
             let gitPath = currentPath.appendingPathComponent(".git")
 
             if FileManager.default.fileExists(atPath: gitPath.path) {
