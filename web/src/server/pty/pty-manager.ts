@@ -1733,7 +1733,10 @@ export class PtyManager extends EventEmitter {
     if (!this.sessionEventListeners.has(sessionId)) {
       this.sessionEventListeners.set(sessionId, new Set());
     }
-    const sessionListeners = this.sessionEventListeners.get(sessionId)!;
+    const sessionListeners = this.sessionEventListeners.get(sessionId);
+    if (!sessionListeners) {
+      return;
+    }
     listeners.forEach((listener) => sessionListeners.add(listener));
     this.emit(event, sessionId, ...args);
   }
@@ -1842,8 +1845,10 @@ export class PtyManager extends EventEmitter {
     session.titleInjectionTimer = setInterval(() => {
       if (!session.pendingTitleToInject || !session.stdoutQueue) {
         // No title to inject or session ended, stop monitor
-        clearInterval(session.titleInjectionTimer!);
-        session.titleInjectionTimer = undefined;
+        if (session.titleInjectionTimer) {
+          clearInterval(session.titleInjectionTimer);
+          session.titleInjectionTimer = undefined;
+        }
         return;
       }
 
@@ -1852,9 +1857,14 @@ export class PtyManager extends EventEmitter {
 
       // Check for quiet period
       if (timeSinceLastWrite >= TITLE_INJECTION_QUIET_PERIOD_MS) {
-        // Safe to inject title
+        // Safe to inject title - capture the title before clearing it
+        const titleToInject = session.pendingTitleToInject;
+        if (!titleToInject) {
+          return;
+        }
+
         session.stdoutQueue.enqueue(async () => {
-          const canWrite = process.stdout.write(session.pendingTitleToInject!);
+          const canWrite = process.stdout.write(titleToInject);
 
           // Update timestamp
           session.lastWriteTimestamp = Date.now();
@@ -1865,12 +1875,14 @@ export class PtyManager extends EventEmitter {
         });
 
         // Update tracking
-        session.currentTitle = session.pendingTitleToInject;
+        session.currentTitle = titleToInject;
         session.pendingTitleToInject = undefined;
 
         // Stop monitor
-        clearInterval(session.titleInjectionTimer!);
-        session.titleInjectionTimer = undefined;
+        if (session.titleInjectionTimer) {
+          clearInterval(session.titleInjectionTimer);
+          session.titleInjectionTimer = undefined;
+        }
 
         logger.debug(
           `Injected title during quiet period (${timeSinceLastWrite}ms) for session ${session.id}`
