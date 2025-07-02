@@ -129,11 +129,15 @@ export class FileBrowser extends LitElement {
   async updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
 
-    if (changedProperties.has('visible') || changedProperties.has('session')) {
-      if (this.visible) {
-        this.currentPath = this.session?.workingDir || '.';
-        await this.loadDirectory(this.currentPath);
-      }
+    // Only load directory when the component becomes visible or when session changes while visible
+    if (changedProperties.has('visible') && this.visible) {
+      // Component just became visible
+      this.currentPath = this.session?.workingDir || '.';
+      await this.loadDirectory(this.currentPath);
+    } else if (changedProperties.has('session') && this.visible) {
+      // Session changed while component is visible
+      this.currentPath = this.session?.workingDir || '.';
+      await this.loadDirectory(this.currentPath);
     }
 
     // Monaco editor will handle its own updates through properties
