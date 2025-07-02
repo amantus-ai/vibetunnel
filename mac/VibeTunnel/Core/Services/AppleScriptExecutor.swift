@@ -2,7 +2,10 @@
 import Foundation
 import OSLog
 
-/// Sendable wrapper for NSAppleEventDescriptor
+/// Sendable wrapper for NSAppleEventDescriptor.
+///
+/// Provides thread-safe wrapping of NSAppleEventDescriptor for use
+/// across actor boundaries while maintaining safety guarantees.
 private struct SendableDescriptor: @unchecked Sendable {
     let descriptor: NSAppleEventDescriptor?
 }
@@ -198,6 +201,10 @@ final class AppleScriptExecutor {
 }
 
 /// Errors that can occur during AppleScript execution.
+/// Errors that can occur during AppleScript execution.
+///
+/// Provides detailed error cases for AppleScript failures including
+/// script creation issues, execution errors, and permission problems.
 enum AppleScriptError: LocalizedError {
     case scriptCreationFailed
     case executionFailed(message: String, errorCode: Int?)

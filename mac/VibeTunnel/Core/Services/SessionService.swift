@@ -1,7 +1,11 @@
 import Foundation
 import Observation
 
-/// Service for managing session-related API operations
+/// Service for managing session-related API operations.
+///
+/// Provides high-level methods for interacting with terminal sessions through
+/// the server API, including renaming and terminating sessions. Handles authentication
+/// and error management for all session-related operations.
 @MainActor
 @Observable
 final class SessionService {
@@ -140,6 +144,10 @@ final class SessionService {
 }
 
 /// Errors that can occur during session service operations
+/// Errors that can occur during session service operations.
+///
+/// Provides detailed error cases for session management failures,
+/// including validation errors, network issues, and server state problems.
 enum SessionServiceError: LocalizedError {
     case invalidName
     case invalidURL

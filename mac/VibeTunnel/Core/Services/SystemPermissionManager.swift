@@ -9,7 +9,10 @@ extension Notification.Name {
     static let permissionsUpdated = Notification.Name("sh.vibetunnel.permissionsUpdated")
 }
 
-/// Types of system permissions that VibeTunnel requires
+/// Types of system permissions that VibeTunnel requires.
+///
+/// Represents the various macOS system permissions needed for full functionality,
+/// including automation, screen recording, and accessibility access.
 enum SystemPermission {
     case appleScript
     case screenRecording
@@ -49,7 +52,11 @@ enum SystemPermission {
     }
 }
 
-/// Unified manager for all system permissions required by VibeTunnel
+/// Unified manager for all system permissions required by VibeTunnel.
+///
+/// Monitors and manages macOS system permissions including Apple Script automation,
+/// screen recording, and accessibility access. Provides a centralized interface for
+/// checking permission status and guiding users through the granting process.
 @MainActor
 @Observable
 final class SystemPermissionManager {

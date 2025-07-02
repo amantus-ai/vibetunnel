@@ -2,7 +2,10 @@ import Darwin.C
 import Foundation
 import OSLog
 
-/// Information about a process that's using a port
+/// Information about a process that's using a port.
+///
+/// Contains detailed information about a process occupying a network port,
+/// including identification details and helpers to determine if it's a VibeTunnel-related process.
 struct ProcessDetails {
     let pid: Int
     let name: String
@@ -43,7 +46,10 @@ struct ProcessDetails {
     }
 }
 
-/// Information about a port conflict
+/// Information about a port conflict.
+///
+/// Encapsulates complete details about a port conflict including the blocking process,
+/// suggested remediation actions, and alternative port options.
 struct PortConflict {
     let port: Int
     let process: ProcessDetails
@@ -52,14 +58,22 @@ struct PortConflict {
     let alternativePorts: [Int]
 }
 
-/// Suggested action for resolving a port conflict
+/// Suggested action for resolving a port conflict.
+///
+/// Provides specific recommendations for how to handle different types of port conflicts,
+/// from killing our own processes to suggesting user intervention.
 enum ConflictAction {
     case killOurInstance(pid: Int, processName: String)
     case suggestAlternativePort
     case reportExternalApp(name: String)
 }
 
-/// Resolves port conflicts and suggests remediation
+/// Resolves port conflicts and suggests remediation.
+///
+/// Provides comprehensive port conflict detection and resolution capabilities,
+/// including process identification, conflict analysis, and automated remediation
+/// for VibeTunnel-owned processes. Uses system tools like lsof to detect port usage
+/// and can automatically kill conflicting processes when appropriate.
 @MainActor
 final class PortConflictResolver {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "PortConflictResolver")
@@ -574,6 +588,10 @@ final class PortConflictResolver {
 
 // MARK: - Errors
 
+/// Errors that can occur during port conflict resolution.
+///
+/// Represents various failure modes when attempting to resolve port conflicts,
+/// from process termination failures to ports remaining occupied.
 enum PortConflictError: LocalizedError {
     case failedToKillProcess(pid: Int)
     case requiresUserAction

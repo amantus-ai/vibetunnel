@@ -1,6 +1,10 @@
 import SwiftUI
 
-/// Compact new session form designed for the popover
+/// Compact new session form designed for the popover.
+///
+/// Provides a streamlined interface for creating new terminal sessions with
+/// options for command selection, naming, directory settings, and window spawning.
+/// Integrates with the server to create sessions both in terminal windows and web browsers.
 struct NewSessionForm: View {
     @Binding var isPresented: Bool
     @Environment(ServerManager.self)

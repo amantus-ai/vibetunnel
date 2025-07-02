@@ -3,7 +3,11 @@ import os.log
 import SwiftUI
 import UserNotifications
 
-/// Main entry point for the VibeTunnel macOS application
+/// Main entry point for the VibeTunnel macOS application.
+///
+/// Manages the app's lifecycle and window hierarchy including the menu bar interface,
+/// settings window, welcome screen, and session detail views. Coordinates shared services
+/// across all windows and handles deep linking for terminal session URLs.
 @main
 struct VibeTunnelApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self)
@@ -101,7 +105,12 @@ struct VibeTunnelApp: App {
 
 // MARK: - App Delegate
 
-/// Manages app lifecycle, single instance enforcement, and core services
+/// Manages app lifecycle, single instance enforcement, and core services.
+///
+/// Handles application-level responsibilities including server lifecycle management,
+/// status bar setup, single instance enforcement via distributed notifications,
+/// URL scheme handling, and user notification management. Acts as the central
+/// coordinator for application-wide events and services.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
     // Needed for some gross menu item highlight hack

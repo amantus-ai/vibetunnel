@@ -1,6 +1,10 @@
 import Foundation
 
-/// Central location for app-wide constants and configuration values
+/// Central location for app-wide constants and configuration values.
+///
+/// Provides a single source of truth for application constants, UserDefaults keys,
+/// and default values. This helps maintain consistency across the app and makes
+/// configuration changes easier to manage.
 enum AppConstants {
     /// Current version of the welcome dialog
     /// Increment this when significant changes require re-showing the welcome flow

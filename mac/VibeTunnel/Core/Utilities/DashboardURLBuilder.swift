@@ -1,6 +1,9 @@
 import Foundation
 
-/// Utility for building VibeTunnel dashboard URLs
+/// Utility for building VibeTunnel dashboard URLs.
+///
+/// Provides a centralized location for constructing URLs to access the VibeTunnel
+/// web dashboard, with support for direct session linking.
 enum DashboardURLBuilder {
     /// Builds the base dashboard URL
     /// - Parameters:

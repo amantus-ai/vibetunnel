@@ -2,7 +2,10 @@ import Foundation
 import Observation
 import os.log
 
-/// Server session information returned by the API
+/// Server session information returned by the API.
+///
+/// Represents the current state of a terminal session running on the VibeTunnel server,
+/// including its command, directory, process status, and activity information.
 struct ServerSessionInfo: Codable {
     let id: String
     let command: [String] // Changed from String to [String] to match server
@@ -23,19 +26,29 @@ struct ServerSessionInfo: Codable {
     }
 }
 
-/// Activity status for a session
+/// Activity status for a session.
+///
+/// Tracks whether a session is actively being used and provides
+/// application-specific status information when available.
 struct ActivityStatus: Codable {
     let isActive: Bool
     let specificStatus: SpecificStatus?
 }
 
-/// App-specific status (e.g., Claude status)
+/// App-specific status information.
+///
+/// Provides detailed status information for specific applications running
+/// within a terminal session, such as Claude's current working state.
 struct SpecificStatus: Codable {
     let app: String
     let status: String
 }
 
-/// Lightweight session monitor that fetches terminal sessions on-demand
+/// Lightweight session monitor that fetches terminal sessions on-demand.
+///
+/// Manages the collection of active terminal sessions by periodically polling
+/// the server API and caching results for efficient access. Provides real-time
+/// session information to the UI with minimal network overhead.
 @MainActor
 @Observable
 final class SessionMonitor {

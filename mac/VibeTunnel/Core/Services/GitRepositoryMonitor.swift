@@ -6,10 +6,6 @@ import Observation
 @MainActor
 @Observable
 public final class GitRepositoryMonitor {
-    // MARK: - Observable Properties
-
-    public private(set) var currentRepository: GitRepository?
-
     // MARK: - Lifecycle
 
     public init() {}
@@ -20,29 +16,33 @@ public final class GitRepositoryMonitor {
     /// - Parameter filePath: Path to a file within a potential Git repository
     /// - Returns: GitRepository information if found, nil otherwise
     public func findRepository(for filePath: String) async -> GitRepository? {
-        // Check cache first
-        if let cached = getCachedRepository(for: filePath) {
+        // Check if we already know the repo path for this file
+        if let cachedRepoPath = fileToRepoCache[filePath],
+           let cached = getCachedRepository(forRepoPath: cachedRepoPath) {
             return cached
         }
-
+        
         // Find the Git repository root
         guard let repoPath = await findGitRoot(from: filePath) else {
             return nil
         }
-
+        
+        // Cache the file->repo mapping
+        fileToRepoCache[filePath] = repoPath
+        
+        // Check if we already have this repository cached
+        if let cached = getCachedRepository(forRepoPath: repoPath) {
+            return cached
+        }
+        
         // Get repository status
         let repository = await getRepositoryStatus(at: repoPath)
-
-        // Cache the result
+        
+        // Cache the result by repository path
         if let repository {
-            cacheRepository(repository, for: filePath)
-
-            // Update published property if this is the current repository
-            if currentRepository?.path != repository.path {
-                currentRepository = repository
-            }
+            cacheRepository(repository)
         }
-
+        
         return repository
     }
 
@@ -50,6 +50,7 @@ public final class GitRepositoryMonitor {
     public func clearCache() {
         repositoryCache.removeAll()
         cacheTimestamps.removeAll()
+        fileToRepoCache.removeAll()
     }
 
     /// Monitor a specific directory for git changes
@@ -77,13 +78,16 @@ public final class GitRepositoryMonitor {
 
     // MARK: - Private Properties
 
-    /// Cache for repository information to avoid repeated lookups
+    /// Cache for repository information by repository path (not file path)
     private var repositoryCache: [String: GitRepository] = [:]
+    
+    /// Cache mapping file paths to their repository paths
+    private var fileToRepoCache: [String: String] = [:]
 
     /// Cache timeout interval (5 seconds)
     private let cacheTimeout: TimeInterval = 5.0
 
-    /// Timestamps for cached entries
+    /// Timestamps for cached entries (by repository path)
     private var cacheTimestamps: [String: Date] = [:]
 
     /// Timer for periodic monitoring
@@ -91,19 +95,19 @@ public final class GitRepositoryMonitor {
 
     // MARK: - Private Methods
 
-    private func getCachedRepository(for filePath: String) -> GitRepository? {
-        guard let timestamp = cacheTimestamps[filePath],
+    private func getCachedRepository(forRepoPath repoPath: String) -> GitRepository? {
+        guard let timestamp = cacheTimestamps[repoPath],
               Date().timeIntervalSince(timestamp) < cacheTimeout,
-              let cached = repositoryCache[filePath]
+              let cached = repositoryCache[repoPath]
         else {
             return nil
         }
         return cached
     }
 
-    private func cacheRepository(_ repository: GitRepository, for filePath: String) {
-        repositoryCache[filePath] = repository
-        cacheTimestamps[filePath] = Date()
+    private func cacheRepository(_ repository: GitRepository) {
+        repositoryCache[repository.path] = repository
+        cacheTimestamps[repository.path] = Date()
     }
 
     /// Find the Git repository root starting from a given path
@@ -167,6 +171,8 @@ public final class GitRepositoryMonitor {
         let lines = output.split(separator: "\n")
         var currentBranch: String?
         var modifiedCount = 0
+        var addedCount = 0
+        var deletedCount = 0
         var untrackedCount = 0
 
         for line in lines {
@@ -192,26 +198,35 @@ public final class GitRepositoryMonitor {
 
             // Count files based on status codes
             // ?? = untracked
-            // M = modified in working tree
-            // A = added to index
-            // D = deleted
-            // R = renamed
-            // C = copied
-            // U = unmerged
+            // M_ or _M = modified
+            // A_ or _A = added to index
+            // D_ or _D = deleted
+            // R_ = renamed
+            // C_ = copied
+            // U_ = unmerged
             if statusCode == "??" {
                 untrackedCount += 1
-            } else if statusCode.contains("M") || statusCode.contains("A") ||
-                statusCode.contains("D") || statusCode.contains("R") ||
-                statusCode.contains("C") || statusCode.contains("U")
-            {
+            } else if statusCode.contains("M") {
+                modifiedCount += 1
+            } else if statusCode.contains("A") {
+                addedCount += 1
+            } else if statusCode.contains("D") {
+                deletedCount += 1
+            } else if statusCode.contains("R") || statusCode.contains("C") {
+                // Renamed/copied files count as modified
+                modifiedCount += 1
+            } else if statusCode.contains("U") {
+                // Unmerged files count as modified
                 modifiedCount += 1
             }
         }
 
         return GitRepository(
             path: repoPath,
-            dirtyFileCount: modifiedCount,
-            untrackedFileCount: untrackedCount,
+            modifiedCount: modifiedCount,
+            addedCount: addedCount,
+            deletedCount: deletedCount,
+            untrackedCount: untrackedCount,
             currentBranch: currentBranch
         )
     }

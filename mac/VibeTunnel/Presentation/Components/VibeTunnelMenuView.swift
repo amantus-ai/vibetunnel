@@ -141,8 +141,7 @@ struct VibeTunnelMenuView: View {
                     }
                 }
                 .padding(.vertical, 4)
-                .animation(.easeInOut(duration: 0.3), value: activeSessions.map(\.key))
-                .animation(.easeInOut(duration: 0.3), value: idleSessions.map(\.key))
+                .animation(.easeInOut(duration: 0.3), value: sessionMonitor.sessions.count)
             }
             .frame(maxHeight: 400)
 
@@ -485,6 +484,7 @@ struct SessionRow: View {
     @State private var editedName = ""
     @State private var gitRepository: GitRepository?
     @State private var isHoveringGitFolder = false
+    @State private var refreshTask: Task<Void, Never>?
     @FocusState private var isEditFieldFocused: Bool
 
     var body: some View {
@@ -503,7 +503,7 @@ struct SessionRow: View {
         }
         .onAppear {
             // Set up periodic refresh for git status
-            Task {
+            refreshTask = Task {
                 // Initial delay to ensure smooth UI
                 try? await Task.sleep(for: .milliseconds(100))
                 
@@ -517,6 +517,11 @@ struct SessionRow: View {
                     try? await Task.sleep(for: .seconds(5))
                 }
             }
+        }
+        .onDisappear {
+            // Cancel the refresh task when view disappears
+            refreshTask?.cancel()
+            refreshTask = nil
         }
     }
 

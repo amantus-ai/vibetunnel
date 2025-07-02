@@ -1,7 +1,11 @@
 import os
 import SwiftUI
 
-/// View displaying detailed information about a specific terminal session
+/// View displaying detailed information about a specific terminal session.
+///
+/// Shows comprehensive session information including process details, status,
+/// working directory, command history, and timestamps. Provides a detailed
+/// debugging and monitoring interface for active terminal sessions.
 struct SessionDetailView: View {
     let session: ServerSessionInfo
     @State private var windowTitle = ""
@@ -114,6 +118,10 @@ struct SessionDetailView: View {
 
 // MARK: - Supporting Views
 
+/// A reusable row component for displaying labeled values.
+///
+/// Used throughout the session detail view to maintain consistent
+/// formatting for key-value pairs with selectable text support.
 struct DetailRow: View {
     let label: String
     let value: String
@@ -132,6 +140,10 @@ struct DetailRow: View {
     }
 }
 
+/// Visual badge indicating session running status.
+///
+/// Displays a colored indicator and text label showing whether
+/// a terminal session is currently active or stopped.
 struct StatusBadge: View {
     let isRunning: Bool
 
@@ -157,6 +169,10 @@ struct StatusBadge: View {
 
 // MARK: - Window Title Accessor
 
+/// NSViewRepresentable that provides access to the window title.
+///
+/// Used to set custom window titles for session detail windows,
+/// allowing each window to display the session ID in its title bar.
 struct WindowAccessor: NSViewRepresentable {
     @Binding var title: String
 

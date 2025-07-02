@@ -553,6 +553,10 @@ class ServerManager {
 
 // MARK: - Server Manager Error
 
+/// Errors specific to server management operations.
+///
+/// Handles error cases that occur during server startup and management,
+/// particularly port conflicts with other applications.
 enum ServerManagerError: LocalizedError {
     case portInUseByApp(appName: String, port: Int, alternatives: [Int])
 

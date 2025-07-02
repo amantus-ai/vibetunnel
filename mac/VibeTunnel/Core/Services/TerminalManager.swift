@@ -159,6 +159,10 @@ actor TerminalManager {
 ///
 /// Represents various failure modes in terminal session management
 /// including missing sessions, execution failures, and timeouts.
+/// Errors that can occur during tunnel operations.
+///
+/// Represents failures in terminal session management including
+/// missing sessions, command failures, and timeout conditions.
 enum TunnelError: LocalizedError, Equatable {
     case sessionNotFound
     case commandExecutionFailed(String)

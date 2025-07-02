@@ -7,11 +7,17 @@ public struct GitRepository: Sendable, Equatable, Hashable {
     /// The root path of the Git repository (.git directory's parent)
     public let path: String
 
-    /// Number of modified files (staged and unstaged)
-    public let dirtyFileCount: Int
+    /// Number of modified files
+    public let modifiedCount: Int
+    
+    /// Number of added files
+    public let addedCount: Int
+    
+    /// Number of deleted files
+    public let deletedCount: Int
 
     /// Number of untracked files
-    public let untrackedFileCount: Int
+    public let untrackedCount: Int
 
     /// Current branch name
     public let currentBranch: String?
@@ -20,12 +26,12 @@ public struct GitRepository: Sendable, Equatable, Hashable {
 
     /// Whether the repository has uncommitted changes
     public var hasChanges: Bool {
-        dirtyFileCount > 0 || untrackedFileCount > 0
+        modifiedCount > 0 || addedCount > 0 || deletedCount > 0 || untrackedCount > 0
     }
 
-    /// Total number of files with changes (dirty + untracked)
+    /// Total number of files with changes
     public var totalChangedFiles: Int {
-        dirtyFileCount + untrackedFileCount
+        modifiedCount + addedCount + deletedCount + untrackedCount
     }
 
     /// Folder name for display
@@ -45,26 +51,36 @@ public struct GitRepository: Sendable, Equatable, Hashable {
         }
 
         var parts: [String] = []
-        if dirtyFileCount > 0 {
-            parts.append("\(dirtyFileCount)M")
+        if modifiedCount > 0 {
+            parts.append("\(modifiedCount)M")
         }
-        if untrackedFileCount > 0 {
-            parts.append("\(untrackedFileCount)U")
+        if addedCount > 0 {
+            parts.append("\(addedCount)A")
         }
-        return parts.joined(separator: ", ")
+        if deletedCount > 0 {
+            parts.append("\(deletedCount)D")
+        }
+        if untrackedCount > 0 {
+            parts.append("\(untrackedCount)U")
+        }
+        return parts.joined(separator: " ")
     }
 
     // MARK: - Lifecycle
 
     public init(
         path: String,
-        dirtyFileCount: Int = 0,
-        untrackedFileCount: Int = 0,
+        modifiedCount: Int = 0,
+        addedCount: Int = 0,
+        deletedCount: Int = 0,
+        untrackedCount: Int = 0,
         currentBranch: String? = nil
     ) {
         self.path = path
-        self.dirtyFileCount = dirtyFileCount
-        self.untrackedFileCount = untrackedFileCount
+        self.modifiedCount = modifiedCount
+        self.addedCount = addedCount
+        self.deletedCount = deletedCount
+        self.untrackedCount = untrackedCount
         self.currentBranch = currentBranch
     }
 

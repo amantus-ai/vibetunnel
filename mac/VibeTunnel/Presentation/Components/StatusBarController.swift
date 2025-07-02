@@ -5,6 +5,10 @@ import Observation
 import SwiftUI
 
 /// Manages the macOS status bar item with custom left-click view and right-click menu.
+///
+/// Central controller for VibeTunnel's menu bar presence, handling status bar icon updates,
+/// tooltip management, and coordination between the visual menu interface and context menu.
+/// Monitors server and session states to update the status bar appearance accordingly.
 @MainActor
 final class StatusBarController: NSObject {
     // MARK: - Core Properties

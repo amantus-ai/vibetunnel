@@ -15,6 +15,10 @@ extension NSStatusBarButton {
 }
 
 /// Manages status bar menu behavior, providing left-click custom view and right-click context menu functionality.
+///
+/// Coordinates between the status bar button, custom popover window, and context menu,
+/// handling mouse events and window state transitions. Provides special handling for
+/// maintaining button highlight state during custom window display.
 @MainActor
 final class StatusBarMenuManager: NSObject {
     // MARK: - Menu State Management

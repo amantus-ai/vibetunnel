@@ -2,7 +2,10 @@ import SwiftUI
 
 // MARK: - Error Alert Modifier
 
-/// A view modifier that presents errors using SwiftUI's built-in alert system
+/// A view modifier that presents errors using SwiftUI's built-in alert system.
+///
+/// Provides a standardized way to display error dialogs throughout the application
+/// with automatic dismissal handling and optional callbacks.
 struct ErrorAlertModifier: ViewModifier {
     @Binding var error: Error?
     let title: String
@@ -64,12 +67,19 @@ extension Task where Failure == Error {
 
 // MARK: - Error Recovery Protocol
 
-/// Protocol for errors that can provide recovery actions
+/// Protocol for errors that can provide recovery actions.
+///
+/// Allows errors to define suggested recovery steps and actionable
+/// recovery options that can be presented to users.
 protocol RecoverableError: Error {
     var recoverySuggestion: String? { get }
     var recoveryActions: [ErrorRecoveryAction]? { get }
 }
 
+/// Represents an actionable recovery option for an error.
+///
+/// Encapsulates a user-facing title and the async action to perform
+/// when the user selects this recovery option.
 struct ErrorRecoveryAction {
     let title: String
     let action: () async throws -> Void
@@ -77,7 +87,10 @@ struct ErrorRecoveryAction {
 
 // MARK: - Error Toast View
 
-/// A toast-style error notification
+/// A toast-style error notification.
+///
+/// Displays errors in a non-modal toast format that appears temporarily
+/// and can be dismissed by the user or automatically after a timeout.
 struct ErrorToast: View {
     let error: Error
     let onDismiss: () -> Void
@@ -129,7 +142,10 @@ struct ErrorToast: View {
 
 // MARK: - Async Error Boundary
 
-/// A view that catches and displays errors from async operations
+/// A view that catches and displays errors from async operations.
+///
+/// Wraps content views to provide centralized error handling for async operations,
+/// automatically displaying errors using the standard error alert presentation.
 struct AsyncErrorBoundary<Content: View>: View {
     @State private var error: Error?
     let content: () -> Content
@@ -156,6 +172,10 @@ extension EnvironmentValues {
     }
 }
 
+/// Handler for async errors propagated through the environment.
+///
+/// Provides a mechanism for child views to report errors up the view hierarchy
+/// to a centralized error handling location.
 struct AsyncErrorHandler {
     let handler: (Error) -> Void
 
