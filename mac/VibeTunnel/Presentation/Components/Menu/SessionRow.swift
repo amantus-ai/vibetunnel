@@ -112,26 +112,28 @@ struct SessionRow: View {
                 // Second row: Path, Git info, Duration and X button
                 HStack(spacing: 6) {
                     // Left side: Path and git info
-                    HStack(spacing: 4) {
-                        // Folder icon - clickable
+                    HStack(spacing: 6) {
+                        // Folder icon and path - clickable as one unit
                         Button(action: {
                             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
                         }) {
-                            Image(systemName: "folder.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(isHoveringFolder ? AppColors.Fallback.gitFolderHover(for: colorScheme) : AppColors.Fallback.gitFolder(for: colorScheme))
+                            HStack(spacing: 4) {
+                                Image(systemName: "folder.badge.gearshape")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(isHoveringFolder ? AppColors.Fallback.gitFolderHover(for: colorScheme) : AppColors.Fallback.gitFolder(for: colorScheme))
+                                
+                                Text(compactPath)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
                         }
                         .buttonStyle(.plain)
                         .onHover { hovering in
                             isHoveringFolder = hovering
                         }
                         .help("Open in Finder")
-                        
-                        Text(compactPath)
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
 
                         if let repo = gitRepository {
                             GitRepositoryRow(repository: repo)

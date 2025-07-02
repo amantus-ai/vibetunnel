@@ -88,10 +88,14 @@ struct GitRepositoryRow: View {
             isHovering = hovering
         }
         .onTapGesture {
-            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
+            openInGitApp()
         }
-        .help("Git: \(repository.path)")
+        .help("Open in Git app")
         .contextMenu {
+            Button("Open in Tower") {
+                openInGitApp()
+            }
+            
             Button("Open Repository in Finder") {
                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
             }
@@ -117,5 +121,28 @@ struct GitRepositoryRow: View {
             }
         }
         .animation(.easeInOut(duration: 0.15), value: isHovering)
+    }
+    
+    private func openInGitApp() {
+        // Try to open in Tower first, fall back to SourceTree, then GitKraken
+        let gitApps = [
+            "com.fournova.Tower3",
+            "com.fournova.Tower2",
+            "com.torusknot.SourceTreeNotMAS",
+            "com.axosoft.gitkraken"
+        ]
+        
+        let url = URL(fileURLWithPath: repository.path)
+        
+        // Try each app in order
+        for appIdentifier in gitApps {
+            if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: appIdentifier) {
+                NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration: NSWorkspace.OpenConfiguration())
+                return
+            }
+        }
+        
+        // If no git app found, open in Finder as fallback
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
     }
 }
