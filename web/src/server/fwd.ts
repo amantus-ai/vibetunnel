@@ -430,7 +430,7 @@ export async function startVibeTunnelForward(args: string[]) {
       };
 
       // Apply the override
-      // process.stdout.write = stdoutWriteOverride as typeof process.stdout.write;
+      process.stdout.write = _stdoutWriteOverride as typeof process.stdout.write;
 
       // Store reference for cleanup
       cleanupStdout = () => {

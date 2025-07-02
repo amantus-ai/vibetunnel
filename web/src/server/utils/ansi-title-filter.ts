@@ -12,8 +12,8 @@ export class TitleSequenceFilter {
   // Compile regexes once as static properties for better performance
   // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
   private static readonly COMPLETE_TITLE_REGEX = /\x1b\][0-2];[^\x07\x1b]*(?:\x07|\x1b\\)/g;
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
   private static readonly PARTIAL_TITLE_REGEX =
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
     /\x1b\][0-2];.*\x1b$|\x1b\][0-2];[^\x07]*$|\x1b(?:\](?:[0-2])?)?$/;
 
   /**
