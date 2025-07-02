@@ -8,7 +8,10 @@
 import * as os from 'os';
 import * as path from 'path';
 import type { ActivityState } from './activity-detector.js';
+import { createLogger } from './logger.js';
 import { PromptDetector } from './prompt-patterns.js';
+
+const logger = createLogger('terminal-title');
 
 // Pre-compiled regex patterns for performance
 // Match cd command with optional arguments, handling newlines
@@ -191,7 +194,22 @@ export function generateDynamicTitle(
   const baseParts = [displayPath, cmdName];
 
   // Check if session name should be included
-  if (sessionName?.trim() && !isRedundantSessionName(sessionName, cmdName, displayPath)) {
+  const isRedundant = sessionName
+    ? isRedundantSessionName(sessionName, cmdName, displayPath)
+    : true;
+
+  // Debug logging for session name filtering
+  if (sessionName) {
+    logger.debug('[generateDynamicTitle] Session name check:', {
+      sessionName,
+      cmdName,
+      displayPath,
+      isRedundant,
+      willInclude: sessionName.trim() && !isRedundant,
+    });
+  }
+
+  if (sessionName?.trim() && !isRedundant) {
     baseParts.push(sessionName);
   }
 
