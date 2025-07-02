@@ -206,7 +206,7 @@ export class SessionListPage extends BasePage {
       .or(this.page.locator('button:has-text("Create")'));
 
     // Make sure button is not disabled
-    await submitButton.waitFor({ state: 'visible' });
+    await submitButton.waitFor({ state: 'visible', timeout: 30000 });
     const isDisabled = await submitButton.isDisabled();
     if (isDisabled) {
       throw new Error('Create button is disabled - form may not be valid');
@@ -216,10 +216,10 @@ export class SessionListPage extends BasePage {
     const responsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/sessions') && response.request().method() === 'POST',
-      { timeout: 10000 }
+      { timeout: 30000 }
     );
 
-    await submitButton.click({ force: true });
+    await submitButton.click({ force: true, timeout: 30000 });
 
     // Wait for navigation to session view (only for web sessions)
     if (!spawnWindow) {

@@ -19,6 +19,27 @@ export class TestDataFactory {
     const marker = `test-${Date.now()}`;
     return `${command} && echo "COMPLETE:${marker}"`;
   }
+
+  /**
+   * Generate a test-specific session prefix based on test file name
+   * This ensures each test file uses unique session names for concurrent safety
+   */
+  static getTestSpecificPrefix(testInfo: { titlePath: string[] } | string): string {
+    // If passed a test info object from Playwright
+    if (typeof testInfo === 'object' && 'titlePath' in testInfo) {
+      // Extract test file name from the title path
+      const fileName = testInfo.titlePath[0] || 'unknown';
+      return `test-${fileName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+    }
+
+    // If passed a string (e.g., manual test file name)
+    if (typeof testInfo === 'string') {
+      return `test-${testInfo.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+    }
+
+    // Fallback to generic test prefix
+    return 'test-session';
+  }
 }
 
 /**
