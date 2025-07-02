@@ -1,5 +1,6 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import './modal-wrapper.js';
 import {
   type NotificationPreferences,
   type PushSubscription,
@@ -147,12 +148,6 @@ export class UnifiedSettings extends LitElement {
     this.dispatchEvent(new CustomEvent('close'));
   }
 
-  private handleBackdropClick(e: Event) {
-    if (e.target === e.currentTarget) {
-      this.handleClose();
-    }
-  }
-
   private async handleToggleNotifications() {
     if (this.isLoading) return;
 
@@ -278,14 +273,14 @@ export class UnifiedSettings extends LitElement {
   }
 
   render() {
-    if (!this.visible) return html``;
-
     return html`
-      <div class="modal-backdrop flex items-center justify-center" @click=${this.handleBackdropClick}>
-        <div
-          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl mx-2 sm:mx-4 max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col"
-          style="view-transition-name: settings-modal"
-        >
+      <modal-wrapper
+        .visible=${this.visible}
+        contentClass="modal-content modal-positioned font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col"
+        transitionName="settings-modal"
+        ariaLabel="Settings"
+        @close=${this.handleClose}
+      >
           <!-- Header -->
           <div class="p-4 pb-4 border-b border-dark-border relative flex-shrink-0">
             <h2 class="text-accent-green text-lg font-bold">Settings</h2>
@@ -306,8 +301,7 @@ export class UnifiedSettings extends LitElement {
             ${this.renderNotificationSettings()}
             ${this.renderAppSettings()}
           </div>
-        </div>
-      </div>
+        </modal-wrapper>
     `;
   }
 

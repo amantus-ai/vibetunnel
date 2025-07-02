@@ -14,6 +14,7 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
+import './modal-wrapper.js';
 import { TitleMode } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
@@ -369,35 +370,14 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
-  private handleBackdropClick(e: Event) {
-    // Only close if clicking the backdrop itself, not the modal content
-    if (e.target === e.currentTarget) {
-      this.handleCancel();
-    }
-  }
-
   render() {
-    if (!this.visible) {
-      return html``;
-    }
-
     return html`
-      <!-- Backdrop as separate element -->
-      <div 
-        class="modal-backdrop"
-        @click=${this.handleBackdropClick}
-        data-testid="modal-backdrop"
-        aria-hidden="true"
-      ></div>
-      
-      <!-- Modal content as sibling, positioned independently -->
-      <div
-        class="modal-content modal-positioned font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] flex flex-col"
-        style="view-transition-name: create-session-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
-        data-testid="modal-content"
+      <modal-wrapper
+        .visible=${this.visible}
+        contentClass="modal-content modal-positioned font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] flex flex-col"
+        transitionName="create-session-modal"
+        ariaLabel="Create new session"
+        @close=${this.handleCancel}
       >
           <div class="p-4 sm:p-6 sm:pb-4 mb-2 sm:mb-3 border-b border-dark-border relative bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary flex-shrink-0">
             <h2 id="modal-title" class="text-primary text-lg sm:text-xl font-bold">New Session</h2>
@@ -583,7 +563,7 @@ export class SessionCreateForm extends LitElement {
               </button>
             </div>
           </div>
-        </div>
+        </modal-wrapper>
 
       <file-browser
         .visible=${this.showFileBrowser}
