@@ -345,7 +345,15 @@ struct ServerAddressRow: View {
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
             Button(action: {
-                if let url = url ?? URL(string: "http://\(computedAddress)") {
+                if let providedUrl = url {
+                    NSWorkspace.shared.open(providedUrl)
+                } else if computedAddress.starts(with: "127.0.0.1:") {
+                    // For localhost, use DashboardURLBuilder
+                    if let dashboardURL = DashboardURLBuilder.dashboardURL(port: serverManager.port) {
+                        NSWorkspace.shared.open(dashboardURL)
+                    }
+                } else if let url = URL(string: "http://\(computedAddress)") {
+                    // For other addresses (network IP, etc.), construct URL directly
                     NSWorkspace.shared.open(url)
                 }
             }) {

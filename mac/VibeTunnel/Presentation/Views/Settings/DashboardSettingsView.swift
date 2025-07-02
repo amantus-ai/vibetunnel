@@ -414,7 +414,7 @@ private struct ServerConfigurationSection: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    if let url = URL(string: "http://127.0.0.1:\(serverPort)") {
+                    if let url = DashboardURLBuilder.dashboardURL(port: serverPort) {
                         Link(url.absoluteString, destination: url)
                             .font(.caption)
                             .foregroundStyle(.blue)

@@ -44,7 +44,7 @@ struct AccessDashboardPageView: View {
                 VStack(spacing: 12) {
                     // Open Dashboard button
                     Button(action: {
-                        if let dashboardURL = URL(string: "http://127.0.0.1:\(serverPort)") {
+                        if let dashboardURL = DashboardURLBuilder.dashboardURL(port: serverPort) {
                             NSWorkspace.shared.open(dashboardURL)
                         }
                     }, label: {

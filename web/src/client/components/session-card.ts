@@ -295,7 +295,14 @@ export class SessionCard extends LitElement {
             <inline-edit
               .value=${this.session.name || this.session.command.join(' ')}
               .placeholder=${this.session.command.join(' ')}
-              .onSave=${(newName: string) => this.handleRename(newName)}
+              .onSave=${async (newName: string) => {
+                try {
+                  await this.handleRename(newName);
+                } catch (error) {
+                  // Error is already handled in handleRename
+                  logger.debug('Rename error caught in onSave', { error });
+                }
+              }}
             ></inline-edit>
           </div>
           ${
