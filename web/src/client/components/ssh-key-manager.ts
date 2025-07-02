@@ -1,6 +1,7 @@
 import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { BrowserSSHAgent } from '../services/ssh-agent.js';
+import './modal-wrapper.js';
 
 interface SSHKey {
   id: string;
@@ -142,10 +143,15 @@ export class SSHKeyManager extends LitElement {
     if (!this.visible) return html``;
 
     return html`
-      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div
-          class="bg-dark-bg border border-dark-border rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto"
-        >
+      <modal-wrapper
+        .visible=${this.visible}
+        modalClass=""
+        contentClass="modal-content modal-positioned bg-dark-bg border border-dark-border rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto"
+        ariaLabel="SSH Key Manager"
+        @close=${this.handleClose}
+        .closeOnBackdrop=${true}
+        .closeOnEscape=${true}
+      >
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-xl font-mono text-dark-text">SSH Key Manager</h2>
             <button @click=${this.handleClose} class="text-dark-text-muted hover:text-dark-text">
@@ -451,8 +457,7 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                   )
             }
           </div>
-        </div>
-      </div>
+      </modal-wrapper>
     `;
   }
 }
