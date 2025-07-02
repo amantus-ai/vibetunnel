@@ -10,6 +10,26 @@ import Observation
 @MainActor
 @Observable
 public final class GitRepositoryMonitor {
+    // MARK: - Types
+    
+    /// Errors that can occur during Git operations
+    public enum GitError: LocalizedError {
+        case gitNotFound
+        case invalidRepository
+        case commandFailed(String)
+        
+        public var errorDescription: String? {
+            switch self {
+            case .gitNotFound:
+                return "Git command not found"
+            case .invalidRepository:
+                return "Not a valid git repository"
+            case .commandFailed(let error):
+                return "Git command failed: \(error)"
+            }
+        }
+    }
+    
     // MARK: - Lifecycle
 
     public init() {}
@@ -18,6 +38,18 @@ public final class GitRepositoryMonitor {
     
     /// Concurrent queue for thread-safe cache access
     private let cacheQueue = DispatchQueue(label: "git.cache", attributes: .concurrent)
+    
+    /// Path to the git binary
+    private let gitPath: String = {
+        // Check common locations
+        let locations = ["/usr/bin/git", "/opt/homebrew/bin/git", "/usr/local/bin/git"]
+        for path in locations {
+            if FileManager.default.fileExists(atPath: path) {
+                return path
+            }
+        }
+        return "/usr/bin/git" // fallback
+    }()
 
     // MARK: - Public Methods
     
@@ -141,6 +173,21 @@ public final class GitRepositoryMonitor {
         // Ensure path is absolute and exists
         return url.path.hasPrefix("/") && FileManager.default.fileExists(atPath: url.path)
     }
+    
+    /// Sanitize path for safe shell execution
+    private nonisolated func sanitizePath(_ path: String) -> String? {
+        let expandedPath = NSString(string: path).expandingTildeInPath
+        let url = URL(fileURLWithPath: expandedPath)
+        
+        // Validate it's an absolute path and exists
+        guard url.path.hasPrefix("/"),
+              FileManager.default.fileExists(atPath: url.path) else {
+            return nil
+        }
+        
+        // Escape special characters for shell
+        return url.path.replacingOccurrences(of: "'", with: "'\\''")
+    }
 
     /// Find the Git repository root starting from a given path
     private nonisolated func findGitRoot(from path: String) async -> String? {
@@ -172,10 +219,15 @@ public final class GitRepositoryMonitor {
     /// Get repository status by running git status
     private nonisolated func getRepositoryStatus(at repoPath: String) async -> GitRepository? {
         await Task.detached(priority: .userInitiated) {
+            // Sanitize the path before using it
+            guard let sanitizedPath = self.sanitizePath(repoPath) else {
+                return nil
+            }
+            
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+            process.executableURL = URL(fileURLWithPath: self.gitPath)
             process.arguments = ["status", "--porcelain", "--branch"]
-            process.currentDirectoryURL = URL(fileURLWithPath: repoPath)
+            process.currentDirectoryURL = URL(fileURLWithPath: sanitizedPath)
 
             let outputPipe = Pipe()
             process.standardOutput = outputPipe

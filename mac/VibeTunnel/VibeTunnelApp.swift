@@ -63,6 +63,7 @@ struct VibeTunnelApp: App {
                         .environment(tailscaleService)
                         .environment(permissionManager)
                         .environment(terminalLauncher)
+                        .environment(gitRepositoryMonitor)
                 } else {
                     Text("Session not found")
                         .frame(width: 400, height: 300)

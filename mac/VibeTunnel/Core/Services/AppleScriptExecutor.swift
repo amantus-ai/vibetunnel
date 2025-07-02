@@ -201,7 +201,6 @@ final class AppleScriptExecutor {
 }
 
 /// Errors that can occur during AppleScript execution.
-/// Errors that can occur during AppleScript execution.
 ///
 /// Provides detailed error cases for AppleScript failures including
 /// script creation issues, execution errors, and permission problems.
