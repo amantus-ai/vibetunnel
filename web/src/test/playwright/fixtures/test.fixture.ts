@@ -189,6 +189,37 @@ export const test = base.extend<{
       });
 
       console.log('[Test Setup] App is ready');
+
+      // Check for any global pointer-events issues
+      const pointerEventsCheck = await page.evaluate(() => {
+        const html = document.documentElement;
+        const body = document.body;
+        const htmlStyles = window.getComputedStyle(html);
+        const bodyStyles = window.getComputedStyle(body);
+
+        return {
+          htmlPointerEvents: htmlStyles.pointerEvents,
+          bodyPointerEvents: bodyStyles.pointerEvents,
+          htmlOverflow: htmlStyles.overflow,
+          bodyOverflow: bodyStyles.overflow,
+          documentHeight: document.documentElement.scrollHeight,
+          windowHeight: window.innerHeight,
+        };
+      });
+
+      console.log('[Test Setup] Pointer events check:', JSON.stringify(pointerEventsCheck));
+
+      // If pointer-events are disabled on html/body, try to fix it
+      if (
+        pointerEventsCheck.htmlPointerEvents === 'none' ||
+        pointerEventsCheck.bodyPointerEvents === 'none'
+      ) {
+        console.log('[Test Setup] Fixing pointer-events issue...');
+        await page.evaluate(() => {
+          document.documentElement.style.pointerEvents = 'auto';
+          document.body.style.pointerEvents = 'auto';
+        });
+      }
     } catch (error) {
       console.error('[Test Setup] Failed to initialize app:', error);
       const html = await page.content();

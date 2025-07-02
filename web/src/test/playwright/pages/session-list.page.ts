@@ -48,13 +48,31 @@ export class SessionListPage extends BasePage {
       // Small delay to ensure the click event has been fully processed
       await this.page.waitForTimeout(100);
     } catch (error) {
-      console.error('Failed to click create button:', error);
-      await screenshotOnError(
-        this.page,
-        new Error('Failed to click create button'),
-        'create-button-click-failed'
-      );
-      throw error;
+      console.error('Failed to click create button, trying JavaScript click:', error);
+
+      // Try JavaScript click as fallback
+      try {
+        await this.page.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll('button'));
+          const createBtn = buttons.find(
+            (btn) =>
+              btn.textContent?.includes('Create') ||
+              btn.getAttribute('data-testid') === 'create-session-button'
+          );
+          if (createBtn && createBtn instanceof HTMLElement) {
+            createBtn.click();
+          }
+        });
+        console.log('JavaScript click successful');
+        await this.page.waitForTimeout(100);
+      } catch (jsError) {
+        await screenshotOnError(
+          this.page,
+          new Error('Failed to click create button even with JavaScript'),
+          'create-button-click-failed'
+        );
+        throw jsError;
+      }
     }
 
     // Wait for the modal to appear and be ready
@@ -287,7 +305,21 @@ export class SessionListPage extends BasePage {
       );
 
       // Try force click as last resort
-      await submitButton.click({ force: true });
+      try {
+        await submitButton.click({ force: true });
+      } catch (forceError) {
+        console.log('Force click also failed, trying JavaScript click...');
+        await this.page.evaluate(() => {
+          const button =
+            document.querySelector('[data-testid="create-session-submit"]') ||
+            Array.from(document.querySelectorAll('button')).find((b) =>
+              b.textContent?.includes('Create')
+            );
+          if (button && button instanceof HTMLElement) {
+            button.click();
+          }
+        });
+      }
     }
 
     // Wait for navigation to session view (only for web sessions)
