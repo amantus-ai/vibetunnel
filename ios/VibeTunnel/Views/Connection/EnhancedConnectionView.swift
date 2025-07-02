@@ -199,6 +199,7 @@ struct EnhancedConnectionView: View {
                 host: $viewModel.host,
                 port: $viewModel.port,
                 name: $viewModel.name,
+                username: $viewModel.username,
                 password: $viewModel.password,
                 isConnecting: viewModel.isConnecting,
                 errorMessage: viewModel.errorMessage,
@@ -233,6 +234,7 @@ struct EnhancedConnectionView: View {
                 try await profilesViewModel.connectToProfile(profile, connectionManager: connectionManager)
                 
                 // Check if we need to show login view for authentication
+                // This happens when auto-login failed and manual login is required
                 if let authService = connectionManager.authenticationService,
                    !authService.isAuthenticated {
                     viewModel.showLoginView = true
@@ -259,7 +261,7 @@ struct EnhancedConnectionView: View {
         var updatedProfile = profile
         updatedProfile.name = viewModel.name.isEmpty ? profile.name : viewModel.name
         updatedProfile.requiresAuth = !viewModel.password.isEmpty
-        updatedProfile.username = updatedProfile.requiresAuth ? "admin" : nil
+        updatedProfile.username = updatedProfile.requiresAuth ? (viewModel.username.isEmpty ? "admin" : viewModel.username) : nil
 
         // Save profile and password
         Task {

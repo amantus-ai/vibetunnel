@@ -97,20 +97,41 @@ class ServerProfilesViewModel {
         do {
             let authConfig = try await connectionManager.authenticationService?.getAuthConfig()
             
-            guard authConfig?.noAuth == true else {
-                // Authentication required - connection config is saved, 
-                // the UI will handle showing the login view
-                // Don't mark as connected yet - that happens after successful authentication
-                return
+            if authConfig?.noAuth == true {
+                // No auth required, test connection directly
+                _ = try await APIClient.shared.getSessions()
+                connectionManager.isConnected = true
+                
+                // Update last connected time
+                ServerProfile.updateLastConnected(for: profile.id)
+                loadProfiles()
+            } else {
+                // Authentication required - attempt auto-login first
+                guard let authService = connectionManager.authenticationService else {
+                    throw APIError.noServerConfigured
+                }
+                
+                do {
+                    // Try auto-login with stored credentials
+                    try await authService.attemptAutoLogin(profile: profile)
+                    
+                    // Auto-login successful, test connection
+                    _ = try await APIClient.shared.getSessions()
+                    connectionManager.isConnected = true
+                    
+                    // Update last connected time
+                    ServerProfile.updateLastConnected(for: profile.id)
+                    loadProfiles()
+                } catch let authError as AuthenticationError {
+                    // Auto-login failed, connection config is saved
+                    // The UI will handle showing the login view
+                    // Don't mark as connected yet - that happens after manual authentication
+                    return
+                } catch {
+                    // Other errors (network, etc.) should be thrown
+                    throw error
+                }
             }
-            
-            // No auth required, test connection directly
-            _ = try await APIClient.shared.getSessions()
-            connectionManager.isConnected = true
-            
-            // Update last connected time
-            ServerProfile.updateLastConnected(for: profile.id)
-            loadProfiles()
         } catch {
             Task {
                 await connectionManager.disconnect()

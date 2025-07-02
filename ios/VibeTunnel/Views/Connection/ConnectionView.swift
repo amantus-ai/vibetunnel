@@ -63,6 +63,7 @@ struct ConnectionView: View {
                         host: $viewModel.host,
                         port: $viewModel.port,
                         name: $viewModel.name,
+                        username: $viewModel.username,
                         password: $viewModel.password,
                         isConnecting: viewModel.isConnecting,
                         errorMessage: viewModel.errorMessage,
@@ -129,6 +130,7 @@ class ConnectionViewModel {
     var host: String = "127.0.0.1"
     var port: String = "4020"
     var name: String = ""
+    var username: String = ""
     var password: String = ""
     var isConnecting: Bool = false
     var errorMessage: String?

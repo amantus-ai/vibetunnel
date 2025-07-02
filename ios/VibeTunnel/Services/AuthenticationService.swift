@@ -1,5 +1,26 @@
 import Foundation
 
+/// Errors specific to authentication operations
+enum AuthenticationError: LocalizedError {
+    case credentialsNotFound
+    case invalidCredentials
+    case tokenExpired
+    case serverError(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .credentialsNotFound:
+            return "No stored credentials found"
+        case .invalidCredentials:
+            return "Invalid username or password"
+        case .tokenExpired:
+            return "Authentication token has expired"
+        case .serverError(let message):
+            return "Server error: \(message)"
+        }
+    }
+}
+
 /// Authentication service for managing JWT token-based authentication
 @MainActor
 final class AuthenticationService: ObservableObject {
@@ -193,6 +214,49 @@ final class AuthenticationService: ObservableObject {
     /// Get token for query parameters (used for SSE)
     func getTokenForQuery() -> String? {
         authToken
+    }
+
+    /// Attempt automatic login using stored credentials for a server profile
+    func attemptAutoLogin(profile: ServerProfile) async throws {
+        // Check if we already have valid authentication
+        if isAuthenticated {
+            let tokenValid = await verifyToken()
+            if tokenValid {
+                logger.info("Already authenticated with valid token")
+                return
+            }
+        }
+        
+        // Get stored password from keychain
+        guard let password = try? KeychainService.getPassword(for: profile.id) else {
+            logger.debug("No stored password found for profile: \(profile.name)")
+            throw AuthenticationError.credentialsNotFound
+        }
+        
+        // Get username from profile or use default
+        guard let username = profile.username else {
+            logger.error("No username configured for profile: \(profile.name)")
+            throw AuthenticationError.credentialsNotFound
+        }
+        
+        // Attempt authentication with stored credentials
+        do {
+            try await authenticateWithPassword(username: username, password: password)
+            logger.info("Auto-login successful for user: \(username)")
+        } catch {
+            logger.error("Auto-login failed for user: \(username), error: \(error)")
+            if let apiError = error as? APIError {
+                switch apiError {
+                case .serverError(401, _):
+                    throw AuthenticationError.invalidCredentials
+                case .serverError(let code, let message):
+                    throw AuthenticationError.serverError(message ?? "HTTP \(code)")
+                default:
+                    throw AuthenticationError.serverError(apiError.localizedDescription)
+                }
+            }
+            throw AuthenticationError.invalidCredentials
+        }
     }
 
     // MARK: - Private Methods
