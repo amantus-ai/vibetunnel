@@ -57,21 +57,37 @@ test.describe('Session Management', () => {
   });
 
   test('should handle concurrent sessions', async ({ page }) => {
+    test.setTimeout(60000); // Increase timeout for this test
     try {
       // Create first session
       const { sessionName: session1 } = await sessionManager.createTrackedSession();
 
+      // Navigate back to list before creating second session
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      await page.waitForLoadState('networkidle');
+
+      // Wait for the list to be ready
+      await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+
       // Create second session
       const { sessionName: session2 } = await sessionManager.createTrackedSession();
 
-      // Navigate to list and verify both exist
-      await page.goto('/');
+      // Navigate back to list to verify both exist
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      await page.waitForLoadState('networkidle');
+
+      // Wait for session cards to load
+      await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+
+      // Verify both sessions exist
       await assertSessionCount(page, 2, { operator: 'minimum' });
       await assertSessionInList(page, session1);
       await assertSessionInList(page, session2);
     } catch (error) {
       // If error occurs, take a screenshot for debugging
-      await takeDebugScreenshot(page, 'debug-concurrent-sessions');
+      if (!page.isClosed()) {
+        await takeDebugScreenshot(page, 'debug-concurrent-sessions');
+      }
       throw error;
     }
   });

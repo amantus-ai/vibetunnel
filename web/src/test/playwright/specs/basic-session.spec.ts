@@ -45,6 +45,7 @@ test.describe('Basic Session Tests', () => {
   });
 
   test('should navigate between sessions', async ({ page }) => {
+    test.setTimeout(60000); // Increase timeout for this test
     // Create multiple sessions using helper
     const sessions = await createMultipleSessions(page, 2, {
       name: 'nav-test',

@@ -33,8 +33,9 @@ export class BasePage {
     // Wait for app to be fully initialized
     try {
       // Wait for either session list or create button to be visible
+      // The create button might have different titles in different contexts
       await this.page.waitForSelector(
-        '[data-testid="create-session-button"], button[title="Create New Session"]',
+        '[data-testid="create-session-button"], button[title="Create New Session"], button[title="Create New Session (⌘K)"]',
         {
           state: 'visible',
           timeout: 5000,
@@ -42,8 +43,12 @@ export class BasePage {
       );
     } catch (_error) {
       // If create button is not immediately visible, wait for it to appear
-      // The button might be hidden while sessions are loading
-      const createBtn = this.page.locator('button[title="Create New Session"]');
+      // Try all possible selectors
+      const createBtn = this.page
+        .locator('[data-testid="create-session-button"]')
+        .or(this.page.locator('button[title="Create New Session"]'))
+        .or(this.page.locator('button[title="Create New Session (⌘K)"]'))
+        .first();
 
       // Wait for the button to become visible - this automatically retries
       try {

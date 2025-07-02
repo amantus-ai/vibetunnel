@@ -106,6 +106,7 @@ export class SessionHeader extends LitElement {
                     class="bg-accent-primary bg-opacity-10 border border-accent-primary text-accent-primary rounded-lg p-2 font-mono transition-all duration-200 hover:bg-accent-primary hover:text-dark-bg hover:shadow-glow-primary-sm flex-shrink-0"
                     @click=${() => this.onCreateSession?.()}
                     title="Create New Session (⌘K)"
+                    data-testid="create-session-button"
                   >
                     <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>

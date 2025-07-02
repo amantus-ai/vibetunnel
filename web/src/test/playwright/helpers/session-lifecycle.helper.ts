@@ -118,12 +118,20 @@ export async function createMultipleSessions(
 
     // Navigate back to list for next creation (except last one)
     if (i < count - 1) {
-      await page.goto('/', { waitUntil: 'domcontentloaded' });
-      // Wait for app to be ready before creating next session
-      await page.waitForSelector('button[title="Create New Session"]', {
+      await page.goto('/', { waitUntil: 'networkidle' });
+
+      // Wait for session list to be visible
+      await page.waitForSelector('session-card', {
         state: 'visible',
         timeout: 10000,
       });
+
+      // Wait for app to be ready before creating next session
+      await page.waitForSelector('[data-testid="create-session-button"]', {
+        state: 'visible',
+        timeout: 10000,
+      });
+
       // Add a small delay to avoid race conditions
       await page.waitForTimeout(500);
     }

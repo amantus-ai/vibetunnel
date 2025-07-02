@@ -57,6 +57,8 @@ export class ModalWrapper extends LitElement {
   private handleBackdropClick(e: Event) {
     // Only close if clicking the backdrop itself, not the modal content
     if (this.closeOnBackdrop && e.target === e.currentTarget) {
+      e.preventDefault();
+      e.stopPropagation();
       this.handleClose();
     }
   }

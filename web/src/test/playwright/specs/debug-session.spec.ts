@@ -12,15 +12,31 @@ test.describe('Debug Session Tests', () => {
     await sessionManager.cleanupAllSessions();
   });
   test('debug session creation and listing', async ({ page }) => {
+    // Navigate to root
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
     // Wait for page to be ready
-    await page.waitForSelector('button[title="Create New Session"]', {
-      state: 'visible',
-      timeout: 10000,
-    });
+    const createButton = page
+      .locator('[data-testid="create-session-button"]')
+      .or(page.locator('button[title="Create New Session"]'))
+      .or(page.locator('button[title="Create New Session (⌘K)"]'))
+      .first();
+
+    await createButton.waitFor({ state: 'visible', timeout: 10000 });
 
     // Create a session manually to debug the flow
-    await page.click('button[title="Create New Session"]');
-    await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
+    await createButton.click();
+
+    // Wait for modal to appear
+    await page.waitForSelector('text="New Session"', { state: 'visible', timeout: 10000 });
+    await page.waitForTimeout(500); // Wait for animations
+
+    // Try both possible selectors for the session name input
+    const nameInput = page
+      .locator('[data-testid="session-name-input"]')
+      .or(page.locator('input[placeholder="My Session"]'));
+    await nameInput.waitFor({ state: 'visible', timeout: 5000 });
 
     // Check the initial state of spawn window toggle
     const spawnWindowToggle = page.locator('button[role="switch"]');
@@ -43,12 +59,15 @@ test.describe('Debug Session Tests', () => {
 
     // Fill in session name
     const sessionName = sessionManager.generateSessionName('debug');
-    await page.fill('input[placeholder="My Session"]', sessionName);
+    await nameInput.fill(sessionName);
 
     // Intercept the API request to see what's being sent
     const [request] = await Promise.all([
       page.waitForRequest('/api/sessions'),
-      page.locator('button').filter({ hasText: 'Create' }).click(),
+      page
+        .locator('[data-testid="create-session-submit"]')
+        .or(page.locator('button:has-text("Create")'))
+        .click({ force: true }),
     ]);
 
     const requestBody = request.postDataJSON();

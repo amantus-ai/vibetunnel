@@ -79,6 +79,7 @@ export class SidebarHeader extends HeaderBase {
               class="p-2 text-accent-primary bg-accent-primary bg-opacity-10 border border-accent-primary hover:bg-opacity-20 rounded-md transition-all duration-200 flex-shrink-0"
               @click=${this.handleCreateSession}
               title="Create New Session (⌘K)"
+              data-testid="create-session-button"
             >
               <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
