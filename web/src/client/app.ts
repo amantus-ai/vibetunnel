@@ -932,6 +932,11 @@ export class VibeTunnelApp extends LitElement {
           this.sidebarCollapsed = true;
           this.saveSidebarState(true);
         }
+        // Auto-expand sidebar when switching from mobile to desktop
+        else if (oldState.isMobile && !state.isMobile && this.sidebarCollapsed) {
+          this.sidebarCollapsed = false;
+          this.saveSidebarState(false);
+        }
       } else if (!this.responsiveObserverInitialized) {
         // Mark as initialized after first callback
         this.responsiveObserverInitialized = true;
