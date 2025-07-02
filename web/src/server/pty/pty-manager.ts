@@ -606,6 +606,11 @@ export class PtyManager extends EventEmitter {
 
     // Setup IPC socket for all communication
     this.setupIPCSocket(session);
+
+    // Setup file watching for external session.json changes
+    if (forwardToStdout) {
+      this.setupSessionFileWatcher(session);
+    }
   }
 
   /**
@@ -679,6 +684,72 @@ export class PtyManager extends EventEmitter {
     }
 
     // All IPC goes through this socket
+  }
+
+  /**
+   * Setup file watcher for session.json changes
+   */
+  private setupSessionFileWatcher(session: PtySession): void {
+    const { sessionJsonPath } = session;
+    let debounceTimer: NodeJS.Timeout | undefined;
+
+    try {
+      // Watch the session.json file for changes
+      session.sessionFileWatcher = fs.watch(sessionJsonPath, (eventType) => {
+        if (eventType === 'change') {
+          // Debounce rapid changes
+          if (debounceTimer) {
+            clearTimeout(debounceTimer);
+          }
+          debounceTimer = setTimeout(() => {
+            this.handleExternalSessionUpdate(session);
+          }, 100);
+        }
+      });
+
+      logger.debug(`Setup file watcher for session ${session.id} at ${sessionJsonPath}`);
+
+      // Clean up watcher on error
+      session.sessionFileWatcher.on('error', (error) => {
+        logger.error(`File watcher error for session ${session.id}:`, error);
+        session.sessionFileWatcher?.close();
+        session.sessionFileWatcher = undefined;
+      });
+    } catch (error) {
+      logger.error(`Failed to setup file watcher for session ${session.id}:`, error);
+    }
+  }
+
+  /**
+   * Handle external updates to session.json
+   */
+  private handleExternalSessionUpdate(session: PtySession): void {
+    try {
+      // Reload session info from disk
+      const updatedInfo = this.sessionManager.loadSessionInfo(session.id);
+      if (!updatedInfo) {
+        logger.warn(`Failed to reload session info for ${session.id}`);
+        return;
+      }
+
+      // Check if session name changed
+      if (updatedInfo.name !== session.sessionInfo.name) {
+        logger.debug(
+          `[File Watch] Session name changed from "${session.sessionInfo.name}" to "${updatedInfo.name}" for session ${session.id}`
+        );
+
+        // Update in-memory session info
+        session.sessionInfo.name = updatedInfo.name;
+
+        // For session name changes, always update title regardless of mode
+        this.updateTerminalTitleForSessionName(session);
+
+        // Emit event for other listeners
+        this.trackAndEmit('sessionNameChanged', session.id, updatedInfo.name);
+      }
+    } catch (error) {
+      logger.error(`Failed to handle external session update for ${session.id}:`, error);
+    }
   }
 
   /**
@@ -1042,7 +1113,8 @@ export class PtyManager extends EventEmitter {
       });
 
       // Force immediate title update for active sessions
-      if (memorySession.titleMode && memorySession.titleMode !== TitleMode.NONE) {
+      // For session name changes, always update title regardless of mode
+      if (memorySession.isExternalTerminal && memorySession.stdoutQueue) {
         logger.debug(`[PtyManager] Forcing immediate title update for session ${sessionId}`, {
           titleMode: memorySession.titleMode,
           hadCurrentTitle: !!memorySession.currentTitle,
@@ -1050,7 +1122,7 @@ export class PtyManager extends EventEmitter {
         });
         // Clear current title to force regeneration
         memorySession.currentTitle = undefined;
-        this.markTitleUpdateNeeded(memorySession);
+        this.updateTerminalTitleForSessionName(memorySession);
       }
 
       logger.log(`[PtyManager] Updated session ${sessionId} name from "${oldName}" to "${name}"`);
@@ -1727,6 +1799,13 @@ export class PtyManager extends EventEmitter {
       session.titleFilter = undefined;
     }
 
+    // Clean up file watcher
+    if (session.sessionFileWatcher) {
+      session.sessionFileWatcher.close();
+      session.sessionFileWatcher = undefined;
+      logger.debug(`Closed file watcher for session ${session.id}`);
+    }
+
     // Clean up input socket server
     if (session.inputSocketServer) {
       // Close the server and wait for it to close
@@ -1781,6 +1860,50 @@ export class PtyManager extends EventEmitter {
     session.titleUpdateNeeded = true;
     logger.debug(`[markTitleUpdateNeeded] Set titleUpdateNeeded=true, calling checkAndUpdateTitle`);
     this.checkAndUpdateTitle(session);
+  }
+
+  /**
+   * Update terminal title specifically for session name changes
+   * This bypasses title mode checks to ensure name changes are always reflected
+   */
+  private updateTerminalTitleForSessionName(session: PtySession): void {
+    if (!session.stdoutQueue || !session.isExternalTerminal) {
+      logger.debug(
+        `[updateTerminalTitleForSessionName] Early return - no stdout queue or not external terminal`
+      );
+      return;
+    }
+
+    // For NONE mode, just use the session name
+    // For other modes, regenerate the title with the new name
+    let newTitle: string | null = null;
+
+    if (
+      !session.titleMode ||
+      session.titleMode === TitleMode.NONE ||
+      session.titleMode === TitleMode.FILTER
+    ) {
+      // In NONE or FILTER mode, use simple session name
+      newTitle = generateTitleSequence(
+        session.currentWorkingDir || session.sessionInfo.workingDir,
+        session.sessionInfo.command,
+        session.sessionInfo.name || 'VibeTunnel'
+      );
+    } else {
+      // For STATIC and DYNAMIC modes, use the standard generation logic
+      newTitle = this.generateTerminalTitle(session);
+    }
+
+    if (newTitle && newTitle !== session.currentTitle) {
+      logger.debug(`[updateTerminalTitleForSessionName] Updating title for session name change`);
+      session.pendingTitleToInject = newTitle;
+      session.titleUpdateNeeded = true;
+
+      // Start injection monitor if not already running
+      if (!session.titleInjectionTimer) {
+        this.startTitleInjectionMonitor(session);
+      }
+    }
   }
 
   /**
