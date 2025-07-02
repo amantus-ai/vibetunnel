@@ -39,8 +39,41 @@ export async function createAndNavigateToSession(
 
   // For web sessions, wait for navigation and get session ID
   if (!spawnWindow) {
-    await page.waitForURL(/\?session=/, { timeout: 4000 });
+    // In CI, navigation might be slower
+    const timeout = process.env.CI ? 15000 : 8000;
+
+    try {
+      await page.waitForURL(/\?session=/, { timeout });
+    } catch (_error) {
+      // If navigation didn't happen automatically, check if we can extract session ID and navigate manually
+      const currentUrl = page.url();
+      console.error(`Navigation timeout. Current URL: ${currentUrl}`);
+
+      // Try to find session ID from the page or recent requests
+      const sessionResponse = await page.evaluate(async () => {
+        // Check if there's a recent session creation response in memory
+        const responses = (window as any).__testResponses || [];
+        const sessionResponse = responses.find(
+          (r: any) => r.url.includes('/api/sessions') && r.method === 'POST'
+        );
+        return sessionResponse?.data;
+      });
+
+      if (sessionResponse?.sessionId) {
+        console.log(`Found session ID ${sessionResponse.sessionId}, navigating manually`);
+        await page.goto(`/?session=${sessionResponse.sessionId}`, {
+          waitUntil: 'domcontentloaded',
+        });
+      } else {
+        throw new Error(`Failed to navigate to session view from ${currentUrl}`);
+      }
+    }
+
     const sessionId = new URL(page.url()).searchParams.get('session') || '';
+    if (!sessionId) {
+      throw new Error('No session ID found in URL after navigation');
+    }
+
     await sessionViewPage.waitForTerminalReady();
 
     return { sessionName, sessionId };

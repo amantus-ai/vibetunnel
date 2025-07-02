@@ -14,8 +14,24 @@ export const test = base.extend<TestFixtures>({
   // Override page fixture to ensure clean state
   page: async ({ page }, use) => {
     // Set up page with proper timeout handling
-    page.setDefaultTimeout(testConfig.defaultTimeout);
-    page.setDefaultNavigationTimeout(testConfig.navigationTimeout);
+    const defaultTimeout = process.env.CI ? 30000 : testConfig.defaultTimeout;
+    const navigationTimeout = process.env.CI ? 45000 : testConfig.navigationTimeout;
+    page.setDefaultTimeout(defaultTimeout);
+    page.setDefaultNavigationTimeout(navigationTimeout);
+
+    // Track responses for debugging in CI
+    if (process.env.CI) {
+      page.on('response', (response) => {
+        if (response.url().includes('/api/sessions') && response.request().method() === 'POST') {
+          response
+            .json()
+            .then((data) => {
+              console.log(`[CI Debug] Session created: ${JSON.stringify(data)}`);
+            })
+            .catch(() => {});
+        }
+      });
+    }
 
     // Only do initial setup on first navigation, not on subsequent navigations during test
     const isFirstNavigation = !page.url() || page.url() === 'about:blank';

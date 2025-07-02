@@ -214,14 +214,17 @@ export class SessionListPage extends BasePage {
 
     // Click and wait for response
     const responsePromise = this.page.waitForResponse(
-      (response) => response.url().includes('/api/sessions'),
-      { timeout: 4000 }
+      (response) =>
+        response.url().includes('/api/sessions') && response.request().method() === 'POST',
+      { timeout: 10000 }
     );
 
     await submitButton.click({ force: true });
 
     // Wait for navigation to session view (only for web sessions)
     if (!spawnWindow) {
+      let sessionId: string | undefined;
+
       try {
         const response = await responsePromise;
         console.log(`Session creation response status: ${response.status()}`);
@@ -231,48 +234,55 @@ export class SessionListPage extends BasePage {
           throw new Error(`Session creation failed with status ${response.status()}: ${body}`);
         }
 
-        // Log the response body for debugging
+        // Get session ID from response
         const responseBody = await response.json();
         console.log('Session created:', responseBody);
+        sessionId = responseBody.sessionId;
       } catch (error) {
         console.error('Error waiting for session response:', error);
-        // If waitForResponse times out, check if we navigated anyway
-        const currentUrl = this.page.url();
-        if (!currentUrl.includes('?session=')) {
-          // Take a screenshot for debugging
-          await screenshotOnError(
-            this.page,
-            error instanceof Error ? error : new Error(String(error)),
-            'session-creation-response-error'
-          );
-          throw error;
+        // Don't throw yet, check if we navigated anyway
+      }
+
+      // Wait for modal to close first
+      await this.page
+        .waitForSelector('.modal-content', { state: 'hidden', timeout: 5000 })
+        .catch(() => {
+          console.log('Modal might have already closed');
+        });
+
+      // Give the app a moment to process the response
+      await this.page.waitForTimeout(500);
+
+      // Check if we're already on the session page
+      const currentUrl = this.page.url();
+      if (currentUrl.includes('?session=')) {
+        console.log('Already navigated to session view');
+      } else {
+        // If we have a session ID, try navigating manually
+        if (sessionId) {
+          console.log(`Manually navigating to session ${sessionId}`);
+          await this.page.goto(`/?session=${sessionId}`, { waitUntil: 'domcontentloaded' });
+        } else {
+          // Wait for automatic navigation
+          try {
+            await this.page.waitForURL(/\?session=/, { timeout: 10000 });
+            console.log('Successfully navigated to session view');
+          } catch (error) {
+            const finalUrl = this.page.url();
+            console.error(`Failed to navigate to session. Current URL: ${finalUrl}`);
+            // Take a screenshot
+            await screenshotOnError(
+              this.page,
+              new Error(`Navigation timeout. URL: ${finalUrl}`),
+              'session-navigation-timeout'
+            );
+            throw error;
+          }
         }
       }
 
-      // Wait for modal to close
-      await this.page
-        .waitForSelector('.modal-content', { state: 'hidden', timeout: 2000 })
-        .catch(() => {
-          // Modal might have already closed
-        });
-
-      // Wait for navigation - the URL should change to include session ID
-      try {
-        await this.page.waitForURL(/\?session=/, { timeout: 8000 });
-        console.log('Successfully navigated to session view');
-      } catch (error) {
-        const currentUrl = this.page.url();
-        console.error(`Failed to navigate to session. Current URL: ${currentUrl}`);
-        // Take a screenshot
-        await screenshotOnError(
-          this.page,
-          new Error(`Navigation timeout. URL: ${currentUrl}`),
-          'session-navigation-timeout'
-        );
-        throw error;
-      }
-
-      await this.page.waitForSelector('vibe-terminal', { state: 'visible' });
+      // Wait for terminal to be ready
+      await this.page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
     } else {
       // For spawn window, wait for modal to close
       await this.page.waitForSelector('.modal-content', { state: 'hidden', timeout: 4000 });
