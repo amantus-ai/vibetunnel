@@ -539,6 +539,16 @@ class ServerManager {
             }
         }
     }
+
+    // MARK: - Authentication
+
+    /// Add authentication headers to a request
+    func authenticate(request: inout URLRequest) throws {
+        guard let server = bunServer else {
+            throw ServerError.startupFailed("Server not running")
+        }
+        request.setValue(server.localToken, forHTTPHeaderField: "X-VibeTunnel-Local")
+    }
 }
 
 // MARK: - Server Manager Error
