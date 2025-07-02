@@ -62,6 +62,9 @@ final class SessionMonitor {
     private let serverPort: Int
     private var localAuthToken: String?
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionMonitor")
+    
+    // Reference to GitRepositoryMonitor for pre-caching
+    weak var gitRepositoryMonitor: GitRepositoryMonitor?
 
     private init() {
         let port = UserDefaults.standard.integer(forKey: "serverPort")
@@ -139,6 +142,16 @@ final class SessionMonitor {
 
             // Update WindowTracker
             WindowTracker.shared.updateFromSessions(sessionsArray)
+            
+            // Pre-cache Git data for all sessions
+            if let gitMonitor = gitRepositoryMonitor {
+                for session in sessionsArray {
+                    Task {
+                        // This will cache the data for immediate access later
+                        _ = await gitMonitor.findRepository(for: session.workingDir)
+                    }
+                }
+            }
         } catch {
             // Only update error if it's not a simple connection error
             if !(error is URLError) {

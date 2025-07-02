@@ -15,6 +15,18 @@ public final class GitRepositoryMonitor {
     public init() {}
 
     // MARK: - Public Methods
+    
+    /// Get cached repository information synchronously
+    /// - Parameter filePath: Path to a file within a potential Git repository
+    /// - Returns: Cached GitRepository information if available, nil otherwise
+    public func getCachedRepository(for filePath: String) -> GitRepository? {
+        // Check if we already know the repo path for this file
+        if let cachedRepoPath = fileToRepoCache[filePath],
+           let cached = repositoryCache[cachedRepoPath] {
+            return cached
+        }
+        return nil
+    }
 
     /// Find Git repository for a given file path and return its status
     /// - Parameter filePath: Path to a file within a potential Git repository

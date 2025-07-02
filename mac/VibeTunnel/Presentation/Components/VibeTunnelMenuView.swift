@@ -23,6 +23,9 @@ struct VibeTunnelMenuView: View {
     @State private var hasStartedKeyboardNavigation = false
     @State private var showingNewSession = false
     @FocusState private var focusedField: FocusField?
+    @State private var isHoveringNewSession = false
+    @State private var isHoveringSettings = false
+    @State private var isHoveringQuit = false
 
     /// Binding to allow external control of new session state
     @Binding var isNewSessionActive: Bool
@@ -157,9 +160,19 @@ struct VibeTunnelMenuView: View {
                 }) {
                     Label("New Session", systemImage: "plus.square")
                         .font(.system(size: 12))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(isHoveringNewSession ? Color.accentColor.opacity(0.05) : Color.clear)
+                                .animation(.easeInOut(duration: 0.2), value: isHoveringNewSession)
+                        )
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
+                .onHover { hovering in
+                    isHoveringNewSession = hovering
+                }
                 .focusable()
                 .focused($focusedField, equals: .newSessionButton)
                 .overlay(
@@ -179,9 +192,19 @@ struct VibeTunnelMenuView: View {
                 }) {
                     Label("Settings", systemImage: "gear")
                         .font(.system(size: 12))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(isHoveringSettings ? Color.accentColor.opacity(0.05) : Color.clear)
+                                .animation(.easeInOut(duration: 0.2), value: isHoveringSettings)
+                        )
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
+                .onHover { hovering in
+                    isHoveringSettings = hovering
+                }
                 .focusable()
                 .focused($focusedField, equals: .settingsButton)
                 .overlay(
@@ -201,9 +224,19 @@ struct VibeTunnelMenuView: View {
                 }) {
                     Label("Quit", systemImage: "power")
                         .font(.system(size: 12))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(isHoveringQuit ? Color.red.opacity(0.05) : Color.clear)
+                                .animation(.easeInOut(duration: 0.2), value: isHoveringQuit)
+                        )
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
+                .onHover { hovering in
+                    isHoveringQuit = hovering
+                }
                 .focusable()
                 .focused($focusedField, equals: .quitButton)
                 .overlay(
@@ -216,16 +249,11 @@ struct VibeTunnelMenuView: View {
                         .animation(.easeInOut(duration: 0.15), value: focusedField)
                 )
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.vertical, 8)
         }
         .frame(width: 384)
         .background(Color.clear)
-        .onAppear {
-            gitRepositoryMonitor.startMonitoring()
-        }
-        .onDisappear {
-            gitRepositoryMonitor.stopMonitoring()
-        }
         .onKeyPress { keyPress in
             if keyPress.key == .tab && !hasStartedKeyboardNavigation {
                 hasStartedKeyboardNavigation = true
@@ -288,7 +316,14 @@ struct ServerInfoHeader: View {
 
                 Spacer()
 
-                ServerStatusBadge(isRunning: serverManager.isRunning)
+                ServerStatusBadge(
+                    isRunning: serverManager.isRunning,
+                    onRestart: {
+                        Task {
+                            await serverManager.restart()
+                        }
+                    }
+                )
             }
 
             // Server address
@@ -398,10 +433,14 @@ struct ServerAddressRow: View {
 ///
 /// Shows a colored badge with status text indicating whether
 /// the VibeTunnel server is currently running or stopped.
+/// When stopped, the badge is clickable to restart the server.
 struct ServerStatusBadge: View {
     let isRunning: Bool
+    let onRestart: (() -> Void)?
+    
     @Environment(\.colorScheme)
     private var colorScheme
+    @State private var isHovered = false
 
     var body: some View {
         HStack(spacing: 4) {
@@ -425,6 +464,20 @@ struct ServerStatusBadge: View {
                         )
                 )
         )
+        .opacity(isHovered && !isRunning ? 0.8 : 1.0)
+        .scaleEffect(isHovered && !isRunning ? 0.95 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            if !isRunning {
+                isHovered = hovering
+            }
+        }
+        .onTapGesture {
+            if !isRunning, let onRestart {
+                onRestart()
+            }
+        }
+        .help(!isRunning ? "Click to restart server" : "")
     }
 }
 
@@ -488,9 +541,17 @@ struct SessionRow: View {
             content
         }
         .buttonStyle(PlainButtonStyle())
+        .onAppear {
+            // First, try to get cached data synchronously
+            if gitRepository == nil {
+                gitRepository = gitRepositoryMonitor.getCachedRepository(for: session.value.workingDir)
+            }
+        }
         .task(id: session.value.workingDir) {
-            // Fetch git repository info for this session - will return cached data immediately
-            gitRepository = await gitRepositoryMonitor.findRepository(for: session.value.workingDir)
+            // Then fetch fresh data asynchronously (this will update the cache)
+            if let freshData = await gitRepositoryMonitor.findRepository(for: session.value.workingDir) {
+                gitRepository = freshData
+            }
         }
     }
 
@@ -502,11 +563,9 @@ struct SessionRow: View {
                     .fill(activityColor.opacity(0.3))
                     .frame(width: 8, height: 8)
                     .blur(radius: 2)
-                    .animation(.easeInOut(duration: 0.4), value: activityColor)
                 Circle()
                     .fill(activityColor)
                     .frame(width: 4, height: 4)
-                    .animation(.easeInOut(duration: 0.4), value: activityColor)
             }
 
             // Session info - use flexible width
@@ -547,16 +606,15 @@ struct SessionRow: View {
                                 .layoutPriority(1)
                         }
 
-                        // Show edit icon on hover when not editing
-                        if isHovered && !isEditing && !isTerminating {
-                            Button(action: startEditing) {
-                                Image(systemName: "square.and.pencil")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary.opacity(0.6))
-                            }
-                            .buttonStyle(.plain)
-                            .transition(.scale.combined(with: .opacity))
+                        // Edit icon - always present but with visibility controlled
+                        Button(action: startEditing) {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 9))
+                                .foregroundColor(.secondary.opacity(0.6))
                         }
+                        .buttonStyle(.plain)
+                        .opacity(isHovered && !isEditing && !isTerminating ? 1 : 0)
+                        .frame(width: 14, height: 12) // Fixed size to prevent jumping
                     }
 
                     Spacer(minLength: 4)
@@ -571,38 +629,42 @@ struct SessionRow: View {
 
                 // Second row: Path/git info on left, time/close on right
                 HStack(spacing: 0) {
-                    // Left side: folder, path, git info
-                    HStack(spacing: 0) {
-                        // Clickable folder icon
-                        Image(systemName: gitRepository != nil ? "folder.badge.gearshape" : "folder")
-                            .font(.system(size: 9))
-                            .foregroundColor(isHoveringGitFolder ? Color(red: 0.0, green: 0.5, blue: 0.0) : .secondary)
-                            .scaleEffect(isHoveringGitFolder ? 1.1 : 1.0)
-                            .animation(.easeInOut(duration: 0.15), value: isHoveringGitFolder)
-                            .onTapGesture {
-                                let pathToOpen = gitRepository?.path ?? session.value.workingDir
-                                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: pathToOpen)
+                    // Left side: folder and path as one button, then git info
+                    HStack(spacing: 4) {
+                        // Clickable folder and path as one button
+                        Button(action: {
+                            let pathToOpen = gitRepository?.path ?? session.value.workingDir
+                            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: pathToOpen)
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: gitRepository != nil ? "folder.badge.gearshape" : "folder")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                                
+                                Text(compactPath)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
                             }
-                            .onHover { hovering in
-                                withTransaction(Transaction(animation: nil)) {
-                                    isHoveringGitFolder = hovering
-                                }
-                                if hovering {
-                                    NSCursor.pointingHand.push()
-                                } else {
-                                    NSCursor.pop()
-                                }
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(isHoveringGitFolder ? Color.gray.opacity(0.15) : Color.clear)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .onHover { hovering in
+                            withTransaction(Transaction(animation: nil)) {
+                                isHoveringGitFolder = hovering
                             }
-                        
-                        Text(" ")
-                            .font(.system(size: 10))
-                        
-                        // Path
-                        Text(compactPath)
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                            if hovering {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
+                        }
                         
                         // Git info inline with branch symbol
                         if let repo = gitRepository {
@@ -630,40 +692,41 @@ struct SessionRow: View {
                     
                     Spacer(minLength: 8)
                     
-                    // Right side: time/close button
+                    // Right side: time/close button with fixed size
                     ZStack {
-                        if isHovered && !isTerminating {
-                            // Show X button on hover
+                        // Always show time (hidden when hovering)
+                        Text(duration)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color.secondary.opacity(0.6))
+                            .opacity(isHovered || isTerminating ? 0 : 1)
+                        
+                        // Show X button on hover
+                        if !isTerminating {
                             Button(action: terminateSession) {
                                 ZStack {
                                     Circle()
                                         .fill(Color.red.opacity(0.1))
-                                        .frame(width: 16, height: 16)
+                                        .frame(width: 14, height: 14)
                                     Circle()
                                         .strokeBorder(Color.red.opacity(0.3), lineWidth: 0.5)
-                                        .frame(width: 16, height: 16)
+                                        .frame(width: 14, height: 14)
                                     Image(systemName: "xmark")
-                                        .font(.system(size: 9, weight: .medium))
+                                        .font(.system(size: 8, weight: .medium))
                                         .foregroundColor(.red.opacity(0.8))
                                 }
                             }
                             .buttonStyle(.plain)
-                            .transition(.scale.combined(with: .opacity))
-                        } else if isTerminating {
-                            // Show progress indicator while terminating
+                            .opacity(isHovered ? 1 : 0)
+                        }
+                        
+                        // Show progress indicator while terminating
+                        if isTerminating {
                             ProgressView()
-                                .scaleEffect(0.6)
+                                .scaleEffect(0.5)
                                 .frame(width: 14, height: 14)
-                        } else {
-                            // Show time when not hovering
-                            Text(duration)
-                                .font(.system(size: 10))
-                                .foregroundColor(Color.secondary.opacity(0.6))
-                                .transition(.opacity)
                         }
                     }
-                    .frame(width: 40, alignment: .trailing)
-                    .animation(.easeInOut(duration: 0.15), value: isHovered)
+                    .frame(width: 40, height: 16, alignment: .trailing)
                 }
                 
                 // Third row: Activity status (if present)
@@ -687,7 +750,6 @@ struct SessionRow: View {
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(isHovered ? hoverBackgroundColor : Color.clear)
-                .animation(.easeInOut(duration: 0.15), value: isHovered)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6)
@@ -695,7 +757,6 @@ struct SessionRow: View {
                     isFocused ? Color.accentColor.opacity(0.3) : Color.clear,
                     lineWidth: 1
                 )
-                .animation(.easeInOut(duration: 0.15), value: isFocused)
         )
         .focusable()
         .contextMenu {
