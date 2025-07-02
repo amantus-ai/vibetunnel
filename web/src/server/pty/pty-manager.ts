@@ -546,13 +546,11 @@ export class PtyManager extends EventEmitter {
       // Forward to stdout if requested (using queue for ordering)
       if (forwardToStdout && stdoutQueue) {
         stdoutQueue.enqueue(async () => {
-          // TODO: If we have a title to inject, write it first
-          // if (titleToInject) {
-          //   process.stdout.write(titleToInject);
-          // }
-
-          // Write the actual data
-          const canWrite = process.stdout.write(processedData);
+          // Prepend title to data if we have one to inject
+          const dataToWrite = titleToInject ? titleToInject + processedData : processedData;
+          
+          // Write everything in one atomic operation
+          const canWrite = process.stdout.write(dataToWrite);
           if (!canWrite) {
             await once(process.stdout, 'drain');
           }
