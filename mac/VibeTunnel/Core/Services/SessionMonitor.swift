@@ -124,11 +124,6 @@ final class SessionMonitor {
             self.lastError = nil
             self.lastFetch = Date()
 
-            logger
-                .debug(
-                    "Fetched \(sessionsArray.count) sessions, \(sessionsDict.values.count { $0.isRunning }) running"
-                )
-
             // Update WindowTracker
             WindowTracker.shared.updateFromSessions(sessionsArray)
         } catch {
