@@ -26,7 +26,7 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: 1, // Force single worker for stability
   /* Test timeout */
-  timeout: process.env.CI ? 60 * 1000 : 30 * 1000, // 60s on CI, 30s locally
+  timeout: process.env.CI ? 30 * 1000 : 20 * 1000, // 30s on CI, 20s locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { open: 'never' }],
@@ -44,13 +44,32 @@ export default defineConfig({
     screenshot: 'only-on-failure',
 
     /* Capture video on failure */
-    video: 'on-first-retry',
+    video: process.env.CI ? 'retain-on-failure' : 'off',
 
     /* Maximum time each action can take */
-    actionTimeout: testConfig.actionTimeout,
+    actionTimeout: 10000, // Reduced from 15s
 
     /* Give browser more time to start on CI */
-    navigationTimeout: process.env.CI ? 45000 : testConfig.navigationTimeout,
+    navigationTimeout: process.env.CI ? 20000 : 15000, // Reduced timeouts
+
+    /* Run in headless mode for better performance */
+    headless: true,
+
+    /* Viewport size */
+    viewport: { width: 1280, height: 720 },
+
+    /* Ignore HTTPS errors */
+    ignoreHTTPSErrors: true,
+
+    /* Browser launch options for better performance */
+    launchOptions: {
+      args: [
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-dev-shm-usage',
+        '--no-sandbox',
+      ],
+    },
   },
 
   /* Configure projects for major browsers */

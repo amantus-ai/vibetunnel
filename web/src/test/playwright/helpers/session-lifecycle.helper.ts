@@ -170,17 +170,17 @@ export async function createMultipleSessions(
       // Wait for session list to be visible
       await page.waitForSelector('session-card', {
         state: 'visible',
-        timeout: 10000,
+        timeout: 5000,
       });
 
       // Wait for app to be ready before creating next session
       await page.waitForSelector('[data-testid="create-session-button"]', {
         state: 'visible',
-        timeout: 10000,
+        timeout: 5000,
       });
 
       // Add a small delay to avoid race conditions
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(200);
     }
   }
 

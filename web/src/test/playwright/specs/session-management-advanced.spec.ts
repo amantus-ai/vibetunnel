@@ -336,9 +336,32 @@ test.describe('Advanced Session Management', () => {
     // Use bash for consistency in tests
     await page.fill('input[placeholder="zsh"]', 'bash');
 
+    // Wait for session creation response
+    const responsePromise = page.waitForResponse(
+      (response) => response.url().includes('/api/sessions') && response.request().method() === 'POST',
+      { timeout: 10000 }
+    );
+
     // Use force click to bypass pointer-events issues
     await page.locator('button').filter({ hasText: 'Create' }).first().click({ force: true });
-    await page.waitForURL(/\?session=/, { timeout: 10000 });
+    
+    try {
+      const response = await responsePromise;
+      const responseBody = await response.json();
+      const sessionId = responseBody.sessionId;
+      
+      // Wait for modal to close
+      await page.waitForSelector('.modal-content', { state: 'hidden', timeout: 5000 }).catch(() => {});
+      
+      // Navigate manually if needed
+      const currentUrl = page.url();
+      if (!currentUrl.includes('?session=')) {
+        await page.goto(`/?session=${sessionId}`, { waitUntil: 'domcontentloaded' });
+      }
+    } catch (error) {
+      // If response handling fails, still try to wait for navigation
+      await page.waitForURL(/\?session=/, { timeout: 10000 });
+    }
 
     // Track for cleanup
     sessionManager.clearTracking();

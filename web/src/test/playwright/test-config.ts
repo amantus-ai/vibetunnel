@@ -11,10 +11,10 @@ export const testConfig = {
     return `http://localhost:${this.port}`;
   },
 
-  // Timeouts
-  defaultTimeout: 20000, // 20 seconds for default operations
-  navigationTimeout: 30000, // 30 seconds for page navigation
-  actionTimeout: 15000, // 15 seconds for UI actions
+  // Timeouts - Reduced for faster test execution
+  defaultTimeout: 10000, // 10 seconds for default operations
+  navigationTimeout: 15000, // 15 seconds for page navigation
+  actionTimeout: 5000, // 5 seconds for UI actions
 
   // Session defaults
   defaultSessionName: 'Test Session',

@@ -8,7 +8,7 @@ export async function waitForElementStable(
   selector: string,
   options: { timeout?: number; stableTime?: number } = {}
 ): Promise<void> {
-  const { timeout = 5000, stableTime = 500 } = options;
+  const { timeout = 3000, stableTime = 300 } = options;
 
   // First wait for element to exist
   await page.waitForSelector(selector, { state: 'visible', timeout });
