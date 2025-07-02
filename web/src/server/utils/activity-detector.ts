@@ -174,16 +174,17 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
     filteredData = before + cleanedMiddle + after;
   }
 
-  // Create compact display text for title bar
+  // Create compact display text for title bar (without spinner for stable comparison)
   let displayText: string;
   if (hasTokenInfo) {
     // Format tokens - the input already has 'k' suffix in the regex pattern
     // So "6.0" means 6.0k tokens, not 6.0 tokens
     const formattedTokens = `${tokens}k`;
-    displayText = `${indicator} ${action} (${duration}s, ${direction}${formattedTokens})`;
+    // No spinner - just action and stats for stable comparison
+    displayText = `${action} (${duration}s, ${direction}${formattedTokens})`;
   } else {
     // Simple format without token info
-    displayText = `${indicator} ${action} (${duration}s)`;
+    displayText = `${action} (${duration}s)`;
   }
 
   return {

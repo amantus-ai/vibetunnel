@@ -53,6 +53,11 @@ import {
 
 const logger = createLogger('pty-manager');
 
+// Title injection timing constants
+const TITLE_UPDATE_INTERVAL_MS = 1000; // How often to check if title needs updating
+const TITLE_INJECTION_QUIET_PERIOD_MS = 50; // Minimum quiet period before injecting title
+const TITLE_INJECTION_CHECK_INTERVAL_MS = 10; // How often to check for quiet period
+
 export class PtyManager extends EventEmitter {
   private sessions = new Map<string, PtySession>();
   private sessionManager: SessionManager;
@@ -456,7 +461,7 @@ export class PtyManager extends EventEmitter {
 
         // Check and update title if needed
         this.checkAndUpdateTitle(session);
-      }, 1000);
+      }, TITLE_UPDATE_INTERVAL_MS);
     }
 
     // Handle PTY data output
@@ -499,6 +504,10 @@ export class PtyManager extends EventEmitter {
       if (forwardToStdout && stdoutQueue) {
         stdoutQueue.enqueue(async () => {
           const canWrite = process.stdout.write(processedData);
+
+          // Track write activity for safe title injection
+          session.lastWriteTimestamp = Date.now();
+
           if (!canWrite) {
             await once(process.stdout, 'drain');
           }
@@ -1791,6 +1800,12 @@ export class PtyManager extends EventEmitter {
 
     // Clean up activity state tracking
     this.lastWrittenActivityState.delete(session.id);
+
+    // Clean up title injection timer
+    if (session.titleInjectionTimer) {
+      clearInterval(session.titleInjectionTimer);
+      session.titleInjectionTimer = undefined;
+    }
   }
 
   /**
@@ -1804,20 +1819,64 @@ export class PtyManager extends EventEmitter {
     // Generate new title
     const newTitle = this.generateTerminalTitle(session);
 
-    // Only write if changed
+    // Only proceed if title changed
     if (newTitle && newTitle !== session.currentTitle) {
-      session.stdoutQueue.enqueue(async () => {
-        const canWrite = process.stdout.write(newTitle);
-        if (!canWrite) {
-          await once(process.stdout, 'drain');
-        }
-      });
-      session.currentTitle = newTitle;
-      logger.debug(`Updated terminal title for session ${session.id}`);
+      // Store pending title
+      session.pendingTitleToInject = newTitle;
+
+      // Start injection monitor if not already running
+      if (!session.titleInjectionTimer) {
+        this.startTitleInjectionMonitor(session);
+      }
     }
 
     // Clear flag
     session.titleUpdateNeeded = false;
+  }
+
+  /**
+   * Monitor for quiet period to safely inject title
+   */
+  private startTitleInjectionMonitor(session: PtySession): void {
+    // Run periodically to find quiet period
+    session.titleInjectionTimer = setInterval(() => {
+      if (!session.pendingTitleToInject || !session.stdoutQueue) {
+        // No title to inject or session ended, stop monitor
+        clearInterval(session.titleInjectionTimer!);
+        session.titleInjectionTimer = undefined;
+        return;
+      }
+
+      const now = Date.now();
+      const timeSinceLastWrite = now - (session.lastWriteTimestamp || 0);
+
+      // Check for quiet period
+      if (timeSinceLastWrite >= TITLE_INJECTION_QUIET_PERIOD_MS) {
+        // Safe to inject title
+        session.stdoutQueue.enqueue(async () => {
+          const canWrite = process.stdout.write(session.pendingTitleToInject!);
+
+          // Update timestamp
+          session.lastWriteTimestamp = Date.now();
+
+          if (!canWrite) {
+            await once(process.stdout, 'drain');
+          }
+        });
+
+        // Update tracking
+        session.currentTitle = session.pendingTitleToInject;
+        session.pendingTitleToInject = undefined;
+
+        // Stop monitor
+        clearInterval(session.titleInjectionTimer!);
+        session.titleInjectionTimer = undefined;
+
+        logger.debug(
+          `Injected title during quiet period (${timeSinceLastWrite}ms) for session ${session.id}`
+        );
+      }
+    }, TITLE_INJECTION_CHECK_INTERVAL_MS);
   }
 
   /**

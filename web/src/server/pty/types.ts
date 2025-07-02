@@ -93,6 +93,10 @@ export interface PtySession {
   titleUpdateNeeded?: boolean;
   currentTitle?: string;
   lastActivityStatus?: string;
+  // Write activity tracking for safe title injection
+  lastWriteTimestamp?: number;
+  titleInjectionTimer?: NodeJS.Timeout;
+  pendingTitleToInject?: string;
 }
 
 export class PtyError extends Error {
