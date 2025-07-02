@@ -10,7 +10,7 @@ final class StatusBarController: NSObject {
     // MARK: - Core Properties
 
     private var statusItem: NSStatusItem?
-    private let menuManager: StatusBarMenuManager
+    let menuManager: StatusBarMenuManager
 
     // MARK: - Dependencies
 
@@ -65,7 +65,7 @@ final class StatusBarController: NSObject {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
             // Use pushOnPushOff for proper state management
-            button.setButtonType(.pushOnPushOff)
+            button.setButtonType(.toggle)
 
             // Accessibility
             button.setAccessibilityTitle("VibeTunnel")
@@ -127,7 +127,7 @@ final class StatusBarController: NSObject {
 
     func updateStatusItemDisplay() {
         guard let button = statusItem?.button else { return }
-
+        
         // Update icon based on server and network status
         let iconName = (serverManager.isRunning && hasNetworkAccess) ? "menubar" : "menubar.inactive"
         if let image = NSImage(named: iconName) {
@@ -154,16 +154,10 @@ final class StatusBarController: NSObject {
 
         let activeCount = activeSessions.count
         let totalCount = sessions.count
+        let idleCount = totalCount - activeCount
 
-        // Format the title with visual indicators
-        // Try different styles by changing this:
-        // .dots (default): ●●● 5
-        // .bars: ▪︎▪︎▫︎▫︎▫︎
-        // .compact: 2◆5
-        // .minimalist: 2|5
-        // .meter: [■■□□□]
-        let indicatorStyle: IndicatorStyle = .minimalist
-        let indicator = formatSessionIndicator(activeCount: activeCount, totalCount: totalCount, style: indicatorStyle)
+        // Format the title with minimalist indicator
+        let indicator = formatSessionIndicator(activeCount: activeCount, idleCount: idleCount)
         button.title = indicator.isEmpty ? "" : " " + indicator
 
         // Update tooltip

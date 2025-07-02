@@ -2,6 +2,18 @@ import AppKit
 import SwiftUI
 import Combine
 
+// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
+// Didn't manage to keep the highlighted state reliable active with any other way.
+extension NSStatusBarButton {
+    public override func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+        self.highlight(true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) {
+            self.highlight(AppDelegate.shared?.statusBarController?.menuManager.customWindow?.isWindowVisible ?? false)
+        }
+    }
+}
+
 /// Manages status bar menu behavior, providing left-click custom view and right-click context menu functionality.
 @MainActor
 final class StatusBarMenuManager: NSObject {
@@ -22,13 +34,12 @@ final class StatusBarMenuManager: NSObject {
     private var terminalLauncher: TerminalLauncher?
 
     // Custom window management
-    private var customWindow: CustomMenuWindow?
+    fileprivate var customWindow: CustomMenuWindow?
     private weak var statusBarButton: NSStatusBarButton?
     private weak var currentStatusItem: NSStatusItem?
 
     // State management
     private var menuState: MenuState = .none
-    private var highlightTask: Task<Void, Never>?
     
     // Track new session state
     @Published private var isNewSessionActive = false
@@ -70,9 +81,6 @@ final class StatusBarMenuManager: NSObject {
     // MARK: - State Management
 
     private func updateMenuState(_ newState: MenuState, button: NSStatusBarButton? = nil) {
-        // Cancel any pending highlight task
-        highlightTask?.cancel()
-
         // Update state
         menuState = newState
 
@@ -107,17 +115,6 @@ final class StatusBarMenuManager: NSObject {
         // Update menu state to custom window FIRST before any async operations
         updateMenuState(.customWindow, button: button)
 
-        // Ensure button state is set immediately and persistently
-        button.state = .on
-
-        // Force another button state update to ensure it sticks
-        DispatchQueue.main.async {
-            button.state = .on
-        }
-        
-        // Update Window menu item state
-        WindowMenuManager.shared.updateMenuItemState(isVisible: true)
-
         // Create SessionService instance
         let sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
 
@@ -137,33 +134,19 @@ final class StatusBarMenuManager: NSObject {
         let containerView = CustomMenuContainer {
             mainView
         }
+        
+        // Hide and cleanup old window before creating new one
+        customWindow?.hide()
+        customWindow = nil
+        customWindow = CustomMenuWindow(contentView: containerView)
 
-        // Create custom window if needed
-        if customWindow == nil {
-            customWindow = CustomMenuWindow(contentView: containerView)
+        // Set up callback to reset state when window hides
+        customWindow?.onHide = { [weak self] in
+            self?.statusBarButton?.highlight(false)
 
-            // Set up callback to reset state when window hides
-            customWindow?.onHide = { [weak self] in
-                // Ensure state is reset on main thread
-                Task { @MainActor in
-                    self?.updateMenuState(.none)
-                    // Update Window menu item state
-                    WindowMenuManager.shared.updateMenuItemState(isVisible: false)
-                }
-            }
-        } else {
-            // Hide and cleanup old window before creating new one
-            customWindow?.hide()
-            customWindow = nil
-
-            // Create new window with updated content
-            customWindow = CustomMenuWindow(contentView: containerView)
-            customWindow?.onHide = { [weak self] in
-                Task { @MainActor in
-                    self?.updateMenuState(.none)
-                    // Update Window menu item state
-                    WindowMenuManager.shared.updateMenuItemState(isVisible: false)
-                }
+            // Ensure state is reset on main thread
+            Task { @MainActor in
+                self?.updateMenuState(.none)
             }
         }
 
@@ -174,16 +157,16 @@ final class StatusBarMenuManager: NSObject {
         
         // Show the custom window
         customWindow?.show(relativeTo: button)
+        statusBarButton?.highlight(true)
     }
 
     func hideCustomWindow() {
-        customWindow?.hide()
+        if(customWindow?.isWindowVisible ?? false) {
+            customWindow?.hide()
+        }
         // Reset new session state when hiding
         isNewSessionActive = false
         // Button state will be reset by updateMenuState(.none) in the onHide callback
-        
-        // Update Window menu item state
-        WindowMenuManager.shared.updateMenuItemState(isVisible: false)
     }
 
     var isCustomWindowVisible: Bool {

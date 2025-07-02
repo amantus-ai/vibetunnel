@@ -26,6 +26,9 @@ final class CustomMenuWindow: NSPanel {
     /// Tracks whether the new session form is currently active
     var isNewSessionActive = false
 
+    /// Closure to be called when window shows
+    var onShow: (() -> Void)?
+
     /// Closure to be called when window hides
     var onHide: (() -> Void)?
 
@@ -194,6 +197,8 @@ final class CustomMenuWindow: NSPanel {
 
         // Commit all changes at once
         CATransaction.commit()
+        
+        onShow?()
     }
 
     private func displayWindowSafely() {

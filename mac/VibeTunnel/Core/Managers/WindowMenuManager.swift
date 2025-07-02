@@ -5,7 +5,7 @@ import os.log
 @MainActor
 final class WindowMenuManager {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "WindowMenuManager")
-    private weak var menuItem: NSMenuItem?
+    private var menuItem: NSMenuItem?
     
     // MARK: - Singleton
     
@@ -77,22 +77,9 @@ final class WindowMenuManager {
             menuItem = newItem
             logger.info("Created new 'Show VibeTunnel' menu item")
         }
-        
-        // Set initial state
-        updateMenuItemState(isVisible: false)
     }
     
     // MARK: - Public Methods
-    
-    /// Updates the Window menu item state based on CustomMenuWindow visibility
-    func updateMenuItemState(isVisible: Bool) {
-        if let menuItem = menuItem {
-            menuItem.state = isVisible ? .on : .off
-            logger.info("Updated Window menu item state: \(isVisible ? "on" : "off") - menuItem: \(menuItem)")
-        } else {
-            logger.warning("Cannot update menu item state - menuItem is nil")
-        }
-    }
     
     /// Ensures the Window menu item exists and is properly configured
     func ensureMenuItemExists() {
