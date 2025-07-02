@@ -97,6 +97,7 @@ export interface PtySession {
   lastWriteTimestamp?: number;
   titleInjectionTimer?: NodeJS.Timeout;
   pendingTitleToInject?: string;
+  titleInjectionInProgress?: boolean;
 }
 
 export class PtyError extends Error {

@@ -1855,34 +1855,49 @@ export class PtyManager extends EventEmitter {
       const now = Date.now();
       const timeSinceLastWrite = now - (session.lastWriteTimestamp || 0);
 
-      // Check for quiet period
-      if (timeSinceLastWrite >= TITLE_INJECTION_QUIET_PERIOD_MS) {
+      // Check for quiet period and not already injecting
+      if (
+        timeSinceLastWrite >= TITLE_INJECTION_QUIET_PERIOD_MS &&
+        !session.titleInjectionInProgress
+      ) {
         // Safe to inject title - capture the title before clearing it
         const titleToInject = session.pendingTitleToInject;
         if (!titleToInject) {
           return;
         }
 
+        // Mark injection as in progress
+        session.titleInjectionInProgress = true;
+
+        // Update timestamp immediately to prevent quiet period violations
+        session.lastWriteTimestamp = Date.now();
+
         session.stdoutQueue.enqueue(async () => {
-          const canWrite = process.stdout.write(titleToInject);
+          try {
+            const canWrite = process.stdout.write(titleToInject);
 
-          // Update timestamp
-          session.lastWriteTimestamp = Date.now();
+            if (!canWrite) {
+              await once(process.stdout, 'drain');
+            }
 
-          if (!canWrite) {
-            await once(process.stdout, 'drain');
+            // Update tracking after successful write
+            session.currentTitle = titleToInject;
+
+            // Clear pending title only after successful write
+            if (session.pendingTitleToInject === titleToInject) {
+              session.pendingTitleToInject = undefined;
+            }
+
+            // If no more titles pending, stop monitor
+            if (!session.pendingTitleToInject && session.titleInjectionTimer) {
+              clearInterval(session.titleInjectionTimer);
+              session.titleInjectionTimer = undefined;
+            }
+          } finally {
+            // Always clear the in-progress flag
+            session.titleInjectionInProgress = false;
           }
         });
-
-        // Update tracking
-        session.currentTitle = titleToInject;
-        session.pendingTitleToInject = undefined;
-
-        // Stop monitor
-        if (session.titleInjectionTimer) {
-          clearInterval(session.titleInjectionTimer);
-          session.titleInjectionTimer = undefined;
-        }
 
         logger.debug(
           `Injected title during quiet period (${timeSinceLastWrite}ms) for session ${session.id}`
