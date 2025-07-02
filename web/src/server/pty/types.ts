@@ -10,7 +10,6 @@ import type { IPty } from 'node-pty';
 import type { SessionInfo, TitleMode } from '../../shared/types.js';
 import type { ActivityDetector } from '../utils/activity-detector.js';
 import type { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
-import type { TitleDebouncer } from '../utils/title-debouncer.js';
 import type { WriteQueue } from '../utils/write-queue.js';
 import type { AsciinemaWriter } from './asciinema-writer.js';
 
@@ -90,8 +89,6 @@ export interface PtySession {
   isExternalTerminal: boolean;
   // Title sequence filter for removing terminal title sequences
   titleFilter?: TitleSequenceFilter;
-  // Title update debouncer
-  titleDebouncer?: TitleDebouncer;
 }
 
 export class PtyError extends Error {

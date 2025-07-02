@@ -31,7 +31,6 @@ import {
   generateTitleSequence,
   shouldInjectTitle,
 } from '../utils/terminal-title.js';
-import { TitleDebouncer } from '../utils/title-debouncer.js';
 import { WriteQueue } from '../utils/write-queue.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
 import { ProcessUtils } from './process-utils.js';
@@ -367,11 +366,6 @@ export class PtyManager extends EventEmitter {
         titleFilter: new TitleSequenceFilter(),
       };
 
-      // Initialize title debouncer for sessions that use title updates
-      if (titleMode && titleMode !== TitleMode.NONE && options.forwardToStdout) {
-        session.titleDebouncer = new TitleDebouncer();
-      }
-
       this.sessions.set(sessionId, session);
 
       // Update session info with PID and running status
@@ -456,19 +450,19 @@ export class PtyManager extends EventEmitter {
           // Write activity state to file for persistence
           this.writeActivityState(session, activityState);
 
-          if (forwardToStdout && session.titleDebouncer) {
+          if (forwardToStdout && session.stdoutQueue) {
             const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-            const titleSequence = generateDynamicTitle(
+            const _titleSequence = generateDynamicTitle(
               dynamicDir,
               session.sessionInfo.command,
               activityState,
               session.sessionInfo.name
             );
 
-            // Schedule title update through debouncer
-            session.titleDebouncer.scheduleUpdate(titleSequence, (title) => {
-              process.stdout.write(title);
-            });
+            // TODO: Queue title update through write queue
+            // session.stdoutQueue.enqueue(async () => {
+            //   process.stdout.write(_titleSequence);
+            // });
           }
         }
       }, 1000);
@@ -477,6 +471,7 @@ export class PtyManager extends EventEmitter {
     // Handle PTY data output
     ptyProcess.onData((data: string) => {
       let processedData = data;
+      let titleToInject: string | null = null;
 
       // If title mode is not NONE, filter out any title sequences the process might
       // have written to the stream.
@@ -500,13 +495,10 @@ export class PtyManager extends EventEmitter {
 
           // Only inject title sequences for external terminals (not web sessions)
           // Web sessions should never have title sequences in their data stream
-          if (forwardToStdout && session.titleDebouncer) {
+          if (forwardToStdout) {
             // Check if we should inject a title
             if (!session.initialTitleSent || shouldInjectTitle(processedData)) {
-              session.titleDebouncer.scheduleUpdate(titleSequence, (title) => {
-                // TODO: need to write this out down below in the WriteQueues
-                // process.stdout.write(title);
-              });
+              titleToInject = titleSequence;
               if (!session.initialTitleSent) {
                 session.initialTitleSent = true;
               }
@@ -521,24 +513,21 @@ export class PtyManager extends EventEmitter {
               session.activityDetector.processOutput(processedData);
             processedData = filteredData;
 
-            // Generate dynamic title with activity
-            const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-            const dynamicTitleSequence = generateDynamicTitle(
-              dynamicDir,
-              session.sessionInfo.command,
-              activity,
-              session.sessionInfo.name
-            );
-
             // Only inject title sequences for external terminals (not web sessions)
             // Web sessions should never have title sequences in their data stream
-            if (forwardToStdout && session.titleDebouncer) {
+            if (forwardToStdout) {
+              // Generate dynamic title with activity
+              const dynamicDir = session.currentWorkingDir || session.sessionInfo.workingDir;
+              const dynamicTitleSequence = generateDynamicTitle(
+                dynamicDir,
+                session.sessionInfo.command,
+                activity,
+                session.sessionInfo.name
+              );
+
               // Check if we should inject a title
               if (!session.initialTitleSent || shouldInjectTitle(processedData)) {
-                session.titleDebouncer.scheduleUpdate(dynamicTitleSequence, (title) => {
-                  // TODO: need to write this out down below in the WriteQueues
-                  // process.stdout.write(title);
-                });
+                titleToInject = dynamicTitleSequence;
                 if (!session.initialTitleSent) {
                   session.initialTitleSent = true;
                 }
@@ -557,6 +546,12 @@ export class PtyManager extends EventEmitter {
       // Forward to stdout if requested (using queue for ordering)
       if (forwardToStdout && stdoutQueue) {
         stdoutQueue.enqueue(async () => {
+          // TODO: If we have a title to inject, write it first
+          // if (titleToInject) {
+          //   process.stdout.write(titleToInject);
+          // }
+
+          // Write the actual data
           const canWrite = process.stdout.write(processedData);
           if (!canWrite) {
             await once(process.stdout, 'drain');
@@ -616,23 +611,24 @@ export class PtyManager extends EventEmitter {
       }
     });
 
-    // Send initial title for static and dynamic modes
+    // Queue initial title for static and dynamic modes
     if (
       forwardToStdout &&
+      stdoutQueue &&
       (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
     ) {
       const currentDir = session.currentWorkingDir || session.sessionInfo.workingDir;
-      let initialTitle: string;
+      let _initialTitle: string;
 
       if (session.titleMode === TitleMode.STATIC) {
-        initialTitle = generateTitleSequence(
+        _initialTitle = generateTitleSequence(
           currentDir,
           session.sessionInfo.command,
           session.sessionInfo.name
         );
       } else {
         // For dynamic mode, start with idle state
-        initialTitle = generateDynamicTitle(
+        _initialTitle = generateDynamicTitle(
           currentDir,
           session.sessionInfo.command,
           { isActive: false, lastActivityTime: Date.now() },
@@ -640,10 +636,12 @@ export class PtyManager extends EventEmitter {
         );
       }
 
-      // Write initial title directly to stdout
-      process.stdout.write(initialTitle);
+      // TODO: Queue initial title through the write queue
+      // stdoutQueue.enqueue(async () => {
+      //   process.stdout.write(_initialTitle);
+      // });
       session.initialTitleSent = true;
-      logger.debug(`Sent initial ${session.titleMode} title for session ${session.id}`);
+      logger.debug(`Would queue initial ${session.titleMode} title for session ${session.id}`);
     }
 
     // Setup IPC socket for all communication
@@ -858,13 +856,13 @@ export class PtyManager extends EventEmitter {
             newSessionInfo.name
           );
 
-          // Schedule title update through debouncer (only for external terminals)
-          if (session.ptyProcess && isExternalTerminal && session.titleDebouncer) {
-            session.titleDebouncer.scheduleUpdate(titleSequence, (title) => {
-              process.stdout.write(title);
-            });
+          // TODO: Queue title update (only for external terminals)
+          if (session.ptyProcess && isExternalTerminal && session.stdoutQueue) {
+            // session.stdoutQueue.enqueue(async () => {
+            //   process.stdout.write(titleSequence);
+            // });
             logger.debug(
-              `Scheduled updated title for session ${session.id}: ${newSessionInfo.name}`
+              `Would queue updated title for session ${session.id}: ${newSessionInfo.name}`
             );
           }
 
@@ -872,18 +870,18 @@ export class PtyManager extends EventEmitter {
           if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
             // Update the activity detector with new session name
             const activityState = session.activityDetector.getActivityState();
-            const updatedTitle = generateDynamicTitle(
+            const _updatedTitle = generateDynamicTitle(
               session.currentWorkingDir || session.sessionInfo.workingDir,
               session.sessionInfo.command,
               activityState,
               newSessionInfo.name
             );
 
-            // Schedule the dynamic title update through debouncer
-            if (session.ptyProcess && isExternalTerminal && session.titleDebouncer) {
-              session.titleDebouncer.scheduleUpdate(updatedTitle, (title) => {
-                process.stdout.write(title);
-              });
+            // TODO: Queue the dynamic title update
+            if (session.ptyProcess && isExternalTerminal && session.stdoutQueue) {
+              // session.stdoutQueue.enqueue(async () => {
+              //   process.stdout.write(_updatedTitle);
+              // });
             }
           }
         }
@@ -1867,12 +1865,6 @@ export class PtyManager extends EventEmitter {
     if (session.titleFilter) {
       // No need to reset, just remove reference
       session.titleFilter = undefined;
-    }
-
-    // Clean up title debouncer
-    if (session.titleDebouncer) {
-      session.titleDebouncer.clear();
-      session.titleDebouncer = undefined;
     }
 
     // Clean up input socket server
