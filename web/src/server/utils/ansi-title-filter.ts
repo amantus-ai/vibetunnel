@@ -9,6 +9,13 @@
 export class TitleSequenceFilter {
   private buffer = '';
 
+  // Compile regexes once as static properties for better performance
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
+  private static readonly COMPLETE_TITLE_REGEX = /\x1b\][0-2];[^\x07\x1b]*(?:\x07|\x1b\\)/g;
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
+  private static readonly PARTIAL_TITLE_REGEX =
+    /\x1b\][0-2];.*\x1b$|\x1b\][0-2];[^\x07]*$|\x1b(?:\](?:[0-2])?)?$/;
+
   /**
    * Filter terminal title sequences from the input data.
    * Handles sequences that may be split across multiple chunks.
@@ -22,8 +29,7 @@ export class TitleSequenceFilter {
 
     // Remove all complete title sequences
     // Matches: ESC ] 0/1/2 ; <title text> BEL or ESC ] 0/1/2 ; <title text> ESC \
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
-    const filtered = this.buffer.replace(/\x1b\][0-2];[^\x07\x1b]*(?:\x07|\x1b\\)/g, '');
+    const filtered = this.buffer.replace(TitleSequenceFilter.COMPLETE_TITLE_REGEX, '');
 
     // Check if we have a partial title sequence at the end
     // This includes sequences that might be terminated by ESC \ where the ESC is at the end
@@ -33,10 +39,7 @@ export class TitleSequenceFilter {
     // - \x1b][0-2] at the end
     // - \x1b][0-2]; followed by any text ending with \x1b (potential \x1b\\ terminator)
     // - \x1b][0-2]; followed by any text without terminator
-    const partialMatch = filtered.match(
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
-      /\x1b\][0-2];.*\x1b$|\x1b\][0-2];[^\x07]*$|\x1b(?:\](?:[0-2])?)?$/
-    );
+    const partialMatch = filtered.match(TitleSequenceFilter.PARTIAL_TITLE_REGEX);
 
     if (partialMatch) {
       // Save the partial sequence for the next chunk
