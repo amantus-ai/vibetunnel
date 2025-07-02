@@ -14,6 +14,7 @@ struct VibeTunnelApp: App {
     @State var tailscaleService = TailscaleService.shared
     @State var permissionManager = SystemPermissionManager.shared
     @State var terminalLauncher = TerminalLauncher.shared
+    @State var gitRepositoryMonitor = GitRepositoryMonitor()
 
     init() {
         // Connect the app delegate to this app instance
@@ -40,6 +41,7 @@ struct VibeTunnelApp: App {
                     .environment(tailscaleService)
                     .environment(permissionManager)
                     .environment(terminalLauncher)
+                    .environment(gitRepositoryMonitor)
             }
             .windowResizability(.contentSize)
             .defaultSize(width: 580, height: 480)
@@ -74,6 +76,7 @@ struct VibeTunnelApp: App {
                     .environment(tailscaleService)
                     .environment(permissionManager)
                     .environment(terminalLauncher)
+                    .environment(gitRepositoryMonitor)
             }
             .commands {
                 CommandGroup(after: .appInfo) {
@@ -220,14 +223,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                let serverManager = app?.serverManager,
                let ngrokService = app?.ngrokService,
                let tailscaleService = app?.tailscaleService,
-               let terminalLauncher = app?.terminalLauncher
+               let terminalLauncher = app?.terminalLauncher,
+               let gitRepositoryMonitor = app?.gitRepositoryMonitor
             {
                 statusBarController = StatusBarController(
                     sessionMonitor: sessionMonitor,
                     serverManager: serverManager,
                     ngrokService: ngrokService,
                     tailscaleService: tailscaleService,
-                    terminalLauncher: terminalLauncher
+                    terminalLauncher: terminalLauncher,
+                    gitRepositoryMonitor: gitRepositoryMonitor
                 )
             }
         }

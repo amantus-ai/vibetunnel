@@ -19,6 +19,7 @@ final class StatusBarController: NSObject {
     private let ngrokService: NgrokService
     private let tailscaleService: TailscaleService
     private let terminalLauncher: TerminalLauncher
+    private let gitRepositoryMonitor: GitRepositoryMonitor
 
     // MARK: - State Tracking
 
@@ -35,13 +36,15 @@ final class StatusBarController: NSObject {
         serverManager: ServerManager,
         ngrokService: NgrokService,
         tailscaleService: TailscaleService,
-        terminalLauncher: TerminalLauncher
+        terminalLauncher: TerminalLauncher,
+        gitRepositoryMonitor: GitRepositoryMonitor
     ) {
         self.sessionMonitor = sessionMonitor
         self.serverManager = serverManager
         self.ngrokService = ngrokService
         self.tailscaleService = tailscaleService
         self.terminalLauncher = terminalLauncher
+        self.gitRepositoryMonitor = gitRepositoryMonitor
 
         self.menuManager = StatusBarMenuManager()
 
@@ -82,7 +85,8 @@ final class StatusBarController: NSObject {
             serverManager: serverManager,
             ngrokService: ngrokService,
             tailscaleService: tailscaleService,
-            terminalLauncher: terminalLauncher
+            terminalLauncher: terminalLauncher,
+            gitRepositoryMonitor: gitRepositoryMonitor
         )
         menuManager.setup(with: configuration)
     }

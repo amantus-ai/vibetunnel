@@ -12,6 +12,8 @@ struct VibeTunnelMenuView: View {
     var ngrokService
     @Environment(TailscaleService.self)
     var tailscaleService
+    @Environment(GitRepositoryMonitor.self)
+    var gitRepositoryMonitor
     @Environment(\.openWindow)
     private var openWindow
     @Environment(\.colorScheme)
@@ -267,6 +269,8 @@ struct ServerInfoHeader: View {
     var ngrokService
     @Environment(TailscaleService.self)
     var tailscaleService
+    @Environment(GitRepositoryMonitor.self)
+    var gitRepositoryMonitor
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -308,6 +312,11 @@ struct ServerInfoHeader: View {
                             address: hostname,
                             url: URL(string: "http://\(hostname):\(serverManager.port)")
                         )
+                    }
+
+                    // Show current repository if available
+                    if let currentRepo = gitRepositoryMonitor.currentRepository {
+                        GitRepositoryRow(repository: currentRepo)
                     }
                 }
             }
@@ -447,11 +456,15 @@ struct SessionRow: View {
     private var sessionMonitor
     @Environment(SessionService.self)
     private var sessionService
+    @Environment(GitRepositoryMonitor.self)
+    private var gitRepositoryMonitor
     @Environment(\.colorScheme)
     private var colorScheme
     @State private var isTerminating = false
     @State private var isEditing = false
     @State private var editedName = ""
+    @State private var gitRepository: GitRepository?
+    @State private var isHoveringGitFolder = false
     @FocusState private var isEditFieldFocused: Bool
 
     var body: some View {
@@ -459,6 +472,12 @@ struct SessionRow: View {
             content
         }
         .buttonStyle(PlainButtonStyle())
+        .task {
+            // Fetch git repository info for this session
+            if let repo = await gitRepositoryMonitor.findRepository(for: session.value.workingDir) {
+                gitRepository = repo
+            }
+        }
     }
 
     var content: some View {
@@ -550,11 +569,60 @@ struct SessionRow: View {
                             .truncationMode(.middle)
                     }
                 } else {
-                    Text(compactPath)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                    HStack(spacing: 4) {
+                        Text(compactPath)
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+
+                        // Git status display
+                        if let repo = gitRepository {
+                            Text("•")
+                                .foregroundColor(.secondary.opacity(0.6))
+
+                            HStack(spacing: 2) {
+                                Image(systemName: "folder.badge.gearshape")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(isHoveringGitFolder ? .accentColor : .secondary)
+                                    .scaleEffect(isHoveringGitFolder ? 1.1 : 1.0)
+                                    .animation(.easeInOut(duration: 0.15), value: isHoveringGitFolder)
+
+                                Text(repo.folderName)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(isHoveringGitFolder ? .accentColor : .secondary)
+                                    .underline(isHoveringGitFolder, color: .accentColor)
+                                    .animation(.easeInOut(duration: 0.15), value: isHoveringGitFolder)
+
+                                if let branch = repo.currentBranch {
+                                    Text("•")
+                                        .foregroundColor(.secondary.opacity(0.6))
+                                    Text(branch)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.orange)
+                                }
+
+                                if repo.hasChanges {
+                                    Text("•")
+                                        .foregroundColor(.secondary.opacity(0.6))
+                                    Text("\(repo.totalChangedFiles) changed")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.yellow)
+                                }
+                            }
+                            .onTapGesture {
+                                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repo.path)
+                            }
+                            .onHover { hovering in
+                                isHoveringGitFolder = hovering
+                                if hovering {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
+                            }
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity)
@@ -630,6 +698,21 @@ struct SessionRow: View {
 
             Button("Show in Finder") {
                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
+            }
+
+            // Add git repository options if available
+            if let repo = gitRepository {
+                Button("Open Git Repository in Finder") {
+                    NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repo.path)
+                }
+
+                if repo.githubURL != nil {
+                    Button("Open on GitHub") {
+                        if let url = repo.githubURL {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                }
             }
 
             Button("Rename Session...") {
@@ -821,6 +904,53 @@ struct SessionRow: View {
         } else {
             let days = Int(elapsed / 86_400)
             return "\(days)d"
+        }
+    }
+}
+
+// MARK: - Git Repository Row
+
+struct GitRepositoryRow: View {
+    let repository: GitRepository
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "folder.badge.gearshape")
+                .font(.system(size: 10))
+                .foregroundColor(repository.hasChanges ? .yellow : .green)
+
+            Text("Git:")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+
+            Button(action: {
+                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
+            }) {
+                HStack(spacing: 4) {
+                    Text(repository.folderName)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(isHovering ? .accentColor : .primary)
+                        .underline(isHovering)
+
+                    if let branch = repository.currentBranch {
+                        Text("(\(branch))")
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                    }
+
+                    if repository.hasChanges {
+                        Text("• \(repository.statusText)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.yellow)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+            .onHover { hovering in
+                isHovering = hovering
+            }
         }
     }
 }

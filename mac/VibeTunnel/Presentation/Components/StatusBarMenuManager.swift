@@ -32,6 +32,7 @@ final class StatusBarMenuManager: NSObject {
     private var ngrokService: NgrokService?
     private var tailscaleService: TailscaleService?
     private var terminalLauncher: TerminalLauncher?
+    private var gitRepositoryMonitor: GitRepositoryMonitor?
 
     // Custom window management
     fileprivate var customWindow: CustomMenuWindow?
@@ -66,6 +67,7 @@ final class StatusBarMenuManager: NSObject {
         let ngrokService: NgrokService
         let tailscaleService: TailscaleService
         let terminalLauncher: TerminalLauncher
+        let gitRepositoryMonitor: GitRepositoryMonitor
     }
 
     // MARK: - Setup
@@ -76,6 +78,7 @@ final class StatusBarMenuManager: NSObject {
         self.ngrokService = configuration.ngrokService
         self.tailscaleService = configuration.tailscaleService
         self.terminalLauncher = configuration.terminalLauncher
+        self.gitRepositoryMonitor = configuration.gitRepositoryMonitor
     }
 
     // MARK: - State Management
@@ -129,6 +132,7 @@ final class StatusBarMenuManager: NSObject {
         .environment(tailscaleService)
         .environment(terminalLauncher)
         .environment(sessionService)
+        .environment(gitRepositoryMonitor)
 
         // Wrap in custom container for proper styling
         let containerView = CustomMenuContainer {

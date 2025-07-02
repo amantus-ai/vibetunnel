@@ -279,7 +279,7 @@ final class CustomMenuWindow: NSPanel {
     func hide() {
         // Mark window as not visible
         _isWindowVisible = false
-        isNewSessionActive = false  // Always reset this state
+        isNewSessionActive = false // Always reset this state
 
         // Button state will be reset by StatusBarMenuManager via onHide callback
         orderOut(nil)

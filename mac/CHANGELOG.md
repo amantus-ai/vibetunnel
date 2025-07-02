@@ -3,61 +3,80 @@
 ## [1.0.0-beta.6] - 2025-07-02
 
 ### ✨ New Features
-- **Sleep Prevention** - Mac now stays awake when VibeTunnel is running terminal sessions
-- **Dynamic Settings** - Sleep prevention setting updates immediately without server restart
-- **Terminal Title Management** - Enhanced terminal title updates with activity detection
-- **Prompt Pattern Detection** - Optimized prompt detection with unified regex patterns and caching
 
-### 🎨 UI Enhancements
+#### **Enhanced Command-Line Tool**
+- **Version Information** - `vt help` now displays binary path, version, build date, and platform information for easier troubleshooting
+- **Apple Silicon Support** - Automatic detection of Homebrew installations on ARM Macs (/opt/homebrew path)
 
-#### **New Menu Bar Design**
-- The menu bar dropdown now features a modern design with rounded corners only on the left and right sides, creating a more integrated appearance with the macOS menu bar
-- The flat top and bottom borders make the dropdown feel like a natural extension of the menu bar while maintaining a contemporary aesthetic
-- Enhanced shadow and visual layering for better depth perception
+#### **Menu Bar Enhancements**
+- **Sticky Session Creation** - Menu popover stays open during new session creation, preventing accidental dismissal
+- **Rich Session Interface** - Powerful new menu bar with visual activity indicators and real-time status tracking
+- **Improved Button States** - Kill All button and other controls now properly reflect their state with accurate visual feedback
 
-#### **Improved Session Display**
-- Sessions now show cleaner, more readable information:
-  - Process names are extracted from full paths (e.g., shows "python" instead of "/usr/bin/python")
-  - Session names are displayed next to commands with a dash separator for better organization
-  - Smart handling of shell commands - when running commands through shells like bash or zsh with `-c`, the actual command is shown instead of just "bash"
-  - Long session names are intelligently truncated with ellipsis to prevent UI overflow
+#### **Web Interface Improvements**
+- **Modern Visual Design** - Complete UI overhaul with improved color scheme, animations, and visual hierarchy
+- **Collapsible Sidebar** - New toggle button to maximize terminal viewing space (preference is remembered)
+- **Better Session Loading** - Fixed race conditions that caused sessions to appear as "missing"
+- **Responsive Enhancements** - Improved adaptation to different screen sizes with better touch targets
 
-#### **Faster Session Updates**
-- Session information now refreshes every second instead of every 3 seconds, providing more responsive feedback about session status
+### 🚀 Performance & Stability
 
-#### **Better Visual Feedback**
-- Fixed menu bar button highlighting to properly indicate when the dropdown is open
-- Improved hover states for session items with smoother transitions
-- Enhanced button colors - the "Create" button now uses a darker green for better visibility and accessibility
+#### **Terminal Output Reliability**
+- **Fixed Output Corruption** - Resolved race conditions causing out-of-order or corrupted terminal output
+- **Stable Title Updates** - Terminal titles now update smoothly without flickering or getting stuck
+- **Optimized Update Frequency** - Reduced title update rate to once per second for better performance
+
+#### **Server Improvements**
+- **Logger Fix** - Fixed double initialization that was deleting log files
+- **Better Resource Cleanup** - Improved PTY manager cleanup and timer management
+- **Enhanced Error Handling** - More robust error handling throughout the server stack
+
+### 🔌 Integration Updates
+
+#### **Simplified Tailscale Setup**
+- Switched to Tailscale's local API for easier configuration
+- Removed manual token management requirements
+- Streamlined connection UI for minimal setup
+
+#### **iOS App Improvements**
+- **Better Authentication** - More reliable connection flow with improved state management
+- **Connection Resilience** - Enhanced ConnectionManager handles network changes gracefully
+- **Persistent Profiles** - Connection profiles now properly persist between app launches
 
 ### 🛠 Bug Fixes
 
-#### **Window Tracking Improvements**
-- Enhanced window focus functionality for terminal sessions, especially for Ghostty terminal
-- Improved process tree traversal for more reliable window detection
-- Better handling of tabs in terminals that use macOS standard tab system
-- Fixed issues with window ID detection and matching
+#### **Menu Bar Fixes**
+- Fixed various session row menu bugs including proper cleanup of deleted views
+- Resolved alignment issues with Kill All button
+- Fixed Swift concurrency warnings for better stability on newer macOS versions
 
-#### **Form Styling**
-- Fixed corner radius on the new session dialog to match the overall design language
-- Improved form field styling and spacing for better usability
+#### **Activity Tracking**
+- Fixed missing directory creation for activity state files
+- Activity indicators now work reliably for all sessions
 
-#### **Other Fixes**
-- **Unicode Cursor Positioning** - Fixed cursor positioning issues with Unicode characters
-- **Race Condition** - Fixed sleep prevention race condition during server startup
-- **Memory Efficiency** - Added input validation to prevent excessive memory usage on long inputs
+#### **Frontend Fixes**
+- Resolved session loading race conditions
+- Fixed responsive design issues on mobile browsers
+- Improved error handling in no-auth mode
 
 ### 🔧 Technical Improvements
 
-#### **State Management**
-- Button state management now uses proper state tracking instead of the deprecated `highlight()` method
-- More reliable window visibility tracking
-- Enhanced event monitoring for click-outside dismissal
+#### **Code Quality**
+- Migrated all GitHub Actions to ARM architecture for faster CI
+- Improved test stability and reduced flakiness
+- Enhanced TypeScript type safety throughout the codebase
+- Better separation of concerns between frontend and backend
 
-#### **Performance & Code Quality**
-- **Performance** - 45% faster prompt pattern detection with LRU caching
-- **Code Quality** - Comprehensive test coverage for prompt detection utilities
-- **Documentation** - Improved regex documentation for maintainability
+#### **Developer Experience**
+- More detailed error messages for easier debugging
+- Improved logging throughout the application stack
+- Better documentation for API endpoints and integration points
+
+### 📝 Previous Features (from earlier beta.6 work)
+- **Sleep Prevention** - Mac stays awake when running terminal sessions
+- **Dynamic Settings** - Settings update immediately without server restart
+- **Terminal Title Management** - Enhanced title updates with activity detection
+- **Prompt Pattern Detection** - 45% faster with LRU caching
 
 ## [1.0.0-beta.5] - 2025-01-29
 
