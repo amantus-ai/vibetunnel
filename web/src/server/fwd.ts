@@ -420,16 +420,27 @@ export async function startVibeTunnelForward(args: string[]) {
     const sessionJsonPath = path.join(controlPath, result.sessionId, 'session.json');
     let lastKnownSessionName = result.sessionInfo.name;
 
-    // Wait a moment for the file to be created
-    setTimeout(() => {
+    // Set up file watcher with retry logic
+    const setupFileWatcher = async (retryCount = 0) => {
+      const maxRetries = 5;
+      const retryDelay = 500 * 2 ** retryCount; // Exponential backoff
+
       try {
-        // Check if file exists first
+        // Check if file exists
         if (!fs.existsSync(sessionJsonPath)) {
-          logger.warn(`Session file does not exist yet: ${sessionJsonPath}`);
-          return;
+          if (retryCount < maxRetries) {
+            logger.debug(
+              `Session file not found, retrying in ${retryDelay}ms (attempt ${retryCount + 1}/${maxRetries})`
+            );
+            setTimeout(() => setupFileWatcher(retryCount + 1), retryDelay);
+            return;
+          } else {
+            logger.warn(`Session file not found after ${maxRetries} attempts: ${sessionJsonPath}`);
+            return;
+          }
         }
 
-        logger.debug(`Setting up file watcher for: ${sessionJsonPath}`);
+        logger.log(`Setting up file watcher for session name changes`);
         sessionFileWatcher = fs.watch(sessionJsonPath, (eventType) => {
           logger.debug(`[File Watch] Detected ${eventType} event on session.json`);
           if (eventType === 'change') {
@@ -440,6 +451,12 @@ export async function startVibeTunnelForward(args: string[]) {
             fileWatchDebounceTimer = setTimeout(() => {
               // Reload session info from disk
               try {
+                // Check file still exists before reading
+                if (!fs.existsSync(sessionJsonPath)) {
+                  logger.warn('Session file disappeared during watch');
+                  return;
+                }
+
                 const sessionContent = fs.readFileSync(sessionJsonPath, 'utf-8');
                 const updatedInfo = JSON.parse(sessionContent) as SessionInfo;
 
@@ -463,9 +480,7 @@ export async function startVibeTunnelForward(args: string[]) {
 
                   // Write title sequence to terminal
                   process.stdout.write(titleSequence);
-                  logger.debug(
-                    `Updated terminal title to "${updatedInfo.name}" (mode: ${titleMode})`
-                  );
+                  logger.log(`Updated terminal title to "${updatedInfo.name}" via file watcher`);
                 }
               } catch (error) {
                 logger.error('Failed to handle session.json change:', error);
@@ -474,18 +489,29 @@ export async function startVibeTunnelForward(args: string[]) {
           }
         });
 
-        logger.debug(`Set up file watcher for session.json`);
+        logger.log(`File watcher successfully set up for session name changes`);
 
         // Clean up watcher on error
         sessionFileWatcher.on('error', (error) => {
           logger.error('File watcher error:', error);
           sessionFileWatcher?.close();
           sessionFileWatcher = undefined;
+
+          // Try to re-establish watcher after error
+          if (retryCount < maxRetries) {
+            setTimeout(() => setupFileWatcher(retryCount + 1), retryDelay);
+          }
         });
       } catch (error) {
         logger.error('Failed to set up file watcher:', error);
+        if (retryCount < maxRetries) {
+          setTimeout(() => setupFileWatcher(retryCount + 1), retryDelay);
+        }
       }
-    }, 500); // Wait 500ms for file to be created
+    };
+
+    // Start setting up the file watcher after a short delay
+    setTimeout(() => setupFileWatcher(), 500);
 
     // Set up activity detector for Claude status updates
     let activityDetector: ActivityDetector | undefined;
