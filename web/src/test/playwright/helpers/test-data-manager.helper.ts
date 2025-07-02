@@ -105,31 +105,12 @@ export class TestSessionManager {
   }
 
   /**
-   * Cleans up all tracked sessions (safe for concurrent execution)
+   * Cleans up all tracked sessions
    */
   async cleanupAllSessions(): Promise<void> {
     if (this.sessions.size === 0) return;
 
     console.log(`Cleaning up ${this.sessions.size} tracked sessions`);
-
-    // Navigate to list
-    if (!this.page.url().endsWith('/')) {
-      await this.page.goto('/', { waitUntil: 'domcontentloaded' });
-    }
-
-    // Only clean up our tracked sessions - no global Kill All for concurrent safety
-    const sessionNames = Array.from(this.sessions.keys());
-    for (const sessionName of sessionNames) {
-      await this.cleanupSession(sessionName);
-    }
-  }
-
-  /**
-   * DANGEROUS: Cleans up ALL sessions globally (not safe for concurrent execution)
-   * @deprecated Use cleanupAllSessions() instead for concurrent-safe cleanup
-   */
-  async cleanupAllSessionsGlobally(): Promise<void> {
-    console.warn('WARNING: Using global session cleanup - not safe for concurrent tests!');
 
     // Navigate to list
     if (!this.page.url().endsWith('/')) {

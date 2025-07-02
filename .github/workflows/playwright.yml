@@ -65,11 +65,9 @@ jobs:
         
       - name: Run Playwright tests
         working-directory: ./web
-        run: xvfb-run -a pnpm test:e2e:parallel
+        run: xvfb-run -a pnpm test:e2e
         env:
           CI: true
-          PLAYWRIGHT_PARALLEL: true
-          PLAYWRIGHT_WORKERS: 8
           
       - name: Upload test results
         uses: actions/upload-artifact@v4
