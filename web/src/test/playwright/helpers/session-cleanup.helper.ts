@@ -162,9 +162,22 @@ export class SessionCleanupHelper {
   }
 
   /**
-   * Fast cleanup all sessions (for test teardown)
+   * DEPRECATED: Fast cleanup all sessions (NOT SAFE for concurrent execution)
+   * @deprecated Use cleanupByPattern() or cleanupOldSessions() for concurrent-safe cleanup
    */
   async cleanupAllSessions(): Promise<void> {
+    logger.warn(
+      'WARNING: cleanupAllSessions() is not safe for concurrent tests. Use cleanupByPattern() instead.'
+    );
+    // For backward compatibility, delegate to pattern-based cleanup with test prefix
+    await this.cleanupByPattern(/^test-/);
+  }
+
+  /**
+   * DANGEROUS: Force cleanup ALL sessions globally (for special cases only)
+   * This method will interfere with concurrent tests!
+   */
+  async forceCleanupAllSessionsGlobally(): Promise<void> {
     try {
       // First try the UI Kill All button if available
       if (this.page.url().endsWith('/')) {

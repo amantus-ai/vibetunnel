@@ -18,13 +18,17 @@ export default defineConfig({
   /* Global setup */
   globalSetup: require.resolve('./src/test/playwright/global-setup.ts'),
   /* Run tests in files in parallel */
-  fullyParallel: false, // Start with sequential execution for stability
+  fullyParallel: process.env.PLAYWRIGHT_PARALLEL === 'true', // Enable via PLAYWRIGHT_PARALLEL=true
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: 1, // Force single worker to avoid race conditions
+  workers: process.env.PLAYWRIGHT_PARALLEL === 'true' 
+    ? process.env.PLAYWRIGHT_WORKERS 
+      ? parseInt(process.env.PLAYWRIGHT_WORKERS, 10) 
+      : undefined // Let Playwright decide based on CPU cores
+    : 1, // Force single worker for sequential mode
   /* Test timeout */
   timeout: process.env.CI ? 60 * 1000 : 30 * 1000, // 60s on CI, 30s locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */

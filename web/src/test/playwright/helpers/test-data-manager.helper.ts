@@ -7,9 +7,11 @@ import { SessionListPage } from '../pages/session-list.page';
 export class TestSessionManager {
   private sessions: Map<string, { id: string; spawnWindow: boolean }> = new Map();
   private page: Page;
+  private sessionPrefix: string;
 
-  constructor(page: Page) {
+  constructor(page: Page, sessionPrefix = 'test') {
     this.page = page;
+    this.sessionPrefix = sessionPrefix;
   }
 
   /**
@@ -65,10 +67,11 @@ export class TestSessionManager {
   /**
    * Generates a unique session name with test context
    */
-  generateSessionName(prefix = 'test'): string {
+  generateSessionName(prefix?: string): string {
+    const actualPrefix = prefix || this.sessionPrefix;
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
-    return `${prefix}-${timestamp}-${random}`;
+    return `${actualPrefix}-${timestamp}-${random}`;
   }
 
   /**
@@ -102,7 +105,7 @@ export class TestSessionManager {
   }
 
   /**
-   * Cleans up all tracked sessions
+   * Cleans up all tracked sessions (safe for concurrent execution)
    */
   async cleanupAllSessions(): Promise<void> {
     if (this.sessions.size === 0) return;
@@ -114,7 +117,25 @@ export class TestSessionManager {
       await this.page.goto('/', { waitUntil: 'domcontentloaded' });
     }
 
-    // Try bulk cleanup first
+    // Only clean up our tracked sessions - no global Kill All for concurrent safety
+    const sessionNames = Array.from(this.sessions.keys());
+    for (const sessionName of sessionNames) {
+      await this.cleanupSession(sessionName);
+    }
+  }
+
+  /**
+   * DANGEROUS: Cleans up ALL sessions globally (not safe for concurrent execution)
+   * @deprecated Use cleanupAllSessions() instead for concurrent-safe cleanup
+   */
+  async cleanupAllSessionsGlobally(): Promise<void> {
+    console.warn('WARNING: Using global session cleanup - not safe for concurrent tests!');
+
+    // Navigate to list
+    if (!this.page.url().endsWith('/')) {
+      await this.page.goto('/', { waitUntil: 'domcontentloaded' });
+    }
+
     try {
       const killAllButton = this.page.locator('button:has-text("Kill All")');
       if (await killAllButton.isVisible({ timeout: 1000 })) {
@@ -140,16 +161,9 @@ export class TestSessionManager {
         );
 
         this.sessions.clear();
-        return;
       }
     } catch (error) {
-      console.log('Bulk cleanup failed, trying individual cleanup:', error);
-    }
-
-    // Fallback to individual cleanup
-    const sessionNames = Array.from(this.sessions.keys());
-    for (const sessionName of sessionNames) {
-      await this.cleanupSession(sessionName);
+      console.log('Global cleanup failed:', error);
     }
   }
 
@@ -172,6 +186,13 @@ export class TestSessionManager {
    */
   clearTracking(): void {
     this.sessions.clear();
+  }
+
+  /**
+   * Gets the session prefix used by this manager
+   */
+  getSessionPrefix(): string {
+    return this.sessionPrefix;
   }
 }
 

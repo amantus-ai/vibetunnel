@@ -98,6 +98,12 @@ test.describe('Advanced Session Management', () => {
   });
 
   test('should kill all sessions at once', async ({ page, sessionListPage }) => {
+    // Skip this test when running in parallel mode as it interferes with other tests
+    test.skip(
+      process.env.PLAYWRIGHT_PARALLEL === 'true',
+      'Skipping Kill All test in parallel mode - not safe for concurrent execution'
+    );
+
     // Increase timeout for this test as it involves multiple sessions
     test.setTimeout(90000);
     // Create multiple tracked sessions

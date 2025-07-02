@@ -133,37 +133,15 @@ export function generateTestSessionName(): string {
 }
 
 /**
- * Clean up all test sessions
+ * DEPRECATED: Clean up all test sessions
+ * @deprecated This function is not safe for concurrent tests. Use SessionCleanupHelper.cleanupByPattern() instead
  */
 export async function cleanupSessions(page: Page): Promise<void> {
-  try {
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-
-    const killAllButton = page.locator('button:has-text("Kill All")');
-    if (await killAllButton.isVisible()) {
-      // Set up dialog handler before clicking
-      const dialogPromise = page.waitForEvent('dialog');
-      await killAllButton.click();
-
-      const dialog = await dialogPromise;
-      await dialog.accept();
-
-      // Wait for all sessions to be marked as exited
-      await page.waitForFunction(
-        () => {
-          const cards = document.querySelectorAll('session-card');
-          return Array.from(cards).every((card) => {
-            const text = card.textContent?.toLowerCase() || '';
-            return text.includes('exited') || text.includes('exit');
-          });
-        },
-        { timeout: 5000 }
-      );
-    }
-  } catch (error) {
-    // Ignore cleanup errors
-    console.log('Session cleanup error (ignored):', error);
-  }
+  console.warn(
+    'WARNING: cleanupSessions() is deprecated and not safe for concurrent tests. ' +
+      'Use SessionCleanupHelper.cleanupByPattern() instead.'
+  );
+  // Do nothing to avoid breaking concurrent tests
 }
 
 /**
