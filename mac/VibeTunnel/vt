@@ -118,6 +118,29 @@ NOTE:
     This script automatically uses the vibetunnel executable bundled with
     VibeTunnel from the app bundle.
 EOF
+    
+    # Show path and version info
+    echo
+    echo "VIBETUNNEL BINARY:"
+    echo "    Path: $VIBETUNNEL_BIN"
+    if [ -f "$VIBETUNNEL_BIN" ]; then
+        # Extract version from the vibetunnel output
+        VERSION_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^VibeTunnel Server" | head -n 1)
+        BUILD_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Built:" | head -n 1)
+        PLATFORM_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Platform:" | head -n 1)
+        
+        if [ -n "$VERSION_INFO" ]; then
+            echo "    Version: ${VERSION_INFO#VibeTunnel Server }"
+        fi
+        if [ -n "$BUILD_INFO" ]; then
+            echo "    ${BUILD_INFO}"
+        fi
+        if [ -n "$PLATFORM_INFO" ]; then
+            echo "    ${PLATFORM_INFO}"
+        fi
+    else
+        echo "    Status: Not found"
+    fi
 }
 
 # Function to resolve command through user's shell
