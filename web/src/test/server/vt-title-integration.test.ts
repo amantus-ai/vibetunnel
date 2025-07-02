@@ -37,10 +37,10 @@ describe('vt title Command Integration', () => {
       await execAsync(`${vtScriptPath} title "Test Title"`);
       // Should not reach here
       expect.fail('Command should have failed');
-    } catch (error: any) {
-      expect(error.code).toBeGreaterThan(0);
-      expect(error.stderr).toContain("'vt title' can only be used inside a VibeTunnel session");
-      expect(error.stderr).toContain('Start a session first');
+    } catch (error) {
+      expect((error as any).code).toBeGreaterThan(0);
+      expect((error as any).stderr).toContain("'vt title' can only be used inside a VibeTunnel session");
+      expect((error as any).stderr).toContain('Start a session first');
     }
   });
 
@@ -171,9 +171,9 @@ describe('vt title Command Integration', () => {
     try {
       await execAsync(`${vtScriptPath} title "Test"`, { env });
       expect.fail('Should have failed');
-    } catch (error: any) {
-      expect(error.code).toBeGreaterThan(0);
-      expect(error.stderr).toContain('Session file not found');
+    } catch (error) {
+      expect((error as any).code).toBeGreaterThan(0);
+      expect((error as any).stderr).toContain('Session file not found');
     }
   });
 
