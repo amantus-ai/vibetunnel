@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Combine
 
 /// Manages status bar menu behavior, providing left-click custom view and right-click context menu functionality.
 @MainActor
@@ -28,11 +29,22 @@ final class StatusBarMenuManager: NSObject {
     // State management
     private var menuState: MenuState = .none
     private var highlightTask: Task<Void, Never>?
+    
+    // Track new session state
+    @Published private var isNewSessionActive = false
+    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
 
     override init() {
         super.init()
+        
+        // Subscribe to new session state changes to update window
+        $isNewSessionActive
+            .sink { [weak self] isActive in
+                self?.customWindow?.isNewSessionActive = isActive
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Configuration
@@ -106,8 +118,11 @@ final class StatusBarMenuManager: NSObject {
         // Create SessionService instance
         let sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
 
-        // Create the main view with all dependencies
-        let mainView = VibeTunnelMenuView()
+        // Create the main view with all dependencies and binding
+        let mainView = VibeTunnelMenuView(isNewSessionActive: Binding(
+            get: { [weak self] in self?.isNewSessionActive ?? false },
+            set: { [weak self] in self?.isNewSessionActive = $0 }
+        ))
             .environment(sessionMonitor)
             .environment(serverManager)
             .environment(ngrokService)
@@ -145,12 +160,19 @@ final class StatusBarMenuManager: NSObject {
             }
         }
 
+        // Sync the new session state with the window
+        if let window = customWindow {
+            window.isNewSessionActive = isNewSessionActive
+        }
+        
         // Show the custom window
         customWindow?.show(relativeTo: button)
     }
 
     func hideCustomWindow() {
         customWindow?.hide()
+        // Reset new session state when hiding
+        isNewSessionActive = false
         // Button state will be reset by updateMenuState(.none) in the onHide callback
     }
 

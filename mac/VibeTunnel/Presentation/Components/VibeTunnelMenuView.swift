@@ -21,6 +21,13 @@ struct VibeTunnelMenuView: View {
     @State private var hasStartedKeyboardNavigation = false
     @State private var showingNewSession = false
     @FocusState private var focusedField: FocusField?
+    
+    /// Binding to allow external control of new session state
+    @Binding var isNewSessionActive: Bool
+    
+    init(isNewSessionActive: Binding<Bool> = .constant(false)) {
+        self._isNewSessionActive = isNewSessionActive
+    }
 
     enum FocusField: Hashable {
         case sessionRow(String)
@@ -31,7 +38,13 @@ struct VibeTunnelMenuView: View {
 
     var body: some View {
         if showingNewSession {
-            NewSessionForm(isPresented: $showingNewSession)
+            NewSessionForm(isPresented: Binding(
+                get: { showingNewSession },
+                set: { newValue in
+                    showingNewSession = newValue
+                    isNewSessionActive = newValue
+                }
+            ))
                 .transition(.asymmetric(
                     insertion: .move(edge: .bottom).combined(with: .opacity),
                     removal: .move(edge: .bottom).combined(with: .opacity)
@@ -138,6 +151,7 @@ struct VibeTunnelMenuView: View {
                 Button(action: {
                     withAnimation(.easeOut(duration: 0.2)) {
                         showingNewSession = true
+                        isNewSessionActive = true
                     }
                 }) {
                     Label("New Session", systemImage: "plus.square")
