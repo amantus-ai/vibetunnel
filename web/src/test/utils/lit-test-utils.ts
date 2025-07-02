@@ -200,12 +200,16 @@ export async function waitFor(
  */
 export function createMockSession(overrides: Partial<Session> = {}): Session {
   // Convert SessionData properties to Session properties if needed
-  const command = overrides.command || (overrides as any).cmdline || ['/bin/bash', '-l'];
+  const overridesWithLegacy = overrides as Partial<Session> & {
+    cmdline?: string[];
+    cwd?: string;
+    started_at?: string;
+  };
 
-  const workingDir = overrides.workingDir || (overrides as any).cwd || '/home/test';
-
+  const command = overridesWithLegacy.command || overridesWithLegacy.cmdline || ['/bin/bash', '-l'];
+  const workingDir = overridesWithLegacy.workingDir || overridesWithLegacy.cwd || '/home/test';
   const startedAt =
-    overrides.startedAt || (overrides as any).started_at || new Date().toISOString();
+    overridesWithLegacy.startedAt || overridesWithLegacy.started_at || new Date().toISOString();
 
   return createTestSession({
     ...overrides,

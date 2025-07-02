@@ -138,39 +138,39 @@ export class MessageParser {
 /**
  * High-level message creation helpers
  */
-export class MessageBuilder {
-  static stdin(data: string): Buffer {
+export const MessageBuilder = {
+  stdin(data: string): Buffer {
     return frameMessage(MessageType.STDIN_DATA, data);
-  }
+  },
 
-  static resize(cols: number, rows: number): Buffer {
+  resize(cols: number, rows: number): Buffer {
     return frameMessage(MessageType.CONTROL_CMD, { cmd: 'resize', cols, rows });
-  }
+  },
 
-  static kill(signal?: string | number): Buffer {
+  kill(signal?: string | number): Buffer {
     return frameMessage(MessageType.CONTROL_CMD, { cmd: 'kill', signal });
-  }
+  },
 
-  static resetSize(): Buffer {
+  resetSize(): Buffer {
     return frameMessage(MessageType.CONTROL_CMD, { cmd: 'reset-size' });
-  }
+  },
 
-  static updateTitle(title: string): Buffer {
+  updateTitle(title: string): Buffer {
     return frameMessage(MessageType.CONTROL_CMD, { cmd: 'update-title', title });
-  }
+  },
 
-  static status(app: string, status: string, extra?: Record<string, unknown>): Buffer {
+  status(app: string, status: string, extra?: Record<string, unknown>): Buffer {
     return frameMessage(MessageType.STATUS_UPDATE, { app, status, ...extra });
-  }
+  },
 
-  static heartbeat(): Buffer {
+  heartbeat(): Buffer {
     return frameMessage(MessageType.HEARTBEAT, Buffer.alloc(0));
-  }
+  },
 
-  static error(code: string, message: string, details?: unknown): Buffer {
+  error(code: string, message: string, details?: unknown): Buffer {
     return frameMessage(MessageType.ERROR, { code, message, details });
-  }
-}
+  },
+} as const;
 
 /**
  * Parse payload based on message type

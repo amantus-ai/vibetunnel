@@ -28,15 +28,17 @@ declare global {
 export function suppressXtermErrors(): void {
   // Detect environment
   const isNode = typeof process !== 'undefined' && process.versions?.node;
-  const globalObj: any = isNode ? global : typeof globalThis !== 'undefined' ? globalThis : global;
+  const globalObj = (isNode ? global : typeof globalThis !== 'undefined' ? globalThis : global) as {
+    __xtermErrorsSuppressed?: boolean;
+  };
 
   // Check if already suppressed to avoid multiple overrides
-  if ((globalObj as any).__xtermErrorsSuppressed) {
+  if (globalObj.__xtermErrorsSuppressed) {
     return;
   }
 
   // Mark as suppressed
-  (globalObj as any).__xtermErrorsSuppressed = true;
+  globalObj.__xtermErrorsSuppressed = true;
 
   // Store original console methods
   const originalError = console.error;
@@ -94,10 +96,12 @@ export function restoreConsole(): void {
   // This would need to store the originals somewhere accessible
   // For now, this is a placeholder for potential future use
   const isNode = typeof process !== 'undefined' && process.versions?.node;
-  const globalObj: any = isNode ? global : typeof globalThis !== 'undefined' ? globalThis : global;
+  const globalObj = (isNode ? global : typeof globalThis !== 'undefined' ? globalThis : global) as {
+    __xtermErrorsSuppressed?: boolean;
+  };
 
-  if ((globalObj as any).__xtermErrorsSuppressed) {
-    delete (globalObj as any).__xtermErrorsSuppressed;
+  if (globalObj.__xtermErrorsSuppressed) {
+    delete globalObj.__xtermErrorsSuppressed;
     // Note: We can't actually restore without storing the originals globally
     // This function is mainly here for API completeness
   }

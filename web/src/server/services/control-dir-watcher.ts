@@ -58,7 +58,7 @@ export class ControlDirWatcher {
         // This is a new session directory, wait for session.json with retries
         const maxRetries = 5;
         const baseDelay = 100;
-        let sessionData: any = null;
+        let sessionData: Record<string, unknown> | null = null;
 
         for (let i = 0; i < maxRetries; i++) {
           const delay = baseDelay * 2 ** i; // Exponential backoff: 100, 200, 400, 800, 1600ms
@@ -82,7 +82,7 @@ export class ControlDirWatcher {
 
         if (sessionData) {
           // Session was created
-          const sessionId = sessionData.id || sessionData.session_id || filename;
+          const sessionId = (sessionData.id || sessionData.session_id || filename) as string;
 
           logger.log(chalk.blue(`Detected new external session: ${sessionId}`));
 

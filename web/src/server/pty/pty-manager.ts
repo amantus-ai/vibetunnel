@@ -69,7 +69,7 @@ export class PtyManager extends EventEmitter {
     string,
     { cols: number; rows: number; source: 'browser' | 'terminal'; timestamp: number }
   >();
-  private sessionEventListeners = new Map<string, Set<(...args: any[]) => void>>();
+  private sessionEventListeners = new Map<string, Set<(...args: unknown[]) => void>>();
   private lastBellTime = new Map<string, number>(); // Track last bell time per session
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
@@ -1690,8 +1690,8 @@ export class PtyManager extends EventEmitter {
   /**
    * Track and emit events for proper cleanup
    */
-  private trackAndEmit(event: string, sessionId: string, ...args: any[]): void {
-    const listeners = this.listeners(event) as ((...args: any[]) => void)[];
+  private trackAndEmit(event: string, sessionId: string, ...args: unknown[]): void {
+    const listeners = this.listeners(event) as ((...args: unknown[]) => void)[];
     if (!this.sessionEventListeners.has(sessionId)) {
       this.sessionEventListeners.set(sessionId, new Set());
     }
