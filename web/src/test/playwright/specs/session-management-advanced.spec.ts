@@ -338,27 +338,30 @@ test.describe('Advanced Session Management', () => {
 
     // Wait for session creation response
     const responsePromise = page.waitForResponse(
-      (response) => response.url().includes('/api/sessions') && response.request().method() === 'POST',
+      (response) =>
+        response.url().includes('/api/sessions') && response.request().method() === 'POST',
       { timeout: 10000 }
     );
 
     // Use force click to bypass pointer-events issues
     await page.locator('button').filter({ hasText: 'Create' }).first().click({ force: true });
-    
+
     try {
       const response = await responsePromise;
       const responseBody = await response.json();
       const sessionId = responseBody.sessionId;
-      
+
       // Wait for modal to close
-      await page.waitForSelector('.modal-content', { state: 'hidden', timeout: 5000 }).catch(() => {});
-      
+      await page
+        .waitForSelector('.modal-content', { state: 'hidden', timeout: 5000 })
+        .catch(() => {});
+
       // Navigate manually if needed
       const currentUrl = page.url();
       if (!currentUrl.includes('?session=')) {
         await page.goto(`/?session=${sessionId}`, { waitUntil: 'domcontentloaded' });
       }
-    } catch (error) {
+    } catch (_error) {
       // If response handling fails, still try to wait for navigation
       await page.waitForURL(/\?session=/, { timeout: 10000 });
     }
@@ -390,7 +393,7 @@ test.describe('Advanced Session Management', () => {
     // Go back to list
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    
+
     // Wait for session cards or no sessions message
     await page.waitForFunction(
       () => {
@@ -400,10 +403,14 @@ test.describe('Advanced Session Management', () => {
       },
       { timeout: 10000 }
     );
-    
+
     // Verify both sessions are visible before proceeding
-    await expect(page.locator('session-card').filter({ hasText: runningSessionName })).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('session-card').filter({ hasText: exitedSessionName })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('session-card').filter({ hasText: runningSessionName })).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.locator('session-card').filter({ hasText: exitedSessionName })).toBeVisible({
+      timeout: 10000,
+    });
 
     // Kill this session using page object
     const sessionListPage = await import('../pages/session-list.page').then(
