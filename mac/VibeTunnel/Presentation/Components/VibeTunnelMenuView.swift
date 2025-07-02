@@ -221,16 +221,10 @@ struct VibeTunnelMenuView: View {
         .frame(width: 384)
         .background(Color.clear)
         .onAppear {
-            // Clear any initial focus after a short delay
-            Task {
-                try? await Task.sleep(for: .milliseconds(50))
-                await MainActor.run {
-                    focusedField = nil
-                }
-            }
-            
-            // Refresh all cached git repositories when menu opens
-            gitRepositoryMonitor.refreshAllCached()
+            gitRepositoryMonitor.startMonitoring()
+        }
+        .onDisappear {
+            gitRepositoryMonitor.stopMonitoring()
         }
         .onKeyPress { keyPress in
             if keyPress.key == .tab && !hasStartedKeyboardNavigation {
@@ -487,7 +481,6 @@ struct SessionRow: View {
     @State private var editedName = ""
     @State private var gitRepository: GitRepository?
     @State private var isHoveringGitFolder = false
-    @State private var refreshTask: Task<Void, Never>?
     @FocusState private var isEditFieldFocused: Bool
 
     var body: some View {
@@ -498,28 +491,6 @@ struct SessionRow: View {
         .task(id: session.value.workingDir) {
             // Fetch git repository info for this session - will return cached data immediately
             gitRepository = await gitRepositoryMonitor.findRepository(for: session.value.workingDir)
-        }
-        .onAppear {
-            // Set up periodic refresh for git status
-            refreshTask = Task {
-                // Refresh every 5 seconds while the view is visible
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(5))
-                    let repo = await gitRepositoryMonitor.findRepository(for: session.value.workingDir)
-                    if !Task.isCancelled, let repo = repo {
-                        await MainActor.run {
-                            if self.gitRepository != repo {
-                                self.gitRepository = repo
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .onDisappear {
-            // Cancel the refresh task when view disappears
-            refreshTask?.cancel()
-            refreshTask = nil
         }
     }
 

@@ -58,56 +58,36 @@ public final class GitRepositoryMonitor {
         fileToRepoCache.removeAll()
     }
     
-    /// Refresh all cached repositories
-    public func refreshAllCached() {
-        guard !isRefreshing else { return }
-        isRefreshing = true
+    /// Start monitoring and refreshing all cached repositories
+    public func startMonitoring() {
+        stopMonitoring()
         
-        Task {
-            let repoPaths = Set(repositoryCache.keys)
-            for repoPath in repoPaths {
-                if let fresh = await getRepositoryStatus(at: repoPath) {
-                    await MainActor.run {
-                        repositoryCache[repoPath] = fresh
-                    }
-                }
-            }
-            await MainActor.run {
-                isRefreshing = false
-            }
-        }
-    }
-
-    /// Pre-warm the cache for a list of directories
-    public func prewarmCache(for directories: [String]) {
-        Task {
-            for directory in directories {
-                _ = await findRepository(for: directory)
+        // Set up periodic refresh of all cached repositories
+        monitoringTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+            Task { @MainActor in
+                await self.refreshAllCached()
             }
         }
     }
     
-    /// Monitor a specific directory for git changes
-    public func startMonitoring(directory: String) {
-        monitoringTimer?.invalidate()
-
-        // Initial check
-        Task {
-            await findRepository(for: directory)
-        }
-
-        // Set up periodic monitoring
-        monitoringTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
-            Task { @MainActor in
-                await self.findRepository(for: directory)
-            }
-        }
-    }
-
     /// Stop monitoring
     public func stopMonitoring() {
         monitoringTimer?.invalidate()
         monitoringTimer = nil
+    }
+    
+    // MARK: - Private Methods
+    
+    /// Refresh all cached repositories
+    private func refreshAllCached() async {
+        let repoPaths = Array(repositoryCache.keys)
+        for repoPath in repoPaths {
+            if let fresh = await getRepositoryStatus(at: repoPath) {
+                await MainActor.run {
+                    repositoryCache[repoPath] = fresh
+                }
+            }
+        }
     }
 
     // MARK: - Private Properties
@@ -117,9 +97,6 @@ public final class GitRepositoryMonitor {
     
     /// Cache mapping file paths to their repository paths
     private var fileToRepoCache: [String: String] = [:]
-
-    /// Whether we're currently refreshing the cache
-    private var isRefreshing = false
 
     /// Timer for periodic monitoring
     private var monitoringTimer: Timer?
