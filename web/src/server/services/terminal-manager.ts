@@ -36,6 +36,7 @@ export class TerminalManager {
   private controlDir: string;
   private bufferListeners: Map<string, Set<BufferChangeListener>> = new Map();
   private changeTimers: Map<string, NodeJS.Timeout> = new Map();
+  private errorCache: Map<string, { count: number; lastLogged: number }> = new Map();
 
   constructor(controlDir: string) {
     this.controlDir = controlDir;
@@ -191,7 +192,42 @@ export class TerminalManager {
         // Ignore 'i' (input) events
       }
     } catch (error) {
-      logger.error(`Failed to parse stream line for session ${sessionId}:`, error);
+      // Deduplicate parsing errors to avoid log spam
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorKey = `${sessionId}:${errorMessage}:${line.substring(0, 30)}`;
+      const errorInfo = this.errorCache.get(errorKey);
+      const now = Date.now();
+
+      if (!errorInfo || now - errorInfo.lastLogged > 60000) {
+        // Log every minute max
+        // Only log first 100 chars of the line to avoid huge logs
+        const truncatedLine = line.length > 100 ? `${line.substring(0, 100)}...` : line;
+        logger.error(`Failed to parse stream line for session ${sessionId}: ${truncatedLine}`);
+        if (error instanceof Error && error.stack) {
+          logger.debug(`Parse error details: ${errorMessage}`);
+        }
+        this.errorCache.set(errorKey, { count: 1, lastLogged: now });
+      } else {
+        // Increment count silently
+        errorInfo.count++;
+
+        // Log summary every 100 errors
+        if (errorInfo.count % 100 === 0) {
+          logger.warn(
+            `Repeated parsing errors for session ${sessionId}: ${errorInfo.count} occurrences of similar error (${errorMessage})`
+          );
+        }
+      }
+
+      // Clean up old error cache entries periodically
+      if (this.errorCache.size > 100) {
+        const cutoff = now - 300000; // 5 minutes
+        for (const [key, info] of this.errorCache.entries()) {
+          if (info.lastLogged < cutoff) {
+            this.errorCache.delete(key);
+          }
+        }
+      }
     }
   }
 

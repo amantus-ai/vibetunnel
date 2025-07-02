@@ -197,7 +197,7 @@ final class CustomMenuWindow: NSPanel {
 
         // Commit all changes at once
         CATransaction.commit()
-        
+
         onShow?()
     }
 
@@ -301,7 +301,10 @@ final class CustomMenuWindow: NSPanel {
 
         guard isVisible else { return }
 
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [
+            .leftMouseDown,
+            .rightMouseDown
+        ]) { [weak self] _ in
             guard let self, self.isVisible else { return }
 
             let mouseLocation = NSEvent.mouseLocation
@@ -310,7 +313,8 @@ final class CustomMenuWindow: NSPanel {
             if self.isNewSessionActive {
                 // Check if clicking on status bar button to allow closing via menu icon
                 if let button = self.statusBarButton,
-                   let buttonWindow = button.window {
+                   let buttonWindow = button.window
+                {
                     let buttonFrame = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
                     if buttonFrame.contains(mouseLocation) {
                         // User clicked the menu bar icon, dismiss even with new session active

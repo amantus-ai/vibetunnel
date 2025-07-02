@@ -7,7 +7,7 @@ extension StatusBarController {
     func formatSessionIndicator(activeCount: Int, idleCount: Int) -> String {
         let totalCount = activeCount + idleCount
         guard totalCount > 0 else { return "" }
-        
+
         if activeCount == 0 {
             return String(totalCount)
         } else if activeCount == totalCount {

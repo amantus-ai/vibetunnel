@@ -21,10 +21,10 @@ struct VibeTunnelMenuView: View {
     @State private var hasStartedKeyboardNavigation = false
     @State private var showingNewSession = false
     @FocusState private var focusedField: FocusField?
-    
+
     /// Binding to allow external control of new session state
     @Binding var isNewSessionActive: Bool
-    
+
     init(isNewSessionActive: Binding<Bool> = .constant(false)) {
         self._isNewSessionActive = isNewSessionActive
     }
@@ -45,10 +45,10 @@ struct VibeTunnelMenuView: View {
                     isNewSessionActive = newValue
                 }
             ))
-                .transition(.asymmetric(
-                    insertion: .move(edge: .bottom).combined(with: .opacity),
-                    removal: .move(edge: .bottom).combined(with: .opacity)
-                ))
+            .transition(.asymmetric(
+                insertion: .move(edge: .bottom).combined(with: .opacity),
+                removal: .move(edge: .bottom).combined(with: .opacity)
+            ))
         } else {
             mainContent
                 .transition(.asymmetric(

@@ -3,9 +3,12 @@ import SwiftUI
 /// Compact new session form designed for the popover
 struct NewSessionForm: View {
     @Binding var isPresented: Bool
-    @Environment(ServerManager.self) private var serverManager
-    @Environment(SessionMonitor.self) private var sessionMonitor
-    @Environment(SessionService.self) private var sessionService
+    @Environment(ServerManager.self)
+    private var serverManager
+    @Environment(SessionMonitor.self)
+    private var sessionMonitor
+    @Environment(SessionService.self)
+    private var sessionService
 
     // Form fields
     @State private var command = "zsh"

@@ -127,7 +127,7 @@ final class StatusBarController: NSObject {
 
     func updateStatusItemDisplay() {
         guard let button = statusItem?.button else { return }
-        
+
         // Update icon based on server and network status
         let iconName = (serverManager.isRunning && hasNetworkAccess) ? "menubar" : "menubar.inactive"
         if let image = NSImage(named: iconName) {
@@ -253,7 +253,7 @@ final class StatusBarController: NSObject {
         guard let button = statusItem?.button else { return }
         menuManager.showCustomWindow(relativeTo: button)
     }
-    
+
     func toggleCustomWindow() {
         guard let button = statusItem?.button else { return }
         menuManager.toggleCustomWindow(relativeTo: button)

@@ -107,7 +107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         super.init()
         Self.shared = self
     }
-    
+
     private(set) var sparkleUpdaterManager: SparkleUpdaterManager?
     var app: VibeTunnelApp?
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AppDelegate")

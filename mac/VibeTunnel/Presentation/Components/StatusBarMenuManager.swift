@@ -1,11 +1,11 @@
 import AppKit
-import SwiftUI
 import Combine
+import SwiftUI
 
-// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
-// Didn't manage to keep the highlighted state reliable active with any other way.
+/// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
+/// Didn't manage to keep the highlighted state reliable active with any other way.
 extension NSStatusBarButton {
-    public override func mouseDown(with event: NSEvent) {
+    override public func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)
         self.highlight(true)
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) {
@@ -38,9 +38,9 @@ final class StatusBarMenuManager: NSObject {
     private weak var statusBarButton: NSStatusBarButton?
     private weak var currentStatusItem: NSStatusItem?
 
-    // State management
+    /// State management
     private var menuState: MenuState = .none
-    
+
     // Track new session state
     @Published private var isNewSessionActive = false
     private var cancellables = Set<AnyCancellable>()
@@ -49,7 +49,7 @@ final class StatusBarMenuManager: NSObject {
 
     override init() {
         super.init()
-        
+
         // Subscribe to new session state changes to update window
         $isNewSessionActive
             .sink { [weak self] isActive in
@@ -123,18 +123,18 @@ final class StatusBarMenuManager: NSObject {
             get: { [weak self] in self?.isNewSessionActive ?? false },
             set: { [weak self] in self?.isNewSessionActive = $0 }
         ))
-            .environment(sessionMonitor)
-            .environment(serverManager)
-            .environment(ngrokService)
-            .environment(tailscaleService)
-            .environment(terminalLauncher)
-            .environment(sessionService)
+        .environment(sessionMonitor)
+        .environment(serverManager)
+        .environment(ngrokService)
+        .environment(tailscaleService)
+        .environment(terminalLauncher)
+        .environment(sessionService)
 
         // Wrap in custom container for proper styling
         let containerView = CustomMenuContainer {
             mainView
         }
-        
+
         // Hide and cleanup old window before creating new one
         customWindow?.hide()
         customWindow = nil
@@ -154,14 +154,14 @@ final class StatusBarMenuManager: NSObject {
         if let window = customWindow {
             window.isNewSessionActive = isNewSessionActive
         }
-        
+
         // Show the custom window
         customWindow?.show(relativeTo: button)
         statusBarButton?.highlight(true)
     }
 
     func hideCustomWindow() {
-        if(customWindow?.isWindowVisible ?? false) {
+        if customWindow?.isWindowVisible ?? false {
             customWindow?.hide()
         }
         // Reset new session state when hiding

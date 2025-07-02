@@ -432,8 +432,8 @@ final class BunServer {
             source.setEventHandler { [logHandler] in
                 // Read data in a non-blocking way to prevent hangs on large output
                 var buffer = Data()
-                let maxBytesPerRead = 65536 // 64KB chunks
-                
+                let maxBytesPerRead = 65_536 // 64KB chunks
+
                 do {
                     // Read available data without blocking
                     while true {
@@ -441,14 +441,14 @@ final class BunServer {
                         let bytesRead = readBuffer.withUnsafeMutableBytes { bytes in
                             Darwin.read(handle.fileDescriptor, bytes.baseAddress, maxBytesPerRead)
                         }
-                        
+
                         if bytesRead > 0 {
                             buffer.append(readBuffer.prefix(bytesRead))
-                            
+
                             // Check if more data is immediately available
                             var pollfd = pollfd(fd: handle.fileDescriptor, events: Int16(POLLIN), revents: 0)
                             let pollResult = poll(&pollfd, 1, 0) // 0 timeout = non-blocking
-                            
+
                             if pollResult <= 0 || (pollfd.revents & Int16(POLLIN)) == 0 {
                                 break // No more data immediately available
                             }
@@ -471,19 +471,16 @@ final class BunServer {
                     cancelSource()
                     return
                 }
-                
+
                 // Process accumulated data
                 if !buffer.isEmpty {
                     if let output = String(data: buffer, encoding: .utf8) {
-                        BunServer.processOutputStatic(output, logHandler: logHandler, isError: false)
+                        Self.processOutputStatic(output, logHandler: logHandler, isError: false)
                     } else {
                         // If UTF-8 decoding fails, try to decode what we can
-                        if let output = String(data: buffer, encoding: .utf8, allowLossyConversion: true) {
-                            BunServer.processOutputStatic(output, logHandler: logHandler, isError: false)
-                        } else {
-                            // If even lossy conversion fails, log that we received binary data
-                            logHandler.log("[Binary data: \(buffer.count) bytes]", isError: false)
-                        }
+                        // Use String(decoding:as:) for lossy conversion
+                        let output = String(decoding: buffer, as: UTF8.self)
+                        Self.processOutputStatic(output, logHandler: logHandler, isError: false)
                     }
                 }
             }
@@ -521,8 +518,8 @@ final class BunServer {
             source.setEventHandler { [logHandler] in
                 // Read data in a non-blocking way to prevent hangs on large output
                 var buffer = Data()
-                let maxBytesPerRead = 65536 // 64KB chunks
-                
+                let maxBytesPerRead = 65_536 // 64KB chunks
+
                 do {
                     // Read available data without blocking
                     while true {
@@ -530,14 +527,14 @@ final class BunServer {
                         let bytesRead = readBuffer.withUnsafeMutableBytes { bytes in
                             Darwin.read(handle.fileDescriptor, bytes.baseAddress, maxBytesPerRead)
                         }
-                        
+
                         if bytesRead > 0 {
                             buffer.append(readBuffer.prefix(bytesRead))
-                            
+
                             // Check if more data is immediately available
                             var pollfd = pollfd(fd: handle.fileDescriptor, events: Int16(POLLIN), revents: 0)
                             let pollResult = poll(&pollfd, 1, 0) // 0 timeout = non-blocking
-                            
+
                             if pollResult <= 0 || (pollfd.revents & Int16(POLLIN)) == 0 {
                                 break // No more data immediately available
                             }
@@ -560,19 +557,16 @@ final class BunServer {
                     cancelSource()
                     return
                 }
-                
+
                 // Process accumulated data
                 if !buffer.isEmpty {
                     if let output = String(data: buffer, encoding: .utf8) {
-                        BunServer.processOutputStatic(output, logHandler: logHandler, isError: true)
+                        Self.processOutputStatic(output, logHandler: logHandler, isError: true)
                     } else {
                         // If UTF-8 decoding fails, try to decode what we can
-                        if let output = String(data: buffer, encoding: .utf8, allowLossyConversion: true) {
-                            BunServer.processOutputStatic(output, logHandler: logHandler, isError: true)
-                        } else {
-                            // If even lossy conversion fails, log that we received binary data
-                            logHandler.log("[Binary data on stderr: \(buffer.count) bytes]", isError: true)
-                        }
+                        // Use String(decoding:as:) for lossy conversion
+                        let output = String(decoding: buffer, as: UTF8.self)
+                        Self.processOutputStatic(output, logHandler: logHandler, isError: true)
                     }
                 }
             }
@@ -691,37 +685,38 @@ enum BunServerError: LocalizedError {
 
 // MARK: - Private Output Processing
 
-private extension BunServer {
+extension BunServer {
     /// Process output with chunking for large lines and rate limiting awareness
-    static func processOutputStatic(_ output: String, logHandler: LogHandler, isError: Bool) {
-        let maxLineLength = 4096 // Max chars per log line to avoid os.log truncation
+    fileprivate nonisolated static func processOutputStatic(_ output: String, logHandler: LogHandler, isError: Bool) {
+        let maxLineLength = 4_096 // Max chars per log line to avoid os.log truncation
         let lines = output.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: .newlines)
-        
+
         for line in lines where !line.isEmpty {
             // Skip shell initialization messages
             if line.contains("zsh:") || line.hasPrefix("Last login:") {
                 continue
             }
-            
+
             // If line is too long, chunk it to avoid os.log limits
             if line.count > maxLineLength {
                 // Log that we're chunking a large line
                 logHandler.log("[Large output: \(line.count) chars, chunking...]", isError: isError)
-                
+
                 // Chunk the line
                 var startIndex = line.startIndex
                 var chunkNumber = 1
                 while startIndex < line.endIndex {
-                    let endIndex = line.index(startIndex, offsetBy: maxLineLength, limitedBy: line.endIndex) ?? line.endIndex
+                    let endIndex = line.index(startIndex, offsetBy: maxLineLength, limitedBy: line.endIndex) ?? line
+                        .endIndex
                     let chunk = String(line[startIndex..<endIndex])
                     logHandler.log("[Chunk \(chunkNumber)] \(chunk)", isError: isError)
                     startIndex = endIndex
                     chunkNumber += 1
-                    
+
                     // Add small delay between chunks to avoid rate limiting
                     if chunkNumber % 10 == 0 {
-                        usleep(1000) // 1ms delay every 10 chunks
+                        usleep(1_000) // 1ms delay every 10 chunks
                     }
                 }
             } else {
