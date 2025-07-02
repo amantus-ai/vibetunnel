@@ -8,10 +8,7 @@
 import * as os from 'os';
 import * as path from 'path';
 import type { ActivityState } from './activity-detector.js';
-import { createLogger } from './logger.js';
 import { PromptDetector } from './prompt-patterns.js';
-
-const logger = createLogger('terminal-title');
 
 // Pre-compiled regex patterns for performance
 // Match cd command with optional arguments, handling newlines
@@ -31,65 +28,21 @@ export function generateTitleSequence(
   command: string[],
   sessionName?: string
 ): string {
-  // Convert absolute path to use ~ for home directory
-  const homeDir = os.homedir();
-  const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
-
-  // Get the command name (first element of command array)
-  // Extract just the process name from the full path
-  const fullCmd = command[0] || 'shell';
-  const cmdName = path.basename(fullCmd);
-
-  // Build title parts
-  const parts = [displayPath, cmdName];
-
-  // Check if session name should be included
-  if (sessionName?.trim() && !isRedundantSessionName(sessionName, cmdName, displayPath)) {
-    parts.push(sessionName);
+  // If we have a session name, use only that
+  if (sessionName?.trim()) {
+    // OSC 2 sequence: ESC ] 2 ; <title> BEL
+    return `\x1B]2;${sessionName}\x07`;
   }
 
-  // Format: path · command · session name
-  const title = parts.join(' · ');
+  // Otherwise, fall back to path · command format
+  const homeDir = os.homedir();
+  const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
+  const fullCmd = command[0] || 'shell';
+  const cmdName = path.basename(fullCmd);
+  const title = `${displayPath} · ${cmdName}`;
 
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
   return `\x1B]2;${title}\x07`;
-}
-
-/**
- * Check if a session name is redundant (auto-generated and duplicates info)
- *
- * Examples of redundant names:
- * - "claude · claude" when command is "claude"
- * - "python3 (~/Projects)" when path is ~/Projects and command is python3
- * - "bash · bash" when command is "bash"
- *
- * @param sessionName The session name to check
- * @param cmdName The command name
- * @param displayPath The display path
- * @returns True if the session name is redundant and should be skipped
- */
-function isRedundantSessionName(
-  sessionName: string,
-  cmdName: string,
-  _displayPath: string
-): boolean {
-  // Check for simple duplication patterns like "claude · claude"
-  if (sessionName === `${cmdName} · ${cmdName}`) {
-    return true;
-  }
-
-  // Check if session name follows auto-generated pattern: "command (path)"
-  const autoGenPattern = new RegExp(`^${cmdName}\\s*\\(`);
-  if (autoGenPattern.test(sessionName)) {
-    return true;
-  }
-
-  // Check if session name is just the command name
-  if (sessionName === cmdName) {
-    return true;
-  }
-
-  return false;
 }
 
 /**
@@ -185,51 +138,35 @@ export function generateDynamicTitle(
   activity: ActivityState,
   sessionName?: string
 ): string {
-  const homeDir = os.homedir();
-  const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
-  const fullCmd = command[0] || 'shell';
-  const cmdName = path.basename(fullCmd);
-
-  // Build base parts
-  const baseParts = [displayPath, cmdName];
-
-  // Check if session name should be included
-  const isRedundant = sessionName
-    ? isRedundantSessionName(sessionName, cmdName, displayPath)
-    : true;
-
-  // Debug logging for session name filtering
-  if (sessionName) {
-    logger.debug('[generateDynamicTitle] Session name check:', {
-      sessionName,
-      cmdName,
-      displayPath,
-      isRedundant,
-      willInclude: sessionName.trim() && !isRedundant,
-    });
+  // Determine base title
+  let baseTitle: string;
+  if (sessionName?.trim()) {
+    // Use only the session name
+    baseTitle = sessionName;
+  } else {
+    // Fall back to path · command format
+    const homeDir = os.homedir();
+    const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
+    const fullCmd = command[0] || 'shell';
+    const cmdName = path.basename(fullCmd);
+    baseTitle = `${displayPath} · ${cmdName}`;
   }
 
-  if (sessionName?.trim() && !isRedundant) {
-    baseParts.push(sessionName);
-  }
-
-  // If we have Claude-specific status, put it first
+  // Add activity indicators as prefix
   if (activity.specificStatus) {
-    // Format: status · path · command · session name
-    const title = `${activity.specificStatus.status} · ${baseParts.join(' · ')}`;
+    // Format: status · base title
+    const title = `${activity.specificStatus.status} · ${baseTitle}`;
     return `\x1B]2;${title}\x07`;
   }
 
   // Otherwise use generic activity indicator (only when active)
   if (activity.isActive) {
-    // Format: ● path · command · session name
-    const title = `● ${baseParts.join(' · ')}`;
+    // Format: ● base title
+    const title = `● ${baseTitle}`;
     return `\x1B]2;${title}\x07`;
   }
 
-  // When idle, no indicator - just path · command · session name
-  const title = baseParts.join(' · ');
-
+  // When idle, no indicator - just the base title
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
-  return `\x1B]2;${title}\x07`;
+  return `\x1B]2;${baseTitle}\x07`;
 }

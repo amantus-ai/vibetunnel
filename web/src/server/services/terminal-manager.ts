@@ -200,7 +200,8 @@ export class TerminalManager {
       }
     } catch (error) {
       // Use deduplicator to check if we should log this error
-      const contextKey = `${sessionId}:${line.substring(0, 30)}`;
+      // Use a more generic context key to group similar parsing errors together
+      const contextKey = `${sessionId}:parse-stream-line`;
 
       if (this.errorDeduplicator.shouldLog(error, contextKey)) {
         const stats = this.errorDeduplicator.getErrorStats(error, contextKey);

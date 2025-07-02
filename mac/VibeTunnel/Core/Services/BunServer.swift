@@ -434,42 +434,36 @@ final class BunServer {
                 var buffer = Data()
                 let maxBytesPerRead = 65_536 // 64KB chunks
 
-                do {
-                    // Read available data without blocking
-                    while true {
-                        var readBuffer = Data(count: maxBytesPerRead)
-                        let bytesRead = readBuffer.withUnsafeMutableBytes { bytes in
-                            Darwin.read(handle.fileDescriptor, bytes.baseAddress, maxBytesPerRead)
+                // Read available data without blocking
+                while true {
+                    var readBuffer = Data(count: maxBytesPerRead)
+                    let bytesRead = readBuffer.withUnsafeMutableBytes { bytes in
+                        Darwin.read(handle.fileDescriptor, bytes.baseAddress, maxBytesPerRead)
+                    }
+
+                    if bytesRead > 0 {
+                        buffer.append(readBuffer.prefix(bytesRead))
+
+                        // Check if more data is immediately available
+                        var pollfd = pollfd(fd: handle.fileDescriptor, events: Int16(POLLIN), revents: 0)
+                        let pollResult = poll(&pollfd, 1, 0) // 0 timeout = non-blocking
+
+                        if pollResult <= 0 || (pollfd.revents & Int16(POLLIN)) == 0 {
+                            break // No more data immediately available
                         }
-
-                        if bytesRead > 0 {
-                            buffer.append(readBuffer.prefix(bytesRead))
-
-                            // Check if more data is immediately available
-                            var pollfd = pollfd(fd: handle.fileDescriptor, events: Int16(POLLIN), revents: 0)
-                            let pollResult = poll(&pollfd, 1, 0) // 0 timeout = non-blocking
-
-                            if pollResult <= 0 || (pollfd.revents & Int16(POLLIN)) == 0 {
-                                break // No more data immediately available
-                            }
-                        } else if bytesRead == 0 {
-                            // EOF reached
+                    } else if bytesRead == 0 {
+                        // EOF reached
+                        cancelSource()
+                        return
+                    } else {
+                        // Error occurred
+                        if errno != EAGAIN && errno != EWOULDBLOCK {
+                            logger.error("Read error on stdout: \(String(cString: strerror(errno)))")
                             cancelSource()
                             return
-                        } else {
-                            // Error occurred
-                            if errno != EAGAIN && errno != EWOULDBLOCK {
-                                logger.error("Read error on stdout: \(String(cString: strerror(errno)))")
-                                cancelSource()
-                                return
-                            }
-                            break // No data available right now
                         }
+                        break // No data available right now
                     }
-                } catch {
-                    logger.error("Exception during stdout read: \(error)")
-                    cancelSource()
-                    return
                 }
 
                 // Process accumulated data
@@ -520,42 +514,36 @@ final class BunServer {
                 var buffer = Data()
                 let maxBytesPerRead = 65_536 // 64KB chunks
 
-                do {
-                    // Read available data without blocking
-                    while true {
-                        var readBuffer = Data(count: maxBytesPerRead)
-                        let bytesRead = readBuffer.withUnsafeMutableBytes { bytes in
-                            Darwin.read(handle.fileDescriptor, bytes.baseAddress, maxBytesPerRead)
+                // Read available data without blocking
+                while true {
+                    var readBuffer = Data(count: maxBytesPerRead)
+                    let bytesRead = readBuffer.withUnsafeMutableBytes { bytes in
+                        Darwin.read(handle.fileDescriptor, bytes.baseAddress, maxBytesPerRead)
+                    }
+
+                    if bytesRead > 0 {
+                        buffer.append(readBuffer.prefix(bytesRead))
+
+                        // Check if more data is immediately available
+                        var pollfd = pollfd(fd: handle.fileDescriptor, events: Int16(POLLIN), revents: 0)
+                        let pollResult = poll(&pollfd, 1, 0) // 0 timeout = non-blocking
+
+                        if pollResult <= 0 || (pollfd.revents & Int16(POLLIN)) == 0 {
+                            break // No more data immediately available
                         }
-
-                        if bytesRead > 0 {
-                            buffer.append(readBuffer.prefix(bytesRead))
-
-                            // Check if more data is immediately available
-                            var pollfd = pollfd(fd: handle.fileDescriptor, events: Int16(POLLIN), revents: 0)
-                            let pollResult = poll(&pollfd, 1, 0) // 0 timeout = non-blocking
-
-                            if pollResult <= 0 || (pollfd.revents & Int16(POLLIN)) == 0 {
-                                break // No more data immediately available
-                            }
-                        } else if bytesRead == 0 {
-                            // EOF reached
+                    } else if bytesRead == 0 {
+                        // EOF reached
+                        cancelSource()
+                        return
+                    } else {
+                        // Error occurred
+                        if errno != EAGAIN && errno != EWOULDBLOCK {
+                            logger.error("Read error on stderr: \(String(cString: strerror(errno)))")
                             cancelSource()
                             return
-                        } else {
-                            // Error occurred
-                            if errno != EAGAIN && errno != EWOULDBLOCK {
-                                logger.error("Read error on stderr: \(String(cString: strerror(errno)))")
-                                cancelSource()
-                                return
-                            }
-                            break // No data available right now
                         }
+                        break // No data available right now
                     }
-                } catch {
-                    logger.error("Exception during stderr read: \(error)")
-                    cancelSource()
-                    return
                 }
 
                 // Process accumulated data
