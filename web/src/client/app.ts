@@ -77,6 +77,7 @@ export class VibeTunnelApp extends LitElement {
   private autoRefreshIntervalId: number | null = null;
   private responsiveUnsubscribe?: () => void;
   private resizeCleanupFunctions: (() => void)[] = [];
+  private sessionLoadingState: 'idle' | 'loading' | 'loaded' | 'not-found' = 'idle';
 
   connectedCallback() {
     super.connectedCallback();
@@ -231,6 +232,7 @@ export class VibeTunnelApp extends LitElement {
       // Always navigate to the session view if a session ID is provided
       logger.log(`Navigating to session ${sessionId} from URL after auth`);
       this.selectedSessionId = sessionId;
+      this.sessionLoadingState = 'idle'; // Reset loading state for new session
       this.currentView = 'session';
     }
   }
@@ -357,14 +359,39 @@ export class VibeTunnelApp extends LitElement {
             document.title = `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`;
           }
 
-          // Don't redirect away from session view during loadSessions
-          // The session-view component will handle missing sessions
+          // Handle session loading state tracking
           if (this.selectedSessionId && this.currentView === 'session') {
             const sessionExists = this.sessions.find((s) => s.id === this.selectedSessionId);
-            if (!sessionExists) {
-              logger.warn(
-                `Selected session ${this.selectedSessionId} not found in current sessions list, but keeping session view`
-              );
+
+            if (sessionExists) {
+              // Session found - mark as loaded
+              if (this.sessionLoadingState !== 'loaded') {
+                this.sessionLoadingState = 'loaded';
+                logger.debug(`Session ${this.selectedSessionId} found and loaded`);
+              }
+            } else {
+              // Session not found - determine action based on loading state and load completion
+              if (this.sessionLoadingState === 'loaded') {
+                // Session was previously loaded but is now missing (e.g., cleaned up)
+                this.sessionLoadingState = 'not-found';
+                logger.warn(
+                  `Session ${this.selectedSessionId} was loaded but is now missing (possibly cleaned up)`
+                );
+                this.showError(`Session ${this.selectedSessionId} not found`);
+                this.handleNavigateToList();
+              } else if (this.sessionLoadingState === 'loading' && this.initialLoadComplete) {
+                // We were loading and finished, but session still doesn't exist
+                this.sessionLoadingState = 'not-found';
+                logger.warn(`Session ${this.selectedSessionId} not found after loading completed`);
+                this.showError(`Session ${this.selectedSessionId} not found`);
+                this.handleNavigateToList();
+              } else if (this.sessionLoadingState === 'idle') {
+                // First time checking - start loading
+                this.sessionLoadingState = 'loading';
+                logger.debug(`Looking for session ${this.selectedSessionId}...`);
+              }
+              // If state is 'loading' and !initialLoadComplete, just wait
+              // If state is 'not-found', we've already handled it
             }
           }
         } else if (response.status === 401) {
@@ -650,6 +677,7 @@ export class VibeTunnelApp extends LitElement {
       const transition = document.startViewTransition(async () => {
         // Update state which will trigger a re-render
         this.selectedSessionId = sessionId;
+        this.sessionLoadingState = 'idle'; // Reset loading state for new session
         this.currentView = 'session';
         this.updateUrl(sessionId);
 
@@ -693,6 +721,7 @@ export class VibeTunnelApp extends LitElement {
     } else {
       // Fallback for browsers without View Transitions support
       this.selectedSessionId = sessionId;
+      this.sessionLoadingState = 'idle'; // Reset loading state for new session
       this.currentView = 'session';
       this.updateUrl(sessionId);
 
@@ -995,6 +1024,7 @@ export class VibeTunnelApp extends LitElement {
       // The session-view component will handle loading and error cases
       logger.log(`Navigating to session ${sessionId} from URL`);
       this.selectedSessionId = sessionId;
+      this.sessionLoadingState = 'idle'; // Reset loading state for new session
       this.currentView = 'session';
 
       // Load sessions in the background if not already loaded
