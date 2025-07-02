@@ -362,7 +362,7 @@ struct NewSessionForm: View {
 
                 // If not spawning window, open in browser
                 if !spawnWindow {
-                    if let webURL = URL(string: "http://127.0.0.1:\(serverManager.port)/?sessionId=\(sessionId)") {
+                    if let webURL = DashboardURLBuilder.dashboardURL(port: serverManager.port, sessionId: sessionId) {
                         NSWorkspace.shared.open(webURL)
                     }
                 }

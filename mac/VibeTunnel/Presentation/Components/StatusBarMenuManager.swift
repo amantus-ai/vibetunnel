@@ -278,7 +278,7 @@ final class StatusBarMenuManager: NSObject {
     @objc
     private func openDashboard() {
         guard let serverManager else { return }
-        if let url = URL(string: "http://127.0.0.1:\(serverManager.port)") {
+        if let url = DashboardURLBuilder.dashboardURL(port: serverManager.port) {
             NSWorkspace.shared.open(url)
         }
     }

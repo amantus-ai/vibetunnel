@@ -575,7 +575,7 @@ struct SessionRow: View {
                 WindowTracker.shared.focusWindow(for: session.key)
             } else {
                 // Open browser for sessions without windows
-                if let url = URL(string: "http://127.0.0.1:\(serverManager.port)/?sessionId=\(session.key)") {
+                if let url = DashboardURLBuilder.dashboardURL(port: serverManager.port, sessionId: session.key) {
                     NSWorkspace.shared.open(url)
                 }
             }
@@ -601,7 +601,7 @@ struct SessionRow: View {
                 }
             } else {
                 Button("Open in Browser") {
-                    if let url = URL(string: "http://127.0.0.1:\(serverManager.port)/?sessionId=\(session.key)") {
+                    if let url = DashboardURLBuilder.dashboardURL(port: serverManager.port, sessionId: session.key) {
                         NSWorkspace.shared.open(url)
                     }
                 }
@@ -821,7 +821,7 @@ struct EmptySessionsView: View {
 
             if serverManager.isRunning {
                 Button("Open Dashboard") {
-                    if let url = URL(string: "http://127.0.0.1:\(serverManager.port)") {
+                    if let url = DashboardURLBuilder.dashboardURL(port: serverManager.port) {
                         NSWorkspace.shared.open(url)
                     }
                 }
