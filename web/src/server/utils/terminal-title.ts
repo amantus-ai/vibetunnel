@@ -40,8 +40,8 @@ export function generateTitleSequence(
   // Build title parts
   const parts = [displayPath, cmdName];
 
-  // Add session name if provided
-  if (sessionName?.trim()) {
+  // Check if session name should be included
+  if (sessionName?.trim() && !isRedundantSessionName(sessionName, cmdName, displayPath)) {
     parts.push(sessionName);
   }
 
@@ -50,6 +50,43 @@ export function generateTitleSequence(
 
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
   return `\x1B]2;${title}\x07`;
+}
+
+/**
+ * Check if a session name is redundant (auto-generated and duplicates info)
+ *
+ * Examples of redundant names:
+ * - "claude · claude" when command is "claude"
+ * - "python3 (~/Projects)" when path is ~/Projects and command is python3
+ * - "bash · bash" when command is "bash"
+ *
+ * @param sessionName The session name to check
+ * @param cmdName The command name
+ * @param displayPath The display path
+ * @returns True if the session name is redundant and should be skipped
+ */
+function isRedundantSessionName(
+  sessionName: string,
+  cmdName: string,
+  displayPath: string
+): boolean {
+  // Check for simple duplication patterns like "claude · claude"
+  if (sessionName === `${cmdName} · ${cmdName}`) {
+    return true;
+  }
+
+  // Check if session name follows auto-generated pattern: "command (path)"
+  const autoGenPattern = new RegExp(`^${cmdName}\\s*\\(`);
+  if (autoGenPattern.test(sessionName)) {
+    return true;
+  }
+
+  // Check if session name is just the command name
+  if (sessionName === cmdName) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -153,8 +190,8 @@ export function generateDynamicTitle(
   // Build base parts
   const baseParts = [displayPath, cmdName];
 
-  // Add session name if provided
-  if (sessionName?.trim()) {
+  // Check if session name should be included
+  if (sessionName?.trim() && !isRedundantSessionName(sessionName, cmdName, displayPath)) {
     baseParts.push(sessionName);
   }
 

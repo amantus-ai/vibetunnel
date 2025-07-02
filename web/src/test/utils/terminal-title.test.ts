@@ -63,6 +63,38 @@ describe('Terminal Title Utilities', () => {
       expect(result).toBe('\x1B]2;~/projects · npm · Frontend Dev\x07');
     });
 
+    it('should skip redundant session names like "claude · claude"', () => {
+      const cwd = '/home/user/projects';
+      const command = ['claude'];
+      const sessionName = 'claude · claude';
+      const result = generateTitleSequence(cwd, command, sessionName);
+      expect(result).toBe('\x1B]2;~/projects · claude\x07');
+    });
+
+    it('should skip auto-generated session names with path', () => {
+      const cwd = '/home/user/projects';
+      const command = ['python3'];
+      const sessionName = 'python3 (~/projects)';
+      const result = generateTitleSequence(cwd, command, sessionName);
+      expect(result).toBe('\x1B]2;~/projects · python3\x07');
+    });
+
+    it('should skip session names that are just the command name', () => {
+      const cwd = '/home/user';
+      const command = ['bash'];
+      const sessionName = 'bash';
+      const result = generateTitleSequence(cwd, command, sessionName);
+      expect(result).toBe('\x1B]2;~ · bash\x07');
+    });
+
+    it('should include custom session names that are not redundant', () => {
+      const cwd = '/home/user/projects';
+      const command = ['claude'];
+      const sessionName = 'Working on VibeTunnel';
+      const result = generateTitleSequence(cwd, command, sessionName);
+      expect(result).toBe('\x1B]2;~/projects · claude · Working on VibeTunnel\x07');
+    });
+
     it('should handle empty session name', () => {
       const cwd = '/home/user';
       const command = ['vim'];

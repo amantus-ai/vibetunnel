@@ -26,6 +26,7 @@ import './session-view/mobile-input-overlay.js';
 import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
+import { authClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
 import {
   COMMON_TERMINAL_WIDTHS,
@@ -803,6 +804,51 @@ export class SessionView extends LitElement {
     this.dispatchEvent(new CustomEvent('error', { detail: error }));
   }
 
+  private async handleRename(event: CustomEvent) {
+    const { sessionId, newName } = event.detail;
+    if (!this.session || sessionId !== this.session.id) return;
+
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authClient.getAuthHeader(),
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        logger.error('Failed to rename session', { errorData, sessionId });
+        throw new Error(`Rename failed: ${response.status}`);
+      }
+
+      // Update the local session object
+      this.session = { ...this.session, name: newName };
+
+      // Dispatch event to notify parent components
+      this.dispatchEvent(
+        new CustomEvent('session-renamed', {
+          detail: { sessionId, newName },
+          bubbles: true,
+          composed: true,
+        })
+      );
+
+      logger.log(`Session ${sessionId} renamed to: ${newName}`);
+    } catch (error) {
+      logger.error('Error renaming session', { error, sessionId });
+
+      // Show error to user
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: `Failed to rename session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      );
+    }
+  }
+
   // Drag & Drop handlers
   private handleDragOver(e: DragEvent) {
     e.preventDefault();
@@ -1071,6 +1117,7 @@ export class SessionView extends LitElement {
             this.showWidthSelector = false;
             this.customWidth = '';
           }}
+          @session-rename=${(e: CustomEvent) => this.handleRename(e)}
         ></session-header>
 
         <!-- Enhanced Terminal Container -->

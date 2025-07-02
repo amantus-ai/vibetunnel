@@ -803,7 +803,7 @@ struct SessionRow: View {
         let elapsed = Date().timeIntervalSince(startDate)
 
         if elapsed < 60 {
-            return "just now"
+            return "now"
         } else if elapsed < 3_600 {
             let minutes = Int(elapsed / 60)
             return "\(minutes)m"
