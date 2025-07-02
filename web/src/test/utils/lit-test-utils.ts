@@ -1,7 +1,8 @@
 import { fixture } from '@open-wc/testing';
 import { LitElement, type TemplateResult } from 'lit';
 import { vi } from 'vitest';
-import type { ActivityStatus, SessionData } from '../types/test-types';
+import type { Session } from '../../shared/types';
+import type { ActivityStatus } from '../types/test-types';
 import { createTestSession } from './test-factories';
 
 /**
@@ -195,34 +196,23 @@ export async function waitFor(
 
 /**
  * Creates mock session data for testing
- * Uses factory function to ensure consistent test data
+ * Returns a proper Session object that matches the component expectations
  */
-export function createMockSession(overrides: Partial<SessionData> = {}): SessionData {
-  const baseSession = createTestSession({
-    name: overrides.name,
-    command: overrides.cmdline,
-    workingDir: overrides.cwd,
-    pid: overrides.pid,
-    status: overrides.status as 'running' | 'exited' | undefined,
-    startedAt: overrides.started_at,
-  });
+export function createMockSession(overrides: Partial<Session> = {}): Session {
+  // Convert SessionData properties to Session properties if needed
+  const command = overrides.command || (overrides as any).cmdline || ['/bin/bash', '-l'];
 
-  // Use base session values as defaults, then apply overrides
-  return {
-    id: baseSession.id,
-    name: baseSession.name,
-    cmdline: baseSession.command,
-    cwd: baseSession.workingDir,
-    pid: baseSession.pid,
-    status: baseSession.status,
-    started_at: baseSession.startedAt,
-    exitCode: null,
-    term: 'xterm-256color',
-    spawn_type: 'pty',
-    cols: 80,
-    rows: 24,
-    ...overrides, // Override any fields provided
-  };
+  const workingDir = overrides.workingDir || (overrides as any).cwd || '/home/test';
+
+  const startedAt =
+    overrides.startedAt || (overrides as any).started_at || new Date().toISOString();
+
+  return createTestSession({
+    ...overrides,
+    command: Array.isArray(command) ? command : [command],
+    workingDir,
+    startedAt,
+  });
 }
 
 /**

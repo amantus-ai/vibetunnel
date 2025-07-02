@@ -293,8 +293,8 @@ export class SessionCard extends LitElement {
         >
           <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-accent-green">
             <inline-edit
-              .value=${this.session.name || this.session.command.join(' ')}
-              .placeholder=${this.session.command.join(' ')}
+              .value=${this.session.name || this.session.command?.join(' ') || ''}
+              .placeholder=${this.session.command?.join(' ') || ''}
               .onSave=${async (newName: string) => {
                 try {
                   await this.handleRename(newName);
