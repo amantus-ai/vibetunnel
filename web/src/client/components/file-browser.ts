@@ -877,7 +877,7 @@ export class FileBrowser extends LitElement {
       // Only handle escape when editing path - modal-wrapper handles the general escape
       if (this.editingPath) {
         e.preventDefault();
-        e.stopPropagation(); // Prevent modal-wrapper from also handling it
+        e.stopImmediatePropagation(); // Prevent modal-wrapper from also handling it
         this.cancelPathEdit();
       }
       // Let modal-wrapper handle the escape for closing the modal

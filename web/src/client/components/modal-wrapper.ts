@@ -32,17 +32,29 @@ export class ModalWrapper extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener('keydown', this.handleKeyDown);
+    // Event listener is managed in updated() method based on visibility
   }
 
   updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
+
+    // Manage escape key listener
     if (changedProperties.has('visible') || changedProperties.has('closeOnEscape')) {
       if (this.visible && this.closeOnEscape) {
         document.addEventListener('keydown', this.handleKeyDown);
       } else {
         document.removeEventListener('keydown', this.handleKeyDown);
       }
+    }
+
+    // Focus management
+    if (changedProperties.has('visible') && this.visible) {
+      requestAnimationFrame(() => {
+        const focusable = this.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        (focusable as HTMLElement)?.focus();
+      });
     }
   }
 
