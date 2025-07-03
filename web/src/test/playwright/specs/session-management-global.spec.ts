@@ -31,7 +31,13 @@ test.describe('Global Session Management', () => {
       sessionNames.push(sessionName);
 
       // Go back to list after each creation
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'networkidle' });
+
+      // Wait for session cards to be loaded
+      await page.waitForSelector('session-card, .text-dark-text-muted', { 
+        state: 'visible',
+        timeout: TIMEOUTS.SESSION_CREATION 
+      });
 
       // Wait for the session to appear in the list
       await page.waitForFunction(
