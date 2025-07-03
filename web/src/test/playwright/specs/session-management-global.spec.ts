@@ -60,8 +60,8 @@ test.describe('Global Session Management', () => {
         )
         .catch(() => console.log('No session list API call detected'));
 
-      // Give UI time to render after API response
-      await page.waitForTimeout(500);
+      // Give UI time to render after API response and file system to sync
+      await page.waitForTimeout(2000);
 
       // Log the current session count
       const cardCount = await page.locator('session-card').count();

@@ -72,6 +72,9 @@ export class TestSessionManager {
           .catch(() => {
             console.warn('No session list refresh detected, session might not be fully saved');
           });
+
+        // Extra wait for file system to flush - critical for CI environments
+        await this.page.waitForTimeout(1000);
       }
 
       // Track the session
