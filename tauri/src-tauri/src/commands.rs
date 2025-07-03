@@ -1035,6 +1035,30 @@ pub async fn get_permission_stats(
     Ok(stats)
 }
 
+#[tauri::command]
+pub async fn register_permission_monitoring(
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state.permissions_manager.register_for_monitoring().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn unregister_permission_monitoring(
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state.permissions_manager.unregister_from_monitoring().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn show_permission_alert(
+    state: State<'_, AppState>,
+    permission_type: crate::permissions::PermissionType,
+) -> Result<(), String> {
+    state.permissions_manager.show_permission_alert(permission_type).await
+}
+
 // Update Manager Commands
 #[tauri::command]
 pub async fn check_for_updates(
@@ -2539,6 +2563,56 @@ pub async fn clear_git_cache(state: State<'_, AppState>) -> Result<(), String> {
 pub async fn start_git_monitoring(state: State<'_, AppState>, app: tauri::AppHandle) -> Result<(), String> {
     state.git_monitor.start_monitoring(app).await;
     Ok(())
+}
+
+// Dock Manager Commands
+#[tauri::command]
+pub fn set_dock_visible(state: State<'_, AppState>, visible: bool) -> Result<(), String> {
+    super::dock_manager::set_dock_visible(state, visible)
+}
+
+#[tauri::command]
+pub fn get_dock_visible(state: State<'_, AppState>) -> bool {
+    super::dock_manager::get_dock_visible(state)
+}
+
+#[tauri::command]
+pub fn update_dock_visibility(state: State<'_, AppState>) -> Result<(), String> {
+    super::dock_manager::update_dock_visibility(state)
+}
+
+// Status Indicator Commands  
+#[tauri::command]
+pub async fn update_status_indicator(
+    state: State<'_, AppState>,
+    server_running: bool,
+    active_sessions: usize,
+    total_sessions: usize,
+) -> Result<(), String> {
+    super::status_indicator::update_status_indicator(state, server_running, active_sessions, total_sessions).await
+}
+
+#[tauri::command]
+pub async fn flash_activity_indicator(
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    super::status_indicator::flash_activity_indicator(state).await
+}
+
+// Power Manager Commands
+#[tauri::command]
+pub fn prevent_sleep(state: State<'_, AppState>) -> Result<(), String> {
+    super::power_manager::prevent_sleep(state)
+}
+
+#[tauri::command]
+pub fn allow_sleep(state: State<'_, AppState>) -> Result<(), String> {
+    super::power_manager::allow_sleep(state)
+}
+
+#[tauri::command]
+pub fn is_sleep_prevented(state: State<'_, AppState>) -> bool {
+    super::power_manager::is_sleep_prevented(state)
 }
 
 #[cfg(test)]

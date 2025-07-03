@@ -19,6 +19,7 @@ mod backend_manager;
 mod cli_installer;
 mod commands;
 mod debug_features;
+mod dock_manager;
 mod errors;
 mod fs_api;
 mod git_app_launcher;
@@ -32,7 +33,10 @@ mod ngrok;
 mod notification_manager;
 mod permissions;
 mod port_conflict;
+mod power_manager;
+mod process_tracker;
 mod session_monitor;
+mod status_indicator;
 mod settings;
 mod state;
 mod tailscale;
@@ -47,6 +51,8 @@ mod unix_socket_server;
 mod updater;
 mod url_scheme;
 mod welcome;
+mod window_enumerator;
+mod window_matcher;
 mod window_tracker;
 
 use commands::ServerStatus;
@@ -301,6 +307,9 @@ fn main() {
             all_required_permissions_granted,
             open_system_permission_settings,
             get_permission_stats,
+            register_permission_monitoring,
+            unregister_permission_monitoring,
+            show_permission_alert,
             check_for_updates,
             download_update,
             install_update,
@@ -458,8 +467,18 @@ fn main() {
             menubar_popover::hide_menubar_popover,
             menubar_popover::toggle_menubar_popover,
             // Server log commands
-            get_server_logs,
             clear_server_logs,
+            // Dock manager commands
+            set_dock_visible,
+            get_dock_visible,
+            update_dock_visibility,
+            // Status indicator commands
+            update_status_indicator,
+            flash_activity_indicator,
+            // Power manager commands
+            prevent_sleep,
+            allow_sleep,
+            is_sleep_prevented,
         ])
         .setup(|app| {
             // Set app handle in managers
@@ -471,6 +490,9 @@ fn main() {
             let app_handle_for_move = app.handle().clone();
             let app_handle_for_url_scheme = app.handle().clone();
             let app_handle_for_log_collector = app.handle().clone();
+            let app_handle_for_state = app.handle().clone();
+            let app_handle_for_dock = app.handle().clone();
+            let app_handle_for_status = app.handle().clone();
 
             tauri::async_runtime::spawn(async move {
                 let state = state_clone;
@@ -478,6 +500,11 @@ fn main() {
                 state.welcome_manager.set_app_handle(app_handle2).await;
                 state.permissions_manager.set_app_handle(app_handle3).await;
                 state.update_manager.set_app_handle(app_handle4).await;
+                
+                // Set app handles for new managers
+                state.set_app_handle(app_handle_for_state).await;
+                state.dock_manager.on_window_created(&app_handle_for_dock);
+                state.status_indicator.set_app_handle(app_handle_for_status);
 
                 // Initialize log collector
                 log_collector::init_log_collector(app_handle_for_log_collector).await;

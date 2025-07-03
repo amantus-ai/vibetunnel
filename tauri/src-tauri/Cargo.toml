@@ -105,6 +105,9 @@ tauri-plugin-single-instance = "2.2.4"
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
 objc = "0.2"
+core-graphics = "0.24"
+core-foundation = "0.10"
+libc = "0.2"
 
 [profile.release]
 panic = "abort"

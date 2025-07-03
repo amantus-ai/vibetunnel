@@ -2,8 +2,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tauri::AppHandle;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
+use tracing::{debug, info};
 
 /// Permission type enumeration
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -65,6 +67,8 @@ pub struct PermissionsManager {
     permissions: Arc<RwLock<HashMap<PermissionType, PermissionInfo>>>,
     app_handle: Arc<RwLock<Option<AppHandle>>>,
     notification_manager: Option<Arc<crate::notification_manager::NotificationManager>>,
+    monitor_registration_count: Arc<AtomicUsize>,
+    monitor_handle: Arc<RwLock<Option<tokio::task::JoinHandle<()>>>>,
 }
 
 impl Default for PermissionsManager {
@@ -80,6 +84,8 @@ impl PermissionsManager {
             permissions: Arc::new(RwLock::new(Self::initialize_permissions())),
             app_handle: Arc::new(RwLock::new(None)),
             notification_manager: None,
+            monitor_registration_count: Arc::new(AtomicUsize::new(0)),
+            monitor_handle: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -390,6 +396,114 @@ impl PermissionsManager {
         }
     }
 
+    /// Register for permission monitoring (call when a view appears)
+    pub async fn register_for_monitoring(&self) {
+        let prev_count = self.monitor_registration_count.fetch_add(1, Ordering::SeqCst);
+        debug!("Registered for monitoring, count: {}", prev_count + 1);
+
+        if prev_count == 0 {
+            // First registration, start monitoring
+            self.start_monitoring().await;
+        }
+    }
+
+    /// Unregister from permission monitoring (call when a view disappears)
+    pub async fn unregister_from_monitoring(&self) {
+        let prev_count = self.monitor_registration_count.fetch_sub(1, Ordering::SeqCst);
+        debug!("Unregistered from monitoring, count: {}", prev_count.saturating_sub(1));
+
+        if prev_count == 1 {
+            // No more registrations, stop monitoring
+            self.stop_monitoring().await;
+        }
+    }
+
+    /// Start monitoring permissions
+    async fn start_monitoring(&self) {
+        info!("Starting permission monitoring");
+
+        // Initial check
+        let _ = self.check_all_permissions().await;
+
+        // Clone necessary references for the monitoring task
+        let permissions = self.permissions.clone();
+        let app_handle = self.app_handle.clone();
+        let _notification_manager = self.notification_manager.clone();
+
+        // Start monitoring task
+        let handle = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+            
+            loop {
+                interval.tick().await;
+                
+                // Check permissions
+                let mut perms = permissions.write().await;
+                let mut changed = false;
+                
+                for (permission_type, info) in perms.iter_mut() {
+                    let old_status = info.status;
+                    
+                    // Use platform-specific checks
+                    let platform = std::env::consts::OS;
+                    let new_status = match (platform, permission_type) {
+                        #[cfg(target_os = "macos")]
+                        ("macos", PermissionType::ScreenRecording) => {
+                            check_screen_recording_permission_macos_static().await
+                        }
+                        #[cfg(target_os = "macos")]
+                        ("macos", PermissionType::Accessibility) => {
+                            check_accessibility_permission_macos_static().await
+                        }
+                        #[cfg(target_os = "macos")]
+                        ("macos", PermissionType::NotificationAccess) => {
+                            PermissionStatus::Granted // Tauri handles this
+                        }
+                        _ => info.status, // Keep existing status for other permissions
+                    };
+                    
+                    if old_status != new_status {
+                        info.status = new_status;
+                        info.last_checked = Some(Utc::now());
+                        changed = true;
+                    }
+                }
+                
+                // Emit permission change event if any changed
+                if changed {
+                    if let Some(app) = app_handle.read().await.as_ref() {
+                        let _ = app.emit("permissions_updated", ());
+                    }
+                }
+            }
+        });
+
+        *self.monitor_handle.write().await = Some(handle);
+    }
+
+    /// Stop monitoring permissions
+    async fn stop_monitoring(&self) {
+        info!("Stopping permission monitoring");
+        
+        if let Some(handle) = self.monitor_handle.write().await.take() {
+            handle.abort();
+        }
+    }
+
+    /// Show permission alert dialog
+    pub async fn show_permission_alert(&self, permission_type: PermissionType) -> Result<(), String> {
+        let permission_info = self.get_permission_info(permission_type).await
+            .ok_or_else(|| "Permission not found".to_string())?;
+
+        if let Some(app_handle) = self.app_handle.read().await.as_ref() {
+            // Emit event for frontend to show dialog
+            app_handle.emit("show_permission_dialog", &permission_info)
+                .map_err(|e| format!("Failed to emit permission dialog event: {}", e))?;
+        }
+
+        Ok(())
+    }
+
     // Platform-specific implementations
     #[cfg(target_os = "macos")]
     async fn check_screen_recording_permission_macos(&self) -> PermissionStatus {
@@ -590,4 +704,63 @@ pub struct PermissionStats {
     pub required_permissions: usize,
     pub missing_required: usize,
     pub platform: String,
+}
+
+// Static permission check functions for use in monitoring task
+#[cfg(target_os = "macos")]
+async fn check_screen_recording_permission_macos_static() -> PermissionStatus {
+    use std::process::Command;
+
+    let output = Command::new("osascript")
+        .arg("-e")
+        .arg("tell application \"System Events\" to get properties")
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => PermissionStatus::Granted,
+        _ => PermissionStatus::NotDetermined,
+    }
+}
+
+// Add enhanced screen recording check for macOS
+#[cfg(target_os = "macos")]
+fn check_screen_recording_with_cg() -> PermissionStatus {
+    use core_graphics::display::CGDisplay;
+    
+    // Try to get display information - this requires screen recording permission
+    match CGDisplay::active_displays() {
+        Ok(displays) => {
+            if displays.is_empty() {
+                // No displays found could mean no permission
+                PermissionStatus::NotDetermined
+            } else {
+                PermissionStatus::Granted
+            }
+        }
+        Err(_) => PermissionStatus::Denied,
+    }
+}
+
+// Tauri commands for enhanced permission functionality are in commands.rs
+
+#[cfg(target_os = "macos")]
+async fn check_accessibility_permission_macos_static() -> PermissionStatus {
+    use std::process::Command;
+
+    let output = Command::new("osascript")
+        .arg("-e")
+        .arg("tell application \"System Events\" to get UI elements enabled")
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            let result = String::from_utf8_lossy(&output.stdout);
+            if result.trim() == "true" {
+                PermissionStatus::Granted
+            } else {
+                PermissionStatus::Denied
+            }
+        }
+        _ => PermissionStatus::NotDetermined,
+    }
 }

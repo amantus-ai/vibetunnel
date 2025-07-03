@@ -1,3 +1,5 @@
+use crate::window_enumerator::WindowEnumerator;
+use crate::window_matcher::{SessionInfo as MatcherSessionInfo, WindowMatcher};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -28,12 +30,15 @@ pub struct WindowBounds {
 pub struct WindowTracker {
     // Maps session IDs to their terminal window information
     session_window_map: Arc<RwLock<HashMap<String, WindowInfo>>>,
+    // Window matcher for advanced window finding
+    window_matcher: Arc<RwLock<WindowMatcher>>,
 }
 
 impl WindowTracker {
     pub fn new() -> Self {
         Self {
             session_window_map: Arc::new(RwLock::new(HashMap::new())),
+            window_matcher: Arc::new(RwLock::new(WindowMatcher::new())),
         }
     }
 
@@ -146,46 +151,102 @@ impl WindowTracker {
         }
     }
 
-    // Platform-specific implementations
-
-    #[cfg(target_os = "macos")]
+    // Advanced window finding using the new components
     async fn find_window(
         &self,
         terminal_app: &str,
         session_id: &str,
-        _tab_reference: &Option<String>,
-        _tab_id: &Option<String>,
+        tab_reference: &Option<String>,
+        tab_id: &Option<String>,
     ) -> Option<WindowInfo> {
-        // Use macOS Core Graphics API to find windows
-        // This is a simplified implementation - full version would use objc bindings
-        let windows = self.get_all_terminal_windows_macos().await;
+        // Get all terminal windows using WindowEnumerator
+        let terminal_windows = WindowEnumerator::get_all_terminal_windows();
         
-        for window in windows {
-            if window.terminal_app == terminal_app {
-                // Check if window title contains session ID
-                if let Some(title) = &window.title {
-                    if title.contains(session_id) {
-                        return Some(window);
-                    }
-                }
-            }
+        // For testing, also try to get session info from API if available
+        let session_info = None; // In a real implementation, this would query the server
+        
+        // Use WindowMatcher to find the matching window
+        let mut matcher = self.window_matcher.write().await;
+        
+        if let Some(matched_window) = matcher.find_window(
+            terminal_app,
+            session_id,
+            session_info,
+            tab_reference.as_deref(),
+            tab_id.as_deref(),
+            &terminal_windows,
+        ) {
+            // Convert from EnumeratedWindowInfo to our WindowInfo
+            Some(WindowInfo {
+                window_id: matched_window.window_id as u32,
+                owner_pid: matched_window.owner_pid,
+                terminal_app: matched_window.terminal_app.clone(),
+                session_id: session_id.to_string(),
+                created_at: matched_window.created_at.to_rfc3339(),
+                tab_reference: matched_window.tab_reference.clone(),
+                tab_id: matched_window.tab_id.clone(),
+                bounds: matched_window.bounds.as_ref().map(|b| WindowBounds {
+                    x: b.x,
+                    y: b.y,
+                    width: b.width,
+                    height: b.height,
+                }),
+                title: matched_window.title.clone(),
+            })
+        } else {
+            None
         }
+    }
+
+    async fn find_window_for_session(&self, session_id: &str) -> Option<WindowInfo> {
+        // Get all terminal windows
+        let terminal_windows = WindowEnumerator::get_all_terminal_windows();
         
-        None
+        // Create a minimal session info for matching
+        let session_info = MatcherSessionInfo {
+            id: session_id.to_string(),
+            pid: None, // Would be filled from actual session data
+            working_dir: String::new(),
+            name: None,
+            activity_status: None,
+        };
+        
+        // Use WindowMatcher to find the window
+        let mut matcher = self.window_matcher.write().await;
+        
+        if let Some(matched_window) = matcher.find_window_for_session(
+            session_id,
+            &session_info,
+            &terminal_windows,
+        ) {
+            // Convert from EnumeratedWindowInfo to our WindowInfo
+            Some(WindowInfo {
+                window_id: matched_window.window_id as u32,
+                owner_pid: matched_window.owner_pid,
+                terminal_app: matched_window.terminal_app.clone(),
+                session_id: session_id.to_string(),
+                created_at: matched_window.created_at.to_rfc3339(),
+                tab_reference: matched_window.tab_reference.clone(),
+                tab_id: matched_window.tab_id.clone(),
+                bounds: matched_window.bounds.as_ref().map(|b| WindowBounds {
+                    x: b.x,
+                    y: b.y,
+                    width: b.width,
+                    height: b.height,
+                }),
+                title: matched_window.title.clone(),
+            })
+        } else {
+            None
+        }
     }
 
-    #[cfg(target_os = "macos")]
-    async fn get_all_terminal_windows_macos(&self) -> Vec<WindowInfo> {
-        // This would use Core Graphics APIs via objc bindings
-        // For now, return empty as a placeholder
-        Vec::new()
-    }
-
+    // Platform-specific window focusing implementations
     #[cfg(target_os = "macos")]
     async fn focus_window_macos(&self, window_info: &WindowInfo) -> Result<(), String> {
-        // Use AppleScript or Accessibility APIs to focus window
         use std::process::Command;
         
+        // First activate the application
         let script = format!(
             r#"tell application "{}" to activate"#,
             window_info.terminal_app
@@ -202,78 +263,79 @@ impl WindowTracker {
             return Err(format!("AppleScript failed: {}", error));
         }
         
+        // For Terminal.app, also try to focus specific tab if we have tab reference
+        if window_info.terminal_app == "Terminal" {
+            if let Some(tab_ref) = &window_info.tab_reference {
+                let focus_script = format!(
+                    r#"tell application "Terminal"
+                        set selected of {} to true
+                        activate
+                    end tell"#,
+                    tab_ref
+                );
+                
+                let _ = Command::new("osascript")
+                    .arg("-e")
+                    .arg(&focus_script)
+                    .output();
+            }
+        }
+        
         Ok(())
     }
 
     #[cfg(target_os = "windows")]
-    async fn find_window(
-        &self,
-        terminal_app: &str,
-        session_id: &str,
-        _tab_reference: &Option<String>,
-        _tab_id: &Option<String>,
-    ) -> Option<WindowInfo> {
-        // Use Windows API to find windows
-        // This would require winapi crate
-        None
-    }
-
-    #[cfg(target_os = "windows")]
-    async fn focus_window_windows(&self, _window_info: &WindowInfo) -> Result<(), String> {
+    async fn focus_window_windows(&self, window_info: &WindowInfo) -> Result<(), String> {
         // Use Windows API to focus window
-        Err("Window focusing not implemented for Windows".to_string())
+        #[cfg(windows)]
+        {
+            use windows::Win32::Foundation::HWND;
+            use windows::Win32::UI::WindowsAndMessaging::{SetForegroundWindow, ShowWindow, SW_RESTORE};
+            
+            let hwnd = HWND(window_info.window_id as isize);
+            unsafe {
+                ShowWindow(hwnd, SW_RESTORE);
+                SetForegroundWindow(hwnd);
+            }
+            Ok(())
+        }
+        #[cfg(not(windows))]
+        {
+            Err("Window focusing not implemented for Windows".to_string())
+        }
     }
 
     #[cfg(target_os = "linux")]
-    async fn find_window(
-        &self,
-        terminal_app: &str,
-        session_id: &str,
-        _tab_reference: &Option<String>,
-        _tab_id: &Option<String>,
-    ) -> Option<WindowInfo> {
-        // Use X11 or Wayland APIs to find windows
-        None
-    }
-
-    #[cfg(target_os = "linux")]
-    async fn focus_window_linux(&self, _window_info: &WindowInfo) -> Result<(), String> {
-        // Use X11/Wayland APIs to focus window
-        Err("Window focusing not implemented for Linux".to_string())
-    }
-
-    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-    async fn find_window(
-        &self,
-        _terminal_app: &str,
-        _session_id: &str,
-        _tab_reference: &Option<String>,
-        _tab_id: &Option<String>,
-    ) -> Option<WindowInfo> {
-        None
-    }
-
-    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-    async fn focus_window(&self, _session_id: &str) -> Result<(), String> {
-        Err("Window focusing not supported on this platform".to_string())
-    }
-
-    async fn find_window_for_session(&self, session_id: &str) -> Option<WindowInfo> {
-        // Try to find a window that contains this session
-        let windows = if cfg!(target_os = "macos") {
-            self.get_all_terminal_windows_macos().await
-        } else {
-            Vec::new()
-        };
-
-        for window in windows {
-            if let Some(title) = &window.title {
-                if title.contains(session_id) {
-                    return Some(window);
+    async fn focus_window_linux(&self, window_info: &WindowInfo) -> Result<(), String> {
+        use std::process::Command;
+        
+        // Try using wmctrl to focus the window
+        let output = Command::new("wmctrl")
+            .arg("-i")
+            .arg("-a")
+            .arg(format!("0x{:x}", window_info.window_id))
+            .output();
+            
+        match output {
+            Ok(result) => {
+                if result.status.success() {
+                    Ok(())
+                } else {
+                    Err("wmctrl failed to focus window".to_string())
+                }
+            }
+            Err(_) => {
+                // Try xdotool as fallback
+                let xdotool_output = Command::new("xdotool")
+                    .arg("windowactivate")
+                    .arg(window_info.window_id.to_string())
+                    .output();
+                    
+                match xdotool_output {
+                    Ok(result) if result.status.success() => Ok(()),
+                    _ => Err("Failed to focus window on Linux".to_string())
                 }
             }
         }
-
-        None
     }
 }

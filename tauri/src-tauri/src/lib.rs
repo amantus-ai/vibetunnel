@@ -9,6 +9,7 @@ pub mod backend_manager;
 pub mod cli_installer;
 pub mod commands;
 pub mod debug_features;
+pub mod dock_manager;
 pub mod errors;
 pub mod fs_api;
 pub mod git_app_launcher;
@@ -22,6 +23,9 @@ pub mod ngrok;
 pub mod notification_manager;
 pub mod permissions;
 pub mod port_conflict;
+pub mod power_manager;
+pub mod process_tracker;
+pub mod status_indicator;
 pub mod session_monitor;
 pub mod settings;
 pub mod state;
@@ -37,6 +41,8 @@ pub mod unix_socket_server;
 pub mod updater;
 pub mod url_scheme;
 pub mod welcome;
+pub mod window_enumerator;
+pub mod window_matcher;
 pub mod window_tracker;
 
 #[cfg(mobile)]

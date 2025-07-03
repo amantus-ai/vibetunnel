@@ -1,0 +1,25 @@
+# Dockerfile for building Windows binaries
+FROM rust:1.75-bullseye
+
+# Install Windows cross-compilation tools
+RUN apt-get update && apt-get install -y \
+    mingw-w64 \
+    nsis \
+    wine64 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+# Add Windows target
+RUN rustup target add x86_64-pc-windows-gnu
+
+# Set working directory
+WORKDIR /app
+
+# Copy the entire project
+COPY . .
+
+# Build the Windows binary
+CMD ["cargo", "tauri", "build", "--target", "x86_64-pc-windows-gnu"]
