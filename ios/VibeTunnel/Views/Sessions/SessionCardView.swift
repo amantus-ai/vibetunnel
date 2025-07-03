@@ -11,8 +11,6 @@ struct SessionCardView: View {
     let onCleanup: () -> Void
 
     @State private var isPressed = false
-    @State private var terminalSnapshot: TerminalSnapshot?
-    @State private var isLoadingSnapshot = false
     @State private var isKilling = false
     @State private var opacity: Double = 1.0
     @State private var scale: CGFloat = 1.0
@@ -80,23 +78,23 @@ struct SessionCardView: View {
                                 if let bufferSnapshot = livePreview?.latestSnapshot {
                                     CompactTerminalPreview(snapshot: bufferSnapshot)
                                         .animation(.easeInOut(duration: 0.2), value: bufferSnapshot.cursorY)
-                                } else if let snapshot = terminalSnapshot, !snapshot.cleanOutputPreview.isEmpty {
-                                    // Show static snapshot as fallback
-                                    staticSnapshotView(snapshot)
                                 } else {
                                     // Show command and working directory info as fallback
                                     commandInfoView
                                 }
                             } else {
-                                // For exited sessions, show last output if available
-                                if let snapshot = terminalSnapshot, !snapshot.cleanOutputPreview.isEmpty {
-                                    exitedSessionView(snapshot)
-                                } else {
+                                // For exited sessions, show session info
+                                VStack(alignment: .leading, spacing: 4) {
                                     Text("Session exited")
                                         .font(Theme.Typography.terminalSystem(size: 12))
-                                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
-                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                        .foregroundColor(Theme.Colors.errorAccent)
+                                    
+                                    Text("Exit code: \(session.exitCode ?? 0)")
+                                        .font(Theme.Typography.terminalSystem(size: 10))
+                                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
                                 }
+                                .padding(Theme.Spacing.small)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                             }
                         }
                     )
@@ -186,30 +184,8 @@ struct SessionCardView: View {
                 }
             }
         }
-        .onAppear {
-            loadSnapshot()
-        }
     }
 
-    private func loadSnapshot() {
-        guard terminalSnapshot == nil else { return }
-
-        isLoadingSnapshot = true
-        Task {
-            do {
-                let snapshot = try await APIClient.shared.getSessionSnapshot(sessionId: session.id)
-                await MainActor.run {
-                    self.terminalSnapshot = snapshot
-                    self.isLoadingSnapshot = false
-                }
-            } catch {
-                // Silently fail - we'll just show the command/cwd fallback
-                await MainActor.run {
-                    self.isLoadingSnapshot = false
-                }
-            }
-        }
-    }
 
     private func animateKill() {
         guard !isKilling else { return }
@@ -280,70 +256,8 @@ struct SessionCardView: View {
                     UIPasteboard.general.string = session.workingDir
                     HapticFeedback.notification(.success)
                 }
-
-            if isLoadingSnapshot {
-                HStack {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.primaryAccent))
-                        .scaleEffect(0.8)
-                    Text("Connecting...")
-                        .font(Theme.Typography.terminalSystem(size: 10))
-                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
-                }
-                .padding(.top, Theme.Spacing.extraSmall)
-            }
         }
         .padding(Theme.Spacing.small)
     }
 
-    @ViewBuilder
-    private func staticSnapshotView(_ snapshot: TerminalSnapshot) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 4) {
-                // ESC indicator if present
-                if snapshot.cleanOutputPreview.lowercased().contains("esc to interrupt") {
-                    HStack(spacing: 4) {
-                        Image(systemName: "escape")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(Theme.Colors.warningAccent)
-                        Text("Press ESC to interrupt")
-                            .font(Theme.Typography.terminalSystem(size: 10))
-                            .foregroundColor(Theme.Colors.warningAccent)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Theme.Colors.warningAccent.opacity(0.2))
-                    )
-                }
-
-                Text(snapshot.cleanOutputPreview)
-                    .font(Theme.Typography.terminalSystem(size: 10))
-                    .foregroundColor(Theme.Colors.terminalForeground.opacity(0.8))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-            }
-        }
-        .padding(Theme.Spacing.small)
-    }
-
-    @ViewBuilder
-    private func exitedSessionView(_ snapshot: TerminalSnapshot) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Session exited")
-                    .font(Theme.Typography.terminalSystem(size: 10))
-                    .foregroundColor(Theme.Colors.errorAccent)
-                Text(snapshot.cleanOutputPreview)
-                    .font(Theme.Typography.terminalSystem(size: 10))
-                    .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-            }
-        }
-        .padding(Theme.Spacing.small)
-    }
 }

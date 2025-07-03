@@ -105,7 +105,7 @@ class BufferWebSocketClient: NSObject {
             return
         }
 
-        logger.info("Connecting to \(wsURL)")
+        logger.info("📡 [BufferWebSocketClient] Connecting to \(wsURL)")
 
         // Disconnect existing WebSocket if any
         webSocket?.disconnect(with: .goingAway, reason: nil)
@@ -120,6 +120,9 @@ class BufferWebSocketClient: NSObject {
         // Add authentication header from authentication service
         if let authHeaders = authenticationService?.getAuthHeader() {
             headers.merge(authHeaders) { _, new in new }
+            logger.debug("📡 [BufferWebSocketClient] Added auth headers: \(authHeaders.keys.joined(separator: ", "))")
+        } else {
+            logger.debug("📡 [BufferWebSocketClient] No auth headers available")
         }
 
         // Connect
@@ -127,7 +130,7 @@ class BufferWebSocketClient: NSObject {
             do {
                 try await webSocket?.connect(to: wsURL, with: headers)
             } catch {
-                logger.error("Connection failed: \(error)")
+                logger.error("❌ [BufferWebSocketClient] Connection failed: \(error)")
                 connectionError = error
                 isConnecting = false
                 scheduleReconnect()
@@ -744,7 +747,10 @@ extension BufferWebSocketClient: WebSocketDelegate {
     }
 
     func webSocket(_ webSocket: WebSocketProtocol, didFailWithError error: Error) {
-        logger.error("Error: \(error)")
+        logger.error("❌ [BufferWebSocketClient] WebSocket error: \(error)")
+        if let urlError = error as? URLError {
+            logger.error("❌ [BufferWebSocketClient] URLError code: \(urlError.code), description: \(urlError.localizedDescription)")
+        }
         connectionError = error
         handleDisconnection()
     }
