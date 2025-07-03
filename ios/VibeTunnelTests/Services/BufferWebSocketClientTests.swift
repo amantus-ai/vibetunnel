@@ -120,8 +120,8 @@ final class BufferWebSocketClientTests {
         let message = TestFixtures.terminalEvent(type: type)
         mockWebSocket.simulateMessage(WebSocketMessage.string(message))
         
-        // Wait for processing
-        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+        // Wait for processing - increased to allow async response to be sent
+        try await Task.sleep(nanoseconds: 200_000_000) // 200ms
         
         // Assert
         let sentMessages = mockWebSocket.sentJSONMessages()

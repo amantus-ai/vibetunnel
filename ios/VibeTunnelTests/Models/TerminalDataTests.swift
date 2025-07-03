@@ -76,7 +76,7 @@ struct TerminalDataTests {
 
         if case let .output(timestamp, data) = event {
             #expect(timestamp == 1.5)
-            #expect(data == "Hello, world!\\r\\n")
+            #expect(data == "Hello, world!\r\n")
         } else {
             Issue.record("Expected output event but got \(String(describing: event))")
         }
