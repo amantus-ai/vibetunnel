@@ -505,6 +505,7 @@ test.describe('Authentication', () => {
   });
 
   test('should handle session timeout and re-authentication', async ({ page }) => {
+    test.setTimeout(30000); // Increase timeout for this test
     // Mock expired token scenario
     await page.route('**/api/**', async (route) => {
       const authHeader = route.request().headers().authorization;

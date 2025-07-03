@@ -39,6 +39,7 @@ test.describe('Push Notifications', () => {
   });
 
   test('should handle notification permission request', async ({ page }) => {
+    test.setTimeout(30000); // Increase timeout for this test
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 

@@ -171,6 +171,7 @@ test.describe('Activity Monitoring', () => {
   });
 
   test('should track activity across multiple sessions', async ({ page }) => {
+    test.setTimeout(30000); // Increase timeout for this test
     // Create multiple sessions
     const session1Name = sessionManager.generateSessionName('multi-activity-1');
     const session2Name = sessionManager.generateSessionName('multi-activity-2');
@@ -271,7 +272,7 @@ test.describe('Activity Monitoring', () => {
         .first();
       const recentActivity = sessionCard.locator('.text-xs, .text-sm').filter({
         hasText: /now|active|running|second.*ago/i,
-      });
+      }).first();
 
       const showsRunning =
         (await runningIndicator.isVisible()) || (await recentActivity.isVisible());

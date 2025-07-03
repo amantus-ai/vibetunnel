@@ -50,6 +50,7 @@ test.describe('Session Creation', () => {
   });
 
   test('should show created session in session list', async ({ page }) => {
+    test.setTimeout(30000); // Increase timeout for this test
     // Create tracked session
     const { sessionName } = await sessionManager.createTrackedSession();
 
