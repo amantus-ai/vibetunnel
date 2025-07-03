@@ -22,7 +22,7 @@ struct GitRepositoryRow: View {
     }
 
     private var branchInfo: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 1) {
             Image(systemName: "arrow.branch")
                 .font(.system(size: 9))
                 .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
