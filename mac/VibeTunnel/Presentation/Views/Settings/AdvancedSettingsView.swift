@@ -25,6 +25,9 @@ struct AdvancedSettingsView: View {
                 // Terminal preference section
                 TerminalPreferenceSection()
 
+                // Git preference section
+                GitPreferenceSection()
+
                 // Integration section
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
@@ -328,5 +331,82 @@ private struct TerminalPreferenceSection: View {
         } message: {
             Text(errorMessage)
         }
+    }
+}
+
+// MARK: - Git Preference Section
+
+private struct GitPreferenceSection: View {
+    @AppStorage("preferredGitApp")
+    private var preferredGitApp: String?
+    @State private var gitAppLauncher = GitAppLauncher.shared
+    @State private var showingError = false
+    @State private var errorMessage = ""
+
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Preferred Git App")
+                    Spacer()
+                    Picker("", selection: gitAppBinding) {
+                        Text("System Default").tag(nil as String?)
+                        ForEach(GitApp.installed, id: \.rawValue) { gitApp in
+                            HStack {
+                                if let icon = gitApp.appIcon {
+                                    Image(nsImage: icon.resized(to: NSSize(width: 16, height: 16)))
+                                }
+                                Text(gitApp.displayName)
+                            }
+                            .tag(gitApp.rawValue as String?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
+                Text("Select which application to use when opening Git repositories")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                // Test button
+                HStack {
+                    Text("Test Git App")
+                    Spacer()
+                    Button("Test Open Repository") {
+                        // Open the current working directory if it's a git repo
+                        let currentPath = FileManager.default.currentDirectoryPath
+                        gitAppLauncher.openRepository(at: currentPath)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                Text("Opens the current directory in your selected Git app")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Git")
+                .font(.headline)
+        } footer: {
+            Text(
+                "VibeTunnel will use this Git app when opening repositories from the menu bar."
+            )
+            .font(.caption)
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
+        }
+        .alert("Git App Launch Failed", isPresented: $showingError) {
+            Button("OK") {}
+        } message: {
+            Text(errorMessage)
+        }
+    }
+
+    private var gitAppBinding: Binding<String?> {
+        Binding(
+            get: { preferredGitApp },
+            set: { newValue in
+                preferredGitApp = newValue
+            }
+        )
     }
 }

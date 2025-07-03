@@ -621,10 +621,10 @@ final class TerminalLauncher {
             tell application "Terminal"
                 activate
                 set newTab to do script "\(config.appleScriptEscapedCommand)"
-                
+
                 -- Set custom title that includes session ID for easier matching
                 set custom title of newTab to "Session \(sessionId)"
-                
+
                 -- newTab is already a tab reference, get its window's ID
                 set tabWindows to windows whose tabs contains newTab
                 if (count of tabWindows) > 0 then

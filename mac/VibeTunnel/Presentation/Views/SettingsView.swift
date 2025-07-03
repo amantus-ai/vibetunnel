@@ -13,11 +13,11 @@ struct SettingsView: View {
 
     /// Define ideal sizes for each tab
     private let tabSizes: [SettingsTab: CGSize] = [
-        .general: CGSize(width: 500, height: 570),
-        .dashboard: CGSize(width: 500, height: 570),
-        .advanced: CGSize(width: 500, height: 570),
-        .debug: CGSize(width: 500, height: 570),
-        .about: CGSize(width: 500, height: 570)
+        .general: CGSize(width: 500, height: 620),
+        .dashboard: CGSize(width: 500, height: 620),
+        .advanced: CGSize(width: 500, height: 620),
+        .debug: CGSize(width: 500, height: 620),
+        .about: CGSize(width: 500, height: 620)
     ]
 
     var body: some View {
