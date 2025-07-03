@@ -32,7 +32,6 @@ struct GitRepositoryRow: View {
                 .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .frame(maxWidth: 60, alignment: .leading)
         }
     }
 
@@ -96,7 +95,7 @@ struct GitRepositoryRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 2) {
             // Branch info
             branchInfo
 
@@ -104,9 +103,9 @@ struct GitRepositoryRow: View {
                 Text("•")
                     .font(.system(size: 8))
                     .foregroundColor(.secondary.opacity(0.5))
+                
+                changeIndicators
             }
-
-            changeIndicators
             
             Spacer()
         }
