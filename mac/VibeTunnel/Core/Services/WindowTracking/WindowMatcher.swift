@@ -244,7 +244,7 @@ final class WindowMatcher {
     }
 
     /// Find matching tab using accessibility APIs
-    func findMatchingTab(tabs: [AXUIElement], sessionInfo: ServerSessionInfo?) -> AXUIElement? {
+    func findMatchingTab(tabs: [AXElement], sessionInfo: ServerSessionInfo?) -> AXElement? {
         guard let sessionInfo else { return nil }
 
         let workingDir = sessionInfo.workingDir
@@ -260,10 +260,7 @@ final class WindowMatcher {
         logger.debug("  Activity: \(activityStatus ?? "none")")
 
         for (index, tab) in tabs.enumerated() {
-            var titleValue: CFTypeRef?
-            if AXUIElementCopyAttributeValue(tab, kAXTitleAttribute as CFString, &titleValue) == .success,
-               let title = titleValue as? String
-            {
+            if let title = tab.title {
                 logger.debug("Tab \(index) title: \(title)")
 
                 // Check for session ID match first (most precise)

@@ -192,6 +192,35 @@ export class SessionView extends LitElement {
         if (this.session && sessionId === this.session.id) {
           this.session = { ...this.session, status: 'exited' };
           this.requestUpdate();
+
+          // Check if this window should auto-close
+          // Only attempt to close if we're on a session-specific URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const sessionParam = urlParams.get('session');
+
+          if (sessionParam === sessionId) {
+            // This window was opened specifically for this session
+            logger.log(`Session ${sessionId} exited, attempting to close window`);
+
+            // Try to close the window
+            // This will work for:
+            // 1. Windows opened via window.open() from JavaScript
+            // 2. Windows where the user has granted permission
+            // It won't work for regular browser tabs, which is fine
+            setTimeout(() => {
+              try {
+                window.close();
+
+                // If window.close() didn't work (we're still here after 100ms),
+                // show a message to the user
+                setTimeout(() => {
+                  logger.log('Window close failed - likely opened as a regular tab');
+                }, 100);
+              } catch (e) {
+                logger.warn('Failed to close window:', e);
+              }
+            }, 500); // Give user time to see the "exited" status
+          }
         }
       },
       (session: Session) => {

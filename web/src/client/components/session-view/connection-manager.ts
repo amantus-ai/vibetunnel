@@ -17,6 +17,7 @@ export interface StreamConnection {
   eventSource: EventSource;
   disconnect: () => void;
   errorHandler?: EventListener;
+  sessionExitHandler?: EventListener;
 }
 
 export class ConnectionManager {
@@ -72,6 +73,20 @@ export class ConnectionManager {
     // Use CastConverter to connect terminal to stream with reconnection tracking
     const connection = CastConverter.connectToStream(this.terminal, streamUrl);
 
+    // Listen for session-exit events from the terminal
+    const handleSessionExit = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const sessionId = customEvent.detail?.sessionId || this.session?.id;
+
+      logger.log(`Received session-exit event for session ${sessionId}`);
+
+      if (sessionId) {
+        this.onSessionExit(sessionId);
+      }
+    };
+
+    this.terminal.addEventListener('session-exit', handleSessionExit);
+
     // Wrap the connection to track reconnections
     const originalEventSource = connection.eventSource;
     let lastErrorTime = 0;
@@ -114,16 +129,23 @@ export class ConnectionManager {
     // Override the error handler
     originalEventSource.addEventListener('error', handleError);
 
-    // Store the connection with error handler reference
+    // Store the connection with error handler reference and session-exit handler
     this.streamConnection = {
       ...connection,
       errorHandler: handleError as EventListener,
+      sessionExitHandler: handleSessionExit as EventListener,
     };
   }
 
   cleanupStreamConnection(): void {
     if (this.streamConnection) {
       logger.log('Cleaning up stream connection');
+
+      // Remove session-exit event listener if it exists
+      if (this.streamConnection.sessionExitHandler && this.terminal) {
+        this.terminal.removeEventListener('session-exit', this.streamConnection.sessionExitHandler);
+      }
+
       this.streamConnection.disconnect();
       this.streamConnection = null;
     }

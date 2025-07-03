@@ -70,6 +70,7 @@ export interface PtySession {
   // Optional fields for resource cleanup
   inputSocketServer?: net.Server;
   stdoutQueue?: WriteQueue;
+  inputQueue?: WriteQueue;
   // Terminal title mode
   titleMode?: TitleMode;
   // Track current working directory for title updates

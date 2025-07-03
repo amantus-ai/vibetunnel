@@ -438,6 +438,10 @@ export class PtyManager extends EventEmitter {
       session.stdoutQueue = stdoutQueue;
     }
 
+    // Create write queue for input to prevent race conditions
+    const inputQueue = new WriteQueue();
+    session.inputQueue = inputQueue;
+
     // Setup activity detector for dynamic mode
     if (session.titleMode === TitleMode.DYNAMIC) {
       session.activityDetector = new ActivityDetector(session.sessionInfo.command);
@@ -691,11 +695,15 @@ export class PtyManager extends EventEmitter {
       switch (type) {
         case MessageType.STDIN_DATA: {
           const text = data as string;
-          if (session.ptyProcess) {
-            // Write input first for fastest response
-            session.ptyProcess.write(text);
-            // Then record it (non-blocking)
-            session.asciinemaWriter?.writeInput(text);
+          if (session.ptyProcess && session.inputQueue) {
+            // Queue input write to prevent race conditions
+            session.inputQueue.enqueue(() => {
+              if (session.ptyProcess) {
+                session.ptyProcess.write(text);
+              }
+              // Record it (non-blocking)
+              session.asciinemaWriter?.writeInput(text);
+            });
           }
           break;
         }
@@ -793,26 +801,31 @@ export class PtyManager extends EventEmitter {
 
       // If we have an in-memory session with active PTY, use it
       const memorySession = this.sessions.get(sessionId);
-      if (memorySession?.ptyProcess) {
-        memorySession.ptyProcess.write(dataToSend);
-        memorySession.asciinemaWriter?.writeInput(dataToSend);
-
-        // Track directory changes for title modes that need it
-        if (
-          (memorySession.titleMode === TitleMode.STATIC ||
-            memorySession.titleMode === TitleMode.DYNAMIC) &&
-          input.text
-        ) {
-          const newDir = extractCdDirectory(
-            input.text,
-            memorySession.currentWorkingDir || memorySession.sessionInfo.workingDir
-          );
-          if (newDir) {
-            memorySession.currentWorkingDir = newDir;
-            this.markTitleUpdateNeeded(memorySession);
-            logger.debug(`Session ${sessionId} changed directory to: ${newDir}`);
+      if (memorySession?.ptyProcess && memorySession.inputQueue) {
+        // Queue input write to prevent race conditions
+        memorySession.inputQueue.enqueue(() => {
+          if (memorySession.ptyProcess) {
+            memorySession.ptyProcess.write(dataToSend);
           }
-        }
+          memorySession.asciinemaWriter?.writeInput(dataToSend);
+
+          // Track directory changes for title modes that need it
+          if (
+            (memorySession.titleMode === TitleMode.STATIC ||
+              memorySession.titleMode === TitleMode.DYNAMIC) &&
+            input.text
+          ) {
+            const newDir = extractCdDirectory(
+              input.text,
+              memorySession.currentWorkingDir || memorySession.sessionInfo.workingDir
+            );
+            if (newDir) {
+              memorySession.currentWorkingDir = newDir;
+              this.markTitleUpdateNeeded(memorySession);
+              logger.debug(`Session ${sessionId} changed directory to: ${newDir}`);
+            }
+          }
+        });
 
         return; // Important: return here to avoid socket path
       } else {

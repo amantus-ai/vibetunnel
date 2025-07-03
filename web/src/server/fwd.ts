@@ -77,7 +77,7 @@ export async function startVibeTunnelForward(args: string[]) {
     process.exit(0);
   }
 
-  logger.log(chalk.blue(`VibeTunnel Forward v${VERSION}`) + chalk.gray(` (${BUILD_DATE})`));
+  logger.debug(chalk.blue(`VibeTunnel Forward v${VERSION}`) + chalk.gray(` (${BUILD_DATE})`));
   logger.debug(`Full command: ${args.join(' ')}`);
 
   // Parse command line arguments
@@ -195,7 +195,7 @@ export async function startVibeTunnelForward(args: string[]) {
           const sent = socketClient.updateTitle(sanitizedTitle);
 
           if (sent) {
-            logger.log(`Session title updated via IPC to: ${sanitizedTitle}`);
+            logger.debug(`Session title updated via IPC to: ${sanitizedTitle}`);
             // IPC update succeeded, server will handle the file update
             socketClient.disconnect();
             closeLogger();

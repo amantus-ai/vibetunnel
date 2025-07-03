@@ -11,6 +11,7 @@ final class WindowFocuser {
     )
 
     private let windowMatcher = WindowMatcher()
+    private let highlightEffect = WindowHighlightEffect()
 
     /// Focus a window based on terminal type
     func focusWindow(_ windowInfo: WindowEnumerator.WindowInfo) {
@@ -249,6 +250,9 @@ final class WindowFocuser {
             logger.info("Single window found for PID \(windowInfo.ownerPID), focusing it directly")
             let window = windows[0]
             
+            // Show highlight effect
+            highlightEffect.highlightWindow(window)
+            
             // Focus the window
             AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
             AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
@@ -309,6 +313,9 @@ final class WindowFocuser {
         
         if let best = bestMatch {
             logger.info("Focusing best match window with score \(best.score) for PID \(windowInfo.ownerPID)")
+            
+            // Show highlight effect
+            highlightEffect.highlightWindow(best.window)
             
             // Focus the window
             AXUIElementSetAttributeValue(best.window, kAXMainAttribute as CFString, true as CFTypeRef)
@@ -465,6 +472,9 @@ final class WindowFocuser {
                         // Found the tab! Focus the window and select the tab
                         logger.info("Found matching tab in window \(index)")
 
+                        // Show highlight effect
+                        highlightEffect.highlightWindow(window)
+
                         // Make window main and focused
                         AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
                         AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
@@ -491,6 +501,9 @@ final class WindowFocuser {
                         // Found the tab! Focus the window and select the tab
                         logger.info("Found matching tab in window \(index)")
 
+                        // Show highlight effect
+                        highlightEffect.highlightWindow(window)
+
                         // Make window main and focused
                         AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
                         AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
@@ -507,6 +520,9 @@ final class WindowFocuser {
         // After checking all windows, use the best match if we found one
         if let bestMatch = bestMatchWindow {
             logger.info("Using best match window with score \(bestMatch.score) for window ID \(windowInfo.windowID)")
+
+            // Show highlight effect
+            highlightEffect.highlightWindow(bestMatch.window)
 
             // Focus the best matching window
             AXUIElementSetAttributeValue(bestMatch.window, kAXMainAttribute as CFString, true as CFTypeRef)
