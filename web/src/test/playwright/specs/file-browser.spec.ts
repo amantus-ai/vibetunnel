@@ -82,7 +82,9 @@ test.describe('File Browser', () => {
 
     // Verify file list is populated
     const fileItems = page.locator('.p-3.hover\\:bg-dark-bg-lighter');
-    await expect(fileItems).toHaveCount(await fileItems.count());
+    // Check that we have at least some files/directories visible
+    const itemCount = await fileItems.count();
+    expect(itemCount).toBeGreaterThan(0);
 
     // Verify icons are present
     await expect(page.locator('svg.w-5.h-5').first()).toBeVisible();
@@ -279,7 +281,8 @@ test.describe('File Browser', () => {
       );
       if (await gitBadges.first().isVisible()) {
         // Verify git status indicators are present
-        await expect(gitBadges).toHaveCount(await gitBadges.count());
+        const badgeCount = await gitBadges.count();
+        expect(badgeCount).toBeGreaterThan(0);
       }
     }
   });

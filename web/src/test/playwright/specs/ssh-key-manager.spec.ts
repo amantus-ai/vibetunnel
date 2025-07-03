@@ -100,7 +100,9 @@ test.describe('SSH Key Manager', () => {
         });
 
         if (await keyTypeOptions.first().isVisible()) {
-          await expect(keyTypeOptions).toHaveCount(await keyTypeOptions.count());
+          // Should have at least one key type option
+          const optionCount = await keyTypeOptions.count();
+          expect(optionCount).toBeGreaterThan(0);
         }
       }
     } else {
@@ -410,7 +412,9 @@ test.describe('SSH Key Manager', () => {
         // Should show key type
         const keyTypes = page.locator(':has-text("RSA"), :has-text("Ed25519"), :has-text("ECDSA")');
         if (await keyTypes.first().isVisible()) {
-          await expect(keyTypes).toHaveCount(await keyTypes.count());
+          // At least one key type should be visible
+          const typeCount = await keyTypes.count();
+          expect(typeCount).toBeGreaterThan(0);
         }
 
         // Should show fingerprint or partial key
@@ -419,7 +423,9 @@ test.describe('SSH Key Manager', () => {
         });
 
         if (await fingerprints.first().isVisible()) {
-          await expect(fingerprints).toHaveCount(await fingerprints.count());
+          // Should have fingerprint information
+          const fingerprintCount = await fingerprints.count();
+          expect(fingerprintCount).toBeGreaterThan(0);
         }
 
         // Should show creation date or other metadata
@@ -428,7 +434,9 @@ test.describe('SSH Key Manager', () => {
         });
 
         if (await metadata.first().isVisible()) {
-          await expect(metadata).toHaveCount(await metadata.count());
+          // Should have metadata information
+          const metadataCount = await metadata.count();
+          expect(metadataCount).toBeGreaterThan(0);
         }
       }
     } else {

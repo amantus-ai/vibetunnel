@@ -118,7 +118,9 @@ test.describe('Push Notifications', () => {
           'button:has-text("Subscribe"), button:has-text("Unsubscribe"), input[type="checkbox"]'
         );
         if (await subscriptionControls.first().isVisible()) {
-          await expect(subscriptionControls).toHaveCount(await subscriptionControls.count());
+          // Should have at least one subscription control
+          const controlCount = await subscriptionControls.count();
+          expect(controlCount).toBeGreaterThan(0);
         }
       }
     }
