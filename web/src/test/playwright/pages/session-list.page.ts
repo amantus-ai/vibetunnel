@@ -104,7 +104,9 @@ export class SessionListPage extends BasePage {
         const input = document.querySelector(
           '[data-testid="session-name-input"], input[placeholder="My Session"]'
         ) as HTMLInputElement;
-        return input && !input.disabled && document.activeElement === input;
+        // Check that input exists, is visible, and is not disabled
+        // Don't require focus as the app doesn't guarantee automatic focus
+        return input && !input.disabled && input.offsetParent !== null;
       },
       { timeout: TIMEOUTS.UI_UPDATE }
     );
