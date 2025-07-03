@@ -108,6 +108,17 @@ struct SessionRow: View {
                             }
                             .buttonStyle(.plain)
                             .help("Rename session")
+                            
+                            // Magic wand button for Claude sessions
+                            if isClaudeSession {
+                                Button(action: sendClaudePrompt) {
+                                    Image(systemName: "wand.and.rays")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.primary)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Send prompt to update terminal title")
+                            }
                         }
                     }
 
@@ -373,6 +384,12 @@ struct SessionRow: View {
             return executableName
         }
     }
+    
+    private var isClaudeSession: Bool {
+        // Check if this is a Claude session by looking at the command
+        let cmd = commandName.lowercased()
+        return cmd == "claude" || cmd.contains("claude")
+    }
 
     private var sessionName: String {
         // Use the session name if available, otherwise fall back to directory name
@@ -416,6 +433,19 @@ struct SessionRow: View {
             } catch {
                 // Error already handled - editing state reverted
                 cancelEditing()
+            }
+        }
+    }
+    
+    private func sendClaudePrompt() {
+        Task {
+            do {
+                // Send a prompt that encourages Claude to use vt title
+                let prompt = "use vt title to update the terminal title with what you're currently working on\n"
+                try await sessionService.sendInput(to: session.key, text: prompt)
+            } catch {
+                // Silently handle errors for now
+                print("Failed to send prompt to Claude: \(error)")
             }
         }
     }

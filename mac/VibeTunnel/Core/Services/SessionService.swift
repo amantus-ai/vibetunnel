@@ -71,6 +71,34 @@ final class SessionService {
         // The session monitor will automatically update via its polling mechanism
     }
 
+    /// Send input text to a session
+    func sendInput(to sessionId: String, text: String) async throws {
+        guard serverManager.isRunning else {
+            throw SessionServiceError.serverNotRunning
+        }
+        
+        guard let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(sessionId)/input") else {
+            throw SessionServiceError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("localhost", forHTTPHeaderField: "Host")
+        try serverManager.authenticate(request: &request)
+        
+        let body = ["data": text]
+        request.httpBody = try JSONEncoder().encode(body)
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 || httpResponse.statusCode == 204
+        else {
+            throw SessionServiceError.requestFailed(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
+        }
+    }
+    
     /// Create a new session
     func createSession(
         command: [String],
