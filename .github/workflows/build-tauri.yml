@@ -39,6 +39,14 @@ jobs:
         cache: 'pnpm'
         cache-dependency-path: web/pnpm-lock.yaml
 
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Python setuptools
+      run: pip install setuptools
+
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
