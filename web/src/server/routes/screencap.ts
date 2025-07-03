@@ -1,5 +1,5 @@
 import { type ChildProcess, execSync, spawn } from 'child_process';
-import { Router } from 'express';
+import { type NextFunction, type Request, type Response, Router } from 'express';
 import * as fs from 'fs';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import * as path from 'path';
@@ -128,7 +128,7 @@ export function createScreencapRoutes(): Router {
   const router = Router();
 
   // Platform check middleware
-  const requireMacOS = (_req: any, res: any, next: any) => {
+  const requireMacOS = (_req: Request, res: Response, next: NextFunction) => {
     if (process.platform !== 'darwin') {
       return res.status(503).json({
         error: 'Screencap is only available on macOS',

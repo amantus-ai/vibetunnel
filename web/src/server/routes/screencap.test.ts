@@ -25,8 +25,8 @@ vi.mock('http-proxy-middleware', () => ({
 
 describe('screencap routes', () => {
   let originalPlatform: PropertyDescriptor | undefined;
-  let mockFs: any;
-  let mockChildProcess: any;
+  let mockFs: ReturnType<typeof vi.mocked<typeof import('fs')>>;
+  let mockChildProcess: ReturnType<typeof vi.mocked<typeof import('child_process')>>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -102,7 +102,7 @@ describe('screencap routes', () => {
 
   describe('createScreencapRoutes', () => {
     let router: Router;
-    let routes: Array<{ path: string; method: string; handler: any }>;
+    let routes: Array<{ path: string; method: string; handler: unknown }>;
 
     beforeEach(() => {
       setPlatform('darwin');
@@ -110,7 +110,17 @@ describe('screencap routes', () => {
 
       // Extract routes from router
       routes = [];
-      const stack = (router as any).stack;
+      const stack = (
+        router as unknown as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: Record<string, boolean>;
+              stack: Array<{ handle: unknown }>;
+            };
+          }>;
+        }
+      ).stack;
       for (const layer of stack) {
         if (layer.route) {
           const path = layer.route.path;
@@ -163,10 +173,12 @@ describe('screencap routes', () => {
       const mockNext = vi.fn();
 
       // Get the first middleware (requireMacOS) from the route
-      const screencapRoute = (newRouter as any).stack.find(
-        (layer: any) => layer.route?.path === '/screencap'
-      );
-      const middlewares = screencapRoute.route.stack;
+      const screencapRoute = (
+        newRouter as unknown as {
+          stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }>;
+        }
+      ).stack.find((layer) => layer.route?.path === '/screencap');
+      const middlewares = screencapRoute?.route?.stack || [];
       const requireMacOS = middlewares[0].handle;
 
       // Call the middleware
@@ -193,10 +205,12 @@ describe('screencap routes', () => {
       const mockNext = vi.fn();
 
       // Get the requireMacOS middleware
-      const screencapRoute = (newRouter as any).stack.find(
-        (layer: any) => layer.route?.path === '/screencap'
-      );
-      const middlewares = screencapRoute.route.stack;
+      const screencapRoute = (
+        newRouter as unknown as {
+          stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }>;
+        }
+      ).stack.find((layer) => layer.route?.path === '/screencap');
+      const middlewares = screencapRoute?.route?.stack || [];
       const requireMacOS = middlewares[0].handle;
 
       // Call the middleware
@@ -242,9 +256,11 @@ describe('screencap routes', () => {
       expect(route).toBeDefined();
 
       // Get the actual handler (after middleware)
-      const screencapRoute = (router as any).stack.find(
-        (layer: any) => layer.route?.path === '/screencap'
-      );
+      const screencapRoute = (
+        router as unknown as {
+          stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }>;
+        }
+      ).stack.find((layer) => layer.route?.path === '/screencap');
       const handlers = screencapRoute.route.stack;
       const pageHandler = handlers[handlers.length - 1].handle;
 
@@ -294,13 +310,15 @@ describe('screencap routes', () => {
       } as unknown as Response;
 
       // Get the handler
-      const controlRoute = (router as any).stack.find(
-        (layer: any) => layer.route?.path === '/screencap-control/start'
-      );
+      const controlRoute = (
+        router as unknown as {
+          stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }>;
+        }
+      ).stack.find((layer) => layer.route?.path === '/screencap-control/start');
 
       expect(controlRoute).toBeDefined();
 
-      const handler = controlRoute.route.stack[0].handle;
+      const handler = controlRoute?.route?.stack[0].handle;
 
       await handler(mockReq, mockRes);
 
@@ -320,10 +338,12 @@ describe('screencap routes', () => {
       } as unknown as Response;
 
       // Find the status route
-      const statusRoute = (router as any).stack.find(
-        (layer: any) => layer.route?.path === '/screencap-control/status'
-      );
-      const handler = statusRoute.route.stack[0].handle;
+      const statusRoute = (
+        router as unknown as {
+          stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }>;
+        }
+      ).stack.find((layer) => layer.route?.path === '/screencap-control/status');
+      const handler = statusRoute?.route?.stack[0].handle;
 
       handler(mockReq, mockRes);
 

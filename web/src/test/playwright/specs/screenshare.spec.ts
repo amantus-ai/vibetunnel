@@ -27,7 +27,7 @@ test.describe('Screenshare Feature', () => {
     await page.goto('/');
     await waitForPageReady(page);
 
-    const { sessionId } = await sessionManager.createTrackedSession();
+    await sessionManager.createTrackedSession();
 
     // Wait for session view to load
     await page.waitForSelector('session-view', { state: 'visible' });
@@ -49,7 +49,7 @@ test.describe('Screenshare Feature', () => {
     await page.goto('/');
     await waitForPageReady(page);
 
-    const { sessionId } = await sessionManager.createTrackedSession();
+    await sessionManager.createTrackedSession();
 
     // Wait for session view
     await page.waitForSelector('session-view', { state: 'visible' });
