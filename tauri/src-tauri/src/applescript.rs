@@ -82,7 +82,7 @@ impl AppleScriptRunner {
     }
 
     /// Focus a specific Terminal.app window/tab
-    pub fn focus_terminal_window(window_id: u32, tab_id: Option<u32>) -> Result<(), String> {
+    pub fn focus_terminal_window(window_id: u64, tab_id: Option<u64>) -> Result<(), String> {
         let script = if let Some(tid) = tab_id {
             format!(
                 r#"tell application "Terminal"
@@ -254,7 +254,7 @@ impl AppleScriptTerminalLauncher {
         match terminal_type {
             "Terminal" | "Terminal.app" => {
                 // Parse window ID from window_info
-                if let Ok(window_id) = window_info.parse::<u32>() {
+                if let Ok(window_id) = window_info.parse::<u64>() {
                     AppleScriptRunner::focus_terminal_window(window_id, None)
                 } else {
                     Err("Invalid window ID".to_string())

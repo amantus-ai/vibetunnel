@@ -8,7 +8,7 @@ use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowInfo {
-    pub window_id: u32,
+    pub window_id: u64,  // Changed from u32 to u64 to support all platforms
     pub owner_pid: u32,
     pub terminal_app: String,
     pub session_id: String,
@@ -178,7 +178,7 @@ impl WindowTracker {
         ) {
             // Convert from EnumeratedWindowInfo to our WindowInfo
             Some(WindowInfo {
-                window_id: matched_window.window_id as u32,
+                window_id: matched_window.window_id,  // No cast needed, already u64
                 owner_pid: matched_window.owner_pid,
                 terminal_app: matched_window.terminal_app.clone(),
                 session_id: session_id.to_string(),
@@ -221,7 +221,7 @@ impl WindowTracker {
         ) {
             // Convert from EnumeratedWindowInfo to our WindowInfo
             Some(WindowInfo {
-                window_id: matched_window.window_id as u32,
+                window_id: matched_window.window_id,  // No cast needed, already u64
                 owner_pid: matched_window.owner_pid,
                 terminal_app: matched_window.terminal_app.clone(),
                 session_id: session_id.to_string(),

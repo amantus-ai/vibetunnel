@@ -56,6 +56,9 @@ jobs:
       working-directory: ./web
       run: pnpm run build
 
+    - name: Install tauri-cli
+      run: cargo install tauri-cli
+
     - name: Install Rust dependencies
       working-directory: ./tauri/src-tauri
       run: cargo fetch --target ${{ matrix.target }}

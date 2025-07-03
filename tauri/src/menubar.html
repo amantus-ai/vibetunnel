@@ -708,13 +708,37 @@
         }
 
         function compactPath(path) {
-            const home = '/Users/'; // This should be dynamic based on OS
-            if (path.startsWith(home)) {
-                return '~' + path.substring(home.length + path.substring(home.length).indexOf('/'));
+            // Get the appropriate home directory based on the platform
+            const platform = navigator.platform.toLowerCase();
+            let homePatterns = [];
+            
+            if (platform.includes('win')) {
+                // Windows: C:\Users\username or similar
+                homePatterns = [
+                    /^[A-Za-z]:\\Users\\[^\\]+/,
+                    /^[A-Za-z]:\\Documents and Settings\\[^\\]+/
+                ];
+            } else if (platform.includes('mac')) {
+                // macOS: /Users/username
+                homePatterns = [/^\/Users\/[^\/]+/];
+            } else {
+                // Linux/Unix: /home/username
+                homePatterns = [/^\/home\/[^\/]+/];
             }
-            const parts = path.split('/');
+            
+            // Try to match and replace home directory with ~
+            for (const pattern of homePatterns) {
+                const match = path.match(pattern);
+                if (match) {
+                    return '~' + path.substring(match[0].length);
+                }
+            }
+            
+            // Fallback: shorten long paths
+            const separator = path.includes('\\') ? '\\' : '/';
+            const parts = path.split(separator);
             if (parts.length > 3) {
-                return '.../' + parts.slice(-2).join('/');
+                return '...' + separator + parts.slice(-2).join(separator);
             }
             return path;
         }

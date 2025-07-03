@@ -103,100 +103,18 @@ impl ProcessTracker {
 
     #[cfg(target_os = "macos")]
     fn get_parent_pid_macos(pid: u32) -> Option<u32> {
-        use std::mem;
-        use libc::{c_int, size_t, sysctl, CTL_KERN, KERN_PROC, KERN_PROC_PID};
+        use std::process::Command;
+        use std::str;
         
-        #[repr(C)]
-        struct kinfo_proc {
-            kp_proc: extern_proc,
-            kp_eproc: eproc,
-        }
-        
-        #[repr(C)]
-        struct extern_proc {
-            p_un: [u8; 16],
-            p_vmspace: u64,
-            p_sigacts: u64,
-            p_flag: i32,
-            p_stat: u8,
-            p_pid: i32,
-            p_oppid: i32,
-            p_dupfd: i32,
-            p_pgid: i32,
-            p_ppid: i32,
-            p_gid: i32,
-            p_comm: [u8; 17],
-            p_pgrp: u64,
-            p_addr: u64,
-            p_xstat: u16,
-            p_acflag: u16,
-            p_ru: u64,
-        }
-        
-        #[repr(C)]
-        struct eproc {
-            e_paddr: u64,
-            e_sess: u64,
-            e_pcred: pcred,
-            e_ucred: ucred,
-            e_vm: vmspace,
-            e_ppid: i32,
-            e_pgid: i32,
-            e_jobc: i16,
-            e_tdev: i32,
-            e_tpgid: i32,
-            e_tsess: u64,
-            e_wmesg: [u8; 8],
-            e_xsize: i64,
-            e_xrssize: i16,
-            e_xccount: i16,
-            e_xswrss: i16,
-            e_flag: i32,
-            e_login: [u8; 12],
-            e_spare: [i32; 4],
-        }
-        
-        #[repr(C)]
-        struct pcred {
-            pc_lock: [u8; 72],
-            pc_ucred: u64,
-            p_ruid: u32,
-            p_svuid: u32,
-            p_rgid: u32,
-            p_svgid: u32,
-            p_refcnt: i32,
-        }
-        
-        #[repr(C)]
-        struct ucred {
-            cr_ref: i32,
-            cr_uid: u32,
-            cr_ngroups: i16,
-            cr_groups: [u32; 16],
-        }
-        
-        #[repr(C)]
-        struct vmspace {
-            dummy: [u8; 32],
-        }
-        
-        let mut info: kinfo_proc = unsafe { mem::zeroed() };
-        let mut size = mem::size_of::<kinfo_proc>();
-        let mut mib = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid as c_int];
-        
-        let result = unsafe {
-            sysctl(
-                mib.as_mut_ptr(),
-                mib.len() as u32,
-                &mut info as *mut _ as *mut _,
-                &mut size as *mut _ as *mut size_t,
-                std::ptr::null_mut(),
-                0,
-            )
-        };
-        
-        if result == 0 && size > 0 {
-            Some(info.kp_eproc.e_ppid as u32)
+        // Use ps command which is more reliable and doesn't require unsafe kernel structs
+        let output = Command::new("ps")
+            .args(&["-o", "ppid=", "-p", &pid.to_string()])
+            .output()
+            .ok()?;
+            
+        if output.status.success() {
+            let ppid_str = str::from_utf8(&output.stdout).ok()?.trim();
+            ppid_str.parse::<u32>().ok()
         } else {
             None
         }
