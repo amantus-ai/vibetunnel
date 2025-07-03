@@ -882,7 +882,7 @@ class TerminalViewModel {
     func sendInput(_ text: String) {
         Task {
             do {
-                try await SessionService.shared.sendInput(to: session.id, text: text)
+                try await SessionService().sendInput(to: session.id, text: text)
             } catch {
                 logger.error("Failed to send input: \(error)")
             }
@@ -896,7 +896,7 @@ class TerminalViewModel {
     func resize(cols: Int, rows: Int) {
         Task {
             do {
-                try await SessionService.shared.resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
+                try await SessionService().resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
                 // If resize succeeded, ensure the flag is cleared
                 isResizeBlockedByServer = false
             } catch {

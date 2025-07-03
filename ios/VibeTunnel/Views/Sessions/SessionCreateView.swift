@@ -403,7 +403,7 @@ struct SessionCreateView: View {
                 logger.debug("  Spawn Terminal: \(sessionData.spawnTerminal ?? false)")
                 logger.debug("  Cols: \(sessionData.cols ?? 0), Rows: \(sessionData.rows ?? 0)")
 
-                let sessionId = try await SessionService.shared.createSession(sessionData)
+                let sessionId = try await SessionService().createSession(sessionData)
 
                 logger.info("Session created successfully with ID: \(sessionId)")
 
