@@ -36,6 +36,15 @@ final class ConnectionManager {
         loadSavedConnection()
         restoreConnectionState()
     }
+    
+    #if DEBUG
+    /// Test-only factory method for creating instances with mock storage
+    /// - Parameter storage: Mock storage for testing
+    /// - Returns: A new ConnectionManager instance for testing
+    internal static func createForTesting(storage: PersistentStorage) -> ConnectionManager {
+        return ConnectionManager(storage: storage)
+    }
+    #endif
 
     private func loadSavedConnection() {
         if let data = storage.data(forKey: Constants.savedServerConfigKey),

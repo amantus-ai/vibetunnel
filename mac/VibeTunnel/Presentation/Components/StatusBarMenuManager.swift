@@ -148,9 +148,17 @@ final class StatusBarMenuManager: NSObject {
         customWindow = nil
         customWindow = CustomMenuWindow(contentView: containerView)
 
-        // Set up callback to reset state when window hides
+        // Set up callbacks for window show/hide
+        customWindow?.onShow = { [weak self] in
+            // Start monitoring git repositories for updates every 5 seconds
+            self?.gitRepositoryMonitor?.startMonitoring()
+        }
+        
         customWindow?.onHide = { [weak self] in
             self?.statusBarButton?.highlight(false)
+            
+            // Stop monitoring git repositories when menu closes
+            self?.gitRepositoryMonitor?.stopMonitoring()
 
             // Ensure state is reset on main thread
             Task { @MainActor in

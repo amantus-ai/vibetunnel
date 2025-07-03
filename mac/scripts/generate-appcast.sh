@@ -361,10 +361,18 @@ main() {
     trap "rm -rf $temp_dir" EXIT
     
     # Fetch all releases from GitHub with error handling
-    print_info "Fetching releases from GitHub..."
+    print_info "Fetching releases from GitHub repository: $GITHUB_REPO_FULL"
     local releases
-    if ! releases=$(gh api "repos/$GITHUB_REPO_FULL/releases" --paginate 2>/dev/null); then
-        print_error "Failed to fetch releases from GitHub. Please check your GitHub CLI authentication and network connection."
+    local gh_error
+    if ! releases=$(gh api "repos/$GITHUB_REPO_FULL/releases" --paginate 2>&1); then
+        gh_error=$?
+        print_error "Failed to fetch releases from GitHub (exit code: $gh_error)"
+        print_error "Repository: $GITHUB_REPO_FULL"
+        print_error "Error output: $releases"
+        print_info "Checking GitHub CLI status..."
+        gh auth status 2>&1 | while IFS= read -r line; do
+            print_info "  $line"
+        done
         exit 1
     fi
     

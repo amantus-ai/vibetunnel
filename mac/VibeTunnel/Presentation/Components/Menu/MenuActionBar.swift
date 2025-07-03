@@ -30,7 +30,7 @@ struct MenuActionBar: View {
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(isHoveringNewSession ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                .opacity(0.15) : Color.clear
+                                .opacity(colorScheme == .light ? 0.25 : 0.15) : Color.clear
                             )
                             .scaleEffect(isHoveringNewSession ? 1.1 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringNewSession)
@@ -62,7 +62,7 @@ struct MenuActionBar: View {
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(isHoveringSettings ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                .opacity(0.15) : Color.clear
+                                .opacity(colorScheme == .light ? 0.25 : 0.15) : Color.clear
                             )
                             .scaleEffect(isHoveringSettings ? 1.1 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringSettings)
@@ -96,7 +96,7 @@ struct MenuActionBar: View {
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(isHoveringQuit ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                .opacity(0.15) : Color.clear
+                                .opacity(colorScheme == .light ? 0.25 : 0.15) : Color.clear
                             )
                             .scaleEffect(isHoveringQuit ? 1.1 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringQuit)

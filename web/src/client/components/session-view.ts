@@ -824,19 +824,23 @@ export class SessionView extends LitElement {
         throw new Error(`Rename failed: ${response.status}`);
       }
 
-      // Update the local session object
-      this.session = { ...this.session, name: newName };
+      // Get the actual name from the server response
+      const result = await response.json();
+      const actualName = result.name || newName;
 
-      // Dispatch event to notify parent components
+      // Update the local session object with the server-assigned name
+      this.session = { ...this.session, name: actualName };
+
+      // Dispatch event to notify parent components with the actual name
       this.dispatchEvent(
         new CustomEvent('session-renamed', {
-          detail: { sessionId, newName },
+          detail: { sessionId, newName: actualName },
           bubbles: true,
           composed: true,
         })
       );
 
-      logger.log(`Session ${sessionId} renamed to: ${newName}`);
+      logger.log(`Session ${sessionId} renamed to: ${actualName}`);
     } catch (error) {
       logger.error('Error renaming session', { error, sessionId });
 

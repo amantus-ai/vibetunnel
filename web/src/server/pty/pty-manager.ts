@@ -1019,21 +1019,21 @@ export class PtyManager extends EventEmitter {
   /**
    * Update session name
    */
-  updateSessionName(sessionId: string, name: string): void {
+  updateSessionName(sessionId: string, name: string): string {
     logger.debug(
       `[PtyManager] updateSessionName called for session ${sessionId} with name: ${name}`
     );
 
-    // Update in session manager (persisted storage)
+    // Update in session manager (persisted storage) - get the unique name back
     logger.debug(`[PtyManager] Calling sessionManager.updateSessionName`);
-    this.sessionManager.updateSessionName(sessionId, name);
+    const uniqueName = this.sessionManager.updateSessionName(sessionId, name);
 
     // Update in-memory session if it exists
     const memorySession = this.sessions.get(sessionId);
     if (memorySession?.sessionInfo) {
       logger.debug(`[PtyManager] Found in-memory session, updating...`);
       const oldName = memorySession.sessionInfo.name;
-      memorySession.sessionInfo.name = name;
+      memorySession.sessionInfo.name = uniqueName;
 
       logger.debug(`[PtyManager] Session info after update:`, {
         sessionId: memorySession.id,
@@ -1054,7 +1054,9 @@ export class PtyManager extends EventEmitter {
         this.updateTerminalTitleForSessionName(memorySession);
       }
 
-      logger.log(`[PtyManager] Updated session ${sessionId} name from "${oldName}" to "${name}"`);
+      logger.log(
+        `[PtyManager] Updated session ${sessionId} name from "${oldName}" to "${uniqueName}"`
+      );
     } else {
       logger.debug(`[PtyManager] No in-memory session found for ${sessionId}`, {
         sessionsMapSize: this.sessions.size,
@@ -1063,9 +1065,11 @@ export class PtyManager extends EventEmitter {
     }
 
     // Emit event for clients to refresh their session data
-    this.trackAndEmit('sessionNameChanged', sessionId, name);
+    this.trackAndEmit('sessionNameChanged', sessionId, uniqueName);
 
-    logger.log(`[PtyManager] Updated session ${sessionId} name to: ${name}`);
+    logger.log(`[PtyManager] Updated session ${sessionId} name to: ${uniqueName}`);
+
+    return uniqueName;
   }
 
   /**

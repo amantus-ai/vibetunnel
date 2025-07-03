@@ -102,6 +102,7 @@ struct ServerAddressRow: View {
             Image(systemName: icon)
                 .font(.system(size: 10))
                 .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
+                .frame(width: 14, alignment: .center)
             Text(label)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)

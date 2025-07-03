@@ -1091,10 +1091,10 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
       // Update the session name
       logger.debug(`[PATCH] Calling ptyManager.updateSessionName(${sessionId}, ${name})`);
-      ptyManager.updateSessionName(sessionId, name);
-      logger.log(chalk.green(`[PATCH] Session ${sessionId} name updated to: ${name}`));
+      const uniqueName = ptyManager.updateSessionName(sessionId, name);
+      logger.log(chalk.green(`[PATCH] Session ${sessionId} name updated to: ${uniqueName}`));
 
-      res.json({ success: true, name });
+      res.json({ success: true, name: uniqueName });
     } catch (error) {
       logger.error('error updating session name:', error);
       if (error instanceof PtyError) {
