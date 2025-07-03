@@ -101,23 +101,27 @@ struct SessionRow: View {
 
                         // Edit button (pencil icon) - only show on hover
                         if isHovered && !isEditing {
-                            Button(action: startEditing) {
-                                Image(systemName: "square.and.pencil")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.primary)
-                            }
-                            .buttonStyle(.plain)
-                            .help("Rename session")
-
-                            // Magic wand button for AI assistant sessions
-                            if isAIAssistantSession {
-                                Button(action: sendAIPrompt) {
-                                    Image(systemName: "wand.and.rays")
+                            HStack(spacing: 6) {
+                                Button(action: startEditing) {
+                                    Image(systemName: "square.and.pencil")
                                         .font(.system(size: 11))
                                         .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
-                                .help("Send prompt to update terminal title")
+                                .help("Rename session")
+                                .modifier(HoverOpacityModifier())
+
+                                // Magic wand button for AI assistant sessions
+                                if isAIAssistantSession {
+                                    Button(action: sendAIPrompt) {
+                                        Image(systemName: "wand.and.rays")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.primary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("Send prompt to update terminal title")
+                                    .modifier(HoverOpacityModifier())
+                                }
                             }
                         }
                     }
@@ -523,5 +527,20 @@ struct SessionRow: View {
             let days = Int(elapsed / 86_400)
             return "\(days)d"
         }
+    }
+}
+
+/// Modifier that makes an element fully opaque on hover
+struct HoverOpacityModifier: ViewModifier {
+    @State private var isHovering = false
+    
+    func body(content: Content) -> some View {
+        content
+            .opacity(isHovering ? 1.0 : 0.5)
+            .scaleEffect(isHovering ? 1.0 : 0.95)
+            .animation(.easeInOut(duration: 0.15), value: isHovering)
+            .onHover { hovering in
+                isHovering = hovering
+            }
     }
 }
