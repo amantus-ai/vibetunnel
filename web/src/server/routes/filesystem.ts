@@ -288,10 +288,8 @@ export function createFilesystemRoutes(): Router {
         return a.name.localeCompare(b.name);
       });
 
-      logger.log(
-        chalk.green(
-          `directory browsed successfully: ${requestedPath} (${filteredFiles.length} items)`
-        )
+      logger.debug(
+        `directory browsed successfully: ${requestedPath} (${filteredFiles.length} items)`
       );
 
       res.json({

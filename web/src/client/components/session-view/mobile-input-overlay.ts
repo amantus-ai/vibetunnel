@@ -22,6 +22,7 @@
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import '../modal-wrapper.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('mobile-input-overlay');
@@ -189,12 +190,6 @@ export class MobileInputOverlay extends LitElement {
     logger.log('Mobile input textarea blurred');
   }
 
-  private handleBackdropClick(e: Event) {
-    if (e.target === e.currentTarget) {
-      this.onCancel?.();
-    }
-  }
-
   private handleContainerClick(e: Event) {
     e.stopPropagation();
     // Focus textarea when clicking anywhere in the container
@@ -214,21 +209,24 @@ export class MobileInputOverlay extends LitElement {
     if (!this.visible) return null;
 
     return html`
-      <div
-        class="fixed inset-0 z-40 flex flex-col"
-        style="background: rgba(0, 0, 0, 0.8);"
-        @click=${this.handleBackdropClick}
-        @touchstart=${this.touchStartHandler}
-        @touchend=${this.touchEndHandler}
+      <modal-wrapper
+        .visible=${this.visible}
+        modalClass="z-40"
+        contentClass="fixed inset-0 flex flex-col z-40"
+        ariaLabel="Mobile input overlay"
+        @close=${() => this.onCancel?.()}
+        .closeOnBackdrop=${true}
+        .closeOnEscape=${false}
       >
-        <!-- Spacer to push content up above keyboard -->
-        <div class="flex-1"></div>
+        <div @touchstart=${this.touchStartHandler} @touchend=${this.touchEndHandler} class="h-full flex flex-col">
+          <!-- Spacer to push content up above keyboard -->
+          <div class="flex-1"></div>
 
-        <div
-          class="mobile-input-container font-mono text-sm mx-4 flex flex-col"
-          style="background: black; border: 1px solid #569cd6; border-radius: 8px; margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
-          @click=${this.handleContainerClick}
-        >
+          <div
+            class="mobile-input-container font-mono text-sm mx-4 flex flex-col"
+            style="background: black; border: 1px solid #569cd6; border-radius: 8px; margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
+            @click=${this.handleContainerClick}
+          >
           <!-- Input Area -->
           <div class="p-4 flex flex-col">
             <textarea
@@ -275,7 +273,8 @@ export class MobileInputOverlay extends LitElement {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      </modal-wrapper>
     `;
   }
 }

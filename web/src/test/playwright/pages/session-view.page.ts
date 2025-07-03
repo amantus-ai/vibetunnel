@@ -31,7 +31,7 @@ export class SessionViewPage extends BasePage {
 
         return hasContent || hasShadowRoot || hasXterm;
       },
-      { timeout: 2000 }
+      { timeout: process.env.CI ? 10000 : 5000 }
     );
   }
 

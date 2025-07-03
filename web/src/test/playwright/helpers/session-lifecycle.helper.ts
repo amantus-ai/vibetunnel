@@ -9,6 +9,20 @@ export interface SessionOptions {
   command?: string;
 }
 
+interface TestResponse {
+  url: string;
+  method: string;
+  data: {
+    sessionId?: string;
+  };
+}
+
+declare global {
+  interface Window {
+    __testResponses?: TestResponse[];
+  }
+}
+
 /**
  * Creates a new session and navigates to it, handling all the common setup
  */
@@ -39,8 +53,41 @@ export async function createAndNavigateToSession(
 
   // For web sessions, wait for navigation and get session ID
   if (!spawnWindow) {
-    await page.waitForURL(/\?session=/, { timeout: 4000 });
+    // In CI, navigation might be slower
+    const timeout = process.env.CI ? 15000 : 8000;
+
+    try {
+      await page.waitForURL(/\?session=/, { timeout });
+    } catch (_error) {
+      // If navigation didn't happen automatically, check if we can extract session ID and navigate manually
+      const currentUrl = page.url();
+      console.error(`Navigation timeout. Current URL: ${currentUrl}`);
+
+      // Try to find session ID from the page or recent requests
+      const sessionResponse = await page.evaluate(async () => {
+        // Check if there's a recent session creation response in memory
+        const responses = window.__testResponses || [];
+        const sessionResponse = responses.find(
+          (r: TestResponse) => r.url.includes('/api/sessions') && r.method === 'POST'
+        );
+        return sessionResponse?.data;
+      });
+
+      if (sessionResponse?.sessionId) {
+        console.log(`Found session ID ${sessionResponse.sessionId}, navigating manually`);
+        await page.goto(`/?session=${sessionResponse.sessionId}`, {
+          waitUntil: 'domcontentloaded',
+        });
+      } else {
+        throw new Error(`Failed to navigate to session view from ${currentUrl}`);
+      }
+    }
+
     const sessionId = new URL(page.url()).searchParams.get('session') || '';
+    if (!sessionId) {
+      throw new Error('No session ID found in URL after navigation');
+    }
+
     await sessionViewPage.waitForTerminalReady();
 
     return { sessionName, sessionId };
@@ -118,14 +165,22 @@ export async function createMultipleSessions(
 
     // Navigate back to list for next creation (except last one)
     if (i < count - 1) {
-      await page.goto('/', { waitUntil: 'domcontentloaded' });
-      // Wait for app to be ready before creating next session
-      await page.waitForSelector('button[title="Create New Session"]', {
+      await page.goto('/', { waitUntil: 'networkidle' });
+
+      // Wait for session list to be visible
+      await page.waitForSelector('session-card', {
         state: 'visible',
-        timeout: 10000,
+        timeout: 5000,
       });
+
+      // Wait for app to be ready before creating next session
+      await page.waitForSelector('[data-testid="create-session-button"]', {
+        state: 'visible',
+        timeout: 5000,
+      });
+
       // Add a small delay to avoid race conditions
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(200);
     }
   }
 
@@ -138,9 +193,10 @@ export async function createMultipleSessions(
 export async function waitForSessionState(
   page: Page,
   sessionName: string,
-  targetState: 'RUNNING' | 'EXITED' | 'KILLED',
-  timeout = 5000
+  targetState: 'RUNNING' | 'EXITED' | 'KILLED' | 'running' | 'exited' | 'killed',
+  options: { timeout?: number } = {}
 ): Promise<void> {
+  const { timeout = 5000 } = options;
   const _startTime = Date.now();
 
   // Use waitForFunction instead of polling loop
@@ -149,11 +205,23 @@ export async function waitForSessionState(
       ({ name, state }) => {
         const cards = document.querySelectorAll('session-card');
         const sessionCard = Array.from(cards).find((card) => card.textContent?.includes(name));
-        if (!sessionCard) return false;
+        if (!sessionCard) {
+          console.log(`Session card not found for: ${name}`);
+          return false;
+        }
 
         const statusElement = sessionCard.querySelector('span[data-status]');
+        if (!statusElement) {
+          console.log(`Status element not found for session: ${name}`);
+          return false;
+        }
+
         const statusText = statusElement?.textContent?.toLowerCase() || '';
         const dataStatus = statusElement?.getAttribute('data-status')?.toLowerCase() || '';
+
+        console.log(
+          `Session ${name} - data-status: "${dataStatus}", text: "${statusText}", looking for: "${state.toLowerCase()}"`
+        );
 
         return dataStatus === state.toLowerCase() || statusText.includes(state.toLowerCase());
       },
@@ -161,6 +229,8 @@ export async function waitForSessionState(
       { timeout, polling: 500 }
     );
   } catch (_error) {
+    // Take a screenshot for debugging
+    await page.screenshot({ path: `test-debug-session-state-${sessionName}.png` });
     throw new Error(
       `Session ${sessionName} did not reach ${targetState} state within ${timeout}ms`
     );

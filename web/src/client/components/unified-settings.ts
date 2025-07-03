@@ -77,6 +77,8 @@ export class UnifiedSettings extends LitElement {
     if (this.unsubscribeResponsive) {
       this.unsubscribeResponsive();
     }
+    // Clean up keyboard listener
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
   protected willUpdate(changedProperties: PropertyValues) {

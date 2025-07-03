@@ -4,8 +4,13 @@ import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper'
 import { waitForShellPrompt } from '../helpers/terminal.helper';
 import { interruptCommand } from '../helpers/terminal-commands.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { ensureCleanState } from '../helpers/test-isolation.helper';
 import { SessionListPage } from '../pages/session-list.page';
 import { SessionViewPage } from '../pages/session-view.page';
+import { TestDataFactory } from '../utils/test-utils';
+
+// Use a unique prefix for this test suite
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('keyboard-shortcuts');
 
 test.describe('Keyboard Shortcuts', () => {
   let sessionManager: TestSessionManager;
@@ -13,9 +18,12 @@ test.describe('Keyboard Shortcuts', () => {
   let sessionViewPage: SessionViewPage;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
     sessionListPage = new SessionListPage(page);
     sessionViewPage = new SessionViewPage(page);
+
+    // Ensure clean state for each test
+    await ensureCleanState(page);
   });
 
   test.afterEach(async () => {
@@ -23,6 +31,7 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should open file browser with Cmd+O / Ctrl+O', async ({ page }) => {
+    test.setTimeout(45000); // Increase timeout for this test
     // Create a session
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('keyboard-test'),
@@ -94,48 +103,102 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should close modals with Escape', async ({ page }) => {
-    // Navigate to session list
+    // Ensure we're on the session list page
     await sessionListPage.navigate();
 
-    // Open create session modal using page object method
-    const createButton = page.locator('button[title="Create New Session"]');
-    await createButton.click();
-    await page.waitForSelector('.modal-content', { state: 'visible' });
+    // Open create session modal using the proper selectors
+    const createButton = page
+      .locator('[data-testid="create-session-button"]')
+      .or(page.locator('button[title="Create New Session"]'))
+      .or(page.locator('button[title="Create New Session (⌘K)"]'))
+      .first();
+
+    // Wait for button to be ready
+    await createButton.waitFor({ state: 'visible', timeout: 5000 });
+    await createButton.scrollIntoViewIfNeeded();
+
+    // Click with retry logic
+    try {
+      await createButton.click({ timeout: 5000 });
+    } catch (_error) {
+      // Try force click if regular click fails
+      await createButton.click({ force: true });
+    }
+
+    // Wait for modal to appear
+    await page.waitForSelector('text="New Session"', { state: 'visible', timeout: 10000 });
+    await page.waitForTimeout(500);
 
     // Press Escape
     await page.keyboard.press('Escape');
 
-    // Modal should close
-    await expect(page.locator('.modal-content')).toBeHidden({ timeout: 4000 });
+    // Modal should close - check both dialog and modal content
+    await Promise.race([
+      page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 4000 }),
+      page.waitForSelector('.modal-content', { state: 'hidden', timeout: 4000 }),
+    ]);
+
+    // Verify we're back on the session list
+    await expect(createButton).toBeVisible();
   });
 
   test('should submit create form with Enter', async ({ page }) => {
-    // Navigate to session list
+    // Ensure we're on the session list page
     await sessionListPage.navigate();
 
     // Open create session modal
-    const createButton = page.locator('button[title="Create New Session"]');
-    await createButton.click();
-    await page.waitForSelector('.modal-content', { state: 'visible' });
+    const createButton = page
+      .locator('[data-testid="create-session-button"]')
+      .or(page.locator('button[title="Create New Session"]'))
+      .or(page.locator('button[title="Create New Session (⌘K)"]'))
+      .first();
+
+    // Wait for button to be ready
+    await createButton.waitFor({ state: 'visible', timeout: 5000 });
+    await createButton.scrollIntoViewIfNeeded();
+
+    // Click with retry logic
+    try {
+      await createButton.click({ timeout: 5000 });
+    } catch (_error) {
+      // Try force click if regular click fails
+      await createButton.click({ force: true });
+    }
+
+    // Wait for modal to appear
+    await page.waitForSelector('text="New Session"', { state: 'visible', timeout: 10000 });
+    await page.waitForTimeout(500);
 
     // Turn off native terminal
     const spawnWindowToggle = page.locator('button[role="switch"]');
+    await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
     if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
       await spawnWindowToggle.click();
+      // Wait for toggle state to update
+      await page.waitForFunction(
+        () => {
+          const toggle = document.querySelector('button[role="switch"]');
+          return toggle?.getAttribute('aria-checked') === 'false';
+        },
+        { timeout: 1000 }
+      );
     }
 
     // Fill session name and track it
     const sessionName = sessionManager.generateSessionName('enter-test');
-    await page.fill('input[placeholder="My Session"]', sessionName);
+    const nameInput = page
+      .locator('[data-testid="session-name-input"]')
+      .or(page.locator('input[placeholder="My Session"]'));
+    await nameInput.fill(sessionName);
 
     // Press Enter to submit
     await page.keyboard.press('Enter');
 
     // Should create session and navigate
-    await expect(page).toHaveURL(/\?session=/, { timeout: 4000 });
+    await expect(page).toHaveURL(/\?session=/, { timeout: 8000 });
 
-    // Track for cleanup
-    sessionManager.clearTracking();
+    // Wait for terminal to be ready
+    await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 5000 });
   });
 
   test.skip('should handle terminal-specific shortcuts', async ({ page }) => {

@@ -359,6 +359,12 @@ export class SessionCreateForm extends LitElement {
     this.dispatchEvent(new CustomEvent('cancel'));
   }
 
+  private handleBackdropClick(e: Event) {
+    if (e.target === e.currentTarget) {
+      this.handleCancel();
+    }
+  }
+
   private handleQuickStart(command: string) {
     this.command = command;
     this.selectedQuickStart = command;
@@ -375,13 +381,14 @@ export class SessionCreateForm extends LitElement {
     }
 
     return html`
-      <div class="modal-backdrop flex items-center justify-center p-2 sm:p-4">
+      <div class="modal-backdrop flex items-center justify-center" @click=${this.handleBackdropClick}>
         <div
-          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] flex flex-col"
-          style="view-transition-name: create-session-modal"
+          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] mx-2 sm:mx-4"
+          style="view-transition-name: create-session-modal; pointer-events: auto;"
+          @click=${(e: Event) => e.stopPropagation()}
         >
           <div class="p-4 sm:p-6 sm:pb-4 mb-2 sm:mb-3 border-b border-dark-border relative bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary flex-shrink-0">
-            <h2 class="text-primary text-lg sm:text-xl font-bold">New Session</h2>
+            <h2 id="modal-title" class="text-primary text-lg sm:text-xl font-bold">New Session</h2>
             <button
               class="absolute top-4 right-4 sm:top-6 sm:right-6 text-dark-text-muted hover:text-dark-text transition-all duration-200 p-1.5 sm:p-2 hover:bg-dark-bg-tertiary rounded-lg"
               @click=${this.handleCancel}
@@ -416,6 +423,7 @@ export class SessionCreateForm extends LitElement {
                 @input=${this.handleSessionNameChange}
                 placeholder="My Session"
                 ?disabled=${this.disabled || this.isCreating}
+                data-testid="session-name-input"
               />
             </div>
 
@@ -429,6 +437,7 @@ export class SessionCreateForm extends LitElement {
                 @input=${this.handleCommandChange}
                 placeholder="zsh"
                 ?disabled=${this.disabled || this.isCreating}
+                data-testid="command-input"
               />
             </div>
 
@@ -443,6 +452,7 @@ export class SessionCreateForm extends LitElement {
                   @input=${this.handleWorkingDirChange}
                   placeholder="~/"
                   ?disabled=${this.disabled || this.isCreating}
+                  data-testid="working-dir-input"
                 />
                 <button
                   class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 sm:p-3 font-mono text-dark-text-muted transition-all duration-200 hover:text-primary hover:bg-dark-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
@@ -473,6 +483,7 @@ export class SessionCreateForm extends LitElement {
                   this.spawnWindow ? 'bg-primary' : 'bg-dark-border'
                 }"
                 ?disabled=${this.disabled || this.isCreating}
+                data-testid="spawn-window-toggle"
               >
                 <span
                   class="inline-block h-4 w-4 sm:h-5 sm:w-5 transform rounded-full bg-white transition-transform ${
@@ -554,6 +565,7 @@ export class SessionCreateForm extends LitElement {
                   !this.workingDir?.trim() ||
                   !this.command?.trim()
                 }
+                data-testid="create-session-submit"
               >
                 ${this.isCreating ? 'Creating...' : 'Create'}
               </button>

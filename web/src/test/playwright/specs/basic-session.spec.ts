@@ -9,12 +9,16 @@ import {
   createMultipleSessions,
 } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { TestDataFactory } from '../utils/test-utils';
+
+// Use a unique prefix for this test suite
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('basic-session');
 
 test.describe('Basic Session Tests', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
   });
 
   test.afterEach(async () => {
@@ -45,6 +49,7 @@ test.describe('Basic Session Tests', () => {
   });
 
   test('should navigate between sessions', async ({ page }) => {
+    test.setTimeout(60000); // Increase timeout for this test
     // Create multiple sessions using helper
     const sessions = await createMultipleSessions(page, 2, {
       name: 'nav-test',

@@ -186,7 +186,8 @@
 
   /* Modal backdrop */
   .modal-backdrop {
-    @apply fixed inset-0 bg-black bg-opacity-80 z-40;
+    @apply fixed inset-0 bg-black bg-opacity-80;
+    z-index: 1000;
     backdrop-filter: blur(4px);
   }
 
@@ -194,6 +195,16 @@
   .modal-content {
     @apply bg-dark-bg-secondary border border-dark-border rounded-xl;
     @apply shadow-2xl shadow-black/50;
+    position: relative;
+    z-index: 1001;
+  }
+
+  /* Modal positioning when used as sibling to backdrop */
+  .modal-positioned {
+    @apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2;
+    @apply max-h-[calc(100vh-2rem)];
+    @apply overflow-y-auto;
+    z-index: 1001; /* Ensure it's above the backdrop */
   }
 
   /* Labels */
@@ -1418,7 +1429,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   }
 
   /* During close transition, fade backdrop out faster */
-  ::view-transition-old(create-session-modal) ~ .modal-backdrop {
+  body:has(::view-transition-old(create-session-modal)) .modal-backdrop {
     animation: fade-out 0.25s ease-out;
   }
   

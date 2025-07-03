@@ -202,6 +202,7 @@ export class VibeTunnelApp extends LitElement {
           await this.initializeServices(noAuthEnabled); // Initialize services with no-auth flag
           await this.loadSessions(); // Wait for sessions to load
           this.startAutoRefresh();
+          this.initialLoadComplete = true;
           return;
         }
       }
@@ -217,6 +218,7 @@ export class VibeTunnelApp extends LitElement {
       await this.initializeServices(noAuthEnabled); // Initialize services with no-auth flag
       await this.loadSessions(); // Wait for sessions to load
       this.startAutoRefresh();
+      this.initialLoadComplete = true;
     } else {
       this.currentView = 'auth';
     }
@@ -229,6 +231,7 @@ export class VibeTunnelApp extends LitElement {
     await this.initializeServices(false); // Initialize services after auth (auth is enabled)
     await this.loadSessions();
     this.startAutoRefresh();
+    this.initialLoadComplete = true;
 
     // Check if there was a session ID in the URL that we should navigate to
     const url = new URL(window.location.href);
@@ -932,6 +935,11 @@ export class VibeTunnelApp extends LitElement {
           this.sidebarCollapsed = true;
           this.saveSidebarState(true);
         }
+        // Auto-expand sidebar when switching from mobile to desktop
+        else if (oldState.isMobile && !state.isMobile && this.sidebarCollapsed) {
+          this.sidebarCollapsed = false;
+          this.saveSidebarState(false);
+        }
       } else if (!this.responsiveObserverInitialized) {
         // Mark as initialized after first callback
         this.responsiveObserverInitialized = true;
@@ -1100,7 +1108,6 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private handleOpenSettings = () => {
-    logger.log('🎯 handleOpenSettings called in app.ts');
     this.showSettings = true;
   };
 

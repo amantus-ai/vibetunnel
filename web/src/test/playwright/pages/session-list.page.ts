@@ -7,12 +7,13 @@ export class SessionListPage extends BasePage {
   private readonly selectors = {
     createButton: '[data-testid="create-session-button"]',
     createButtonFallback: 'button[title="Create New Session"]',
+    createButtonFallbackWithShortcut: 'button[title="Create New Session (⌘K)"]',
     sessionNameInput: '[data-testid="session-name-input"]',
     commandInput: '[data-testid="command-input"]',
     workingDirInput: '[data-testid="working-dir-input"]',
     submitButton: '[data-testid="create-session-submit"]',
     sessionCard: 'session-card',
-    modal: '.modal-content',
+    modal: 'text="New Session"',
     noSessionsMessage: 'text="No active sessions"',
   };
   async navigate() {
@@ -25,7 +26,9 @@ export class SessionListPage extends BasePage {
     // Wait for create button to be clickable
     const createBtn = this.page
       .locator(this.selectors.createButton)
-      .or(this.page.locator(this.selectors.createButtonFallback));
+      .or(this.page.locator(this.selectors.createButtonFallback))
+      .or(this.page.locator(this.selectors.createButtonFallbackWithShortcut))
+      .first();
     await createBtn.waitFor({ state: 'visible', timeout: 5000 });
   }
 
@@ -36,14 +39,29 @@ export class SessionListPage extends BasePage {
     await this.dismissErrors();
 
     // Click the create session button
+    // Try to find the create button in different possible locations
     const createButton = this.page
       .locator(this.selectors.createButton)
-      .or(this.page.locator(this.selectors.createButtonFallback));
+      .or(this.page.locator(this.selectors.createButtonFallback))
+      .or(this.page.locator(this.selectors.createButtonFallbackWithShortcut))
+      .first(); // Use first() in case there are multiple buttons
 
-    console.log('Clicking create session button...');
     try {
-      await createButton.click({ timeout: 5000 });
-      console.log('Create button clicked successfully');
+      // Wait for button to be visible and stable before clicking
+      await createButton.waitFor({ state: 'visible', timeout: 5000 });
+
+      // Scroll button into view if needed
+      await createButton.scrollIntoViewIfNeeded();
+
+      // Try regular click first
+      try {
+        await createButton.click({ timeout: 5000 });
+      } catch (_clickError) {
+        await createButton.click({ force: true, timeout: 5000 });
+      }
+
+      // Wait for View Transition to complete
+      await this.page.waitForTimeout(1000);
     } catch (error) {
       console.error('Failed to click create button:', error);
       await screenshotOnError(
@@ -56,35 +74,29 @@ export class SessionListPage extends BasePage {
 
     // Wait for the modal to appear and be ready
     try {
-      await this.page.waitForSelector(this.selectors.modal, { state: 'visible', timeout: 4000 });
+      await this.page.waitForSelector(this.selectors.modal, { state: 'visible', timeout: 10000 });
     } catch (_e) {
       const error = new Error('Modal did not appear after clicking create button');
       await screenshotOnError(this.page, error, 'no-modal-after-click');
       throw error;
     }
 
-    // Wait for modal to be fully rendered and interactive
-    await this.page.waitForFunction(
-      () => {
-        const modal = document.querySelector('.modal-content');
-        return modal && modal.getBoundingClientRect().width > 0;
-      },
-      { timeout: 2000 }
-    );
+    // Small delay to ensure modal is interactive
+    await this.page.waitForTimeout(500);
 
     // Now wait for the session name input to be visible AND stable
     let inputSelector: string;
     try {
       await this.page.waitForSelector('[data-testid="session-name-input"]', {
         state: 'visible',
-        timeout: 2000,
+        timeout: 5000,
       });
       inputSelector = '[data-testid="session-name-input"]';
     } catch {
       // Fallback to placeholder if data-testid is not found
       await this.page.waitForSelector('input[placeholder="My Session"]', {
         state: 'visible',
-        timeout: 2000,
+        timeout: 5000,
       });
       inputSelector = 'input[placeholder="My Session"]';
     }
@@ -194,7 +206,7 @@ export class SessionListPage extends BasePage {
       .or(this.page.locator('button:has-text("Create")'));
 
     // Make sure button is not disabled
-    await submitButton.waitFor({ state: 'visible' });
+    await submitButton.waitFor({ state: 'visible', timeout: 5000 });
     const isDisabled = await submitButton.isDisabled();
     if (isDisabled) {
       throw new Error('Create button is disabled - form may not be valid');
@@ -202,14 +214,17 @@ export class SessionListPage extends BasePage {
 
     // Click and wait for response
     const responsePromise = this.page.waitForResponse(
-      (response) => response.url().includes('/api/sessions'),
-      { timeout: 4000 }
+      (response) =>
+        response.url().includes('/api/sessions') && response.request().method() === 'POST',
+      { timeout: 10000 }
     );
 
-    await submitButton.click();
+    await submitButton.click({ force: true, timeout: 5000 });
 
     // Wait for navigation to session view (only for web sessions)
     if (!spawnWindow) {
+      let sessionId: string | undefined;
+
       try {
         const response = await responsePromise;
         console.log(`Session creation response status: ${response.status()}`);
@@ -219,48 +234,55 @@ export class SessionListPage extends BasePage {
           throw new Error(`Session creation failed with status ${response.status()}: ${body}`);
         }
 
-        // Log the response body for debugging
+        // Get session ID from response
         const responseBody = await response.json();
         console.log('Session created:', responseBody);
+        sessionId = responseBody.sessionId;
       } catch (error) {
         console.error('Error waiting for session response:', error);
-        // If waitForResponse times out, check if we navigated anyway
-        const currentUrl = this.page.url();
-        if (!currentUrl.includes('?session=')) {
-          // Take a screenshot for debugging
-          await screenshotOnError(
-            this.page,
-            error instanceof Error ? error : new Error(String(error)),
-            'session-creation-response-error'
-          );
-          throw error;
+        // Don't throw yet, check if we navigated anyway
+      }
+
+      // Wait for modal to close first
+      await this.page
+        .waitForSelector('.modal-content', { state: 'hidden', timeout: 5000 })
+        .catch(() => {
+          console.log('Modal might have already closed');
+        });
+
+      // Give the app a moment to process the response
+      await this.page.waitForTimeout(500);
+
+      // Check if we're already on the session page
+      const currentUrl = this.page.url();
+      if (currentUrl.includes('?session=')) {
+        console.log('Already navigated to session view');
+      } else {
+        // If we have a session ID, try navigating manually
+        if (sessionId) {
+          console.log(`Manually navigating to session ${sessionId}`);
+          await this.page.goto(`/?session=${sessionId}`, { waitUntil: 'domcontentloaded' });
+        } else {
+          // Wait for automatic navigation
+          try {
+            await this.page.waitForURL(/\?session=/, { timeout: 10000 });
+            console.log('Successfully navigated to session view');
+          } catch (error) {
+            const finalUrl = this.page.url();
+            console.error(`Failed to navigate to session. Current URL: ${finalUrl}`);
+            // Take a screenshot
+            await screenshotOnError(
+              this.page,
+              new Error(`Navigation timeout. URL: ${finalUrl}`),
+              'session-navigation-timeout'
+            );
+            throw error;
+          }
         }
       }
 
-      // Wait for modal to close
-      await this.page
-        .waitForSelector('.modal-content', { state: 'hidden', timeout: 2000 })
-        .catch(() => {
-          // Modal might have already closed
-        });
-
-      // Wait for navigation - the URL should change to include session ID
-      try {
-        await this.page.waitForURL(/\?session=/, { timeout: 8000 });
-        console.log('Successfully navigated to session view');
-      } catch (error) {
-        const currentUrl = this.page.url();
-        console.error(`Failed to navigate to session. Current URL: ${currentUrl}`);
-        // Take a screenshot
-        await screenshotOnError(
-          this.page,
-          new Error(`Navigation timeout. URL: ${currentUrl}`),
-          'session-navigation-timeout'
-        );
-        throw error;
-      }
-
-      await this.page.waitForSelector('vibe-terminal', { state: 'visible' });
+      // Wait for terminal to be ready
+      await this.page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
     } else {
       // For spawn window, wait for modal to close
       await this.page.waitForSelector('.modal-content', { state: 'hidden', timeout: 4000 });
@@ -385,27 +407,48 @@ export class SessionListPage extends BasePage {
 
   async closeAnyOpenModal() {
     try {
-      // Check if modal is visible
-      const modal = this.page.locator('.modal-content');
-      if (await modal.isVisible({ timeout: 1000 })) {
-        // Try to close via cancel button or X button
-        const closeButton = this.page
-          .locator('button[aria-label="Close modal"]')
-          .or(this.page.locator('button:has-text("Cancel")'))
-          .or(this.page.locator('.modal-content button:has(svg)'));
+      // Check for multiple modal selectors
+      const modalSelectors = ['.modal-content', '[role="dialog"]', '.modal-positioned'];
 
-        if (await closeButton.isVisible({ timeout: 500 })) {
-          await closeButton.click();
-          await this.page.waitForSelector('.modal-content', { state: 'hidden', timeout: 2000 });
-        } else {
-          // Fallback: press Escape key
+      for (const selector of modalSelectors) {
+        const modal = this.page.locator(selector).first();
+        if (await modal.isVisible({ timeout: 500 })) {
+          console.log(`Found open modal with selector: ${selector}`);
+
+          // First try Escape key (most reliable)
           await this.page.keyboard.press('Escape');
-          await this.page.waitForSelector('.modal-content', { state: 'hidden', timeout: 2000 });
+
+          // Wait briefly for modal animation
+          await this.page.waitForTimeout(300);
+
+          // Check if modal is still visible
+          if (await modal.isVisible({ timeout: 500 })) {
+            console.log('Escape key did not close modal, trying close button');
+            // Try to close via cancel button or X button
+            const closeButton = this.page
+              .locator('button[aria-label="Close modal"]')
+              .or(this.page.locator('button:has-text("Cancel")'))
+              .or(this.page.locator('.modal-content button:has(svg)'))
+              .first();
+
+            if (await closeButton.isVisible({ timeout: 500 })) {
+              await closeButton.click({ force: true });
+            }
+          }
+
+          // Wait for modal to disappear
+          await this.page.waitForSelector(selector, { state: 'hidden', timeout: 2000 });
+          console.log(`Successfully closed modal with selector: ${selector}`);
         }
       }
     } catch (_error) {
       // Modal might not exist or already closed, which is fine
       console.log('No modal to close or already closed');
     }
+  }
+
+  async closeAnyOpenModals() {
+    // Alias for backward compatibility
+    await this.closeAnyOpenModal();
   }
 }

@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0-beta.6] - 2025-07-02
+## [1.0.0-beta.6] - 2025-07-03
 
 ### ✨ New Features
 
@@ -13,13 +13,14 @@
 - **Repository Detection** - Automatically finds git repositories in parent directories
 
 #### **Enhanced Command-Line Tool**
+- **Terminal Title Management** - `vt title` can set the title of your Terminal. Even Claude can use it!
 - **Version Information** - `vt help` now displays binary path, version, build date, and platform information for easier troubleshooting
 - **Apple Silicon Support** - Automatic detection of Homebrew installations on ARM Macs (/opt/homebrew path)
 
 #### **Menu Bar Enhancements**
-- **Sticky Session Creation** - Menu popover stays open during new session creation, preventing accidental dismissal
 - **Rich Session Interface** - Powerful new menu bar with visual activity indicators and real-time status tracking
-- **Improved Button States** - Kill All button and other controls now properly reflect their state with accurate visual feedback
+- **Native Session Overview** - See all open terminal sessions and even Claude Code status right from the menu bar.
+- **Sleep Prevention** - Mac stays awake when running terminal sessions
 
 #### **Web Interface Improvements**
 - **Modern Visual Design** - Complete UI overhaul with improved color scheme, animations, and visual hierarchy
@@ -32,59 +33,16 @@
 #### **Terminal Output Reliability**
 - **Fixed Output Corruption** - Resolved race conditions causing out-of-order or corrupted terminal output
 - **Stable Title Updates** - Terminal titles now update smoothly without flickering or getting stuck
-- **Optimized Update Frequency** - Reduced title update rate to once per second for better performance
 
 #### **Server Improvements**
 - **Logger Fix** - Fixed double initialization that was deleting log files
 - **Better Resource Cleanup** - Improved PTY manager cleanup and timer management
 - **Enhanced Error Handling** - More robust error handling throughout the server stack
 
-### 🔌 Integration Updates
-
 #### **Simplified Tailscale Setup**
 - Switched to Tailscale's local API for easier configuration
 - Removed manual token management requirements
 - Streamlined connection UI for minimal setup
-
-#### **iOS App Improvements**
-- **Better Authentication** - More reliable connection flow with improved state management
-- **Connection Resilience** - Enhanced ConnectionManager handles network changes gracefully
-- **Persistent Profiles** - Connection profiles now properly persist between app launches
-
-### 🛠 Bug Fixes
-
-#### **Menu Bar Fixes**
-- Fixed various session row menu bugs including proper cleanup of deleted views
-- Resolved alignment issues with Kill All button
-- Fixed Swift concurrency warnings for better stability on newer macOS versions
-
-#### **Activity Tracking**
-- Fixed missing directory creation for activity state files
-- Activity indicators now work reliably for all sessions
-
-#### **Frontend Fixes**
-- Resolved session loading race conditions
-- Fixed responsive design issues on mobile browsers
-- Improved error handling in no-auth mode
-
-### 🔧 Technical Improvements
-
-#### **Code Quality**
-- Migrated all GitHub Actions to ARM architecture for faster CI
-- Improved test stability and reduced flakiness
-- Enhanced TypeScript type safety throughout the codebase
-- Better separation of concerns between frontend and backend
-
-#### **Developer Experience**
-- More detailed error messages for easier debugging
-- Improved logging throughout the application stack
-- Better documentation for API endpoints and integration points
-
-### 📝 Previous Features (from earlier beta.6 work)
-- **Sleep Prevention** - Mac stays awake when running terminal sessions
-- **Dynamic Settings** - Settings update immediately without server restart
-- **Terminal Title Management** - Enhanced title updates with activity detection
-- **Prompt Pattern Detection** - 45% faster with LRU caching
 
 ## [1.0.0-beta.5] - 2025-01-29
 

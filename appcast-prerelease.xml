@@ -6,6 +6,73 @@
         <description>VibeTunnel pre-release and beta updates feed</description>
         <language>en</language>
         <item>
+            <title>VibeTunnel 1.0.0-beta.6</title>
+            <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.6/VibeTunnel-1.0.0-beta.6.dmg</link>
+            <sparkle:version>160</sparkle:version>
+            <sparkle:shortVersionString>1.0.0-beta.6</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>VibeTunnel 1.0.0-beta.6</h2><p><strong>Pre-release version</strong></p><div>
+<h3>✨ New Features</h3>
+
+<h4><strong>Git Repository Monitoring</strong> 🆕</h4>
+<ul>
+<li><strong>Real-time Git Status</strong> - Session rows now display git information including branch name and change counts</li>
+<li><strong>Visual Indicators</strong> - Color-coded status: orange for branches, yellow for uncommitted changes</li>
+<li><strong>Quick Navigation</strong> - Click folder icons to open repositories in Finder</li>
+<li><strong>GitHub Integration</strong> - Context menu option to open repositories directly on GitHub</li>
+<li><strong>Smart Caching</strong> - 5-second cache prevents excessive git commands while keeping info fresh</li>
+<li><strong>Repository Detection</strong> - Automatically finds git repositories in parent directories</li>
+</ul>
+
+<h4><strong>Enhanced Command-Line Tool</strong></h4>
+<ul>
+<li><strong>Terminal Title Management</strong> - `vt title` can set the title of your Terminal. Even Claude can use it!</li>
+<li><strong>Version Information</strong> - `vt help` now displays binary path, version, build date, and platform information for easier troubleshooting</li>
+<li><strong>Apple Silicon Support</strong> - Automatic detection of Homebrew installations on ARM Macs (/opt/homebrew path)</li>
+</ul>
+
+<h4><strong>Menu Bar Enhancements</strong></h4>
+<ul>
+<li><strong>Rich Session Interface</strong> - Powerful new menu bar with visual activity indicators and real-time status tracking</li>
+<li><strong>Native Session Overview</strong> - See all open terminal sessions and even Claude Code status right from the menu bar.</li>
+<li><strong>Sleep Prevention</strong> - Mac stays awake when running terminal sessions</li>
+</ul>
+
+<h4><strong>Web Interface Improvements</strong></h4>
+<ul>
+<li><strong>Modern Visual Design</strong> - Complete UI overhaul with improved color scheme, animations, and visual hierarchy</li>
+<li><strong>Collapsible Sidebar</strong> - New toggle button to maximize terminal viewing space (preference is remembered)</li>
+<li><strong>Better Session Loading</strong> - Fixed race conditions that caused sessions to appear as "missing"</li>
+<li><strong>Responsive Enhancements</strong> - Improved adaptation to different screen sizes with better touch targets</li>
+</ul>
+
+<h3>🚀 Performance &amp; Stability</h3>
+
+<h4><strong>Terminal Output Reliability</strong></h4>
+<ul>
+<li><strong>Fixed Output Corruption</strong> - Resolved race conditions causing out-of-order or corrupted terminal output</li>
+<li><strong>Stable Title Updates</strong> - Terminal titles now update smoothly without flickering or getting stuck</li>
+</ul>
+
+<h4><strong>Server Improvements</strong></h4>
+<ul>
+<li><strong>Logger Fix</strong> - Fixed double initialization that was deleting log files</li>
+<li><strong>Better Resource Cleanup</strong> - Improved PTY manager cleanup and timer management</li>
+<li><strong>Enhanced Error Handling</strong> - More robust error handling throughout the server stack</li>
+</ul>
+
+<h4><strong>Simplified Tailscale Setup</strong></h4>
+<ul>
+<li>Switched to Tailscale's local API for easier configuration</li>
+<li>Removed manual token management requirements</li>
+<li>Streamlined connection UI for minimal setup</li>
+</ul>
+</div>
+            ]]></description>
+            <pubDate>Wed, 03 Jul 2025 00:46:29 +0100</pubDate>
+            <enclosure url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.6/VibeTunnel-1.0.0-beta.6.dmg" sparkle:version="160" sparkle:shortVersionString="1.0.0-beta.6" type="application/octet-stream" sparkle:edSignature="kFaJj5tSahAMZ1Sj5p3q7YkQ3n7G6yCLXpUAvcqjjOLV9r9vW2k4ByPUXdKQkHujuDmGhElk2oMucv/jp0QPDg==" length="35747713"/>
+        </item>
+        <item>
             <title>VibeTunnel 1.0.0-beta.5</title>
             <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.5/VibeTunnel-1.0.0-beta.5.dmg</link>
             <sparkle:version>150</sparkle:version>

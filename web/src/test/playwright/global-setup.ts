@@ -1,4 +1,5 @@
 import { chromium, type FullConfig } from '@playwright/test';
+import type { Session } from '../../shared/types.js';
 import { testConfig } from './test-config';
 
 async function globalSetup(config: FullConfig) {
@@ -27,9 +28,64 @@ async function globalSetup(config: FullConfig) {
   // Set up any global test data or configuration
   process.env.PLAYWRIGHT_TEST_BASE_URL = config.use?.baseURL || testConfig.baseURL;
 
-  // Skip session cleanup to speed up tests
-  console.log('Skipping session cleanup to improve test speed');
-  // Skip browser storage cleanup to speed up tests
+  // Clean up old test sessions if requested
+  if (process.env.CLEAN_TEST_SESSIONS === 'true') {
+    console.log('Cleaning up old test sessions...');
+    const browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await page.goto(process.env.PLAYWRIGHT_TEST_BASE_URL || testConfig.baseURL, {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
+
+      // Wait for app to load
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
+
+      // Check if we have sessions
+      const sessions = await page.evaluate(async () => {
+        const response = await fetch('/api/sessions');
+        const data = await response.json();
+        return data;
+      });
+
+      console.log(`Found ${sessions.length} sessions`);
+
+      // Filter test sessions (older than 1 hour)
+      const oneHourAgo = Date.now() - 60 * 60 * 1000;
+      const testSessions = sessions.filter((s: Session) => {
+        const isTestSession =
+          s.name?.includes('test-') ||
+          s.name?.includes('nav-test') ||
+          s.name?.includes('keyboard-test');
+        const isOld = new Date(s.startedAt).getTime() < oneHourAgo;
+        return isTestSession && isOld;
+      });
+
+      console.log(`Found ${testSessions.length} old test sessions to clean up`);
+
+      // Kill old test sessions
+      for (const session of testSessions) {
+        try {
+          await page.evaluate(async (sessionId) => {
+            await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+          }, session.id);
+        } catch (error) {
+          console.log(`Failed to kill session ${session.id}:`, error);
+        }
+      }
+
+      console.log('Session cleanup complete');
+    } catch (error) {
+      console.error('Failed to clean up sessions:', error);
+    } finally {
+      await browser.close();
+    }
+  } else {
+    console.log('Skipping session cleanup to improve test speed');
+  }
 
   console.log(`Global setup complete. Base URL: ${process.env.PLAYWRIGHT_TEST_BASE_URL}`);
 }

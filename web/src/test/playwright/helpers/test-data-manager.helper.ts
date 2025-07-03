@@ -7,9 +7,11 @@ import { SessionListPage } from '../pages/session-list.page';
 export class TestSessionManager {
   private sessions: Map<string, { id: string; spawnWindow: boolean }> = new Map();
   private page: Page;
+  private sessionPrefix: string;
 
-  constructor(page: Page) {
+  constructor(page: Page, sessionPrefix = 'test') {
     this.page = page;
+    this.sessionPrefix = sessionPrefix;
   }
 
   /**
@@ -65,10 +67,11 @@ export class TestSessionManager {
   /**
    * Generates a unique session name with test context
    */
-  generateSessionName(prefix = 'test'): string {
+  generateSessionName(prefix?: string): string {
+    const actualPrefix = prefix || this.sessionPrefix;
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
-    return `${prefix}-${timestamp}-${random}`;
+    return `${actualPrefix}-${timestamp}-${random}`;
   }
 
   /**
@@ -85,8 +88,15 @@ export class TestSessionManager {
     }
 
     try {
-      // Wait for session cards
-      await this.page.waitForSelector('session-card', { state: 'visible', timeout: 2000 });
+      // Wait for page to be ready - either session cards or "no sessions" message
+      await this.page.waitForFunction(
+        () => {
+          const cards = document.querySelectorAll('session-card');
+          const noSessionsMsg = document.querySelector('.text-dark-text-muted');
+          return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
+        },
+        { timeout: 5000 }
+      );
 
       // Check if session exists
       const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`);

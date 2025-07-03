@@ -12,10 +12,31 @@ type TestFixtures = {
 // Extend base test with our fixtures
 export const test = base.extend<TestFixtures>({
   // Override page fixture to ensure clean state
-  page: async ({ page }, use) => {
+  page: async ({ page, context }, use) => {
     // Set up page with proper timeout handling
-    page.setDefaultTimeout(testConfig.defaultTimeout);
-    page.setDefaultNavigationTimeout(testConfig.navigationTimeout);
+    const defaultTimeout = testConfig.defaultTimeout;
+    const navigationTimeout = testConfig.navigationTimeout;
+    page.setDefaultTimeout(defaultTimeout);
+    page.setDefaultNavigationTimeout(navigationTimeout);
+
+    // Block unnecessary resources for faster loading
+    await context.route('**/*.{png,jpg,jpeg,gif,svg,woff,woff2,ttf,ico}', (route) => route.abort());
+    await context.route('**/analytics/**', (route) => route.abort());
+    await context.route('**/gtag/**', (route) => route.abort());
+
+    // Track responses for debugging in CI
+    if (process.env.CI) {
+      page.on('response', (response) => {
+        if (response.url().includes('/api/sessions') && response.request().method() === 'POST') {
+          response
+            .json()
+            .then((data) => {
+              console.log(`[CI Debug] Session created: ${JSON.stringify(data)}`);
+            })
+            .catch(() => {});
+        }
+      });
+    }
 
     // Only do initial setup on first navigation, not on subsequent navigations during test
     const isFirstNavigation = !page.url() || page.url() === 'about:blank';
@@ -44,6 +65,18 @@ export const test = base.extend<TestFixtures>({
 
       // Reload the page so the app picks up the localStorage settings
       await page.reload({ waitUntil: 'domcontentloaded' });
+
+      // Add styles to disable animations after page load
+      await page.addStyleTag({
+        content: `
+          *, *::before, *::after {
+            animation-duration: 0s !important;
+            animation-delay: 0s !important;
+            transition-duration: 0s !important;
+            transition-delay: 0s !important;
+          }
+        `,
+      });
 
       // Wait for the app to fully initialize
       await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });

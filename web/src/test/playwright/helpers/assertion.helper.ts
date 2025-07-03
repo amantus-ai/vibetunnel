@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * Asserts that a session is visible in the session list
@@ -34,7 +34,30 @@ export async function assertSessionInList(
   }
 
   // Find and verify the session card
-  const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
+  // If status is provided, look for sessions with that status first
+  let sessionCard: Locator;
+  if (status) {
+    // Look for session cards with the specific status
+    sessionCard = page
+      .locator(
+        `session-card:has-text("${sessionName}"):has(span:text-is("${status.toLowerCase()}"))`
+      )
+      .first();
+  } else {
+    // Just find any session with the name, preferring running sessions
+    const runningCard = page
+      .locator(`session-card:has-text("${sessionName}"):has(span:text-is("running"))`)
+      .first();
+    const anyCard = page.locator(`session-card:has-text("${sessionName}")`).first();
+
+    // Try to find a running session first
+    if (await runningCard.isVisible({ timeout: 1000 }).catch(() => false)) {
+      sessionCard = runningCard;
+    } else {
+      sessionCard = anyCard;
+    }
+  }
+
   await expect(sessionCard).toBeVisible({ timeout });
 
   // Optionally verify status

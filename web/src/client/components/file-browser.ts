@@ -23,6 +23,7 @@ import { createLogger } from '../utils/logger.js';
 import { copyToClipboard, formatPathForDisplay } from '../utils/path-utils.js';
 import type { Session } from './session-list.js';
 import './monaco-editor.js';
+import './modal-wrapper.js';
 
 const logger = createLogger('file-browser');
 
@@ -129,11 +130,15 @@ export class FileBrowser extends LitElement {
   async updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
 
-    if (changedProperties.has('visible') || changedProperties.has('session')) {
-      if (this.visible) {
-        this.currentPath = this.session?.workingDir || '.';
-        await this.loadDirectory(this.currentPath);
-      }
+    // Only load directory when the component becomes visible or when session changes while visible
+    if (changedProperties.has('visible') && this.visible) {
+      // Component just became visible
+      this.currentPath = this.session?.workingDir || '.';
+      await this.loadDirectory(this.currentPath);
+    } else if (changedProperties.has('session') && this.visible) {
+      // Session changed while component is visible
+      this.currentPath = this.session?.workingDir || '.';
+      await this.loadDirectory(this.currentPath);
     }
 
     // Monaco editor will handle its own updates through properties
@@ -381,12 +386,6 @@ export class FileBrowser extends LitElement {
     this.dispatchEvent(new CustomEvent('browser-cancel'));
   }
 
-  private handleOverlayClick(e: Event) {
-    if (e.target === e.currentTarget) {
-      this.handleCancel();
-    }
-  }
-
   private renderPreview() {
     if (this.previewLoading) {
       return html`
@@ -498,7 +497,15 @@ export class FileBrowser extends LitElement {
     }
 
     return html`
-      <div class="fixed inset-0 bg-dark-bg z-50 flex flex-col" @click=${this.handleOverlayClick}>
+      <modal-wrapper
+        .visible=${this.visible}
+        modalClass="z-50"
+        contentClass="fixed inset-0 bg-dark-bg flex flex-col z-50"
+        ariaLabel="File Browser"
+        @close=${this.handleCancel}
+        .closeOnBackdrop=${true}
+        .closeOnEscape=${true}
+      >
         ${
           this.isMobile && this.mobileView === 'preview'
             ? html`
@@ -517,7 +524,6 @@ export class FileBrowser extends LitElement {
         }
         <div
           class="w-full h-full bg-dark-bg flex flex-col overflow-hidden"
-          @click=${(e: Event) => e.stopPropagation()}
         >
           <!-- Compact Header (like session-view) -->
           <div
@@ -844,7 +850,7 @@ export class FileBrowser extends LitElement {
               : ''
           }
         </div>
-      </div>
+      </modal-wrapper>
     `;
   }
 
@@ -872,12 +878,13 @@ export class FileBrowser extends LitElement {
     if (!this.visible) return;
 
     if (e.key === 'Escape') {
-      e.preventDefault();
+      // Only handle escape when editing path - modal-wrapper handles the general escape
       if (this.editingPath) {
+        e.preventDefault();
+        e.stopImmediatePropagation(); // Prevent modal-wrapper from also handling it
         this.cancelPathEdit();
-      } else {
-        this.handleCancel();
       }
+      // Let modal-wrapper handle the escape for closing the modal
     } else if (
       e.key === 'Enter' &&
       this.selectedFile &&
