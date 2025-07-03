@@ -205,13 +205,13 @@ export class SessionManager {
     // Keep checking until we find a unique name
     while (true) {
       const nameExists = sessions.some(
-        session => session.name === finalName && session.id !== excludeSessionId
+        (session) => session.name === finalName && session.id !== excludeSessionId
       );
-      
+
       if (!nameExists) {
         break;
       }
-      
+
       // Add or increment suffix
       finalName = `${desiredName} (${suffix})`;
       suffix++;
@@ -238,7 +238,7 @@ export class SessionManager {
 
     // Ensure the name is unique
     const uniqueName = this.ensureUniqueName(name, sessionId);
-    
+
     if (uniqueName !== name) {
       logger.log(`[SessionManager] Name "${name}" already exists, using "${uniqueName}" instead`);
     }
@@ -250,7 +250,7 @@ export class SessionManager {
 
     this.saveSessionInfo(sessionId, sessionInfo);
     logger.log(`[SessionManager] session ${sessionId} name updated to: ${uniqueName}`);
-    
+
     return uniqueName;
   }
 

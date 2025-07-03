@@ -1054,7 +1054,9 @@ export class PtyManager extends EventEmitter {
         this.updateTerminalTitleForSessionName(memorySession);
       }
 
-      logger.log(`[PtyManager] Updated session ${sessionId} name from "${oldName}" to "${uniqueName}"`);
+      logger.log(
+        `[PtyManager] Updated session ${sessionId} name from "${oldName}" to "${uniqueName}"`
+      );
     } else {
       logger.debug(`[PtyManager] No in-memory session found for ${sessionId}`, {
         sessionsMapSize: this.sessions.size,
@@ -1066,7 +1068,7 @@ export class PtyManager extends EventEmitter {
     this.trackAndEmit('sessionNameChanged', sessionId, uniqueName);
 
     logger.log(`[PtyManager] Updated session ${sessionId} name to: ${uniqueName}`);
-    
+
     return uniqueName;
   }
 
