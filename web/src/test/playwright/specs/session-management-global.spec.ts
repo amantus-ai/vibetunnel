@@ -21,7 +21,7 @@ test.describe('Global Session Management', () => {
     await sessionManager.cleanupAllSessions();
   });
 
-  test('should kill all sessions at once', async ({ page, sessionListPage }) => {
+  test('should kill all sessions at once', async ({ page }) => {
     // Increase timeout for this test as it involves multiple sessions
     test.setTimeout(TIMEOUTS.KILL_ALL_OPERATION * 3); // 90 seconds
 

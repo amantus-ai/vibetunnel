@@ -270,9 +270,12 @@ test.describe('Activity Monitoring', () => {
       const runningIndicator = sessionCard
         .locator('.text-green, .bg-green, .active, .running')
         .first();
-      const recentActivity = sessionCard.locator('.text-xs, .text-sm').filter({
-        hasText: /now|active|running|second.*ago/i,
-      }).first();
+      const recentActivity = sessionCard
+        .locator('.text-xs, .text-sm')
+        .filter({
+          hasText: /now|active|running|second.*ago/i,
+        })
+        .first();
 
       const showsRunning =
         (await runningIndicator.isVisible()) || (await recentActivity.isVisible());
