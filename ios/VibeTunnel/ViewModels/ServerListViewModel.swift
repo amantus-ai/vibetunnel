@@ -16,7 +16,8 @@ protocol ServerListViewModelProtocol: Observable {
     func updateProfile(_ profile: ServerProfile, password: String?) async throws
     func deleteProfile(_ profile: ServerProfile) async throws
     func initiateConnectionToProfile(_ profile: ServerProfile) async
-    func handleLoginSuccess(username: String, password: String)
+    func handleLoginSuccess(username: String, password: String) async throws
+    func getPassword(for profile: ServerProfile) -> String?
 }
 
 /// View model for ServerListView - managing server profiles
@@ -30,16 +31,25 @@ class ServerListViewModel: ServerListViewModelProtocol {
     var currentConnectingProfile: ServerProfile?
     
     let connectionManager: ConnectionManager
-    private let networkMonitor: NetworkMonitor
+    private let networkMonitor: NetworkMonitoring
+    private let keychainService: KeychainServiceProtocol
+    private let userDefaults: UserDefaults
 
-    init(networkMonitor: NetworkMonitor = NetworkMonitor.shared) {
-        self.connectionManager = ConnectionManager.shared
+    init(
+        connectionManager: ConnectionManager = ConnectionManager.shared,
+        networkMonitor: NetworkMonitoring = NetworkMonitor.shared,
+        keychainService: KeychainServiceProtocol = KeychainService(),
+        userDefaults: UserDefaults = .standard
+    ) {
+        self.connectionManager = connectionManager
         self.networkMonitor = networkMonitor
+        self.keychainService = keychainService
+        self.userDefaults = userDefaults
         loadProfiles()
     }
 
     func loadProfiles() {
-        profiles = ServerProfile.loadAll().sorted { profile1, profile2 in
+        profiles = ServerProfile.loadAll(from: userDefaults).sorted { profile1, profile2 in
             // Sort by last connected (most recent first), then by name
             if let date1 = profile1.lastConnected, let date2 = profile2.lastConnected {
                 date1 > date2
@@ -54,11 +64,11 @@ class ServerListViewModel: ServerListViewModelProtocol {
     }
 
     func addProfile(_ profile: ServerProfile, password: String? = nil) async throws {
-        ServerProfile.save(profile)
+        ServerProfile.save(profile, to: userDefaults)
 
         // Save password to keychain if provided
         if let password, !password.isEmpty {
-            try KeychainService.savePassword(password, for: profile.id)
+            try keychainService.savePassword(password, for: profile.id)
         }
 
         loadProfiles()
@@ -67,34 +77,38 @@ class ServerListViewModel: ServerListViewModelProtocol {
     func updateProfile(_ profile: ServerProfile, password: String? = nil) async throws {
         var updatedProfile = profile
         updatedProfile.updatedAt = Date()
-        ServerProfile.save(updatedProfile)
+        ServerProfile.save(updatedProfile, to: userDefaults)
 
-        // Update password if provided
-        if let password {
+        // Handle password updates based on auth requirement
+        if !profile.requiresAuth {
+            // If profile doesn't require auth, remove any stored password
+            try? keychainService.deletePassword(for: profile.id)
+        } else if let password {
             if password.isEmpty {
-                // Delete password if empty
-                try KeychainService.deletePassword(for: profile.id)
+                // Delete password if empty string provided
+                try keychainService.deletePassword(for: profile.id)
             } else {
                 // Save new password
-                try KeychainService.savePassword(password, for: profile.id)
+                try keychainService.savePassword(password, for: profile.id)
             }
         }
+        // If password is nil and profile requires auth, leave existing password unchanged
 
         loadProfiles()
     }
 
     func deleteProfile(_ profile: ServerProfile) async throws {
-        ServerProfile.delete(profile)
+        ServerProfile.delete(profile, from: userDefaults)
 
         // Delete password from keychain
-        try KeychainService.deletePassword(for: profile.id)
+        try keychainService.deletePassword(for: profile.id)
 
         loadProfiles()
     }
 
     func getPassword(for profile: ServerProfile) -> String? {
         do {
-            return try KeychainService.getPassword(for: profile.id)
+            return try keychainService.getPassword(for: profile.id)
         } catch {
             // Password not found or error occurred
             return nil
@@ -137,7 +151,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
             print("🔗 No auth required, testing connection directly")
             _ = try await APIClient.shared.getSessions()
             connectionManager.isConnected = true
-            ServerProfile.updateLastConnected(for: profile.id)
+            ServerProfile.updateLastConnected(for: profile.id, in: userDefaults)
             loadProfiles()
             print("🔗 ✅ Connection successful (no auth)")
             return
@@ -152,7 +166,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
             // Auto-login successful, test connection
             _ = try await APIClient.shared.getSessions()
             connectionManager.isConnected = true
-            ServerProfile.updateLastConnected(for: profile.id)
+            ServerProfile.updateLastConnected(for: profile.id, in: userDefaults)
             loadProfiles()
             print("🔗 ✅ Connection fully established")
             print("🔗 📊 ConnectionManager state: isConnected=\(connectionManager.isConnected), serverConfig=\(connectionManager.serverConfig != nil ? "✅" : "❌")")
@@ -168,7 +182,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
                     var updatedProfile = profile
                     updatedProfile.requiresAuth = true
                     updatedProfile.username = "admin"  // Default username
-                    ServerProfile.save(updatedProfile)
+                    ServerProfile.save(updatedProfile, to: userDefaults)
                     loadProfiles()
                 default:
                     break
@@ -186,8 +200,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
             return false
         }
 
-        // Save the config temporarily to test
-        let connectionManager = ConnectionManager.shared
+        // Save the config temporarily to test using injected connection manager
         connectionManager.saveConnection(config)
 
         do {
@@ -218,40 +231,33 @@ class ServerListViewModel: ServerListViewModelProtocol {
     }
     
     /// Handle successful login and save credentials
-    func handleLoginSuccess(username: String, password: String) {
+    func handleLoginSuccess(username: String, password: String) async throws {
         guard let profile = currentConnectingProfile else {
             print("⚠️ No current connecting profile found")
-            return
+            throw AuthenticationError.invalidCredentials
         }
         
-        Task {
-            do {
-                print("💾 Saving credentials after successful login for profile: \(profile.name)")
-                print("💾 Username: \(username), Password length: \(password.count)")
-                
-                // Save password to keychain with profile ID
-                if !password.isEmpty {
-                    try KeychainService.savePassword(password, for: profile.id)
-                    print("💾 Password saved to keychain successfully")
-                }
-                
-                // Update profile with correct username and auth requirement
-                var updatedProfile = profile
-                updatedProfile.requiresAuth = true
-                updatedProfile.username = username
-                ServerProfile.save(updatedProfile)
-                print("💾 Profile updated with username: \(username)")
-                
-                // Mark connection as successful
-                connectionManager.isConnected = true
-                
-                // Reload profiles to reflect changes
-                loadProfiles()
-            } catch {
-                print("💾 Failed to save credentials: \(error)")
-                errorMessage = "Failed to save credentials: \(error.localizedDescription)"
-            }
+        print("💾 Saving credentials after successful login for profile: \(profile.name)")
+        print("💾 Username: \(username), Password length: \(password.count)")
+        
+        // Save password to keychain with profile ID
+        if !password.isEmpty {
+            try keychainService.savePassword(password, for: profile.id)
+            print("💾 Password saved to keychain successfully")
         }
+        
+        // Update profile with correct username and auth requirement
+        var updatedProfile = profile
+        updatedProfile.requiresAuth = true
+        updatedProfile.username = username
+        ServerProfile.save(updatedProfile, to: userDefaults)
+        print("💾 Profile updated with username: \(username)")
+        
+        // Mark connection as successful
+        connectionManager.isConnected = true
+        
+        // Reload profiles to reflect changes
+        loadProfiles()
     }
 }
 

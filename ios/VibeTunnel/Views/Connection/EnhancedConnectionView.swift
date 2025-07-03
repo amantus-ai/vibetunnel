@@ -354,7 +354,7 @@ struct ServerProfileEditView: View {
         .task {
             // Load existing password from keychain
             if profile.requiresAuth,
-               let existingPassword = try? KeychainService.getPassword(for: profile.id)
+               let existingPassword = try? KeychainService().getPassword(for: profile.id)
             {
                 password = existingPassword
             }

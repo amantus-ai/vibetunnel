@@ -5,14 +5,6 @@ import Testing
 @Suite("Logger Tests", .tags(.utilities))
 struct LoggerTests {
 
-    // Store original log level to restore after tests
-    let originalLogLevel = Logger.globalLevel
-
-    deinit {
-        // Restore original log level
-        Logger.globalLevel = originalLogLevel
-    }
-
     @Test("Log level prefixes")
     func logLevelPrefixes() {
         #expect(LogLevel.verbose.prefix == "🔍")
@@ -37,11 +29,19 @@ struct LoggerTests {
 
         // Unfortunately we can't access the private category property
         // but we can verify the logger was created without error
-        #expect(logger != nil)
+        // Logger is a value type, so it's always non-nil
+        #expect(true)
     }
 
     @Test("Global log level")
     func globalLogLevel() {
+        // Store original log level
+        let originalLogLevel = Logger.globalLevel
+        defer {
+            // Restore original log level
+            Logger.globalLevel = originalLogLevel
+        }
+        
         // Test setting different log levels
         Logger.globalLevel = .verbose
         #expect(Logger.globalLevel == .verbose)

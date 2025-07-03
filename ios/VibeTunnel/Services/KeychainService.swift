@@ -2,8 +2,8 @@ import Foundation
 import Security
 
 /// Service for securely storing credentials in the iOS Keychain
-enum KeychainService {
-    private static let serviceName = "com.vibetunnel.ios"
+class KeychainService: KeychainServiceProtocol {
+    private let serviceName = "com.vibetunnel.ios"
 
     enum KeychainError: Error {
         case unexpectedData
@@ -13,7 +13,7 @@ enum KeychainService {
     }
 
     /// Save a password for a server profile
-    static func savePassword(_ password: String, for profileId: UUID) throws {
+    func savePassword(_ password: String, for profileId: UUID) throws {
         let account = "server-\(profileId.uuidString)"
         guard let passwordData = password.data(using: .utf8) else {
             throw KeychainError.unexpectedPasswordData
@@ -58,7 +58,7 @@ enum KeychainService {
     }
 
     /// Retrieve a password for a server profile
-    static func getPassword(for profileId: UUID) throws -> String {
+    func getPassword(for profileId: UUID) throws -> String {
         let account = "server-\(profileId.uuidString)"
 
         let query: [String: Any] = [
@@ -89,7 +89,7 @@ enum KeychainService {
     }
 
     /// Delete a password for a server profile
-    static func deletePassword(for profileId: UUID) throws {
+    func deletePassword(for profileId: UUID) throws {
         let account = "server-\(profileId.uuidString)"
 
         let query: [String: Any] = [
@@ -105,7 +105,7 @@ enum KeychainService {
     }
 
     /// Delete all passwords for the app
-    static func deleteAllPasswords() throws {
+    func deleteAllPasswords() throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName
@@ -120,7 +120,7 @@ enum KeychainService {
     // MARK: - Generic Key-Value Storage
 
     /// Save a password/token with a generic key
-    static func savePassword(_ password: String, for key: String) throws {
+    func savePassword(_ password: String, for key: String) throws {
         guard let passwordData = password.data(using: .utf8) else {
             throw KeychainError.unexpectedPasswordData
         }
@@ -164,7 +164,7 @@ enum KeychainService {
     }
 
     /// Load a password/token with a generic key
-    static func loadPassword(for key: String) throws -> String {
+    func loadPassword(for key: String) throws -> String {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
@@ -193,7 +193,7 @@ enum KeychainService {
     }
 
     /// Delete a password/token with a generic key
-    static func deletePassword(for key: String) throws {
+    func deletePassword(for key: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
@@ -206,3 +206,4 @@ enum KeychainService {
         }
     }
 }
+

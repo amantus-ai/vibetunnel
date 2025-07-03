@@ -7,7 +7,7 @@ class MockWebSocket: WebSocketProtocol {
     weak var delegate: WebSocketDelegate?
 
     // State tracking
-    private(set) var isConnected = false
+    var isConnected = false
     private(set) var lastConnectURL: URL?
     private(set) var lastConnectHeaders: [String: String]?
     private(set) var sentMessages: [WebSocketMessage] = []
@@ -123,6 +123,15 @@ class MockWebSocket: WebSocketProtocol {
         messageQueue.removeAll()
         messageDeliveryTask?.cancel()
         messageDeliveryTask = nil
+    }
+    
+    /// Clear tracked state but preserve connection state
+    func reset(preserveConnection: Bool) {
+        let wasConnected = isConnected
+        reset()
+        if preserveConnection {
+            isConnected = wasConnected
+        }
     }
 
     /// Find sent messages by type

@@ -92,7 +92,13 @@ struct ServerListView: View {
                         authenticationService: authService
                     ) { username, password in
                         // Delegate to ViewModel to handle login success
-                        viewModel.handleLoginSuccess(username: username, password: password)
+                        Task { @MainActor in
+                            do {
+                                try await viewModel.handleLoginSuccess(username: username, password: password)
+                            } catch {
+                                viewModel.errorMessage = "Failed to save credentials: \(error.localizedDescription)"
+                            }
+                        }
                     }
                 }
             }

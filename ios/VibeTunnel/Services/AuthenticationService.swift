@@ -65,15 +65,17 @@ final class AuthenticationService: ObservableObject {
 
     private let apiClient: APIClient
     private let serverConfig: ServerConfig
+    private let keychainService: KeychainServiceProtocol
 
     private let tokenKey: String
     private let userDataKey: String
 
     // MARK: - Initialization
 
-    init(apiClient: APIClient, serverConfig: ServerConfig) {
+    init(apiClient: APIClient, serverConfig: ServerConfig, keychainService: KeychainServiceProtocol = KeychainService()) {
         self.apiClient = apiClient
         self.serverConfig = serverConfig
+        self.keychainService = keychainService
         self.tokenKey = "auth_token_\(serverConfig.id)"
         self.userDataKey = "user_data_\(serverConfig.id)"
 
@@ -131,7 +133,7 @@ final class AuthenticationService: ObservableObject {
 
         if httpResponse.statusCode == 200, authResponse.success, let token = authResponse.token {
             // Store token and user data
-            try KeychainService.savePassword(token, for: tokenKey)
+            try keychainService.savePassword(token, for: tokenKey)
 
             let userData = UserData(
                 userId: username,
@@ -143,7 +145,7 @@ final class AuthenticationService: ObservableObject {
                 logger.error("Failed to convert user data to UTF-8 string")
                 throw APIError.dataEncodingFailed
             }
-            try KeychainService.savePassword(userDataString, for: userDataKey)
+            try keychainService.savePassword(userDataString, for: userDataKey)
 
             // Update state
             self.authToken = token
@@ -195,8 +197,8 @@ final class AuthenticationService: ObservableObject {
         }
 
         // Clear stored credentials
-        try? KeychainService.deletePassword(for: tokenKey)
-        try? KeychainService.deletePassword(for: userDataKey)
+        try? keychainService.deletePassword(for: tokenKey)
+        try? keychainService.deletePassword(for: userDataKey)
 
         // Clear state
         authToken = nil
@@ -240,7 +242,7 @@ final class AuthenticationService: ObservableObject {
         
         // Get stored password from keychain
         do {
-            let password = try KeychainService.getPassword(for: profile.id)
+            let password = try keychainService.getPassword(for: profile.id)
             logger.debug("Successfully retrieved password from keychain for profile: \(profile.name)")
             logger.debug("Password length: \(password.count) characters")
             
@@ -289,8 +291,8 @@ final class AuthenticationService: ObservableObject {
 
     private func checkExistingAuth() async {
         // Try to load existing token
-        if let token = try? KeychainService.loadPassword(for: tokenKey),
-           let userDataJson = try? KeychainService.loadPassword(for: userDataKey),
+        if let token = try? keychainService.loadPassword(for: tokenKey),
+           let userDataJson = try? keychainService.loadPassword(for: userDataKey),
            let userDataData = userDataJson.data(using: .utf8),
            let userData = try? JSONDecoder().decode(UserData.self, from: userDataData)
         {

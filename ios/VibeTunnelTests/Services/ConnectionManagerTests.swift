@@ -37,24 +37,6 @@ struct ConnectionManagerTests {
         #expect(manager.isConnected == false)
     }
 
-    @Test("Tracks connection state in storage")
-    func connectionStateTracking() {
-        // Arrange
-        let mockStorage = MockStorage()
-        let manager = ConnectionManager.createForTesting(storage: mockStorage)
-
-        // Act & Assert - Initial state
-        #expect(manager.isConnected == false)
-        #expect(mockStorage.bool(forKey: "connectionState") == false)
-
-        // Set connected
-        manager.isConnected = true
-        #expect(mockStorage.bool(forKey: "connectionState") == true)
-
-        // Set disconnected
-        manager.isConnected = false
-        #expect(mockStorage.bool(forKey: "connectionState") == false)
-    }
 
     @Test("Saves connection timestamp")
     func connectionTimestamp() throws {

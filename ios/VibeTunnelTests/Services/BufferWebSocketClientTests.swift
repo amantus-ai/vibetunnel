@@ -2,123 +2,9 @@ import Foundation
 import Testing
 @testable import VibeTunnel
 
-// MARK: - Test Mocks
-// TODO: Move these to a separate file once Xcode project is updated
+// Tests use mock classes from Mocks/ directory
 
-/// Mock WebSocket for testing
-@MainActor
-class MockWebSocket: WebSocketProtocol {
-    weak var delegate: WebSocketDelegate?
-    
-    // State tracking
-    var isConnected = false
-    private(set) var lastConnectURL: URL?
-    private(set) var lastConnectHeaders: [String: String]?
-    var sentMessages: [WebSocketMessage] = []
-    private(set) var pingCount = 0
-    private(set) var disconnectCalled = false
-    private(set) var lastDisconnectCode: URLSessionWebSocketTask.CloseCode?
-    private(set) var lastDisconnectReason: Data?
-    
-    // Message queue for async delivery
-    private var messageHandlers: [() async -> Void] = []
-    
-    func connect(to url: URL, with headers: [String: String]) async throws {
-        lastConnectURL = url
-        lastConnectHeaders = headers
-        isConnected = true
-        delegate?.webSocketDidConnect(self)
-    }
-    
-    func send(_ message: WebSocketMessage) async throws {
-        guard isConnected else { throw WebSocketError.connectionFailed }
-        sentMessages.append(message)
-    }
-    
-    func sendPing() async throws {
-        guard isConnected else { throw WebSocketError.connectionFailed }
-        pingCount += 1
-    }
-    
-    func disconnect(with code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        disconnectCalled = true
-        lastDisconnectCode = code
-        lastDisconnectReason = reason
-        
-        if isConnected {
-            isConnected = false
-            delegate?.webSocketDidDisconnect(self, closeCode: code, reason: reason)
-        }
-    }
-    
-    // Test helpers
-    func simulateMessage(_ message: WebSocketMessage) {
-        guard isConnected else { return }
-        // Queue the message for async delivery
-        messageHandlers.append { [weak self] in
-            guard let self = self else { return }
-            self.delegate?.webSocket(self, didReceiveMessage: message)
-        }
-        // Trigger async delivery
-        Task {
-            while !messageHandlers.isEmpty {
-                let handler = messageHandlers.removeFirst()
-                await handler()
-            }
-        }
-    }
-    
-    func simulateError(_ error: Error) {
-        guard isConnected else { return }
-        delegate?.webSocket(self, didFailWithError: error)
-    }
-    
-    func simulateDisconnection() {
-        guard isConnected else { return }
-        isConnected = false
-        delegate?.webSocketDidDisconnect(self, closeCode: .abnormalClosure, reason: nil)
-    }
-    
-    func reset() {
-        isConnected = false
-        sentMessages.removeAll()
-        pingCount = 0
-    }
-    
-    func sentJSONMessages() -> [[String: Any]] {
-        sentMessages.compactMap { message in
-            guard case .string(let text) = message,
-                  let data = text.data(using: .utf8),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                return nil
-            }
-            return json
-        }
-    }
-}
-
-/// Mock WebSocket factory for testing
-@MainActor
-class MockWebSocketFactory: WebSocketFactory {
-    private(set) var createdWebSockets: [MockWebSocket] = []
-    
-    func createWebSocket() -> WebSocketProtocol {
-        let webSocket = MockWebSocket()
-        createdWebSockets.append(webSocket)
-        return webSocket
-    }
-    
-    var lastCreatedWebSocket: MockWebSocket? {
-        createdWebSockets.last
-    }
-    
-    func reset() {
-        createdWebSockets.forEach { $0.reset() }
-        createdWebSockets.removeAll()
-    }
-}
-
-@Suite("BufferWebSocketClient Tests", .tags(.critical, .websocket), .disabled("Needs async mock refactoring"))
+@Suite("BufferWebSocketClient Tests", .tags(.critical, .websocket))
 @MainActor
 final class BufferWebSocketClientTests {
     // Test dependencies
@@ -324,15 +210,13 @@ final class BufferWebSocketClientTests {
         let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
         
         // Clear sent messages to isolate unsubscribe message
-        let prevConnected = mockWebSocket.isConnected
-        mockWebSocket.reset()
-        mockWebSocket.isConnected = prevConnected // Keep connected state
+        mockWebSocket.reset(preserveConnection: true)
         
         // Act - Unsubscribe
         client.unsubscribe(from: sessionId)
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
         
-        // Assert
+        // Assert - Should have sent only the unsubscribe message
         let sentMessages = mockWebSocket.sentJSONMessages()
         #expect(sentMessages.contains { msg in
             msg["type"] as? String == "unsubscribe" &&

@@ -4,10 +4,16 @@ import SwiftUI
 
 private let logger = Logger(category: "NetworkMonitor")
 
+/// Protocol for network monitoring to enable dependency injection in tests
+@MainActor
+protocol NetworkMonitoring {
+    var isConnected: Bool { get }
+}
+
 /// Monitors network connectivity and provides offline/online state
 @MainActor
 @Observable
-final class NetworkMonitor {
+final class NetworkMonitor: NetworkMonitoring {
     static let shared = NetworkMonitor()
 
     private(set) var isConnected = true

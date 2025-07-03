@@ -118,7 +118,7 @@ struct AddServerView: View {
                 
                 if profile.requiresAuth && !viewModel.password.isEmpty {
                     print("💾 Saving password to keychain for profile id: \(profile.id)")
-                    try KeychainService.savePassword(viewModel.password, for: profile.id)
+                    try KeychainService().savePassword(viewModel.password, for: profile.id)
                     print("💾 Password saved successfully")
                 } else {
                     print("💾 Skipping password save - requiresAuth: \(profile.requiresAuth), password empty: \(viewModel.password.isEmpty)")

@@ -66,8 +66,8 @@ final class MockStorage: PersistentStorage {
         storage.removeValue(forKey: key)
     }
     
-    /// Test helper to clear all stored data
-    func clear() {
+    /// Reset all stored data for test isolation
+    func reset() {
         storage.removeAll()
     }
     

@@ -65,8 +65,8 @@ extension ServerProfile {
     static let storageKey = "savedServerProfiles"
 
     /// Load all saved profiles from UserDefaults
-    static func loadAll() -> [ServerProfile] {
-        guard let data = UserDefaults.standard.data(forKey: storageKey),
+    static func loadAll(from userDefaults: UserDefaults = .standard) -> [ServerProfile] {
+        guard let data = userDefaults.data(forKey: storageKey),
               let profiles = try? JSONDecoder().decode([ServerProfile].self, from: data)
         else {
             return []
@@ -75,37 +75,37 @@ extension ServerProfile {
     }
 
     /// Save profiles to UserDefaults
-    static func saveAll(_ profiles: [ServerProfile]) {
+    static func saveAll(_ profiles: [ServerProfile], to userDefaults: UserDefaults = .standard) {
         if let data = try? JSONEncoder().encode(profiles) {
-            UserDefaults.standard.set(data, forKey: storageKey)
+            userDefaults.set(data, forKey: storageKey)
         }
     }
 
     /// Add or update a profile
-    static func save(_ profile: ServerProfile) {
-        var profiles = loadAll()
+    static func save(_ profile: ServerProfile, to userDefaults: UserDefaults = .standard) {
+        var profiles = loadAll(from: userDefaults)
         if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
             profiles[index] = profile
         } else {
             profiles.append(profile)
         }
-        saveAll(profiles)
+        saveAll(profiles, to: userDefaults)
     }
 
     /// Delete a profile
-    static func delete(_ profile: ServerProfile) {
-        var profiles = loadAll()
+    static func delete(_ profile: ServerProfile, from userDefaults: UserDefaults = .standard) {
+        var profiles = loadAll(from: userDefaults)
         profiles.removeAll { $0.id == profile.id }
-        saveAll(profiles)
+        saveAll(profiles, to: userDefaults)
     }
 
     /// Update last connected time
-    static func updateLastConnected(for profileId: UUID) {
-        var profiles = loadAll()
+    static func updateLastConnected(for profileId: UUID, in userDefaults: UserDefaults = .standard) {
+        var profiles = loadAll(from: userDefaults)
         if let index = profiles.firstIndex(where: { $0.id == profileId }) {
             profiles[index].lastConnected = Date()
             profiles[index].updatedAt = Date()
-            saveAll(profiles)
+            saveAll(profiles, to: userDefaults)
         }
     }
 }

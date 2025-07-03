@@ -10,4 +10,8 @@ extension Tag {
     @Tag static var security: Self
     @Tag static var fileSystem: Self
     @Tag static var terminal: Self
+    @Tag static var services: Self
+    @Tag static var utilities: Self
+    @Tag static var mvvm: Self
+    @Tag static var viewModels: Self
 }
