@@ -301,40 +301,6 @@ private struct TerminalPreferenceSection: View {
                 HStack {
                     Text("Preferred Git App")
                     Spacer()
-                    Button("Test") {
-                        Task {
-                            do {
-                                // Create a test git repository if it doesn't exist
-                                let testRepoPath = FileManager.default.temporaryDirectory
-                                    .appendingPathComponent("vibetunnel-git-test")
-                                
-                                // Create directory if needed
-                                try? FileManager.default.createDirectory(
-                                    at: testRepoPath,
-                                    withIntermediateDirectories: true
-                                )
-                                
-                                // Initialize git repo if needed
-                                let gitInitTask = Process()
-                                gitInitTask.currentDirectoryURL = testRepoPath
-                                gitInitTask.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-                                gitInitTask.arguments = ["init"]
-                                try? gitInitTask.run()
-                                gitInitTask.waitUntilExit()
-                                
-                                // Launch git app with test repo
-                                try await gitAppLauncher.launchGitApp(at: testRepoPath)
-                            } catch {
-                                Logger.advanced.error("Failed to launch git app test: \(error)")
-                                errorTitle = "Git App Launch Failed"
-                                errorMessage = error.localizedDescription
-                                showingError = true
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundColor(.secondary)
-                    
                     Picker("", selection: gitAppBinding) {
                         ForEach(GitApp.installed, id: \.rawValue) { gitApp in
                             HStack {
