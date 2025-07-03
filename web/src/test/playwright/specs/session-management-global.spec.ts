@@ -32,16 +32,16 @@ test.describe('Global Session Management', () => {
       console.log(`Created session ${i + 1}: ${sessionName}`);
 
       // Go back to list after each creation
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+      // Give server time to save session info
+      await page.waitForTimeout(500);
 
       // Wait for session cards to be loaded or empty state
       await page.waitForSelector('session-card, .text-dark-text-muted', {
         state: 'visible',
         timeout: TIMEOUTS.SESSION_CREATION,
       });
-
-      // Add a small delay to ensure UI is ready
-      await page.waitForTimeout(1000);
 
       // Wait for the session to appear in the list with better error handling
       try {
@@ -71,7 +71,7 @@ test.describe('Global Session Management', () => {
         const pageContent = await page.locator('body').textContent();
         console.error(`Failed to find session ${sessionName}. Total cards: ${cardCount}`);
         console.error(`Page contains: ${pageContent?.substring(0, 200)}...`);
-        
+
         // Take a screenshot for debugging
         await page.screenshot({ path: `test-debug-session-not-found-${sessionName}.png` });
         throw error;

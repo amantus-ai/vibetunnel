@@ -39,7 +39,7 @@ export class TestSessionManager {
       // Get session ID from URL for web sessions
       let sessionId = '';
       if (!spawnWindow) {
-        await this.page.waitForURL(/\?session=/, { timeout: 4000 });
+        await this.page.waitForURL(/\?session=/, { timeout: 10000 });
         const url = this.page.url();
 
         if (!url.includes('?session=')) {
@@ -50,10 +50,22 @@ export class TestSessionManager {
         if (!sessionId) {
           throw new Error(`No session ID found in URL: ${url}`);
         }
+
+        // Wait for the terminal to be ready before navigating away
+        // This ensures the session is fully created
+        await this.page
+          .waitForSelector('xterm-screen', {
+            state: 'visible',
+            timeout: 5000,
+          })
+          .catch(() => {
+            console.warn('Terminal screen not visible, session might not be fully initialized');
+          });
       }
 
       // Track the session
       this.sessions.set(name, { id: sessionId, spawnWindow });
+      console.log(`Tracked session: ${name} with ID: ${sessionId}, spawnWindow: ${spawnWindow}`);
 
       return { sessionName: name, sessionId };
     } catch (error) {

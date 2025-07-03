@@ -141,7 +141,7 @@ export class SessionManager {
       }
 
       fs.renameSync(tempPath, sessionJsonPath);
-      logger.debug(`session info saved for ${sessionId}`);
+      logger.log(`session.json file saved for session ${sessionId} with name: ${sessionInfo.name}`);
     } catch (error) {
       if (error instanceof PtyError) {
         throw error;
@@ -307,7 +307,10 @@ export class SessionManager {
         return bTime - aTime;
       });
 
-      logger.debug(`found ${sessions.length} sessions`);
+      logger.log(`listSessions found ${sessions.length} sessions`);
+      sessions.forEach((session) => {
+        logger.log(`  - Session ${session.id}: name="${session.name}", status="${session.status}"`);
+      });
       return sessions;
     } catch (error) {
       throw new PtyError(
