@@ -122,9 +122,12 @@ export class TestSessionManager {
 
     try {
       // Wait for page to be ready - either session cards or "no sessions" message
-      await this.page.waitForSelector('session-card, .text-dark-text-muted:has-text("No terminal sessions")', {
-        timeout: 5000
-      });
+      await this.page.waitForSelector(
+        'session-card, .text-dark-text-muted:has-text("No terminal sessions")',
+        {
+          timeout: 5000,
+        }
+      );
 
       // Check if session exists
       const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`);
