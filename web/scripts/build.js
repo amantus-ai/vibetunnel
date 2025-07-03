@@ -41,6 +41,13 @@ async function build() {
       outfile: 'public/bundle/test.js',
     });
 
+    // Build screencap bundle
+    await esbuild.build({
+      ...prodOptions,
+      entryPoints: ['src/client/screencap-entry.ts'],
+      outfile: 'public/bundle/screencap.js',
+    });
+
     // Build service worker
     await esbuild.build({
       ...prodOptions,
@@ -98,6 +105,16 @@ async function build() {
     console.log('CLI bundle created successfully');
   } catch (error) {
     console.error('CLI bundling failed:', error);
+    process.exit(1);
+  }
+
+  // Build screencap binary
+  console.log('Building screencap binary...');
+  try {
+    execSync('cd ../screencap && make build', { stdio: 'inherit' });
+    console.log('Screencap binary built successfully');
+  } catch (error) {
+    console.error('Screencap build failed:', error);
     process.exit(1);
   }
 

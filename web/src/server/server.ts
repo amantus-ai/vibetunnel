@@ -17,6 +17,7 @@ import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
+import { createScreencapRoutes, initializeScreencap } from './routes/screencap.js';
 import { createSessionRoutes } from './routes/sessions.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
@@ -595,6 +596,16 @@ export async function createApp(): Promise<AppInstance> {
     );
     logger.debug('Mounted push notification routes');
   }
+
+  // Mount screencap routes
+  app.use('/api', createScreencapRoutes());
+  logger.debug('Mounted screencap routes');
+
+  // Initialize screencap service in background
+  initializeScreencap().catch((error) => {
+    logger.error('Failed to initialize screencap service:', error);
+    logger.warn('Continuing without screencap service');
+  });
 
   // Handle WebSocket upgrade with authentication
   server.on('upgrade', async (request, socket, head) => {

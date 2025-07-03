@@ -108,6 +108,9 @@ server/vibetunnel-fwd
 linux/vibetunnel
 *.o
 
+# Screencap compiled binary (should be built during development)
+screencap/screencap7
+
 # Rust build artifacts
 tty-fwd/target/
 tty-fwd/Cargo.lock
