@@ -1,5 +1,5 @@
 # Dockerfile for building Windows binaries
-FROM rust:1.80-bullseye
+FROM rust:latest
 
 # Install Windows cross-compilation tools
 RUN apt-get update && apt-get install -y \
@@ -15,11 +15,18 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Install pnpm
 RUN npm install -g pnpm
 
+# Install nightly toolchain for edition2024 support
+RUN rustup toolchain install nightly && \
+    rustup default nightly
+
 # Add Windows target
 RUN rustup target add x86_64-pc-windows-gnu
 
-# Install tauri-cli with specific version that works with Rust 1.80
-RUN cargo install tauri-cli --version "2.5.0" --locked
+# Set environment variable to enable edition2024
+ENV CARGO_UNSTABLE_EDITION2024=true
+
+# Install latest tauri-cli
+RUN cargo install tauri-cli --locked
 
 # Set working directory
 WORKDIR /app

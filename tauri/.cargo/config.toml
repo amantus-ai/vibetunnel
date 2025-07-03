@@ -1,0 +1,5 @@
+[env]
+CARGO_UNSTABLE_EDITION2024 = "true"
+
+[build]
+rustflags = ["-Z", "unstable-options"]
