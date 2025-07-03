@@ -8,10 +8,8 @@
 // This file is ignored by git and contains personal development team settings
 #include? "Local.xcconfig"
 
-// Default values (can be overridden in Local.xcconfig)
-// These will be used if Local.xcconfig doesn't exist or doesn't define them
-DEVELOPMENT_TEAM = $(inherited)
-CODE_SIGN_STYLE = $(inherited)
+// Note: DEVELOPMENT_TEAM and CODE_SIGN_STYLE are set in Local.xcconfig
+// Local.xcconfig is included above and takes precedence
 
 // Swift version and concurrency settings
 SWIFT_VERSION = 6.0
