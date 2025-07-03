@@ -106,6 +106,10 @@ test.describe('Keyboard Shortcuts', () => {
     // Ensure we're on the session list page
     await sessionListPage.navigate();
 
+    // Close any existing modals first
+    await sessionListPage.closeAnyOpenModal();
+    await page.waitForTimeout(300);
+
     // Open create session modal using the proper selectors
     const createButton = page
       .locator('[data-testid="create-session-button"]')
@@ -117,6 +121,9 @@ test.describe('Keyboard Shortcuts', () => {
     await createButton.waitFor({ state: 'visible', timeout: 5000 });
     await createButton.scrollIntoViewIfNeeded();
 
+    // Wait for any ongoing operations to complete
+    await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {});
+
     // Click with retry logic
     try {
       await createButton.click({ timeout: 5000 });
@@ -125,8 +132,12 @@ test.describe('Keyboard Shortcuts', () => {
       await createButton.click({ force: true });
     }
 
-    // Wait for modal to appear
-    await page.waitForSelector('text="New Session"', { state: 'visible', timeout: 10000 });
+    // Wait for modal to appear with multiple selectors
+    await Promise.race([
+      page.waitForSelector('text="New Session"', { state: 'visible', timeout: 10000 }),
+      page.waitForSelector('[role="dialog"]', { state: 'visible', timeout: 10000 }),
+      page.waitForSelector('.modal-content', { state: 'visible', timeout: 10000 }),
+    ]);
     await page.waitForTimeout(500);
 
     // Press Escape
@@ -146,6 +157,10 @@ test.describe('Keyboard Shortcuts', () => {
     // Ensure we're on the session list page
     await sessionListPage.navigate();
 
+    // Close any existing modals first
+    await sessionListPage.closeAnyOpenModal();
+    await page.waitForTimeout(300);
+
     // Open create session modal
     const createButton = page
       .locator('[data-testid="create-session-button"]')
@@ -157,6 +172,9 @@ test.describe('Keyboard Shortcuts', () => {
     await createButton.waitFor({ state: 'visible', timeout: 5000 });
     await createButton.scrollIntoViewIfNeeded();
 
+    // Wait for any ongoing operations to complete
+    await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {});
+
     // Click with retry logic
     try {
       await createButton.click({ timeout: 5000 });
@@ -165,8 +183,12 @@ test.describe('Keyboard Shortcuts', () => {
       await createButton.click({ force: true });
     }
 
-    // Wait for modal to appear
-    await page.waitForSelector('text="New Session"', { state: 'visible', timeout: 10000 });
+    // Wait for modal to appear with multiple selectors
+    await Promise.race([
+      page.waitForSelector('text="New Session"', { state: 'visible', timeout: 10000 }),
+      page.waitForSelector('[role="dialog"]', { state: 'visible', timeout: 10000 }),
+      page.waitForSelector('.modal-content', { state: 'visible', timeout: 10000 }),
+    ]);
     await page.waitForTimeout(500);
 
     // Turn off native terminal

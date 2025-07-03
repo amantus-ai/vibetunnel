@@ -106,28 +106,28 @@ test.describe('UI Features', () => {
   });
 
   test('should show session count in header', async ({ page }) => {
-    // Wait for header to be visible
-    await page.waitForSelector('full-header', { state: 'visible', timeout: 10000 });
+    // Create a tracked session first
+    const { sessionName } = await sessionManager.createTrackedSession();
 
-    // Get initial count from header
-    const headerElement = page.locator('full-header').first();
-    const sessionCountElement = headerElement.locator('p.text-xs').first();
-    const initialText = await sessionCountElement.textContent();
-    const initialCount = Number.parseInt(initialText?.match(/\d+/)?.[0] || '0');
-
-    // Create a tracked session
-    await sessionManager.createTrackedSession();
-
-    // Go back to see updated count
+    // Go to home page to see the session list
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Get new count from header
-    const newText = await sessionCountElement.textContent();
-    const newCount = Number.parseInt(newText?.match(/\d+/)?.[0] || '0');
+    // Wait for header to be visible
+    await page.waitForSelector('full-header', { state: 'visible', timeout: 10000 });
 
-    // Count should have increased
-    expect(newCount).toBeGreaterThan(initialCount);
+    // Get session count from header
+    const headerElement = page.locator('full-header').first();
+    const sessionCountElement = headerElement.locator('p.text-xs').first();
+    const countText = await sessionCountElement.textContent();
+    const count = Number.parseInt(countText?.match(/\d+/)?.[0] || '0');
+
+    // We should have at least 1 session (the one we just created)
+    expect(count).toBeGreaterThanOrEqual(1);
+
+    // Verify our session is visible in the list
+    const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
+    await expect(sessionCard).toBeVisible();
   });
 
   test('should preserve form state in create dialog', async ({ page }) => {

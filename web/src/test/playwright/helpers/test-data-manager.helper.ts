@@ -189,6 +189,34 @@ export class TestSessionManager {
   clearTracking(): void {
     this.sessions.clear();
   }
+
+  /**
+   * Manually track a session that was created outside of createTrackedSession
+   */
+  trackSession(sessionName: string, sessionId: string, spawnWindow = false): void {
+    this.sessions.set(sessionName, { id: sessionId, spawnWindow });
+  }
+
+  /**
+   * Wait for session count to be updated in the UI
+   */
+  async waitForSessionCountUpdate(expectedCount: number, timeout = 5000): Promise<void> {
+    await this.page.waitForFunction(
+      (expected) => {
+        const headerElement = document.querySelector('full-header');
+        if (!headerElement) return false;
+        const countElement = headerElement.querySelector('p.text-xs');
+        if (!countElement) return false;
+        const countText = countElement.textContent || '';
+        const match = countText.match(/\d+/);
+        if (!match) return false;
+        const actualCount = Number.parseInt(match[0]);
+        return actualCount === expected;
+      },
+      expectedCount,
+      { timeout }
+    );
+  }
 }
 
 /**
