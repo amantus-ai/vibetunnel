@@ -237,7 +237,7 @@ test.describe('Global Session Management', () => {
     }
   });
 
-  test.skip('should filter sessions by status', async ({ page }) => {
+  test('should filter sessions by status', async ({ page }) => {
     // Create a running session
     const { sessionName: runningSessionName } = await sessionManager.createTrackedSession();
 
@@ -246,17 +246,26 @@ test.describe('Global Session Management', () => {
 
     // Go back to list
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Wait for session cards or no sessions message
     await page.waitForFunction(
       () => {
         const cards = document.querySelectorAll('session-card');
         const noSessionsMsg = document.querySelector('.text-dark-text-muted');
-        return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
+        const showExitedButton = document.querySelector('button:has-text("Show Exited")');
+        return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions') || showExitedButton;
       },
       { timeout: 10000 }
     );
+
+    // Check if exited sessions are hidden
+    const showExitedButton = page.locator('button:has-text("Show Exited")').first();
+    if (await showExitedButton.isVisible({ timeout: 1000 })) {
+      // Click to show exited sessions
+      await showExitedButton.click();
+      await page.waitForTimeout(500);
+    }
 
     // Verify both sessions are visible before proceeding
     await expect(page.locator('session-card').filter({ hasText: runningSessionName })).toBeVisible({
