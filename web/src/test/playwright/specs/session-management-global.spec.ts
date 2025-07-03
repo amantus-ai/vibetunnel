@@ -32,10 +32,18 @@ test.describe('Global Session Management', () => {
       console.log(`Created session ${i + 1}: ${sessionName}`);
 
       // Go back to list after each creation
-      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      await page.goto('/', { waitUntil: 'networkidle' });
 
-      // Give server more time to save session info and update UI
-      await page.waitForTimeout(1500);
+      // Wait for the session list to load by checking for any response
+      await page
+        .waitForResponse(
+          (response) => response.url().includes('/api/sessions') && response.status() === 200,
+          { timeout: 10000 }
+        )
+        .catch(() => console.log('No session list API call detected'));
+
+      // Give UI time to render after API response
+      await page.waitForTimeout(500);
 
       // Wait for session cards to be loaded or empty state
       await page.waitForSelector('session-card, .text-dark-text-muted', {

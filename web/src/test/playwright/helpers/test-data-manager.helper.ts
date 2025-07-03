@@ -61,6 +61,16 @@ export class TestSessionManager {
           .catch(() => {
             console.warn('Terminal screen not visible, session might not be fully initialized');
           });
+
+        // Additional wait to ensure session is saved to backend
+        await this.page
+          .waitForResponse(
+            (response) => response.url().includes('/api/sessions') && response.status() === 200,
+            { timeout: 5000 }
+          )
+          .catch(() => {
+            console.warn('No session list refresh detected, session might not be fully saved');
+          });
       }
 
       // Track the session
