@@ -76,25 +76,28 @@ test.describe('Terminal Interaction', () => {
   });
 
   test('should clear terminal screen', async ({ page }) => {
-    // Add content
+    // Add content first
     await executeAndVerifyCommand(page, 'echo "Test content"', 'Test content');
+    await executeAndVerifyCommand(page, 'echo "More test content"', 'More test content');
 
-    // Clear terminal using keyboard shortcut
-    await page.keyboard.press('Control+l');
-
-    // Verify cleared
-    await page.waitForFunction(
-      () => {
-        const terminal = document.querySelector('vibe-terminal');
-        return (terminal?.textContent?.trim().split('\n').length || 0) < 3;
-      },
-      { timeout: 2000 }
-    );
-
-    // Should not contain old content
+    // Get terminal content before clearing
     const terminal = page.locator('vibe-terminal');
-    const text = await terminal.textContent();
-    expect(text).not.toContain('Test content');
+    await expect(terminal).toContainText('Test content');
+    await expect(terminal).toContainText('More test content');
+
+    // Clear terminal using the clear command
+    // Note: Ctrl+L is intercepted as a browser shortcut in VibeTunnel
+    await page.keyboard.type('clear');
+    await page.keyboard.press('Enter');
+
+    // Wait for the terminal to be cleared by checking that old content is gone
+    await expect(terminal).not.toContainText('Test content', { timeout: 5000 });
+
+    // Execute a new command to verify terminal is still functional
+    await executeAndVerifyCommand(page, 'echo "After clear"', 'After clear');
+
+    // Verify new content is visible
+    await expect(terminal).toContainText('After clear');
   });
 
   test('should handle file system navigation', async ({ page }) => {

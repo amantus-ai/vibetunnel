@@ -24,7 +24,7 @@ test.describe('Session Persistence Tests', () => {
     // Create a session with a command that runs longer
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('long-running'),
-      command: 'bash -c "while true; do echo test; sleep 1; done"', // Keep session running
+      command: 'sleep 60', // Keep session running without shell operators
     });
 
     // Track the session for cleanup
@@ -36,19 +36,15 @@ test.describe('Session Persistence Tests', () => {
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Wait a bit for session list to update
-    await page.waitForTimeout(2000);
-
-    // Verify session is visible - don't require RUNNING status as it might vary
-    const sessionCard = page.locator(`session-card:has-text("${sessionName}")`).first();
-    await expect(sessionCard).toBeVisible({ timeout: 10000 });
+    // Verify session is visible in the list
+    await assertSessionInList(page, sessionName);
   });
 
   test.skip('should handle session with error gracefully', async ({ page }) => {
     // Create a session with a command that will fail immediately
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('error-test'),
-      command: 'sh -c "exit 1"', // Use sh instead of bash, exit immediately with error code
+      command: 'false', // Simple command that returns non-zero exit code
     });
 
     // Track the session for cleanup
@@ -56,15 +52,12 @@ test.describe('Session Persistence Tests', () => {
       sessionManager.trackSession(sessionName, sessionId);
     }
 
+    // The false command should exit immediately
     // Navigate back to home
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Add a small delay to allow session status to update
-    await page.waitForTimeout(2000);
-
-    // Wait for the session status to update to exited (give it more time as the command needs to fail)
-    await waitForSessionState(page, sessionName, 'exited', { timeout: 30000 });
+    // Wait for session to appear and status to update to exited
+    await waitForSessionState(page, sessionName, 'exited', { timeout: 15000 });
 
     // Verify it shows as exited
     await assertSessionInList(page, sessionName, { status: 'EXITED' });

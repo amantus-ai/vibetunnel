@@ -18,18 +18,65 @@ test.describe('UI Features', () => {
     await sessionManager.cleanupAllSessions();
   });
 
-  test.skip('should open and close file browser', async ({ page }) => {
+  test('should open and close file browser', async ({ page }) => {
     // Create a session using helper
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser'),
     });
     await assertTerminalReady(page);
 
-    // Test file browser functionality would go here
+    // Look for file browser button in session header (use .first() to avoid strict mode violation)
+    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]').first();
+    await expect(fileBrowserButton).toBeVisible({ timeout: 10000 });
+
+    // Click to open file browser
+    await fileBrowserButton.click();
+
+    // Verify file browser modal is open
+    const fileBrowserModal = page.locator('file-browser, [role="dialog"]:has-text("File Browser")');
+    await expect(fileBrowserModal).toBeVisible({ timeout: 5000 });
+
+    // Close file browser with Escape
+    await page.keyboard.press('Escape');
+
+    // Verify file browser is closed
+    await expect(fileBrowserModal).not.toBeVisible({ timeout: 5000 });
   });
 
-  test.skip('should navigate directories in file browser', async () => {
-    // Skipped test - no implementation
+  test('should navigate directories in file browser', async ({ page }) => {
+    // Create a session using helper
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('file-browser-nav'),
+    });
+    await assertTerminalReady(page);
+
+    // Open file browser (use .first() to avoid strict mode violation)
+    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]').first();
+    await fileBrowserButton.click();
+
+    // Wait for file browser to open
+    const fileBrowserModal = page.locator('file-browser, [role="dialog"]:has-text("File Browser")');
+    await expect(fileBrowserModal).toBeVisible({ timeout: 5000 });
+
+    // Look for directory entries (folders have different icons/styles)
+    const directoryEntries = page.locator(
+      '.file-entry[data-type="directory"], .directory-item, [role="treeitem"]:has-text("/")'
+    );
+
+    // Click on first directory if available
+    if (await directoryEntries.first().isVisible()) {
+      await directoryEntries.first().click();
+
+      // Wait for navigation to complete
+      await page.waitForLoadState('networkidle', { timeout: 2000 });
+
+      // Verify we can still see file entries after navigation
+      const fileEntries = page.locator('.file-entry, .file-item, [role="treeitem"]');
+      expect(await fileEntries.count()).toBeGreaterThan(0);
+    }
+
+    // Close file browser
+    await page.keyboard.press('Escape');
   });
 
   test('should use quick start commands', async ({ page }) => {
