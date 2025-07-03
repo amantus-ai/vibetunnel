@@ -127,7 +127,7 @@ export class TestSessionManager {
     // For parallel tests, only use individual cleanup to avoid interference
     // Kill All affects all sessions globally and can interfere with other parallel tests
     const isParallelMode = process.env.TEST_PARALLEL_INDEX !== undefined;
-    
+
     if (!isParallelMode) {
       // Try bulk cleanup with Kill All button only in non-parallel mode
       try {
