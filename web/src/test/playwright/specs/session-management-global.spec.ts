@@ -1,3 +1,4 @@
+import { TIMEOUTS } from '../constants/timeouts';
 import { expect, test } from '../fixtures/test.fixture';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import {
@@ -22,7 +23,7 @@ test.describe('Global Session Management', () => {
 
   test('should kill all sessions at once', async ({ page, sessionListPage }) => {
     // Increase timeout for this test as it involves multiple sessions
-    test.setTimeout(90000);
+    test.setTimeout(TIMEOUTS.KILL_ALL_OPERATION * 3); // 90 seconds
     // Create multiple tracked sessions
     const sessionNames = [];
     for (let i = 0; i < 3; i++) {
@@ -32,15 +33,31 @@ test.describe('Global Session Management', () => {
       // Go back to list after each creation
       await page.goto('/');
 
-      // Wait a moment for the session to appear in the list
-      await page.waitForTimeout(500);
+      // Wait for the session to appear in the list
+      await page.waitForFunction(
+        (name) => {
+          const cards = document.querySelectorAll('session-card');
+          return Array.from(cards).some((card) => card.textContent?.includes(name));
+        },
+        sessionName,
+        { timeout: TIMEOUTS.UI_UPDATE * 2 }
+      );
     }
 
     // Ensure exited sessions are visible
     await ensureExitedSessionsVisible(page);
 
     // Wait for sessions to be visible (they may be running or exited)
-    await page.waitForTimeout(2000);
+    await page.waitForFunction(
+      (names) => {
+        const cards = document.querySelectorAll('session-card');
+        return names.every((name) =>
+          Array.from(cards).some((card) => card.textContent?.includes(name))
+        );
+      },
+      sessionNames,
+      { timeout: TIMEOUTS.SESSION_TRANSITION }
+    );
 
     // Verify all sessions are visible (either running or exited)
     for (const name of sessionNames) {

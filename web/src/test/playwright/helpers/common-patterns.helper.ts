@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
+import { TIMEOUTS } from '../constants/timeouts';
 import { SessionListPage } from '../pages/session-list.page';
 
 /**
@@ -43,6 +44,34 @@ export async function clickSessionCardWithRetry(page: Page, sessionName: string)
     const clickableArea = sessionCard.locator('div.card').first();
     await clickableArea.click();
   }
+}
+
+/**
+ * Wait for a button to be fully ready (visible, enabled, not loading)
+ */
+export async function waitForButtonReady(
+  page: Page,
+  selector: string,
+  options?: { timeout?: number }
+): Promise<void> {
+  const { timeout = TIMEOUTS.BUTTON_VISIBILITY } = options || {};
+
+  await page.waitForFunction(
+    (sel) => {
+      const button = document.querySelector(sel);
+      // Check if button is not only visible but also enabled and not in loading state
+      return (
+        button &&
+        !button.hasAttribute('disabled') &&
+        !button.classList.contains('loading') &&
+        !button.classList.contains('opacity-50') &&
+        getComputedStyle(button).display !== 'none' &&
+        getComputedStyle(button).visibility !== 'hidden'
+      );
+    },
+    selector,
+    { timeout }
+  );
 }
 
 /**

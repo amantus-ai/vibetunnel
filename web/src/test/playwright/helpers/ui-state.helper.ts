@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
+import { TIMEOUTS } from '../constants/timeouts';
 
 /**
  * Helper function to check the visibility state of exited sessions
@@ -40,8 +41,16 @@ export async function toggleExitedSessions(page: Page): Promise<boolean> {
 
   if (toggleButton) {
     await toggleButton.click();
-    // Wait for the UI to update
-    await page.waitForTimeout(500);
+    // Wait for the UI to update by checking button text change
+    await page.waitForFunction(
+      () => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const hasHideButton = buttons.some((btn) => btn.textContent?.match(/Hide Exited/i));
+        const hasShowButton = buttons.some((btn) => btn.textContent?.match(/Show Exited/i));
+        return hasHideButton || hasShowButton;
+      },
+      { timeout: TIMEOUTS.UI_UPDATE }
+    );
   }
 
   // Return the new state
@@ -59,7 +68,14 @@ export async function ensureExitedSessionsVisible(page: Page): Promise<void> {
   if (!visible && toggleButton) {
     await toggleButton.click();
     console.log('Clicked Show Exited button to make exited sessions visible');
-    await page.waitForTimeout(500);
+    // Wait for the button text to change to "Hide Exited"
+    await page.waitForFunction(
+      () => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        return buttons.some((btn) => btn.textContent?.match(/Hide Exited/i));
+      },
+      { timeout: TIMEOUTS.UI_UPDATE }
+    );
   }
 }
 
@@ -73,6 +89,13 @@ export async function ensureExitedSessionsHidden(page: Page): Promise<void> {
   if (visible && toggleButton) {
     await toggleButton.click();
     console.log('Clicked Hide Exited button to hide exited sessions');
-    await page.waitForTimeout(500);
+    // Wait for the button text to change to "Show Exited"
+    await page.waitForFunction(
+      () => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        return buttons.some((btn) => btn.textContent?.match(/Show Exited/i));
+      },
+      { timeout: TIMEOUTS.UI_UPDATE }
+    );
   }
 }

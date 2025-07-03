@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { SessionListPage } from '../pages/session-list.page';
 import { SessionViewPage } from '../pages/session-view.page';
+import { waitForButtonReady } from './common-patterns.helper';
 import { generateTestSessionName } from './terminal.helper';
 
 export interface SessionOptions {
@@ -174,13 +175,7 @@ export async function createMultipleSessions(
       });
 
       // Wait for app to be ready before creating next session
-      await page.waitForSelector('[data-testid="create-session-button"]', {
-        state: 'visible',
-        timeout: 5000,
-      });
-
-      // Add a small delay to avoid race conditions
-      await page.waitForTimeout(200);
+      await waitForButtonReady(page, '[data-testid="create-session-button"]', { timeout: 5000 });
     }
   }
 

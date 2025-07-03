@@ -1,3 +1,4 @@
+import { TIMEOUTS } from '../constants/timeouts';
 import { screenshotOnError } from '../helpers/screenshot.helper';
 import { validateCommand, validateSessionName } from '../utils/validation.utils';
 import { BasePage } from './base.page';
@@ -60,8 +61,22 @@ export class SessionListPage extends BasePage {
         await createButton.click({ force: true, timeout: 5000 });
       }
 
-      // Wait for View Transition to complete
-      await this.page.waitForTimeout(1000);
+      // Wait for View Transition to complete by checking modal visibility
+      await this.page.waitForFunction(
+        () => {
+          // Check if modal is visible and animations are complete
+          const modal = document.querySelector('[role="dialog"], .modal, [data-modal]');
+          if (!modal) return false;
+
+          // Check if any view transition is active
+          const hasTransition =
+            document.documentElement.classList.contains('view-transition-active') ||
+            document.querySelector('::view-transition') !== null;
+
+          return !hasTransition && getComputedStyle(modal).opacity === '1';
+        },
+        { timeout: TIMEOUTS.MODAL_ANIMATION }
+      );
     } catch (error) {
       console.error('Failed to click create button:', error);
       await screenshotOnError(
@@ -81,8 +96,17 @@ export class SessionListPage extends BasePage {
       throw error;
     }
 
-    // Small delay to ensure modal is interactive
-    await this.page.waitForTimeout(500);
+    // Wait for modal to be fully interactive
+    await this.page.waitForFunction(
+      () => {
+        const modal = document.querySelector('[role="dialog"], .modal, [data-modal]');
+        const input = document.querySelector(
+          '[data-testid="session-name-input"], input[placeholder="My Session"]'
+        ) as HTMLInputElement;
+        return modal && input && !input.disabled && document.activeElement === input;
+      },
+      { timeout: TIMEOUTS.UI_UPDATE }
+    );
 
     // Now wait for the session name input to be visible AND stable
     let inputSelector: string;
@@ -250,8 +274,16 @@ export class SessionListPage extends BasePage {
           console.log('Modal might have already closed');
         });
 
-      // Give the app a moment to process the response
-      await this.page.waitForTimeout(500);
+      // Wait for the UI to process the response
+      await this.page.waitForFunction(
+        () => {
+          // Check if we're no longer on the session list page or modal has closed
+          const onSessionPage = window.location.search.includes('session=');
+          const modalClosed = !document.querySelector('[role="dialog"], .modal, [data-modal]');
+          return onSessionPage || modalClosed;
+        },
+        { timeout: TIMEOUTS.UI_UPDATE }
+      );
 
       // Check if we're already on the session page
       const currentUrl = this.page.url();
@@ -418,8 +450,18 @@ export class SessionListPage extends BasePage {
           // First try Escape key (most reliable)
           await this.page.keyboard.press('Escape');
 
-          // Wait briefly for modal animation
-          await this.page.waitForTimeout(300);
+          // Wait for modal animation to complete
+          await this.page.waitForFunction(
+            () => {
+              const modal = document.querySelector('[role="dialog"], .modal');
+              return (
+                !modal ||
+                getComputedStyle(modal).opacity === '0' ||
+                getComputedStyle(modal).display === 'none'
+              );
+            },
+            { timeout: TIMEOUTS.UI_ANIMATION }
+          );
 
           // Check if modal is still visible
           if (await modal.isVisible({ timeout: 500 })) {
