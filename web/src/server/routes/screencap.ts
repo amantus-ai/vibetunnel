@@ -130,9 +130,9 @@ export function createScreencapRoutes(): Router {
   // Platform check middleware
   const requireMacOS = (req: any, res: any, next: any) => {
     if (process.platform !== 'darwin') {
-      return res.status(503).json({ 
+      return res.status(503).json({
         error: 'Screencap is only available on macOS',
-        platform: process.platform 
+        platform: process.platform,
       });
     }
     next();
