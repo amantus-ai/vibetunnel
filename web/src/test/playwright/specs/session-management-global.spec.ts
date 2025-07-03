@@ -40,7 +40,7 @@ test.describe('Global Session Management', () => {
           return Array.from(cards).some((card) => card.textContent?.includes(name));
         },
         sessionName,
-        { timeout: TIMEOUTS.UI_UPDATE * 2 }
+        { timeout: TIMEOUTS.SESSION_CREATION }
       );
     }
 
