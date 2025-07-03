@@ -61,10 +61,31 @@ export class SessionListPage extends BasePage {
         await createButton.click({ force: true, timeout: 5000 });
       }
 
-      // Wait for modal to exist (it might be visible but Playwright thinks it's hidden)
+      // Wait for modal to exist and view transition to complete
       await this.page.waitForSelector('session-create-form', {
         timeout: 10000,
       });
+
+      // Wait for view transition to complete by checking for stable modal state
+      await this.page.waitForFunction(
+        () => {
+          const modal = document.querySelector('session-create-form') as HTMLElement;
+          if (!modal) return false;
+
+          // Check if view transition is complete
+          const viewTransitionActive =
+            document.documentElement.getAttribute('data-view-transition') === 'active';
+          if (viewTransitionActive) return false;
+
+          // Check computed styles to ensure modal is fully visible
+          const styles = getComputedStyle(modal);
+          const isVisible =
+            styles.opacity !== '0' && styles.visibility !== 'hidden' && styles.display !== 'none';
+
+          return isVisible;
+        },
+        { timeout: 10000 }
+      );
 
       // Check if modal is actually functional (can find input elements)
       await this.page.waitForSelector(

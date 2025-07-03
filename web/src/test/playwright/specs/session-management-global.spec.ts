@@ -34,8 +34,8 @@ test.describe('Global Session Management', () => {
       // Go back to list after each creation
       await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-      // Give server time to save session info
-      await page.waitForTimeout(500);
+      // Give server more time to save session info and update UI
+      await page.waitForTimeout(1500);
 
       // Wait for session cards to be loaded or empty state
       await page.waitForSelector('session-card, .text-dark-text-muted', {
