@@ -9,7 +9,10 @@ export class TestDataFactory {
    * Generate a unique session name for testing
    */
   static sessionName(prefix = 'session'): string {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Include worker index if running in parallel to ensure uniqueness across workers
+    const workerIndex = process.env.TEST_PARALLEL_INDEX || '';
+    const workerSuffix = workerIndex ? `-w${workerIndex}` : '';
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}${workerSuffix}`;
   }
 
   /**

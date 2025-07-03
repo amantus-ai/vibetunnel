@@ -124,39 +124,45 @@ export class TestSessionManager {
       await this.page.goto('/', { waitUntil: 'domcontentloaded' });
     }
 
-    // Try bulk cleanup first
-    try {
-      const killAllButton = this.page.locator('button:has-text("Kill All")');
-      if (await killAllButton.isVisible({ timeout: 1000 })) {
-        const [dialog] = await Promise.all([
-          this.page.waitForEvent('dialog', { timeout: 5000 }).catch(() => null),
-          killAllButton.click(),
-        ]);
-        if (dialog) {
-          await dialog.accept();
+    // For parallel tests, only use individual cleanup to avoid interference
+    // Kill All affects all sessions globally and can interfere with other parallel tests
+    const isParallelMode = process.env.TEST_PARALLEL_INDEX !== undefined;
+    
+    if (!isParallelMode) {
+      // Try bulk cleanup with Kill All button only in non-parallel mode
+      try {
+        const killAllButton = this.page.locator('button:has-text("Kill All")');
+        if (await killAllButton.isVisible({ timeout: 1000 })) {
+          const [dialog] = await Promise.all([
+            this.page.waitForEvent('dialog', { timeout: 5000 }).catch(() => null),
+            killAllButton.click(),
+          ]);
+          if (dialog) {
+            await dialog.accept();
+          }
+
+          // Wait for sessions to be marked as exited
+          await this.page.waitForFunction(
+            () => {
+              const cards = document.querySelectorAll('session-card');
+              return Array.from(cards).every(
+                (card) =>
+                  card.textContent?.toLowerCase().includes('exited') ||
+                  card.textContent?.toLowerCase().includes('exit')
+              );
+            },
+            { timeout: 10000 }
+          );
+
+          this.sessions.clear();
+          return;
         }
-
-        // Wait for sessions to be marked as exited
-        await this.page.waitForFunction(
-          () => {
-            const cards = document.querySelectorAll('session-card');
-            return Array.from(cards).every(
-              (card) =>
-                card.textContent?.toLowerCase().includes('exited') ||
-                card.textContent?.toLowerCase().includes('exit')
-            );
-          },
-          { timeout: 3000 }
-        );
-
-        this.sessions.clear();
-        return;
+      } catch (error) {
+        console.log('Bulk cleanup failed, trying individual cleanup:', error);
       }
-    } catch (error) {
-      console.log('Bulk cleanup failed, trying individual cleanup:', error);
     }
 
-    // Fallback to individual cleanup
+    // Use individual cleanup for parallel tests or as fallback
     const sessionNames = Array.from(this.sessions.keys());
     for (const sessionName of sessionNames) {
       await this.cleanupSession(sessionName);
