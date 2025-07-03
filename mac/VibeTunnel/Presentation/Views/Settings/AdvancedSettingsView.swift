@@ -496,7 +496,7 @@ private struct WindowHighlightSettingsSection: View {
             
             // Apply highlight effect to the settings window
             if let window = targetWindow {
-                highlightEffect?.highlightWindow(window.element)
+                highlightEffect?.highlightWindow(window)
             } else {
                 Logger.advanced.debug("Could not match settings window for highlight preview")
             }

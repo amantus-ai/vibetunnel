@@ -141,7 +141,7 @@ final class WindowHighlightEffect {
     }
     
     /// Highlight a window with a border pulse effect
-    func highlightWindow(_ window: AXUIElement, bounds: CGRect? = nil) {
+    func highlightWindow(_ window: AXElement, bounds: CGRect? = nil) {
         guard config.isEnabled else { return }
         
         let windowFrame: CGRect
@@ -150,9 +150,8 @@ final class WindowHighlightEffect {
             // Use provided bounds
             windowFrame = bounds
         } else {
-            // Get window bounds using AXElement wrapper
-            let axElement = AXElement(window)
-            guard let frame = axElement.frame() else {
+            // Get window bounds using AXElement
+            guard let frame = window.frame() else {
                 logger.error("Failed to get window bounds for highlight effect")
                 return
             }

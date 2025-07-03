@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.0.0-beta.7] - 2025-07-03
+
+### ✨ New Features
+
+**Magic Wand for AI Assistants**
+- **Instant Terminal Title Updates** - New magic wand button (🪄) appears when hovering over AI assistant sessions
+- **Universal AI Support** - Works with Claude, Gemini, GPT, and other AI command-line tools - not just Claude anymore
+- **One-Click Status Updates** - Clicking the wand prompts your AI assistant to update the terminal title with what it's currently working on
+- **Smart Detection** - Automatically detects AI sessions by recognizing common command names
+
+**Window Highlight Live Preview**
+- **See Before You Save** - Window highlight settings now show a live preview on the Settings window itself
+- **Instant Feedback** - Preview updates immediately as you change highlight styles or colors
+- **Try Before Apply** - Test different highlight styles (Default, Subtle, Neon, Custom) without leaving settings
+
+**Enhanced Terminal Support**
+- **Ghostty Integration** - Added full support for Ghostty terminal - windows now close automatically when sessions end
+- **Complete Terminal Coverage** - VibeTunnel now supports automatic window management for Terminal.app, iTerm2, and Ghostty
+
+### 🐛 Bug Fixes
+
+**Window Management**
+- **Accurate Window Focus** - Fixed issues where the wrong terminal window would be highlighted when switching sessions
+- **Better Multi-Display Support** - Window highlights now position correctly on external monitors
+- **Consistent Green Highlights** - Changed highlight color from purple to green to match the web interface
+- **Auto-Close Fixed** - Terminal windows now properly close when sessions exit naturally (not just when manually stopped)
+
+**Magic Wand Reliability**
+- **Proper Command Submission** - Fixed magic wand commands not being executed properly - now sends both the prompt and Enter key correctly
+- **No More Race Conditions** - Added input queue protection to ensure commands are sent in the correct order
+- **Works Every Time** - Magic wand prompts now reliably trigger terminal title updates
+
+**General Improvements**
+- **Quieter Logs** - Reduced verbosity of terminal title update logs - less noise in debug output
+- **Swift 6 Compatibility** - Fixed all concurrency and syntax errors for latest Swift compiler
+- **Cleaner UI** - Reorganized settings to put Window Highlight options in a more logical location
+
 ## [1.0.0-beta.5] - upcoming
 
 ### 🎯 Features

@@ -287,7 +287,7 @@ final class WindowFocuser {
             let window = windows[0]
             
             // Show highlight effect
-            highlightEffect.highlightWindow(window.element, bounds: window.frame())
+            highlightEffect.highlightWindow(window, bounds: window.frame())
             
             // Focus the window
             window.setMain(true)
@@ -369,7 +369,7 @@ final class WindowFocuser {
             logger.info("Focusing best match window with score \(best.score) for PID \(windowInfo.ownerPID)")
             
             // Show highlight effect
-            highlightEffect.highlightWindow(best.window.element, bounds: best.window.frame())
+            highlightEffect.highlightWindow(best.window, bounds: best.window.frame())
             
             // Focus the window
             best.window.setMain(true)
@@ -512,7 +512,7 @@ final class WindowFocuser {
                         logger.info("Found matching tab in window \(index)")
 
                         // Show highlight effect
-                        highlightEffect.highlightWindow(window.element, bounds: window.frame())
+                        highlightEffect.highlightWindow(window, bounds: window.frame())
 
                         // Make window main and focused
                         window.setMain(true)
@@ -537,7 +537,7 @@ final class WindowFocuser {
                         logger.info("Found matching tab in window \(index)")
 
                         // Show highlight effect
-                        highlightEffect.highlightWindow(window.element, bounds: window.frame())
+                        highlightEffect.highlightWindow(window, bounds: window.frame())
 
                         // Make window main and focused
                         window.setMain(true)
@@ -557,7 +557,7 @@ final class WindowFocuser {
             logger.info("Using best match window with score \(bestMatch.score) for window ID \(windowInfo.windowID)")
 
             // Show highlight effect
-            highlightEffect.highlightWindow(bestMatch.window.element, bounds: bestMatch.window.frame())
+            highlightEffect.highlightWindow(bestMatch.window, bounds: bestMatch.window.frame())
 
             // Focus the best matching window
             bestMatch.window.setMain(true)
