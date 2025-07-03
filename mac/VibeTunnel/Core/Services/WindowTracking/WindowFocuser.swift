@@ -11,7 +11,53 @@ final class WindowFocuser {
     )
 
     private let windowMatcher = WindowMatcher()
-    private let highlightEffect = WindowHighlightEffect()
+    private let highlightEffect: WindowHighlightEffect
+    
+    init() {
+        // Load configuration from UserDefaults
+        let config = Self.loadHighlightConfig()
+        self.highlightEffect = WindowHighlightEffect(config: config)
+    }
+    
+    /// Load highlight configuration from UserDefaults
+    private static func loadHighlightConfig() -> WindowHighlightConfig {
+        let defaults = UserDefaults.standard
+        let isEnabled = defaults.object(forKey: "windowHighlightEnabled") as? Bool ?? true
+        let style = defaults.string(forKey: "windowHighlightStyle") ?? "default"
+        
+        guard isEnabled else {
+            return WindowHighlightConfig(
+                color: .clear,
+                duration: 0,
+                borderWidth: 0,
+                glowRadius: 0,
+                isEnabled: false
+            )
+        }
+        
+        switch style {
+        case "subtle":
+            return .subtle
+        case "neon":
+            return .neon
+        case "custom":
+            // Load custom color
+            let colorData = defaults.data(forKey: "windowHighlightColor") ?? Data()
+            if !colorData.isEmpty,
+               let nsColor = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(colorData) as? NSColor {
+                return WindowHighlightConfig(
+                    color: nsColor,
+                    duration: 0.8,
+                    borderWidth: 4.0,
+                    glowRadius: 12.0,
+                    isEnabled: true
+                )
+            }
+            return .default
+        default:
+            return .default
+        }
+    }
 
     /// Focus a window based on terminal type
     func focusWindow(_ windowInfo: WindowEnumerator.WindowInfo) {
@@ -130,29 +176,20 @@ final class WindowFocuser {
     }
 
     /// Get the first tab group in a window (improved approach based on screenshot)
-    private func getTabGroup(from window: AXUIElement) -> AXUIElement? {
-        var childrenRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(
-            window,
-            kAXChildrenAttribute as CFString,
-            &childrenRef
-        ) == .success,
-            let children = childrenRef as? [AXUIElement]
-        else {
+    private func getTabGroup(from window: AXElement) -> AXElement? {
+        guard let children = window.children else {
             return nil
         }
-
+        
         // Find the first element with role kAXTabGroupRole
         return children.first { elem in
-            var roleRef: CFTypeRef?
-            AXUIElementCopyAttributeValue(elem, kAXRoleAttribute as CFString, &roleRef)
-            return (roleRef as? String) == kAXTabGroupRole as String
+            elem.role == kAXTabGroupRole
         }
     }
 
     /// Select the correct tab in a window that uses macOS standard tabs
     private func selectTab(
-        tabs: [AXUIElement],
+        tabs: [AXElement],
         windowInfo: WindowEnumerator.WindowInfo,
         sessionInfo: ServerSessionInfo?
     ) {
@@ -161,22 +198,14 @@ final class WindowFocuser {
         // Try to find the correct tab
         if let matchingTab = windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) {
             // Found matching tab - select it using kAXPressAction (most reliable)
-            let result = AXUIElementPerformAction(matchingTab, kAXPressAction as CFString)
-            if result == .success {
+            if matchingTab.press() {
                 logger.info("Successfully selected matching tab for session \(windowInfo.sessionID)")
             } else {
-                logger.warning("Failed to select tab with kAXPressAction, error: \(result.rawValue)")
+                logger.warning("Failed to select tab with kAXPressAction")
 
                 // Try alternative selection method - set as selected
-                var selectedValue: CFTypeRef?
-                if AXUIElementCopyAttributeValue(matchingTab, kAXSelectedAttribute as CFString, &selectedValue) ==
-                    .success
-                {
-                    let setResult = AXUIElementSetAttributeValue(
-                        matchingTab,
-                        kAXSelectedAttribute as CFString,
-                        true as CFTypeRef
-                    )
+                if matchingTab.isAttributeSettable(kAXSelectedAttribute) {
+                    let setResult = matchingTab.setSelected(true)
                     if setResult == .success {
                         logger.info("Selected tab using AXSelected attribute")
                     } else {
@@ -186,7 +215,7 @@ final class WindowFocuser {
             }
         } else if tabs.count == 1 {
             // If only one tab, select it
-            AXUIElementPerformAction(tabs[0], kAXPressAction as CFString)
+            tabs[0].press()
             logger.info("Selected the only available tab")
         } else {
             // Multiple tabs but no match - try to find by index or select first
@@ -197,10 +226,7 @@ final class WindowFocuser {
 
             // Log tab titles for debugging
             for (index, tab) in tabs.enumerated() {
-                var titleValue: CFTypeRef?
-                if AXUIElementCopyAttributeValue(tab, kAXTitleAttribute as CFString, &titleValue) == .success,
-                   let title = titleValue as? String
-                {
+                if let title = tab.title {
                     logger.debug("  Tab \(index): \(title)")
                 }
             }
@@ -208,35 +234,24 @@ final class WindowFocuser {
     }
 
     /// Select a tab by index in a tab group (helper method from screenshot)
-    private func selectTab(at index: Int, in group: AXUIElement) -> Bool {
-        var tabsRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(
-            group,
-            "AXTabs" as CFString,
-            &tabsRef
-        ) == .success,
-            let tabs = tabsRef as? [AXUIElement],
-            index < tabs.count
+    private func selectTab(at index: Int, in group: AXElement) -> Bool {
+        guard let tabs = group.tabs,
+              index < tabs.count
         else {
             logger.warning("Could not get tabs from group or index out of bounds")
             return false
         }
-
-        let result = AXUIElementPerformAction(tabs[index], kAXPressAction as CFString)
-        return result == .success
+        
+        return tabs[index].press()
     }
 
     /// Focuses a window by using the process PID directly
     private func focusWindowUsingPID(_ windowInfo: WindowEnumerator.WindowInfo) -> Bool {
-        // Create AXUIElement directly from the PID
-        let axProcess = AXUIElementCreateApplication(windowInfo.ownerPID)
+        // Create AXElement directly from the PID
+        let axProcess = AXElement.application(pid: windowInfo.ownerPID)
         
         // Get windows from this specific process
-        var windowsValue: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(axProcess, kAXWindowsAttribute as CFString, &windowsValue)
-        
-        guard result == .success,
-              let windows = windowsValue as? [AXUIElement],
+        guard let windows = axProcess.windows,
               !windows.isEmpty
         else {
             logger.debug("PID-based lookup failed for PID \(windowInfo.ownerPID), no windows found")
@@ -251,11 +266,11 @@ final class WindowFocuser {
             let window = windows[0]
             
             // Show highlight effect
-            highlightEffect.highlightWindow(window)
+            highlightEffect.highlightWindow(window.element)
             
             // Focus the window
-            AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
-            AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
+            window.setMain(true)
+            window.setFocused(true)
             
             // Bring app to front
             if let app = NSRunningApplication(processIdentifier: windowInfo.ownerPID) {
@@ -269,16 +284,13 @@ final class WindowFocuser {
         logger.info("Multiple windows found for PID \(windowInfo.ownerPID), using scoring system")
         
         // Use our existing scoring logic but only on these PID-specific windows
-        var bestMatch: (window: AXUIElement, score: Int)?
+        var bestMatch: (window: AXElement, score: Int)?
         
         for (index, window) in windows.enumerated() {
             var matchScore = 0
             
             // Check window ID
-            var windowIDValue: CFTypeRef?
-            if AXUIElementCopyAttributeValue(window, "_AXWindowNumber" as CFString, &windowIDValue) == .success,
-               let axWindowID = windowIDValue as? Int
-            {
+            if let axWindowID = window.windowID {
                 if axWindowID == windowInfo.windowID {
                     matchScore += 100
                     logger.debug("Window \(index) has matching ID: \(axWindowID)")
@@ -286,23 +298,16 @@ final class WindowFocuser {
             }
             
             // Check bounds if available
-            if let bounds = windowInfo.bounds {
-                var positionValue: CFTypeRef?
-                var sizeValue: CFTypeRef?
-                if AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionValue) == .success,
-                   AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeValue) == .success,
-                   let position = positionValue as? CGPoint,
-                   let size = sizeValue as? CGSize
+            if let bounds = windowInfo.bounds,
+               let windowFrame = window.frame() {
+                let tolerance: CGFloat = 5.0
+                if abs(windowFrame.origin.x - bounds.origin.x) < tolerance &&
+                   abs(windowFrame.origin.y - bounds.origin.y) < tolerance &&
+                   abs(windowFrame.width - bounds.width) < tolerance &&
+                   abs(windowFrame.height - bounds.height) < tolerance
                 {
-                    let tolerance: CGFloat = 5.0
-                    if abs(position.x - bounds.origin.x) < tolerance &&
-                       abs(position.y - bounds.origin.y) < tolerance &&
-                       abs(size.width - bounds.width) < tolerance &&
-                       abs(size.height - bounds.height) < tolerance
-                    {
-                        matchScore += 50
-                        logger.debug("Window \(index) bounds match")
-                    }
+                    matchScore += 50
+                    logger.debug("Window \(index) bounds match")
                 }
             }
             
@@ -315,11 +320,11 @@ final class WindowFocuser {
             logger.info("Focusing best match window with score \(best.score) for PID \(windowInfo.ownerPID)")
             
             // Show highlight effect
-            highlightEffect.highlightWindow(best.window)
+            highlightEffect.highlightWindow(best.window.element)
             
             // Focus the window
-            AXUIElementSetAttributeValue(best.window, kAXMainAttribute as CFString, true as CFTypeRef)
-            AXUIElementSetAttributeValue(best.window, kAXFocusedAttribute as CFString, true as CFTypeRef)
+            best.window.setMain(true)
+            best.window.setFocused(true)
             
             // Bring app to front
             if let app = NSRunningApplication(processIdentifier: windowInfo.ownerPID) {
@@ -350,14 +355,10 @@ final class WindowFocuser {
             logger.info("Activated application with PID: \(windowInfo.ownerPID)")
         }
 
-        // Use AXUIElement to focus the specific window
-        let axApp = AXUIElementCreateApplication(windowInfo.ownerPID)
+        // Use AXElement to focus the specific window
+        let axApp = AXElement.application(pid: windowInfo.ownerPID)
 
-        var windowsValue: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsValue)
-
-        guard result == .success,
-              let windows = windowsValue as? [AXUIElement],
+        guard let windows = axApp.windows,
               !windows.isEmpty
         else {
             logger.error("Failed to get windows for application")
@@ -373,44 +374,22 @@ final class WindowFocuser {
         let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
 
         // First, try to find window with matching tab content
-        var bestMatchWindow: (window: AXUIElement, score: Int)?
+        var bestMatchWindow: (window: AXElement, score: Int)?
 
         for (index, window) in windows.enumerated() {
             var matchScore = 0
             var windowMatches = false
 
-            // Try multiple window ID attributes for robust matching
-
-            // 1. Try _AXWindowNumber (most common)
-            var windowIDValue: CFTypeRef?
-            if AXUIElementCopyAttributeValue(window, "_AXWindowNumber" as CFString, &windowIDValue) == .success,
-               let axWindowID = windowIDValue as? Int
-            {
+            // Try window ID attribute for matching
+            if let axWindowID = window.windowID {
                 if axWindowID == windowInfo.windowID {
                     windowMatches = true
                     matchScore += 100 // High score for exact ID match
                 }
                 logger
                     .debug(
-                        "Window \(index) _AXWindowNumber: \(axWindowID), target: \(windowInfo.windowID), matches: \(windowMatches)"
+                        "Window \(index) windowID: \(axWindowID), target: \(windowInfo.windowID), matches: \(windowMatches)"
                     )
-            }
-
-            // 2. Try kAXWindowAttribute (some apps use this)
-            if !windowMatches {
-                var windowNumValue: CFTypeRef?
-                if AXUIElementCopyAttributeValue(window, "AXWindow" as CFString, &windowNumValue) == .success,
-                   let axWindowNum = windowNumValue as? Int
-                {
-                    if axWindowNum == windowInfo.windowID {
-                        windowMatches = true
-                        matchScore += 100
-                    }
-                    logger
-                        .debug(
-                            "Window \(index) AXWindow: \(axWindowNum), target: \(windowInfo.windowID), matches: \(windowMatches)"
-                        )
-                }
             }
 
             // 3. Check window position and size as secondary validation

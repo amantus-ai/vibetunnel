@@ -144,6 +144,9 @@ struct AdvancedSettingsView: View {
                     Text("Advanced")
                         .font(.headline)
                 }
+                
+                // Window Highlight section
+                WindowHighlightSettingsSection()
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -356,5 +359,85 @@ private struct TerminalPreferenceSection: View {
                 preferredGitApp = newValue
             }
         )
+    }
+}
+
+// MARK: - Window Highlight Settings Section
+
+private struct WindowHighlightSettingsSection: View {
+    @AppStorage("windowHighlightEnabled")
+    private var highlightEnabled = true
+    @AppStorage("windowHighlightStyle")
+    private var highlightStyle = "default"
+    @AppStorage("windowHighlightColor")
+    private var highlightColorData = Data()
+    
+    @State private var customColor = Color.blue
+    
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                // Enable/Disable toggle
+                Toggle("Show window highlight effect", isOn: $highlightEnabled)
+                
+                if highlightEnabled {
+                    // Style picker
+                    Picker("Highlight style", selection: $highlightStyle) {
+                        Text("Default").tag("default")
+                        Text("Subtle").tag("subtle")
+                        Text("Neon").tag("neon")
+                        Text("Custom").tag("custom")
+                    }
+                    .pickerStyle(.segmented)
+                    
+                    // Custom color picker (only shown when custom is selected)
+                    if highlightStyle == "custom" {
+                        HStack {
+                            Text("Custom color")
+                            Spacer()
+                            ColorPicker("", selection: $customColor, supportsOpacity: false)
+                                .labelsHidden()
+                                .onChange(of: customColor) { _, newColor in
+                                    saveCustomColor(newColor)
+                                }
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text("Window Highlight")
+                .font(.headline)
+        } footer: {
+            Text("Visual effect when focusing terminal windows to make selection more noticeable.")
+                .font(.caption)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+        }
+        .onAppear {
+            loadCustomColor()
+        }
+    }
+    
+    private func saveCustomColor(_ color: Color) {
+        if let nsColor = NSColor(color) {
+            do {
+                let data = try NSKeyedArchiver.archivedData(withRootObject: nsColor, requiringSecureCoding: false)
+                highlightColorData = data
+            } catch {
+                Logger.advanced.error("Failed to save custom color: \(error)")
+            }
+        }
+    }
+    
+    private func loadCustomColor() {
+        if !highlightColorData.isEmpty {
+            do {
+                if let nsColor = try NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(highlightColorData) as? NSColor {
+                    customColor = Color(nsColor)
+                }
+            } catch {
+                Logger.advanced.error("Failed to load custom color: \(error)")
+            }
+        }
     }
 }
