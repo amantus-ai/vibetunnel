@@ -134,7 +134,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
   router.post('/sessions', async (req, res) => {
     const { command, workingDir, name, remoteId, spawn_terminal, cols, rows, titleMode } = req.body;
     logger.debug(
-      `creating new session: command=${JSON.stringify(command)}, remoteId=${remoteId || 'local'}, cols=${cols}, rows=${rows}`
+      `creating new session: command=${JSON.stringify(command)}, remoteId=${remoteId || 'local'}, spawn_terminal=${spawn_terminal}, cols=${cols}, rows=${rows}`
     );
 
     if (!command || !Array.isArray(command) || command.length === 0) {

@@ -36,6 +36,12 @@ export class SessionListPage extends BasePage {
   async createNewSession(sessionName?: string, spawnWindow = false, command?: string) {
     console.log(`Creating session: name="${sessionName}", spawnWindow=${spawnWindow}`);
 
+    // IMPORTANT: Set the spawn window preference in localStorage BEFORE opening the modal
+    // This ensures the form loads with the correct state
+    await this.page.evaluate((shouldSpawnWindow) => {
+      localStorage.setItem('vibetunnel_spawn_window', String(shouldSpawnWindow));
+    }, spawnWindow);
+
     // Dismiss any error messages
     await this.dismissErrors();
 

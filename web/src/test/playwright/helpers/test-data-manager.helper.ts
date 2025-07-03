@@ -39,6 +39,7 @@ export class TestSessionManager {
       // Get session ID from URL for web sessions
       let sessionId = '';
       if (!spawnWindow) {
+        console.log(`Web session created, waiting for navigation to session view...`);
         await this.page.waitForURL(/\?session=/, { timeout: 10000 });
         const url = this.page.url();
 
@@ -76,6 +77,13 @@ export class TestSessionManager {
       // Track the session
       this.sessions.set(name, { id: sessionId, spawnWindow });
       console.log(`Tracked session: ${name} with ID: ${sessionId}, spawnWindow: ${spawnWindow}`);
+      if (spawnWindow) {
+        console.warn(
+          'WARNING: Created a native terminal session which will not appear in the web session list!'
+        );
+      } else {
+        console.log('Created web session which should appear in the session list');
+      }
 
       return { sessionName: name, sessionId };
     } catch (error) {

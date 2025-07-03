@@ -56,6 +56,10 @@ export const test = base.extend<TestFixtures>({
           // For tests, we want to see exited sessions since commands might exit quickly
           localStorage.setItem('hideExitedSessions', 'false'); // Show exited sessions in tests
 
+          // IMPORTANT: Set spawn window to false by default for tests
+          // This ensures sessions are created as web sessions, not native terminals
+          localStorage.setItem('vibetunnel_spawn_window', 'false');
+
           // Clear IndexedDB if present
           if (typeof indexedDB !== 'undefined' && indexedDB.deleteDatabase) {
             indexedDB.deleteDatabase('vibetunnel-offline').catch(() => {});
