@@ -71,8 +71,13 @@ struct GitRepositoryRow: View {
     }
 
     private var backgroundFillColor: Color {
-        // Only show background on hover - very subtle
-        isHovering ? AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.15) : Color.clear
+        // Show background on hover - stronger in light mode
+        if isHovering {
+            return colorScheme == .light 
+                ? AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.25)
+                : AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.15)
+        }
+        return Color.clear
     }
 
     private var borderView: some View {
@@ -81,19 +86,17 @@ struct GitRepositoryRow: View {
     }
 
     private var borderColor: Color {
-        // Only show border on hover
-        isHovering ? AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.2) : Color.clear
+        // Show border on hover - stronger in light mode
+        if isHovering {
+            return colorScheme == .light
+                ? AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.3)
+                : AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.2)
+        }
+        return Color.clear
     }
 
     var body: some View {
         HStack(spacing: 4) {
-            // Git app icon
-            if let gitApp = getPreferredGitApp(),
-               let icon = gitApp.appIcon {
-                Image(nsImage: icon.resized(to: NSSize(width: 12, height: 12)))
-                    .opacity(0.8)
-            }
-            
             // Branch info
             branchInfo
 
@@ -107,7 +110,7 @@ struct GitRepositoryRow: View {
             
             Spacer()
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 4)
         .padding(.vertical, 2)
         .background(backgroundView)
         .overlay(borderView)
@@ -152,16 +155,5 @@ struct GitRepositoryRow: View {
 
     private func openInGitApp() {
         GitAppLauncher.shared.openRepository(at: repository.path)
-    }
-    
-    private func getPreferredGitApp() -> GitApp? {
-        if let preferredApp = UserDefaults.standard.string(forKey: "preferredGitApp"),
-           !preferredApp.isEmpty,
-           let gitApp = GitApp(rawValue: preferredApp),
-           gitApp.isInstalled {
-            return gitApp
-        }
-        // Return first installed git app
-        return GitApp.installed.first
     }
 }

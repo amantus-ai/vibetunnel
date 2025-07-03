@@ -125,7 +125,7 @@ struct SessionRow: View {
                 // Second row: Path, Git info, Duration and X button
                 HStack(alignment: .center, spacing: 6) {
                     // Left side: Path and git info
-                    HStack(alignment: .center, spacing: 6) {
+                    HStack(alignment: .center, spacing: 4) {
                         // Folder icon and path - clickable as one unit
                         Button(action: {
                             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
