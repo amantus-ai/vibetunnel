@@ -3,10 +3,12 @@ use crate::api_testing::APITestingManager;
 use crate::auth_cache::AuthCacheManager;
 use crate::backend_manager::BackendManager;
 use crate::debug_features::DebugFeaturesManager;
+use crate::git_monitor::GitMonitor;
 use crate::ngrok::NgrokManager;
 use crate::notification_manager::NotificationManager;
 use crate::permissions::PermissionsManager;
 use crate::session_monitor::SessionMonitor;
+use crate::tailscale::TailscaleService;
 use crate::terminal::TerminalManager;
 use crate::terminal_integrations::TerminalIntegrationsManager;
 use crate::terminal_spawn_service::TerminalSpawnService;
@@ -15,6 +17,7 @@ use crate::tty_forward::TTYForwardManager;
 use crate::unix_socket_server::UnixSocketServer;
 use crate::updater::UpdateManager;
 use crate::welcome::WelcomeManager;
+use crate::window_tracker::WindowTracker;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -38,6 +41,9 @@ pub struct AppState {
     pub auth_cache_manager: Arc<AuthCacheManager>,
     pub terminal_integrations_manager: Arc<TerminalIntegrationsManager>,
     pub terminal_spawn_service: Arc<TerminalSpawnService>,
+    pub git_monitor: Arc<GitMonitor>,
+    pub tailscale_service: Arc<TailscaleService>,
+    pub window_tracker: Arc<WindowTracker>,
     #[cfg(unix)]
     pub unix_socket_server: Arc<UnixSocketServer>,
 }
@@ -104,6 +110,9 @@ impl AppState {
             auth_cache_manager: Arc::new(auth_cache_manager),
             terminal_integrations_manager,
             terminal_spawn_service,
+            git_monitor: Arc::new(GitMonitor::new()),
+            tailscale_service: Arc::new(TailscaleService::new()),
+            window_tracker: Arc::new(WindowTracker::new()),
             #[cfg(unix)]
             unix_socket_server,
         }
@@ -135,6 +144,9 @@ mod tests {
         assert!(Arc::strong_count(&state.terminal_integrations_manager) >= 1);
         assert!(Arc::strong_count(&state.terminal_spawn_service) >= 1);
         assert!(Arc::strong_count(&state.tty_forward_manager) >= 1);
+        assert!(Arc::strong_count(&state.git_monitor) >= 1);
+        assert!(Arc::strong_count(&state.tailscale_service) >= 1);
+        assert!(Arc::strong_count(&state.window_tracker) >= 1);
 
         #[cfg(unix)]
         assert!(Arc::strong_count(&state.unix_socket_server) >= 1);

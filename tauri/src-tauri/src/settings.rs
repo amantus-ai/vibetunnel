@@ -41,6 +41,7 @@ pub struct AdvancedSettings {
     pub ngrok_subdomain: Option<String>,
     pub enable_telemetry: Option<bool>,
     pub experimental_features: Option<bool>,
+    pub preferred_git_app: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -223,6 +224,7 @@ impl Default for Settings {
                 ngrok_subdomain: None,
                 enable_telemetry: Some(false),
                 experimental_features: Some(false),
+                preferred_git_app: None,
             },
             tty_forward: Some(TTYForwardSettings {
                 enabled: false,

@@ -6,6 +6,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
+use crate::log_collector::SERVER_LOG_COLLECTOR;
 
 /// Server state enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -414,14 +415,24 @@ impl NodeJsServer {
     /// Log server output
     fn log_output(line: &str, is_error: bool) {
         let line_lower = line.to_lowercase();
-
-        if is_error || line_lower.contains("error") || line_lower.contains("failed") {
+        
+        let level = if is_error || line_lower.contains("error") || line_lower.contains("failed") {
             error!("Server: {}", line);
+            "error"
         } else if line_lower.contains("warn") {
             warn!("Server: {}", line);
+            "warn"
         } else {
             info!("Server: {}", line);
-        }
+            "info"
+        };
+        
+        // Add to log collector
+        let collector = SERVER_LOG_COLLECTOR.clone();
+        let line_owned = line.to_string();
+        tokio::spawn(async move {
+            collector.add_log(level, line_owned).await;
+        });
     }
 
     /// Monitor process for unexpected termination

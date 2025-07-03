@@ -17,7 +17,7 @@ impl TrayMenuManager {
         session_count: usize,
         access_mode: Option<String>,
     ) -> Result<Menu<tauri::Wry>, tauri::Error> {
-        Self::create_menu_with_sessions(app, server_running, port, session_count, access_mode, None)
+        Self::create_menu_with_sessions(app, server_running, port, session_count, access_mode, None, None)
     }
 
     pub fn create_menu_with_sessions(
@@ -27,6 +27,7 @@ impl TrayMenuManager {
         session_count: usize,
         access_mode: Option<String>,
         sessions: Option<Vec<SessionInfo>>,
+        tailscale_status: Option<crate::tailscale::TailscaleStatus>,
     ) -> Result<Menu<tauri::Wry>, tauri::Error> {
         // Server status
         let status_text = if server_running {
@@ -92,7 +93,19 @@ impl TrayMenuManager {
                     dir_name.to_string()
                 };
 
-                let session_text = format!("  • {} (PID: {})", display_name, session.pid);
+                // Add Git info if available
+                let session_text = if let Some(git_repo) = &session.git_repository {
+                    let branch = git_repo.current_branch.as_deref().unwrap_or("main");
+                    let status = if git_repo.has_changes() {
+                        format!(" ({})", git_repo.status_text())
+                    } else {
+                        String::new()
+                    };
+                    format!("  • {} [{}{}] (PID: {})", display_name, branch, status, session.pid)
+                } else {
+                    format!("  • {} (PID: {})", display_name, session.pid)
+                };
+                
                 let session_item = MenuItemBuilder::new(&session_text)
                     .id(format!("session_{}", session.id))
                     .build(app)?;
@@ -165,6 +178,18 @@ impl TrayMenuManager {
         if let Some(network_item) = network_info {
             menu_builder = menu_builder.item(&network_item);
         }
+        
+        // Add Tailscale info if available
+        if let Some(ts_status) = &tailscale_status {
+            if ts_status.is_running && ts_status.hostname.is_some() {
+                let tailscale_text = format!("Tailscale: {}", ts_status.hostname.as_ref().unwrap());
+                let tailscale_item = MenuItemBuilder::new(&tailscale_text)
+                    .id("tailscale_info")
+                    .enabled(false)
+                    .build(app)?;
+                menu_builder = menu_builder.item(&tailscale_item);
+            }
+        }
 
         // Build menu with sessions
         let mut menu_builder = menu_builder
@@ -208,6 +233,9 @@ impl TrayMenuManager {
             } else {
                 None
             };
+            
+            // Get Tailscale status
+            let tailscale_status = state.tailscale_service.get_status().await;
 
             // Rebuild menu with new state and sessions
             if let Ok(menu) = Self::create_menu_with_sessions(
@@ -217,6 +245,7 @@ impl TrayMenuManager {
                 session_count,
                 access_mode,
                 Some(sessions),
+                Some(tailscale_status),
             ) {
                 if let Err(e) = tray.set_menu(Some(menu)) {
                     tracing::error!("Failed to update tray menu: {}", e);
@@ -250,6 +279,9 @@ impl TrayMenuManager {
             } else {
                 None
             };
+            
+            // Get Tailscale status
+            let tailscale_status = state.tailscale_service.get_status().await;
 
             // Rebuild menu with new state and sessions
             if let Ok(menu) = Self::create_menu_with_sessions(
@@ -259,6 +291,7 @@ impl TrayMenuManager {
                 count,
                 access_mode,
                 Some(sessions),
+                Some(tailscale_status),
             ) {
                 if let Err(e) = tray.set_menu(Some(menu)) {
                     tracing::error!("Failed to update tray menu: {}", e);

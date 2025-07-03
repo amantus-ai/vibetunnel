@@ -28,6 +28,7 @@ interface SettingsData {
     debug_mode?: boolean;
     cleanup_on_startup?: boolean;
     preferred_terminal?: string;
+    preferred_git_app?: string;
   };
 }
 
@@ -93,6 +94,9 @@ export class SettingsApp extends TauriBase {
   
   @state()
   private diagnosticReport: any = null;
+  
+  @state()
+  private installedGitApps: Array<{value: string, label: string}> = [];
   static override styles = [
     formStyles,
     css`
@@ -879,6 +883,9 @@ export class SettingsApp extends TauriBase {
       if (this.debugMode) {
         await this.loadDebugData();
       }
+      
+      // Load installed Git apps
+      await this.loadInstalledGitApps();
     }
   }
 
@@ -903,6 +910,15 @@ export class SettingsApp extends TauriBase {
       this.systemInfo = info;
     } catch (error) {
       console.error('Failed to get system info:', error);
+    }
+  }
+
+  private async loadInstalledGitApps(): Promise<void> {
+    try {
+      const apps = await this.safeInvoke<Array<{value: string, label: string}>>('get_installed_git_apps');
+      this.installedGitApps = apps || [];
+    } catch (error) {
+      console.error('Failed to load installed Git apps:', error);
     }
   }
 
@@ -1286,6 +1302,21 @@ export class SettingsApp extends TauriBase {
                 { value: 'terminal', label: 'Terminal.app' },
                 { value: 'iterm2', label: 'iTerm2' },
                 { value: 'warp', label: 'Warp' }
+              ]}
+              @change=${this.handleSettingChange}
+            ></settings-select>
+          </div>
+          
+          <div class="setting-card">
+            <h3>Git Applications</h3>
+            <settings-select
+              label="Preferred Git App"
+              help="Select which Git GUI application to use when opening repositories"
+              settingKey="advanced.preferred_git_app"
+              .value=${this.settings.advanced?.preferred_git_app || 'auto'}
+              .options=${[
+                { value: 'auto', label: 'Auto-detect' },
+                ...this.installedGitApps
               ]}
               @change=${this.handleSettingChange}
             ></settings-select>

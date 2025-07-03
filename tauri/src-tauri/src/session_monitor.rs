@@ -19,6 +19,8 @@ pub struct SessionInfo {
     pub last_activity: String,
     pub is_active: bool,
     pub client_count: usize,
+    pub working_directory: Option<String>,
+    pub git_repository: Option<crate::git_repository::GitRepository>,
 }
 
 /// Session state change event
@@ -76,6 +78,8 @@ impl SessionMonitor {
                         last_activity: Utc::now().to_rfc3339(),
                         is_active: true,
                         client_count: 0, // TODO: Track actual client count
+                        working_directory: None, // TODO: Get from session API when available
+                        git_repository: None, // Will be populated by Git monitor separately
                     };
 
                     // Check if this is a new session

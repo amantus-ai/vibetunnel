@@ -470,6 +470,35 @@ impl TerminalIntegrationsManager {
     ) -> Result<(), String> {
         let emulator = emulator.unwrap_or(*self.default_terminal.read().await);
 
+        // Use AppleScript for enhanced terminal control on macOS
+        #[cfg(target_os = "macos")]
+        {
+            match emulator {
+                TerminalEmulator::Terminal | TerminalEmulator::ITerm2 => {
+                    let session_id = uuid::Uuid::new_v4().to_string();
+                    let command = options.command.as_deref();
+                    let working_dir = options.working_directory
+                        .as_ref()
+                        .and_then(|p| p.to_str());
+                    
+                    let terminal_name = match emulator {
+                        TerminalEmulator::Terminal => "Terminal",
+                        TerminalEmulator::ITerm2 => "iTerm2",
+                        _ => unreachable!(),
+                    };
+                    
+                    return crate::applescript::AppleScriptTerminalLauncher::launch_terminal(
+                        terminal_name,
+                        &session_id,
+                        command,
+                        working_dir,
+                    ).await
+                    .map(|_| ());
+                }
+                _ => {}
+            }
+        }
+
         match emulator {
             TerminalEmulator::SystemDefault => self.launch_system_terminal(options).await,
             _ => self.launch_specific_terminal(emulator, options).await,

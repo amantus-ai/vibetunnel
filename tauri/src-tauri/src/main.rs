@@ -11,6 +11,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod api_client;
 mod api_testing;
 mod app_mover;
+#[cfg(target_os = "macos")]
+mod applescript;
 mod auth_cache;
 mod auto_launch;
 mod backend_manager;
@@ -19,7 +21,12 @@ mod commands;
 mod debug_features;
 mod errors;
 mod fs_api;
+mod git_app_launcher;
+pub mod git_monitor;
+pub mod git_repository;
 mod keychain;
+mod log_collector;
+mod menubar_popover;
 mod network_utils;
 mod ngrok;
 mod notification_manager;
@@ -28,6 +35,7 @@ mod port_conflict;
 mod session_monitor;
 mod settings;
 mod state;
+mod tailscale;
 mod terminal;
 mod terminal_detector;
 mod terminal_integrations;
@@ -37,7 +45,9 @@ mod tty_forward;
 #[cfg(unix)]
 mod unix_socket_server;
 mod updater;
+mod url_scheme;
 mod welcome;
+mod window_tracker;
 
 use commands::ServerStatus;
 use commands::*;
@@ -92,7 +102,7 @@ fn open_settings_window(app: AppHandle, tab: Option<String>) -> Result<(), Strin
 }
 
 #[tauri::command]
-fn focus_terminal_window(session_id: String) -> Result<(), String> {
+fn focus_terminal_window_legacy(session_id: String) -> Result<(), String> {
     // Focus the terminal window for the given session
     #[cfg(target_os = "macos")]
     {
@@ -224,7 +234,7 @@ fn main() {
             show_main_window,
             open_settings_window,
             open_session_detail_window,
-            focus_terminal_window,
+            focus_terminal_window_legacy,
             quit_app,
             settings::get_settings,
             settings::save_settings,
@@ -405,6 +415,51 @@ fn main() {
             save_dashboard_password,
             open_dashboard,
             finish_welcome,
+            open_folder,
+            // Tailscale commands
+            get_tailscale_status,
+            start_tailscale_monitoring,
+            open_tailscale_app,
+            open_tailscale_download,
+            open_tailscale_setup_guide,
+            // Window tracking commands
+            register_terminal_window,
+            unregister_terminal_window,
+            focus_terminal_window,
+            get_terminal_window_info,
+            update_window_tracking,
+            // AppleScript commands (macOS only)
+            #[cfg(target_os = "macos")]
+            run_applescript,
+            #[cfg(target_os = "macos")]
+            launch_terminal_with_applescript,
+            #[cfg(target_os = "macos")]
+            focus_terminal_with_applescript,
+            #[cfg(target_os = "macos")]
+            get_terminal_windows_applescript,
+            #[cfg(target_os = "macos")]
+            is_app_running_applescript,
+            // Git commands
+            get_git_repository,
+            get_cached_git_repository,
+            clear_git_cache,
+            start_git_monitoring,
+            // Git app launcher commands
+            git_app_launcher::get_installed_git_apps,
+            git_app_launcher::get_preferred_git_app,
+            git_app_launcher::set_preferred_git_app,
+            git_app_launcher::open_repository_in_git_app,
+            git_app_launcher::verify_git_app_installation,
+            // URL scheme commands
+            url_scheme::handle_url_scheme,
+            url_scheme::parse_url_scheme,
+            // Menubar popover commands
+            menubar_popover::show_menubar_popover,
+            menubar_popover::hide_menubar_popover,
+            menubar_popover::toggle_menubar_popover,
+            // Server log commands
+            get_server_logs,
+            clear_server_logs,
         ])
         .setup(|app| {
             // Set app handle in managers
@@ -414,6 +469,8 @@ fn main() {
             let app_handle3 = app.handle().clone();
             let app_handle4 = app.handle().clone();
             let app_handle_for_move = app.handle().clone();
+            let app_handle_for_url_scheme = app.handle().clone();
+            let app_handle_for_log_collector = app.handle().clone();
 
             tauri::async_runtime::spawn(async move {
                 let state = state_clone;
@@ -422,6 +479,9 @@ fn main() {
                 state.permissions_manager.set_app_handle(app_handle3).await;
                 state.update_manager.set_app_handle(app_handle4).await;
 
+                // Initialize log collector
+                log_collector::init_log_collector(app_handle_for_log_collector).await;
+                
                 // Start background workers now that we have a runtime
                 state.terminal_spawn_service.clone().start_worker().await;
                 state.auth_cache_manager.start_cleanup_task().await;
@@ -460,7 +520,32 @@ fn main() {
                 // Load updater settings and start auto-check
                 let _ = state.update_manager.load_settings().await;
                 state.update_manager.clone().start_auto_check().await;
+                
+                // Start Git repository monitoring
+                let git_app_handle = app_handle_for_move.clone();
+                state.git_monitor.start_monitoring(git_app_handle).await;
+                
+                // Start Tailscale monitoring
+                state.tailscale_service.start_monitoring().await;
+                // Check initial status
+                let _ = state.tailscale_service.check_tailscale_status().await;
+                
+                // Start window tracking updates
+                let window_tracker = state.window_tracker.clone();
+                let api_client = state.api_client.clone();
+                tokio::spawn(async move {
+                    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
+                    loop {
+                        interval.tick().await;
+                        if let Ok(sessions) = api_client.list_sessions().await {
+                            window_tracker.update_from_sessions(&sessions).await;
+                        }
+                    }
+                });
             });
+            
+            // Set up URL scheme handler for deep links
+            url_scheme::URLSchemeHandler::setup_deep_link_handler(app_handle_for_url_scheme);
 
             // Create system tray icon using tray-icon.png for macOS (menu-bar-icon.png is for Windows/Linux)
             let tray_icon = if let Ok(resource_dir) = app.path().resource_dir() {
@@ -503,27 +588,38 @@ fn main() {
                         handle_tray_menu_event(app, event.id.as_ref());
                     })
                     .on_tray_icon_event(|tray, event| {
-                        if let TrayIconEvent::Click {
-                            button: MouseButton::Left,
-                            button_state: MouseButtonState::Up,
-                            ..
-                        } = event
-                        {
-                            // Get server status and open dashboard in browser
-                            let app = tray.app_handle();
-                            let state = app.state::<AppState>();
-                            if state.backend_manager.blocking_is_running() {
-                                let settings = crate::settings::Settings::load().unwrap_or_default();
-                                let url = format!("http://127.0.0.1:{}", settings.dashboard.server_port);
-                                let _ = open::that(url);
+                        match event {
+                            TrayIconEvent::Click {
+                                button: MouseButton::Left,
+                                button_state: MouseButtonState::Up,
+                                position,
+                                ..
+                            } => {
+                                // Show custom menubar popover on left click
+                                let app = tray.app_handle();
+                                
+                                // Update popover position based on tray icon location
+                                let _ = menubar_popover::MenubarPopover::update_position(&app, position.x, position.y);
+                                
+                                // Toggle the popover
+                                let _ = menubar_popover::MenubarPopover::toggle(&app);
                             }
+                            TrayIconEvent::Click {
+                                button: MouseButton::Right,
+                                button_state: MouseButtonState::Up,
+                                ..
+                            } => {
+                                // Right click shows the traditional menu
+                                // The menu is already set, so it will show automatically
+                            }
+                            _ => {}
                         }
                     })
                     .build(app)?;
             }
 
             // Load settings to determine initial dock icon visibility
-            let settings = settings::Settings::load().unwrap_or_default();
+            let _settings = settings::Settings::load().unwrap_or_default();
 
             // Set initial dock icon visibility on macOS
             #[cfg(target_os = "macos")]
