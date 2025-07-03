@@ -439,11 +439,8 @@ struct CustomMenuContainer<Content: View>: View {
                 // First layer: tinted background for better readability
                 SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius)
                     .fill(backgroundTint)
-                
-                // Second layer: material effect on top
-                backgroundMaterial
-                    .clipShape(SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius))
             }
+            .background(backgroundMaterial, in: SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius))
             .overlay(
                 SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius)
                     .stroke(borderColor, lineWidth: 1)
