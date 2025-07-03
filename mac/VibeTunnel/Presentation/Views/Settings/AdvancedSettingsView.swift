@@ -280,7 +280,6 @@ private struct TerminalPreferenceSection: View {
                         }
                     }
                     .buttonStyle(.bordered)
-                    .controlSize(.small)
 
                     Picker("", selection: $preferredTerminal) {
                         ForEach(Terminal.installed, id: \.rawValue) { terminal in
