@@ -121,35 +121,6 @@ struct GitRepositoryRow: View {
             openInGitApp()
         }
         .help("Open in \(gitAppName)")
-        .contextMenu {
-            Button("Open in \(gitAppName)") {
-                openInGitApp()
-            }
-
-            Button("Open Repository in Finder") {
-                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
-            }
-
-            if repository.githubURL != nil {
-                Button("Open on GitHub") {
-                    if let url = repository.githubURL {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-            }
-
-            Divider()
-
-            Button("Copy Branch Name") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(repository.currentBranch ?? "detached", forType: .string)
-            }
-
-            Button("Copy Repository Path") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(repository.path, forType: .string)
-            }
-        }
         .animation(.easeInOut(duration: 0.15), value: isHovering)
     }
 
