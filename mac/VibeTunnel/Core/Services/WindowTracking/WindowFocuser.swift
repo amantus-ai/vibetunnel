@@ -98,11 +98,16 @@ final class WindowFocuser {
         if let tabRef = windowInfo.tabReference {
             // Use stored tab reference to select the tab
             // The tabRef format is "tab id X of window id Y"
+            // Escape the tab reference to prevent injection
+            let escapedTabRef = tabRef.replacingOccurrences(of: "\"", with: "\\\"")
+                .replacingOccurrences(of: "\n", with: "\\n")
+                .replacingOccurrences(of: "\r", with: "\\r")
+            
             let script = """
             tell application "Terminal"
                 activate
-                set selected of \(tabRef) to true
-                set frontmost of window id \(windowInfo.windowID) to true
+                set selected of \(escapedTabRef) to true
+                set frontmost of window id \(AppleScriptSecurity.escapeNumber(windowInfo.windowID)) to true
             end tell
             """
 
@@ -121,7 +126,7 @@ final class WindowFocuser {
                 activate
                 set allWindows to windows
                 repeat with w in allWindows
-                    if id of w is \(windowInfo.windowID) then
+                    if id of w is \(AppleScriptSecurity.escapeNumber(windowInfo.windowID)) then
                         set frontmost of w to true
                         exit repeat
                     end if
@@ -146,6 +151,11 @@ final class WindowFocuser {
         let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
         let workingDir = sessionInfo?.workingDir ?? ""
         let dirName = (workingDir as NSString).lastPathComponent
+        
+        // Escape all user-provided values to prevent injection
+        let escapedSessionID = AppleScriptSecurity.escapeString(windowInfo.sessionID)
+        let escapedDirName = AppleScriptSecurity.escapeString(dirName)
+        let escapedTabID = windowInfo.tabID.map { AppleScriptSecurity.escapeString($0) } ?? ""
 
         // Try to find and focus the tab with matching content
         let script = """
@@ -162,7 +172,7 @@ final class WindowFocuser {
                         set sessionName to name of s
 
                         -- Try to match by session content
-                        if sessionName contains "\(windowInfo.sessionID)" or sessionName contains "\(dirName)" then
+                        if sessionName contains "\(escapedSessionID)" or sessionName contains "\(escapedDirName)" then
                             -- Found it! Select this tab and window
                             select w
                             select t
@@ -174,9 +184,9 @@ final class WindowFocuser {
             end repeat
 
             -- If we have a window ID, at least focus that window
-            if "\(windowInfo.tabID ?? "")" is not "" then
+            if "\(escapedTabID)" is not "" then
                 try
-                    tell window id "\(windowInfo.tabID ?? "")"
+                    tell window id "\(escapedTabID)"
                         select
                     end tell
                 end try

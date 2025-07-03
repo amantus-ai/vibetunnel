@@ -15,7 +15,7 @@ struct AdvancedSettingsView: View {
     @AppStorage("cleanupOnStartup")
     private var cleanupOnStartup = true
     @AppStorage("showInDock")
-    private var showInDock = false
+    private var showInDock = true
     @State private var cliInstaller = CLIInstaller()
     @State private var showingVtConflictAlert = false
 

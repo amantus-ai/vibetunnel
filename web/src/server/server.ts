@@ -367,6 +367,33 @@ export async function createApp(): Promise<AppInstance> {
   app.use(express.json());
   logger.debug('Configured express middleware');
 
+  // Add security headers middleware
+  app.use((req, res, next) => {
+    // Content Security Policy to prevent XSS and other injection attacks
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' https://unpkg.com; " + // Allow inline scripts and unpkg for dependencies
+        "style-src 'self' 'unsafe-inline'; " + // Allow inline styles
+        "img-src 'self' data: blob:; " + // Allow data and blob URLs for images
+        "font-src 'self' data:; " + // Allow data URLs for fonts
+        "connect-src 'self' ws: wss:; " + // Allow WebSocket connections
+        "frame-ancestors 'none'; " + // Prevent clickjacking
+        "base-uri 'self'; " + // Restrict base tag usage
+        "form-action 'self'" // Restrict form submissions
+    );
+
+    // Additional security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+    next();
+  });
+  logger.debug('Configured security headers middleware');
+
   // Control directory for session data
   const CONTROL_DIR =
     process.env.VIBETUNNEL_CONTROL_DIR || path.join(os.homedir(), '.vibetunnel/control');
@@ -494,6 +521,23 @@ export async function createApp(): Promise<AppInstance> {
   app.use(
     express.static(publicPath, {
       extensions: ['html'], // This allows /logs to resolve to /logs.html
+      setHeaders: (res, path) => {
+        // Apply stricter CSP for HTML files
+        if (path.endsWith('.html')) {
+          res.setHeader(
+            'Content-Security-Policy',
+            "default-src 'self'; " +
+              "script-src 'self' 'unsafe-inline' https://unpkg.com; " +
+              "style-src 'self' 'unsafe-inline'; " +
+              "img-src 'self' data: blob:; " +
+              "font-src 'self' data:; " +
+              "connect-src 'self' ws: wss:; " +
+              "frame-ancestors 'none'; " +
+              "base-uri 'self'; " +
+              "form-action 'self'"
+          );
+        }
+      },
     })
   );
   logger.debug(`Serving static files from: ${publicPath}`);

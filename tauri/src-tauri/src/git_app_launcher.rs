@@ -311,11 +311,20 @@ impl GitAppLauncher {
 }
 
 // Commands
+#[derive(serde::Serialize)]
+pub struct GitAppOption {
+    pub value: String,
+    pub label: String,
+}
+
 #[tauri::command]
-pub fn get_installed_git_apps() -> Vec<String> {
+pub fn get_installed_git_apps() -> Vec<GitAppOption> {
     GitApp::installed_apps()
         .into_iter()
-        .map(|app| app.raw_value().to_string())
+        .map(|app| GitAppOption {
+            value: app.raw_value().to_string(),
+            label: app.raw_value().to_string(),
+        })
         .collect()
 }
 
