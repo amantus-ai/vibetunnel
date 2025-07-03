@@ -111,6 +111,9 @@ struct AdvancedSettingsView: View {
                     .multilineTextAlignment(.center)
                 }
 
+                // Window Highlight section
+                WindowHighlightSettingsSection()
+
                 // Advanced section
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
@@ -144,9 +147,6 @@ struct AdvancedSettingsView: View {
                     Text("Advanced")
                         .font(.headline)
                 }
-                
-                // Window Highlight section
-                WindowHighlightSettingsSection()
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
