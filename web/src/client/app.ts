@@ -1104,11 +1104,11 @@ export class VibeTunnelApp extends LitElement {
 
       // Navigate to screencap in same window instead of opening new window
       const screencapUrl = '/api/screencap/';
-      
+
       // Update browser URL and navigate to screencap
       window.history.pushState({ previousUrl: window.location.pathname }, '', screencapUrl);
       window.location.href = screencapUrl;
-      
+
       logger.log('✅ Navigating to screencap in same window');
     });
   }

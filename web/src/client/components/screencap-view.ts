@@ -321,7 +321,7 @@ export class ScreencapView extends LitElement {
       let response: Response;
       let endpoint: string;
       let captureData: any;
-      
+
       if (this.captureMode === 'desktop') {
         // Desktop capture using /capture endpoint
         endpoint = '/api/screencap/capture';
@@ -336,7 +336,7 @@ export class ScreencapView extends LitElement {
         if (!this.selectedWindow) {
           throw new Error('No window selected for capture');
         }
-        
+
         endpoint = '/api/screencap/capture-window';
         captureData = {
           cgWindowID: this.selectedWindow.cgWindowID,
@@ -347,7 +347,7 @@ export class ScreencapView extends LitElement {
       }
 
       logger.log(`📡 Making request to ${endpoint}`);
-      
+
       response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -372,7 +372,7 @@ export class ScreencapView extends LitElement {
       logger.log(`🎬 Started ${this.captureMode} capture successfully`);
     } catch (error) {
       logger.error('❌ Failed to start capture:', error);
-      
+
       // More detailed error logging
       if (error instanceof TypeError && error.message.includes('fetch')) {
         logger.error('🌐 Network error - server might be down or unreachable');
@@ -380,7 +380,7 @@ export class ScreencapView extends LitElement {
         logger.error(`🔍 Error details: ${error.message}`);
         logger.error(`📋 Error stack:`, error.stack);
       }
-      
+
       this.error = `Failed to start screen capture: ${error instanceof Error ? error.message : 'Unknown error'}`;
       this.status = 'error';
     }
@@ -434,7 +434,7 @@ export class ScreencapView extends LitElement {
   private async selectWindow(window: WindowInfo) {
     this.selectedWindow = window;
     this.captureMode = 'window';
-    
+
     // Auto-start capture when selecting a window
     if (!this.isCapturing) {
       logger.log(`🎯 Auto-starting capture for window: ${window.title}`);
@@ -445,7 +445,7 @@ export class ScreencapView extends LitElement {
   private async selectDesktop() {
     this.selectedWindow = null;
     this.captureMode = 'desktop';
-    
+
     // Auto-start capture when selecting desktop
     if (!this.isCapturing) {
       logger.log('🖥️ Auto-starting desktop capture');
@@ -458,19 +458,19 @@ export class ScreencapView extends LitElement {
 
     const img = event.target as HTMLImageElement;
     const rect = img.getBoundingClientRect();
-    
+
     // Calculate click position relative to the image element's displayed size
     const imageClickX = event.clientX - rect.left;
     const imageClickY = event.clientY - rect.top;
-    
+
     // Clamp to image bounds to prevent out-of-bounds clicks
     const clampedX = Math.max(0, Math.min(imageClickX, rect.width));
     const clampedY = Math.max(0, Math.min(imageClickY, rect.height));
-    
+
     // Convert to normalized coordinates (0.0 to 1.0) within the displayed image
     const relativeX = clampedX / rect.width;
     const relativeY = clampedY / rect.height;
-    
+
     // Send as 0-1000 range for precision (matches original node-sharer implementation)
     const x = Math.round(relativeX * 1000);
     const y = Math.round(relativeY * 1000);
@@ -482,7 +482,9 @@ export class ScreencapView extends LitElement {
         body: JSON.stringify({ x, y }),
       });
 
-      logger.log(`🖱️ Clicked at relative coordinates: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${x}, ${y})`);
+      logger.log(
+        `🖱️ Clicked at relative coordinates: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${x}, ${y})`
+      );
     } catch (error) {
       logger.error('Failed to send click:', error);
     }
@@ -544,7 +546,9 @@ export class ScreencapView extends LitElement {
         };
       }
 
-      logger.log(`⌨️ Sending key: ${event.key} (modifiers: ${event.ctrlKey ? 'Ctrl+' : ''}${event.metaKey ? 'Cmd+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Shift+' : ''})`);
+      logger.log(
+        `⌨️ Sending key: ${event.key} (modifiers: ${event.ctrlKey ? 'Ctrl+' : ''}${event.metaKey ? 'Cmd+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Shift+' : ''})`
+      );
 
       await fetch(endpoint, {
         method: 'POST',
