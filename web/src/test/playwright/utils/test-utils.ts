@@ -10,7 +10,7 @@ export class TestDataFactory {
    */
   static sessionName(prefix = 'session'): string {
     // Include worker index if running in parallel to ensure uniqueness across workers
-    const workerIndex = process.env.TEST_PARALLEL_INDEX || '';
+    const workerIndex = process.env.TEST_WORKER_INDEX || '';
     const workerSuffix = workerIndex ? `-w${workerIndex}` : '';
     return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}${workerSuffix}`;
   }
