@@ -41,8 +41,8 @@ jobs:
             target: 'x86_64-apple-darwin'
           - platform: 'macos-latest'
             target: 'aarch64-apple-darwin'
-          - platform: 'ubuntu-22.04'
-            target: 'x86_64-unknown-linux-gnu'
+          - platform: 'blacksmith-8vcpu-ubuntu-2404-arm'
+            target: 'aarch64-unknown-linux-gnu'
           - platform: 'windows-latest'
             target: 'x86_64-pc-windows-msvc'
 
@@ -77,18 +77,23 @@ jobs:
         targets: ${{ matrix.target }}
     
     - name: Setup Rust target
-      if: matrix.platform == 'ubuntu-22.04'
+      if: startsWith(matrix.platform, 'blacksmith') || startsWith(matrix.platform, 'ubuntu')
       run: |
         rustup target add ${{ matrix.target }}
-        echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=gcc" >> $GITHUB_ENV
+        # Set appropriate linker based on target
+        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=gcc" >> $GITHUB_ENV
+        else
+          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=gcc" >> $GITHUB_ENV
+        fi
 
     - name: Rust cache
       uses: swatinem/rust-cache@v2
       with:
         workspaces: './tauri/src-tauri -> target'
 
-    - name: Install dependencies (Ubuntu)
-      if: matrix.platform == 'ubuntu-22.04'
+    - name: Install dependencies (Linux)
+      if: startsWith(matrix.platform, 'blacksmith') || startsWith(matrix.platform, 'ubuntu')
       run: |
         sudo apt-get update
         sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev libpam0g-dev
@@ -103,8 +108,8 @@ jobs:
       run: |
         echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-    - uses: actions/cache@v3
-      name: Setup pnpm cache
+    - name: Setup pnpm cache
+      uses: ${{ startsWith(matrix.platform, 'blacksmith') && 'useblacksmith/cache@v5' || 'actions/cache@v3' }}
       with:
         path: ${{ env.STORE_PATH }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -125,7 +130,7 @@ jobs:
 
     - name: Cache tauri-cli
       id: cache-tauri
-      uses: actions/cache@v3
+      uses: ${{ startsWith(matrix.platform, 'blacksmith') && 'useblacksmith/cache@v5' || 'actions/cache@v3' }}
       with:
         path: ~/.cargo/bin/cargo-tauri
         key: ${{ runner.os }}-tauri-cli-2.0
@@ -149,7 +154,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload artifacts (Linux)
-      if: matrix.platform == 'ubuntu-22.04'
+      if: startsWith(matrix.platform, 'blacksmith') || startsWith(matrix.platform, 'ubuntu')
       uses: actions/upload-artifact@v4
       with:
         name: vibetunnel-${{ matrix.target }}
