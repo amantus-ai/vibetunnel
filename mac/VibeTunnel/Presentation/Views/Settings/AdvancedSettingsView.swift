@@ -373,12 +373,18 @@ private struct WindowHighlightSettingsSection: View {
     private var highlightColorData = Data()
     
     @State private var customColor = Color.blue
+    @State private var highlightEffect: WindowHighlightEffect?
     
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
                 // Enable/Disable toggle
                 Toggle("Show window highlight effect", isOn: $highlightEnabled)
+                    .onChange(of: highlightEnabled) { _, newValue in
+                        if newValue {
+                            previewHighlightEffect()
+                        }
+                    }
                 
                 if highlightEnabled {
                     // Style picker
@@ -389,6 +395,9 @@ private struct WindowHighlightSettingsSection: View {
                         Text("Custom").tag("custom")
                     }
                     .pickerStyle(.segmented)
+                    .onChange(of: highlightStyle) { _, _ in
+                        previewHighlightEffect()
+                    }
                     
                     // Custom color picker (only shown when custom is selected)
                     if highlightStyle == "custom" {
@@ -399,6 +408,7 @@ private struct WindowHighlightSettingsSection: View {
                                 .labelsHidden()
                                 .onChange(of: customColor) { _, newColor in
                                     saveCustomColor(newColor)
+                                    previewHighlightEffect()
                                 }
                         }
                     }
@@ -415,6 +425,8 @@ private struct WindowHighlightSettingsSection: View {
         }
         .onAppear {
             loadCustomColor()
+            // Create highlight effect instance for preview
+            highlightEffect = WindowHighlightEffect()
         }
     }
     
@@ -437,6 +449,107 @@ private struct WindowHighlightSettingsSection: View {
             } catch {
                 Logger.advanced.error("Failed to load custom color: \(error)")
             }
+        }
+    }
+    
+    private func previewHighlightEffect() {
+        Task { @MainActor in
+            // Get the current highlight configuration
+            let config = loadCurrentHighlightConfig()
+            
+            // Update the highlight effect with new config
+            highlightEffect?.updateConfig(config)
+            
+            // Find the settings window
+            guard let settingsWindow = NSApp.windows.first(where: { window in
+                window.title.contains("Settings") || window.title.contains("Preferences")
+            }) else {
+                Logger.advanced.debug("Could not find settings window for highlight preview")
+                return
+            }
+            
+            // Get the window's accessibility element
+            let pid = ProcessInfo.processInfo.processIdentifier
+            let axApp = AXUIElementCreateApplication(pid)
+            
+            var windowElements: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowElements) == .success,
+                  let windows = windowElements as? [AXUIElement],
+                  !windows.isEmpty else {
+                Logger.advanced.debug("Could not get accessibility windows for highlight preview")
+                return
+            }
+            
+            // Find the settings window by comparing bounds
+            let settingsFrame = settingsWindow.frame
+            var targetWindow: AXUIElement?
+            
+            for axWindow in windows {
+                var positionRef: CFTypeRef?
+                var sizeRef: CFTypeRef?
+                
+                if AXUIElementCopyAttributeValue(axWindow, kAXPositionAttribute as CFString, &positionRef) == .success,
+                   AXUIElementCopyAttributeValue(axWindow, kAXSizeAttribute as CFString, &sizeRef) == .success,
+                   let positionValue = positionRef as! AXValue?,
+                   let sizeValue = sizeRef as! AXValue? {
+                    
+                    var position = CGPoint.zero
+                    var size = CGSize.zero
+                    AXValueGetValue(positionValue, .cgPoint, &position)
+                    AXValueGetValue(sizeValue, .cgSize, &size)
+                    
+                    // Check if this matches our settings window (with some tolerance for frame differences)
+                    let tolerance: CGFloat = 5.0
+                    if abs(position.x - settingsFrame.origin.x) < tolerance &&
+                       abs(size.width - settingsFrame.width) < tolerance &&
+                       abs(size.height - settingsFrame.height) < tolerance {
+                        targetWindow = axWindow
+                        break
+                    }
+                }
+            }
+            
+            // Apply highlight effect to the settings window
+            if let window = targetWindow {
+                highlightEffect?.highlightWindow(window)
+            } else {
+                Logger.advanced.debug("Could not match settings window for highlight preview")
+            }
+        }
+    }
+    
+    private func loadCurrentHighlightConfig() -> WindowHighlightConfig {
+        guard highlightEnabled else {
+            return WindowHighlightConfig(
+                color: .clear,
+                duration: 0,
+                borderWidth: 0,
+                glowRadius: 0,
+                isEnabled: false
+            )
+        }
+        
+        switch highlightStyle {
+        case "subtle":
+            return .subtle
+        case "neon":
+            return .neon
+        case "custom":
+            // Load custom color
+            let colorData = highlightColorData
+            if !colorData.isEmpty,
+               let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
+                return WindowHighlightConfig(
+                    color: nsColor,
+                    duration: 0.8,
+                    borderWidth: 4.0,
+                    glowRadius: 12.0,
+                    isEnabled: true
+                )
+            }
+            return .default
+        default:
+            return .default
         }
     }
 }

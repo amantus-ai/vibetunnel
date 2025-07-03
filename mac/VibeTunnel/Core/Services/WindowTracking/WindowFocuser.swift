@@ -17,6 +17,18 @@ final class WindowFocuser {
         // Load configuration from UserDefaults
         let config = Self.loadHighlightConfig()
         self.highlightEffect = WindowHighlightEffect(config: config)
+        
+        // Observe UserDefaults changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(userDefaultsDidChange),
+            name: UserDefaults.didChangeNotification,
+            object: nil
+        )
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     /// Load highlight configuration from UserDefaults
@@ -57,6 +69,13 @@ final class WindowFocuser {
         default:
             return .default
         }
+    }
+    
+    /// Handle UserDefaults changes
+    @objc private func userDefaultsDidChange(_ notification: Notification) {
+        // Update highlight configuration when settings change
+        let newConfig = Self.loadHighlightConfig()
+        highlightEffect.updateConfig(newConfig)
     }
 
     /// Focus a window based on terminal type

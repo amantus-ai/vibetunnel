@@ -72,6 +72,74 @@ final class WindowHighlightEffect {
         self.config = newConfig
     }
     
+    /// Converts screen coordinates (top-left origin) to Cocoa coordinates (bottom-left origin)
+    /// This is necessary because:
+    /// - Accessibility API returns coordinates with origin at screen top-left
+    /// - NSWindow expects coordinates with origin at screen bottom-left
+    /// - Multiple displays complicate this further
+    private func convertScreenToCocoaCoordinates(_ screenFrame: CGRect) -> CGRect {
+        // The key insight: NSScreen coordinates are ALREADY in Cocoa coordinates (bottom-left origin)
+        // But the window bounds we get from Accessibility API are in screen coordinates (top-left origin)
+        
+        // First, we need to find the total screen height across all displays
+        let screens = NSScreen.screens
+        guard let mainScreen = NSScreen.main else {
+            logger.error("No main screen found")
+            return screenFrame
+        }
+        
+        // Find which screen contains this window by checking in screen coordinates
+        var targetScreen: NSScreen?
+        let windowCenter = CGPoint(x: screenFrame.midX, y: screenFrame.midY)
+        
+        for screen in screens {
+            // Convert screen's Cocoa frame to screen coordinates for comparison
+            let screenFrameInScreenCoords = convertCocoaToScreenRect(screen.frame, mainScreenHeight: mainScreen.frame.height)
+            
+            if screenFrameInScreenCoords.contains(windowCenter) {
+                targetScreen = screen
+                break
+            }
+        }
+        
+        // Use the screen we found, or main screen as fallback
+        let screen = targetScreen ?? mainScreen
+        
+        logger.debug("Screen info for coordinate conversion:")
+        logger.debug("  Target screen frame (Cocoa): x=\(screen.frame.origin.x), y=\(screen.frame.origin.y), w=\(screen.frame.width), h=\(screen.frame.height)")
+        logger.debug("  Window frame (screen coords): x=\(screenFrame.origin.x), y=\(screenFrame.origin.y), w=\(screenFrame.width), h=\(screenFrame.height)")
+        logger.debug("  Window center: x=\(windowCenter.x), y=\(windowCenter.y)")
+        logger.debug("  Is main screen: \(screen == NSScreen.main)")
+        
+        // Convert window coordinates from screen (top-left) to Cocoa (bottom-left)
+        // The key is that we need to use the main screen's height as reference
+        let mainScreenHeight = mainScreen.frame.height
+        
+        // In screen coordinates, y=0 is at the top of the main screen
+        // In Cocoa coordinates, y=0 is at the bottom of the main screen
+        // So: cocoaY = mainScreenHeight - (screenY + windowHeight)
+        let cocoaY = mainScreenHeight - (screenFrame.origin.y + screenFrame.height)
+        
+        return CGRect(
+            x: screenFrame.origin.x,
+            y: cocoaY,
+            width: screenFrame.width,
+            height: screenFrame.height
+        )
+    }
+    
+    /// Helper to convert Cocoa rect to screen coordinates for comparison
+    private func convertCocoaToScreenRect(_ cocoaRect: CGRect, mainScreenHeight: CGFloat) -> CGRect {
+        // Convert from bottom-left origin to top-left origin
+        let screenY = mainScreenHeight - (cocoaRect.origin.y + cocoaRect.height)
+        return CGRect(
+            x: cocoaRect.origin.x,
+            y: screenY,
+            width: cocoaRect.width,
+            height: cocoaRect.height
+        )
+    }
+    
     /// Highlight a window with a border pulse effect
     func highlightWindow(_ window: AXUIElement, bounds: CGRect? = nil) {
         guard config.isEnabled else { return }
@@ -101,9 +169,16 @@ final class WindowHighlightEffect {
             windowFrame = CGRect(origin: position, size: size)
         }
         
+        // Convert from screen coordinates (top-left origin) to Cocoa coordinates (bottom-left origin)
+        let cocoaFrame = convertScreenToCocoaCoordinates(windowFrame)
+        
+        logger.debug("Window highlight coordinate conversion:")
+        logger.debug("  Original frame: x=\(windowFrame.origin.x), y=\(windowFrame.origin.y), w=\(windowFrame.width), h=\(windowFrame.height)")
+        logger.debug("  Cocoa frame: x=\(cocoaFrame.origin.x), y=\(cocoaFrame.origin.y), w=\(cocoaFrame.width), h=\(cocoaFrame.height)")
+        
         // Create overlay window
         let overlayWindow = createOverlayWindow(
-            frame: windowFrame
+            frame: cocoaFrame
         )
         
         // Add to tracking
