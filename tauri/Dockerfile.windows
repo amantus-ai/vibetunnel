@@ -1,5 +1,5 @@
 # Dockerfile for building Windows binaries
-FROM rust:1.75-bullseye
+FROM rust:1.80-bullseye
 
 # Install Windows cross-compilation tools
 RUN apt-get update && apt-get install -y \
@@ -18,8 +18,8 @@ RUN npm install -g pnpm
 # Add Windows target
 RUN rustup target add x86_64-pc-windows-gnu
 
-# Install tauri-cli
-RUN cargo install tauri-cli
+# Install tauri-cli with specific version
+RUN cargo install tauri-cli --version "^2.0.0" --locked
 
 # Set working directory
 WORKDIR /app

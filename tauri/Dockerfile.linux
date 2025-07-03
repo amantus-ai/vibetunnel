@@ -1,5 +1,5 @@
 # Dockerfile for building Linux binaries
-FROM rust:1.75-bullseye
+FROM rust:1.80-bullseye
 
 # Install required dependencies for Tauri
 RUN apt-get update && apt-get install -y \
@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-dev \
     libayatana-appindicator3-dev \
     librsvg2-dev \
+    libpam0g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js
@@ -20,8 +21,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Install pnpm
 RUN npm install -g pnpm
 
-# Install tauri-cli
-RUN cargo install tauri-cli
+# Install tauri-cli with specific version
+RUN cargo install tauri-cli --version "^2.0.0" --locked
 
 # Set working directory
 WORKDIR /app
