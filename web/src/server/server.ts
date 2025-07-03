@@ -368,13 +368,14 @@ export async function createApp(): Promise<AppInstance> {
   logger.debug('Configured express middleware');
 
   // Add security headers middleware
-  app.use((req, res, next) => {
+  app.use((_req, res, next) => {
     // Content Security Policy to prevent XSS and other injection attacks
     // In test environment, we need to allow 'unsafe-eval' for Playwright's waitForFunction
-    const scriptSrc = process.env.NODE_ENV === 'test' 
-      ? "'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com"
-      : "'self' 'unsafe-inline' https://unpkg.com";
-    
+    const scriptSrc =
+      process.env.NODE_ENV === 'test'
+        ? "'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com"
+        : "'self' 'unsafe-inline' https://unpkg.com";
+
     res.setHeader(
       'Content-Security-Policy',
       "default-src 'self'; " +

@@ -641,7 +641,8 @@ describe('Terminal', () => {
       expect(mockTerminal?.resize).toHaveBeenCalled();
 
       // Get the actual values it was called with
-      const [cols, rows] = mockTerminal!.resize.mock.calls[0];
+      if (!mockTerminal) throw new Error('mockTerminal is undefined');
+      const [cols, rows] = mockTerminal.resize.mock.calls[0];
 
       // Verify cols is different from original (80)
       expect(cols).toBe(99); // (800/8) - 1 = 99
@@ -749,7 +750,8 @@ describe('Terminal', () => {
 
       // Terminal should resize respecting maxCols constraint
       expect(mockTerminal?.resize).toHaveBeenCalled();
-      const [cols] = mockTerminal!.resize.mock.calls[0];
+      if (!mockTerminal) throw new Error('mockTerminal is undefined');
+      const [cols] = mockTerminal.resize.mock.calls[0];
       expect(cols).toBe(100); // Should be limited to maxCols
     });
 
@@ -781,7 +783,8 @@ describe('Terminal', () => {
 
       // Terminal should be limited to initial cols for tunneled sessions
       expect(mockTerminal?.resize).toHaveBeenCalled();
-      const [cols] = mockTerminal!.resize.mock.calls[0];
+      if (!mockTerminal) throw new Error('mockTerminal is undefined');
+      const [cols] = mockTerminal.resize.mock.calls[0];
       expect(cols).toBe(120); // Should be limited to initialCols
     });
 
@@ -814,7 +817,8 @@ describe('Terminal', () => {
       // Terminal should NOT be limited by initial dimensions for frontend sessions
       // Should use calculated width: (1200/8) - 1 = 149
       expect(mockTerminal?.resize).toHaveBeenCalled();
-      const [cols] = mockTerminal!.resize.mock.calls[0];
+      if (!mockTerminal) throw new Error('mockTerminal is undefined');
+      const [cols] = mockTerminal.resize.mock.calls[0];
       expect(cols).toBe(149); // Should use full calculated width
     });
 
@@ -870,7 +874,8 @@ describe('Terminal', () => {
 
       // Should resize to minimum allowed dimensions
       expect(mockTerminal?.resize).toHaveBeenCalled();
-      const [cols, rows] = mockTerminal!.resize.mock.calls[0];
+      if (!mockTerminal) throw new Error('mockTerminal is undefined');
+      const [cols, rows] = mockTerminal.resize.mock.calls[0];
 
       // The calculation is: Math.max(20, Math.floor(100 / 8) - 1) = Math.max(20, 11) = 20
       // But if we're getting 19, it might be due to some other factor
