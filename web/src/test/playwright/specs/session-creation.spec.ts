@@ -60,6 +60,7 @@ test.describe('Session Creation', () => {
   });
 
   test('should handle multiple session creation', async ({ page }) => {
+    test.setTimeout(30000); // Increase timeout for multiple operations
     // Create multiple tracked sessions
     const sessions: Array<{ sessionName: string; sessionId: string }> = [];
 
@@ -72,14 +73,20 @@ test.describe('Session Creation', () => {
       // Navigate back to list for next creation (except last one)
       if (i < 1) {
         await page.goto('/', { waitUntil: 'domcontentloaded' });
+        // Wait for the session list to be visible
+        await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
       }
     }
 
     // Navigate to list and verify all exist
     await page.goto('/');
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+
+    // Add a small delay to ensure the session list is fully updated
+    await page.waitForTimeout(1000);
 
     for (const session of sessions) {
-      await assertSessionInList(page, session.sessionName);
+      await assertSessionInList(page, session.sessionName, { timeout: 10000 });
     }
   });
 

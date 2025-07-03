@@ -8,6 +8,13 @@ test.describe('Authentication', () => {
     // Start from login page for most auth tests
     await page.goto('/');
     await page.waitForLoadState('networkidle');
+
+    // Skip auth tests if server is in no-auth mode
+    const response = await page.request.get('/api/auth/config');
+    const config = await response.json();
+    if (config.noAuth) {
+      test.skip(true, 'Skipping auth tests in no-auth mode');
+    }
   });
 
   test('should display login form with SSH and password options', async ({ page }) => {
@@ -286,6 +293,14 @@ test.describe('Authentication', () => {
   });
 
   test('should handle authentication errors gracefully', async ({ page }) => {
+    // Check if we're in no-auth mode before proceeding
+    const authResponse = await page.request.get('/api/auth/config');
+    const authConfig = await authResponse.json();
+    if (authConfig.noAuth) {
+      test.skip(true, 'Skipping auth error test in no-auth mode');
+      return;
+    }
+
     const authForm = page.locator('auth-form, login-form, form').first();
 
     if (await authForm.isVisible()) {
@@ -506,6 +521,15 @@ test.describe('Authentication', () => {
 
   test('should handle session timeout and re-authentication', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout for this test
+
+    // Check if we're in no-auth mode before proceeding
+    const authResponse = await page.request.get('/api/auth/config');
+    const authConfig = await authResponse.json();
+    if (authConfig.noAuth) {
+      test.skip(true, 'Skipping session timeout test in no-auth mode');
+      return;
+    }
+
     // Mock expired token scenario
     await page.route('**/api/**', async (route) => {
       const authHeader = route.request().headers().authorization;

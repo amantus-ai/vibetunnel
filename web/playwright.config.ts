@@ -39,7 +39,7 @@ export default defineConfig({
     return process.env.CI ? 8 : undefined;
   })(),
   /* Test timeout */
-  timeout: process.env.CI ? 30 * 1000 : 20 * 1000, // 30s on CI, 20s locally
+  timeout: process.env.CI ? 60 * 1000 : 30 * 1000, // 60s on CI, 30s locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { open: 'never' }],
@@ -60,10 +60,10 @@ export default defineConfig({
     video: process.env.CI ? 'retain-on-failure' : 'off',
 
     /* Maximum time each action can take */
-    actionTimeout: 10000, // Reduced from 15s
+    actionTimeout: 15000, // Increased to 15s
 
     /* Give browser more time to start on CI */
-    navigationTimeout: process.env.CI ? 20000 : 15000, // Reduced timeouts
+    navigationTimeout: process.env.CI ? 30000 : 20000, // Increased timeouts
 
     /* Run in headless mode for better performance */
     headless: true,

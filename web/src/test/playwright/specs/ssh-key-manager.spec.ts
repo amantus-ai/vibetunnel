@@ -9,6 +9,13 @@ test.describe('SSH Key Manager', () => {
     // Navigate to login page where SSH key manager should be accessible
     await page.goto('/');
     await page.waitForLoadState('networkidle');
+
+    // Skip SSH key tests if server is in no-auth mode
+    const response = await page.request.get('/api/auth/config');
+    const config = await response.json();
+    if (config.noAuth) {
+      test.skip(true, 'Skipping SSH key tests in no-auth mode');
+    }
   });
 
   test('should open SSH key manager from login page', async ({ page }) => {
