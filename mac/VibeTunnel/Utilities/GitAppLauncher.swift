@@ -6,27 +6,30 @@ import SwiftUI
 
 /// Supported Git GUI applications.
 enum GitApp: String, CaseIterable {
-    case tower = "Tower"
-    case githubDesktop = "GitHub Desktop"
-    case sourcetree = "SourceTree"
-    case gitkraken = "GitKraken"
     case fork = "Fork"
+    case githubDesktop = "GitHub Desktop"
+    case gitkraken = "GitKraken"
     case gitup = "GitUp"
+    case sourcetree = "SourceTree"
+    case sublimeMerge = "Sublime Merge"
+    case tower = "Tower"
 
     var bundleIdentifier: String {
         switch self {
-        case .tower:
-            "com.fournova.Tower3"
-        case .githubDesktop:
-            "com.github.GitHubClient"
-        case .sourcetree:
-            "com.torusknot.SourceTreeNotMAS"
-        case .gitkraken:
-            "com.axosoft.gitkraken"
         case .fork:
             "com.DanPristupov.Fork"
+        case .githubDesktop:
+            "com.github.GitHubClient"
+        case .gitkraken:
+            "com.axosoft.gitkraken"
         case .gitup:
             "co.gitup.mac"
+        case .sourcetree:
+            "com.torusknot.SourceTreeNotMAS"
+        case .sublimeMerge:
+            "com.sublimemerge"
+        case .tower:
+            "com.fournova.Tower3"
         }
     }
 

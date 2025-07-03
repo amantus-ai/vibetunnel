@@ -249,12 +249,16 @@ struct SessionRow: View {
                 openWindow(id: "session-detail", value: session.key)
             }
 
+            Divider()
+
             Button("Show in Finder") {
                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
             }
 
             // Add git repository options if available
             if let repo = gitRepository {
+                Divider()
+
                 Button("Open Git Repository in Finder") {
                     NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repo.path)
                 }
@@ -267,6 +271,8 @@ struct SessionRow: View {
                     }
                 }
             }
+
+            Divider()
 
             Button("Rename Session...") {
                 startEditing()
