@@ -32,7 +32,7 @@ struct GitRepositoryRow: View {
                 .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .frame(maxWidth: 60)
+                .frame(maxWidth: 60, alignment: .leading)
         }
     }
 
