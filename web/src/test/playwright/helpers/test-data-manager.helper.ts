@@ -54,7 +54,7 @@ export class TestSessionManager {
         // Wait for the terminal to be ready before navigating away
         // This ensures the session is fully created
         await this.page
-          .waitForSelector('xterm-screen', {
+          .waitForSelector('.xterm-screen', {
             state: 'visible',
             timeout: 5000,
           })
