@@ -644,10 +644,21 @@ export class PtyManager extends EventEmitter {
         // Socket doesn't exist, this is expected
       }
 
+      // Initialize connected clients set if not already present
+      if (!session.connectedClients) {
+        session.connectedClients = new Set<net.Socket>();
+      }
+
       // Create Unix domain socket server with framed message protocol
       const inputServer = net.createServer((client) => {
         const parser = new MessageParser();
         client.setNoDelay(true);
+
+        // Add client to connected clients set
+        session.connectedClients!.add(client);
+        logger.debug(
+          `Client connected to session ${session.id}, total clients: ${session.connectedClients!.size}`
+        );
 
         client.on('data', (chunk) => {
           parser.addData(chunk);
@@ -659,6 +670,14 @@ export class PtyManager extends EventEmitter {
 
         client.on('error', (err) => {
           logger.debug(`Client socket error for session ${session.id}:`, err);
+        });
+
+        client.on('close', () => {
+          // Remove client from connected clients set
+          session.connectedClients!.delete(client);
+          logger.debug(
+            `Client disconnected from session ${session.id}, remaining clients: ${session.connectedClients!.size}`
+          );
         });
       });
 
@@ -703,6 +722,33 @@ export class PtyManager extends EventEmitter {
         case MessageType.CONTROL_CMD: {
           const cmd = data as ControlCommand;
           this.handleControlMessage(session, cmd);
+          break;
+        }
+
+        case MessageType.STATUS_UPDATE: {
+          const status = data as { app: string; status: string };
+          // Update activity status for the session
+          if (!session.activityStatus) {
+            session.activityStatus = {};
+          }
+          session.activityStatus.specificStatus = {
+            app: status.app,
+            status: status.status,
+          };
+          logger.debug(`Updated status for session ${session.id}:`, status);
+
+          // Broadcast status update to all connected clients
+          if (session.connectedClients && session.connectedClients.size > 0) {
+            const message = frameMessage(MessageType.STATUS_UPDATE, status);
+            for (const client of session.connectedClients) {
+              try {
+                client.write(message);
+              } catch (err) {
+                logger.debug(`Failed to broadcast status to client:`, err);
+              }
+            }
+            logger.debug(`Broadcasted status update to ${session.connectedClients.size} clients`);
+          }
           break;
         }
 
@@ -1370,6 +1416,16 @@ export class PtyManager extends EventEmitter {
     return sessions.map((session) => {
       // First try to get activity from active session
       const activeSession = this.sessions.get(session.id);
+
+      // Check for socket-based status updates first
+      if (activeSession?.activityStatus) {
+        return {
+          ...session,
+          activityStatus: activeSession.activityStatus,
+        };
+      }
+
+      // Then check activity detector for dynamic mode
       if (activeSession?.activityDetector) {
         const activityState = activeSession.activityDetector.getActivityState();
         return {
@@ -1730,6 +1786,18 @@ export class PtyManager extends EventEmitter {
     if (session.titleFilter) {
       // No need to reset, just remove reference
       session.titleFilter = undefined;
+    }
+
+    // Clean up connected socket clients
+    if (session.connectedClients) {
+      for (const client of session.connectedClients) {
+        try {
+          client.destroy();
+        } catch (_e) {
+          // Client already destroyed
+        }
+      }
+      session.connectedClients.clear();
     }
 
     // Clean up input socket server
