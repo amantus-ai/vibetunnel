@@ -524,6 +524,7 @@ export class FileBrowser extends LitElement {
         }
         <div
           class="w-full h-full bg-dark-bg flex flex-col overflow-hidden"
+          data-testid="file-browser"
         >
           <!-- Compact Header (like session-view) -->
           <div

@@ -656,6 +656,7 @@ export class SessionList extends LitElement {
                     this.dispatchEvent(
                       new CustomEvent('hide-exited-change', { detail: !this.hideExited })
                     )}
+                  data-testid="${this.hideExited ? 'show-exited-button' : 'hide-exited-button'}"
                 >
                   ${this.hideExited ? 'Show' : 'Hide'} Exited
                   <span class="text-dark-text-dim">(${exitedSessions.length})</span>
@@ -669,6 +670,7 @@ export class SessionList extends LitElement {
                         class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 border-status-warning bg-status-warning bg-opacity-10 text-status-warning hover:bg-opacity-20 hover:shadow-glow-warning-sm disabled:opacity-50"
                         @click=${this.handleCleanupExited}
                         ?disabled=${this.cleaningExited}
+                        data-testid="clean-exited-button"
                       >
                         ${this.cleaningExited ? 'Cleaning...' : 'Clean Exited'}
                       </button>
@@ -686,6 +688,7 @@ export class SessionList extends LitElement {
               <button
                 class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 border-status-error bg-status-error bg-opacity-10 text-status-error hover:bg-opacity-20"
                 @click=${() => this.dispatchEvent(new CustomEvent('kill-all-sessions'))}
+                data-testid="kill-all-button"
               >
                 Kill All <span class="text-dark-text-dim">(${runningSessions.length})</span>
               </button>

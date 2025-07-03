@@ -333,11 +333,11 @@ test.describe('Keyboard Shortcuts', () => {
     await page.keyboard.press('ArrowUp');
     // Wait a moment for command history to load
     await page.waitForTimeout(500);
-    
+
     // The command should now be in the input buffer
     // Execute it to verify it worked
     await page.keyboard.press('Enter');
-    
+
     // Verify we see "second command" output again
     await expect(page.locator('text="second command"').last()).toBeVisible({ timeout: 4000 });
 
@@ -349,10 +349,10 @@ test.describe('Keyboard Shortcuts', () => {
     await page.waitForTimeout(200);
     await page.keyboard.press('ArrowUp');
     await page.waitForTimeout(500);
-    
+
     // Execute the command
     await page.keyboard.press('Enter');
-    
+
     // Verify we see "first command" output
     await expect(page.locator('text="first command"').last()).toBeVisible({ timeout: 4000 });
   });

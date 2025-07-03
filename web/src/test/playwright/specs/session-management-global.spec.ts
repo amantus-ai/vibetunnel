@@ -56,7 +56,7 @@ test.describe('Global Session Management', () => {
       }
 
       // Clean exited sessions
-      const cleanExitedButton = page.locator('button:has-text("Clean Exited")');
+      const cleanExitedButton = page.locator('[data-testid="clean-exited-button"]');
       if (await cleanExitedButton.isVisible({ timeout: 1000 })) {
         await cleanExitedButton.click();
         await page.waitForTimeout(2000);
@@ -148,10 +148,7 @@ test.describe('Global Session Management', () => {
     expect(sessionCount).toBeGreaterThanOrEqual(2);
 
     // Find and click Kill All button
-    const killAllButton = page
-      .locator('button')
-      .filter({ hasText: /Kill All/i })
-      .first();
+    const killAllButton = page.locator('[data-testid="kill-all-button"]').first();
     await expect(killAllButton).toBeVisible({ timeout: 2000 });
 
     // Handle confirmation dialog if it appears
@@ -180,11 +177,20 @@ test.describe('Global Session Management', () => {
         const cards = document.querySelectorAll('session-card');
         // Check that all visible cards show as exited
         return Array.from(cards).every((card) => {
-          const text = card.textContent?.toLowerCase() || '';
           // Skip if not visible
-          if (card.getAttribute('style')?.includes('display: none')) return true;
-          // Check if it shows as exited
-          return text.includes('exited') && !text.includes('killing');
+          const style = window.getComputedStyle(card);
+          if (style.display === 'none') return true;
+
+          // Check the data-is-killing attribute
+          const isKilling = card.getAttribute('data-is-killing') === 'true';
+          if (isKilling) return false; // Still killing
+
+          // Check status attribute
+          const statusElement = card.querySelector('[data-status]');
+          const status = statusElement?.getAttribute('data-status');
+
+          // Session should either be exited or removed
+          return !status || status === 'exited';
         });
       },
       { timeout: 30000 }
@@ -210,10 +216,7 @@ test.describe('Global Session Management', () => {
       console.log('Kill All operation completed successfully');
     } else {
       // Look for Show Exited button
-      const showExitedButton = page
-        .locator('button')
-        .filter({ hasText: /Show Exited/i })
-        .first();
+      const showExitedButton = page.locator('[data-testid="show-exited-button"]').first();
       const showExitedVisible = await showExitedButton
         .isVisible({ timeout: 1000 })
         .catch(() => false);
@@ -253,14 +256,20 @@ test.describe('Global Session Management', () => {
       () => {
         const cards = document.querySelectorAll('session-card');
         const noSessionsMsg = document.querySelector('.text-dark-text-muted');
-        const showExitedButton = document.querySelector('button:has-text("Show Exited")');
-        return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions') || showExitedButton;
+        // Find button containing "Show Exited" text
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const showExitedButton = buttons.find((btn) => btn.textContent?.includes('Show Exited'));
+        return (
+          cards.length > 0 ||
+          noSessionsMsg?.textContent?.includes('No terminal sessions') ||
+          showExitedButton
+        );
       },
       { timeout: 10000 }
     );
 
     // Check if exited sessions are hidden
-    const showExitedButton = page.locator('button:has-text("Show Exited")').first();
+    const showExitedButton = page.locator('[data-testid="show-exited-button"]').first();
     if (await showExitedButton.isVisible({ timeout: 1000 })) {
       // Click to show exited sessions
       await showExitedButton.click();
@@ -281,16 +290,25 @@ test.describe('Global Session Management', () => {
     );
     await sessionListPage.killSession(exitedSessionName);
 
-    // Wait for the UI to fully update - no "Killing" message and status changed
+    // Wait for the session to be killed - check that the specific session is marked as exited
     await page.waitForFunction(
-      () => {
-        // Check if any element contains "Killing session" text
-        const hasKillingMessage = Array.from(document.querySelectorAll('*')).some((el) =>
-          el.textContent?.includes('Killing session')
+      ({ sessionName }) => {
+        const sessionCards = document.querySelectorAll('session-card');
+        const targetCard = Array.from(sessionCards).find((card) =>
+          card.textContent?.includes(sessionName)
         );
-        return !hasKillingMessage;
+        if (!targetCard) return true; // Session removed completely
+
+        // Check if the session is marked as exited
+        const statusElement = targetCard.querySelector('[data-status]');
+        const status = statusElement?.getAttribute('data-status');
+        const isKilling = targetCard.getAttribute('data-is-killing') === 'true';
+
+        // Session should be exited and not killing
+        return status === 'exited' && !isKilling;
       },
-      { timeout: 2000 }
+      { sessionName: exitedSessionName },
+      { timeout: 15000 } // Increased timeout for CI
     );
 
     // Check if exited sessions are visible (depends on app settings)
@@ -301,10 +319,7 @@ test.describe('Global Session Management', () => {
     // In CI, this might be different than in local tests
     if (!exitedVisible) {
       // If exited sessions are hidden, look for a "Show Exited" button
-      const showExitedButton = page
-        .locator('button')
-        .filter({ hasText: /Show Exited/i })
-        .first();
+      const showExitedButton = page.locator('[data-testid="show-exited-button"]').first();
       const hasShowButton = await showExitedButton.isVisible({ timeout: 1000 }).catch(() => false);
       expect(hasShowButton).toBe(true);
     }
@@ -335,16 +350,10 @@ test.describe('Global Session Management', () => {
 
     if (isShowingExited) {
       // If exited sessions are visible, look for "Hide Exited" button
-      toggleButton = page
-        .locator('button')
-        .filter({ hasText: /Hide Exited/i })
-        .first();
+      toggleButton = page.locator('[data-testid="hide-exited-button"]').first();
     } else {
       // If exited sessions are hidden, look for "Show Exited" button
-      toggleButton = page
-        .locator('button')
-        .filter({ hasText: /Show Exited/i })
-        .first();
+      toggleButton = page.locator('[data-testid="show-exited-button"]').first();
     }
 
     await expect(toggleButton).toBeVisible({ timeout: 5000 });
@@ -382,14 +391,8 @@ test.describe('Global Session Management', () => {
 
     // The button text should have changed
     const newToggleButton = isShowingExited
-      ? page
-          .locator('button')
-          .filter({ hasText: /Show Exited/i })
-          .first()
-      : page
-          .locator('button')
-          .filter({ hasText: /Hide Exited/i })
-          .first();
+      ? page.locator('[data-testid="show-exited-button"]').first()
+      : page.locator('[data-testid="hide-exited-button"]').first();
 
     await expect(newToggleButton).toBeVisible({ timeout: 2000 });
 

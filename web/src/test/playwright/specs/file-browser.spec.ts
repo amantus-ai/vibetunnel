@@ -31,9 +31,11 @@ test.describe('File Browser', () => {
 
     // Open file browser
     await fileBrowserButton.click();
-    await expect(page.locator('file-browser').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[data-testid="file-browser"]').first()).toBeVisible({
+      timeout: 5000,
+    });
     // Verify file browser opened successfully
-    const fileBrowser = page.locator('file-browser').first();
+    const fileBrowser = page.locator('[data-testid="file-browser"]').first();
     await expect(fileBrowser).toBeVisible();
     await expect(page.locator('.bg-dark-bg-secondary.border-r')).toBeVisible(); // File list pane
     await expect(page.locator('.bg-dark-bg.flex.flex-col')).toBeVisible(); // Preview pane
@@ -61,12 +63,12 @@ test.describe('File Browser', () => {
     // Open file browser
     const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
     await fileBrowserButton.click();
-    await expect(page.locator('file-browser').first()).toBeVisible();
+    await expect(page.locator('[data-testid="file-browser"]').first()).toBeVisible();
 
     // Close with escape key
     await page.keyboard.press('Escape');
     await waitForModalClosed(page);
-    await expect(page.locator('file-browser')).not.toBeVisible();
+    await expect(page.locator('[data-testid="file-browser"]')).not.toBeVisible();
   });
 
   test('should display file list with icons and navigate directories', async ({ page }) => {
@@ -78,7 +80,7 @@ test.describe('File Browser', () => {
     // Open file browser
     const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
     await fileBrowserButton.click();
-    await expect(page.locator('file-browser').first()).toBeVisible();
+    await expect(page.locator('[data-testid="file-browser"]').first()).toBeVisible();
 
     // Verify file list is populated
     const fileItems = page.locator('.p-3.hover\\:bg-dark-bg-lighter');

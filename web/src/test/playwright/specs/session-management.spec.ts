@@ -20,12 +20,12 @@ test.describe('Session Management', () => {
 
   test.beforeEach(async ({ page }) => {
     sessionManager = new TestSessionManager(page);
-    
+
     // Clean up exited sessions before each test to avoid UI clutter
     try {
       await page.goto('/');
       await page.waitForLoadState('domcontentloaded');
-      
+
       // Check if there are exited sessions to clean
       const cleanButton = page.locator('button:has-text("Clean Exited")');
       if (await cleanButton.isVisible({ timeout: 2000 })) {
@@ -54,13 +54,13 @@ test.describe('Session Management', () => {
 
     // Scroll to find the session card if there are many sessions
     const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
-    
+
     // Wait for the session card to be attached to DOM
     await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
-    
+
     // Scroll the session card into view
     await sessionCard.scrollIntoViewIfNeeded();
-    
+
     // Wait for it to be visible after scrolling
     await sessionCard.waitFor({ state: 'visible', timeout: 5000 });
 
@@ -101,7 +101,7 @@ test.describe('Session Management', () => {
     const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
     await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
     await sessionCard.scrollIntoViewIfNeeded();
-    
+
     // Verify session shows as exited
     await waitForSessionState(page, sessionName, 'exited', { timeout: 10000 });
     await assertSessionInList(page, sessionName, { status: 'EXITED' });
@@ -188,7 +188,7 @@ test.describe('Session Management', () => {
     // Navigate back to list
     await page.goto('/');
     await waitForSessionCards(page);
-    
+
     // Find the session card again and verify it still shows as running
     await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
     await sessionCard.scrollIntoViewIfNeeded();
@@ -225,7 +225,7 @@ test.describe('Session Management', () => {
     // Navigate back and verify session is still in list
     await page.goto('/');
     await waitForSessionCards(page);
-    
+
     // Find and verify the session card
     const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
     await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
