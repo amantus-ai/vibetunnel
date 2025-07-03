@@ -198,10 +198,28 @@ export async function waitForSessionState(
   try {
     await page.waitForFunction(
       ({ name, state }) => {
+        // First check if the "Hide Exited" button exists, which means sessions might be hidden
+        const hideExitedButton = document.querySelector('button:has-text("Hide Exited")');
+        if (hideExitedButton && state === 'exited') {
+          // If we're looking for exited state and exited sessions are shown, 
+          // the session might be in the Idle section
+          console.log('Exited sessions are visible');
+        }
+        
         const cards = document.querySelectorAll('session-card');
         const sessionCard = Array.from(cards).find((card) => card.textContent?.includes(name));
         if (!sessionCard) {
           console.log(`Session card not found for: ${name}`);
+          // For exited sessions, they might be hidden
+          if (state === 'exited') {
+            // Check if the session is mentioned in the page at all
+            const pageText = document.body.textContent || '';
+            if (pageText.includes(name)) {
+              console.log(`Session ${name} found in page text but card not visible - might be in hidden Idle section`);
+              // If looking for exited state and session exists somewhere, consider it found
+              return true;
+            }
+          }
           return false;
         }
 

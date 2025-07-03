@@ -12,21 +12,37 @@ import {
 } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
-// These tests create their own sessions and can run in parallel
-test.describe.configure({ mode: 'parallel' });
+// These tests need to run in serial mode to avoid interference
+test.describe.configure({ mode: 'serial' });
 
 test.describe('Session Management', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
     sessionManager = new TestSessionManager(page);
+    
+    // Clean up exited sessions before each test to avoid UI clutter
+    try {
+      await page.goto('/');
+      await page.waitForLoadState('domcontentloaded');
+      
+      // Check if there are exited sessions to clean
+      const cleanButton = page.locator('button:has-text("Clean Exited")');
+      if (await cleanButton.isVisible({ timeout: 2000 })) {
+        await cleanButton.click();
+        // Wait for cleanup to complete
+        await page.waitForTimeout(1000);
+      }
+    } catch {
+      // Ignore errors - cleanup is best effort
+    }
   });
 
   test.afterEach(async () => {
     await sessionManager.cleanupAllSessions();
   });
 
-  test.skip('should kill an active session', async ({ page }) => {
+  test('should kill an active session', async ({ page }) => {
     // Create a tracked session with a long-running command (sleep without shell operators)
     const { sessionName } = await sessionManager.createTrackedSession('kill-test', {
       command: 'sleep 300', // Simple long-running command without shell operators
@@ -36,17 +52,28 @@ test.describe('Session Management', () => {
     await page.goto('/');
     await waitForSessionCards(page);
 
-    // Kill the session
-    const sessionListPage = await import('../pages/session-list.page').then(
-      (m) => new m.SessionListPage(page)
-    );
-    await sessionListPage.killSession(sessionName);
+    // Scroll to find the session card if there are many sessions
+    const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
+    
+    // Wait for the session card to be attached to DOM
+    await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
+    
+    // Scroll the session card into view
+    await sessionCard.scrollIntoViewIfNeeded();
+    
+    // Wait for it to be visible after scrolling
+    await sessionCard.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Kill the session using the kill button directly
+    const killButton = sessionCard.locator('[data-testid="kill-session-button"]');
+    await killButton.waitFor({ state: 'visible', timeout: 5000 });
+    await killButton.click();
 
     // Verify session state changed to exited
     await waitForSessionState(page, sessionName, 'exited', { timeout: 10000 });
   });
 
-  test.skip('should handle session exit', async ({ page }) => {
+  test('should handle session exit', async ({ page }) => {
     // Create a session that will exit quickly using a simple command
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('exit-test'),
@@ -62,10 +89,19 @@ test.describe('Session Management', () => {
     const terminal = page.locator('vibe-terminal');
     await expect(terminal).toContainText('Session will exit immediately', { timeout: 5000 });
 
+    // Wait a bit for the echo command to complete and session to update
+    await page.waitForTimeout(1000);
+
     // The echo command should have exited by now
     // Navigate back to home
     await page.goto('/');
+    await waitForSessionCards(page);
 
+    // Find and scroll to the session card
+    const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
+    await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
+    await sessionCard.scrollIntoViewIfNeeded();
+    
     // Verify session shows as exited
     await waitForSessionState(page, sessionName, 'exited', { timeout: 10000 });
     await assertSessionInList(page, sessionName, { status: 'EXITED' });
@@ -116,7 +152,7 @@ test.describe('Session Management', () => {
     }
   });
 
-  test.skip('should update session activity timestamp', async ({ page }) => {
+  test('should update session activity status', async ({ page }) => {
     // Create a session
     const { sessionName } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('activity-test'),
@@ -126,11 +162,16 @@ test.describe('Session Management', () => {
     await page.goto('/');
     await waitForSessionCards(page);
 
-    // Get initial activity time
+    // Find and scroll to the session card
     const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
-    const _initialActivity = await sessionCard
-      .locator('.activity-time, .last-activity, time')
-      .textContent();
+    await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
+    await sessionCard.scrollIntoViewIfNeeded();
+    await sessionCard.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Verify initial status shows "running"
+    const statusElement = sessionCard.locator('span[data-status="running"]');
+    await expect(statusElement).toBeVisible();
+    await expect(statusElement).toContainText('running');
 
     // Navigate back to session and interact with it
     await sessionCard.click();
@@ -147,16 +188,18 @@ test.describe('Session Management', () => {
     // Navigate back to list
     await page.goto('/');
     await waitForSessionCards(page);
+    
+    // Find the session card again and verify it still shows as running
+    await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
+    await sessionCard.scrollIntoViewIfNeeded();
 
-    // Activity timestamp should have updated (but we won't check exact time)
-    // Just verify the element exists and has content
-    const updatedActivity = await sessionCard
-      .locator('.activity-time, .last-activity, time')
-      .textContent();
-    expect(updatedActivity).toBeTruthy();
+    // Session should still be running after activity
+    const updatedStatusElement = sessionCard.locator('span[data-status="running"]');
+    await expect(updatedStatusElement).toBeVisible();
+    await expect(updatedStatusElement).toContainText('running');
   });
 
-  test.skip('should handle session with long output', async ({ page }) => {
+  test('should handle session with long output', async ({ page }) => {
     // Create a session with default shell
     const { sessionName } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('long-output'),
@@ -166,11 +209,13 @@ test.describe('Session Management', () => {
     for (let i = 1; i <= 20; i++) {
       await page.keyboard.type(`echo "Line ${i} of output"`);
       await page.keyboard.press('Enter');
+      // Small delay between commands to avoid overwhelming the terminal
+      await page.waitForTimeout(100);
     }
 
     // Wait for the last line to appear
     const terminal = page.locator('vibe-terminal');
-    await expect(terminal).toContainText('Line 20 of output', { timeout: 10000 });
+    await expect(terminal).toContainText('Line 20 of output', { timeout: 15000 });
 
     // Verify terminal is still responsive
     await page.keyboard.type('echo "Still working"');
@@ -179,6 +224,12 @@ test.describe('Session Management', () => {
 
     // Navigate back and verify session is still in list
     await page.goto('/');
+    await waitForSessionCards(page);
+    
+    // Find and verify the session card
+    const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
+    await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
+    await sessionCard.scrollIntoViewIfNeeded();
     await assertSessionInList(page, sessionName);
   });
 

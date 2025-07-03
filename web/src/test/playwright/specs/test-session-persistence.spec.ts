@@ -40,7 +40,7 @@ test.describe('Session Persistence Tests', () => {
     await assertSessionInList(page, sessionName);
   });
 
-  test.skip('should handle session with error gracefully', async ({ page }) => {
+  test('should handle session with error gracefully', async ({ page }) => {
     // Create a session with a command that will fail immediately
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('error-test'),
@@ -52,9 +52,18 @@ test.describe('Session Persistence Tests', () => {
       sessionManager.trackSession(sessionName, sessionId);
     }
 
+    // Wait a moment for the false command to execute and exit
+    await page.waitForTimeout(1000);
+
     // The false command should exit immediately
     // Navigate back to home
     await page.goto('/');
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+
+    // Find and scroll to the session card
+    const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
+    await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
+    await sessionCard.scrollIntoViewIfNeeded();
 
     // Wait for session to appear and status to update to exited
     await waitForSessionState(page, sessionName, 'exited', { timeout: 15000 });
