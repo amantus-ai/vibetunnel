@@ -37,16 +37,16 @@ export async function assertSessionInList(
   // If status is provided, look for sessions with that status first
   let sessionCard: Locator;
   if (status) {
-    // Look for session cards with the specific status
+    // Look for session cards with the specific status using data-status attribute
     sessionCard = page
       .locator(
-        `session-card:has-text("${sessionName}"):has(span:text-is("${status.toLowerCase()}"))`
+        `session-card:has-text("${sessionName}"):has(span[data-status="${status.toLowerCase()}"])`
       )
       .first();
   } else {
     // Just find any session with the name, preferring running sessions
     const runningCard = page
-      .locator(`session-card:has-text("${sessionName}"):has(span:text-is("running"))`)
+      .locator(`session-card:has-text("${sessionName}"):has(span[data-status="running"])`)
       .first();
     const anyCard = page.locator(`session-card:has-text("${sessionName}")`).first();
 
