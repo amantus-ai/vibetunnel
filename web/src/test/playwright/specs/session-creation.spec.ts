@@ -55,6 +55,14 @@ test.describe('Session Creation', () => {
 
     // Navigate back and verify
     await page.goto('/');
+
+    // Wait for session list to be ready
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('session-card, .text-dark-text-muted', {
+      state: 'visible',
+      timeout: 10000,
+    });
+
     await assertSessionInList(page, sessionName, { status: 'RUNNING' });
   });
 

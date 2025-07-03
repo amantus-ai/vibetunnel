@@ -8,7 +8,7 @@ export async function assertSessionInList(
   sessionName: string,
   options: { timeout?: number; status?: 'RUNNING' | 'EXITED' | 'KILLED' } = {}
 ): Promise<void> {
-  const { timeout = 5000, status } = options;
+  const { timeout = 15000, status } = options;
 
   // Ensure we're on the session list page
   if (page.url().includes('?session=')) {

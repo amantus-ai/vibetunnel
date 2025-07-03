@@ -123,11 +123,14 @@ test.describe('Advanced Session Management', () => {
   test('should display session metadata correctly', async ({ page }) => {
     // Create a session with the default command
     const sessionName = sessionManager.generateSessionName('metadata-test');
-    await sessionManager.createTrackedSession(sessionName, false, 'bash');
+    const { sessionId } = await sessionManager.createTrackedSession(sessionName, false, 'bash');
 
-    // The session is created with default working directory (~)
-    // Since we can't set a custom working directory without shell operators,
-    // we'll just check the default behavior
+    // Navigate to the session to see its metadata
+    await page.goto(`/?session=${sessionId}`);
+    await page.waitForLoadState('networkidle');
+
+    // Wait for the session view to be fully loaded
+    await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
 
     // Check that the path is displayed
     const pathElement = page.locator('[title="Click to copy path"]');
