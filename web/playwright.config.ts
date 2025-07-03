@@ -100,6 +100,11 @@ export default defineConfig({
         '**/session-navigation.spec.ts',
         '**/session-management.spec.ts',
         '**/session-management-advanced.spec.ts',
+        '**/file-browser-basic.spec.ts',
+        '**/ssh-key-manager.spec.ts',
+        '**/push-notifications.spec.ts',
+        '**/authentication.spec.ts',
+        '**/activity-monitoring.spec.ts',
       ],
     },
     // Serial tests - these tests perform global operations or modify shared state
