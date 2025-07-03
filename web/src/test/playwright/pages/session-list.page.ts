@@ -268,7 +268,7 @@ export class SessionListPage extends BasePage {
     const responsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/sessions') && response.request().method() === 'POST',
-      { timeout: 10000 }
+      { timeout: 20000 } // Increased timeout for CI
     );
 
     await submitButton.click({ force: true, timeout: 5000 });
@@ -295,22 +295,23 @@ export class SessionListPage extends BasePage {
         // Don't throw yet, check if we navigated anyway
       }
 
-      // Wait for modal to close first
+      // Wait for modal to close first - check for the data-modal-state attribute
       await this.page
-        .waitForSelector('.modal-content', { state: 'hidden', timeout: 5000 })
+        .waitForSelector('[data-modal-state="open"]', { state: 'detached', timeout: 5000 })
         .catch(() => {
           console.log('Modal might have already closed');
         });
 
-      // Wait for the UI to process the response
+      // Additional check to ensure modal is fully closed
       await this.page.waitForFunction(
         () => {
-          // Check if we're no longer on the session list page or modal has closed
-          const onSessionPage = window.location.search.includes('session=');
-          const modalClosed = !document.querySelector('[role="dialog"], .modal, [data-modal]');
-          return onSessionPage || modalClosed;
+          // Check if modal is gone
+          const modalElement = document.querySelector(
+            'session-create-form[data-modal-state="open"]'
+          );
+          return !modalElement;
         },
-        { timeout: TIMEOUTS.UI_UPDATE }
+        { timeout: 5000 }
       );
 
       // Check if we're already on the session page
@@ -403,6 +404,9 @@ export class SessionListPage extends BasePage {
   }
 
   async killSession(sessionName: string) {
+    // Ensure no modal is blocking interaction
+    await this.closeAnyOpenModal();
+
     const sessionCard = await this.getSessionCard(sessionName);
 
     // Wait for the session card to be visible
