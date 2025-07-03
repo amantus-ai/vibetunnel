@@ -8,7 +8,6 @@ import SwiftUI
 enum GitApp: String, CaseIterable {
     case fork = "Fork"
     case githubDesktop = "GitHub Desktop"
-    case gitkraken = "GitKraken"
     case gitup = "GitUp"
     case sourcetree = "SourceTree"
     case sublimeMerge = "Sublime Merge"
@@ -20,8 +19,6 @@ enum GitApp: String, CaseIterable {
             "com.DanPristupov.Fork"
         case .githubDesktop:
             "com.github.GitHubClient"
-        case .gitkraken:
-            "com.axosoft.gitkraken"
         case .gitup:
             "co.gitup.mac"
         case .sourcetree:
@@ -38,7 +35,6 @@ enum GitApp: String, CaseIterable {
         switch self {
         case .fork: 75
         case .githubDesktop: 90
-        case .gitkraken: 70
         case .gitup: 60
         case .sourcetree: 80
         case .sublimeMerge: 85
