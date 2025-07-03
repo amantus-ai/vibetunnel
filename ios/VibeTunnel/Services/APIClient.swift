@@ -121,6 +121,8 @@ class APIClient: APIClientProtocol {
         request.httpMethod = "GET"
         addAuthenticationIfNeeded(&request)
         
+        logger.debug("📡 [APIClient] Making getSessions request to: \(url.absoluteString)")
+        
         let (data, response) = try await session.data(for: request)
 
         try validateResponse(response)
@@ -455,14 +457,18 @@ class APIClient: APIClientProtocol {
         var request = URLRequest(url: url)
         request.timeoutInterval = 5.0 // Quick timeout for health check
 
+        logger.debug("📡 [APIClient] Making health check request to: \(url.absoluteString)")
+
         do {
             let (_, response) = try await session.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse {
+                logger.debug("🏥 [APIClient] Health check response: \(httpResponse.statusCode)")
                 return httpResponse.statusCode == 200
             }
             return false
         } catch {
+            logger.debug("🏥 [APIClient] Health check failed: \(error)")
             // Health check failure doesn't throw, just returns false
             return false
         }
@@ -477,7 +483,7 @@ class APIClient: APIClientProtocol {
         }
 
         guard 200..<300 ~= httpResponse.statusCode else {
-            logger.error("Server error: HTTP \(httpResponse.statusCode)")
+            logger.error("❌ [APIClient] Server error: HTTP \(httpResponse.statusCode) for URL: \(httpResponse.url?.absoluteString ?? "unknown")")
             throw APIError.serverError(httpResponse.statusCode, nil)
         }
     }
@@ -530,6 +536,8 @@ class APIClient: APIClientProtocol {
 
         // Add authentication header if needed
         addAuthenticationIfNeeded(&request)
+
+        logger.debug("📡 [APIClient] Making browseDirectory request to: \(url.absoluteString)")
 
         let (data, response) = try await session.data(for: request)
 

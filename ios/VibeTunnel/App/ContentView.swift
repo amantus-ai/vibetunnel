@@ -75,12 +75,15 @@ struct ContentView: View {
         Task {
             do {
                 // Try to fetch sessions to validate connection
+                print("🔍 [ContentView] Validating restored connection by fetching sessions...")
                 _ = try await APIClient.shared.getSessions()
+                print("✅ [ContentView] Connection validation successful")
                 // Connection is valid
                 await MainActor.run {
                     isValidatingConnection = false
                 }
             } catch {
+                print("❌ [ContentView] Connection validation failed: \(error)")
                 // Connection failed, reset state
                 await MainActor.run {
                     Task {
