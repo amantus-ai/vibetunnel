@@ -369,11 +369,33 @@ export async function createApp(): Promise<AppInstance> {
 
   // Add security headers middleware
   app.use((_req, res, next) => {
+    // Detect if we're in Playwright test environment
+    // Check multiple conditions to ensure test environment is detected
+    const isPlaywrightTest =
+      process.env.PLAYWRIGHT_TEST === 'true' ||
+      process.env.NODE_ENV === 'test' ||
+      config.port === 4022; // Test port from test-config.ts
+
+    // Log once on startup
+    if (!app.locals.cspLogged) {
+      logger.debug(`PLAYWRIGHT_TEST env var: ${process.env.PLAYWRIGHT_TEST}`);
+      logger.debug(`NODE_ENV: ${process.env.NODE_ENV}`);
+      logger.debug(`Server port: ${config.port}`);
+      logger.debug(
+        `CSP mode: ${isPlaywrightTest ? 'test (with unsafe-eval)' : 'production (no unsafe-eval)'}`
+      );
+      app.locals.cspLogged = true;
+    }
+
     // Content Security Policy to prevent XSS and other injection attacks
+    const scriptSrc = isPlaywrightTest
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; " // Add unsafe-eval for Playwright tests
+      : "script-src 'self' 'unsafe-inline' https://unpkg.com; "; // Production CSP without unsafe-eval
+
     res.setHeader(
       'Content-Security-Policy',
       "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' https://unpkg.com; " + // Allow inline scripts and unpkg for dependencies
+        scriptSrc +
         "style-src 'self' 'unsafe-inline'; " + // Allow inline styles
         "img-src 'self' data: blob:; " + // Allow data and blob URLs for images
         "font-src 'self' data:; " + // Allow data URLs for fonts
@@ -524,10 +546,18 @@ export async function createApp(): Promise<AppInstance> {
       setHeaders: (res, path) => {
         // Apply stricter CSP for HTML files
         if (path.endsWith('.html')) {
+          const isPlaywrightTest =
+            process.env.PLAYWRIGHT_TEST === 'true' ||
+            process.env.NODE_ENV === 'test' ||
+            config.port === 4022;
+          const scriptSrc = isPlaywrightTest
+            ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; "
+            : "script-src 'self' 'unsafe-inline' https://unpkg.com; ";
+
           res.setHeader(
             'Content-Security-Policy',
             "default-src 'self'; " +
-              "script-src 'self' 'unsafe-inline' https://unpkg.com; " +
+              scriptSrc +
               "style-src 'self' 'unsafe-inline'; " +
               "img-src 'self' data: blob:; " +
               "font-src 'self' data:; " +

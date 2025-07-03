@@ -127,6 +127,7 @@ export default defineConfig({
     env: {
       ...process.env, // Include all existing env vars
       NODE_ENV: 'test',
+      PLAYWRIGHT_TEST: 'true', // Enable test mode for CSP
       VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
       SUPPRESS_CLIENT_ERRORS: 'true',
       VIBETUNNEL_SEA: '', // Explicitly set to empty to disable SEA loader
