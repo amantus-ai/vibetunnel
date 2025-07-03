@@ -16,8 +16,9 @@ let nodePtyPath;
 try {
   nodePtyPath = require.resolve('node-pty/package.json');
 } catch (e) {
-  // In CI, node-pty might not be installed yet during postinstall
-  console.warn('node-pty not found yet, skipping native module check');
+  console.log('Could not find node-pty module');
+  // In CI or during initial install, node-pty might not be installed yet
+  // This is expected behavior, so exit successfully
   process.exit(0);
 }
 
