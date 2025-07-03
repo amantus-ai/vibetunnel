@@ -374,7 +374,8 @@ export async function createApp(): Promise<AppInstance> {
     const isTestEnv =
       process.env.NODE_ENV === 'test' ||
       process.env.CI === 'true' ||
-      process.env.SUPPRESS_CLIENT_ERRORS === 'true';
+      process.env.SUPPRESS_CLIENT_ERRORS === 'true' ||
+      process.env.PLAYWRIGHT_TEST === 'true';
 
     const scriptSrc = isTestEnv
       ? "'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com"
