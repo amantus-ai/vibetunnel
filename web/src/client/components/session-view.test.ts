@@ -31,6 +31,10 @@ interface SessionViewTestInterface extends SessionView {
   terminalCols: number;
   terminalRows: number;
   showWidthSelector: boolean;
+  showQuickKeys: boolean;
+  keyboardHeight: number;
+  updateTerminalTransform: () => void;
+  _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null;
 }
 
 // Test interface for Terminal element
@@ -732,8 +736,11 @@ describe('SessionView', () => {
   });
 
   describe('updateTerminalTransform debounce', () => {
-    let fitTerminalSpy: any;
-    let terminalElement: any;
+    let fitTerminalSpy: ReturnType<typeof vi.fn>;
+    let terminalElement: {
+      fitTerminal: ReturnType<typeof vi.fn>;
+      scrollToBottom: ReturnType<typeof vi.fn>;
+    };
 
     beforeEach(async () => {
       const mockSession = createMockSession();
@@ -757,11 +764,11 @@ describe('SessionView', () => {
       vi.useFakeTimers();
 
       // Call updateTerminalTransform multiple times rapidly
-      (element as any).updateTerminalTransform();
-      (element as any).updateTerminalTransform();
-      (element as any).updateTerminalTransform();
-      (element as any).updateTerminalTransform();
-      (element as any).updateTerminalTransform();
+      (element as SessionViewTestInterface).updateTerminalTransform();
+      (element as SessionViewTestInterface).updateTerminalTransform();
+      (element as SessionViewTestInterface).updateTerminalTransform();
+      (element as SessionViewTestInterface).updateTerminalTransform();
+      (element as SessionViewTestInterface).updateTerminalTransform();
 
       // Verify fitTerminal hasn't been called yet
       expect(fitTerminalSpy).not.toHaveBeenCalled();
@@ -786,12 +793,12 @@ describe('SessionView', () => {
       vi.useFakeTimers();
 
       // Set mobile mode and show quick keys
-      (element as any).isMobile = true;
-      (element as any).showQuickKeys = true;
-      (element as any).keyboardHeight = 300;
+      (element as SessionViewTestInterface).isMobile = true;
+      (element as SessionViewTestInterface).showQuickKeys = true;
+      (element as SessionViewTestInterface).keyboardHeight = 300;
 
       // Call updateTerminalTransform
-      (element as any).updateTerminalTransform();
+      (element as SessionViewTestInterface).updateTerminalTransform();
 
       // Advance timers past debounce
       vi.advanceTimersByTime(110);
@@ -814,12 +821,12 @@ describe('SessionView', () => {
       vi.useFakeTimers();
 
       // Set desktop mode but show quick keys
-      (element as any).isMobile = false;
-      (element as any).showQuickKeys = true;
-      (element as any).keyboardHeight = 0;
+      (element as SessionViewTestInterface).isMobile = false;
+      (element as SessionViewTestInterface).showQuickKeys = true;
+      (element as SessionViewTestInterface).keyboardHeight = 0;
 
       // Call updateTerminalTransform
-      (element as any).updateTerminalTransform();
+      (element as SessionViewTestInterface).updateTerminalTransform();
 
       // Advance timers past debounce
       vi.advanceTimersByTime(110);
@@ -835,10 +842,10 @@ describe('SessionView', () => {
       vi.useFakeTimers();
 
       // Initially set some height reduction
-      (element as any).isMobile = true;
-      (element as any).showQuickKeys = false;
-      (element as any).keyboardHeight = 300;
-      (element as any).updateTerminalTransform();
+      (element as SessionViewTestInterface).isMobile = true;
+      (element as SessionViewTestInterface).showQuickKeys = false;
+      (element as SessionViewTestInterface).keyboardHeight = 300;
+      (element as SessionViewTestInterface).updateTerminalTransform();
 
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
@@ -846,8 +853,8 @@ describe('SessionView', () => {
       expect(element.terminalContainerHeight).toBe('calc(100% - 310px)');
 
       // Now hide the keyboard
-      (element as any).keyboardHeight = 0;
-      (element as any).updateTerminalTransform();
+      (element as SessionViewTestInterface).keyboardHeight = 0;
+      (element as SessionViewTestInterface).updateTerminalTransform();
 
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
@@ -862,16 +869,16 @@ describe('SessionView', () => {
       vi.useFakeTimers();
 
       // Call updateTerminalTransform to set a timeout
-      (element as any).updateTerminalTransform();
+      (element as SessionViewTestInterface).updateTerminalTransform();
 
       // Verify timeout is set
-      expect((element as any)._updateTerminalTransformTimeout).toBeTruthy();
+      expect((element as SessionViewTestInterface)._updateTerminalTransformTimeout).toBeTruthy();
 
       // Disconnect the element
       element.disconnectedCallback();
 
       // Verify timeout was cleared
-      expect((element as any)._updateTerminalTransformTimeout).toBeNull();
+      expect((element as SessionViewTestInterface)._updateTerminalTransformTimeout).toBeNull();
 
       vi.useRealTimers();
     });
@@ -880,17 +887,17 @@ describe('SessionView', () => {
       vi.useFakeTimers();
 
       // First call with keyboard height
-      (element as any).isMobile = true;
-      (element as any).keyboardHeight = 200;
-      (element as any).updateTerminalTransform();
+      (element as SessionViewTestInterface).isMobile = true;
+      (element as SessionViewTestInterface).keyboardHeight = 200;
+      (element as SessionViewTestInterface).updateTerminalTransform();
 
       // Second call with different height before debounce
-      (element as any).keyboardHeight = 300;
-      (element as any).updateTerminalTransform();
+      (element as SessionViewTestInterface).keyboardHeight = 300;
+      (element as SessionViewTestInterface).updateTerminalTransform();
 
       // Third call with quick keys enabled
-      (element as any).showQuickKeys = true;
-      (element as any).updateTerminalTransform();
+      (element as SessionViewTestInterface).showQuickKeys = true;
+      (element as SessionViewTestInterface).updateTerminalTransform();
 
       // Advance timers past debounce
       vi.advanceTimersByTime(110);
