@@ -61,19 +61,18 @@ export class SessionListPage extends BasePage {
         await createButton.click({ force: true, timeout: 5000 });
       }
 
-      // Wait for View Transition to complete by checking modal visibility
+      // Wait for View Transition to complete and modal to be fully rendered
       await this.page.waitForFunction(
         () => {
-          // Check if modal is visible and animations are complete
-          const modal = document.querySelector('[role="dialog"], .modal, [data-modal]');
-          if (!modal) return false;
-
           // Check if any view transition is active
-          const hasTransition =
-            document.documentElement.classList.contains('view-transition-active') ||
-            document.querySelector('::view-transition') !== null;
+          const hasTransition = document.documentElement.hasAttribute('data-view-transition');
+          if (hasTransition) return false;
 
-          return !hasTransition && getComputedStyle(modal).opacity === '1';
+          // Check if modal is fully rendered
+          const modalForm = document.querySelector('session-create-form');
+          if (!modalForm) return false;
+
+          return modalForm.getAttribute('data-modal-rendered') === 'true';
         },
         { timeout: TIMEOUTS.MODAL_ANIMATION }
       );
@@ -99,11 +98,13 @@ export class SessionListPage extends BasePage {
     // Wait for modal to be fully interactive
     await this.page.waitForFunction(
       () => {
-        const modal = document.querySelector('[role="dialog"], .modal, [data-modal]');
+        const modalForm = document.querySelector('session-create-form');
+        if (!modalForm || modalForm.getAttribute('data-modal-rendered') !== 'true') return false;
+
         const input = document.querySelector(
           '[data-testid="session-name-input"], input[placeholder="My Session"]'
         ) as HTMLInputElement;
-        return modal && input && !input.disabled && document.activeElement === input;
+        return input && !input.disabled && document.activeElement === input;
       },
       { timeout: TIMEOUTS.UI_UPDATE }
     );

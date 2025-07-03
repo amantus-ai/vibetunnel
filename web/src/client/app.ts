@@ -618,8 +618,16 @@ export class VibeTunnelApp extends LitElement {
   private handleCreateSession() {
     // Check if View Transitions API is supported
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
-      document.startViewTransition(() => {
+      // Set data attribute to indicate transition is starting
+      document.documentElement.setAttribute('data-view-transition', 'active');
+
+      const transition = document.startViewTransition(() => {
         this.showCreateModal = true;
+      });
+
+      // Clear the attribute when transition completes
+      transition.finished.finally(() => {
+        document.documentElement.removeAttribute('data-view-transition');
       });
     } else {
       this.showCreateModal = true;
@@ -631,14 +639,17 @@ export class VibeTunnelApp extends LitElement {
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
       // Add a class to prevent flicker during transition
       document.body.classList.add('modal-closing');
+      // Set data attribute to indicate transition is starting
+      document.documentElement.setAttribute('data-view-transition', 'active');
 
       const transition = document.startViewTransition(() => {
         this.showCreateModal = false;
       });
 
-      // Clean up the class after transition
+      // Clean up the class and attribute after transition
       transition.finished.finally(() => {
         document.body.classList.remove('modal-closing');
+        document.documentElement.removeAttribute('data-view-transition');
       });
     } else {
       this.showCreateModal = false;

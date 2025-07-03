@@ -176,9 +176,20 @@ export class SessionCreateForm extends LitElement {
         this.loadFromLocalStorage();
         // Add global keyboard listener
         document.addEventListener('keydown', this.handleGlobalKeyDown);
+
+        // Set data attributes for testing
+        this.setAttribute('data-modal-state', 'open');
+        // Use a microtask to ensure the DOM is fully updated
+        Promise.resolve().then(() => {
+          this.setAttribute('data-modal-rendered', 'true');
+        });
       } else {
         // Remove global keyboard listener when hidden
         document.removeEventListener('keydown', this.handleGlobalKeyDown);
+
+        // Remove data attributes
+        this.removeAttribute('data-modal-state');
+        this.removeAttribute('data-modal-rendered');
       }
     }
   }
@@ -381,11 +392,12 @@ export class SessionCreateForm extends LitElement {
     }
 
     return html`
-      <div class="modal-backdrop flex items-center justify-center" @click=${this.handleBackdropClick}>
+      <div class="modal-backdrop flex items-center justify-center" @click=${this.handleBackdropClick} role="dialog" aria-modal="true">
         <div
           class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] mx-2 sm:mx-4"
           style="view-transition-name: create-session-modal; pointer-events: auto;"
           @click=${(e: Event) => e.stopPropagation()}
+          data-testid="session-create-modal"
         >
           <div class="p-4 sm:p-6 sm:pb-4 mb-2 sm:mb-3 border-b border-dark-border relative bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary flex-shrink-0">
             <h2 id="modal-title" class="text-primary text-lg sm:text-xl font-bold">New Session</h2>
