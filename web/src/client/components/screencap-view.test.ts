@@ -1,0 +1,526 @@
+// @vitest-environment happy-dom
+import { fixture, html } from '@open-wc/testing';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ScreencapView } from './screencap-view';
+
+// Mock types
+interface MockWindowInfo {
+  cgWindowID: number;
+  title: string;
+  app: string;
+  size: {
+    width: number;
+    height: number;
+  };
+  position: {
+    x: number;
+    y: number;
+  };
+  id: number;
+}
+
+interface MockDisplayInfo {
+  width: number;
+  height: number;
+  scaleFactor: number;
+}
+
+describe('ScreencapView', () => {
+  let element: ScreencapView;
+
+  const mockWindows: MockWindowInfo[] = [
+    {
+      cgWindowID: 123,
+      title: 'Test Window 1',
+      app: 'Test App',
+      size: { width: 800, height: 600 },
+      position: { x: 0, y: 0 },
+      id: 123,
+    },
+    {
+      cgWindowID: 456,
+      title: 'Test Window 2',
+      app: 'Another App',
+      size: { width: 1024, height: 768 },
+      position: { x: 100, y: 100 },
+      id: 456,
+    },
+  ];
+
+  const mockDisplayInfo: MockDisplayInfo = {
+    width: 1920,
+    height: 1080,
+    scaleFactor: 2.0,
+  };
+
+  beforeAll(async () => {
+    // Mock window dimensions for happy-dom
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 1024,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      writable: true,
+      configurable: true,
+      value: 768,
+    });
+
+    // Import component to register custom element
+    await import('./screencap-view');
+  });
+
+  beforeEach(async () => {
+    // Mock fetch globally
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url.includes('/api/screencap/windows')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve(mockWindows),
+          } as Response);
+        }
+        if (url.includes('/api/screencap/display')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve(mockDisplayInfo),
+          } as Response);
+        }
+        if (url.includes('/api/screencap/capture')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ success: true }),
+          } as Response);
+        }
+        if (url.includes('/api/screencap/stop')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ success: true }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+        } as Response);
+      })
+    );
+
+    // Create component
+    element = await fixture<ScreencapView>(html`<screencap-view></screencap-view>`);
+    await element.updateComplete;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  describe('initialization', () => {
+    it('should load windows and display info on connectedCallback', async () => {
+      // Wait for initial load to complete
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+
+      // Check that fetch was called
+      expect(fetch).toHaveBeenCalledWith('/api/screencap/windows');
+      expect(fetch).toHaveBeenCalledWith('/api/screencap/display');
+
+      // Check that data was loaded
+      expect(element.windows).toHaveLength(2);
+      expect(element.displayInfo).toEqual(mockDisplayInfo);
+      expect(element.status).toBe('ready');
+    });
+
+    it('should handle loading errors gracefully', async () => {
+      // Reset element with error response
+      vi.mocked(fetch).mockImplementation(() =>
+        Promise.resolve({
+          ok: false,
+          status: 503,
+          statusText: 'Service Unavailable',
+        } as Response)
+      );
+
+      element = await fixture<ScreencapView>(html`<screencap-view></screencap-view>`);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+
+      expect(element.status).toBe('error');
+      expect(element.error).toContain('Failed to load screen capture data');
+    });
+  });
+
+  describe('window selection', () => {
+    beforeEach(async () => {
+      // Wait for initial load
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+    });
+
+    it('should display window list in sidebar', () => {
+      const windowElements = element.shadowRoot?.querySelectorAll('.window-item');
+      // Filter out the desktop window item
+      const actualWindows = Array.from(windowElements).filter(
+        (el) => !el.textContent?.includes('Full Desktop')
+      );
+      expect(actualWindows).toHaveLength(2);
+
+      const firstWindow = actualWindows[0];
+      expect(firstWindow.textContent).toContain('Test Window 1');
+      expect(firstWindow.textContent).toContain('Test App');
+    });
+
+    it('should select window and start capture on click', async () => {
+      // Find a non-desktop window item
+      const windowElements = element.shadowRoot?.querySelectorAll('.window-item');
+      let windowElement: HTMLElement | null = null;
+
+      windowElements.forEach((item) => {
+        if (item.textContent?.includes('Test Window 1')) {
+          windowElement = item as HTMLElement;
+        }
+      });
+
+      expect(windowElement).toBeTruthy();
+
+      // Click window to select
+      windowElement.click();
+      await element.updateComplete;
+
+      // Check window was selected
+      expect(element.selectedWindow).toEqual(mockWindows[0]);
+      expect(element.captureMode).toBe('window');
+
+      // Check capture was started
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+        '/api/screencap/capture-window',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cgWindowID: 123,
+            vp9: false,
+          }),
+        })
+      );
+    });
+
+    it('should select desktop mode on desktop button click', async () => {
+      // Find the desktop window-item by its content
+      const windowItems = element.shadowRoot?.querySelectorAll('.window-item');
+      let desktopButton: HTMLElement | null = null;
+
+      windowItems.forEach((item) => {
+        if (item.textContent?.includes('Full Desktop')) {
+          desktopButton = item as HTMLElement;
+        }
+      });
+
+      expect(desktopButton).toBeTruthy();
+      desktopButton?.click();
+      await element.updateComplete;
+
+      expect(element.captureMode).toBe('desktop');
+      expect(element.selectedWindow).toBeNull();
+
+      // Check desktop capture was started
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+        '/api/screencap/capture',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 0,
+            index: 0,
+            vp9: false,
+          }),
+        })
+      );
+    });
+  });
+
+  describe('capture controls', () => {
+    beforeEach(async () => {
+      // Wait for initial load and start capture
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+
+      // Start desktop capture - find desktop window-item
+      const windowItems = element.shadowRoot?.querySelectorAll('.window-item');
+      let desktopButton: HTMLElement | null = null;
+
+      windowItems.forEach((item) => {
+        if (item.textContent?.includes('Full Desktop')) {
+          desktopButton = item as HTMLElement;
+        }
+      });
+
+      expect(desktopButton).toBeTruthy();
+      desktopButton?.click();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+    });
+
+    it('should continue capturing when clicking same mode', async () => {
+      expect(element.isCapturing).toBe(true);
+
+      // Click desktop button again - should not stop capture
+      const windowItems = element.shadowRoot?.querySelectorAll('.window-item');
+      let desktopButton: HTMLElement | null = null;
+
+      windowItems.forEach((item) => {
+        if (item.textContent?.includes('Full Desktop')) {
+          desktopButton = item as HTMLElement;
+        }
+      });
+
+      expect(desktopButton).toBeTruthy();
+
+      // Clear previous calls to focus on this action
+      vi.clearAllMocks();
+
+      desktopButton?.click();
+      await element.updateComplete;
+
+      // Should NOT have called stop
+      expect(vi.mocked(fetch)).not.toHaveBeenCalledWith('/api/screencap/stop', expect.anything());
+
+      // Should still be capturing
+      expect(element.isCapturing).toBe(true);
+    });
+
+    it('should update frame URL periodically', async () => {
+      expect(element.isCapturing).toBe(true);
+
+      // Wait for the frame interval to kick in
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await element.updateComplete;
+
+      // Frame URL should be set
+      expect(element.frameUrl).toContain('/api/screencap/frame?t=');
+
+      const initialFrame = element.frameUrl;
+
+      // Wait for another frame update
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await element.updateComplete;
+
+      // Frame URL should change
+      expect(element.frameUrl).not.toBe(initialFrame);
+      expect(element.frameUrl).toContain('/api/screencap/frame?t=');
+    });
+  });
+
+  describe('input handling', () => {
+    beforeEach(async () => {
+      // Wait for initial load and start capture
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+
+      // Start desktop capture - find desktop window-item
+      const windowItems = element.shadowRoot?.querySelectorAll('.window-item');
+      let desktopButton: HTMLElement | null = null;
+
+      windowItems.forEach((item) => {
+        if (item.textContent?.includes('Full Desktop')) {
+          desktopButton = item as HTMLElement;
+        }
+      });
+
+      expect(desktopButton).toBeTruthy();
+      desktopButton?.click();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+    });
+
+    it('should handle click events on captured frame', async () => {
+      // Wait for frame to be displayed
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await element.updateComplete;
+
+      const frameImg = element.shadowRoot?.querySelector('.capture-preview') as HTMLImageElement;
+      expect(frameImg).toBeTruthy();
+
+      // Mock image dimensions
+      Object.defineProperty(frameImg, 'getBoundingClientRect', {
+        value: () => ({
+          left: 0,
+          top: 0,
+          width: 1000,
+          height: 600,
+        }),
+      });
+
+      // Simulate click at center
+      const clickEvent = new MouseEvent('click', {
+        clientX: 500,
+        clientY: 300,
+      });
+
+      frameImg.dispatchEvent(clickEvent);
+      await element.updateComplete;
+
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+        '/api/screencap/click',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ x: 500, y: 500 }), // Normalized to 0-1000 range
+        })
+      );
+    });
+
+    it('should handle keyboard input when focused', async () => {
+      // Set focus on the capture area
+      const captureArea = element.shadowRoot?.querySelector('.capture-area') as HTMLElement;
+      captureArea.click();
+      await element.updateComplete;
+
+      // Simulate key press
+      const keyEvent = new KeyboardEvent('keydown', {
+        key: 'a',
+        code: 'KeyA',
+      });
+
+      document.dispatchEvent(keyEvent);
+      await element.updateComplete;
+
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+        '/api/screencap/key',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'a',
+            metaKey: false,
+            ctrlKey: false,
+            altKey: false,
+            shiftKey: false,
+          }),
+        })
+      );
+    });
+  });
+
+  describe('error handling', () => {
+    it('should display error when capture fails', async () => {
+      // Mock capture failure
+      vi.mocked(fetch).mockImplementation((url: string, options?: any) => {
+        if (url.includes('/api/screencap/capture') && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
+            text: () => Promise.resolve('Capture service error'),
+          } as Response);
+        }
+        // Return default mocks for other endpoints
+        if (url.includes('/api/screencap/windows')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockWindows),
+          } as Response);
+        }
+        if (url.includes('/api/screencap/display')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockDisplayInfo),
+          } as Response);
+        }
+        return Promise.resolve({ ok: false } as Response);
+      });
+
+      // Wait for initial load
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+
+      // Try to start capture - find desktop window-item
+      const windowItems = element.shadowRoot?.querySelectorAll('.window-item');
+      let desktopButton: HTMLElement | null = null;
+
+      windowItems.forEach((item) => {
+        if (item.textContent?.includes('Full Desktop')) {
+          desktopButton = item as HTMLElement;
+        }
+      });
+
+      expect(desktopButton).toBeTruthy();
+      desktopButton?.click();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+
+      expect(element.status).toBe('error');
+      expect(element.error).toContain('Failed to start screen capture');
+    });
+
+    it('should handle non-macOS platform error', async () => {
+      vi.mocked(fetch).mockImplementation((url: string) => {
+        if (url.includes('/api/screencap')) {
+          return Promise.resolve({
+            ok: false,
+            status: 503,
+            json: () =>
+              Promise.resolve({
+                error: 'Screencap is only available on macOS',
+                platform: 'linux',
+              }),
+          } as Response);
+        }
+        return Promise.resolve({ ok: false } as Response);
+      });
+
+      element = await fixture<ScreencapView>(html`<screencap-view></screencap-view>`);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+
+      expect(element.status).toBe('error');
+      expect(element.error).toContain('Failed to load screen capture data');
+    });
+  });
+
+  describe('UI state', () => {
+    it('should show loading state initially', async () => {
+      // Create new element without waiting
+      const newElement = await fixture<ScreencapView>(html`<screencap-view></screencap-view>`);
+
+      const statusElement = newElement.shadowRoot?.querySelector('.status-message');
+      expect(statusElement?.textContent).toContain('Loading');
+      expect(statusElement?.classList.contains('loading')).toBe(true);
+    });
+
+    it('should show window count when loaded', async () => {
+      // Wait for load
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+
+      const headers = element.shadowRoot?.querySelectorAll('.sidebar-section h3');
+      let windowsHeader: Element | null = null;
+      headers.forEach((h) => {
+        if (h.textContent?.includes('Windows')) {
+          windowsHeader = h;
+        }
+      });
+      expect(windowsHeader?.textContent).toContain('Windows (2)');
+    });
+
+    it('should highlight selected window', async () => {
+      // Wait for load
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await element.updateComplete;
+
+      const firstWindow = element.shadowRoot?.querySelector('.window-item') as HTMLElement;
+      firstWindow.click();
+      await element.updateComplete;
+
+      expect(firstWindow.classList.contains('selected')).toBe(true);
+    });
+  });
+});

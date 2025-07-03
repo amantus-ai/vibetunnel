@@ -320,7 +320,7 @@ export class ScreencapView extends LitElement {
 
       let response: Response;
       let endpoint: string;
-      let captureData: any;
+      let captureData: Record<string, unknown>;
 
       if (this.captureMode === 'desktop') {
         // Desktop capture using /capture endpoint
@@ -521,7 +521,7 @@ export class ScreencapView extends LitElement {
 
     try {
       let endpoint: string;
-      let body: any;
+      let body: Record<string, unknown>;
 
       if (this.captureMode === 'desktop') {
         // Desktop key input

@@ -659,9 +659,9 @@ export class PtyManager extends EventEmitter {
         client.setNoDelay(true);
 
         // Add client to connected clients set
-        session.connectedClients!.add(client);
+        session.connectedClients?.add(client);
         logger.debug(
-          `Client connected to session ${session.id}, total clients: ${session.connectedClients!.size}`
+          `Client connected to session ${session.id}, total clients: ${session.connectedClients?.size}`
         );
 
         client.on('data', (chunk) => {
@@ -678,9 +678,9 @@ export class PtyManager extends EventEmitter {
 
         client.on('close', () => {
           // Remove client from connected clients set
-          session.connectedClients!.delete(client);
+          session.connectedClients?.delete(client);
           logger.debug(
-            `Client disconnected from session ${session.id}, remaining clients: ${session.connectedClients!.size}`
+            `Client disconnected from session ${session.id}, remaining clients: ${session.connectedClients?.size}`
           );
         });
       });

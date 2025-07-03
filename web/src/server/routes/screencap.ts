@@ -128,7 +128,7 @@ export function createScreencapRoutes(): Router {
   const router = Router();
 
   // Platform check middleware
-  const requireMacOS = (req: any, res: any, next: any) => {
+  const requireMacOS = (_req: any, res: any, next: any) => {
     if (process.platform !== 'darwin') {
       return res.status(503).json({
         error: 'Screencap is only available on macOS',
@@ -185,7 +185,7 @@ export function createScreencapRoutes(): Router {
   // Proxy API requests FIRST (specific routes before general ones)
   router.get(
     '/screencap/windows',
-    async (req, res, next) => {
+    async (_req, _res, next) => {
       if (!screencapProcess) {
         try {
           await startScreencapProcess();
@@ -211,7 +211,7 @@ export function createScreencapRoutes(): Router {
 
   router.get(
     '/screencap/display',
-    async (req, res, next) => {
+    async (_req, _res, next) => {
       if (!screencapProcess) {
         try {
           await startScreencapProcess();
@@ -237,7 +237,7 @@ export function createScreencapRoutes(): Router {
 
   router.get(
     '/screencap/frame',
-    async (req, res, next) => {
+    async (_req, _res, next) => {
       if (!screencapProcess) {
         try {
           await startScreencapProcess();
@@ -253,7 +253,7 @@ export function createScreencapRoutes(): Router {
       pathRewrite: { '^/screencap': '' },
       on: {
         // biome-ignore lint/suspicious/noExplicitAny: http-proxy-middleware types
-        proxyReq: (proxyReq: any, req: any, _res: any) => {
+        proxyReq: (_proxyReq: any, req: any, _res: any) => {
           logger.debug(`🔄 Proxying ${req.method} ${req.url} to /frame on screencap server`);
         },
       },
@@ -263,7 +263,7 @@ export function createScreencapRoutes(): Router {
   // Proxy POST requests with middleware to start screencap first
   router.post(
     '/screencap/capture',
-    async (req, res, next) => {
+    async (req, _res, next) => {
       logger.log(`🔄 Received capture request: ${req.method} ${req.url}`);
       logger.log(`📦 Request body:`, req.body);
 
@@ -326,7 +326,7 @@ export function createScreencapRoutes(): Router {
 
   router.post(
     '/screencap/capture-window',
-    async (req, res, next) => {
+    async (req, _res, next) => {
       logger.log(`🔄 Received capture-window request: ${req.method} ${req.url}`);
       logger.log(`📦 Request body:`, req.body);
 
@@ -385,7 +385,7 @@ export function createScreencapRoutes(): Router {
 
   router.post(
     '/screencap/stop',
-    async (req, res, next) => {
+    async (_req, _res, next) => {
       if (!screencapProcess) {
         try {
           await startScreencapProcess();
@@ -412,7 +412,7 @@ export function createScreencapRoutes(): Router {
 
   router.post(
     '/screencap/click',
-    async (req, res, next) => {
+    async (req, _res, next) => {
       logger.log(`🔄 Received click request: ${req.method} ${req.url}`);
       logger.log(`📦 Request body:`, req.body);
 
@@ -472,7 +472,7 @@ export function createScreencapRoutes(): Router {
   // Proxy key input endpoints
   router.post(
     '/screencap/key',
-    async (req, res, next) => {
+    async (req, _res, next) => {
       logger.log(`🔄 Received key request: ${req.method} ${req.url}`);
       logger.log(`📦 Request body:`, req.body);
 
@@ -531,7 +531,7 @@ export function createScreencapRoutes(): Router {
 
   router.post(
     '/screencap/key-window',
-    async (req, res, next) => {
+    async (req, _res, next) => {
       logger.log(`🔄 Received key-window request: ${req.method} ${req.url}`);
       logger.log(`📦 Request body:`, req.body);
 
