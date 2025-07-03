@@ -166,8 +166,6 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
-  private _renderPromise?: Promise<void>;
-
   updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
 
@@ -179,20 +177,10 @@ export class SessionCreateForm extends LitElement {
         // Add global keyboard listener
         document.addEventListener('keydown', this.handleGlobalKeyDown);
 
-        // Set data attributes for testing
+        // Set data attributes for testing - both synchronously to avoid race conditions
         this.setAttribute('data-modal-state', 'open');
-        // Use a microtask to ensure the DOM is fully updated
-        // Store the promise so we can cancel it if needed
-        this._renderPromise = Promise.resolve().then(() => {
-          // Only set the attribute if modal is still visible
-          if (this.visible) {
-            this.setAttribute('data-modal-rendered', 'true');
-          }
-        });
+        this.setAttribute('data-modal-rendered', 'true');
       } else {
-        // Cancel any pending attribute updates
-        this._renderPromise = undefined;
-        
         // Remove global keyboard listener when hidden
         document.removeEventListener('keydown', this.handleGlobalKeyDown);
 
