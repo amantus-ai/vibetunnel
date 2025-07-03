@@ -29,9 +29,9 @@ struct SessionRow: View {
     @State private var editedName = ""
     @State private var isHoveringFolder = false
     @FocusState private var isEditFieldFocused: Bool
-    
-    // Computed property that reads directly from the monitor's cache
-    // This will automatically update when the monitor refreshes
+
+    /// Computed property that reads directly from the monitor's cache
+    /// This will automatically update when the monitor refreshes
     private var gitRepository: GitRepository? {
         gitRepositoryMonitor.getCachedRepository(for: session.value.workingDir)
     }
@@ -108,7 +108,7 @@ struct SessionRow: View {
                             }
                             .buttonStyle(.plain)
                             .help("Rename session")
-                            
+
                             // Magic wand button for Claude sessions
                             if isClaudeSession {
                                 Button(action: sendClaudePrompt) {
@@ -282,14 +282,14 @@ struct SessionRow: View {
                         }
                     }
                 }
-                
+
                 Divider()
-                
+
                 Button("Copy Branch Name") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(repo.currentBranch ?? "detached", forType: .string)
                 }
-                
+
                 Button("Copy Repository Path") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(repo.path, forType: .string)
@@ -333,13 +333,14 @@ struct SessionRow: View {
     private func getGitAppName() -> String {
         if let preferredApp = UserDefaults.standard.string(forKey: "preferredGitApp"),
            !preferredApp.isEmpty,
-           let gitApp = GitApp(rawValue: preferredApp) {
+           let gitApp = GitApp(rawValue: preferredApp)
+        {
             return gitApp.displayName
         }
         // Return first installed git app or default
         return GitApp.installed.first?.displayName ?? "Git App"
     }
-    
+
     private func terminateSession() {
         isTerminating = true
 
@@ -384,7 +385,7 @@ struct SessionRow: View {
             return executableName
         }
     }
-    
+
     private var isClaudeSession: Bool {
         // Check if this is a Claude session by looking at the command
         let cmd = commandName.lowercased()
@@ -436,12 +437,12 @@ struct SessionRow: View {
             }
         }
     }
-    
+
     private func sendClaudePrompt() {
         Task {
             do {
                 // Send a prompt that encourages Claude to use vt title
-                let prompt = "use vt title to update the terminal title with what you're currently working on\n"
+                let prompt = "use vt title to update the terminal title with what you're currently working on\r"
                 try await sessionService.sendInput(to: session.key, text: prompt)
             } catch {
                 // Silently handle errors for now

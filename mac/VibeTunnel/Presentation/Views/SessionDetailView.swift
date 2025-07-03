@@ -1,7 +1,7 @@
-import os
-import SwiftUI
-@preconcurrency import ScreenCaptureKit
 import ApplicationServices
+import os
+@preconcurrency import ScreenCaptureKit
+import SwiftUI
 
 /// View displaying detailed information about a specific terminal session.
 ///
@@ -85,36 +85,39 @@ struct SessionDetailView: View {
                 }
             }
             .frame(minWidth: 400)
-            
+
             Divider()
-            
+
             // Right side: Window Information and Screenshot
             VStack(alignment: .leading, spacing: 20) {
                 Text("Window Information")
                     .font(.title2)
                     .fontWeight(.semibold)
-                
-                if let windowInfo = windowInfo {
+
+                if let windowInfo {
                     VStack(alignment: .leading, spacing: 12) {
                         DetailRow(label: "Window ID", value: "\(windowInfo.windowID)")
                         DetailRow(label: "Terminal App", value: windowInfo.terminalApp.displayName)
                         DetailRow(label: "Owner PID", value: "\(windowInfo.ownerPID)")
-                        
+
                         if let bounds = windowInfo.bounds {
-                            DetailRow(label: "Position", value: "X: \(Int(bounds.origin.x)), Y: \(Int(bounds.origin.y))")
+                            DetailRow(
+                                label: "Position",
+                                value: "X: \(Int(bounds.origin.x)), Y: \(Int(bounds.origin.y))"
+                            )
                             DetailRow(label: "Size", value: "\(Int(bounds.width)) × \(Int(bounds.height))")
                         }
-                        
+
                         if let title = windowInfo.title {
                             DetailRow(label: "Window Title", value: title)
                         }
-                        
+
                         HStack {
                             Button("Focus Window") {
                                 focusWindow()
                             }
                             .controlSize(.regular)
-                            
+
                             Button("Capture Screenshot") {
                                 Task {
                                     await captureWindowScreenshot()
@@ -124,14 +127,14 @@ struct SessionDetailView: View {
                             .disabled(isCapturingScreenshot)
                         }
                     }
-                    
+
                     // Window Screenshot
                     if let screenshot = windowScreenshot {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Window Preview")
                                 .font(.headline)
                                 .foregroundColor(.secondary)
-                            
+
                             Image(nsImage: screenshot)
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
@@ -148,12 +151,12 @@ struct SessionDetailView: View {
                             Text("Screen Recording Permission Required")
                                 .font(.headline)
                                 .foregroundColor(.orange)
-                            
+
                             Text("VibeTunnel needs Screen Recording permission to capture window screenshots.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
-                            
+
                             Button("Open System Settings") {
                                 openScreenRecordingSettings()
                             }
@@ -169,16 +172,18 @@ struct SessionDetailView: View {
                             Label("No window found", systemImage: "exclamationmark.triangle")
                                 .foregroundColor(.orange)
                                 .font(.headline)
-                            
-                            Text("Could not find a terminal window for this session. The window may have been closed or the session was started outside VibeTunnel.")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                                .fixedSize(horizontal: false, vertical: true)
+
+                            Text(
+                                "Could not find a terminal window for this session. The window may have been closed or the session was started outside VibeTunnel."
+                            )
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                            .fixedSize(horizontal: false, vertical: true)
                         } else {
                             Text("No window information available")
                                 .foregroundColor(.secondary)
                         }
-                        
+
                         Button(isFindingWindow ? "Searching..." : "Find Window") {
                             findWindow()
                         }
@@ -187,7 +192,7 @@ struct SessionDetailView: View {
                     }
                     .padding(.vertical, 20)
                 }
-                
+
                 Spacer()
             }
             .frame(minWidth: 400)
@@ -233,39 +238,48 @@ struct SessionDetailView: View {
         // TODO: Implement session termination
         logger.info("Terminating session \(session.id)")
     }
-    
+
     private func findWindow() {
         isFindingWindow = true
         windowSearchAttempted = true
-        
+
         Task { @MainActor in
             defer {
                 isFindingWindow = false
             }
-            
+
             logger.info("Looking for window associated with session \(session.id)")
-            
+
             // First, check if WindowTracker already has window info for this session
             if let trackedWindow = WindowTracker.shared.windowInfo(for: session.id) {
-                logger.info("Found tracked window for session \(session.id): windowID=\(trackedWindow.windowID), terminal=\(trackedWindow.terminalApp.rawValue)")
+                logger
+                    .info(
+                        "Found tracked window for session \(session.id): windowID=\(trackedWindow.windowID), terminal=\(trackedWindow.terminalApp.rawValue)"
+                    )
                 self.windowInfo = trackedWindow
                 return
             }
-        
+
             logger.info("No tracked window found for session \(session.id), attempting to find it...")
-            
+
             // Get all terminal windows for debugging
             let allWindows = WindowEnumerator.getAllTerminalWindows()
             logger.info("Found \(allWindows.count) terminal windows currently open")
-            
+
             // Log details about each window for debugging
             for (index, window) in allWindows.enumerated() {
-                logger.debug("Window \(index): terminal=\(window.terminalApp.rawValue), windowID=\(window.windowID), ownerPID=\(window.ownerPID), title=\(window.title ?? "<no title>")")
+                logger
+                    .debug(
+                        "Window \(index): terminal=\(window.terminalApp.rawValue), windowID=\(window.windowID), ownerPID=\(window.ownerPID), title=\(window.title ?? "<no title>")"
+                    )
             }
-            
+
             // Log session details for debugging
-            logger.info("Session details: id=\(session.id), pid=\(session.pid ?? -1), workingDir=\(session.workingDir), attachedViaVT=\(session.attachedViaVT ?? false)")
-            
+            logger
+                .info(
+                    "Session details: id=\(session.id), pid=\(session.pid ?? -1), workingDir=\(session.workingDir), attachedViaVT=\(session.attachedViaVT ?? false)"
+                )
+
             // Try to match by various criteria
             if let pid = session.pid {
                 logger.info("Looking for window with PID \(pid)...")
@@ -284,11 +298,11 @@ struct SessionDetailView: View {
                     logger.warning("No window found with PID \(pid)")
                 }
             }
-            
+
             // Try to find by window title containing working directory
             let workingDirName = URL(fileURLWithPath: session.workingDir).lastPathComponent
             logger.info("Looking for window with title containing '\(workingDirName)'...")
-            
+
             if let window = allWindows.first(where: { window in
                 if let title = window.title {
                     return title.contains(workingDirName) || title.contains(session.id)
@@ -306,70 +320,76 @@ struct SessionDetailView: View {
                 )
                 return
             }
-        
-            logger.warning("Could not find window for session \(session.id) after checking all \(allWindows.count) terminal windows")
+
+            logger
+                .warning(
+                    "Could not find window for session \(session.id) after checking all \(allWindows.count) terminal windows"
+                )
             logger.warning("Session may not have an associated terminal window or window detection failed")
         }
     }
-    
+
     private func focusWindow() {
         // Use WindowTracker's existing focus logic which handles all the complexity
         logger.info("Attempting to focus window for session \(session.id)")
-        
+
         // First ensure we have window info
         if windowInfo == nil {
             logger.info("No window info cached, trying to find window first...")
             findWindow()
         }
-        
-        if let windowInfo = windowInfo {
-            logger.info("Using WindowTracker to focus window: windowID=\(windowInfo.windowID), terminal=\(windowInfo.terminalApp.rawValue)")
+
+        if let windowInfo {
+            logger
+                .info(
+                    "Using WindowTracker to focus window: windowID=\(windowInfo.windowID), terminal=\(windowInfo.terminalApp.rawValue)"
+                )
             WindowTracker.shared.focusWindow(for: session.id)
         } else {
             logger.error("Cannot focus window - no window found for session \(session.id)")
         }
     }
-    
+
     private func captureWindowScreenshot() async {
-        guard let windowInfo = windowInfo else {
+        guard let windowInfo else {
             logger.warning("No window info available for screenshot")
             return
         }
-        
+
         await MainActor.run {
             isCapturingScreenshot = true
         }
-        
+
         defer {
             Task { @MainActor in
                 isCapturingScreenshot = false
             }
         }
-        
+
         // Check for screen recording permission
         let hasPermission = await checkScreenCapturePermission()
         await MainActor.run {
             hasScreenCapturePermission = hasPermission
         }
-        
+
         guard hasPermission else {
             logger.warning("No screen capture permission")
             return
         }
-        
+
         do {
             // Get available content
             let availableContent = try await SCShareableContent.current
-            
+
             // Find the window
             guard let window = availableContent.windows.first(where: { $0.windowID == windowInfo.windowID }) else {
                 logger.warning("Window not found in shareable content")
                 return
             }
-            
+
             // Create content filter for this specific window
             let filter = SCContentFilter(desktopIndependentWindow: window)
-            
+
             // Configure the capture
             let config = SCStreamConfiguration()
             config.width = Int(window.frame.width * 2) // Retina resolution
@@ -377,39 +397,38 @@ struct SessionDetailView: View {
             config.scalesToFit = true
             config.showsCursor = false
             config.captureResolution = .best
-            
+
             // Capture the screenshot
             let screenshot = try await SCScreenshotManager.captureImage(
                 contentFilter: filter,
                 configuration: config
             )
-            
+
             // Convert CGImage to NSImage
             let nsImage = NSImage(cgImage: screenshot, size: NSSize(width: screenshot.width, height: screenshot.height))
-            
+
             await MainActor.run {
                 self.windowScreenshot = nsImage
             }
-            
+
             logger.info("Successfully captured window screenshot")
-            
         } catch {
             logger.error("Failed to capture screenshot: \(error)")
         }
     }
-    
+
     private func checkScreenCapturePermission() async -> Bool {
         // Check if we have screen recording permission
         let hasPermission = CGPreflightScreenCaptureAccess()
-        
+
         if !hasPermission {
             // Request permission
             return CGRequestScreenCaptureAccess()
         }
-        
+
         return true
     }
-    
+
     private func openScreenRecordingSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
             NSWorkspace.shared.open(url)

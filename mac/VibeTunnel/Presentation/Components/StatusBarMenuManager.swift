@@ -153,10 +153,10 @@ final class StatusBarMenuManager: NSObject {
             // Start monitoring git repositories for updates every 5 seconds
             self?.gitRepositoryMonitor?.startMonitoring()
         }
-        
+
         customWindow?.onHide = { [weak self] in
             self?.statusBarButton?.highlight(false)
-            
+
             // Stop monitoring git repositories when menu closes
             self?.gitRepositoryMonitor?.stopMonitoring()
 

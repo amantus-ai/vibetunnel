@@ -459,7 +459,7 @@ struct CustomMenuContainer<Content: View>: View {
             Color.black.opacity(0.25)
         }
     }
-    
+
     private var borderColor: Color {
         switch colorScheme {
         case .dark:

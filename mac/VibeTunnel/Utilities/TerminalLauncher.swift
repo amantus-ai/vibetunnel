@@ -644,6 +644,8 @@ final class TerminalLauncher {
                 activate
                 set newWindow to (create window with default profile)
                 tell current session of newWindow
+                    -- Set session name to include session ID for easier matching
+                    set name to "Session \(sessionId)"
                     write text "\(config.appleScriptEscapedCommand)"
                 end tell
                 return id of newWindow

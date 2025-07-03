@@ -37,12 +37,28 @@ final class WindowMatcher {
             if let parentPID = processTracker.getParentProcessID(of: pid_t(sessionPID)) {
                 logger.debug("Found parent process PID: \(parentPID)")
 
-                // Look for a window owned by the parent process
-                if let matchingWindow = filteredWindows.first(where: { window in
+                // Look for windows owned by the parent process
+                let parentPIDWindows = filteredWindows.filter { window in
                     window.ownerPID == parentPID
-                }) {
-                    logger.info("Found window by parent process match: PID \(parentPID)")
-                    return matchingWindow
+                }
+                
+                if parentPIDWindows.count == 1 {
+                    logger.info("Found single window by parent process match: PID \(parentPID)")
+                    return parentPIDWindows.first
+                } else if parentPIDWindows.count > 1 {
+                    logger.info("Found \(parentPIDWindows.count) windows for PID \(parentPID), checking session ID in titles")
+                    
+                    // Multiple windows - try to match by session ID in title
+                    if let matchingWindow = parentPIDWindows.first(where: { window in
+                        window.title?.contains("Session \(sessionID)") ?? false
+                    }) {
+                        logger.info("Found window by session ID '\(sessionID)' in title")
+                        return matchingWindow
+                    }
+                    
+                    // If no session ID match, return first window
+                    logger.warning("No window with session ID in title, using first window")
+                    return parentPIDWindows.first
                 }
 
                 // If direct parent match fails, try to find grandparent or higher ancestors
@@ -52,14 +68,32 @@ final class WindowMatcher {
                     if let grandParentPID = processTracker.getParentProcessID(of: currentPID) {
                         logger.debug("Checking ancestor process PID: \(grandParentPID) at depth \(depth + 2)")
 
-                        if let matchingWindow = filteredWindows.first(where: { window in
+                        let ancestorPIDWindows = filteredWindows.filter { window in
                             window.ownerPID == grandParentPID
-                        }) {
+                        }
+                        
+                        if ancestorPIDWindows.count == 1 {
                             logger
                                 .info(
-                                    "Found window by ancestor process match: PID \(grandParentPID) at depth \(depth + 2)"
+                                    "Found single window by ancestor process match: PID \(grandParentPID) at depth \(depth + 2)"
                                 )
-                            return matchingWindow
+                            return ancestorPIDWindows.first
+                        } else if ancestorPIDWindows.count > 1 {
+                            logger
+                                .info(
+                                    "Found \(ancestorPIDWindows.count) windows for ancestor PID \(grandParentPID), checking session ID"
+                                )
+                            
+                            // Multiple windows - try to match by session ID in title
+                            if let matchingWindow = ancestorPIDWindows.first(where: { window in
+                                window.title?.contains("Session \(sessionID)") ?? false
+                            }) {
+                                logger.info("Found window by session ID '\(sessionID)' in title")
+                                return matchingWindow
+                            }
+                            
+                            // If no session ID match, return first window
+                            return ancestorPIDWindows.first
                         }
 
                         currentPID = grandParentPID

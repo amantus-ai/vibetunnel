@@ -92,7 +92,7 @@ struct GitRepositoryRow: View {
     private var backgroundFillColor: Color {
         // Show background on hover - stronger in light mode
         if isHovering {
-            return colorScheme == .light 
+            return colorScheme == .light
                 ? AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.25)
                 : AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.15)
         }
@@ -123,10 +123,10 @@ struct GitRepositoryRow: View {
                 Text("•")
                     .font(.system(size: 8))
                     .foregroundColor(.secondary.opacity(0.5))
-                
+
                 changeIndicators
             }
-            
+
             Spacer()
         }
         .padding(.horizontal, 4)

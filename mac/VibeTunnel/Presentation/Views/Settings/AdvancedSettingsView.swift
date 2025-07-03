@@ -345,7 +345,7 @@ private struct TerminalPreferenceSection: View {
 
     private var gitAppBinding: Binding<String> {
         Binding(
-            get: { 
+            get: {
                 // If no preference or invalid preference, use first installed app
                 if preferredGitApp.isEmpty || GitApp(rawValue: preferredGitApp) == nil {
                     return GitApp.installed.first?.rawValue ?? ""

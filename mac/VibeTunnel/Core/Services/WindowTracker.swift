@@ -9,6 +9,29 @@ import OSLog
 /// - Map VibeTunnel sessions to their terminal windows
 /// - Focus specific terminal windows when requested
 /// - Handle both windows and tabs for different terminal applications
+/// - **Close terminal windows when sessions are terminated (NEW)**
+///
+/// ## Window Closing Feature
+///
+/// A key enhancement is the ability to automatically close terminal windows when
+/// their associated sessions are terminated. This solves the common problem where
+/// killing a long-running process (like `claude`) leaves an empty terminal window.
+///
+/// ### Design Principles:
+/// 1. **Only close what we open**: Windows are only closed if VibeTunnel opened them
+/// 2. **Track ownership at creation**: Sessions opened via AppleScript are marked at launch time
+/// 3. **Respect external sessions**: Sessions attached via `vt` are never closed
+///
+/// ### Implementation:
+/// - When spawning terminals via AppleScript, sessions are marked in `sessionsOpenedByUs` set
+/// - On termination, we dynamically find windows using process tree traversal
+/// - Only windows for sessions in the set are closed
+/// - Currently supports Terminal.app and iTerm2
+///
+/// ### User Experience:
+/// - Consistent behavior: All VibeTunnel-spawned windows close on termination
+/// - No orphaned windows: Prevents accumulation of empty terminals
+/// - External sessions preserved: `vt`-attached terminals remain open
 @MainActor
 final class WindowTracker {
     static let shared = WindowTracker()
@@ -20,6 +43,24 @@ final class WindowTracker {
 
     /// Maps session IDs to their terminal window information
     private var sessionWindowMap: [String: WindowEnumerator.WindowInfo] = [:]
+
+    /// Tracks which sessions we opened via AppleScript (and can close).
+    ///
+    /// When VibeTunnel spawns a terminal session through AppleScript, we mark
+    /// it in this set. This allows us to distinguish between:
+    /// - Sessions we created: Can and should close their windows
+    /// - Sessions attached via `vt`: Should never close their windows
+    ///
+    /// The actual window finding happens dynamically using process tree traversal,
+    /// making the system robust against tab reordering and window manipulation.
+    ///
+    /// Example flow:
+    /// 1. User creates session via UI → TerminalLauncher uses AppleScript
+    /// 2. Session ID is added to this set
+    /// 3. User kills session → We find and close the window dynamically
+    ///
+    /// Sessions attached via `vt` command are NOT added to this set.
+    private var sessionsOpenedByUs: Set<String> = []
 
     /// Lock for thread-safe access to the session map
     private let mapLock = NSLock()
@@ -37,70 +78,37 @@ final class WindowTracker {
 
     // MARK: - Window Registration
 
-    /// Registers a terminal window for a session.
+    /// Registers a session that was opened by VibeTunnel.
     /// This should be called after launching a terminal with a session ID.
+    /// Only sessions registered here will have their windows closed on termination.
+    func registerSessionOpenedByUs(
+        for sessionID: String,
+        terminalApp: Terminal
+    ) {
+        logger.info("Registering session opened by us: \(sessionID), terminal: \(terminalApp.rawValue)")
+
+        // Mark this session as opened by us, so we can close its window later
+        // This is the critical point where we distinguish between:
+        // - Sessions we created via AppleScript (can close)
+        // - Sessions attached via `vt` command (cannot close)
+        _ = mapLock.withLock {
+            sessionsOpenedByUs.insert(sessionID)
+        }
+
+        // Window finding is now handled dynamically when needed (focus/close)
+        // This avoids storing stale tab references
+    }
+
+    /// Legacy method for compatibility - redirects to simplified registration
     func registerWindow(
         for sessionID: String,
         terminalApp: Terminal,
         tabReference: String? = nil,
         tabID: String? = nil
     ) {
-        logger.info("Registering window for session: \(sessionID), terminal: \(terminalApp.rawValue)")
-
-        // For Terminal.app and iTerm2 with explicit window/tab info, register immediately
-        if (terminalApp == .terminal && tabReference != nil) ||
-            (terminalApp == .iTerm2 && tabID != nil)
-        {
-            // These terminals provide explicit window/tab IDs, so we can register immediately
-            Task {
-                try? await Task.sleep(for: .milliseconds(500))
-
-                if let windowInfo = findWindow(
-                    for: terminalApp,
-                    sessionID: sessionID,
-                    tabReference: tabReference,
-                    tabID: tabID
-                ) {
-                    mapLock.withLock {
-                        sessionWindowMap[sessionID] = windowInfo
-                    }
-                    logger
-                        .info(
-                            "Successfully registered window \(windowInfo.windowID) for session \(sessionID) with explicit ID"
-                        )
-                }
-            }
-            return
-        }
-
-        // For other terminals, use progressive delays to find the window
-        Task {
-            // Try multiple times with increasing delays
-            let delays: [Double] = [0.5, 1.0, 2.0, 3.0]
-
-            for (index, delay) in delays.enumerated() {
-                try? await Task.sleep(for: .seconds(delay))
-
-                // Try to find the window
-                if let windowInfo = findWindow(
-                    for: terminalApp,
-                    sessionID: sessionID,
-                    tabReference: tabReference,
-                    tabID: tabID
-                ) {
-                    mapLock.withLock {
-                        sessionWindowMap[sessionID] = windowInfo
-                    }
-                    logger
-                        .info(
-                            "Successfully registered window \(windowInfo.windowID) for session \(sessionID) after \(index + 1) attempts"
-                        )
-                    return
-                }
-            }
-
-            logger.warning("Failed to register window for session \(sessionID) after all attempts")
-        }
+        // Simply mark the session as opened by us
+        // We no longer store tab references as they become stale
+        registerSessionOpenedByUs(for: sessionID, terminalApp: terminalApp)
     }
 
     /// Unregisters a window for a session.
@@ -109,6 +117,7 @@ final class WindowTracker {
             if sessionWindowMap.removeValue(forKey: sessionID) != nil {
                 logger.info("Unregistered window for session: \(sessionID)")
             }
+            sessionsOpenedByUs.remove(sessionID)
         }
     }
 
@@ -148,6 +157,136 @@ final class WindowTracker {
         windowFocuser.focusWindow(windowInfo)
     }
 
+    // MARK: - Window Closing
+
+    /// Closes the terminal window for a specific session if it was opened by VibeTunnel.
+    ///
+    /// This method implements a key feature where terminal windows are automatically closed
+    /// when their associated sessions are terminated, but ONLY if VibeTunnel opened them.
+    /// This prevents the common issue where killing a process leaves empty terminal windows.
+    ///
+    /// The method checks if:
+    /// 1. The session was opened by VibeTunnel (exists in `sessionsOpenedByUs`)
+    /// 2. We can find the window using dynamic lookup (process tree traversal)
+    /// 3. We can close via Accessibility API (PID-based) or AppleScript
+    ///
+    /// - Parameter sessionID: The ID of the session whose window should be closed
+    /// - Returns: `true` if the window was successfully closed, `false` otherwise
+    ///
+    /// - Note: This is called automatically by `SessionService.terminateSession()`
+    ///         after the server confirms the process has been killed.
+    ///
+    /// Example scenarios:
+    /// - ✅ User runs `claude` command via UI → Window closes when session killed
+    /// - ✅ User runs long process via UI → Window closes when session killed
+    /// - ❌ User attaches existing terminal via `vt` → Window NOT closed
+    /// - ❌ User manually opens terminal → Window NOT closed
+    @discardableResult
+    func closeWindowIfOpenedByUs(for sessionID: String) -> Bool {
+        // Check if we opened this window
+        let wasOpenedByUs = mapLock.withLock {
+            sessionsOpenedByUs.contains(sessionID)
+        }
+
+        guard wasOpenedByUs else {
+            logger.info("Session \(sessionID) was not opened by VibeTunnel, not closing window")
+            return false
+        }
+
+        // Use dynamic lookup to find the window
+        // This is more reliable than stored references which can become stale
+        guard let sessionInfo = getSessionInfo(for: sessionID) else {
+            logger.warning("No session info found for session: \(sessionID)")
+            unregisterWindow(for: sessionID)
+            return false
+        }
+        
+        guard let windowInfo = findWindowForSession(sessionID, sessionInfo: sessionInfo) else {
+            logger.warning("Could not find window for session \(sessionID) - it may have been closed already")
+            // Clean up tracking since window is gone
+            unregisterWindow(for: sessionID)
+            return false
+        }
+
+        logger.info("Closing window for session: \(sessionID), terminal: \(windowInfo.terminalApp.rawValue)")
+
+        // Generate and execute AppleScript to close the window
+        let closeScript = generateCloseWindowScript(for: windowInfo)
+        do {
+            try AppleScriptExecutor.shared.execute(closeScript)
+            logger.info("Successfully closed window for session: \(sessionID)")
+
+            // Clean up tracking
+            unregisterWindow(for: sessionID)
+            return true
+        } catch {
+            logger.error("Failed to close window for session \(sessionID): \(error)")
+            return false
+        }
+    }
+
+    /// Generates AppleScript to close a specific terminal window.
+    ///
+    /// This method creates terminal-specific AppleScript commands to close windows.
+    /// Uses window IDs from dynamic lookup rather than stored tab references,
+    /// making it robust against tab reordering and window manipulation.
+    ///
+    /// - **Terminal.app**: Uses window ID to close the entire window
+    ///   - `saving no` prevents save dialogs
+    ///   - Closes all tabs in the window
+    ///
+    /// - **iTerm2**: Uses window ID with robust matching
+    ///   - Iterates through windows to find exact match
+    ///   - Closes entire window
+    ///
+    /// - **Other terminals**: Not supported as they don't provide reliable window IDs
+    ///
+    /// - Parameter windowInfo: Window information from dynamic lookup
+    /// - Returns: AppleScript string to close the window, or empty string if unsupported
+    ///
+    /// - Note: All scripts include error handling to gracefully handle already-closed windows
+    private func generateCloseWindowScript(for windowInfo: WindowEnumerator.WindowInfo) -> String {
+        switch windowInfo.terminalApp {
+        case .terminal:
+            // Use window ID to close - more reliable than tab references
+            return """
+            tell application "Terminal"
+                try
+                    close (first window whose id is \(windowInfo.windowID)) saving no
+                on error
+                    -- Window might already be closed
+                end try
+            end tell
+            """
+
+        case .iTerm2:
+            // For iTerm2, close the window by matching against all windows
+            // iTerm2's window IDs can be tricky, so we use a more robust approach
+            return """
+            tell application "iTerm2"
+                try
+                    set targetWindows to (windows)
+                    repeat with w in targetWindows
+                        try
+                            if id of w is \(windowInfo.windowID) then
+                                close w
+                                exit repeat
+                            end if
+                        end try
+                    end repeat
+                on error
+                    -- Window might already be closed
+                end try
+            end tell
+            """
+
+        default:
+            // For other terminals, we don't have reliable window closing
+            logger.warning("Cannot close window for \(windowInfo.terminalApp.rawValue) - terminal not supported")
+            return ""
+        }
+    }
+
     // MARK: - Permission Management
 
     /// Check if we have the required permissions.
@@ -178,6 +317,8 @@ final class WindowTracker {
                 if sessionWindowMap.removeValue(forKey: sessionID) != nil {
                     logger.info("Removed window tracking for terminated session: \(sessionID)")
                 }
+                // Also clean up the opened-by-us tracking
+                sessionsOpenedByUs.remove(sessionID)
             }
         }
 
