@@ -35,7 +35,7 @@ test.describe('Session Persistence Tests', () => {
     // Navigate back to home
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
-    
+
     // Wait a bit for session list to update
     await page.waitForTimeout(2000);
 

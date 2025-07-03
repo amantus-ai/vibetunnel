@@ -15,7 +15,7 @@ import {
 } from '../helpers/terminal-commands.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
-test.describe.skip('Terminal Interaction', () => {
+test.describe('Terminal Interaction', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
