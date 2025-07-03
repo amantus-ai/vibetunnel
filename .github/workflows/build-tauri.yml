@@ -75,6 +75,12 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         targets: ${{ matrix.target }}
+    
+    - name: Setup Rust target
+      if: matrix.platform == 'ubuntu-22.04'
+      run: |
+        rustup target add ${{ matrix.target }}
+        echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=gcc" >> $GITHUB_ENV
 
     - name: Rust cache
       uses: swatinem/rust-cache@v2
@@ -85,7 +91,7 @@ jobs:
       if: matrix.platform == 'ubuntu-22.04'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev libpam0g-dev gcc-x86-64-linux-gnu
+        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev libpam0g-dev
 
     - name: Install dependencies (Windows)
       if: matrix.platform == 'windows-latest'
