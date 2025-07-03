@@ -7,7 +7,7 @@ struct LoginView: View {
 
     let serverConfig: ServerConfig
     let authenticationService: AuthenticationService
-    let onSuccess: () -> Void
+    let onSuccess: (String, String) -> Void  // (username, password) -> Void
 
     @State private var username = ""
     @State private var password = ""
@@ -153,7 +153,7 @@ struct LoginView: View {
                 // If no auth required, dismiss immediately
                 if authConfig?.noAuth == true {
                     dismiss()
-                    onSuccess()
+                    onSuccess("", "")  // No credentials needed
                 }
             } catch {
                 // Continue with password auth
@@ -181,10 +181,10 @@ struct LoginView: View {
                     password: password
                 )
 
-                // Success - dismiss and call completion
+                // Success - dismiss and call completion with credentials
                 dismiss()
                 isPresented = false
-                onSuccess()
+                onSuccess(username, password)
             } catch {
                 // Show error
                 if let apiError = error as? APIError {
@@ -219,7 +219,7 @@ struct LoginView: View {
                     apiClient: APIClient.shared,
                     serverConfig: ServerConfig(host: "localhost", port: 3_000)
                 )
-            ) {}
+            ) { _, _ in }
         }
     }
 #endif

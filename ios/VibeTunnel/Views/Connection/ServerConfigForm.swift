@@ -8,6 +8,7 @@ struct ServerConfigForm: View {
     @Binding var host: String
     @Binding var port: String
     @Binding var name: String
+    @Binding var username: String
     @Binding var password: String
     let isConnecting: Bool
     let errorMessage: String?
@@ -21,6 +22,7 @@ struct ServerConfigForm: View {
         case host
         case port
         case name
+        case username
     }
 
     var body: some View {
@@ -69,6 +71,23 @@ struct ServerConfigForm: View {
                     TextField("My Mac", text: $name)
                         .textFieldStyle(TerminalTextFieldStyle())
                         .focused($focusedField, equals: .name)
+                        .submitLabel(.next)
+                        .onSubmit {
+                            focusedField = .username
+                        }
+                }
+
+                // Username Field (Optional - for authentication)
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    Label("Username (Optional)", systemImage: "person")
+                        .font(Theme.Typography.terminalSystem(size: 12))
+                        .foregroundColor(Theme.Colors.primaryAccent)
+
+                    TextField("admin", text: $username)
+                        .textFieldStyle(TerminalTextFieldStyle())
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                        .focused($focusedField, equals: .username)
                         .submitLabel(.done)
                         .onSubmit {
                             focusedField = nil

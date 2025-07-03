@@ -4,7 +4,7 @@ import SwiftUI
 /// Main entry point for the VibeTunnel iOS application.
 @main
 struct VibeTunnelApp: App {
-    @State private var connectionManager = ConnectionManager()
+    @State private var connectionManager = ConnectionManager.shared
     @State private var navigationManager = NavigationManager()
     @State private var networkMonitor = NetworkMonitor.shared
     @AppStorage("colorSchemePreference") private var colorSchemePreferenceRaw = "system"

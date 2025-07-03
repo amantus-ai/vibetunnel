@@ -9,14 +9,14 @@ struct ConnectionManagerTests {
     func serverConfigPersistence() throws {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         let config = TestFixtures.validServerConfig
 
         // Act
         manager.saveConnection(config)
 
         // Create a new manager with the same storage to test loading
-        let newManager = ConnectionManager(storage: mockStorage)
+        let newManager = ConnectionManager.createForTesting(storage: mockStorage)
 
         // Assert
         #expect(newManager.serverConfig != nil)
@@ -30,7 +30,7 @@ struct ConnectionManagerTests {
         let mockStorage = MockStorage() // Empty storage
 
         // Act
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
 
         // Assert
         #expect(manager.serverConfig == nil)
@@ -41,7 +41,7 @@ struct ConnectionManagerTests {
     func connectionStateTracking() {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
 
         // Act & Assert - Initial state
         #expect(manager.isConnected == false)
@@ -60,7 +60,7 @@ struct ConnectionManagerTests {
     func connectionTimestamp() throws {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         let config = TestFixtures.validServerConfig
 
         // Act
@@ -95,7 +95,7 @@ struct ConnectionManagerTests {
         mockStorage.set(Date(), forKey: "lastConnectionTime") // Now
 
         // Act
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
 
         // Assert - Should restore connection
         #expect(manager.isConnected == true)
@@ -115,7 +115,7 @@ struct ConnectionManagerTests {
         mockStorage.set(twoHoursAgo, forKey: "lastConnectionTime")
 
         // Act
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
 
         // Assert - Should not restore connection
         #expect(manager.isConnected == false)
@@ -126,7 +126,7 @@ struct ConnectionManagerTests {
     func disconnectClearsState() async throws {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         let config = TestFixtures.validServerConfig
 
         // Set up connected state
@@ -152,7 +152,7 @@ struct ConnectionManagerTests {
         // No saved server config
 
         // Act
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
 
         // Assert
         #expect(manager.isConnected == false)
@@ -163,7 +163,7 @@ struct ConnectionManagerTests {
     func testCurrentServerConfig() throws {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         let config = TestFixtures.validServerConfig
 
         // Act & Assert - Initially nil
@@ -181,7 +181,7 @@ struct ConnectionManagerTests {
     func authenticationServiceCreation() throws {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         let config = TestFixtures.validServerConfig
 
         // Act
@@ -201,7 +201,7 @@ struct ConnectionManagerTests {
         }
 
         // Act - Create new manager (simulates app restart)
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
 
         // Assert
         #expect(manager.serverConfig != nil)
@@ -212,7 +212,7 @@ struct ConnectionManagerTests {
     func authenticationServiceCleanup() async throws {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         let config = TestFixtures.validServerConfig
         manager.saveConnection(config)
         
@@ -233,7 +233,7 @@ struct ConnectionManagerTests {
         mockStorage.set("not valid json data".data(using: .utf8), forKey: "savedServerConfig")
 
         // Act
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
 
         // Assert - Should handle gracefully
         #expect(manager.serverConfig == nil)
@@ -244,7 +244,7 @@ struct ConnectionManagerTests {
     func connectionStateObservation() async throws {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         
         // Verify initial state
         #expect(manager.isConnected == false)
@@ -279,7 +279,7 @@ struct ConnectionManagerTests {
     func stateChangeValidation() {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         
         // Initially false
         #expect(manager.isConnected == false)
@@ -302,7 +302,7 @@ struct ConnectionManagerTests {
     func authServiceCleanupOnFailedLogout() async throws {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         let config = TestFixtures.validServerConfig
         manager.saveConnection(config)
         
@@ -321,7 +321,7 @@ struct ConnectionManagerTests {
     func serverConfigEncodingFailure() {
         // This test verifies that if encoding fails, the connection isn't saved
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         
         // Create a config that should encode successfully first
         let validConfig = TestFixtures.validServerConfig
@@ -342,7 +342,7 @@ struct ConnectionManagerIntegrationTests {
     func fullConnectionLifecycle() async throws {
         // Arrange
         let mockStorage = MockStorage()
-        let manager = ConnectionManager(storage: mockStorage)
+        let manager = ConnectionManager.createForTesting(storage: mockStorage)
         let config = TestFixtures.sslServerConfig
 
         // Act & Assert through lifecycle
@@ -361,7 +361,7 @@ struct ConnectionManagerIntegrationTests {
         #expect(mockStorage.bool(forKey: "connectionState") == true)
 
         // 4. Simulate app restart by creating new manager with same storage
-        let newManager = ConnectionManager(storage: mockStorage)
+        let newManager = ConnectionManager.createForTesting(storage: mockStorage)
         #expect(newManager.serverConfig?.host == config.host)
         #expect(newManager.isConnected == true) // Restored
 
@@ -371,7 +371,7 @@ struct ConnectionManagerIntegrationTests {
         #expect(newManager.serverConfig != nil) // Config preserved
 
         // 6. Another restart should not restore connection
-        let finalManager = ConnectionManager(storage: mockStorage)
+        let finalManager = ConnectionManager.createForTesting(storage: mockStorage)
         #expect(finalManager.serverConfig != nil)
         #expect(finalManager.isConnected == false)
     }

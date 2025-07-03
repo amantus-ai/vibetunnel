@@ -9,6 +9,8 @@ import Observation
 @Observable
 @MainActor
 final class ConnectionManager {
+    static let shared = ConnectionManager()
+    
     // MARK: - Constants
     
     private enum Constants {
@@ -29,11 +31,20 @@ final class ConnectionManager {
     private(set) var authenticationService: AuthenticationService?
     private let storage: PersistentStorage
 
-    init(storage: PersistentStorage = UserDefaultsStorage()) {
+    private init(storage: PersistentStorage = UserDefaultsStorage()) {
         self.storage = storage
         loadSavedConnection()
         restoreConnectionState()
     }
+    
+    #if DEBUG
+    /// Test-only factory method for creating instances with mock storage
+    /// - Parameter storage: Mock storage for testing
+    /// - Returns: A new ConnectionManager instance for testing
+    internal static func createForTesting(storage: PersistentStorage) -> ConnectionManager {
+        return ConnectionManager(storage: storage)
+    }
+    #endif
 
     private func loadSavedConnection() {
         if let data = storage.data(forKey: Constants.savedServerConfigKey),
@@ -113,7 +124,3 @@ final class ConnectionManager {
     }
 }
 
-/// Make ConnectionManager accessible globally for APIClient
-extension ConnectionManager {
-    @MainActor static let shared = ConnectionManager()
-}
