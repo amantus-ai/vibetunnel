@@ -2,13 +2,37 @@ name: Build Tauri App
 
 on:
   push:
-    branches: [ main, tauri-up ]
+    branches: [ main ]
+    paths:
+      - 'tauri/**'
+      - '.github/workflows/build-tauri.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'tauri/**'
+      - '.github/workflows/build-tauri.yml'
   workflow_dispatch:
 
 jobs:
+  # Check if we should run the build
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      tauri: ${{ steps.filter.outputs.tauri }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          tauri:
+            - 'tauri/**'
+            - '.github/workflows/build-tauri.yml'
+
   build:
+    needs: changes
+    if: ${{ needs.changes.outputs.tauri == 'true' || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
