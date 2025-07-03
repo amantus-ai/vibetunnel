@@ -1,5 +1,4 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { waitForModalClosed } from '../helpers/wait-strategies.helper';
 
 // These tests can run in parallel since they test different auth scenarios
 test.describe.configure({ mode: 'parallel' });
@@ -508,9 +507,9 @@ test.describe('Authentication', () => {
   test('should handle session timeout and re-authentication', async ({ page }) => {
     // Mock expired token scenario
     await page.route('**/api/**', async (route) => {
-      const authHeader = route.request().headers()['authorization'];
+      const authHeader = route.request().headers().authorization;
 
-      if (authHeader && authHeader.includes('expired-token')) {
+      if (authHeader?.includes('expired-token')) {
         await route.fulfill({
           status: 401,
           contentType: 'application/json',

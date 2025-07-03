@@ -186,15 +186,15 @@ test.describe('File Browser - Basic Functionality', () => {
     // Click to open file browser
     await fileBrowserButton.click();
     await page.waitForTimeout(1000);
-    
+
     // Close file browser with escape key
     await page.keyboard.press('Escape');
     await page.waitForTimeout(1000);
-    
+
     // Click again to verify it still works
     await fileBrowserButton.click();
     await page.waitForTimeout(1000);
-    
+
     // Close again to ensure terminal is visible
     await page.keyboard.press('Escape');
     await page.waitForTimeout(1000);

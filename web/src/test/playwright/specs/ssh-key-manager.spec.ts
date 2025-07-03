@@ -317,7 +317,7 @@ test.describe('SSH Key Manager', () => {
 
           // Should have confirmation field or checkbox
           const passphraseConfirm = page.locator('input[type="password"]').nth(1);
-          const protectionCheckbox = page.locator('input[type="checkbox"]').filter({
+          const _protectionCheckbox = page.locator('input[type="checkbox"]').filter({
             hasText: /password|passphrase|protect/i,
           });
 
@@ -379,7 +379,7 @@ test.describe('SSH Key Manager', () => {
           try {
             const download = await downloadPromise;
             expect(download.suggestedFilename()).toBeTruthy();
-          } catch (e) {
+          } catch (_e) {
             // Download might not trigger in test environment, that's ok
             console.log('Download test skipped - may not work in test environment');
           }

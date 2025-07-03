@@ -137,7 +137,7 @@ test.describe('Activity Monitoring', () => {
     await page.waitForTimeout(5000);
 
     // Check for idle indicators
-    const idleIndicators = page.locator('.idle, .inactive, .bg-yellow, .bg-gray').filter({
+    const _idleIndicators = page.locator('.idle, .inactive, .bg-yellow, .bg-gray').filter({
       hasText: /idle|inactive|no.*activity/i,
     });
 
@@ -404,7 +404,7 @@ test.describe('Activity Monitoring', () => {
     // Simulate WebSocket disconnection and reconnection
     await page.evaluate(() => {
       // Close any existing WebSocket connections
-      (window as any).closeWebSockets?.();
+      (window as unknown as { closeWebSockets?: () => void }).closeWebSockets?.();
     });
 
     // Wait for potential reconnection

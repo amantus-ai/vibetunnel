@@ -201,20 +201,29 @@ test.describe('Push Notifications', () => {
     await page.addInitScript(() => {
       let notificationCount = 0;
 
-      (window as any).Notification = class MockNotification {
+      (
+        window as unknown as {
+          Notification: typeof Notification;
+          lastNotification: { title: string; options: unknown };
+          getNotificationCount: () => number;
+        }
+      ).Notification = class MockNotification {
         static permission = 'granted';
         static requestPermission = () => Promise.resolve('granted');
 
-        constructor(title: string, options?: any) {
+        constructor(title: string, options?: NotificationOptions) {
           notificationCount++;
-          (window as any).lastNotification = { title, options };
+          (
+            window as unknown as { lastNotification: { title: string; options: unknown } }
+          ).lastNotification = { title, options };
           console.log('Mock notification created:', title, options);
         }
 
         close() {}
       };
 
-      (window as any).getNotificationCount = () => notificationCount;
+      (window as unknown as { getNotificationCount: () => number }).getNotificationCount = () =>
+        notificationCount;
     });
 
     // Trigger potential notification events (like bell character or command completion)
@@ -235,7 +244,9 @@ test.describe('Push Notifications', () => {
 
       // Check if notification was created (through our mock)
       const notificationCount = await page.evaluate(
-        () => (window as any).getNotificationCount?.() || 0
+        () =>
+          (window as unknown as { getNotificationCount?: () => number }).getNotificationCount?.() ||
+          0
       );
 
       // Note: This test might not trigger notifications depending on the implementation
@@ -253,7 +264,7 @@ test.describe('Push Notifications', () => {
     const vapidKey = await page.evaluate(() => {
       // Look for VAPID key in various possible locations
       return (
-        (window as any).vapidPublicKey ||
+        (window as unknown as { vapidPublicKey?: string }).vapidPublicKey ||
         document.querySelector('meta[name="vapid-public-key"]')?.getAttribute('content') ||
         localStorage.getItem('vapidPublicKey') ||
         null
@@ -308,16 +319,23 @@ test.describe('Push Notifications', () => {
 
     // Mock notification with actions
     await page.addInitScript(() => {
-      const clickHandler: (() => void) | null = null;
+      const _clickHandler: (() => void) | null = null;
 
-      (window as any).Notification = class MockNotification {
+      (
+        window as unknown as {
+          Notification: typeof Notification;
+          lastNotification: { title: string; options: unknown };
+        }
+      ).Notification = class MockNotification {
         static permission = 'granted';
         static requestPermission = () => Promise.resolve('granted');
 
         onclick: (() => void) | null = null;
 
-        constructor(title: string, options?: any) {
-          (window as any).lastNotification = { title, options };
+        constructor(title: string, options?: NotificationOptions) {
+          (
+            window as unknown as { lastNotification: { title: string; options: unknown } }
+          ).lastNotification = { title, options };
 
           // Simulate click after short delay
           setTimeout(() => {
@@ -338,16 +356,19 @@ test.describe('Push Notifications', () => {
     await assertTerminalReady(page);
 
     // Test that notification clicks might focus the window or navigate to session
-    const initialUrl = page.url();
+    const _initialUrl = page.url();
 
     // Simulate a notification click by evaluating JavaScript
     await page.evaluate(() => {
-      if ((window as any).lastNotification) {
+      if (
+        (window as unknown as { lastNotification?: { title: string; options: unknown } })
+          .lastNotification
+      ) {
         // Simulate notification click handling
         window.focus();
 
         // In a real app, this might navigate to the session or show it
-        (window as any).notificationClicked = true;
+        (window as unknown as { notificationClicked: boolean }).notificationClicked = true;
       }
     });
 
@@ -366,7 +387,7 @@ test.describe('Push Notifications', () => {
         try {
           const registration = await navigator.serviceWorker.getRegistration();
           return registration !== undefined;
-        } catch (e) {
+        } catch (_e) {
           return false;
         }
       }
@@ -406,15 +427,22 @@ test.describe('Push Notifications', () => {
   test('should handle notification for session state changes', async ({ page }) => {
     // Mock notifications to track what gets triggered
     await page.addInitScript(() => {
-      const notifications: any[] = [];
+      const notifications: Array<{ title: string; options: unknown }> = [];
 
-      (window as any).Notification = class MockNotification {
+      (
+        window as unknown as {
+          Notification: typeof Notification;
+          allNotifications: Array<{ title: string; options: unknown }>;
+        }
+      ).Notification = class MockNotification {
         static permission = 'granted';
         static requestPermission = () => Promise.resolve('granted');
 
-        constructor(title: string, options?: any) {
+        constructor(title: string, options?: NotificationOptions) {
           notifications.push({ title, options });
-          (window as any).allNotifications = notifications;
+          (
+            window as unknown as { allNotifications: Array<{ title: string; options: unknown }> }
+          ).allNotifications = notifications;
         }
 
         close() {}
@@ -436,7 +464,11 @@ test.describe('Push Notifications', () => {
     await page.waitForTimeout(1000);
 
     // Check if any notifications were created during state changes
-    const allNotifications = await page.evaluate(() => (window as any).allNotifications || []);
+    const allNotifications = await page.evaluate(
+      () =>
+        (window as unknown as { allNotifications?: Array<{ title: string; options: unknown }> })
+          .allNotifications || []
+    );
 
     // Notifications might be triggered for session state changes
     expect(Array.isArray(allNotifications)).toBeTruthy();
