@@ -29,25 +29,53 @@ test.describe('Global Session Management', () => {
     for (let i = 0; i < 3; i++) {
       const { sessionName } = await sessionManager.createTrackedSession();
       sessionNames.push(sessionName);
+      console.log(`Created session ${i + 1}: ${sessionName}`);
 
       // Go back to list after each creation
       await page.goto('/', { waitUntil: 'networkidle' });
 
-      // Wait for session cards to be loaded
+      // Wait for session cards to be loaded or empty state
       await page.waitForSelector('session-card, .text-dark-text-muted', {
         state: 'visible',
         timeout: TIMEOUTS.SESSION_CREATION,
       });
 
-      // Wait for the session to appear in the list
-      await page.waitForFunction(
-        (name) => {
-          const cards = document.querySelectorAll('session-card');
-          return Array.from(cards).some((card) => card.textContent?.includes(name));
-        },
-        sessionName,
-        { timeout: TIMEOUTS.SESSION_CREATION * 2 } // Double timeout for CI
-      );
+      // Add a small delay to ensure UI is ready
+      await page.waitForTimeout(1000);
+
+      // Wait for the session to appear in the list with better error handling
+      try {
+        await page.waitForFunction(
+          (name) => {
+            const cards = document.querySelectorAll('session-card');
+            const foundSession = Array.from(cards).some((card) => {
+              const text = card.textContent || '';
+              return text.includes(name);
+            });
+            if (!foundSession) {
+              console.log(`Session ${name} not found yet. Found ${cards.length} cards`);
+              // Log the text content of all cards for debugging
+              Array.from(cards).forEach((card, index) => {
+                console.log(`Card ${index}: ${card.textContent?.substring(0, 50)}...`);
+              });
+            }
+            return foundSession;
+          },
+          sessionName,
+          { timeout: 20000 } // Increase timeout significantly for CI
+        );
+        console.log(`Successfully found session ${sessionName} in the list`);
+      } catch (error) {
+        // Log current state for debugging
+        const cardCount = await page.locator('session-card').count();
+        const pageContent = await page.locator('body').textContent();
+        console.error(`Failed to find session ${sessionName}. Total cards: ${cardCount}`);
+        console.error(`Page contains: ${pageContent?.substring(0, 200)}...`);
+        
+        // Take a screenshot for debugging
+        await page.screenshot({ path: `test-debug-session-not-found-${sessionName}.png` });
+        throw error;
+      }
     }
 
     // Ensure exited sessions are visible
