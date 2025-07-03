@@ -21,8 +21,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Install pnpm
 RUN npm install -g pnpm
 
-# Install tauri-cli with specific version
-RUN cargo install tauri-cli --version "^2.0.0" --locked
+# Install tauri-cli with specific version that works with Rust 1.80
+RUN cargo install tauri-cli --version "2.5.0" --locked
 
 # Set working directory
 WORKDIR /app
