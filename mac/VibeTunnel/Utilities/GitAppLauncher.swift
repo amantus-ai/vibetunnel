@@ -36,12 +36,13 @@ enum GitApp: String, CaseIterable {
     /// Priority for auto-detection (higher is better, based on popularity)
     var detectionPriority: Int {
         switch self {
-        case .tower: 100
-        case .githubDesktop: 90
-        case .sourcetree: 80
         case .fork: 75
+        case .githubDesktop: 90
         case .gitkraken: 70
         case .gitup: 60
+        case .sourcetree: 80
+        case .sublimeMerge: 85
+        case .tower: 100
         }
     }
 
