@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 /// Security utilities for AppleScript execution
 enum AppleScriptSecurity {
@@ -66,6 +67,14 @@ enum AppleScriptSecurity {
     /// - Parameter value: The numeric value
     /// - Returns: The string representation of the number
     static func escapeNumber(_ value: Int) -> String {
+        return String(value)
+    }
+    
+    /// Escapes a numeric value for safe use in AppleScript
+    ///
+    /// - Parameter value: The numeric value (UInt32/CGWindowID)
+    /// - Returns: The string representation of the number
+    static func escapeNumber(_ value: UInt32) -> String {
         return String(value)
     }
     
