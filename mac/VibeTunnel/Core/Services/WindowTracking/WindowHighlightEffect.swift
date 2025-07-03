@@ -21,7 +21,7 @@ struct WindowHighlightConfig {
     
     /// Default configuration with VibeTunnel branding
     static let `default` = WindowHighlightConfig(
-        color: NSColor(red: 0.4, green: 0.2, blue: 1.0, alpha: 1.0), // Purple-ish
+        color: NSColor(red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0), // Green to match frontend
         duration: 0.8,
         borderWidth: 4.0,
         glowRadius: 12.0,
@@ -73,23 +73,37 @@ final class WindowHighlightEffect {
     }
     
     /// Highlight a window with a border pulse effect
-    func highlightWindow(_ window: AXUIElement) {
+    func highlightWindow(_ window: AXUIElement, bounds: CGRect? = nil) {
         guard config.isEnabled else { return }
-        // Get window bounds
-        var positionValue: CFTypeRef?
-        var sizeValue: CFTypeRef?
         
-        guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionValue) == .success,
-              AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeValue) == .success,
-              let position = positionValue as? CGPoint,
-              let size = sizeValue as? CGSize else {
-            logger.error("Failed to get window bounds for highlight effect")
-            return
+        let windowFrame: CGRect
+        
+        if let bounds = bounds {
+            // Use provided bounds
+            windowFrame = bounds
+        } else {
+            // Get window bounds from AXUIElement
+            var positionRef: CFTypeRef?
+            var sizeRef: CFTypeRef?
+            
+            guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionRef) == .success,
+                  AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeRef) == .success,
+                  let positionValue = positionRef as! AXValue?,
+                  let sizeValue = sizeRef as! AXValue? else {
+                logger.error("Failed to get window bounds for highlight effect")
+                return
+            }
+            
+            var position = CGPoint.zero
+            var size = CGSize.zero
+            AXValueGetValue(positionValue, .cgPoint, &position)
+            AXValueGetValue(sizeValue, .cgSize, &size)
+            windowFrame = CGRect(origin: position, size: size)
         }
         
         // Create overlay window
         let overlayWindow = createOverlayWindow(
-            frame: CGRect(origin: position, size: size)
+            frame: windowFrame
         )
         
         // Add to tracking

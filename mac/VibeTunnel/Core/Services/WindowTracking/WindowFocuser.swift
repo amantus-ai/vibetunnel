@@ -247,6 +247,8 @@ final class WindowFocuser {
 
     /// Focuses a window by using the process PID directly
     private func focusWindowUsingPID(_ windowInfo: WindowEnumerator.WindowInfo) -> Bool {
+        // Get session info for better matching
+        let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
         // Create AXElement directly from the PID
         let axProcess = AXElement.application(pid: windowInfo.ownerPID)
         
@@ -266,7 +268,7 @@ final class WindowFocuser {
             let window = windows[0]
             
             // Show highlight effect
-            highlightEffect.highlightWindow(window.element)
+            highlightEffect.highlightWindow(window.element, bounds: window.frame())
             
             // Focus the window
             window.setMain(true)
@@ -289,15 +291,43 @@ final class WindowFocuser {
         for (index, window) in windows.enumerated() {
             var matchScore = 0
             
-            // Check window ID
+            // Check window title for session ID or working directory (most reliable)
+            if let title = window.title {
+                logger.debug("Window \(index) title: '\(title)'")
+                
+                // Check for session ID in title
+                if title.contains(windowInfo.sessionID) || title.contains("TTY_SESSION_ID=\(windowInfo.sessionID)") {
+                    matchScore += 200 // Highest score for session ID match
+                    logger.debug("Window \(index) has session ID in title!")
+                }
+                
+                // Check for working directory in title
+                if let sessionInfo = sessionInfo {
+                    let workingDir = sessionInfo.workingDir
+                    let dirName = (workingDir as NSString).lastPathComponent
+                    
+                    if !dirName.isEmpty && (title.contains(dirName) || title.hasSuffix(dirName) || title.hasSuffix(" - \(dirName)")) {
+                        matchScore += 100 // High score for directory match
+                        logger.debug("Window \(index) has working directory in title: \(dirName)")
+                    }
+                    
+                    // Check for session name
+                    if let sessionName = sessionInfo.name, !sessionName.isEmpty && title.contains(sessionName) {
+                        matchScore += 150 // High score for session name match
+                        logger.debug("Window \(index) has session name in title: \(sessionName)")
+                    }
+                }
+            }
+            
+            // Check window ID (less reliable for terminals)
             if let axWindowID = window.windowID {
                 if axWindowID == windowInfo.windowID {
-                    matchScore += 100
+                    matchScore += 50 // Lower score since window IDs can be unreliable
                     logger.debug("Window \(index) has matching ID: \(axWindowID)")
                 }
             }
             
-            // Check bounds if available
+            // Check bounds if available (least reliable as windows can move)
             if let bounds = windowInfo.bounds,
                let windowFrame = window.frame() {
                 let tolerance: CGFloat = 5.0
@@ -306,7 +336,7 @@ final class WindowFocuser {
                    abs(windowFrame.width - bounds.width) < tolerance &&
                    abs(windowFrame.height - bounds.height) < tolerance
                 {
-                    matchScore += 50
+                    matchScore += 25 // Lowest score for bounds match
                     logger.debug("Window \(index) bounds match")
                 }
             }
@@ -320,7 +350,7 @@ final class WindowFocuser {
             logger.info("Focusing best match window with score \(best.score) for PID \(windowInfo.ownerPID)")
             
             // Show highlight effect
-            highlightEffect.highlightWindow(best.window.element)
+            highlightEffect.highlightWindow(best.window.element, bounds: best.window.frame())
             
             // Focus the window
             best.window.setMain(true)
@@ -411,12 +441,34 @@ final class WindowFocuser {
                 }
             }
 
-            // Check window title
+            // Check window title for session information
             if let title = window.title {
                 logger.debug("Window \(index) title: '\(title)'")
-                if !title
-                    .isEmpty && (windowInfo.title?.contains(title) ?? false || title.contains(windowInfo.title ?? ""))
-                {
+                
+                // Check for session ID in title (most reliable)
+                if title.contains(windowInfo.sessionID) || title.contains("TTY_SESSION_ID=\(windowInfo.sessionID)") {
+                    matchScore += 200 // Highest score
+                    logger.debug("Window \(index) has session ID in title!")
+                }
+                
+                // Check for session-specific information
+                if let sessionInfo = sessionInfo {
+                    let workingDir = sessionInfo.workingDir
+                    let dirName = (workingDir as NSString).lastPathComponent
+                    
+                    if !dirName.isEmpty && (title.contains(dirName) || title.hasSuffix(dirName)) {
+                        matchScore += 100
+                        logger.debug("Window \(index) has working directory in title")
+                    }
+                    
+                    if let sessionName = sessionInfo.name, !sessionName.isEmpty && title.contains(sessionName) {
+                        matchScore += 150
+                        logger.debug("Window \(index) has session name in title")
+                    }
+                }
+                
+                // Original title match logic as fallback
+                if !title.isEmpty && (windowInfo.title?.contains(title) ?? false || title.contains(windowInfo.title ?? "")) {
                     matchScore += 25 // Low score for title match
                 }
             }
@@ -441,7 +493,7 @@ final class WindowFocuser {
                         logger.info("Found matching tab in window \(index)")
 
                         // Show highlight effect
-                        highlightEffect.highlightWindow(window.element)
+                        highlightEffect.highlightWindow(window.element, bounds: window.frame())
 
                         // Make window main and focused
                         window.setMain(true)
@@ -466,7 +518,7 @@ final class WindowFocuser {
                         logger.info("Found matching tab in window \(index)")
 
                         // Show highlight effect
-                        highlightEffect.highlightWindow(window.element)
+                        highlightEffect.highlightWindow(window.element, bounds: window.frame())
 
                         // Make window main and focused
                         window.setMain(true)
@@ -486,7 +538,7 @@ final class WindowFocuser {
             logger.info("Using best match window with score \(bestMatch.score) for window ID \(windowInfo.windowID)")
 
             // Show highlight effect
-            highlightEffect.highlightWindow(bestMatch.window.element)
+            highlightEffect.highlightWindow(bestMatch.window.element, bounds: bestMatch.window.frame())
 
             // Focus the best matching window
             bestMatch.window.setMain(true)
