@@ -321,6 +321,15 @@ final class WindowTracker {
                 sessionsOpenedByUs.remove(sessionID)
             }
         }
+        
+        // Check for sessions that have exited and close their windows if we opened them
+        for session in sessions where session.status == "exited" {
+            // Only close windows that we opened (not external vt attachments)
+            if sessionsOpenedByUs.contains(session.id) {
+                logger.info("Session \(session.id) has exited naturally, closing its window")
+                _ = closeWindowIfOpenedByUs(for: session.id)
+            }
+        }
 
         // For ALL sessions without registered windows, try to find them
         // This handles:

@@ -392,36 +392,27 @@ final class WindowFocuser {
                     )
             }
 
-            // 3. Check window position and size as secondary validation
-            if let bounds = windowInfo.bounds {
-                var positionValue: CFTypeRef?
-                var sizeValue: CFTypeRef?
-                if AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionValue) == .success,
-                   AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeValue) == .success,
-                   let position = positionValue as? CGPoint,
-                   let size = sizeValue as? CGSize
+            // Check window position and size as secondary validation
+            if let bounds = windowInfo.bounds,
+               let windowFrame = window.frame()
+            {
+                // Check if bounds approximately match (within 5 pixels tolerance)
+                let tolerance: CGFloat = 5.0
+                if abs(windowFrame.origin.x - bounds.origin.x) < tolerance &&
+                    abs(windowFrame.origin.y - bounds.origin.y) < tolerance &&
+                    abs(windowFrame.width - bounds.width) < tolerance &&
+                    abs(windowFrame.height - bounds.height) < tolerance
                 {
-                    // Check if bounds approximately match (within 5 pixels tolerance)
-                    let tolerance: CGFloat = 5.0
-                    if abs(position.x - bounds.origin.x) < tolerance &&
-                        abs(position.y - bounds.origin.y) < tolerance &&
-                        abs(size.width - bounds.width) < tolerance &&
-                        abs(size.height - bounds.height) < tolerance
-                    {
-                        matchScore += 50 // Medium score for bounds match
-                        logger
-                            .debug(
-                                "Window \(index) bounds match! Position: (\(position.x), \(position.y)), Size: (\(size.width), \(size.height))"
-                            )
-                    }
+                    matchScore += 50 // Medium score for bounds match
+                    logger
+                        .debug(
+                            "Window \(index) bounds match! Position: (\(windowFrame.origin.x), \(windowFrame.origin.y)), Size: (\(windowFrame.width), \(windowFrame.height))"
+                        )
                 }
             }
 
-            // 4. Check window title
-            var titleValue: CFTypeRef?
-            if AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleValue) == .success,
-               let title = titleValue as? String
-            {
+            // Check window title
+            if let title = window.title {
                 logger.debug("Window \(index) title: '\(title)'")
                 if !title
                     .isEmpty && (windowInfo.title?.contains(title) ?? false || title.contains(windowInfo.title ?? ""))
@@ -439,9 +430,7 @@ final class WindowFocuser {
             // Try the improved approach: get tab group first
             if let tabGroup = getTabGroup(from: window) {
                 // Get tabs from the tab group
-                var tabsValue: CFTypeRef?
-                if AXUIElementCopyAttributeValue(tabGroup, "AXTabs" as CFString, &tabsValue) == .success,
-                   let tabs = tabsValue as? [AXUIElement],
+                if let tabs = tabGroup.tabs,
                    !tabs.isEmpty
                 {
                     logger.info("Window \(index) has tab group with \(tabs.count) tabs")
@@ -452,11 +441,11 @@ final class WindowFocuser {
                         logger.info("Found matching tab in window \(index)")
 
                         // Show highlight effect
-                        highlightEffect.highlightWindow(window)
+                        highlightEffect.highlightWindow(window.element)
 
                         // Make window main and focused
-                        AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
-                        AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
+                        window.setMain(true)
+                        window.setFocused(true)
 
                         // Select the tab
                         selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
@@ -466,11 +455,7 @@ final class WindowFocuser {
                 }
             } else {
                 // Fallback: Try direct tabs attribute (older approach)
-                var tabsValue: CFTypeRef?
-                let hasTabsResult = AXUIElementCopyAttributeValue(window, kAXTabsAttribute as CFString, &tabsValue)
-
-                if hasTabsResult == .success,
-                   let tabs = tabsValue as? [AXUIElement],
+                if let tabs = window.tabs,
                    !tabs.isEmpty
                 {
                     logger.info("Window \(index) has \(tabs.count) tabs (direct attribute)")
@@ -481,11 +466,11 @@ final class WindowFocuser {
                         logger.info("Found matching tab in window \(index)")
 
                         // Show highlight effect
-                        highlightEffect.highlightWindow(window)
+                        highlightEffect.highlightWindow(window.element)
 
                         // Make window main and focused
-                        AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
-                        AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
+                        window.setMain(true)
+                        window.setFocused(true)
 
                         // Select the tab
                         selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
@@ -501,30 +486,25 @@ final class WindowFocuser {
             logger.info("Using best match window with score \(bestMatch.score) for window ID \(windowInfo.windowID)")
 
             // Show highlight effect
-            highlightEffect.highlightWindow(bestMatch.window)
+            highlightEffect.highlightWindow(bestMatch.window.element)
 
             // Focus the best matching window
-            AXUIElementSetAttributeValue(bestMatch.window, kAXMainAttribute as CFString, true as CFTypeRef)
-            AXUIElementSetAttributeValue(bestMatch.window, kAXFocusedAttribute as CFString, true as CFTypeRef)
+            bestMatch.window.setMain(true)
+            bestMatch.window.setFocused(true)
 
             // Try to select tab if available
             if sessionInfo != nil {
                 // Try to get tabs and select the right one
                 if let tabGroup = getTabGroup(from: bestMatch.window) {
-                    var tabsValue: CFTypeRef?
-                    if AXUIElementCopyAttributeValue(tabGroup, "AXTabs" as CFString, &tabsValue) == .success,
-                       let tabs = tabsValue as? [AXUIElement],
+                    if let tabs = tabGroup.tabs,
                        !tabs.isEmpty
                     {
                         selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
                     }
                 } else {
                     // Try direct tabs attribute
-                    var tabsValue: CFTypeRef?
-                    if AXUIElementCopyAttributeValue(bestMatch.window, kAXTabsAttribute as CFString, &tabsValue) ==
-                        .success,
-                        let tabs = tabsValue as? [AXUIElement],
-                        !tabs.isEmpty
+                    if let tabs = bestMatch.window.tabs,
+                       !tabs.isEmpty
                     {
                         selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
                     }

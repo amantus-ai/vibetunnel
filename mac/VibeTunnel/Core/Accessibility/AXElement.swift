@@ -175,7 +175,8 @@ public struct AXElement: Equatable, Hashable {
     /// Sets a CGPoint attribute
     @discardableResult
     public func setPoint(_ attribute: String, value: CGPoint) -> AXError {
-        guard let axValue = AXValueCreate(.cgPoint, &var value) else {
+        var mutableValue = value
+        guard let axValue = AXValueCreate(.cgPoint, &mutableValue) else {
             return .failure
         }
         return setAttribute(attribute, value: axValue)
@@ -184,7 +185,8 @@ public struct AXElement: Equatable, Hashable {
     /// Sets a CGSize attribute
     @discardableResult
     public func setSize(_ attribute: String, value: CGSize) -> AXError {
-        guard let axValue = AXValueCreate(.cgSize, &var value) else {
+        var mutableValue = value
+        guard let axValue = AXValueCreate(.cgSize, &mutableValue) else {
             return .failure
         }
         return setAttribute(attribute, value: axValue)
