@@ -442,8 +442,11 @@ struct SessionRow: View {
         Task {
             do {
                 // Send a prompt that encourages Claude to use vt title
-                let prompt = "use vt title to update the terminal title with what you're currently working on\r"
+                let prompt = "use vt title to update the terminal title with what you're currently working on"
                 try await sessionService.sendInput(to: session.key, text: prompt)
+                
+                // Send Enter key to submit the prompt
+                try await sessionService.sendKey(to: session.key, key: "enter")
             } catch {
                 // Silently handle errors for now
                 print("Failed to send prompt to Claude: \(error)")
