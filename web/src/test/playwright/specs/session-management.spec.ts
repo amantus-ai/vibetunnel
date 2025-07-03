@@ -72,7 +72,7 @@ test.describe('Session Management', () => {
 
       // Navigate back to list before creating second session
       await page.goto('/', { waitUntil: 'domcontentloaded' });
-      
+
       // Wait for the list to be ready without networkidle
       await waitForSessionCards(page);
 
@@ -81,7 +81,7 @@ test.describe('Session Management', () => {
 
       // Navigate back to list to verify both exist
       await page.goto('/', { waitUntil: 'domcontentloaded' });
-      
+
       // Wait for session cards to load without networkidle
       await waitForSessionCards(page);
 
