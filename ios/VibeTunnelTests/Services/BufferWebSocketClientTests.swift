@@ -139,15 +139,19 @@ final class BufferWebSocketClientTests {
         // Arrange
         let sessionId = "test-session-456"
         
-        // Act
-        client.subscribe(to: sessionId) { _ in
-            // Event handler
-        }
-        
+        // Connect first to ensure WebSocket is available
         client.connect()
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         
         let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        
+        // Act - Subscribe after connection is established
+        client.subscribe(to: sessionId) { _ in
+            // Event handler
+        }
+        
+        // Wait longer for subscription message to be sent
+        try await Task.sleep(nanoseconds: 200_000_000) // 200ms
         
         // Assert - Check if subscribe message was sent
         let sentMessages = mockWebSocket.sentJSONMessages()
