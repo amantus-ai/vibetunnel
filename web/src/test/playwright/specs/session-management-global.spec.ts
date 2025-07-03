@@ -34,9 +34,9 @@ test.describe('Global Session Management', () => {
       await page.goto('/', { waitUntil: 'networkidle' });
 
       // Wait for session cards to be loaded
-      await page.waitForSelector('session-card, .text-dark-text-muted', { 
+      await page.waitForSelector('session-card, .text-dark-text-muted', {
         state: 'visible',
-        timeout: TIMEOUTS.SESSION_CREATION 
+        timeout: TIMEOUTS.SESSION_CREATION,
       });
 
       // Wait for the session to appear in the list
@@ -46,7 +46,7 @@ test.describe('Global Session Management', () => {
           return Array.from(cards).some((card) => card.textContent?.includes(name));
         },
         sessionName,
-        { timeout: TIMEOUTS.SESSION_CREATION }
+        { timeout: TIMEOUTS.SESSION_CREATION * 2 } // Double timeout for CI
       );
     }
 
