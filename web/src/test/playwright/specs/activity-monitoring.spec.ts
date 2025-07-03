@@ -99,7 +99,7 @@ test.describe('Activity Monitoring', () => {
     const sessionCard = page
       .locator('session-card')
       .filter({
-        hasText: sessionManager.getLastCreatedSessionName() || 'activity-interaction',
+        hasText: 'activity-interaction',
       })
       .first();
 
@@ -148,7 +148,7 @@ test.describe('Activity Monitoring', () => {
     const sessionCard = page
       .locator('session-card')
       .filter({
-        hasText: sessionManager.getLastCreatedSessionName() || 'activity-idle',
+        hasText: 'activity-idle',
       })
       .first();
 
@@ -260,7 +260,7 @@ test.describe('Activity Monitoring', () => {
     const sessionCard = page
       .locator('session-card')
       .filter({
-        hasText: sessionManager.getLastCreatedSessionName() || 'long-running-activity',
+        hasText: 'long-running-activity',
       })
       .first();
 
@@ -301,7 +301,7 @@ test.describe('Activity Monitoring', () => {
     const sessionCard = page
       .locator('session-card')
       .filter({
-        hasText: sessionManager.getLastCreatedSessionName() || 'last-activity',
+        hasText: 'last-activity',
       })
       .first();
 
@@ -422,7 +422,7 @@ test.describe('Activity Monitoring', () => {
     const sessionCard = page
       .locator('session-card')
       .filter({
-        hasText: sessionManager.getLastCreatedSessionName() || 'websocket-activity',
+        hasText: 'websocket-activity',
       })
       .first();
 
@@ -462,7 +462,7 @@ test.describe('Activity Monitoring', () => {
     const sessionCard = page
       .locator('session-card')
       .filter({
-        hasText: sessionManager.getLastCreatedSessionName() || 'activity-aggregation',
+        hasText: 'activity-aggregation',
       })
       .first();
 
