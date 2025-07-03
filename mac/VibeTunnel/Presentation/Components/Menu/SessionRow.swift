@@ -139,7 +139,7 @@ struct SessionRow: View {
                                     .font(.system(size: 10, design: .monospaced))
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)
-                                    .truncationMode(.middle)
+                                    .truncationMode(.head)
                             }
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)

@@ -38,26 +38,46 @@ struct GitRepositoryRow: View {
     private var changeIndicators: some View {
         Group {
             if repository.hasChanges {
-                HStack(spacing: 2) {
+                HStack(spacing: 3) {
                     if repository.modifiedCount > 0 {
-                        Text("M:\(repository.modifiedCount)")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(AppColors.Fallback.gitModified(for: colorScheme))
+                        HStack(spacing: 1) {
+                            Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
+                                .font(.system(size: 8))
+                                .foregroundColor(AppColors.Fallback.gitModified(for: colorScheme))
+                            Text("\(repository.modifiedCount)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitModified(for: colorScheme))
+                        }
                     }
                     if repository.addedCount > 0 {
-                        Text("A:\(repository.addedCount)")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(AppColors.Fallback.gitAdded(for: colorScheme))
+                        HStack(spacing: 1) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitAdded(for: colorScheme))
+                            Text("\(repository.addedCount)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitAdded(for: colorScheme))
+                        }
                     }
                     if repository.deletedCount > 0 {
-                        Text("D:\(repository.deletedCount)")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(AppColors.Fallback.gitDeleted(for: colorScheme))
+                        HStack(spacing: 1) {
+                            Image(systemName: "minus")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitDeleted(for: colorScheme))
+                            Text("\(repository.deletedCount)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitDeleted(for: colorScheme))
+                        }
                     }
                     if repository.untrackedCount > 0 {
-                        Text("U:\(repository.untrackedCount)")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(AppColors.Fallback.gitUntracked(for: colorScheme))
+                        HStack(spacing: 1) {
+                            Image(systemName: "questionmark")
+                                .font(.system(size: 8))
+                                .foregroundColor(AppColors.Fallback.gitUntracked(for: colorScheme))
+                            Text("\(repository.untrackedCount)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitUntracked(for: colorScheme))
+                        }
                     }
                 }
             }
