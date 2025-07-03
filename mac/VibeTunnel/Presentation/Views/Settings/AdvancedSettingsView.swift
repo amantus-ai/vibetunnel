@@ -201,15 +201,21 @@ struct AdvancedSettingsView: View {
 private struct TerminalPreferenceSection: View {
     @AppStorage("preferredTerminal")
     private var preferredTerminal = Terminal.terminal.rawValue
+    @AppStorage("preferredGitApp")
+    private var preferredGitApp: String?
     @State private var terminalLauncher = TerminalLauncher.shared
+    @State private var gitAppLauncher = GitAppLauncher.shared
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var errorTitle = "Terminal Launch Failed"
 
     var body: some View {
         Section {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
+                // Terminal selector row
                 HStack {
+                    Text("Preferred Terminal")
+                    Spacer()
                     Button("Test") {
                         Task {
                             do {
@@ -274,10 +280,8 @@ private struct TerminalPreferenceSection: View {
                         }
                     }
                     .buttonStyle(.bordered)
-                    
-                    Spacer()
-                    
-                    Text("Preferred Terminal")
+                    .controlSize(.small)
+
                     Picker("", selection: $preferredTerminal) {
                         ForEach(Terminal.installed, id: \.rawValue) { terminal in
                             HStack {
@@ -292,16 +296,33 @@ private struct TerminalPreferenceSection: View {
                     .pickerStyle(.menu)
                     .labelsHidden()
                 }
-                Text("Select which terminal to use when creating new sessions")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+
+                // Git app selector row
+                HStack {
+                    Text("Preferred Git App")
+                    Spacer()
+                    Picker("", selection: gitAppBinding) {
+                        Text("System Default").tag(nil as String?)
+                        ForEach(GitApp.installed, id: \.rawValue) { gitApp in
+                            HStack {
+                                if let icon = gitApp.appIcon {
+                                    Image(nsImage: icon.resized(to: NSSize(width: 16, height: 16)))
+                                }
+                                Text(gitApp.displayName)
+                            }
+                            .tag(gitApp.rawValue as String?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
             }
         } header: {
             Text("Apps")
                 .font(.headline)
         } footer: {
             Text(
-                "VibeTunnel will use this terminal when launching new terminal sessions."
+                "Configure which applications VibeTunnel uses for terminal sessions and Git repositories."
             )
             .font(.caption)
             .frame(maxWidth: .infinity)
@@ -321,5 +342,14 @@ private struct TerminalPreferenceSection: View {
         } message: {
             Text(errorMessage)
         }
+    }
+
+    private var gitAppBinding: Binding<String?> {
+        Binding(
+            get: { preferredGitApp },
+            set: { newValue in
+                preferredGitApp = newValue
+            }
+        )
     }
 }
