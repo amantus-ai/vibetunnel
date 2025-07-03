@@ -369,6 +369,12 @@ export class SessionView extends LitElement {
       this.createHiddenInputTimeout = null;
     }
 
+    // Clear any pending updateTerminalTransform timeout
+    if (this._updateTerminalTransformTimeout) {
+      clearTimeout(this._updateTerminalTransformTimeout);
+      this._updateTerminalTransformTimeout = null;
+    }
+
     // Use lifecycle event manager for teardown
     if (this.lifecycleEventManager) {
       this.lifecycleEventManager.teardownLifecycle();
@@ -989,58 +995,67 @@ export class SessionView extends LitElement {
     }
   }
 
+  private _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null = null;
+
   private updateTerminalTransform(): void {
-    // Calculate height reduction for keyboard and quick keys
-    let heightReduction = 0;
-
-    if (this.showQuickKeys && this.isMobile) {
-      // Quick keys height (approximately 140px based on CSS)
-      // Add 10px buffer to ensure content is visible above quick keys
-      const quickKeysHeight = 150;
-      heightReduction += quickKeysHeight;
+    // Clear any existing timeout to debounce calls
+    if (this._updateTerminalTransformTimeout) {
+      clearTimeout(this._updateTerminalTransformTimeout);
     }
 
-    if (this.keyboardHeight > 0) {
-      // Add small buffer for keyboard too
-      heightReduction += this.keyboardHeight + 10;
-    }
+    this._updateTerminalTransformTimeout = setTimeout(() => {
+      // Calculate height reduction for keyboard and quick keys
+      let heightReduction = 0;
 
-    // Calculate terminal container height
-    if (heightReduction > 0) {
-      // Use calc to subtract from full height (accounting for header)
-      this.terminalContainerHeight = `calc(100% - ${heightReduction}px)`;
-    } else {
-      this.terminalContainerHeight = '100%';
-    }
-
-    // Log for debugging
-    logger.log(
-      `Terminal height updated: quickKeys=${this.showQuickKeys}, keyboardHeight=${this.keyboardHeight}, reduction=${heightReduction}px`
-    );
-
-    // Force immediate update to apply height change
-    this.requestUpdate();
-
-    // Always notify terminal to resize when there's a change
-    // Use requestAnimationFrame to ensure DOM has updated
-    requestAnimationFrame(() => {
-      const terminal = this.querySelector('vibe-terminal') as Terminal;
-      if (terminal) {
-        // Notify terminal of size change
-        const terminalElement = terminal as unknown as { fitTerminal?: () => void };
-        if (typeof terminalElement.fitTerminal === 'function') {
-          terminalElement.fitTerminal();
-        }
-
-        // If height was reduced, scroll to keep cursor visible
-        if (heightReduction > 0) {
-          // Small delay then scroll to bottom to keep cursor visible
-          setTimeout(() => {
-            terminal.scrollToBottom();
-          }, 50);
-        }
+      if (this.showQuickKeys && this.isMobile) {
+        // Quick keys height (approximately 140px based on CSS)
+        // Add 10px buffer to ensure content is visible above quick keys
+        const quickKeysHeight = 150;
+        heightReduction += quickKeysHeight;
       }
-    });
+
+      if (this.keyboardHeight > 0) {
+        // Add small buffer for keyboard too
+        heightReduction += this.keyboardHeight + 10;
+      }
+
+      // Calculate terminal container height
+      if (heightReduction > 0) {
+        // Use calc to subtract from full height (accounting for header)
+        this.terminalContainerHeight = `calc(100% - ${heightReduction}px)`;
+      } else {
+        this.terminalContainerHeight = '100%';
+      }
+
+      // Log for debugging
+      logger.log(
+        `Terminal height updated: quickKeys=${this.showQuickKeys}, keyboardHeight=${this.keyboardHeight}, reduction=${heightReduction}px`
+      );
+
+      // Force immediate update to apply height change
+      this.requestUpdate();
+
+      // Always notify terminal to resize when there's a change
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        const terminal = this.querySelector('vibe-terminal') as Terminal;
+        if (terminal) {
+          // Notify terminal of size change
+          const terminalElement = terminal as unknown as { fitTerminal?: () => void };
+          if (typeof terminalElement.fitTerminal === 'function') {
+            terminalElement.fitTerminal();
+          }
+
+          // If height was reduced, scroll to keep cursor visible
+          if (heightReduction > 0) {
+            // Small delay then scroll to bottom to keep cursor visible
+            setTimeout(() => {
+              terminal.scrollToBottom();
+            }, 50);
+          }
+        }
+      });
+    }, 100); // Debounce by 100ms
   }
 
   refreshTerminalAfterMobileInput() {

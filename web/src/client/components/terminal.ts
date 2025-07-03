@@ -387,15 +387,19 @@ export class Terminal extends LitElement {
         // Ensure cols and rows are valid numbers before resizing
         const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
         const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
-        this.terminal.resize(safeCols, safeRows);
 
-        // Dispatch resize event for backend synchronization
-        this.dispatchEvent(
-          new CustomEvent('terminal-resize', {
-            detail: { cols: this.cols, rows: this.rows },
-            bubbles: true,
-          })
-        );
+        // Only resize if dimensions have actually changed
+        if (safeCols !== this.terminal.cols || safeRows !== this.terminal.rows) {
+          this.terminal.resize(safeCols, safeRows);
+
+          // Dispatch resize event for backend synchronization
+          this.dispatchEvent(
+            new CustomEvent('terminal-resize', {
+              detail: { cols: safeCols, rows: safeRows },
+              bubbles: true,
+            })
+          );
+        }
       }
     } else {
       // Normal mode: calculate both cols and rows based on container size
@@ -439,15 +443,19 @@ export class Terminal extends LitElement {
         // Ensure cols and rows are valid numbers before resizing
         const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
         const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
-        this.terminal.resize(safeCols, safeRows);
 
-        // Dispatch resize event for backend synchronization
-        this.dispatchEvent(
-          new CustomEvent('terminal-resize', {
-            detail: { cols: this.cols, rows: this.rows },
-            bubbles: true,
-          })
-        );
+        // Only resize if dimensions have actually changed
+        if (safeCols !== this.terminal.cols || safeRows !== this.terminal.rows) {
+          this.terminal.resize(safeCols, safeRows);
+
+          // Dispatch resize event for backend synchronization
+          this.dispatchEvent(
+            new CustomEvent('terminal-resize', {
+              detail: { cols: safeCols, rows: safeRows },
+              bubbles: true,
+            })
+          );
+        }
       }
     }
 
