@@ -1,5 +1,9 @@
 # CI Status for PR #214 - Playwright Test Expansion
 
+**Last Updated**: Thu Jul 3 19:07:43 BST 2025
+**Branch**: playwright-expand
+**Base**: main
+
 ## Overview
 This PR adds comprehensive Playwright E2E test coverage for VibeTunnel features that were previously untested.
 
