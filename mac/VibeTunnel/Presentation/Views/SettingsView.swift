@@ -11,13 +11,20 @@ struct SettingsView: View {
     @AppStorage("debugMode")
     private var debugMode = false
 
+    // MARK: - Constants
+    
+    private enum Layout {
+        static let defaultTabSize = CGSize(width: 500, height: 620)
+        static let fallbackTabSize = CGSize(width: 500, height: 400)
+    }
+
     /// Define ideal sizes for each tab
     private let tabSizes: [SettingsTab: CGSize] = [
-        .general: CGSize(width: 500, height: 570),
-        .dashboard: CGSize(width: 500, height: 570),
-        .advanced: CGSize(width: 500, height: 570),
-        .debug: CGSize(width: 500, height: 570),
-        .about: CGSize(width: 500, height: 570)
+        .general: Layout.defaultTabSize,
+        .dashboard: Layout.defaultTabSize,
+        .advanced: Layout.defaultTabSize,
+        .debug: Layout.defaultTabSize,
+        .about: Layout.defaultTabSize
     ]
 
     var body: some View {
@@ -61,10 +68,10 @@ struct SettingsView: View {
             }
         }
         .onChange(of: selectedTab) { _, newTab in
-            contentSize = tabSizes[newTab] ?? CGSize(width: 500, height: 400)
+            contentSize = tabSizes[newTab] ?? Layout.fallbackTabSize
         }
         .onAppear {
-            contentSize = tabSizes[selectedTab] ?? CGSize(width: 500, height: 400)
+            contentSize = tabSizes[selectedTab] ?? Layout.fallbackTabSize
         }
         .onChange(of: debugMode) { _, _ in
             // If debug mode is disabled and we're on the debug tab, switch to general

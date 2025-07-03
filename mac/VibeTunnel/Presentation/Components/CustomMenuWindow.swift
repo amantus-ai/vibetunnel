@@ -435,6 +435,11 @@ struct CustomMenuContainer<Content: View>: View {
     var body: some View {
         content
             .fixedSize()
+            .background {
+                // First layer: tinted background for better readability
+                SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius)
+                    .fill(backgroundTint)
+            }
             .background(backgroundMaterial, in: SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius))
             .overlay(
                 SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius)
@@ -442,6 +447,19 @@ struct CustomMenuContainer<Content: View>: View {
             )
     }
 
+    private var backgroundTint: Color {
+        switch colorScheme {
+        case .dark:
+            // Black tint at 25% opacity for better text readability
+            Color.black.opacity(0.25)
+        case .light:
+            // White tint at 45% opacity for better contrast
+            Color.white.opacity(0.45)
+        @unknown default:
+            Color.black.opacity(0.25)
+        }
+    }
+    
     private var borderColor: Color {
         switch colorScheme {
         case .dark:

@@ -136,8 +136,8 @@ final class StatusBarController: NSObject {
     func updateStatusItemDisplay() {
         guard let button = statusItem?.button else { return }
 
-        // Update icon based on server and network status
-        let iconName = (serverManager.isRunning && hasNetworkAccess) ? "menubar" : "menubar.inactive"
+        // Update icon based on server status only
+        let iconName = serverManager.isRunning ? "menubar" : "menubar.inactive"
         if let image = NSImage(named: iconName) {
             image.isTemplate = true
             button.image = image
@@ -146,7 +146,7 @@ final class StatusBarController: NSObject {
             if let image = NSImage(named: "menubar") {
                 image.isTemplate = true
                 button.image = image
-                button.alphaValue = (serverManager.isRunning && hasNetworkAccess) ? 1.0 : 0.5
+                button.alphaValue = serverManager.isRunning ? 1.0 : 0.5
             }
         }
 

@@ -27,25 +27,24 @@ struct SessionRow: View {
     @State private var isTerminating = false
     @State private var isEditing = false
     @State private var editedName = ""
-    @State private var gitRepository: GitRepository?
     @State private var isHoveringFolder = false
     @FocusState private var isEditFieldFocused: Bool
+    
+    // Computed property that reads directly from the monitor's cache
+    // This will automatically update when the monitor refreshes
+    private var gitRepository: GitRepository? {
+        gitRepositoryMonitor.getCachedRepository(for: session.value.workingDir)
+    }
 
     var body: some View {
         Button(action: handleTap) {
             content
         }
         .buttonStyle(PlainButtonStyle())
-        .onAppear {
-            // First, try to get cached data synchronously
-            if gitRepository == nil {
-                gitRepository = gitRepositoryMonitor.getCachedRepository(for: session.value.workingDir)
-            }
-        }
         .task(id: session.value.workingDir) {
-            // Then fetch fresh data asynchronously (this will update the cache)
-            if let freshData = await gitRepositoryMonitor.findRepository(for: session.value.workingDir) {
-                gitRepository = freshData
+            // Fetch repository data if not already cached
+            if gitRepository == nil {
+                _ = await gitRepositoryMonitor.findRepository(for: session.value.workingDir)
             }
         }
     }
@@ -125,7 +124,7 @@ struct SessionRow: View {
                 // Second row: Path, Git info, Duration and X button
                 HStack(alignment: .center, spacing: 6) {
                     // Left side: Path and git info
-                    HStack(alignment: .center, spacing: 6) {
+                    HStack(alignment: .center, spacing: 4) {
                         // Folder icon and path - clickable as one unit
                         Button(action: {
                             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
@@ -139,7 +138,7 @@ struct SessionRow: View {
                                     .font(.system(size: 10, design: .monospaced))
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)
-                                    .truncationMode(.middle)
+                                    .truncationMode(.head)
                             }
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -249,14 +248,20 @@ struct SessionRow: View {
                 openWindow(id: "session-detail", value: session.key)
             }
 
+            Divider()
+
             Button("Show in Finder") {
                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
             }
 
             // Add git repository options if available
             if let repo = gitRepository {
-                Button("Open Git Repository in Finder") {
-                    NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repo.path)
+                Divider()
+
+                // Open in Git app
+                let gitAppName = getGitAppName()
+                Button("Open in \(gitAppName)") {
+                    GitAppLauncher.shared.openRepository(at: repo.path)
                 }
 
                 if repo.githubURL != nil {
@@ -266,7 +271,21 @@ struct SessionRow: View {
                         }
                     }
                 }
+                
+                Divider()
+                
+                Button("Copy Branch Name") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(repo.currentBranch ?? "detached", forType: .string)
+                }
+                
+                Button("Copy Repository Path") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(repo.path, forType: .string)
+                }
             }
+
+            Divider()
 
             Button("Rename Session...") {
                 startEditing()
@@ -300,6 +319,16 @@ struct SessionRow: View {
         }
     }
 
+    private func getGitAppName() -> String {
+        if let preferredApp = UserDefaults.standard.string(forKey: "preferredGitApp"),
+           !preferredApp.isEmpty,
+           let gitApp = GitApp(rawValue: preferredApp) {
+            return gitApp.displayName
+        }
+        // Return first installed git app or default
+        return GitApp.installed.first?.displayName ?? "Git App"
+    }
+    
     private func terminateSession() {
         isTerminating = true
 

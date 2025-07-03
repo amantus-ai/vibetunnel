@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.0.0-beta.7] - 2025-07-03
+
+### ✨ New Features
+
+#### **Git App Integration** 🆕
+- **Preferred Git App Selection** - Choose your favorite Git app (Tower, Fork, GitHub Desktop, SourceTree, Sublime Merge, GitUp, Visual Studio Code, Cursor, or Windsurf) in Settings
+- **Quick Repository Access** - Open any session's working directory in your preferred Git app directly from the context menu
+- **Smart Auto-Detection** - VibeTunnel automatically detects installed Git apps and pre-selects the best one based on popularity
+- **Unified Apps Section** - Terminal and Git app preferences are now organized in a single, clean "Apps" section in Settings
+
+#### **Session Name Management**
+- **Server-Side Unique Names** - Session names are now automatically made unique by the server, preventing duplicate names that could cause tab selection issues
+- **Smart Suffixes** - When renaming a session to an existing name, the server automatically adds a suffix like "(2)" to ensure uniqueness
+- **Consistent Experience** - Both web and native clients respect server-assigned names for a unified experience
+
+### 🎨 Improvements
+
+#### **UI Polish**
+- **Enhanced Menu Design** - Improved visual hierarchy with better spacing, subtle background tints, and refined hover effects
+- **Git Status Display** - Git branch and change indicators now have better alignment and visual clarity in session rows
+- **Path Display** - Working directory paths are now more readable with improved truncation and clickable folder icons
+- **Settings Organization** - Cleaner settings layout with constants for maintainable code
+
+#### **Menu Bar Enhancements**
+- **Server Status Clarity** - Menu bar icon opacity now only indicates server running status, not session count
+- **Expanded Menu Height** - Increased maximum menu height from 400 to 600 pixels for better visibility with many sessions
+- **Consistent Context Menus** - Unified context menu design across all UI elements
+
+### 🛠️ Technical Improvements
+
+- **Code Quality** - Removed legacy Tower 2 support for cleaner, more maintainable code
+- **Build System** - Enhanced release scripts with better error handling and recovery mechanisms
+- **Type Safety** - Fixed TypeScript and Swift type issues for more robust code
+- **Formatting** - Applied consistent code formatting with Biome for better readability
+
+### 🐛 Bug Fixes
+
+- Fixed Test button sizing to match Terminal picker height for visual consistency
+- Removed invalid "System Default" option from Git app picker (no system default exists for Git apps)
+- Fixed CI pipeline issues with proper code formatting
+- Improved window detection logic for more reliable session tracking
+
+### 📦 Dependencies
+
+- Updated to version 1.0.0-beta.7 across all components
+- Maintained compatibility with macOS 14.0+
+
 ## [1.0.0-beta.6] - 2025-07-03
 
 ### ✨ New Features

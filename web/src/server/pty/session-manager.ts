@@ -195,9 +195,35 @@ export class SessionManager {
   }
 
   /**
+   * Ensure a session name is unique by adding a suffix if necessary
+   */
+  private ensureUniqueName(desiredName: string, excludeSessionId?: string): string {
+    const sessions = this.listSessions();
+    let finalName = desiredName;
+    let suffix = 2;
+
+    // Keep checking until we find a unique name
+    while (true) {
+      const nameExists = sessions.some(
+        (session) => session.name === finalName && session.id !== excludeSessionId
+      );
+
+      if (!nameExists) {
+        break;
+      }
+
+      // Add or increment suffix
+      finalName = `${desiredName} (${suffix})`;
+      suffix++;
+    }
+
+    return finalName;
+  }
+
+  /**
    * Update session name
    */
-  updateSessionName(sessionId: string, name: string): void {
+  updateSessionName(sessionId: string, name: string): string {
     logger.debug(
       `[SessionManager] updateSessionName called for session ${sessionId} with name: ${name}`
     );
@@ -210,13 +236,22 @@ export class SessionManager {
 
     logger.debug(`[SessionManager] Current session info: ${JSON.stringify(sessionInfo)}`);
 
-    sessionInfo.name = name;
+    // Ensure the name is unique
+    const uniqueName = this.ensureUniqueName(name, sessionId);
+
+    if (uniqueName !== name) {
+      logger.log(`[SessionManager] Name "${name}" already exists, using "${uniqueName}" instead`);
+    }
+
+    sessionInfo.name = uniqueName;
 
     logger.debug(`[SessionManager] Updated session info: ${JSON.stringify(sessionInfo)}`);
     logger.debug(`[SessionManager] Calling saveSessionInfo`);
 
     this.saveSessionInfo(sessionId, sessionInfo);
-    logger.log(`[SessionManager] session ${sessionId} name updated to: ${name}`);
+    logger.log(`[SessionManager] session ${sessionId} name updated to: ${uniqueName}`);
+
+    return uniqueName;
   }
 
   /**

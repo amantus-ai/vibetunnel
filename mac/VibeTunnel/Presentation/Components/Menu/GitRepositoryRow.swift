@@ -10,8 +10,19 @@ struct GitRepositoryRow: View {
     @Environment(\.colorScheme)
     private var colorScheme
 
+    private var gitAppName: String {
+        if let preferredApp = UserDefaults.standard.string(forKey: "preferredGitApp"),
+           !preferredApp.isEmpty,
+           let gitApp = GitApp(rawValue: preferredApp)
+        {
+            return gitApp.displayName
+        }
+        // Return first installed git app or default
+        return GitApp.installed.first?.displayName ?? "Git App"
+    }
+
     private var branchInfo: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 1) {
             Image(systemName: "arrow.branch")
                 .font(.system(size: 9))
                 .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
@@ -21,33 +32,52 @@ struct GitRepositoryRow: View {
                 .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .frame(maxWidth: 60)
         }
     }
 
     private var changeIndicators: some View {
         Group {
             if repository.hasChanges {
-                HStack(spacing: 2) {
+                HStack(spacing: 3) {
                     if repository.modifiedCount > 0 {
-                        Text("M:\(repository.modifiedCount)")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(AppColors.Fallback.gitModified(for: colorScheme))
+                        HStack(spacing: 1) {
+                            Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
+                                .font(.system(size: 8))
+                                .foregroundColor(AppColors.Fallback.gitModified(for: colorScheme))
+                            Text("\(repository.modifiedCount)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitModified(for: colorScheme))
+                        }
                     }
                     if repository.addedCount > 0 {
-                        Text("A:\(repository.addedCount)")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(AppColors.Fallback.gitAdded(for: colorScheme))
+                        HStack(spacing: 1) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitAdded(for: colorScheme))
+                            Text("\(repository.addedCount)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitAdded(for: colorScheme))
+                        }
                     }
                     if repository.deletedCount > 0 {
-                        Text("D:\(repository.deletedCount)")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(AppColors.Fallback.gitDeleted(for: colorScheme))
+                        HStack(spacing: 1) {
+                            Image(systemName: "minus")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitDeleted(for: colorScheme))
+                            Text("\(repository.deletedCount)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitDeleted(for: colorScheme))
+                        }
                     }
                     if repository.untrackedCount > 0 {
-                        Text("U:\(repository.untrackedCount)")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(AppColors.Fallback.gitUntracked(for: colorScheme))
+                        HStack(spacing: 1) {
+                            Image(systemName: "questionmark")
+                                .font(.system(size: 8))
+                                .foregroundColor(AppColors.Fallback.gitUntracked(for: colorScheme))
+                            Text("\(repository.untrackedCount)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(AppColors.Fallback.gitUntracked(for: colorScheme))
+                        }
                     }
                 }
             }
@@ -60,8 +90,13 @@ struct GitRepositoryRow: View {
     }
 
     private var backgroundFillColor: Color {
-        // Only show background on hover - very subtle
-        isHovering ? AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.15) : Color.clear
+        // Show background on hover - stronger in light mode
+        if isHovering {
+            return colorScheme == .light 
+                ? AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.25)
+                : AppColors.Fallback.controlBackground(for: colorScheme).opacity(0.15)
+        }
+        return Color.clear
     }
 
     private var borderView: some View {
@@ -70,23 +105,31 @@ struct GitRepositoryRow: View {
     }
 
     private var borderColor: Color {
-        // Only show border on hover
-        isHovering ? AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.2) : Color.clear
+        // Show border on hover - stronger in light mode
+        if isHovering {
+            return colorScheme == .light
+                ? AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.3)
+                : AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.2)
+        }
+        return Color.clear
     }
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 2) {
+            // Branch info
             branchInfo
 
             if repository.hasChanges {
                 Text("•")
                     .font(.system(size: 8))
                     .foregroundColor(.secondary.opacity(0.5))
+                
+                changeIndicators
             }
-
-            changeIndicators
+            
+            Spacer()
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 4)
         .padding(.vertical, 2)
         .background(backgroundView)
         .overlay(borderView)
@@ -96,63 +139,11 @@ struct GitRepositoryRow: View {
         .onTapGesture {
             openInGitApp()
         }
-        .help("Open in Git app")
-        .contextMenu {
-            Button("Open in Tower") {
-                openInGitApp()
-            }
-
-            Button("Open Repository in Finder") {
-                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
-            }
-
-            if repository.githubURL != nil {
-                Button("Open on GitHub") {
-                    if let url = repository.githubURL {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-            }
-
-            Divider()
-
-            Button("Copy Branch Name") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(repository.currentBranch ?? "detached", forType: .string)
-            }
-
-            Button("Copy Repository Path") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(repository.path, forType: .string)
-            }
-        }
+        .help("Open in \(gitAppName)")
         .animation(.easeInOut(duration: 0.15), value: isHovering)
     }
 
     private func openInGitApp() {
-        // Try to open in Tower first, fall back to SourceTree, then GitKraken
-        let gitApps = [
-            "com.fournova.Tower3",
-            "com.fournova.Tower2",
-            "com.torusknot.SourceTreeNotMAS",
-            "com.axosoft.gitkraken"
-        ]
-
-        let url = URL(fileURLWithPath: repository.path)
-
-        // Try each app in order
-        for appIdentifier in gitApps {
-            if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: appIdentifier) {
-                NSWorkspace.shared.open(
-                    [url],
-                    withApplicationAt: appURL,
-                    configuration: NSWorkspace.OpenConfiguration()
-                )
-                return
-            }
-        }
-
-        // If no git app found, open in Finder as fallback
-        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
+        GitAppLauncher.shared.openRepository(at: repository.path)
     }
 }

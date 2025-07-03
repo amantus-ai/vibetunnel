@@ -66,14 +66,14 @@ final class SessionMonitor {
 
     /// Reference to GitRepositoryMonitor for pre-caching
     weak var gitRepositoryMonitor: GitRepositoryMonitor?
-    
+
     /// Timer for periodic refresh
     private var refreshTimer: Timer?
 
     private init() {
         let port = UserDefaults.standard.integer(forKey: "serverPort")
         self.serverPort = port > 0 ? port : 4_020
-        
+
         // Start periodic refresh
         startPeriodicRefresh()
     }
@@ -172,12 +172,12 @@ final class SessionMonitor {
             self.lastFetch = Date() // Still update timestamp to avoid hammering
         }
     }
-    
+
     /// Start periodic refresh of sessions
     private func startPeriodicRefresh() {
         // Clean up any existing timer
         refreshTimer?.invalidate()
-        
+
         // Create a new timer that fires every 3 seconds
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in

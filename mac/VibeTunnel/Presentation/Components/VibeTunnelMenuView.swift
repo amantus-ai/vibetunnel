@@ -92,7 +92,7 @@ struct VibeTunnelMenuView: View {
                     }
                 )
             }
-            .frame(maxHeight: 400)
+            .frame(maxHeight: 600)
 
             Divider()
 

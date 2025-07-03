@@ -127,7 +127,7 @@ final class WindowMatcher {
         // First try to find window by process PID traversal
         if let sessionPID = sessionInfo.pid {
             logger.debug("Scanning for window by process PID: \(sessionPID) for session \(sessionID)")
-            
+
             // Log the process tree for debugging
             processTracker.logProcessTree(for: pid_t(sessionPID))
 
@@ -135,7 +135,7 @@ final class WindowMatcher {
             var currentPID = pid_t(sessionPID)
             var depth = 0
             let maxDepth = 20 // Increased depth for deeply nested sessions
-            
+
             while depth < maxDepth {
                 // Check if any window is owned by this PID
                 if let matchingWindow = allWindows.first(where: { window in
@@ -144,7 +144,7 @@ final class WindowMatcher {
                     logger.info("Found window by PID \(currentPID) at depth \(depth) for session \(sessionID)")
                     return matchingWindow
                 }
-                
+
                 // Move up to parent process
                 if let parentPID = processTracker.getParentProcessID(of: currentPID) {
                     if parentPID == 0 || parentPID == 1 {
@@ -157,14 +157,14 @@ final class WindowMatcher {
                     break
                 }
             }
-            
+
             logger.debug("Process traversal completed at depth \(depth) without finding window")
         }
 
         // Fallback: Find by working directory
         let workingDir = sessionInfo.workingDir
         let dirName = (workingDir as NSString).lastPathComponent
-        
+
         logger.debug("Trying to match by directory: \(dirName) or full path: \(workingDir)")
 
         // Look for windows whose title contains the directory name
@@ -185,7 +185,7 @@ final class WindowMatcher {
         // Try to match by activity status (for sessions with specific activities)
         if let activity = sessionInfo.activityStatus?.specificStatus?.status, !activity.isEmpty {
             logger.debug("Trying to match by activity: \(activity)")
-            
+
             if let matchingWindow = allWindows.first(where: { window in
                 if let title = window.title {
                     return title.contains(activity)
@@ -200,9 +200,12 @@ final class WindowMatcher {
         logger.warning("Could not find window for session \(sessionID) after all attempts")
         logger.debug("Available windows: \(allWindows.count)")
         for (index, window) in allWindows.enumerated() {
-            logger.debug("  Window \(index): PID=\(window.ownerPID), Terminal=\(window.terminalApp.rawValue), Title=\(window.title ?? "<no title>")")
+            logger
+                .debug(
+                    "  Window \(index): PID=\(window.ownerPID), Terminal=\(window.terminalApp.rawValue), Title=\(window.title ?? "<no title>")"
+                )
         }
-        
+
         return nil
     }
 
@@ -215,7 +218,7 @@ final class WindowMatcher {
         let sessionID = sessionInfo.id
         let activityStatus = sessionInfo.activityStatus?.specificStatus?.status
         let sessionName = sessionInfo.name
-        
+
         logger.debug("Looking for tab matching session \(sessionID) in \(tabs.count) tabs")
         logger.debug("  Working dir: \(workingDir)")
         logger.debug("  Dir name: \(dirName)")
@@ -228,13 +231,13 @@ final class WindowMatcher {
                let title = titleValue as? String
             {
                 logger.debug("Tab \(index) title: \(title)")
-                
+
                 // Check for session ID match first (most precise)
                 if title.contains(sessionID) || title.contains("TTY_SESSION_ID=\(sessionID)") {
                     logger.info("Found tab by session ID match at index \(index)")
                     return tab
                 }
-                
+
                 // Check for session name match
                 if let name = sessionName, !name.isEmpty, title.contains(name) {
                     logger.info("Found tab by session name match: \(name) at index \(index)")
@@ -251,12 +254,12 @@ final class WindowMatcher {
                 let titleLower = title.lowercased()
                 let dirNameLower = dirName.lowercased()
                 let workingDirLower = workingDir.lowercased()
-                
+
                 if titleLower.contains(dirNameLower) || titleLower.contains(workingDirLower) {
                     logger.info("Found tab by directory match at index \(index)")
                     return tab
                 }
-                
+
                 // Check if the tab title ends with the directory name (common pattern)
                 if title.hasSuffix(dirName) || title.hasSuffix(" - \(dirName)") {
                     logger.info("Found tab by directory suffix match at index \(index)")
@@ -266,7 +269,7 @@ final class WindowMatcher {
                 logger.debug("Tab \(index): Could not get title")
             }
         }
-        
+
         logger.warning("No matching tab found for session \(sessionID)")
         return nil
     }

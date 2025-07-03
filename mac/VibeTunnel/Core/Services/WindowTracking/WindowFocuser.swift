@@ -76,16 +76,16 @@ final class WindowFocuser {
     private func focusiTerm2Window(_ windowInfo: WindowEnumerator.WindowInfo) {
         // iTerm2 has its own tab system that doesn't use standard macOS tabs
         // We need to use AppleScript to find and select the correct tab
-        
+
         let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
         let workingDir = sessionInfo?.workingDir ?? ""
         let dirName = (workingDir as NSString).lastPathComponent
-        
+
         // Try to find and focus the tab with matching content
         let script = """
         tell application "iTerm2"
             activate
-            
+
             -- Look through all windows
             repeat with w in windows
                 -- Look through all tabs in the window
@@ -94,7 +94,7 @@ final class WindowFocuser {
                     repeat with s in sessions of t
                         -- Check if the session's name or working directory matches
                         set sessionName to name of s
-                        
+
                         -- Try to match by session content
                         if sessionName contains "\(windowInfo.sessionID)" or sessionName contains "\(dirName)" then
                             -- Found it! Select this tab and window
@@ -106,7 +106,7 @@ final class WindowFocuser {
                     end repeat
                 end repeat
             end repeat
-            
+
             -- If we have a window ID, at least focus that window
             if "\(windowInfo.tabID ?? "")" is not "" then
                 try
@@ -128,6 +128,27 @@ final class WindowFocuser {
         }
     }
 
+    /// Get the first tab group in a window (improved approach based on screenshot)
+    private func getTabGroup(from window: AXUIElement) -> AXUIElement? {
+        var childrenRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            window,
+            kAXChildrenAttribute as CFString,
+            &childrenRef
+        ) == .success,
+            let children = childrenRef as? [AXUIElement]
+        else {
+            return nil
+        }
+
+        // Find the first element with role kAXTabGroupRole
+        return children.first { elem in
+            var roleRef: CFTypeRef?
+            AXUIElementCopyAttributeValue(elem, kAXRoleAttribute as CFString, &roleRef)
+            return (roleRef as? String) == kAXTabGroupRole as String
+        }
+    }
+
     /// Select the correct tab in a window that uses macOS standard tabs
     private func selectTab(
         tabs: [AXUIElement],
@@ -135,21 +156,31 @@ final class WindowFocuser {
         sessionInfo: ServerSessionInfo?
     ) {
         logger.debug("Attempting to select tab for session \(windowInfo.sessionID) from \(tabs.count) tabs")
-        
+
         // Try to find the correct tab
         if let matchingTab = windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) {
-            // Found matching tab - select it
+            // Found matching tab - select it using kAXPressAction (most reliable)
             let result = AXUIElementPerformAction(matchingTab, kAXPressAction as CFString)
             if result == .success {
                 logger.info("Successfully selected matching tab for session \(windowInfo.sessionID)")
             } else {
-                logger.warning("Failed to select tab, error: \(result.rawValue)")
-                
+                logger.warning("Failed to select tab with kAXPressAction, error: \(result.rawValue)")
+
                 // Try alternative selection method - set as selected
                 var selectedValue: CFTypeRef?
-                if AXUIElementCopyAttributeValue(matchingTab, kAXSelectedAttribute as CFString, &selectedValue) == .success {
-                    AXUIElementSetAttributeValue(matchingTab, kAXSelectedAttribute as CFString, true as CFTypeRef)
-                    logger.info("Selected tab using AXSelected attribute")
+                if AXUIElementCopyAttributeValue(matchingTab, kAXSelectedAttribute as CFString, &selectedValue) ==
+                    .success
+                {
+                    let setResult = AXUIElementSetAttributeValue(
+                        matchingTab,
+                        kAXSelectedAttribute as CFString,
+                        true as CFTypeRef
+                    )
+                    if setResult == .success {
+                        logger.info("Selected tab using AXSelected attribute")
+                    } else {
+                        logger.error("Failed to set AXSelected attribute, error: \(setResult.rawValue)")
+                    }
                 }
             }
         } else if tabs.count == 1 {
@@ -158,17 +189,40 @@ final class WindowFocuser {
             logger.info("Selected the only available tab")
         } else {
             // Multiple tabs but no match - try to find by index or select first
-            logger.warning("Multiple tabs (\(tabs.count)) but could not identify correct one for session \(windowInfo.sessionID)")
-            
+            logger
+                .warning(
+                    "Multiple tabs (\(tabs.count)) but could not identify correct one for session \(windowInfo.sessionID)"
+                )
+
             // Log tab titles for debugging
             for (index, tab) in tabs.enumerated() {
                 var titleValue: CFTypeRef?
                 if AXUIElementCopyAttributeValue(tab, kAXTitleAttribute as CFString, &titleValue) == .success,
-                   let title = titleValue as? String {
+                   let title = titleValue as? String
+                {
                     logger.debug("  Tab \(index): \(title)")
                 }
             }
         }
+    }
+
+    /// Select a tab by index in a tab group (helper method from screenshot)
+    private func selectTab(at index: Int, in group: AXUIElement) -> Bool {
+        var tabsRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            group,
+            "AXTabs" as CFString,
+            &tabsRef
+        ) == .success,
+            let tabs = tabsRef as? [AXUIElement],
+            index < tabs.count
+        else {
+            logger.warning("Could not get tabs from group or index out of bounds")
+            return false
+        }
+
+        let result = AXUIElementPerformAction(tabs[index], kAXPressAction as CFString)
+        return result == .success
     }
 
     /// Focuses a window using Accessibility APIs.
@@ -197,14 +251,14 @@ final class WindowFocuser {
 
         // Get session info for tab matching
         let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
-        
+
         // First, try to find window with matching tab content
         var foundWindowWithTab = false
-        
+
         for (index, window) in windows.enumerated() {
             // Check different window ID attributes (different apps use different ones)
             var windowMatches = false
-            
+
             // Try _AXWindowNumber (used by many apps)
             var windowIDValue: CFTypeRef?
             if AXUIElementCopyAttributeValue(window, "_AXWindowNumber" as CFString, &windowIDValue) == .success,
@@ -213,42 +267,70 @@ final class WindowFocuser {
                 windowMatches = (axWindowID == windowInfo.windowID)
                 logger.debug("Window \(index) _AXWindowNumber: \(axWindowID), matches: \(windowMatches)")
             }
-            
-            // Check if this window has tabs
-            var tabsValue: CFTypeRef?
-            let hasTabsResult = AXUIElementCopyAttributeValue(window, kAXTabsAttribute as CFString, &tabsValue)
-            
-            if hasTabsResult == .success,
-               let tabs = tabsValue as? [AXUIElement],
-               !tabs.isEmpty
-            {
-                logger.info("Window \(index) has \(tabs.count) tabs")
-                
-                // Try to find matching tab
-                if windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) != nil {
-                    // Found the tab! Focus the window and select the tab
-                    logger.info("Found matching tab in window \(index)")
-                    
-                    // Make window main and focused
+
+            // Try the improved approach: get tab group first
+            if let tabGroup = getTabGroup(from: window) {
+                // Get tabs from the tab group
+                var tabsValue: CFTypeRef?
+                if AXUIElementCopyAttributeValue(tabGroup, "AXTabs" as CFString, &tabsValue) == .success,
+                   let tabs = tabsValue as? [AXUIElement],
+                   !tabs.isEmpty
+                {
+                    logger.info("Window \(index) has tab group with \(tabs.count) tabs")
+
+                    // Try to find matching tab
+                    if windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) != nil {
+                        // Found the tab! Focus the window and select the tab
+                        logger.info("Found matching tab in window \(index)")
+
+                        // Make window main and focused
+                        AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
+                        AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
+
+                        // Select the tab
+                        selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
+
+                        foundWindowWithTab = true
+                        return
+                    }
+                }
+            } else {
+                // Fallback: Try direct tabs attribute (older approach)
+                var tabsValue: CFTypeRef?
+                let hasTabsResult = AXUIElementCopyAttributeValue(window, kAXTabsAttribute as CFString, &tabsValue)
+
+                if hasTabsResult == .success,
+                   let tabs = tabsValue as? [AXUIElement],
+                   !tabs.isEmpty
+                {
+                    logger.info("Window \(index) has \(tabs.count) tabs (direct attribute)")
+
+                    // Try to find matching tab
+                    if windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) != nil {
+                        // Found the tab! Focus the window and select the tab
+                        logger.info("Found matching tab in window \(index)")
+
+                        // Make window main and focused
+                        AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
+                        AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
+
+                        // Select the tab
+                        selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
+
+                        foundWindowWithTab = true
+                        return
+                    }
+                } else if windowMatches {
+                    // Window matches by ID but has no tabs (or tabs not accessible)
+                    logger.info("Window \(index) matches by ID but has no accessible tabs")
+
+                    // Focus the window anyway
                     AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
                     AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
-                    
-                    // Select the tab
-                    selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
-                    
-                    foundWindowWithTab = true
+
+                    logger.info("Focused window \(windowInfo.windowID) without tab selection")
                     return
                 }
-            } else if windowMatches {
-                // Window matches by ID but has no tabs (or tabs not accessible)
-                logger.info("Window \(index) matches by ID but has no accessible tabs")
-                
-                // Focus the window anyway
-                AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, true as CFTypeRef)
-                AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, true as CFTypeRef)
-                
-                logger.info("Focused window \(windowInfo.windowID) without tab selection")
-                return
             }
         }
 
