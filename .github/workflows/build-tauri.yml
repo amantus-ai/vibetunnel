@@ -76,8 +76,9 @@ jobs:
     - name: Install web dependencies
       working-directory: ./web
       run: |
-        # Install dependencies and rebuild native modules for the target platform
-        pnpm install --frozen-lockfile
+        # Install dependencies (without frozen lockfile due to config differences)
+        pnpm install
+        # Rebuild native modules for the target platform
         pnpm rebuild
 
     - name: Build web assets
