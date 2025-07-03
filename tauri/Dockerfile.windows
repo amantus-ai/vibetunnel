@@ -12,8 +12,14 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
 
+# Install pnpm
+RUN npm install -g pnpm
+
 # Add Windows target
 RUN rustup target add x86_64-pc-windows-gnu
+
+# Install cargo-tauri
+RUN cargo install cargo-tauri
 
 # Set working directory
 WORKDIR /app
