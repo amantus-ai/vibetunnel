@@ -730,4 +730,179 @@ describe('SessionView', () => {
       }
     });
   });
+
+  describe('updateTerminalTransform debounce', () => {
+    let fitTerminalSpy: any;
+    let terminalElement: any;
+
+    beforeEach(async () => {
+      const mockSession = createMockSession();
+      element.session = mockSession;
+      await element.updateComplete;
+
+      // Mock the terminal element and fitTerminal method
+      terminalElement = {
+        fitTerminal: vi.fn(),
+        scrollToBottom: vi.fn(),
+      };
+
+      fitTerminalSpy = terminalElement.fitTerminal;
+
+      // Override querySelector to return our mock terminal
+      vi.spyOn(element, 'querySelector').mockReturnValue(terminalElement);
+    });
+
+    it('should debounce multiple rapid calls to updateTerminalTransform', async () => {
+      // Enable fake timers
+      vi.useFakeTimers();
+
+      // Call updateTerminalTransform multiple times rapidly
+      (element as any).updateTerminalTransform();
+      (element as any).updateTerminalTransform();
+      (element as any).updateTerminalTransform();
+      (element as any).updateTerminalTransform();
+      (element as any).updateTerminalTransform();
+
+      // Verify fitTerminal hasn't been called yet
+      expect(fitTerminalSpy).not.toHaveBeenCalled();
+
+      // Advance timers by 50ms (less than debounce time)
+      vi.advanceTimersByTime(50);
+      expect(fitTerminalSpy).not.toHaveBeenCalled();
+
+      // Advance timers past the debounce time (100ms total)
+      vi.advanceTimersByTime(60);
+
+      // Wait for requestAnimationFrame
+      await vi.runAllTimersAsync();
+
+      // Now fitTerminal should have been called exactly once
+      expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
+    });
+
+    it('should properly calculate terminal height with keyboard and quick keys', async () => {
+      vi.useFakeTimers();
+
+      // Set mobile mode and show quick keys
+      (element as any).isMobile = true;
+      (element as any).showQuickKeys = true;
+      (element as any).keyboardHeight = 300;
+
+      // Call updateTerminalTransform
+      (element as any).updateTerminalTransform();
+
+      // Advance timers past debounce
+      vi.advanceTimersByTime(110);
+      await vi.runAllTimersAsync();
+
+      // Check that terminal container height was calculated correctly
+      // Quick keys height (150) + keyboard height (300) + buffer (10) = 460px reduction
+      expect(element.terminalContainerHeight).toBe('calc(100% - 460px)');
+
+      // Should have called fitTerminal
+      expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
+
+      // Should have called scrollToBottom due to height reduction
+      expect(terminalElement.scrollToBottom).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('should only apply quick keys height adjustment on mobile', async () => {
+      vi.useFakeTimers();
+
+      // Set desktop mode but show quick keys
+      (element as any).isMobile = false;
+      (element as any).showQuickKeys = true;
+      (element as any).keyboardHeight = 0;
+
+      // Call updateTerminalTransform
+      (element as any).updateTerminalTransform();
+
+      // Advance timers past debounce
+      vi.advanceTimersByTime(110);
+      await vi.runAllTimersAsync();
+
+      // On desktop, quick keys should not affect terminal height
+      expect(element.terminalContainerHeight).toBe('100%');
+
+      vi.useRealTimers();
+    });
+
+    it('should reset terminal container height when keyboard is hidden', async () => {
+      vi.useFakeTimers();
+
+      // Initially set some height reduction
+      (element as any).isMobile = true;
+      (element as any).showQuickKeys = false;
+      (element as any).keyboardHeight = 300;
+      (element as any).updateTerminalTransform();
+
+      vi.advanceTimersByTime(110);
+      await vi.runAllTimersAsync();
+
+      expect(element.terminalContainerHeight).toBe('calc(100% - 310px)');
+
+      // Now hide the keyboard
+      (element as any).keyboardHeight = 0;
+      (element as any).updateTerminalTransform();
+
+      vi.advanceTimersByTime(110);
+      await vi.runAllTimersAsync();
+
+      // Height should be reset to 100%
+      expect(element.terminalContainerHeight).toBe('100%');
+
+      vi.useRealTimers();
+    });
+
+    it('should clear pending timeout on disconnect', async () => {
+      vi.useFakeTimers();
+
+      // Call updateTerminalTransform to set a timeout
+      (element as any).updateTerminalTransform();
+
+      // Verify timeout is set
+      expect((element as any)._updateTerminalTransformTimeout).toBeTruthy();
+
+      // Disconnect the element
+      element.disconnectedCallback();
+
+      // Verify timeout was cleared
+      expect((element as any)._updateTerminalTransformTimeout).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it('should handle successive calls with different parameters', async () => {
+      vi.useFakeTimers();
+
+      // First call with keyboard height
+      (element as any).isMobile = true;
+      (element as any).keyboardHeight = 200;
+      (element as any).updateTerminalTransform();
+
+      // Second call with different height before debounce
+      (element as any).keyboardHeight = 300;
+      (element as any).updateTerminalTransform();
+
+      // Third call with quick keys enabled
+      (element as any).showQuickKeys = true;
+      (element as any).updateTerminalTransform();
+
+      // Advance timers past debounce
+      vi.advanceTimersByTime(110);
+      await vi.runAllTimersAsync();
+
+      // Should use the latest values: keyboard 300 + quick keys 150 + buffer 10 = 460px
+      expect(element.terminalContainerHeight).toBe('calc(100% - 460px)');
+
+      // Should have called fitTerminal only once due to debounce
+      expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
+    });
+  });
 });
