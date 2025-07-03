@@ -8,8 +8,8 @@ struct ServerListView: View {
     @State private var showingAddServer = false
     @State private var selectedProfile: ServerProfile?
     @State private var showingProfileEditor = false
-    
-    // Inject ViewModel directly - clean separation
+
+    /// Inject ViewModel directly - clean separation
     init(viewModel: ServerListViewModel = ServerListViewModel()) {
         _viewModel = State(initialValue: viewModel)
     }

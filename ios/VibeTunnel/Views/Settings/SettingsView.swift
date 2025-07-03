@@ -98,12 +98,12 @@ struct GeneralSettingsView: View {
     private var enableLivePreviews = true
     @AppStorage("colorSchemePreference")
     private var colorSchemePreferenceRaw = "system"
-    
+
     enum ColorSchemePreference: String, CaseIterable {
         case system = "system"
         case light = "light"
         case dark = "dark"
-        
+
         var displayName: String {
             switch self {
             case .system: "System"
@@ -112,7 +112,7 @@ struct GeneralSettingsView: View {
             }
         }
     }
-    
+
     private var colorSchemePreference: ColorSchemePreference {
         ColorSchemePreference(rawValue: colorSchemePreferenceRaw) ?? .system
     }

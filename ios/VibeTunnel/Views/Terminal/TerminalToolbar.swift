@@ -215,7 +215,7 @@ struct TerminalToolbar: View {
 
                         Spacer()
                     }
-                    
+
                     // Sixth row - custom Ctrl key input
                     HStack(spacing: Theme.Spacing.extraSmall) {
                         Text("CTRL +")

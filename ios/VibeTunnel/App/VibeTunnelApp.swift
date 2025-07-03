@@ -43,10 +43,10 @@ struct VibeTunnelApp: App {
     }
 
     #if targetEnvironment(macCatalyst)
-    private func getStoredWindowStyle() -> MacWindowStyle {
-        let styleRaw = UserDefaults.standard.string(forKey: "macWindowStyle") ?? "standard"
-        return styleRaw == "inline" ? .inline : .standard
-    }
+        private func getStoredWindowStyle() -> MacWindowStyle {
+            let styleRaw = UserDefaults.standard.string(forKey: "macWindowStyle") ?? "standard"
+            return styleRaw == "inline" ? .inline : .standard
+        }
     #endif
 
     private func handleURL(_ url: URL) {

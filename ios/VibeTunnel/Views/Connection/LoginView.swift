@@ -7,7 +7,7 @@ struct LoginView: View {
 
     let serverConfig: ServerConfig
     let authenticationService: AuthenticationService
-    let onSuccess: (String, String) -> Void  // (username, password) -> Void
+    let onSuccess: (String, String) -> Void // (username, password) -> Void
 
     @State private var username = ""
     @State private var password = ""
@@ -153,7 +153,7 @@ struct LoginView: View {
                 // If no auth required, dismiss immediately
                 if authConfig?.noAuth == true {
                     dismiss()
-                    onSuccess("", "")  // No credentials needed
+                    onSuccess("", "") // No credentials needed
                 }
             } catch {
                 // Continue with password auth

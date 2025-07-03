@@ -10,15 +10,16 @@ import Observation
 @MainActor
 final class ConnectionManager {
     static let shared = ConnectionManager()
-    
+
     // MARK: - Constants
-    
+
     private enum Constants {
         static let connectionRestorationWindow: TimeInterval = 3_600 // 1 hour
         static let savedServerConfigKey = "savedServerConfig"
         static let connectionStateKey = "connectionState"
         static let lastConnectionTimeKey = "lastConnectionTime"
     }
+
     var isConnected: Bool = false {
         didSet {
             guard oldValue != isConnected else { return }
@@ -36,14 +37,14 @@ final class ConnectionManager {
         loadSavedConnection()
         restoreConnectionState()
     }
-    
+
     #if DEBUG
-    /// Test-only factory method for creating instances with mock storage
-    /// - Parameter storage: Mock storage for testing
-    /// - Returns: A new ConnectionManager instance for testing
-    internal static func createForTesting(storage: PersistentStorage) -> ConnectionManager {
-        return ConnectionManager(storage: storage)
-    }
+        /// Test-only factory method for creating instances with mock storage
+        /// - Parameter storage: Mock storage for testing
+        /// - Returns: A new ConnectionManager instance for testing
+        static func createForTesting(storage: PersistentStorage) -> ConnectionManager {
+            ConnectionManager(storage: storage)
+        }
     #endif
 
     private func loadSavedConnection() {
@@ -51,13 +52,13 @@ final class ConnectionManager {
            let config = try? JSONDecoder().decode(ServerConfig.self, from: data)
         {
             self.serverConfig = config
-            
+
             // Set up authentication service for restored connection
             authenticationService = AuthenticationService(
                 apiClient: APIClient.shared,
                 serverConfig: config
             )
-            
+
             // Configure API client and WebSocket client with auth service
             if let authService = authenticationService {
                 APIClient.shared.setAuthenticationService(authService)
@@ -123,4 +124,3 @@ final class ConnectionManager {
         serverConfig
     }
 }
-

@@ -6,17 +6,17 @@ enum AuthenticationError: LocalizedError {
     case invalidCredentials
     case tokenExpired
     case serverError(String)
-    
+
     var errorDescription: String? {
         switch self {
         case .credentialsNotFound:
-            return "No stored credentials found"
+            "No stored credentials found"
         case .invalidCredentials:
-            return "Invalid username or password"
+            "Invalid username or password"
         case .tokenExpired:
-            return "Authentication token has expired"
+            "Authentication token has expired"
         case .serverError(let message):
-            return "Server error: \(message)"
+            "Server error: \(message)"
         }
     }
 }
@@ -220,9 +220,12 @@ final class AuthenticationService: ObservableObject {
 
     /// Attempt automatic login using stored credentials for a server profile
     func attemptAutoLogin(profile: ServerProfile) async throws {
-        logger.debug("attemptAutoLogin called for profile: \(profile.name) (id: \(profile.id)), isAuthenticated: \(isAuthenticated)")
+        logger
+            .debug(
+                "attemptAutoLogin called for profile: \(profile.name) (id: \(profile.id)), isAuthenticated: \(isAuthenticated)"
+            )
         logger.debug("Profile requiresAuth: \(profile.requiresAuth), username: \(profile.username ?? "nil")")
-        
+
         // Check if we already have valid authentication
         if isAuthenticated {
             let tokenValid = await verifyToken()
@@ -233,27 +236,30 @@ final class AuthenticationService: ObservableObject {
                 logger.warning("Token verification failed, will attempt fresh login")
             }
         }
-        
+
         // Check if profile requires authentication
         if !profile.requiresAuth {
-            logger.debug("Profile does not require authentication, but server requires it - treating as credentials not found")
+            logger
+                .debug(
+                    "Profile does not require authentication, but server requires it - treating as credentials not found"
+                )
             throw AuthenticationError.credentialsNotFound
         }
-        
+
         // Get stored password from keychain
         do {
             let password = try keychainService.getPassword(for: profile.id)
             logger.debug("Successfully retrieved password from keychain for profile: \(profile.name)")
             logger.debug("Password length: \(password.count) characters")
-            
+
             // Get username from profile or use default
             guard let username = profile.username else {
                 logger.error("No username configured for profile: \(profile.name)")
                 throw AuthenticationError.credentialsNotFound
             }
-            
+
             logger.debug("Attempting authentication with username: \(username)")
-            
+
             // Attempt authentication with stored credentials
             do {
                 try await authenticateWithPassword(username: username, password: password)
@@ -273,7 +279,9 @@ final class AuthenticationService: ObservableObject {
                 throw AuthenticationError.invalidCredentials
             }
         } catch let keychainError {
-            logger.error("Failed to retrieve password from keychain for profile: \(profile.name), error: \(keychainError)")
+            logger
+                .error("Failed to retrieve password from keychain for profile: \(profile.name), error: \(keychainError)"
+                )
             logger.debug("Looking for keychain item with account: server-\(profile.id)")
             if let keychainErr = keychainError as? KeychainService.KeychainError {
                 switch keychainErr {

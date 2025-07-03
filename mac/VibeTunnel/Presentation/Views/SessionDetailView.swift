@@ -412,6 +412,7 @@ struct SessionDetailView: View {
             }
 
             logger.info("Successfully captured window screenshot")
+
         } catch {
             logger.error("Failed to capture screenshot: \(error)")
         }
