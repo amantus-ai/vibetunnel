@@ -7,6 +7,9 @@ import {
 } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
+// These tests create their own sessions and can run in parallel
+test.describe.configure({ mode: 'parallel' });
+
 test.describe('Session Management', () => {
   let sessionManager: TestSessionManager;
 

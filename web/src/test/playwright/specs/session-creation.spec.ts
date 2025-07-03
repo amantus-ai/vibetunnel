@@ -11,6 +11,9 @@ import {
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { waitForElementStable } from '../helpers/wait-strategies.helper';
 
+// These tests create their own sessions and can run in parallel
+test.describe.configure({ mode: 'parallel' });
+
 test.describe('Session Creation', () => {
   let sessionManager: TestSessionManager;
 

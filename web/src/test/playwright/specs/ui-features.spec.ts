@@ -4,6 +4,9 @@ import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper'
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { waitForModalClosed } from '../helpers/wait-strategies.helper';
 
+// These tests create their own sessions and can run in parallel
+test.describe.configure({ mode: 'parallel' });
+
 test.describe('UI Features', () => {
   let sessionManager: TestSessionManager;
 

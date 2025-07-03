@@ -6,6 +6,9 @@ import { TestDataFactory } from '../utils/test-utils';
 // Use a unique prefix for this test suite
 const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('minimal-session');
 
+// These tests create their own sessions and can run in parallel
+test.describe.configure({ mode: 'parallel' });
+
 test.describe('Minimal Session Tests', () => {
   let sessionManager: TestSessionManager;
 

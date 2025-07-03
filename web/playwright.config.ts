@@ -18,13 +18,13 @@ export default defineConfig({
   /* Global setup */
   globalSetup: require.resolve('./src/test/playwright/global-setup.ts'),
   /* Run tests in files in parallel */
-  fullyParallel: false, // Keep sequential for stability
+  fullyParallel: true, // Enable parallel execution for better performance
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: 1, // Force single worker for stability
+  /* Parallel workers configuration */
+  workers: process.env.CI ? 2 : undefined, // Use 2 workers in CI, auto-detect locally
   /* Test timeout */
   timeout: process.env.CI ? 30 * 1000 : 20 * 1000, // 30s on CI, 20s locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -74,9 +74,32 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    // Parallel tests - these tests create their own isolated sessions
     {
-      name: 'chromium',
+      name: 'chromium-parallel',
       use: { ...devices['Desktop Chrome'] },
+      testMatch: [
+        '**/session-creation.spec.ts',
+        '**/basic-session.spec.ts',
+        '**/minimal-session.spec.ts',
+        '**/debug-session.spec.ts',
+        '**/ui-features.spec.ts',
+        '**/test-session-persistence.spec.ts',
+        '**/session-navigation.spec.ts',
+        '**/session-management.spec.ts',
+        '**/session-management-advanced.spec.ts',
+      ],
+    },
+    // Serial tests - these tests perform global operations or modify shared state
+    {
+      name: 'chromium-serial',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: [
+        '**/session-management-global.spec.ts',
+        '**/keyboard-shortcuts.spec.ts',
+        '**/terminal-interaction.spec.ts',
+      ],
+      fullyParallel: false, // Override global setting for serial tests
     },
   ],
 
