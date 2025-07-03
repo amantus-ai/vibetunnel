@@ -15,6 +15,11 @@
 #   type     Release type: stable, beta, alpha, rc
 #   number   Pre-release number (required for beta/alpha/rc)
 #
+# IMPORTANT NOTES:
+#   - This script can take 10-15 minutes due to notarization
+#   - If running from Claude or other tools with timeouts, use a longer timeout
+#   - If the script fails partway, use release-resume.sh to continue
+#
 # FEATURES:
 #   - Complete build and release automation
 #   - Automatic IS_PRERELEASE_BUILD flag handling
