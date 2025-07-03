@@ -59,22 +59,10 @@ enum GitApp: String, CaseIterable {
     }
 
     var isInstalled: Bool {
-        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil ||
-            // Check for Tower 2 as well
-            (self == .tower && NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.fournova.Tower2") != nil)
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil
     }
 
     var appIcon: NSImage? {
-        // Try Tower 3 first, then Tower 2
-        if self == .tower {
-            if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
-                return NSWorkspace.shared.icon(forFile: appURL.path)
-            } else if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.fournova.Tower2") {
-                return NSWorkspace.shared.icon(forFile: appURL.path)
-            }
-            return nil
-        }
-
         guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else {
             return nil
         }
@@ -85,18 +73,9 @@ enum GitApp: String, CaseIterable {
         allCases.filter(\.isInstalled)
     }
 
-    /// Get the actual bundle identifier to use (handles Tower 2/3)
+    /// Get the actual bundle identifier to use
     var actualBundleIdentifier: String? {
-        if self == .tower {
-            // Try Tower 3 first, then Tower 2
-            if NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil {
-                return bundleIdentifier
-            } else if NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.fournova.Tower2") != nil {
-                return "com.fournova.Tower2"
-            }
-            return nil
-        }
-        return isInstalled ? bundleIdentifier : nil
+        isInstalled ? bundleIdentifier : nil
     }
 }
 
