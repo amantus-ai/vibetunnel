@@ -456,8 +456,22 @@ export class ScreencapView extends LitElement {
 
     const img = event.target as HTMLImageElement;
     const rect = img.getBoundingClientRect();
-    const x = Math.round((event.clientX - rect.left) * (img.naturalWidth / rect.width));
-    const y = Math.round((event.clientY - rect.top) * (img.naturalHeight / rect.height));
+    
+    // Calculate click position relative to the image element's displayed size
+    const imageClickX = event.clientX - rect.left;
+    const imageClickY = event.clientY - rect.top;
+    
+    // Clamp to image bounds to prevent out-of-bounds clicks
+    const clampedX = Math.max(0, Math.min(imageClickX, rect.width));
+    const clampedY = Math.max(0, Math.min(imageClickY, rect.height));
+    
+    // Convert to normalized coordinates (0.0 to 1.0) within the displayed image
+    const relativeX = clampedX / rect.width;
+    const relativeY = clampedY / rect.height;
+    
+    // Send as 0-1000 range for precision (matches original node-sharer implementation)
+    const x = Math.round(relativeX * 1000);
+    const y = Math.round(relativeY * 1000);
 
     try {
       await fetch('/api/screencap/click', {
@@ -466,7 +480,7 @@ export class ScreencapView extends LitElement {
         body: JSON.stringify({ x, y }),
       });
 
-      logger.log(`Clicked at ${x}, ${y}`);
+      logger.log(`🖱️ Clicked at relative coordinates: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${x}, ${y})`);
     } catch (error) {
       logger.error('Failed to send click:', error);
     }
