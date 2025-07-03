@@ -391,9 +391,9 @@ struct SessionRow: View {
         let cmd = commandName.lowercased()
         return cmd == "claude" || cmd.contains("claude") ||
                cmd == "gemini" || cmd.contains("gemini") ||
-               cmd == "gpt" || cmd.contains("gpt") ||
-               cmd == "llm" || cmd.contains("llm") ||
-               cmd == "ai" || cmd.contains("ai")
+               cmd == "openhands" || cmd.contains("openhands") ||
+               cmd == "aider" || cmd.contains("aider") ||
+               cmd == "codex" || cmd.contains("codex")
     }
 
     private var sessionName: String {
