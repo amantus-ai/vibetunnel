@@ -250,7 +250,7 @@ export async function verifyMultipleSessionsInList(
   sessionNames: string[]
 ): Promise<void> {
   // Import assertion helpers
-  const { assertSessionCount, assertSessionInList } = await import('./assertions.helper');
+  const { assertSessionCount, assertSessionInList } = await import('./assertion.helper');
 
   await assertSessionCount(page, sessionNames.length, { operator: 'minimum' });
   for (const sessionName of sessionNames) {
