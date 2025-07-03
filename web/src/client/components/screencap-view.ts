@@ -266,11 +266,13 @@ export class ScreencapView extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.loadInitialData();
+    this.setupKeyboardHandler();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.stopCapture();
+    this.removeKeyboardHandler();
   }
 
   private async loadInitialData() {
@@ -483,6 +485,76 @@ export class ScreencapView extends LitElement {
       logger.log(`🖱️ Clicked at relative coordinates: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${x}, ${y})`);
     } catch (error) {
       logger.error('Failed to send click:', error);
+    }
+  }
+
+  private boundHandleKeyDown = this.handleKeyDown.bind(this);
+
+  private setupKeyboardHandler() {
+    // Add global keyboard event listener when component is connected
+    document.addEventListener('keydown', this.boundHandleKeyDown);
+    logger.log('🎹 Keyboard handler setup complete');
+  }
+
+  private removeKeyboardHandler() {
+    // Remove global keyboard event listener when component is disconnected
+    document.removeEventListener('keydown', this.boundHandleKeyDown);
+    logger.log('🎹 Keyboard handler removed');
+  }
+
+  private async handleKeyDown(event: KeyboardEvent) {
+    // Skip if focused on input elements
+    if (event.target instanceof HTMLElement) {
+      const tagName = event.target.tagName.toUpperCase();
+      if (tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA') {
+        return;
+      }
+    }
+
+    // Only process keys when capturing
+    if (!this.isCapturing) return;
+
+    // Prevent default browser behavior
+    event.preventDefault();
+
+    try {
+      let endpoint: string;
+      let body: any;
+
+      if (this.captureMode === 'desktop') {
+        // Desktop key input
+        endpoint = '/api/screencap/key';
+        body = {
+          key: event.key,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          altKey: event.altKey,
+          shiftKey: event.shiftKey,
+        };
+      } else {
+        // Window-specific key input
+        endpoint = '/api/screencap/key-window';
+        body = {
+          key: event.key,
+          cgWindowID: this.selectedWindow?.cgWindowID || 0,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          altKey: event.altKey,
+          shiftKey: event.shiftKey,
+        };
+      }
+
+      logger.log(`⌨️ Sending key: ${event.key} (modifiers: ${event.ctrlKey ? 'Ctrl+' : ''}${event.metaKey ? 'Cmd+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Shift+' : ''})`);
+
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      logger.log(`✅ Key sent successfully: ${event.key}`);
+    } catch (error) {
+      logger.error('❌ Failed to send key:', error);
     }
   }
 

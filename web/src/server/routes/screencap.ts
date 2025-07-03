@@ -413,6 +413,113 @@ export function createScreencapRoutes(): Router {
     },
   }));
 
+  // Proxy key input endpoints
+  router.post('/screencap/key', async (req, res, next) => {
+    logger.log(`🔄 Received key request: ${req.method} ${req.url}`);
+    logger.log(`📦 Request body:`, req.body);
+    
+    if (!screencapProcess) {
+      try {
+        await startScreencapProcess();
+      } catch (error) {
+        logger.error('❌ Failed to start screencap for request:', error);
+      }
+    }
+    next();
+  }, createProxyMiddleware({
+    target: `http://localhost:${SCREENCAP_PORT}`,
+    changeOrigin: true,
+    pathRewrite: { '^/screencap': '' },
+    on: {
+      // biome-ignore lint/suspicious/noExplicitAny: http-proxy-middleware types
+      proxyReq: (proxyReq: any, req: any, _res: any) => {
+        logger.log(`🔧 onProxyReq called for ${req.method} ${req.url}`);
+        logger.log(`🔍 Request body exists:`, !!req.body);
+        logger.log(`🔍 Request body content:`, req.body);
+        
+        // Set headers
+        proxyReq.setHeader('Accept', 'application/json');
+        proxyReq.setHeader('Content-Type', 'application/json');
+        
+        // Forward the body if it exists
+        if (req.body && Object.keys(req.body).length > 0) {
+          const bodyData = JSON.stringify(req.body);
+          proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+          proxyReq.write(bodyData);
+          logger.log(`📦 Forwarding key body data: ${bodyData}`);
+        } else {
+          logger.warn(`⚠️ No body to forward for key or body is empty`);
+        }
+        
+        logger.log(`📡 Proxying ${req.method} ${req.url} to /key on screencap server`);
+      },
+      // biome-ignore lint/suspicious/noExplicitAny: http-proxy-middleware types
+      proxyRes: (proxyRes: any, req: any, _res: any) => {
+        logger.log(`📨 Key proxy response: ${proxyRes.statusCode} from screencap server for ${req.url}`);
+      },
+      // biome-ignore lint/suspicious/noExplicitAny: http-proxy-middleware types
+      error: (err: Error, req: any, res: any) => {
+        logger.error(`❌ Key proxy error for ${req.url}:`, err);
+        if (res && typeof res.status === 'function' && !res.headersSent) {
+          res.status(502).json({ error: 'Screencap service error', details: err.message });
+        }
+      },
+    },
+  }));
+
+  router.post('/screencap/key-window', async (req, res, next) => {
+    logger.log(`🔄 Received key-window request: ${req.method} ${req.url}`);
+    logger.log(`📦 Request body:`, req.body);
+    
+    if (!screencapProcess) {
+      try {
+        await startScreencapProcess();
+      } catch (error) {
+        logger.error('❌ Failed to start screencap for request:', error);
+      }
+    }
+    next();
+  }, createProxyMiddleware({
+    target: `http://localhost:${SCREENCAP_PORT}`,
+    changeOrigin: true,
+    pathRewrite: { '^/screencap': '' },
+    on: {
+      // biome-ignore lint/suspicious/noExplicitAny: http-proxy-middleware types
+      proxyReq: (proxyReq: any, req: any, _res: any) => {
+        logger.log(`🔧 onProxyReq called for ${req.method} ${req.url}`);
+        logger.log(`🔍 Request body exists:`, !!req.body);
+        logger.log(`🔍 Request body content:`, req.body);
+        
+        // Set headers
+        proxyReq.setHeader('Accept', 'application/json');
+        proxyReq.setHeader('Content-Type', 'application/json');
+        
+        // Forward the body if it exists
+        if (req.body && Object.keys(req.body).length > 0) {
+          const bodyData = JSON.stringify(req.body);
+          proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+          proxyReq.write(bodyData);
+          logger.log(`📦 Forwarding key-window body data: ${bodyData}`);
+        } else {
+          logger.warn(`⚠️ No body to forward for key-window or body is empty`);
+        }
+        
+        logger.log(`📡 Proxying ${req.method} ${req.url} to /key-window on screencap server`);
+      },
+      // biome-ignore lint/suspicious/noExplicitAny: http-proxy-middleware types
+      proxyRes: (proxyRes: any, req: any, _res: any) => {
+        logger.log(`📨 Key-window proxy response: ${proxyRes.statusCode} from screencap server for ${req.url}`);
+      },
+      // biome-ignore lint/suspicious/noExplicitAny: http-proxy-middleware types
+      error: (err: Error, req: any, res: any) => {
+        logger.error(`❌ Key-window proxy error for ${req.url}:`, err);
+        if (res && typeof res.status === 'function' && !res.headersSent) {
+          res.status(502).json({ error: 'Screencap service error', details: err.message });
+        }
+      },
+    },
+  }));
+
   // Control endpoint to start/stop screencap
   router.post('/screencap-control/start', async (_req, res) => {
     try {
