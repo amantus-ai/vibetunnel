@@ -1,5 +1,10 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { assertTerminalContains, assertTerminalReady } from '../helpers/assertion.helper';
+import {
+  getTerminalDimensions,
+  waitForTerminalBusy,
+  waitForTerminalResize,
+} from '../helpers/common-patterns.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import {
   executeAndVerifyCommand,
@@ -62,15 +67,7 @@ test.describe.skip('Terminal Interaction', () => {
     await page.keyboard.press('Enter');
 
     // Wait for the command to start executing by checking for lack of prompt
-    await page.waitForFunction(
-      () => {
-        const terminal = document.querySelector('vibe-terminal');
-        const text = terminal?.textContent || '';
-        // Command has started if we don't see a prompt at the end
-        return !text.trim().endsWith('$') && !text.trim().endsWith('>');
-      },
-      { timeout: 2000 }
-    );
+    await waitForTerminalBusy(page);
 
     await interruptCommand(page);
 
@@ -128,20 +125,7 @@ test.describe.skip('Terminal Interaction', () => {
 
   test('should handle terminal resize', async ({ page }) => {
     // Get initial terminal dimensions
-    const initialDimensions = await page.evaluate(() => {
-      const terminal = document.querySelector('vibe-terminal') as HTMLElement & {
-        cols?: number;
-        rows?: number;
-        actualCols?: number;
-        actualRows?: number;
-      };
-      return {
-        cols: terminal?.cols || 80,
-        rows: terminal?.rows || 24,
-        actualCols: terminal?.actualCols || terminal?.cols || 80,
-        actualRows: terminal?.actualRows || terminal?.rows || 24,
-      };
-    });
+    const initialDimensions = await getTerminalDimensions(page);
 
     // Type something before resize
     await executeAndVerifyCommand(page, 'echo "Before resize"', 'Before resize');
@@ -157,46 +141,7 @@ test.describe.skip('Terminal Interaction', () => {
     await page.setViewportSize({ width: newWidth, height: newHeight });
 
     // Wait for terminal-resize event or dimension change
-    await page.waitForFunction(
-      ({ initial }) => {
-        const terminal = document.querySelector('vibe-terminal') as HTMLElement & {
-          cols?: number;
-          rows?: number;
-          actualCols?: number;
-          actualRows?: number;
-        };
-        const currentCols = terminal?.cols || 80;
-        const currentRows = terminal?.rows || 24;
-        const currentActualCols = terminal?.actualCols || currentCols;
-        const currentActualRows = terminal?.actualRows || currentRows;
-
-        // Check if any dimension changed
-        return (
-          currentCols !== initial.cols ||
-          currentRows !== initial.rows ||
-          currentActualCols !== initial.actualCols ||
-          currentActualRows !== initial.actualRows
-        );
-      },
-      { initial: initialDimensions },
-      { timeout: 2000 }
-    );
-
-    // Verify terminal dimensions changed
-    const newDimensions = await page.evaluate(() => {
-      const terminal = document.querySelector('vibe-terminal') as HTMLElement & {
-        cols?: number;
-        rows?: number;
-        actualCols?: number;
-        actualRows?: number;
-      };
-      return {
-        cols: terminal?.cols || 80,
-        rows: terminal?.rows || 24,
-        actualCols: terminal?.actualCols || terminal?.cols || 80,
-        actualRows: terminal?.actualRows || terminal?.rows || 24,
-      };
-    });
+    const newDimensions = await waitForTerminalResize(page, initialDimensions);
 
     // At least one dimension should have changed
     const dimensionsChanged =

@@ -1,5 +1,10 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { assertSessionCount, assertSessionInList } from '../helpers/assertion.helper';
+import { assertSessionInList } from '../helpers/assertion.helper';
+import {
+  refreshAndVerifySession,
+  verifyMultipleSessionsInList,
+  waitForSessionCards,
+} from '../helpers/common-patterns.helper';
 import { takeDebugScreenshot } from '../helpers/screenshot.helper';
 import {
   createAndNavigateToSession,
@@ -70,7 +75,7 @@ test.describe('Session Management', () => {
       await page.waitForLoadState('networkidle');
 
       // Wait for the list to be ready
-      await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+      await waitForSessionCards(page);
 
       // Create second session
       const { sessionName: session2 } = await sessionManager.createTrackedSession();
@@ -80,12 +85,10 @@ test.describe('Session Management', () => {
       await page.waitForLoadState('networkidle');
 
       // Wait for session cards to load
-      await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+      await waitForSessionCards(page);
 
       // Verify both sessions exist
-      await assertSessionCount(page, 2, { operator: 'minimum' });
-      await assertSessionInList(page, session1);
-      await assertSessionInList(page, session2);
+      await verifyMultipleSessionsInList(page, [session1, session2]);
     } catch (error) {
       // If error occurs, take a screenshot for debugging
       if (!page.isClosed()) {
@@ -113,23 +116,7 @@ test.describe('Session Management', () => {
     // Create a session
     const { sessionName } = await sessionManager.createTrackedSession();
 
-    // Refresh the page
-    await page.reload();
-    await page.waitForLoadState('domcontentloaded');
-
-    // The app might redirect us to the list if session doesn't exist
-    const currentUrl = page.url();
-    if (currentUrl.includes('?session=')) {
-      // We're still in a session view
-      await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 4000 });
-    } else {
-      // We got redirected to list, reconnect
-      await page.waitForSelector('session-card', { state: 'visible' });
-      const sessionListPage = await import('../pages/session-list.page').then(
-        (m) => new m.SessionListPage(page)
-      );
-      await sessionListPage.clickSession(sessionName);
-      await expect(page).toHaveURL(/\?session=/);
-    }
+    // Refresh the page and verify session is still accessible
+    await refreshAndVerifySession(page, sessionName);
   });
 });

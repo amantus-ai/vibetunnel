@@ -1,5 +1,9 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import {
+  ensureExitedSessionsVisible,
+  getExitedSessionsVisibility,
+} from '../helpers/ui-state.helper';
 
 // These tests perform global operations that affect all sessions
 // They must run serially to avoid interfering with other tests
@@ -32,26 +36,8 @@ test.describe('Global Session Management', () => {
       await page.waitForTimeout(500);
     }
 
-    // Ensure exited sessions are visible - look for Hide/Show toggle
-    const hideExitedButton = page
-      .locator('button')
-      .filter({ hasText: /Hide Exited/i })
-      .first();
-    if (await hideExitedButton.isVisible({ timeout: 1000 })) {
-      // If "Hide Exited" button is visible, exited sessions are currently shown, which is what we want
-      console.log('Exited sessions are visible');
-    } else {
-      // Look for "Show Exited" button and click it if present
-      const showExitedButton = page
-        .locator('button')
-        .filter({ hasText: /Show Exited/ })
-        .first();
-      if (await showExitedButton.isVisible({ timeout: 1000 })) {
-        await showExitedButton.click();
-        console.log('Clicked Show Exited button');
-        await page.waitForTimeout(1000);
-      }
-    }
+    // Ensure exited sessions are visible
+    await ensureExitedSessionsVisible(page);
 
     // Wait for sessions to be visible (they may be running or exited)
     await page.waitForTimeout(2000);
@@ -156,16 +142,10 @@ test.describe('Global Session Management', () => {
     // After killing all sessions, verify the result by checking for exited status
     // We can see in the screenshot that sessions appear in a grid view with "exited" status
 
-    // First check if there's a Hide Exited button (which means exited sessions are visible)
-    const hideExitedButtonAfter = page
-      .locator('button')
-      .filter({ hasText: /Hide Exited/i })
-      .first();
-    const hideExitedVisible = await hideExitedButtonAfter
-      .isVisible({ timeout: 1000 })
-      .catch(() => false);
+    // Check if exited sessions are visible after killing
+    const { visible: exitedVisible } = await getExitedSessionsVisibility(page);
 
-    if (hideExitedVisible) {
+    if (exitedVisible) {
       // Exited sessions are visible - verify we have some exited sessions
       const exitedElements = await page.locator('text=/exited/i').count();
       console.log(`Found ${exitedElements} elements with 'exited' text`);

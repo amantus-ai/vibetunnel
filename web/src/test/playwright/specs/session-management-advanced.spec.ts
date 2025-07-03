@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { getExitedSessionsVisibility } from '../helpers/ui-state.helper';
 
 // These tests work with individual sessions and can run in parallel
 test.describe.configure({ mode: 'parallel' });
@@ -65,19 +66,12 @@ test.describe('Advanced Session Management', () => {
       // Card is still visible, it should show as exited
       await expect(exitedCard.locator('text=/exited/i').first()).toBeVisible({ timeout: 5000 });
     } else {
-      // If the card disappeared, check if there's a "Show Exited" button
-      const showExitedButton = page
-        .locator('button')
-        .filter({ hasText: /Show Exited/i })
-        .first();
+      // If the card disappeared, check if exited sessions are hidden
+      const { visible: exitedVisible, toggleButton } = await getExitedSessionsVisibility(page);
 
-      const showExitedVisible = await showExitedButton
-        .isVisible({ timeout: 1000 })
-        .catch(() => false);
-
-      if (showExitedVisible) {
+      if (!exitedVisible && toggleButton) {
         // Click to show exited sessions
-        await showExitedButton.click();
+        await toggleButton.click();
 
         // Wait for the exited session to appear
         await expect(page.locator('session-card').filter({ hasText: sessionName })).toBeVisible({

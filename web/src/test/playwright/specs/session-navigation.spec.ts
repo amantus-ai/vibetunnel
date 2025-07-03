@@ -1,5 +1,12 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { assertUrlHasSession } from '../helpers/assertion.helper';
+import {
+  clickSessionCardWithRetry,
+  closeModalIfOpen,
+  navigateToHome,
+  waitForPageReady,
+  waitForSessionListReady,
+} from '../helpers/common-patterns.helper';
 import { takeDebugScreenshot } from '../helpers/screenshot.helper';
 import { createMultipleSessions } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
@@ -21,12 +28,7 @@ test.describe('Session Navigation', () => {
   test('should navigate between session list and session view', async ({ page }) => {
     // Ensure we start fresh
     await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
-
-    // Wait for the app to be ready
-    await page.waitForSelector('body.ready', { state: 'attached', timeout: 5000 }).catch(() => {
-      // Fallback if no ready class
-    });
+    await waitForPageReady(page);
 
     // Create a session
     let sessionName: string;
@@ -49,31 +51,11 @@ test.describe('Session Navigation', () => {
 
     await assertUrlHasSession(page);
 
-    // Navigate back to home - either via Back button or VibeTunnel logo
-    const backButton = page.locator('button:has-text("Back")');
-    const vibeTunnelLogo = page.locator('button:has(h1:has-text("VibeTunnel"))').first();
-
-    if (await backButton.isVisible({ timeout: 1000 })) {
-      await backButton.click();
-    } else if (await vibeTunnelLogo.isVisible({ timeout: 1000 })) {
-      await vibeTunnelLogo.click();
-    } else {
-      // If we have a sidebar, we're already seeing the session list
-      const sessionCardsInSidebar = page.locator('aside session-card, nav session-card');
-      if (!(await sessionCardsInSidebar.first().isVisible({ timeout: 1000 }))) {
-        throw new Error('Could not find a way to navigate back to session list');
-      }
-    }
+    // Navigate back to home
+    await navigateToHome(page);
 
     // Verify we can see session cards - wait for session list to load
-    await page.waitForFunction(
-      () => {
-        const cards = document.querySelectorAll('session-card');
-        const noSessionsMsg = document.querySelector('.text-dark-text-muted');
-        return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
-      },
-      { timeout: 10000 }
-    );
+    await waitForSessionListReady(page);
 
     // Ensure our specific session card is visible
     await page.waitForSelector(`session-card:has-text("${sessionName}")`, {
@@ -85,74 +67,10 @@ test.describe('Session Navigation', () => {
     await page.waitForLoadState('networkidle');
 
     // Ensure no modals are open that might block clicks
-    const modalVisible = await page.locator('.modal-content').isVisible();
-    if (modalVisible) {
-      console.log('Modal is visible, closing it...');
-      await page.keyboard.press('Escape');
-      await page.waitForSelector('.modal-content', { state: 'hidden', timeout: 2000 });
-    }
+    await closeModalIfOpen(page);
 
     // Click on the session card to navigate back
-    const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-
-    // Ensure the card is visible and ready
-    await sessionCard.waitFor({ state: 'visible', timeout: 5000 });
-    await sessionCard.scrollIntoViewIfNeeded();
-
-    // Wait for network to be idle before clicking
-    await page.waitForLoadState('networkidle');
-
-    // Click the card and wait for navigation
-    console.log(`Clicking session card for ${sessionName}`);
-    await sessionCard.click();
-
-    // Wait for navigation to complete
-    try {
-      await page.waitForURL(/\?session=/, { timeout: 5000 });
-      console.log('Successfully navigated to session view');
-    } catch (_error) {
-      const currentUrl = page.url();
-      console.error(`Navigation failed. Current URL: ${currentUrl}`);
-
-      // Check if session card is still visible
-      const cardStillVisible = await sessionCard.isVisible();
-      console.log(`Session card still visible: ${cardStillVisible}`);
-
-      // Check console logs for any errors
-      const _consoleLogs = await page.evaluate(() => {
-        const logs = [];
-        // Capture any recent console logs if available
-        return logs;
-      });
-
-      await takeDebugScreenshot(page, 'session-click-no-navigation');
-
-      // Check if we're still on the list page and retry with different approaches
-      if (!currentUrl.includes('?session=')) {
-        console.log('Retrying session click with different approach...');
-
-        // Method 1: Try clicking directly on the clickable area
-        const clickableArea = sessionCard.locator('div.card').first();
-        await clickableArea.waitFor({ state: 'visible', timeout: 2000 });
-        await clickableArea.click();
-
-        // Wait for potential navigation
-        await page.waitForLoadState('domcontentloaded').catch(() => {});
-        await page
-          .waitForURL((url) => url.includes('?session=') || !url.endsWith('/'), { timeout: 1000 })
-          .catch(() => {});
-
-        // Check if navigation happened
-        if (!page.url().includes('?session=')) {
-          // Method 2: Try using the SessionListPage helper directly
-          console.log('Using SessionListPage.clickSession method...');
-          const sessionListPage = await import('../pages/session-list.page').then(
-            (m) => new m.SessionListPage(page)
-          );
-          await sessionListPage.clickSession(sessionName);
-        }
-      }
-    }
+    await clickSessionCardWithRetry(page, sessionName);
 
     // Should be back in session view
     await assertUrlHasSession(page);

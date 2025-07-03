@@ -3,6 +3,9 @@ import type { Session } from '../../shared/types.js';
 import { testConfig } from './test-config';
 
 async function globalSetup(config: FullConfig) {
+  // Start performance tracking
+  console.time('Total test duration');
+
   // Set up test results directory for screenshots
   const fs = await import('fs');
   const path = await import('path');
