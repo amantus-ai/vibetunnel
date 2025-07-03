@@ -11,6 +11,11 @@ let screencapProcess: ChildProcess | null = null;
 const SCREENCAP_PORT = 3030;
 
 async function ensureScreencapBinary() {
+  // Only available on macOS
+  if (process.platform !== 'darwin') {
+    throw new Error('Screencap is only available on macOS');
+  }
+
   const screencapDir = path.join(process.cwd(), '..', 'screencap');
   const screencapPath = path.join(screencapDir, 'screencap7');
 
@@ -102,6 +107,12 @@ function stopScreencapProcess() {
 
 // Initialize screencap on server startup
 export async function initializeScreencap(): Promise<void> {
+  // Skip initialization on non-macOS platforms
+  if (process.platform !== 'darwin') {
+    logger.log('⏭️ Skipping screencap initialization (macOS only)');
+    return;
+  }
+
   try {
     logger.log('🔄 Initializing screencap service...');
     await ensureScreencapBinary();
@@ -116,8 +127,19 @@ export async function initializeScreencap(): Promise<void> {
 export function createScreencapRoutes(): Router {
   const router = Router();
 
+  // Platform check middleware
+  const requireMacOS = (req: any, res: any, next: any) => {
+    if (process.platform !== 'darwin') {
+      return res.status(503).json({ 
+        error: 'Screencap is only available on macOS',
+        platform: process.platform 
+      });
+    }
+    next();
+  };
+
   // Serve screencap frontend page FIRST (exact match only)
-  router.get('/screencap', (_req, res) => {
+  router.get('/screencap', requireMacOS, (_req, res) => {
     res.send(`
 <!DOCTYPE html>
 <html lang="en">

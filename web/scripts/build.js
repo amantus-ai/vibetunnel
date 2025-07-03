@@ -108,14 +108,18 @@ async function build() {
     process.exit(1);
   }
 
-  // Build screencap binary
-  console.log('Building screencap binary...');
-  try {
-    execSync('cd ../screencap && make build', { stdio: 'inherit' });
-    console.log('Screencap binary built successfully');
-  } catch (error) {
-    console.error('Screencap build failed:', error);
-    process.exit(1);
+  // Build screencap binary (only on macOS)
+  if (process.platform === 'darwin') {
+    console.log('Building screencap binary...');
+    try {
+      execSync('cd ../screencap && make build', { stdio: 'inherit' });
+      console.log('Screencap binary built successfully');
+    } catch (error) {
+      console.error('Screencap build failed:', error);
+      process.exit(1);
+    }
+  } else {
+    console.log('Skipping screencap binary build (macOS only)');
   }
 
   // Build native executable
