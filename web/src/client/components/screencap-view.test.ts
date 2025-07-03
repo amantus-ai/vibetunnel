@@ -413,7 +413,7 @@ describe('ScreencapView', () => {
   describe('error handling', () => {
     it('should display error when capture fails', async () => {
       // Mock capture failure
-      vi.mocked(fetch).mockImplementation((url: string, options?: any) => {
+      vi.mocked(fetch).mockImplementation((url: string, options?: RequestInit) => {
         if (url.includes('/api/screencap/capture') && options?.method === 'POST') {
           return Promise.resolve({
             ok: false,
