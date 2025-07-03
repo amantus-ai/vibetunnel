@@ -130,7 +130,6 @@ export default defineConfig({
       VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
       SUPPRESS_CLIENT_ERRORS: 'true',
       VIBETUNNEL_SEA: '', // Explicitly set to empty to disable SEA loader
-      PLAYWRIGHT_TEST: 'true', // Explicit flag for Playwright tests
     },
   },
 });
