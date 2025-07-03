@@ -356,7 +356,7 @@ async function main() {
       console.warn('Warning: Using current time for build - output will not be reproducible');
     }
 
-    let esbuildCmd = `NODE_NO_WARNINGS=1 npx esbuild src/cli.ts \\
+    let esbuildCmd = `npx esbuild src/cli.ts \\
       --bundle \\
       --platform=node \\
       --target=node20 \\
@@ -388,7 +388,8 @@ async function main() {
       env: {
         ...process.env,
         NODE_NO_WARNINGS: '1'
-      }
+      },
+      shell: true
     });
 
     // 2b. Post-process bundle to ensure VIBETUNNEL_SEA is properly set
