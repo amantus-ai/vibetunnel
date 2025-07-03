@@ -10,16 +10,6 @@ struct GitRepositoryRow: View {
     @Environment(\.colorScheme)
     private var colorScheme
 
-    private var gitAppName: String {
-        if let preferredApp = UserDefaults.standard.string(forKey: "preferredGitApp"),
-           let gitApp = GitApp(rawValue: preferredApp)
-        {
-            return gitApp.displayName
-        }
-        // Return first installed git app or default
-        return GitApp.installed.first?.displayName ?? "Git App"
-    }
-
     private var branchInfo: some View {
         HStack(spacing: 2) {
             Image(systemName: "arrow.branch")
@@ -106,9 +96,9 @@ struct GitRepositoryRow: View {
         .onTapGesture {
             openInGitApp()
         }
-        .help("Open in \(gitAppName)")
+        .help("Open in Git app")
         .contextMenu {
-            Button("Open in \(gitAppName)") {
+            Button("Open in Tower") {
                 openInGitApp()
             }
 
@@ -140,6 +130,29 @@ struct GitRepositoryRow: View {
     }
 
     private func openInGitApp() {
-        GitAppLauncher.shared.openRepository(at: repository.path)
+        // Try to open in Tower first, fall back to SourceTree, then GitKraken
+        let gitApps = [
+            "com.fournova.Tower3",
+            "com.fournova.Tower2",
+            "com.torusknot.SourceTreeNotMAS",
+            "com.axosoft.gitkraken"
+        ]
+
+        let url = URL(fileURLWithPath: repository.path)
+
+        // Try each app in order
+        for appIdentifier in gitApps {
+            if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: appIdentifier) {
+                NSWorkspace.shared.open(
+                    [url],
+                    withApplicationAt: appURL,
+                    configuration: NSWorkspace.OpenConfiguration()
+                )
+                return
+            }
+        }
+
+        // If no git app found, open in Finder as fallback
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
     }
 }
