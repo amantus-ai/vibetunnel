@@ -24,6 +24,24 @@ test.describe('Global Session Management', () => {
   test('should kill all sessions at once', async ({ page, sessionListPage }) => {
     // Increase timeout for this test as it involves multiple sessions
     test.setTimeout(TIMEOUTS.KILL_ALL_OPERATION * 3); // 90 seconds
+
+    // Clean up any existing sessions before starting
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const existingCount = await page.locator('session-card').count();
+    if (existingCount > 10) {
+      console.log(
+        `WARNING: Found ${existingCount} existing sessions. This may interfere with the test.`
+      );
+      // Try to clean some up
+      const cleanExitedButton = page.locator('button:has-text("Clean Exited")');
+      if (await cleanExitedButton.isVisible({ timeout: 1000 })) {
+        await cleanExitedButton.click();
+        await page.waitForTimeout(2000);
+        const newCount = await page.locator('session-card').count();
+        console.log(`After cleanup, ${newCount} sessions remain`);
+      }
+    }
+
     // Create multiple tracked sessions
     const sessionNames = [];
     for (let i = 0; i < 3; i++) {
@@ -45,6 +63,12 @@ test.describe('Global Session Management', () => {
       // Give UI time to render after API response
       await page.waitForTimeout(500);
 
+      // Log the current session count
+      const cardCount = await page.locator('session-card').count();
+      console.log(
+        `After creating session ${i + 1}, found ${cardCount} total session cards in the UI`
+      );
+
       // Wait for session cards to be loaded or empty state
       await page.waitForSelector('session-card, .text-dark-text-muted', {
         state: 'visible',
@@ -62,10 +86,20 @@ test.describe('Global Session Management', () => {
             });
             if (!foundSession) {
               console.log(`Session ${name} not found yet. Found ${cards.length} cards`);
-              // Log the text content of all cards for debugging
-              Array.from(cards).forEach((card, index) => {
-                console.log(`Card ${index}: ${card.textContent?.substring(0, 50)}...`);
-              });
+              // Log the first few card names for debugging
+              const cardNames = Array.from(cards)
+                .slice(0, 5)
+                .map((card) => {
+                  const nameElement = card.querySelector('h3, .text-lg');
+                  return nameElement?.textContent || 'unknown';
+                });
+              console.log(`First 5 card names: ${cardNames.join(', ')}`);
+
+              // Check if session exists in DOM but might be hidden
+              const allText = document.body.textContent || '';
+              if (allText.includes(name)) {
+                console.log(`Session ${name} found in page text but not in visible cards!`);
+              }
             }
             return foundSession;
           },
