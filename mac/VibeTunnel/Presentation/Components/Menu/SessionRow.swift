@@ -27,25 +27,24 @@ struct SessionRow: View {
     @State private var isTerminating = false
     @State private var isEditing = false
     @State private var editedName = ""
-    @State private var gitRepository: GitRepository?
     @State private var isHoveringFolder = false
     @FocusState private var isEditFieldFocused: Bool
+    
+    // Computed property that reads directly from the monitor's cache
+    // This will automatically update when the monitor refreshes
+    private var gitRepository: GitRepository? {
+        gitRepositoryMonitor.getCachedRepository(for: session.value.workingDir)
+    }
 
     var body: some View {
         Button(action: handleTap) {
             content
         }
         .buttonStyle(PlainButtonStyle())
-        .onAppear {
-            // First, try to get cached data synchronously
-            if gitRepository == nil {
-                gitRepository = gitRepositoryMonitor.getCachedRepository(for: session.value.workingDir)
-            }
-        }
         .task(id: session.value.workingDir) {
-            // Then fetch fresh data asynchronously (this will update the cache)
-            if let freshData = await gitRepositoryMonitor.findRepository(for: session.value.workingDir) {
-                gitRepository = freshData
+            // Fetch repository data if not already cached
+            if gitRepository == nil {
+                _ = await gitRepositoryMonitor.findRepository(for: session.value.workingDir)
             }
         }
     }

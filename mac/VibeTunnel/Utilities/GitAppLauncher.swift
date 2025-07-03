@@ -6,15 +6,20 @@ import SwiftUI
 
 /// Supported Git GUI applications.
 enum GitApp: String, CaseIterable {
+    case cursor = "Cursor"
     case fork = "Fork"
     case githubDesktop = "GitHub Desktop"
     case gitup = "GitUp"
     case sourcetree = "SourceTree"
     case sublimeMerge = "Sublime Merge"
     case tower = "Tower"
+    case vscode = "Visual Studio Code"
+    case windsurf = "Windsurf"
 
     var bundleIdentifier: String {
         switch self {
+        case .cursor:
+            "com.todesktop.230313mzl4w4u92"
         case .fork:
             "com.DanPristupov.Fork"
         case .githubDesktop:
@@ -27,18 +32,25 @@ enum GitApp: String, CaseIterable {
             "com.sublimemerge"
         case .tower:
             "com.fournova.Tower3"
+        case .vscode:
+            "com.microsoft.VSCode"
+        case .windsurf:
+            "com.codeiumapp.windsurf"
         }
     }
 
     /// Priority for auto-detection (higher is better, based on popularity)
     var detectionPriority: Int {
         switch self {
+        case .cursor: 70
         case .fork: 75
         case .githubDesktop: 90
         case .gitup: 60
         case .sourcetree: 80
         case .sublimeMerge: 85
         case .tower: 100
+        case .vscode: 95
+        case .windsurf: 65
         }
     }
 
