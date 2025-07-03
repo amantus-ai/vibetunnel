@@ -1,4 +1,5 @@
 import ApplicationServices
+import AppKit
 import Foundation
 import OSLog
 
@@ -17,6 +18,7 @@ public enum AXPermissions {
     
     /// Requests accessibility permissions, showing the system prompt if needed.
     /// - Returns: `true` if permissions are granted, `false` otherwise
+    @MainActor
     public static func requestPermissions() -> Bool {
         // Skip permission dialog in test environment
         if isTestEnvironment {
@@ -24,11 +26,15 @@ public enum AXPermissions {
             return false
         }
         
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-        let result = AXIsProcessTrustedWithOptions(options as CFDictionary)
+        // Use direct API without options to avoid concurrency issues
+        let trusted = AXIsProcessTrusted()
+        if !trusted {
+            // Open accessibility preferences to prompt user
+            openAccessibilityPreferences()
+        }
         
-        logger.info("Accessibility permissions requested, result: \(result)")
-        return result
+        logger.info("Accessibility permissions checked, trusted: \(trusted)")
+        return trusted
     }
     
     /// Determines if the app is running in a test environment
@@ -62,7 +68,7 @@ public enum AXPermissions {
             continuation.yield(initialState)
             
             // Timer holder to avoid capture issues
-            final class TimerHolder {
+            final class TimerHolder: @unchecked Sendable {
                 var timer: Timer?
                 var lastState: Bool
                 
@@ -99,14 +105,7 @@ public enum AXPermissions {
     /// - Returns: `true` if permissions are granted, `false` otherwise
     @MainActor
     public static func requestPermissionsAsync() async -> Bool {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let hasPermissions = requestPermissions()
-                DispatchQueue.main.async {
-                    continuation.resume(returning: hasPermissions)
-                }
-            }
-        }
+        return requestPermissions()
     }
 }
 

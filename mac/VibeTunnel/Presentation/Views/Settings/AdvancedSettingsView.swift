@@ -419,20 +419,19 @@ private struct WindowHighlightSettingsSection: View {
     }
     
     private func saveCustomColor(_ color: Color) {
-        if let nsColor = NSColor(color) {
-            do {
-                let data = try NSKeyedArchiver.archivedData(withRootObject: nsColor, requiringSecureCoding: false)
-                highlightColorData = data
-            } catch {
-                Logger.advanced.error("Failed to save custom color: \(error)")
-            }
+        let nsColor = NSColor(color)
+        do {
+            let data = try NSKeyedArchiver.archivedData(withRootObject: nsColor, requiringSecureCoding: false)
+            highlightColorData = data
+        } catch {
+            Logger.advanced.error("Failed to save custom color: \(error)")
         }
     }
     
     private func loadCustomColor() {
         if !highlightColorData.isEmpty {
             do {
-                if let nsColor = try NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(highlightColorData) as? NSColor {
+                if let nsColor = try NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: highlightColorData) {
                     customColor = Color(nsColor)
                 }
             } catch {

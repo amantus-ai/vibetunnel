@@ -44,7 +44,7 @@ final class WindowFocuser {
             // Load custom color
             let colorData = defaults.data(forKey: "windowHighlightColor") ?? Data()
             if !colorData.isEmpty,
-               let nsColor = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(colorData) as? NSColor {
+               let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
                 return WindowHighlightConfig(
                     color: nsColor,
                     duration: 0.8,

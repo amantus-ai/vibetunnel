@@ -4,8 +4,7 @@ import OSLog
 
 /// A Swift-friendly wrapper around AXUIElement that simplifies accessibility operations.
 /// This is a minimal implementation inspired by AXorcist but tailored for VibeTunnel's needs.
-@MainActor
-public struct AXElement: Equatable, Hashable {
+public struct AXElement: Equatable, Hashable, @unchecked Sendable {
     // MARK: - Properties
     
     /// The underlying AXUIElement
@@ -202,7 +201,7 @@ public struct AXElement: Equatable, Hashable {
     
     /// Gets the list of supported actions
     public func actions() -> [String]? {
-        var actions: CFTypeRef?
+        var actions: CFArray?
         let result = AXUIElementCopyActionNames(element, &actions)
         
         guard result == .success,
