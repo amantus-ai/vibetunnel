@@ -87,7 +87,7 @@ final class SessionService {
         request.setValue("localhost", forHTTPHeaderField: "Host")
         try serverManager.authenticate(request: &request)
         
-        let body = ["data": text]
+        let body = ["text": text]
         request.httpBody = try JSONEncoder().encode(body)
         
         let (_, response) = try await URLSession.shared.data(for: request)
