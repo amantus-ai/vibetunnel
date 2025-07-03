@@ -239,6 +239,10 @@ final class WindowTracker {
     ///   - Iterates through windows to find exact match
     ///   - Closes entire window
     ///
+    /// - **Ghostty**: Uses standard AppleScript window closing
+    ///   - Directly closes window by ID
+    ///   - Supports modern window management
+    ///
     /// - **Other terminals**: Not supported as they don't provide reliable window IDs
     ///
     /// - Parameter windowInfo: Window information from dynamic lookup
@@ -274,6 +278,19 @@ final class WindowTracker {
                             end if
                         end try
                     end repeat
+                on error
+                    -- Window might already be closed
+                end try
+            end tell
+            """
+
+        case .ghostty:
+            // Ghostty supports standard AppleScript window operations
+            // Note: Ghostty uses lowercase "ghostty" in System Events
+            return """
+            tell application "ghostty"
+                try
+                    close (first window whose id is \(windowInfo.windowID))
                 on error
                     -- Window might already be closed
                 end try
