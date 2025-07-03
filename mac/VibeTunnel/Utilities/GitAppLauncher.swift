@@ -153,6 +153,7 @@ final class GitAppLauncher {
     private func getValidGitApp() -> GitApp {
         // Read the current preference
         if let currentPreference = UserDefaults.standard.string(forKey: "preferredGitApp"),
+           !currentPreference.isEmpty,
            let gitApp = GitApp(rawValue: currentPreference),
            gitApp.isInstalled
         {

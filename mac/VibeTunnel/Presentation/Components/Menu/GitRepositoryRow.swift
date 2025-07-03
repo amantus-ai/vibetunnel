@@ -12,6 +12,7 @@ struct GitRepositoryRow: View {
 
     private var gitAppName: String {
         if let preferredApp = UserDefaults.standard.string(forKey: "preferredGitApp"),
+           !preferredApp.isEmpty,
            let gitApp = GitApp(rawValue: preferredApp)
         {
             return gitApp.displayName

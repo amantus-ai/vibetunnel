@@ -202,7 +202,7 @@ private struct TerminalPreferenceSection: View {
     @AppStorage("preferredTerminal")
     private var preferredTerminal = Terminal.terminal.rawValue
     @AppStorage("preferredGitApp")
-    private var preferredGitApp: String?
+    private var preferredGitApp = ""
     @State private var terminalLauncher = TerminalLauncher.shared
     @State private var gitAppLauncher = GitAppLauncher.shared
     @State private var showingError = false
@@ -301,7 +301,6 @@ private struct TerminalPreferenceSection: View {
                     Text("Preferred Git App")
                     Spacer()
                     Picker("", selection: gitAppBinding) {
-                        Text("System Default").tag(nil as String?)
                         ForEach(GitApp.installed, id: \.rawValue) { gitApp in
                             HStack {
                                 if let icon = gitApp.appIcon {
@@ -309,7 +308,7 @@ private struct TerminalPreferenceSection: View {
                                 }
                                 Text(gitApp.displayName)
                             }
-                            .tag(gitApp.rawValue as String?)
+                            .tag(gitApp.rawValue)
                         }
                     }
                     .pickerStyle(.menu)
@@ -343,9 +342,15 @@ private struct TerminalPreferenceSection: View {
         }
     }
 
-    private var gitAppBinding: Binding<String?> {
+    private var gitAppBinding: Binding<String> {
         Binding(
-            get: { preferredGitApp },
+            get: { 
+                // If no preference or invalid preference, use first installed app
+                if preferredGitApp.isEmpty || GitApp(rawValue: preferredGitApp) == nil {
+                    return GitApp.installed.first?.rawValue ?? ""
+                }
+                return preferredGitApp
+            },
             set: { newValue in
                 preferredGitApp = newValue
             }
