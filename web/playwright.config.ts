@@ -25,9 +25,18 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Parallel workers configuration */
-  workers: process.env.PLAYWRIGHT_WORKERS 
-    ? parseInt(process.env.PLAYWRIGHT_WORKERS) 
-    : (process.env.CI ? 4 : undefined), // Configurable via env var, default 4 in CI, auto-detect locally
+  workers: (() => {
+    if (process.env.PLAYWRIGHT_WORKERS) {
+      const parsed = parseInt(process.env.PLAYWRIGHT_WORKERS, 10);
+      // Validate the parsed value
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+      console.warn(`Invalid PLAYWRIGHT_WORKERS value: "${process.env.PLAYWRIGHT_WORKERS}". Using default.`);
+    }
+    // Default: 4 workers in CI, auto-detect locally
+    return process.env.CI ? 4 : undefined;
+  })(),
   /* Test timeout */
   timeout: process.env.CI ? 30 * 1000 : 20 * 1000, // 30s on CI, 20s locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
