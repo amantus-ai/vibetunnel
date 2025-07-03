@@ -37,12 +37,12 @@ struct VTCommandPageView: View {
                 .frame(maxWidth: 480)
                 .fixedSize(horizontal: false, vertical: true)
 
-                Text("For example, to remote control Claude Code, type:")
+                Text("For example, to remote control AI assistants, type:")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
 
-                Text("vt claude")
+                Text("vt claude  or  vt gemini")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.primary)
                     .padding(.horizontal, 16)

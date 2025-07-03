@@ -109,9 +109,9 @@ struct SessionRow: View {
                             .buttonStyle(.plain)
                             .help("Rename session")
 
-                            // Magic wand button for Claude sessions
-                            if isClaudeSession {
-                                Button(action: sendClaudePrompt) {
+                            // Magic wand button for AI assistant sessions
+                            if isAIAssistantSession {
+                                Button(action: sendAIPrompt) {
                                     Image(systemName: "wand.and.rays")
                                         .font(.system(size: 11))
                                         .foregroundColor(.primary)
@@ -386,10 +386,14 @@ struct SessionRow: View {
         }
     }
 
-    private var isClaudeSession: Bool {
-        // Check if this is a Claude session by looking at the command
+    private var isAIAssistantSession: Bool {
+        // Check if this is an AI assistant session by looking at the command
         let cmd = commandName.lowercased()
-        return cmd == "claude" || cmd.contains("claude")
+        return cmd == "claude" || cmd.contains("claude") ||
+               cmd == "gemini" || cmd.contains("gemini") ||
+               cmd == "gpt" || cmd.contains("gpt") ||
+               cmd == "llm" || cmd.contains("llm") ||
+               cmd == "ai" || cmd.contains("ai")
     }
 
     private var sessionName: String {
@@ -438,10 +442,10 @@ struct SessionRow: View {
         }
     }
 
-    private func sendClaudePrompt() {
+    private func sendAIPrompt() {
         Task {
             do {
-                // Send a prompt that encourages Claude to use vt title
+                // Send a prompt that encourages the AI assistant to use vt title
                 let prompt = "use vt title to update the terminal title with what you're currently working on"
                 try await sessionService.sendInput(to: session.key, text: prompt)
                 
@@ -449,7 +453,7 @@ struct SessionRow: View {
                 try await sessionService.sendKey(to: session.key, key: "enter")
             } catch {
                 // Silently handle errors for now
-                print("Failed to send prompt to Claude: \(error)")
+                print("Failed to send prompt to AI assistant: \(error)")
             }
         }
     }

@@ -150,23 +150,13 @@ final class WindowHighlightEffect {
             // Use provided bounds
             windowFrame = bounds
         } else {
-            // Get window bounds from AXUIElement
-            var positionRef: CFTypeRef?
-            var sizeRef: CFTypeRef?
-            
-            guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionRef) == .success,
-                  AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeRef) == .success,
-                  let positionValue = positionRef as! AXValue?,
-                  let sizeValue = sizeRef as! AXValue? else {
+            // Get window bounds using AXElement wrapper
+            let axElement = AXElement(window)
+            guard let frame = axElement.frame() else {
                 logger.error("Failed to get window bounds for highlight effect")
                 return
             }
-            
-            var position = CGPoint.zero
-            var size = CGSize.zero
-            AXValueGetValue(positionValue, .cgPoint, &position)
-            AXValueGetValue(sizeValue, .cgSize, &size)
-            windowFrame = CGRect(origin: position, size: size)
+            windowFrame = frame
         }
         
         // Convert from screen coordinates (top-left origin) to Cocoa coordinates (bottom-left origin)

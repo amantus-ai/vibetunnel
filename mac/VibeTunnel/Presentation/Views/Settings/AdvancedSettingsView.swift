@@ -470,39 +470,24 @@ private struct WindowHighlightSettingsSection: View {
             
             // Get the window's accessibility element
             let pid = ProcessInfo.processInfo.processIdentifier
-            let axApp = AXUIElementCreateApplication(pid)
+            let axApp = AXElement.application(pid: pid)
             
-            var windowElements: CFTypeRef?
-            guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowElements) == .success,
-                  let windows = windowElements as? [AXUIElement],
-                  !windows.isEmpty else {
+            guard let windows = axApp.windows, !windows.isEmpty else {
                 Logger.advanced.debug("Could not get accessibility windows for highlight preview")
                 return
             }
             
             // Find the settings window by comparing bounds
             let settingsFrame = settingsWindow.frame
-            var targetWindow: AXUIElement?
+            var targetWindow: AXElement?
             
             for axWindow in windows {
-                var positionRef: CFTypeRef?
-                var sizeRef: CFTypeRef?
-                
-                if AXUIElementCopyAttributeValue(axWindow, kAXPositionAttribute as CFString, &positionRef) == .success,
-                   AXUIElementCopyAttributeValue(axWindow, kAXSizeAttribute as CFString, &sizeRef) == .success,
-                   let positionValue = positionRef as! AXValue?,
-                   let sizeValue = sizeRef as! AXValue? {
-                    
-                    var position = CGPoint.zero
-                    var size = CGSize.zero
-                    AXValueGetValue(positionValue, .cgPoint, &position)
-                    AXValueGetValue(sizeValue, .cgSize, &size)
-                    
+                if let frame = axWindow.frame() {
                     // Check if this matches our settings window (with some tolerance for frame differences)
                     let tolerance: CGFloat = 5.0
-                    if abs(position.x - settingsFrame.origin.x) < tolerance &&
-                       abs(size.width - settingsFrame.width) < tolerance &&
-                       abs(size.height - settingsFrame.height) < tolerance {
+                    if abs(frame.origin.x - settingsFrame.origin.x) < tolerance &&
+                       abs(frame.width - settingsFrame.width) < tolerance &&
+                       abs(frame.height - settingsFrame.height) < tolerance {
                         targetWindow = axWindow
                         break
                     }
@@ -511,7 +496,7 @@ private struct WindowHighlightSettingsSection: View {
             
             // Apply highlight effect to the settings window
             if let window = targetWindow {
-                highlightEffect?.highlightWindow(window)
+                highlightEffect?.highlightWindow(window.element)
             } else {
                 Logger.advanced.debug("Could not match settings window for highlight preview")
             }
