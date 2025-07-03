@@ -18,8 +18,8 @@ RUN npm install -g pnpm
 # Add Windows target
 RUN rustup target add x86_64-pc-windows-gnu
 
-# Install cargo-tauri
-RUN cargo install cargo-tauri
+# Install tauri-cli
+RUN cargo install tauri-cli
 
 # Set working directory
 WORKDIR /app

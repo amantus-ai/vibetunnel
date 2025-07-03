@@ -20,8 +20,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Install pnpm
 RUN npm install -g pnpm
 
-# Install cargo-tauri
-RUN cargo install cargo-tauri
+# Install tauri-cli
+RUN cargo install tauri-cli
 
 # Set working directory
 WORKDIR /app
