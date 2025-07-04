@@ -29,6 +29,9 @@ final class WebRTCManager: NSObject {
     /// Signaling server URL
     private let signalURL: URL
 
+    /// Local auth token for WebSocket authentication
+    private let localAuthToken: String?
+
     // Session management for security
     private var activeSessionId: String?
     private var sessionStartTime: Date?
@@ -40,7 +43,7 @@ final class WebRTCManager: NSObject {
 
     // MARK: - Initialization
 
-    init(serverURL: URL, screencapService: ScreencapService) {
+    init(serverURL: URL, screencapService: ScreencapService, localAuthToken: String? = nil) {
         // Convert HTTP URL to WebSocket URL
         guard var components = URLComponents(url: serverURL, resolvingAgainstBaseURL: false) else {
             fatalError("Invalid server URL: \(serverURL)")
@@ -52,6 +55,7 @@ final class WebRTCManager: NSObject {
         }
         self.signalURL = signalURL
         self.screencapService = screencapService
+        self.localAuthToken = localAuthToken
 
         super.init()
 
@@ -104,18 +108,25 @@ final class WebRTCManager: NSObject {
 
     /// Connect to signaling server for API handling only (no video capture)
     func connectForAPIHandling() async throws {
-        logger.info("🔌 Connecting for API handling only")
+        logger.info("🔌 Connecting for API handling only to \(self.signalURL)")
 
         // Connect to signaling server
-        try await connectSignaling()
+        do {
+            try await connectSignaling()
+            logger.info("✅ WebSocket connected successfully")
+        } catch {
+            logger.error("❌ Failed to connect to signaling server: \(error)")
+            throw error
+        }
 
         // Notify server we're ready as the Mac peer for API handling
+        logger.info("📤 Sending mac-ready message...")
         await sendSignalMessage([
             "type": "mac-ready",
             "mode": "api-only"
         ])
 
-        logger.info("✅ Connected for screencap API handling")
+        logger.info("✅ Connected for screencap API handling and sent mac-ready")
     }
 
     /// Process a video frame from ScreenCaptureKit synchronously
@@ -125,25 +136,25 @@ final class WebRTCManager: NSObject {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             return
         }
-        
+
         // Extract timestamp
         let timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         let timeStampNs = Int64(CMTimeGetSeconds(timestamp) * Double(NSEC_PER_SEC))
-        
+
         // Create RTCCVPixelBuffer with the pixel buffer
         let rtcPixelBuffer = RTCCVPixelBuffer(pixelBuffer: pixelBuffer)
-        
+
         // Create the video frame with the buffer
         let videoFrame = RTCVideoFrame(
             buffer: rtcPixelBuffer,
             rotation: ._0,
             timeStampNs: timeStampNs
         )
-        
+
         // Now we can safely create a task without capturing CMSampleBuffer
         Task.detached { [weak self] in
             guard let self else { return }
-            
+
             // Check if we're connected before processing
             let connected = await MainActor.run { self.isConnected }
             guard connected else {
@@ -155,15 +166,15 @@ final class WebRTCManager: NSObject {
                 }
                 return
             }
-            
+
             // Send the frame to WebRTC
             await MainActor.run { [weak self] in
                 guard let self,
                       let videoCapturer = self.videoCapturer,
                       let videoSource = self.videoSource else { return }
-                
+
                 videoSource.capturer(videoCapturer, didCapture: videoFrame)
-                
+
                 // Log success occasionally
                 if Int.random(in: 0..<300) == 0 {
                     self.logger
@@ -174,7 +185,7 @@ final class WebRTCManager: NSObject {
             }
         }
     }
-    
+
     /// Process a video frame from ScreenCaptureKit using sending parameter
     nonisolated func processVideoFrame(_ sampleBuffer: sending CMSampleBuffer) async {
         // Check if we're connected before processing
@@ -426,27 +437,46 @@ final class WebRTCManager: NSObject {
         let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
         self.signalSession = session
 
-        let request = URLRequest(url: signalURL)
+        var request = URLRequest(url: signalURL)
+        // Add local auth token if available
+        if let localAuthToken {
+            request.setValue(localAuthToken, forHTTPHeaderField: "X-VibeTunnel-Local")
+            logger.info("🔑 Adding local auth token to WebSocket request")
+        }
+        logger.info("📋 Creating WebSocket with request: \(request)")
+
         let socketTask = session.webSocketTask(with: request)
         self.signalSocket = socketTask
 
+        logger.info("▶️ Resuming WebSocket task...")
         socketTask.resume()
 
         // Start receiving messages
         Task {
+            logger.info("👂 Starting to receive messages...")
             await receiveSignalMessages()
         }
 
-        // Wait for connection
+        // Wait for connection with shorter timeout
+        logger.info("⏳ Waiting for WebSocket connection...")
         try await withCheckedThrowingContinuation { continuation in
             Task {
-                // Give it 5 seconds to connect
-                try await Task.sleep(nanoseconds: 5_000_000_000)
-                if self.signalSocket?.state == .running {
-                    continuation.resume()
-                } else {
-                    continuation.resume(throwing: WebRTCError.signalConnectionFailed)
+                // Check connection state more frequently
+                for i in 0..<10 {
+                    try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+
+                    if let state = self.signalSocket?.state {
+                        logger.info("🔄 WebSocket state after \(Double(i + 1) * 0.5)s: \(state.rawValue)")
+                        if state == .running {
+                            logger.info("✅ WebSocket is running!")
+                            continuation.resume()
+                            return
+                        }
+                    }
                 }
+
+                logger.error("❌ WebSocket failed to connect after 5 seconds")
+                continuation.resume(throwing: WebRTCError.signalConnectionFailed)
             }
         }
     }

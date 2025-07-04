@@ -16,9 +16,9 @@ public final class ScreencapService: NSObject {
     // MARK: - Singleton
 
     static let shared = ScreencapService()
-    
+
     // MARK: - WebSocket Connection State
-    
+
     private var isWebSocketConnecting = false
     private var isWebSocketConnected = false
     private var webSocketConnectionContinuations: [CheckedContinuation<Void, Error>] = []
@@ -43,7 +43,7 @@ public final class ScreencapService: NSObject {
     private var decompressionSession: VTDecompressionSession?
 
     // MARK: - Types
-    
+
     enum ScreencapError: LocalizedError {
         case invalidServerURL
         case webSocketNotConnected
@@ -59,37 +59,37 @@ public final class ScreencapService: NSObject {
         case invalidApplicationIndex
         case invalidCaptureType
         case invalidConfiguration
-        
+
         var errorDescription: String? {
             switch self {
             case .invalidServerURL:
-                return "Invalid server URL for WebSocket connection"
+                "Invalid server URL for WebSocket connection"
             case .webSocketNotConnected:
-                return "WebSocket connection not established"
+                "WebSocket connection not established"
             case .windowNotFound(let id):
-                return "Window with ID \(id) not found"
+                "Window with ID \(id) not found"
             case .noDisplay:
-                return "No display available"
+                "No display available"
             case .notCapturing:
-                return "Screen capture is not active"
+                "Screen capture is not active"
             case .failedToStartCapture(let error):
-                return "Failed to start capture: \(error.localizedDescription)"
+                "Failed to start capture: \(error.localizedDescription)"
             case .failedToCreateEvent:
-                return "Failed to create system event"
+                "Failed to create system event"
             case .invalidCoordinates(let x, let y):
-                return "Invalid coordinates: (\(x), \(y))"
+                "Invalid coordinates: (\(x), \(y))"
             case .invalidKeyInput(let key):
-                return "Invalid key input: \(key)"
+                "Invalid key input: \(key)"
             case .failedToGetContent(let error):
-                return "Failed to get shareable content: \(error.localizedDescription)"
+                "Failed to get shareable content: \(error.localizedDescription)"
             case .invalidWindowIndex:
-                return "Invalid window index"
+                "Invalid window index"
             case .invalidApplicationIndex:
-                return "Invalid application index"
+                "Invalid application index"
             case .invalidCaptureType:
-                return "Invalid capture type"
+                "Invalid capture type"
             case .invalidConfiguration:
-                return "Invalid capture configuration"
+                "Invalid capture configuration"
             }
         }
     }
@@ -128,6 +128,7 @@ public final class ScreencapService: NSObject {
 
     override init() {
         super.init()
+        logger.info("🚀 ScreencapService initialized, setting up WebSocket connection...")
         // Connect to WebSocket for API handling when service is created
         Task {
             await setupWebSocketForAPIHandling()
@@ -141,7 +142,7 @@ public final class ScreencapService: NSObject {
             logger.debug("WebSocket already connected")
             return
         }
-        
+
         if isWebSocketConnecting {
             logger.debug("WebSocket connection already in progress, waiting...")
             // Wait for existing connection attempt
@@ -150,12 +151,13 @@ public final class ScreencapService: NSObject {
             }
             return
         }
-        
+
         isWebSocketConnecting = true
-        
+
         // Get server URL from environment or use default
         let serverURLString = ProcessInfo.processInfo
             .environment["VIBETUNNEL_SERVER_URL"] ?? "http://localhost:4020"
+        logger.info("📍 Using server URL: \(serverURLString)")
         guard let serverURL = URL(string: serverURLString) else {
             logger.error("Invalid server URL: \(serverURLString)")
             isWebSocketConnecting = false
@@ -169,7 +171,9 @@ public final class ScreencapService: NSObject {
 
         // Create WebRTC manager which handles WebSocket API requests
         if webRTCManager == nil {
-            webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self)
+            // Get local auth token from ServerManager
+            let localAuthToken = ServerManager.shared.bunServer?.localToken
+            webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self, localAuthToken: localAuthToken)
         }
 
         // Connect to signaling server for API handling
@@ -179,7 +183,7 @@ public final class ScreencapService: NSObject {
             logger.info("✅ Connected to WebSocket for screencap API handling")
             isWebSocketConnected = true
             isWebSocketConnecting = false
-            
+
             // Resume all waiting continuations
             for continuation in webSocketConnectionContinuations {
                 continuation.resume()
@@ -189,7 +193,7 @@ public final class ScreencapService: NSObject {
             logger.error("Failed to connect WebSocket for API: \(error)")
             isWebSocketConnecting = false
             isWebSocketConnected = false
-            
+
             // Fail all waiting continuations
             for continuation in webSocketConnectionContinuations {
                 continuation.resume(throwing: error)
@@ -199,20 +203,20 @@ public final class ScreencapService: NSObject {
     }
 
     // MARK: - Public Methods
-    
+
     /// Ensure WebSocket connection is established
     public func ensureWebSocketConnected() async throws {
         if !isWebSocketConnected && !isWebSocketConnecting {
             await setupWebSocketForAPIHandling()
         }
-        
+
         // Wait for connection if still connecting
         if isWebSocketConnecting {
             try await withCheckedThrowingContinuation { continuation in
                 webSocketConnectionContinuations.append(continuation)
             }
         }
-        
+
         guard isWebSocketConnected else {
             throw ScreencapError.webSocketNotConnected
         }
@@ -1284,7 +1288,7 @@ extension ScreencapService: SCStreamOutput {
         // Process WebRTC frame if enabled
         // To avoid data race warnings, we'll let WebRTCManager handle the async processing
         // by calling it synchronously and letting it manage its own concurrency
-        if useWebRTC, let webRTCManager = webRTCManager {
+        if useWebRTC, let webRTCManager {
             // The processVideoFrame method is nonisolated and accepts a sending parameter
             // We can call it directly without creating a Task, avoiding the closure capture issue
             webRTCManager.processVideoFrameSync(sampleBuffer)

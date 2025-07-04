@@ -244,24 +244,33 @@ class ServerManager {
             logger.info("Started server on port \(self.port)")
 
             // Screencap is now handled via WebSocket API (no separate HTTP server)
+            // Always initialize the service if enabled, regardless of permission
+            // The service will handle permission checks internally
             if AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) {
-                // Check if we have screen recording permission
-                if await checkScreenRecordingPermission() {
-                    logger.info("✅ Screen recording permission granted - screencap available via WebSocket API")
-                    // Initialize ScreencapService singleton and ensure WebSocket is connected
-                    let screencapService = ScreencapService.shared
-                    do {
-                        try await screencapService.ensureWebSocketConnected()
-                        logger.info("✅ ScreencapService WebSocket connected successfully")
-                    } catch {
-                        logger.error("Failed to connect ScreencapService WebSocket: \(error)")
-                    }
+                logger.info("📸 Screencap service enabled, initializing...")
+
+                // Initialize ScreencapService singleton and ensure WebSocket is connected
+                let screencapService = ScreencapService.shared
+
+                // Check permission status
+                let hasPermission = await checkScreenRecordingPermission()
+                if hasPermission {
+                    logger.info("✅ Screen recording permission granted")
                 } else {
-                    logger.warning("⚠️ Screen recording permission not granted - screencap service disabled")
+                    logger.warning("⚠️ Screen recording permission not granted - some features will be limited")
                     logger
                         .warning(
                             "💡 Please grant screen recording permission in System Settings > Privacy & Security > Screen Recording"
                         )
+                }
+
+                // Connect WebSocket regardless of permission status
+                // This allows the API to respond with appropriate errors
+                do {
+                    try await screencapService.ensureWebSocketConnected()
+                    logger.info("✅ ScreencapService WebSocket connected successfully")
+                } catch {
+                    logger.error("❌ Failed to connect ScreencapService WebSocket: \(error)")
                 }
             } else {
                 logger.info("Screencap service disabled by user preference")
