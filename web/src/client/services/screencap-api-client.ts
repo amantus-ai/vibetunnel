@@ -8,6 +8,7 @@ interface ApiRequest {
   method: string;
   endpoint: string;
   params?: unknown;
+  sessionId?: string;
 }
 
 interface ApiResponse {
@@ -25,6 +26,7 @@ export class ScreencapApiClient {
   >();
   private isConnected = false;
   private connectionPromise: Promise<void> | null = null;
+  private sessionId: string | null = null;
 
   constructor(private wsUrl: string) {}
 
@@ -97,6 +99,7 @@ export class ScreencapApiClient {
       typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     const request: ApiRequest = {
       type: 'api-request',
       requestId,
@@ -104,6 +107,11 @@ export class ScreencapApiClient {
       endpoint,
       params,
     };
+
+    // Add sessionId for control operations
+    if (this.sessionId && this.isControlOperation(method, endpoint)) {
+      request.sessionId = this.sessionId;
+    }
 
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(requestId, {
@@ -123,6 +131,20 @@ export class ScreencapApiClient {
     });
   }
 
+  private isControlOperation(method: string, endpoint: string): boolean {
+    const controlEndpoints = [
+      '/click',
+      '/mousedown',
+      '/mousemove',
+      '/mouseup',
+      '/key',
+      '/capture',
+      '/capture-window',
+      '/stop',
+    ];
+    return method === 'POST' && controlEndpoints.includes(endpoint);
+  }
+
   // Convenience methods matching the HTTP API
   async getWindows() {
     return this.request('GET', '/windows');
@@ -133,15 +155,34 @@ export class ScreencapApiClient {
   }
 
   async startCapture(params: { type: string; index: number; webrtc?: boolean }) {
+    // Generate a session ID for this capture session
+    if (!this.sessionId) {
+      this.sessionId =
+        typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      logger.log(`Generated session ID: ${this.sessionId}`);
+    }
     return this.request('POST', '/capture', params);
   }
 
   async captureWindow(params: { cgWindowID: number; webrtc?: boolean }) {
+    // Generate a session ID for this capture session
+    if (!this.sessionId) {
+      this.sessionId =
+        typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      logger.log(`Generated session ID: ${this.sessionId}`);
+    }
     return this.request('POST', '/capture-window', params);
   }
 
   async stopCapture() {
-    return this.request('POST', '/stop');
+    const result = await this.request('POST', '/stop');
+    // Clear session ID after stopping capture
+    this.sessionId = null;
+    return result;
   }
 
   async sendClick(x: number, y: number) {

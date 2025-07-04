@@ -640,7 +640,7 @@ final class WebRTCManager: NSObject {
         logger.info("🔧 API request: \(method) \(endpoint) from session: \(sessionId ?? "unknown")")
 
         do {
-            let result = try await processApiRequest(method: method, endpoint: endpoint, params: json["params"])
+            let result = try await processApiRequest(method: method, endpoint: endpoint, params: json["params"], sessionId: sessionId)
             logger.info("📤 Sending API response for request \(requestId)")
             await sendSignalMessage([
                 "type": "api-response",
@@ -666,7 +666,7 @@ final class WebRTCManager: NSObject {
         return method == "POST" && controlEndpoints.contains(endpoint)
     }
 
-    private func processApiRequest(method: String, endpoint: String, params: Any?) async throws -> Any {
+    private func processApiRequest(method: String, endpoint: String, params: Any?, sessionId: String?) async throws -> Any {
         guard let screencapService else {
             throw WebRTCError.invalidConfiguration
         }
@@ -698,6 +698,16 @@ final class WebRTCManager: NSObject {
                 throw WebRTCError.invalidConfiguration
             }
             let useWebRTC = params["webrtc"] as? Bool ?? false
+            
+            // Initialize session if not already done
+            if activeSessionId == nil {
+                if let sessionId = sessionId {
+                    activeSessionId = sessionId
+                    sessionStartTime = Date()
+                    logger.info("🔐 [SECURITY] Session initialized during capture request: \(sessionId)")
+                }
+            }
+            
             try await screencapService.startCapture(type: type, index: index, useWebRTC: useWebRTC)
             return ["status": "started", "type": type, "webrtc": useWebRTC]
 
@@ -708,11 +718,25 @@ final class WebRTCManager: NSObject {
                 throw WebRTCError.invalidConfiguration
             }
             let useWebRTC = params["webrtc"] as? Bool ?? false
+            
+            // Initialize session if not already done
+            if activeSessionId == nil {
+                if let sessionId = sessionId {
+                    activeSessionId = sessionId
+                    sessionStartTime = Date()
+                    logger.info("🔐 [SECURITY] Session initialized during capture-window request: \(sessionId)")
+                }
+            }
+            
             try await screencapService.startCaptureWindow(cgWindowID: cgWindowID, useWebRTC: useWebRTC)
             return ["status": "started", "cgWindowID": cgWindowID, "webrtc": useWebRTC]
 
         case ("POST", "/stop"):
             await screencapService.stopCapture()
+            // Clear session on stop
+            activeSessionId = nil
+            sessionStartTime = nil
+            logger.info("🔐 [SECURITY] Session cleared after stop")
             return ["status": "stopped"]
 
         case ("POST", "/click"):

@@ -26,6 +26,7 @@ interface SignalMessage {
   params?: unknown;
   result?: unknown;
   error?: string;
+  sessionId?: string;
 }
 
 interface PeerConnection {
@@ -268,6 +269,7 @@ export class ScreencapSignalHandler {
         method: message.method,
         endpoint: message.endpoint,
         params: message.params,
+        sessionId: message.sessionId,
       });
     } else {
       logger.warn('Mac peer not connected, sending error response');
