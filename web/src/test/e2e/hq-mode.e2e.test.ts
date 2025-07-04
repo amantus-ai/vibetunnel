@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import {
   cleanupTestDirectories,
-  createTestDirectory,
   type ServerInstance,
   sleep,
   startTestServer,
@@ -19,7 +18,7 @@ describe('HQ Mode E2E Tests', () => {
   const remoteServers: ServerInstance[] = [];
   const testDirs: string[] = [];
   // Use very short path to avoid socket path length limit
-  const baseDir = path.join(os.tmpdir(), 'h' + Date.now().toString(36).slice(-4));
+  const baseDir = path.join(os.tmpdir(), `h${Date.now().toString(36).slice(-4)}`);
   fs.mkdirSync(baseDir, { recursive: true });
 
   beforeAll(async () => {

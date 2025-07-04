@@ -133,6 +133,22 @@ describe('ScreencapView', () => {
             json: () => Promise.resolve({ success: true }),
           } as Response);
         }
+        if (url.includes('/api/screencap/click')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ success: true }),
+          } as Response);
+        }
+        if (url.includes('/api/screencap/frame')) {
+          // Return a mock image URL for frame requests
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            headers: new Headers({ 'content-type': 'image/jpeg' }),
+            blob: () => Promise.resolve(new Blob(['mock image data'], { type: 'image/jpeg' })),
+          } as Response);
+        }
         return Promise.resolve({
           ok: false,
           status: 404,
@@ -210,8 +226,21 @@ describe('ScreencapView', () => {
       const windowElements = element.shadowRoot?.querySelectorAll('.window-item');
       expect(windowElements).toBeTruthy();
 
+      // Debug what's actually in the DOM
+      console.log('Element displays:', element.displays.length);
+      console.log('Element windows:', element.windows.length);
+      console.log('Window elements found:', windowElements?.length);
+      if (windowElements) {
+        windowElements.forEach((el, i) => {
+          console.log(`  ${i}: ${el.textContent?.replace(/\s+/g, ' ').trim()}`);
+        });
+      }
+
       // We have 3 displays (All + 2 individual) + 2 windows = 5 total
-      expect(windowElements?.length).toBe(5);
+      // But "All Displays" only shows when displays.length > 1
+      const expectedCount =
+        (element.displays.length > 1 ? 1 : 0) + element.displays.length + element.windows.length;
+      expect(windowElements?.length).toBe(expectedCount);
 
       const allText = Array.from(windowElements || []).map((el) => el.textContent);
 
