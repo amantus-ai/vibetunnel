@@ -209,10 +209,10 @@ public final class ScreencapService: NSObject {
                 // For all displays, capture everything including menu bar
                 logger.info("🔍 Creating content filter for all displays including menu bar")
 
-                // Create filter with empty arrays to capture all content on all displays
+                // Create filter that includes all applications - this is required for proper capture
                 captureFilter = SCContentFilter(
                     display: primaryDisplay,
-                    including: [], // Empty array captures all content including menu bar
+                    including: content.applications, // Include all applications for all displays capture
                     exceptingWindows: []
                 )
 
@@ -234,10 +234,10 @@ public final class ScreencapService: NSObject {
                     )
 
                 // Create filter to capture entire display including menu bar
-                // Using empty arrays captures everything on the display
+                // Include all applications to ensure proper desktop capture
                 captureFilter = SCContentFilter(
                     display: display,
-                    including: [], // Empty array captures all content
+                    including: content.applications, // Include all applications for desktop capture
                     exceptingWindows: []
                 )
             }
@@ -349,14 +349,21 @@ public final class ScreencapService: NSObject {
                     "🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor))"
                 )
         } else if case .desktop(let displayIndex) = captureMode {
-            // For desktop capture, use the display dimensions directly to include menu bar
+            // For desktop capture, use the display dimensions and set proper rects
             if displayIndex >= 0 && displayIndex < content.displays.count {
                 let display = content.displays[displayIndex]
                 streamConfig.width = Int(display.width)
                 streamConfig.height = Int(display.height)
+                
+                // Set source rect to capture the entire display including menu bar and dock
+                streamConfig.sourceRect = CGRect(x: 0, y: 0, width: display.width, height: display.height)
+                streamConfig.destinationRect = CGRect(x: 0, y: 0, width: display.width, height: display.height)
+                
+                let sourceRectStr = String(describing: streamConfig.sourceRect)
+                let destRectStr = String(describing: streamConfig.destinationRect)
                 logger
                     .info(
-                        "🖥️ Desktop stream config - using display dimensions: \(streamConfig.width)x\(streamConfig.height)"
+                        "🖥️ Desktop stream config - display: \(streamConfig.width)x\(streamConfig.height), sourceRect: \(sourceRectStr), destRect: \(destRectStr)"
                     )
             } else {
                 streamConfig.width = Int(filter.contentRect.width)

@@ -2,6 +2,7 @@ import Combine
 import CoreMedia
 import Foundation
 import OSLog
+import VideoToolbox
 
 @preconcurrency import WebRTC
 
@@ -101,6 +102,13 @@ final class WebRTCManager: NSObject {
             }
             return
         }
+        
+        // Log that we're processing frames
+        if Int.random(in: 0..<60) == 0 {
+            await MainActor.run { [weak self] in
+                self?.logger.info("🎬 Processing video frame - WebRTC is connected")
+            }
+        }
 
         // Try to get pixel buffer first (for raw frames)
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
@@ -156,52 +164,115 @@ final class WebRTCManager: NSObject {
     // MARK: - Private Methods
 
     private func createVideoEncoderFactory() -> RTCVideoEncoderFactory {
-        // Create a custom encoder factory that supports H.265/HEVC
-        // WebRTC provides specific factories for H.264 and H.265
+        // Create a hybrid encoder factory that supports both H.265 and H.264
+        // The default factory should automatically support available codecs
         
-        // First, create the H.265 encoder factory if available
-        if #available(macOS 11.0, *) {
-            // Create an array of codec info to specify our preferences
-            var supportedCodecs: [RTCVideoCodecInfo] = []
-            
-            // Add H.265/HEVC as the highest priority
-            let h265Codec = RTCVideoCodecInfo(name: kRTCVideoCodecH265)
-            h265Codec.parameters = [
-                "profile-level-id": "640c1f", // Main profile, level 3.1 for 1080p@30fps
-                "packetization-mode": "1"
-            ]
-            supportedCodecs.append(h265Codec)
-            
-            // Add H.264 as fallback
-            let h264BaselineCodec = RTCVideoCodecInfo(name: kRTCVideoCodecH264)
-            h264BaselineCodec.parameters = [
-                "profile-level-id": "42e01f", // Baseline profile for compatibility
-                "packetization-mode": "1"
-            ]
-            supportedCodecs.append(h264BaselineCodec)
-            
-            let h264HighCodec = RTCVideoCodecInfo(name: kRTCVideoCodecH264)
-            h264HighCodec.parameters = [
-                "profile-level-id": "640c1f", // High profile for better quality
-                "packetization-mode": "1"
-            ]
-            supportedCodecs.append(h264HighCodec)
-            
-            // Add VP8 as final fallback
-            supportedCodecs.append(RTCVideoCodecInfo(name: kRTCVideoCodecVp8))
-            
-            // Create encoder factory with our codec preferences
-            let encoderFactory = RTCVideoEncoderFactorySimulcast(
-                primary: RTCVideoEncoderFactoryH265(),
-                fallback: RTCVideoEncoderFactoryH264()
-            )
-            
-            logger.info("✅ Created custom encoder factory with H.265 support")
-            return encoderFactory
-        } else {
-            // Fallback for older macOS versions
-            logger.warning("H.265 not available on this macOS version, using H.264")
-            return RTCDefaultVideoEncoderFactory()
+        // Check if hardware H.265 encoding is available
+        let h265Available = isH265HardwareEncodingAvailable()
+        logger.info("🎥 H.265 hardware encoding available: \(h265Available)")
+        
+        // Use default factory which includes all available codecs
+        // It will automatically use hardware acceleration when available
+        let encoderFactory = RTCDefaultVideoEncoderFactory()
+        
+        logger.info("✅ Created default encoder factory with H.265/H.264 support")
+        return encoderFactory
+    }
+    
+    private func isH265HardwareEncodingAvailable() -> Bool {
+        // Check if the system supports hardware H.265 encoding
+        // macOS 14+ on Apple Silicon or Intel with T2 chip should support it
+        
+        // Check for hardware support using VideoToolbox
+        var isHardwareAccelerated = false
+        
+        // Create a test encoding session to check HEVC support
+        let encoderSpecification = [
+            kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder: true,
+            kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: true
+        ] as CFDictionary
+        
+        var compressionSession: VTCompressionSession?
+        let status = VTCompressionSessionCreate(
+            allocator: nil,
+            width: 1920,
+            height: 1080,
+            codecType: kCMVideoCodecType_HEVC,
+            encoderSpecification: encoderSpecification,
+            imageBufferAttributes: nil,
+            compressedDataAllocator: nil,
+            outputCallback: nil,
+            refcon: nil,
+            compressionSessionOut: &compressionSession
+        )
+        
+        if status == noErr, let session = compressionSession {
+            isHardwareAccelerated = true
+            VTCompressionSessionInvalidate(session)
+        }
+        
+        logger.info("🔍 VideoToolbox HEVC hardware encoding check: \(isHardwareAccelerated ? "supported" : "not supported") (status: \(status))")
+        return isHardwareAccelerated
+    }
+    
+    private func logCodecCapabilities() {
+        let h265Available = isH265HardwareEncodingAvailable()
+        logger.info("🎬 WebRTC codec capabilities:")
+        logger.info("  - Default encoder factory created")
+        logger.info("  - H.265/HEVC support: \(h265Available ? "Available" : "Not available")")
+        logger.info("  - H.264/AVC support: Always available")
+        logger.info("  - Hardware acceleration: Automatic when available")
+        
+        // The WebRTC library version we're using doesn't expose getCapabilities
+        // But the default factory will automatically use the best available codec
+    }
+    
+    private func configureCodecPreferences(for peerConnection: RTCPeerConnection) {
+        // Get the transceivers to configure codec preferences
+        let transceivers = peerConnection.transceivers
+        
+        for transceiver in transceivers {
+            if transceiver.mediaType == .video {
+                // Get all available codecs
+                let allCodecs = RTCRtpSender.capabilities(for: .video).codecs
+                
+                // Log available codecs
+                logger.info("📋 Available video codecs:")
+                for codec in allCodecs {
+                    logger.info("  - \(codec.mimeType) (\(codec.name))")
+                }
+                
+                // Filter and prioritize H.264 codecs
+                let h264Codecs = allCodecs.filter { codec in
+                    codec.mimeType.lowercased() == "video/h264"
+                }
+                
+                // Also get H.265 codecs if available
+                let h265Codecs = allCodecs.filter { codec in
+                    codec.mimeType.lowercased() == "video/h265" || 
+                    codec.name.lowercased().contains("hevc")
+                }
+                
+                // Get other codecs (VP8, VP9, etc)
+                let otherCodecs = allCodecs.filter { codec in
+                    !h264Codecs.contains(codec) && !h265Codecs.contains(codec)
+                }
+                
+                // Set codec preference order: H.264 first, then H.265, then others
+                var preferredCodecs: [RTCRtpCodecCapability] = []
+                preferredCodecs.append(contentsOf: h264Codecs)
+                preferredCodecs.append(contentsOf: h265Codecs)
+                preferredCodecs.append(contentsOf: otherCodecs)
+                
+                // Apply the codec preferences
+                do {
+                    try transceiver.setCodecPreferences(preferredCodecs)
+                    logger.info("✅ Configured codec preferences with H.264 priority")
+                    logger.info("  Preference order: \(preferredCodecs.map { $0.name }.joined(separator: ", "))")
+                } catch {
+                    logger.error("❌ Failed to set codec preferences: \(error)")
+                }
+            }
         }
     }
 
@@ -228,10 +299,16 @@ final class WebRTCManager: NSObject {
         }
 
         self.peerConnection = peerConnection
+        
+        // Log available codec capabilities
+        logCodecCapabilities()
 
         // Add local video track
         if let localVideoTrack {
             peerConnection.add(localVideoTrack, streamIds: ["screen-share"])
+            
+            // Configure codec preferences after adding the track
+            configureCodecPreferences(for: peerConnection)
         }
 
         logger.info("✅ Created peer connection")
@@ -255,6 +332,8 @@ final class WebRTCManager: NSObject {
         // Create video capturer
         let videoCapturer = RTCVideoCapturer(delegate: videoSource)
         self.videoCapturer = videoCapturer
+        
+        logger.info("📹 Created video capturer")
 
         // Create video track
         let videoTrack = peerConnectionFactory!.videoTrack(
@@ -384,51 +463,37 @@ final class WebRTCManager: NSObject {
                 optionalConstraints: nil
             )
 
-            // Create offer and set local description
-            let (offerType, offerSdp) = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<
-                (String, String),
-                Error
-            >) in
+            // Create offer first
+            let offer = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<RTCSessionDescription, Error>) in
                 peerConnection.offer(for: constraints) { offer, error in
-                    if let error {
+                    if let error = error {
                         continuation.resume(throwing: error)
-                    } else if let offer {
-                        // Extract values before Task to avoid sendability issues
-                        let offerType = offer.type
-                        let offerSdp = offer.sdp
-
-                        Task { @MainActor in
-                            // Modify SDP to increase bandwidth before setting local description
-                            var modifiedSdp = offerSdp
-                            modifiedSdp = self.addBandwidthToSdp(modifiedSdp)
-                            let modifiedOffer = RTCSessionDescription(type: offerType, sdp: modifiedSdp)
-
-                            // Set local description using async wrapper
-                            do {
-                                try await withCheckedThrowingContinuation { (innerContinuation: CheckedContinuation<
-                                    Void,
-                                    Error
-                                >) in
-                                    peerConnection.setLocalDescription(modifiedOffer) { error in
-                                        if let error {
-                                            innerContinuation.resume(throwing: error)
-                                        } else {
-                                            innerContinuation.resume()
-                                        }
-                                    }
-                                }
-                                let typeString = modifiedOffer.type == .offer ? "offer" : modifiedOffer
-                                    .type == .answer ? "answer" : "unknown"
-                                continuation.resume(returning: (typeString, modifiedOffer.sdp))
-                            } catch {
-                                continuation.resume(throwing: error)
-                            }
-                        }
+                    } else if let offer = offer {
+                        continuation.resume(returning: offer)
                     } else {
                         continuation.resume(throwing: WebRTCError.failedToCreatePeerConnection)
                     }
                 }
             }
+            
+            // Modify SDP on MainActor
+            var modifiedSdp = offer.sdp
+            modifiedSdp = self.addBandwidthToSdp(modifiedSdp)
+            let modifiedOffer = RTCSessionDescription(type: offer.type, sdp: modifiedSdp)
+            
+            // Set local description
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                peerConnection.setLocalDescription(modifiedOffer) { error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume()
+                    }
+                }
+            }
+            
+            let offerType = modifiedOffer.type == .offer ? "offer" : modifiedOffer.type == .answer ? "answer" : "unknown"
+            let offerSdp = modifiedOffer.sdp
 
             // Send offer through signaling
             await sendSignalMessage([
@@ -496,24 +561,64 @@ final class WebRTCManager: NSObject {
         let lines = sdp.components(separatedBy: "\n")
         var modifiedLines: [String] = []
         var inVideoSection = false
+        var h265Found = false
+        var h264Found = false
 
-        for line in lines {
-            modifiedLines.append(line)
-
+        for (index, line) in lines.enumerated() {
+            var modifiedLine = line
+            
             // Check if we're entering video m-line
             if line.starts(with: "m=video") {
                 inVideoSection = true
             } else if line.starts(with: "m=") {
                 inVideoSection = false
             }
+            
+            // Look for H.265/HEVC codec in rtpmap
+            if inVideoSection && line.contains("rtpmap") {
+                if line.contains("H265") || line.contains("HEVC") {
+                    h265Found = true
+                    logger.info("🎥 Found H.265 codec in SDP: \(line)")
+                } else if line.contains("H264") {
+                    h264Found = true
+                }
+            }
+            
+            // Add Safari-specific H.265 parameters if needed
+            if inVideoSection && line.starts(with: "a=fmtp:") && (line.contains("H265") || line.contains("HEVC")) {
+                // Add Safari-specific parameters for H.265
+                if !line.contains("level-asymmetry-allowed") {
+                    modifiedLine += ";level-asymmetry-allowed=1"
+                }
+                if !line.contains("packetization-mode") {
+                    modifiedLine += ";packetization-mode=1"
+                }
+                logger.info("📝 Modified H.265 fmtp line for Safari: \(modifiedLine)")
+            }
+            
+            modifiedLines.append(modifiedLine)
 
             // Add bandwidth constraint after video m-line
             if inVideoSection && line.starts(with: "m=video") {
-                // Add bandwidth constraint: 50 Mbps (50000 kbps) for 4K@60fps
-                modifiedLines.append("b=AS:50000")
-                logger.info("📈 Added bandwidth constraint to SDP: 50 Mbps for 4K@60fps")
+                // Use different bitrates for H.265 vs H.264
+                // H.265 is more efficient, so we can use lower bitrate for same quality
+                let bitrate = h265Found ? 30000 : 50000 // 30 Mbps for H.265, 50 Mbps for H.264
+                modifiedLines.append("b=AS:\(bitrate)")
+                logger.info("📈 Added bandwidth constraint to SDP: \(bitrate / 1000) Mbps for 4K@60fps (\(h265Found ? "H.265" : "H.264"))")
+            }
+            
+            // Add codec preference if we're at the end of video section
+            if inVideoSection && index + 1 < lines.count && lines[index + 1].starts(with: "m=") {
+                // If we have both codecs, ensure H.265 is preferred for Safari
+                if h265Found && h264Found {
+                    modifiedLines.append("a=x-google-flag:conference")
+                    logger.info("🎯 Added codec preference flag for Safari H.265 priority")
+                }
             }
         }
+        
+        // Log codec detection results
+        logger.info("📊 SDP Codec Analysis - H.265: \(h265Found ? "present" : "absent"), H.264: \(h264Found ? "present" : "absent")")
 
         return modifiedLines.joined(separator: "\n")
     }

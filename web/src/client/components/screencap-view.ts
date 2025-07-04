@@ -1190,6 +1190,9 @@ export class ScreencapView extends LitElement {
         logger.log('✅ Connected to signaling server');
         // Send capture request with browser info
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const safariVersion = this.getSafariVersion();
+        const preferH265 = isSafari && safariVersion >= 18; // Only Safari 18.0+ has stable H.265
+
         this.signalSocket?.send(
           JSON.stringify({
             type: 'start-capture',
@@ -1197,7 +1200,19 @@ export class ScreencapView extends LitElement {
             windowId: this.selectedWindow?.cgWindowID,
             displayIndex: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
             browser: isSafari ? 'safari' : 'other',
-            preferH265: isSafari, // Safari has excellent H.265 support
+            browserVersion: safariVersion,
+            preferH265: preferH265,
+            codecSupport: {
+              h265:
+                'RTCRtpReceiver' in window && RTCRtpReceiver.getCapabilities
+                  ? (RTCRtpReceiver.getCapabilities('video')?.codecs || []).some(
+                      (c) =>
+                        c.mimeType?.toLowerCase().includes('h265') ||
+                        c.mimeType?.toLowerCase().includes('hevc')
+                    )
+                  : false,
+              h264: true, // H.264 is always supported
+            },
           })
         );
         resolve();
@@ -1251,35 +1266,71 @@ export class ScreencapView extends LitElement {
 
       // Configure codec preferences for Safari to prefer H.265
       const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      if (isSafari && this.peerConnection.getTransceivers) {
+      const safariVersion = this.getSafariVersion();
+
+      // Only prefer H.265 for Safari 18.0+ as earlier versions have issues
+      const preferH265 = isSafari && safariVersion >= 18;
+
+      logger.log(
+        `🌐 Browser: ${isSafari ? 'Safari' : 'Other'}, Version: ${safariVersion}, H.265 preference: ${preferH265}`
+      );
+
+      if (this.peerConnection.getTransceivers) {
         const transceivers = this.peerConnection.getTransceivers();
         for (const transceiver of transceivers) {
           if (transceiver.receiver.track?.kind === 'video' && transceiver.setCodecPreferences) {
             const codecs = RTCRtpReceiver.getCapabilities('video')?.codecs || [];
 
-            // Log available codecs
-            logger.log(
-              'Available video codecs:',
-              codecs.map((c) => c.mimeType)
+            // Log available codecs with details
+            logger.log('📹 Available video codecs:');
+            const h265Codecs = codecs.filter(
+              (c) =>
+                c.mimeType?.toLowerCase().includes('h265') ||
+                c.mimeType?.toLowerCase().includes('hevc')
             );
+            const h264Codecs = codecs.filter((c) => c.mimeType?.toLowerCase().includes('h264'));
 
-            // Sort codecs to prioritize H.265/HEVC
+            if (h265Codecs.length > 0) {
+              logger.log(`  ✅ H.265/HEVC codecs available: ${h265Codecs.length}`);
+              h265Codecs.forEach((c) =>
+                logger.log(`    - ${c.mimeType} (${c.sdpFmtpLine || 'no params'})`)
+              );
+            } else {
+              logger.log('  ❌ No H.265/HEVC codecs available');
+            }
+
+            if (h264Codecs.length > 0) {
+              logger.log(`  ✅ H.264 codecs available: ${h264Codecs.length}`);
+            }
+
+            // Sort codecs based on preference
             const sortedCodecs = codecs.sort((a, b) => {
-              // Prioritize H.265/HEVC
-              if (
+              const aIsH265 =
                 a.mimeType?.toLowerCase().includes('h265') ||
-                a.mimeType?.toLowerCase().includes('hevc')
-              )
-                return -1;
-              if (
+                a.mimeType?.toLowerCase().includes('hevc');
+              const bIsH265 =
                 b.mimeType?.toLowerCase().includes('h265') ||
-                b.mimeType?.toLowerCase().includes('hevc')
-              )
-                return 1;
+                b.mimeType?.toLowerCase().includes('hevc');
+              const aIsH264 = a.mimeType?.toLowerCase().includes('h264');
+              const bIsH264 = b.mimeType?.toLowerCase().includes('h264');
 
-              // Then H.264 as fallback
-              if (a.mimeType?.toLowerCase().includes('h264')) return -1;
-              if (b.mimeType?.toLowerCase().includes('h264')) return 1;
+              if (preferH265) {
+                // Prefer H.265 for Safari 18.0+
+                if (aIsH265 && !bIsH265) return -1;
+                if (!aIsH265 && bIsH265) return 1;
+
+                // Then H.264 as fallback
+                if (aIsH264 && !bIsH264) return -1;
+                if (!aIsH264 && bIsH264) return 1;
+              } else {
+                // Prefer H.264 for older Safari or other browsers
+                if (aIsH264 && !bIsH264) return -1;
+                if (!aIsH264 && bIsH264) return 1;
+
+                // H.265 as secondary option
+                if (aIsH265 && !bIsH265) return -1;
+                if (!aIsH265 && bIsH265) return 1;
+              }
 
               return 0;
             });
@@ -1287,7 +1338,12 @@ export class ScreencapView extends LitElement {
             if (sortedCodecs.length > 0) {
               try {
                 transceiver.setCodecPreferences(sortedCodecs);
-                logger.log('✅ Configured codec preferences for Safari (H.265 priority)');
+                const primaryCodec =
+                  sortedCodecs[0].mimeType?.includes('h265') ||
+                  sortedCodecs[0].mimeType?.includes('hevc')
+                    ? 'H.265'
+                    : 'H.264';
+                logger.log(`✅ Configured codec preferences with ${primaryCodec} priority`);
               } catch (e) {
                 logger.warn('Could not set codec preferences:', e);
               }
@@ -1335,6 +1391,15 @@ export class ScreencapView extends LitElement {
     if (videoElement) {
       videoElement.srcObject = null;
     }
+  }
+
+  private getSafariVersion(): number {
+    const userAgent = navigator.userAgent;
+    const safariMatch = userAgent.match(/Version\/(\d+)\.(\d+)/);
+    if (safariMatch) {
+      return Number.parseInt(safariMatch[1], 10);
+    }
+    return 0;
   }
 
   private startStatsCollection() {
@@ -1556,10 +1621,10 @@ export class ScreencapView extends LitElement {
             bitrate: bitrate,
             // jitterBufferDelay is typically in seconds, but we should also check for reasonable values
             // If the value is already in milliseconds (> 1), use it directly
-            latency: stat.jitterBufferDelay 
-              ? (stat.jitterBufferDelay > 1 
-                  ? Math.round(stat.jitterBufferDelay)  // Already in ms
-                  : Math.round(stat.jitterBufferDelay * 1000))  // Convert from seconds to ms
+            latency: stat.jitterBufferDelay
+              ? stat.jitterBufferDelay > 1
+                ? Math.round(stat.jitterBufferDelay) // Already in ms
+                : Math.round(stat.jitterBufferDelay * 1000) // Convert from seconds to ms
               : 0,
             packetsLost: packetsLost,
             packetLossRate: packetsReceived > 0 ? (packetsLost / packetsReceived) * 100 : 0,
@@ -1821,12 +1886,13 @@ export class ScreencapView extends LitElement {
               type="button"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                ${this.fitMode === 'contain' 
-                  ? html`
+                ${
+                  this.fitMode === 'contain'
+                    ? html`
                     <rect x="3" y="6" width="18" height="12" rx="2"/>
                     <path d="M7 10h10M7 14h10"/>
                   `
-                  : html`
+                    : html`
                     <rect x="3" y="3" width="18" height="18" rx="2"/>
                     <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
                   `
