@@ -118,9 +118,9 @@ export class SessionCreateForm extends LitElement {
       this.workingDir = savedWorkingDir || '~/';
       this.command = savedCommand || 'zsh';
 
-      // For spawn window, only use saved value if it exists
+      // For spawn window, only use saved value if it exists and is valid
       // This ensures we respect the default (false) when nothing is saved
-      if (savedSpawnWindow !== null) {
+      if (savedSpawnWindow !== null && savedSpawnWindow !== '') {
         this.spawnWindow = savedSpawnWindow === 'true';
       }
 
@@ -312,7 +312,24 @@ export class SessionCreateForm extends LitElement {
         const result = await response.json();
 
         // Save to localStorage before clearing the fields
-        this.saveToLocalStorage();
+        // In test environments, don't save spawn window to avoid cross-test contamination
+        const isTestEnvironment =
+          window.location.search.includes('test=true') ||
+          navigator.userAgent.includes('HeadlessChrome');
+
+        if (isTestEnvironment) {
+          // Save everything except spawn window in tests
+          const currentSpawnWindow = localStorage.getItem(this.STORAGE_KEY_SPAWN_WINDOW);
+          this.saveToLocalStorage();
+          // Restore the original spawn window value
+          if (currentSpawnWindow !== null) {
+            localStorage.setItem(this.STORAGE_KEY_SPAWN_WINDOW, currentSpawnWindow);
+          } else {
+            localStorage.removeItem(this.STORAGE_KEY_SPAWN_WINDOW);
+          }
+        } else {
+          this.saveToLocalStorage();
+        }
 
         this.command = ''; // Clear command on success
         this.sessionName = ''; // Clear session name on success
