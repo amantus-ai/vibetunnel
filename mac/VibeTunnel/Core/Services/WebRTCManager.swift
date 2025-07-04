@@ -10,6 +10,9 @@ import VideoToolbox
 @MainActor
 final class WebRTCManager: NSObject {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "WebRTCManager")
+    
+    // Reference to screencap service for API operations
+    private weak var screencapService: ScreencapService?
 
     // MARK: - Properties
 
@@ -33,7 +36,7 @@ final class WebRTCManager: NSObject {
 
     // MARK: - Initialization
 
-    init(serverURL: URL) {
+    init(serverURL: URL, screencapService: ScreencapService) {
         // Convert HTTP URL to WebSocket URL
         guard var components = URLComponents(url: serverURL, resolvingAgainstBaseURL: false) else {
             fatalError("Invalid server URL: \(serverURL)")
@@ -44,6 +47,7 @@ final class WebRTCManager: NSObject {
             fatalError("Failed to construct WebSocket URL from: \(serverURL)")
         }
         self.signalURL = signalURL
+        self.screencapService = screencapService
 
         super.init()
 
@@ -176,7 +180,7 @@ final class WebRTCManager: NSObject {
         let h265Available = isH265HardwareEncodingAvailable()
         logger.info("🎥 H.265 hardware encoding available: \(h265Available)")
 
-        // Use default factory - the pre-built package doesn't have H.265 enabled
+        // Use default factory - steipete/WebRTC has native H.265 support built-in
         let encoderFactory = RTCDefaultVideoEncoderFactory()
 
         // Log what codecs the factory actually supports
@@ -186,11 +190,7 @@ final class WebRTCManager: NSObject {
             logger.info("  - \(codec.name): \(codec.parameters)")
         }
 
-        if h265Available && !supportedCodecs.contains(where: { $0.name == "H265" }) {
-            logger.warning("⚠️ H.265 hardware available but not in factory - will add manually to SDP")
-        }
-
-        logger.info("✅ Created default encoder factory")
+        logger.info("✅ Created encoder factory with native H.265 support")
         return encoderFactory
     }
 
@@ -261,9 +261,8 @@ final class WebRTCManager: NSObject {
                 logger.info("  - \(codec.name): \(codec.parameters)")
             }
 
-            // Since we can't get capabilities directly, we'll use SDP manipulation
-            logger.info("📝 Note: Direct codec preferences not available in this WebRTC version")
-            logger.info("  Using SDP manipulation to prioritize H.265 when available")
+            // The steipete/WebRTC package should handle codec preferences natively
+            logger.info("📝 Using native codec negotiation from steipete/WebRTC package")
 
             // The actual H.265 prioritization happens in addBandwidthToSdp where we modify the SDP
         }
@@ -442,9 +441,141 @@ final class WebRTCManager: NSObject {
             if let error = json["data"] as? String {
                 logger.error("Signal error: \(error)")
             }
+            
+        case "api-request":
+            // Handle API request from browser
+            await handleApiRequest(json)
 
         default:
             logger.warning("Unknown signal type: \(type)")
+        }
+    }
+    
+    private func handleApiRequest(_ json: [String: Any]) async {
+        guard let requestId = json["requestId"] as? String,
+              let method = json["method"] as? String,
+              let endpoint = json["endpoint"] as? String
+        else {
+            logger.error("Invalid API request format")
+            return
+        }
+        
+        logger.info("🔧 API request: \(method) \(endpoint)")
+        
+        do {
+            let result = try await processApiRequest(method: method, endpoint: endpoint, params: json["params"])
+            await sendSignalMessage([
+                "type": "api-response",
+                "requestId": requestId,
+                "result": result
+            ])
+        } catch {
+            await sendSignalMessage([
+                "type": "api-response",
+                "requestId": requestId,
+                "error": error.localizedDescription
+            ])
+        }
+    }
+    
+    private func processApiRequest(method: String, endpoint: String, params: Any?) async throws -> Any {
+        guard let screencapService else {
+            throw WebRTCError.invalidConfiguration
+        }
+        
+        switch (method, endpoint) {
+        case ("GET", "/windows"):
+            return try await screencapService.getWindows()
+            
+        case ("GET", "/displays"):
+            return try await screencapService.getDisplays()
+            
+        case ("POST", "/capture"):
+            guard let params = params as? [String: Any],
+                  let type = params["type"] as? String,
+                  let index = params["index"] as? Int
+            else {
+                throw WebRTCError.invalidConfiguration
+            }
+            let useWebRTC = params["webrtc"] as? Bool ?? false
+            try await screencapService.startCapture(type: type, index: index, useWebRTC: useWebRTC)
+            return ["status": "started", "type": type, "webrtc": useWebRTC]
+            
+        case ("POST", "/capture-window"):
+            guard let params = params as? [String: Any],
+                  let cgWindowID = params["cgWindowID"] as? Int
+            else {
+                throw WebRTCError.invalidConfiguration
+            }
+            let useWebRTC = params["webrtc"] as? Bool ?? false
+            try await screencapService.startCaptureWindow(cgWindowID: cgWindowID, useWebRTC: useWebRTC)
+            return ["status": "started", "cgWindowID": cgWindowID, "webrtc": useWebRTC]
+            
+        case ("POST", "/stop"):
+            await screencapService.stopCapture()
+            return ["status": "stopped"]
+            
+        case ("POST", "/click"):
+            guard let params = params as? [String: Any],
+                  let x = params["x"] as? Double,
+                  let y = params["y"] as? Double
+            else {
+                throw WebRTCError.invalidConfiguration
+            }
+            try await screencapService.sendClick(x: x, y: y)
+            return ["status": "clicked"]
+            
+        case ("POST", "/mousedown"):
+            guard let params = params as? [String: Any],
+                  let x = params["x"] as? Double,
+                  let y = params["y"] as? Double
+            else {
+                throw WebRTCError.invalidConfiguration
+            }
+            try await screencapService.sendMouseDown(x: x, y: y)
+            return ["status": "mousedown"]
+            
+        case ("POST", "/mousemove"):
+            guard let params = params as? [String: Any],
+                  let x = params["x"] as? Double,
+                  let y = params["y"] as? Double
+            else {
+                throw WebRTCError.invalidConfiguration
+            }
+            try await screencapService.sendMouseMove(x: x, y: y)
+            return ["status": "mousemove"]
+            
+        case ("POST", "/mouseup"):
+            guard let params = params as? [String: Any],
+                  let x = params["x"] as? Double,
+                  let y = params["y"] as? Double
+            else {
+                throw WebRTCError.invalidConfiguration
+            }
+            try await screencapService.sendMouseUp(x: x, y: y)
+            return ["status": "mouseup"]
+            
+        case ("POST", "/key"):
+            guard let params = params as? [String: Any],
+                  let key = params["key"] as? String
+            else {
+                throw WebRTCError.invalidConfiguration
+            }
+            let metaKey = params["metaKey"] as? Bool ?? false
+            let ctrlKey = params["ctrlKey"] as? Bool ?? false
+            let altKey = params["altKey"] as? Bool ?? false
+            let shiftKey = params["shiftKey"] as? Bool ?? false
+            try await screencapService.sendKey(
+                key: key,
+                metaKey: metaKey,
+                ctrlKey: ctrlKey,
+                altKey: altKey,
+                shiftKey: shiftKey
+            )
+            return ["status": "key sent"]
+            
+        default:
+            throw WebRTCError.invalidConfiguration
         }
     }
 
@@ -579,13 +710,9 @@ final class WebRTCManager: NSObject {
                 if components.count > 3 {
                     videoPayloadTypes = Array(components[3...])
 
-                    // If H.265 hardware is available but not in SDP, manually add it
-                    if isH265HardwareEncodingAvailable() && !videoPayloadTypes.contains(h265PayloadType) {
-                        // Add H.265 payload type at the beginning for priority
-                        videoPayloadTypes.insert(h265PayloadType, at: 0)
-                        modifiedLine = components[0...2].joined(separator: " ") + " " + videoPayloadTypes
-                            .joined(separator: " ")
-                        logger.info("🚀 Manually added H.265 payload type to m=video line")
+                    // With steipete/WebRTC, H.265 should already be in the SDP
+                    if !videoPayloadTypes.contains(h265PayloadType) {
+                        logger.debug("H.265 payload type not found in initial SDP")
                     }
                 }
             } else if line.starts(with: "m=") {
@@ -628,15 +755,9 @@ final class WebRTCManager: NSObject {
                         "📈 Added bandwidth constraint to SDP: \(bitrate / 1_000) Mbps for 4K@60fps (\((h265Found || isH265HardwareEncodingAvailable()) ? "H.265" : "H.264"))"
                     )
 
-                // If H.265 hardware is available but not found in SDP, manually add it
-                if isH265HardwareEncodingAvailable() && !h265Found && videoPayloadTypes.contains(h265PayloadType) {
-                    modifiedLines.append("a=rtpmap:\(h265PayloadType) H265/90000")
-                    modifiedLines
-                        .append(
-                            "a=fmtp:\(h265PayloadType) profile-level-id=1;packetization-mode=1;level-asymmetry-allowed=1"
-                        )
-                    logger.info("🔧 Manually added H.265 codec attributes to SDP")
-                    h265Found = true
+                // With steipete/WebRTC, H.265 should be included natively
+                if !h265Found && isH265HardwareEncodingAvailable() {
+                    logger.info("📝 H.265 hardware available but not found in SDP - the new WebRTC package should include it")
                 }
             }
 
