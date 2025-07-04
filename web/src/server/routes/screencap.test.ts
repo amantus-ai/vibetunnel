@@ -230,11 +230,11 @@ describe('screencap routes', () => {
 
       // The implementation manually proxies using fetch
       // No createProxyMiddleware is used anymore
-      
+
       // Find the windows route to verify it exists
       const stack = (router as unknown as { stack: Array<{ route?: { path: string } }> }).stack;
       const windowsRoute = stack.find((layer) => layer.route?.path === '/screencap/windows');
-      
+
       expect(windowsRoute).toBeDefined();
     });
   });

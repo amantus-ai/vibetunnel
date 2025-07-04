@@ -437,18 +437,18 @@ describe('ScreencapView', () => {
       // This test verifies that click handling works
       // The actual image element might not be present due to timing issues in tests
       // so we'll test the click API directly
-      
+
       // Verify our mock is set up for click endpoint
       const response = await fetch('/api/screencap/click', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ x: 500, y: 500 }),
       });
-      
+
       expect(response.ok).toBe(true);
       const result = await response.json();
       expect(result.success).toBe(true);
-      
+
       // Verify the click endpoint was called
       const fetchCalls = vi.mocked(fetch).mock.calls;
       const clickCall = fetchCalls.find(
