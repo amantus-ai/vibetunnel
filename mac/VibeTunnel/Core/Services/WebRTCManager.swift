@@ -103,11 +103,34 @@ final class WebRTCManager: NSObject {
     /// Stop WebRTC capture
     func stopCapture() async {
         logger.info("🛑 Stopping WebRTC capture")
-        await disconnect()
+        
+        // Clear session information for the capture
+        if let sessionId = activeSessionId {
+            logger.info("🔒 [SECURITY] Capture session ended: \(sessionId)")
+            activeSessionId = nil
+            sessionStartTime = nil
+        }
+        
+        // Close peer connection but keep WebSocket for API
+        peerConnection?.close()
+        peerConnection = nil
+        
+        // Clean up video tracks and sources
+        localVideoTrack = nil
+        videoSource = nil
+        videoCapturer = nil
+        
+        logger.info("✅ Stopped WebRTC capture (keeping WebSocket for API)")
     }
 
     /// Connect to signaling server for API handling only (no video capture)
     func connectForAPIHandling() async throws {
+        // Don't connect if already connecting or connected
+        guard signalSocket == nil || signalSocket?.state != .running else {
+            logger.info("WebSocket connection already in progress, waiting...")
+            return
+        }
+        
         logger.info("🔌 Connecting for API handling only to \(self.signalURL)")
         logger.info("  📋 Current active session: \(self.activeSessionId ?? "nil")")
 
@@ -120,6 +143,7 @@ final class WebRTCManager: NSObject {
             isConnected = true
         } catch {
             logger.error("❌ Failed to connect to signaling server: \(error)")
+            isConnected = false
             throw error
         }
 
@@ -544,6 +568,24 @@ final class WebRTCManager: NSObject {
             }
         } catch {
             logger.error("WebSocket receive error: \(error)")
+        }
+        
+        logger.info("❌ WebSocket closed with code: \(socket.closeCode?.rawValue ?? 0), reason: \(socket.closeReason?.data(using: .utf8).flatMap { String(data: $0, encoding: .utf8) } ?? "")")
+        
+        // Clear the socket reference
+        if signalSocket === socket {
+            signalSocket = nil
+            logger.info("⚠️ WebSocket disconnected, will attempt to reconnect")
+            
+            // Only reconnect if we haven't explicitly disconnected
+            if isConnected {
+                logger.info("⏳ Scheduling reconnection in 2 seconds...")
+                Task {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    logger.info("🔄 Attempting to reconnect WebSocket...")
+                    try? await connectForAPIHandling()
+                }
+            }
         }
     }
 
