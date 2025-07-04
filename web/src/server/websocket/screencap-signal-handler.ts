@@ -4,11 +4,28 @@ import { createLogger } from '../utils/logger.js';
 const logger = createLogger('screencap-signal');
 
 interface SignalMessage {
-  type: 'start-capture' | 'offer' | 'answer' | 'ice-candidate' | 'error' | 'ready' | 'mac-ready';
+  type:
+    | 'start-capture'
+    | 'offer'
+    | 'answer'
+    | 'ice-candidate'
+    | 'error'
+    | 'ready'
+    | 'mac-ready'
+    // New API message types
+    | 'api-request'
+    | 'api-response';
   mode?: 'desktop' | 'window';
   windowId?: number;
   displayIndex?: number;
   data?: unknown; // Will contain SDP or ICE candidate data
+  // API request/response fields
+  requestId?: string;
+  method?: string;
+  endpoint?: string;
+  params?: unknown;
+  result?: unknown;
+  error?: string;
 }
 
 interface PeerConnection {
@@ -21,6 +38,7 @@ interface PeerConnection {
 export class ScreencapSignalHandler {
   private macPeer: PeerConnection | null = null;
   private browserPeers: Map<WebSocket, PeerConnection> = new Map();
+  private pendingRequests: Map<string, (response: unknown) => void> = new Map();
 
   handleConnection(ws: WebSocket, userId: string) {
     logger.log(`New WebSocket connection from user ${userId}`);
@@ -74,6 +92,16 @@ export class ScreencapSignalHandler {
       case 'ice-candidate':
         // Forward ICE candidates
         this.handleIceCandidate(ws, message);
+        break;
+
+      case 'api-request':
+        // Forward API request from browser to Mac
+        this.handleApiRequest(ws, message);
+        break;
+
+      case 'api-response':
+        // Forward API response from Mac to browser
+        this.handleApiResponse(ws, message);
         break;
 
       default:
@@ -206,6 +234,61 @@ export class ScreencapSignalHandler {
     this.sendToPeer(ws, {
       type: 'error',
       data: error,
+    });
+  }
+
+  private handleApiRequest(ws: WebSocket, message: SignalMessage) {
+    // Only browser peers can make API requests
+    if (!this.browserPeers.has(ws)) {
+      this.sendError(ws, 'Only browser peers can make API requests');
+      return;
+    }
+
+    if (!message.requestId || !message.method || !message.endpoint) {
+      this.sendError(ws, 'Invalid API request format');
+      return;
+    }
+
+    // Forward to Mac peer if connected
+    if (this.macPeer) {
+      this.sendToMac({
+        type: 'api-request',
+        requestId: message.requestId,
+        method: message.method,
+        endpoint: message.endpoint,
+        params: message.params,
+      });
+    } else {
+      // Send error response if Mac not connected
+      this.sendToPeer(ws, {
+        type: 'api-response',
+        requestId: message.requestId,
+        error: 'Mac peer not connected',
+      });
+    }
+  }
+
+  private handleApiResponse(ws: WebSocket, message: SignalMessage) {
+    // Only Mac peer can send API responses
+    if (ws !== this.macPeer?.ws) {
+      logger.warn('Received API response from non-Mac peer');
+      return;
+    }
+
+    if (!message.requestId) {
+      logger.error('API response missing requestId');
+      return;
+    }
+
+    // Forward response to all browser peers
+    // In future, could track which browser made which request
+    this.browserPeers.forEach((peer) => {
+      this.sendToPeer(peer.ws, {
+        type: 'api-response',
+        requestId: message.requestId,
+        result: message.result,
+        error: message.error,
+      });
     });
   }
 }

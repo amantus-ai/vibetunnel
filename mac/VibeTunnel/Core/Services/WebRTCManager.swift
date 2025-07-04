@@ -10,8 +10,8 @@ import VideoToolbox
 @MainActor
 final class WebRTCManager: NSObject {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "WebRTCManager")
-    
-    // Reference to screencap service for API operations
+
+    /// Reference to screencap service for API operations
     private weak var screencapService: ScreencapService?
 
     // MARK: - Properties
@@ -28,6 +28,10 @@ final class WebRTCManager: NSObject {
 
     /// Signaling server URL
     private let signalURL: URL
+
+    // Session management for security
+    private var activeSessionId: String?
+    private var sessionStartTime: Date?
 
     // MARK: - Published Properties
 
@@ -411,6 +415,12 @@ final class WebRTCManager: NSObject {
         switch type {
         case "start-capture":
             // Browser wants to start capture, create offer
+            // Initialize session for this capture
+            if let sessionId = json["sessionId"] as? String {
+                activeSessionId = sessionId
+                sessionStartTime = Date()
+                logger.info("🔐 [SECURITY] Session initialized: \(sessionId)")
+            }
             await createAndSendOffer()
 
         case "answer":
@@ -441,7 +451,7 @@ final class WebRTCManager: NSObject {
             if let error = json["data"] as? String {
                 logger.error("Signal error: \(error)")
             }
-            
+
         case "api-request":
             // Handle API request from browser
             await handleApiRequest(json)
@@ -450,7 +460,7 @@ final class WebRTCManager: NSObject {
             logger.warning("Unknown signal type: \(type)")
         }
     }
-    
+
     private func handleApiRequest(_ json: [String: Any]) async {
         guard let requestId = json["requestId"] as? String,
               let method = json["method"] as? String,
@@ -459,9 +469,31 @@ final class WebRTCManager: NSObject {
             logger.error("Invalid API request format")
             return
         }
-        
-        logger.info("🔧 API request: \(method) \(endpoint)")
-        
+
+        // Extract session ID from request
+        let sessionId = json["sessionId"] as? String
+
+        // Validate session for control operations
+        if isControlOperation(method: method, endpoint: endpoint) {
+            guard let sessionId,
+                  let activeSessionId,
+                  sessionId == activeSessionId
+            else {
+                logger
+                    .error(
+                        "🚫 [SECURITY] Unauthorized control attempt - sessionId: \(sessionId ?? "nil"), activeSession: \(self.activeSessionId ?? "nil")"
+                    )
+                await sendSignalMessage([
+                    "type": "api-response",
+                    "requestId": requestId,
+                    "error": "Unauthorized: Invalid session"
+                ])
+                return
+            }
+        }
+
+        logger.info("🔧 API request: \(method) \(endpoint) from session: \(sessionId ?? "unknown")")
+
         do {
             let result = try await processApiRequest(method: method, endpoint: endpoint, params: json["params"])
             await sendSignalMessage([
@@ -477,19 +509,28 @@ final class WebRTCManager: NSObject {
             ])
         }
     }
-    
+
+    private func isControlOperation(method: String, endpoint: String) -> Bool {
+        // Define which operations require session validation
+        let controlEndpoints = [
+            "/click", "/mousedown", "/mousemove", "/mouseup", "/key",
+            "/capture", "/capture-window", "/stop"
+        ]
+        return method == "POST" && controlEndpoints.contains(endpoint)
+    }
+
     private func processApiRequest(method: String, endpoint: String, params: Any?) async throws -> Any {
         guard let screencapService else {
             throw WebRTCError.invalidConfiguration
         }
-        
+
         switch (method, endpoint) {
         case ("GET", "/windows"):
             return try await screencapService.getWindows()
-            
+
         case ("GET", "/displays"):
             return try await screencapService.getDisplays()
-            
+
         case ("POST", "/capture"):
             guard let params = params as? [String: Any],
                   let type = params["type"] as? String,
@@ -500,7 +541,7 @@ final class WebRTCManager: NSObject {
             let useWebRTC = params["webrtc"] as? Bool ?? false
             try await screencapService.startCapture(type: type, index: index, useWebRTC: useWebRTC)
             return ["status": "started", "type": type, "webrtc": useWebRTC]
-            
+
         case ("POST", "/capture-window"):
             guard let params = params as? [String: Any],
                   let cgWindowID = params["cgWindowID"] as? Int
@@ -510,11 +551,11 @@ final class WebRTCManager: NSObject {
             let useWebRTC = params["webrtc"] as? Bool ?? false
             try await screencapService.startCaptureWindow(cgWindowID: cgWindowID, useWebRTC: useWebRTC)
             return ["status": "started", "cgWindowID": cgWindowID, "webrtc": useWebRTC]
-            
+
         case ("POST", "/stop"):
             await screencapService.stopCapture()
             return ["status": "stopped"]
-            
+
         case ("POST", "/click"):
             guard let params = params as? [String: Any],
                   let x = params["x"] as? Double,
@@ -524,7 +565,7 @@ final class WebRTCManager: NSObject {
             }
             try await screencapService.sendClick(x: x, y: y)
             return ["status": "clicked"]
-            
+
         case ("POST", "/mousedown"):
             guard let params = params as? [String: Any],
                   let x = params["x"] as? Double,
@@ -534,7 +575,7 @@ final class WebRTCManager: NSObject {
             }
             try await screencapService.sendMouseDown(x: x, y: y)
             return ["status": "mousedown"]
-            
+
         case ("POST", "/mousemove"):
             guard let params = params as? [String: Any],
                   let x = params["x"] as? Double,
@@ -544,7 +585,7 @@ final class WebRTCManager: NSObject {
             }
             try await screencapService.sendMouseMove(x: x, y: y)
             return ["status": "mousemove"]
-            
+
         case ("POST", "/mouseup"):
             guard let params = params as? [String: Any],
                   let x = params["x"] as? Double,
@@ -554,7 +595,7 @@ final class WebRTCManager: NSObject {
             }
             try await screencapService.sendMouseUp(x: x, y: y)
             return ["status": "mouseup"]
-            
+
         case ("POST", "/key"):
             guard let params = params as? [String: Any],
                   let key = params["key"] as? String
@@ -573,7 +614,7 @@ final class WebRTCManager: NSObject {
                 shiftKey: shiftKey
             )
             return ["status": "key sent"]
-            
+
         default:
             throw WebRTCError.invalidConfiguration
         }
@@ -757,7 +798,10 @@ final class WebRTCManager: NSObject {
 
                 // With steipete/WebRTC, H.265 should be included natively
                 if !h265Found && isH265HardwareEncodingAvailable() {
-                    logger.info("📝 H.265 hardware available but not found in SDP - the new WebRTC package should include it")
+                    logger
+                        .info(
+                            "📝 H.265 hardware available but not found in SDP - the new WebRTC package should include it"
+                        )
                 }
             }
 
@@ -781,6 +825,13 @@ final class WebRTCManager: NSObject {
     }
 
     private func disconnect() async {
+        // Clear session information
+        if let sessionId = activeSessionId {
+            logger.info("🔒 [SECURITY] Session terminated: \(sessionId)")
+            activeSessionId = nil
+            sessionStartTime = nil
+        }
+
         // Close peer connection
         peerConnection?.close()
         peerConnection = nil

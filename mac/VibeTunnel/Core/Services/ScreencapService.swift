@@ -547,7 +547,7 @@ public final class ScreencapService: NSObject {
             }
 
             // Create WebRTC manager
-            webRTCManager = WebRTCManager(serverURL: serverURL)
+            webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self)
 
             // Start WebRTC capture
             let modeString: String = switch captureMode {
@@ -625,6 +625,19 @@ public final class ScreencapService: NSObject {
     ///   - y: Y coordinate in 0-1000 normalized range
     ///   - cgWindowID: Optional window ID for window-specific clicks
     func sendClick(x: Double, y: Double, cgWindowID: Int? = nil) async throws {
+        // Validate coordinate boundaries
+        guard x >= 0 && x <= 1_000 && y >= 0 && y <= 1_000 else {
+            logger.error("⚠️ Invalid click coordinates: (\(x), \(y)) - must be in range 0-1000")
+            throw ScreencapError.invalidCoordinates(x: x, y: y)
+        }
+
+        // Security audit log - include timestamp for tracking
+        let timestamp = Date().timeIntervalSince1970
+        logger
+            .info(
+                "🔒 [AUDIT] Click event at \(timestamp): coords=(\(x), \(y)), windowID=\(cgWindowID?.description ?? "nil")"
+            )
+
         logger.info("🖱️ Received click at normalized coordinates: (\(x), \(y))")
 
         // Get the capture filter to determine actual dimensions
@@ -742,6 +755,16 @@ public final class ScreencapService: NSObject {
     ///   - x: X coordinate in 0-1000 normalized range
     ///   - y: Y coordinate in 0-1000 normalized range
     func sendMouseDown(x: Double, y: Double) async throws {
+        // Validate coordinate boundaries
+        guard x >= 0 && x <= 1_000 && y >= 0 && y <= 1_000 else {
+            logger.error("⚠️ Invalid mouse down coordinates: (\(x), \(y)) - must be in range 0-1000")
+            throw ScreencapError.invalidCoordinates(x: x, y: y)
+        }
+
+        // Security audit log
+        let timestamp = Date().timeIntervalSince1970
+        logger.info("🔒 [AUDIT] Mouse down event at \(timestamp): coords=(\(x), \(y))")
+
         logger.info("🖱️ Received mouse down at normalized coordinates: (\(x), \(y))")
 
         // Calculate pixel coordinates (reuse the conversion logic)
@@ -768,6 +791,12 @@ public final class ScreencapService: NSObject {
     ///   - x: X coordinate in 0-1000 normalized range
     ///   - y: Y coordinate in 0-1000 normalized range
     func sendMouseMove(x: Double, y: Double) async throws {
+        // Validate coordinate boundaries
+        guard x >= 0 && x <= 1_000 && y >= 0 && y <= 1_000 else {
+            logger.error("⚠️ Invalid mouse move coordinates: (\(x), \(y)) - must be in range 0-1000")
+            throw ScreencapError.invalidCoordinates(x: x, y: y)
+        }
+
         // Calculate pixel coordinates
         let moveLocation = try await calculateClickLocation(x: x, y: y)
 
@@ -790,6 +819,16 @@ public final class ScreencapService: NSObject {
     ///   - x: X coordinate in 0-1000 normalized range
     ///   - y: Y coordinate in 0-1000 normalized range
     func sendMouseUp(x: Double, y: Double) async throws {
+        // Validate coordinate boundaries
+        guard x >= 0 && x <= 1_000 && y >= 0 && y <= 1_000 else {
+            logger.error("⚠️ Invalid mouse up coordinates: (\(x), \(y)) - must be in range 0-1000")
+            throw ScreencapError.invalidCoordinates(x: x, y: y)
+        }
+
+        // Security audit log
+        let timestamp = Date().timeIntervalSince1970
+        logger.info("🔒 [AUDIT] Mouse up event at \(timestamp): coords=(\(x), \(y))")
+
         logger.info("🖱️ Received mouse up at normalized coordinates: (\(x), \(y))")
 
         // Calculate pixel coordinates
@@ -889,6 +928,19 @@ public final class ScreencapService: NSObject {
     )
         async throws
     {
+        // Validate key input
+        guard !key.isEmpty && key.count <= 20 else {
+            logger.error("⚠️ Invalid key input: '\(key)' - must be non-empty and <= 20 characters")
+            throw ScreencapError.invalidKeyInput(key)
+        }
+
+        // Security audit log - include timestamp for tracking
+        let timestamp = Date().timeIntervalSince1970
+        logger
+            .info(
+                "🔒 [AUDIT] Key event at \(timestamp): key='\(key)', modifiers=[cmd:\(metaKey), ctrl:\(ctrlKey), alt:\(altKey), shift:\(shiftKey)]"
+            )
+
         // Convert key string to key code
         let keyCode = keyStringToKeyCode(key)
 
@@ -1140,6 +1192,8 @@ enum ScreencapError: LocalizedError {
     case failedToGetContent(Error)
     case invalidConfiguration
     case failedToStartCapture(Error)
+    case invalidCoordinates(x: Double, y: Double)
+    case invalidKeyInput(String)
 
     var errorDescription: String? {
         switch self {
@@ -1161,6 +1215,10 @@ enum ScreencapError: LocalizedError {
             "Invalid capture configuration"
         case .failedToStartCapture(let error):
             "Failed to start capture: \(error.localizedDescription)"
+        case .invalidCoordinates(let x, let y):
+            "Invalid coordinates (\(x), \(y)) - must be in range 0-1000"
+        case .invalidKeyInput(let key):
+            "Invalid key input: '\(key)' - must be non-empty and <= 20 characters"
         }
     }
 }

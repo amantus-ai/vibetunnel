@@ -81,7 +81,6 @@ class ServerManager {
     }
 
     private(set) var bunServer: BunServer?
-    private var screencapServer: ScreencapHTTPServer?
     private(set) var isRunning = false
     private(set) var isRestarting = false
     private(set) var lastError: Error?
@@ -244,24 +243,15 @@ class ServerManager {
 
             logger.info("Started server on port \(self.port)")
 
-            // Start screencap HTTP server if enabled
+            // Screencap is now handled via WebSocket API (no separate HTTP server)
             if AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) {
-                do {
-                    // Check if we have screen recording permission
-                    if await checkScreenRecordingPermission() {
-                        screencapServer = ScreencapHTTPServer()
-                        try screencapServer?.start()
-                        logger.info("✅ Started screencap server on port 4010")
-                    } else {
-                        logger.warning("⚠️ Screen recording permission not granted - screencap service disabled")
-                        logger
-                            .warning(
-                                "💡 Please grant screen recording permission in System Settings > Privacy & Security > Screen Recording"
-                            )
-                    }
-                } catch {
-                    logger.error("Failed to start screencap server: \(error)")
-                    // Continue anyway - screencap is optional
+                // Check if we have screen recording permission
+                if await checkScreenRecordingPermission() {
+                    logger.info("✅ Screen recording permission granted - screencap available via WebSocket API")
+                } else {
+                    logger.warning("⚠️ Screen recording permission not granted - screencap service disabled")
+                    logger
+                        .warning("💡 Please grant screen recording permission in System Settings > Privacy & Security > Screen Recording")
                 }
             } else {
                 logger.info("Screencap service disabled by user preference")
@@ -297,10 +287,6 @@ class ServerManager {
 
         await server.stop()
         bunServer = nil
-
-        // Stop screencap server
-        screencapServer?.stop()
-        screencapServer = nil
 
         isRunning = false
 
@@ -426,10 +412,6 @@ class ServerManager {
         // Update state immediately
         isRunning = false
         bunServer = nil
-
-        // Stop screencap server on crash
-        screencapServer?.stop()
-        screencapServer = nil
 
         // Allow sleep when server crashes
         powerManager.updateSleepPrevention(enabled: false, serverRunning: false)

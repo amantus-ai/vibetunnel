@@ -1,5 +1,6 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { ScreencapApiClient } from '../services/screencap-api-client.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('screencap-view');
@@ -485,8 +486,12 @@ export class ScreencapView extends LitElement {
   private lastBytesReceived = 0;
   private lastStatsTimestamp = 0;
 
+  // API client for screencap operations
+  private apiClient: ScreencapApiClient | null = null;
+
   connectedCallback() {
     super.connectedCallback();
+    this.initializeApiClient();
     this.loadInitialData();
     this.setupKeyboardHandler();
     this.loadSidebarState();
@@ -497,6 +502,7 @@ export class ScreencapView extends LitElement {
     this.stopCapture();
     this.removeKeyboardHandler();
     this.cleanupWebRTC();
+    this.cleanupApiClient();
   }
 
   private loadSidebarState() {
@@ -508,6 +514,21 @@ export class ScreencapView extends LitElement {
 
   private saveSidebarState() {
     localStorage.setItem(this.SIDEBAR_COLLAPSED_KEY, this.sidebarCollapsed.toString());
+  }
+
+  private initializeApiClient() {
+    // Construct WebSocket URL for API client
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/screencap-signal`;
+    this.apiClient = new ScreencapApiClient(wsUrl);
+    logger.log('API client initialized with URL:', wsUrl);
+  }
+
+  private cleanupApiClient() {
+    if (this.apiClient) {
+      this.apiClient.close();
+      this.apiClient = null;
+    }
   }
 
   private toggleSidebar() {
@@ -570,26 +591,32 @@ export class ScreencapView extends LitElement {
 
   private async loadWindows() {
     logger.log('Loading windows...');
-    const response = await fetch('/api/screencap/windows');
-    if (!response.ok) {
-      logger.error(`Failed to load windows: ${response.status} ${response.statusText}`);
+    if (!this.apiClient) {
+      throw new Error('API client not initialized');
+    }
+    try {
+      const windows = (await this.apiClient.getWindows()) as WindowInfo[];
+      logger.log(`Loaded ${windows.length} windows:`, windows);
+      this.windows = windows;
+    } catch (error) {
+      logger.error('Failed to load windows:', error);
       throw new Error('Failed to load windows');
     }
-    const windows = await response.json();
-    logger.log(`Loaded ${windows.length} windows:`, windows);
-    this.windows = windows;
   }
 
   private async loadDisplays() {
     logger.log('Loading displays...');
-    const response = await fetch('/api/screencap/displays');
-    if (!response.ok) {
-      logger.error(`Failed to load displays: ${response.status} ${response.statusText}`);
+    if (!this.apiClient) {
+      throw new Error('API client not initialized');
+    }
+    try {
+      const displays = (await this.apiClient.getDisplays()) as DisplayInfo[];
+      logger.debug(`Loaded ${displays.length} displays`);
+      this.displays = displays;
+    } catch (error) {
+      logger.error('Failed to load displays:', error);
       throw new Error('Failed to load displays info');
     }
-    const displays = await response.json();
-    logger.debug(`Loaded ${displays.length} displays`);
-    this.displays = displays;
   }
 
   private async startCapture() {
@@ -605,71 +632,27 @@ export class ScreencapView extends LitElement {
       }
 
       // Fallback to JPEG mode
-      logger.log('📸 Using JPEG fallback mode');
-      let response: Response;
-      let endpoint: string;
-      let captureData: Record<string, unknown>;
+      logger.log('📸 Using WebSocket API mode');
 
+      if (!this.apiClient) {
+        throw new Error('API client not initialized');
+      }
+
+      let result: unknown;
       if (this.captureMode === 'desktop') {
-        // Desktop capture using /capture endpoint
-        endpoint = '/api/screencap/capture';
-        const displayIndex = this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : 0;
-        captureData = {
-          type: 'desktop', // Desktop
-          index: displayIndex,
-          vp9: false, // Use standard MJPEG for now
+        result = await this.apiClient.startCapture({
+          type: 'desktop',
+          index: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : 0,
           webrtc: this.useWebRTC,
-        };
-        logger.log(`📺 Desktop capture data:`, captureData);
+        });
       } else {
-        // Window capture using /capture-window endpoint
-        if (!this.selectedWindow) {
-          throw new Error('No window selected for capture');
-        }
-
-        endpoint = '/api/screencap/capture-window';
-        captureData = {
-          cgWindowID: this.selectedWindow.cgWindowID,
-          vp9: false, // Use standard MJPEG for now
+        result = await this.apiClient.captureWindow({
+          cgWindowID: this.selectedWindow?.cgWindowID as number,
           webrtc: this.useWebRTC,
-        };
-        logger.log(`🪟 Window capture data:`, captureData);
-        logger.log(`🎯 Selected window:`, this.selectedWindow);
+        });
       }
 
-      logger.log(`📡 Making request to ${endpoint}`);
-
-      response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(captureData),
-      });
-
-      logger.log(`📨 Response status: ${response.status} ${response.statusText}`);
-
-      if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        try {
-          const errorData = await response.json();
-          if (errorData.error) {
-            errorMessage = errorData.error;
-            if (errorData.details) {
-              errorMessage += ` - ${errorData.details}`;
-            }
-          }
-        } catch {
-          // If JSON parsing fails, try to get text
-          const errorText = await response.text();
-          if (errorText) {
-            errorMessage = `HTTP ${response.status}: ${errorText}`;
-          }
-        }
-        logger.error(`❌ Response error:`, errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      const responseData = await response.json();
-      logger.log(`✅ Capture started successfully:`, responseData);
+      logger.log(`✅ Capture started successfully:`, result);
 
       this.isCapturing = true;
       this.status = 'capturing';
@@ -713,8 +696,8 @@ export class ScreencapView extends LitElement {
       }
 
       // Stop server-side capture
-      if (this.isCapturing) {
-        await fetch('/api/screencap/stop', { method: 'POST' });
+      if (this.isCapturing && this.apiClient) {
+        await this.apiClient.stopCapture();
       }
 
       this.isCapturing = false;
@@ -814,11 +797,9 @@ export class ScreencapView extends LitElement {
 
     // Send mouse down event
     try {
-      await fetch('/api/screencap/mousedown', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x: coords.x, y: coords.y }),
-      });
+      if (this.apiClient) {
+        await this.apiClient.sendMouseDown(coords.x, coords.y);
+      }
 
       logger.log(
         `🖱️ Mouse down at: ${(coords.x / 1000).toFixed(3)}, ${(coords.y / 1000).toFixed(3)} (sent as ${coords.x}, ${coords.y})`
@@ -835,11 +816,9 @@ export class ScreencapView extends LitElement {
     if (!coords) return;
 
     try {
-      await fetch('/api/screencap/mousemove', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x: coords.x, y: coords.y }),
-      });
+      if (this.apiClient) {
+        await this.apiClient.sendMouseMove(coords.x, coords.y);
+      }
     } catch (error) {
       logger.error('Failed to send mouse move:', error);
     }
@@ -854,22 +833,18 @@ export class ScreencapView extends LitElement {
     try {
       if (this.isDragging) {
         // Send mouse up event
-        await fetch('/api/screencap/mouseup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ x: coords.x, y: coords.y }),
-        });
+        if (this.apiClient) {
+          await this.apiClient.sendMouseUp(coords.x, coords.y);
+        }
 
         logger.log(
           `🖱️ Mouse up at: ${(coords.x / 1000).toFixed(3)}, ${(coords.y / 1000).toFixed(3)} (sent as ${coords.x}, ${coords.y})`
         );
       } else {
         // If no drag occurred, treat as a click
-        await fetch('/api/screencap/click', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ x: coords.x, y: coords.y }),
-        });
+        if (this.apiClient) {
+          await this.apiClient.sendClick(coords.x, coords.y);
+        }
 
         logger.log(
           `🖱️ Clicked at: ${(coords.x / 1000).toFixed(3)}, ${(coords.y / 1000).toFixed(3)} (sent as ${coords.x}, ${coords.y})`
@@ -1004,41 +979,19 @@ export class ScreencapView extends LitElement {
     event.preventDefault();
 
     try {
-      let endpoint: string;
-      let body: Record<string, unknown>;
-
-      if (this.captureMode === 'desktop') {
-        // Desktop key input
-        endpoint = '/api/screencap/key';
-        body = {
-          key: event.key,
-          metaKey: event.metaKey,
-          ctrlKey: event.ctrlKey,
-          altKey: event.altKey,
-          shiftKey: event.shiftKey,
-        };
-      } else {
-        // Window-specific key input
-        endpoint = '/api/screencap/key-window';
-        body = {
-          key: event.key,
-          cgWindowID: this.selectedWindow?.cgWindowID || 0,
-          metaKey: event.metaKey,
-          ctrlKey: event.ctrlKey,
-          altKey: event.altKey,
-          shiftKey: event.shiftKey,
-        };
-      }
-
       logger.log(
         `⌨️ Sending key: ${event.key} (modifiers: ${event.ctrlKey ? 'Ctrl+' : ''}${event.metaKey ? 'Cmd+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Shift+' : ''})`
       );
 
-      await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      if (this.apiClient) {
+        await this.apiClient.sendKey({
+          key: event.key,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          altKey: event.altKey,
+          shiftKey: event.shiftKey,
+        });
+      }
 
       logger.log(`✅ Key sent successfully: ${event.key}`);
     } catch (error) {
@@ -1051,43 +1004,25 @@ export class ScreencapView extends LitElement {
     try {
       logger.log('🚀 Starting WebRTC capture...');
 
-      // First, send HTTP request to start capture on Mac app with WebRTC enabled
-      let endpoint: string;
-      let captureData: Record<string, unknown>;
+      // First, send request to start capture on Mac app with WebRTC enabled
+      if (!this.apiClient) {
+        throw new Error('API client not initialized');
+      }
 
+      let result: unknown;
       if (this.captureMode === 'desktop') {
-        endpoint = '/api/screencap/capture';
-        const displayIndex = this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1;
-        captureData = {
+        result = await this.apiClient.startCapture({
           type: 'desktop',
-          index: displayIndex,
-          webrtc: true, // Enable WebRTC
-        };
-        logger.log(`📺 Starting desktop capture with WebRTC:`, captureData);
+          index: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
+          webrtc: true,
+        });
       } else {
-        if (!this.selectedWindow) {
-          throw new Error('No window selected for capture');
-        }
-        endpoint = '/api/screencap/capture-window';
-        captureData = {
-          cgWindowID: this.selectedWindow.cgWindowID,
-          webrtc: true, // Enable WebRTC
-        };
-        logger.log(`🪟 Starting window capture with WebRTC:`, captureData);
+        result = await this.apiClient.captureWindow({
+          cgWindowID: this.selectedWindow?.cgWindowID as number,
+          webrtc: true,
+        });
       }
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(captureData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to start capture: ${response.status} ${response.statusText}`);
-      }
-
-      const responseData = await response.json();
-      logger.log(`✅ Mac app capture started:`, responseData);
+      logger.log(`✅ Mac app capture started:`, result);
 
       // Wait a moment for Mac app to connect to signaling server
       await new Promise((resolve) => setTimeout(resolve, 500));

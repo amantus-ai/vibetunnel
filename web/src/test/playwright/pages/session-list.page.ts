@@ -86,13 +86,10 @@ export class SessionListPage extends BasePage {
       await this.page.waitForTimeout(200);
 
       // Now wait for the input field to be available
-      await this.page.waitForSelector(
-        '[data-testid="session-name-input"]',
-        {
-          state: 'visible',
-          timeout: 10000,
-        }
-      );
+      await this.page.waitForSelector('[data-testid="session-name-input"]', {
+        state: 'visible',
+        timeout: 10000,
+      });
 
       console.log('Modal found and functional, proceeding with session creation');
     } catch (error) {
