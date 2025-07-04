@@ -197,6 +197,13 @@ final class WebRTCManager: NSObject {
             return
         }
         
+        // Configure video source for higher quality
+        videoSource.adaptOutputFormat(
+            toWidth: 1920, // Max width
+            height: 1080,  // Max height
+            fps: 30        // Target FPS
+        )
+        
         self.videoSource = videoSource
         
         // Create video capturer
@@ -212,7 +219,7 @@ final class WebRTCManager: NSObject {
         
         self.localVideoTrack = videoTrack
         
-        logger.info("✅ Created local video track")
+        logger.info("✅ Created local video track with quality settings: 1920x1080@30fps")
     }
     
     private func connectSignaling() async throws {
@@ -334,13 +341,18 @@ final class WebRTCManager: NSObject {
                     if let error = error {
                         continuation.resume(throwing: error)
                     } else if let offer = offer {
+                        // Modify SDP to increase bandwidth before setting local description
+                        var modifiedSdp = offer.sdp
+                        modifiedSdp = self.addBandwidthToSdp(modifiedSdp)
+                        let modifiedOffer = RTCSessionDescription(type: offer.type, sdp: modifiedSdp)
+                        
                         // Set local description within the same callback to avoid sendability issues
-                        peerConnection.setLocalDescription(offer) { error in
+                        peerConnection.setLocalDescription(modifiedOffer) { error in
                             if let error = error {
                                 continuation.resume(throwing: error)
                             } else {
-                                let typeString = offer.type == .offer ? "offer" : offer.type == .answer ? "answer" : "unknown"
-                                continuation.resume(returning: (typeString, offer.sdp))
+                                let typeString = modifiedOffer.type == .offer ? "offer" : modifiedOffer.type == .answer ? "answer" : "unknown"
+                                continuation.resume(returning: (typeString, modifiedOffer.sdp))
                             }
                         }
                     } else {
@@ -408,6 +420,32 @@ final class WebRTCManager: NSObject {
         } catch {
             logger.error("Failed to send message: \(error)")
         }
+    }
+    
+    private func addBandwidthToSdp(_ sdp: String) -> String {
+        var lines = sdp.components(separatedBy: "\n")
+        var modifiedLines: [String] = []
+        var inVideoSection = false
+        
+        for line in lines {
+            modifiedLines.append(line)
+            
+            // Check if we're entering video m-line
+            if line.starts(with: "m=video") {
+                inVideoSection = true
+            } else if line.starts(with: "m=") {
+                inVideoSection = false
+            }
+            
+            // Add bandwidth constraint after video m-line
+            if inVideoSection && line.starts(with: "m=video") {
+                // Add bandwidth constraint: 5 Mbps (5000 kbps)
+                modifiedLines.append("b=AS:5000")
+                logger.info("📈 Added bandwidth constraint to SDP: 5 Mbps")
+            }
+        }
+        
+        return modifiedLines.joined(separator: "\n")
     }
     
     private func disconnect() async {

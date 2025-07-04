@@ -1121,6 +1121,9 @@ export class ScreencapView extends LitElement {
               // Start collecting statistics
               logger.log('Starting stats collection for WebRTC stream');
               this.startStatsCollection();
+
+              // Configure bitrate parameters after connection
+              this.configureBitrateParameters();
             } else {
               logger.error(
                 'Failed to set video stream after render - videoElement:',
@@ -1218,8 +1221,14 @@ export class ScreencapView extends LitElement {
     if (!this.peerConnection) return;
 
     try {
-      await this.peerConnection.setRemoteDescription(offer);
-      
+      // Modify SDP to add bandwidth constraint before setting
+      const modifiedOffer = {
+        ...offer,
+        sdp: this.addBandwidthToSdp(offer.sdp || ''),
+      };
+
+      await this.peerConnection.setRemoteDescription(modifiedOffer);
+
       // Configure codec preferences for Safari to prefer H.265
       const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
       if (isSafari && this.peerConnection.getTransceivers) {
@@ -1227,23 +1236,34 @@ export class ScreencapView extends LitElement {
         for (const transceiver of transceivers) {
           if (transceiver.receiver.track?.kind === 'video' && transceiver.setCodecPreferences) {
             const codecs = RTCRtpReceiver.getCapabilities('video')?.codecs || [];
-            
+
             // Log available codecs
-            logger.log('Available video codecs:', codecs.map(c => c.mimeType));
-            
+            logger.log(
+              'Available video codecs:',
+              codecs.map((c) => c.mimeType)
+            );
+
             // Sort codecs to prioritize H.265/HEVC
             const sortedCodecs = codecs.sort((a, b) => {
               // Prioritize H.265/HEVC
-              if (a.mimeType?.toLowerCase().includes('h265') || a.mimeType?.toLowerCase().includes('hevc')) return -1;
-              if (b.mimeType?.toLowerCase().includes('h265') || b.mimeType?.toLowerCase().includes('hevc')) return 1;
-              
+              if (
+                a.mimeType?.toLowerCase().includes('h265') ||
+                a.mimeType?.toLowerCase().includes('hevc')
+              )
+                return -1;
+              if (
+                b.mimeType?.toLowerCase().includes('h265') ||
+                b.mimeType?.toLowerCase().includes('hevc')
+              )
+                return 1;
+
               // Then H.264 as fallback
               if (a.mimeType?.toLowerCase().includes('h264')) return -1;
               if (b.mimeType?.toLowerCase().includes('h264')) return 1;
-              
+
               return 0;
             });
-            
+
             if (sortedCodecs.length > 0) {
               try {
                 transceiver.setCodecPreferences(sortedCodecs);
@@ -1255,15 +1275,22 @@ export class ScreencapView extends LitElement {
           }
         }
       }
-      
+
       const answer = await this.peerConnection.createAnswer();
-      await this.peerConnection.setLocalDescription(answer);
+
+      // Modify answer SDP to include bandwidth
+      const modifiedAnswer = {
+        ...answer,
+        sdp: this.addBandwidthToSdp(answer.sdp || ''),
+      };
+
+      await this.peerConnection.setLocalDescription(modifiedAnswer);
 
       if (this.signalSocket?.readyState === WebSocket.OPEN) {
         this.signalSocket.send(
           JSON.stringify({
             type: 'answer',
-            data: answer,
+            data: modifiedAnswer,
           })
         );
       }
@@ -1393,7 +1420,7 @@ export class ScreencapView extends LitElement {
               frameHeight: stat.frameHeight,
               framesPerSecond: stat.framesPerSecond,
               codecId: stat.codecId,
-              mimeType: stat.mimeType
+              mimeType: stat.mimeType,
             });
           }
 
@@ -1489,6 +1516,11 @@ export class ScreencapView extends LitElement {
             }
           }
 
+          // Adjust bitrate based on quality metrics
+          if (this.streamStats && this.frameCounter % 30 === 0) {
+            this.adjustBitrateBasedOnQuality();
+          }
+
           // Safari might use different property names
           const frameWidth = stat.frameWidth || stat.width || 0;
           const frameHeight = stat.frameHeight || stat.height || 0;
@@ -1557,6 +1589,79 @@ export class ScreencapView extends LitElement {
     return `${(bitrate / 1000000).toFixed(2)} Mbps`;
   }
 
+  private async configureBitrateParameters() {
+    if (!this.peerConnection) return;
+
+    // Get all video senders
+    const senders = this.peerConnection.getSenders();
+    const videoSender = senders.find((sender) => sender.track?.kind === 'video');
+
+    if (videoSender) {
+      const params = videoSender.getParameters();
+
+      // Ensure we have encodings array
+      if (!params.encodings) {
+        params.encodings = [{}];
+      }
+
+      // Set bitrate parameters for the first encoding
+      if (params.encodings[0]) {
+        // Set max bitrate to 5 Mbps
+        params.encodings[0].maxBitrate = 5000000; // 5 Mbps
+
+        // Set initial bitrate to 3 Mbps
+        // Note: initialBitrate is not in the standard type definition but is supported by some browsers
+        const encoding: any = params.encodings[0];
+        if ('initialBitrate' in encoding) {
+          encoding.initialBitrate = 3000000; // 3 Mbps
+        }
+
+        // Enable network adaptation
+        params.encodings[0].networkPriority = 'high';
+
+        // Set scale resolution down factor to 1 (no downscaling)
+        params.encodings[0].scaleResolutionDownBy = 1;
+
+        try {
+          await videoSender.setParameters(params);
+          logger.log('✅ Configured video bitrate parameters:', {
+            maxBitrate: '5 Mbps',
+            initialBitrate: '3 Mbps',
+            networkPriority: 'high',
+            scaleResolutionDownBy: 1,
+          });
+        } catch (error) {
+          logger.error('Failed to set video parameters:', error);
+        }
+      }
+    } else {
+      // For incoming video, we might need to configure receiver parameters
+      const receivers = this.peerConnection.getReceivers();
+      const videoReceiver = receivers.find((receiver) => receiver.track?.kind === 'video');
+
+      if (videoReceiver) {
+        logger.log('📹 Found video receiver, bitrate will be controlled by sender');
+      }
+    }
+  }
+
+  private addBandwidthToSdp(sdp: string): string {
+    const lines = sdp.split('\n');
+    const modifiedLines: string[] = [];
+    for (const line of lines) {
+      modifiedLines.push(line);
+
+      // Check if we're entering video m-line
+      if (line.startsWith('m=video')) {
+        // Add bandwidth constraint after video m-line
+        modifiedLines.push('b=AS:5000'); // 5 Mbps
+        logger.log('📈 Added bandwidth constraint to SDP: 5 Mbps');
+      }
+    }
+
+    return modifiedLines.join('\n');
+  }
+
   private getQualityIndicator(): string {
     if (!this.streamStats) return 'N/A';
 
@@ -1565,6 +1670,47 @@ export class ScreencapView extends LitElement {
     if (packetLossRate < 0.5 && latency < 50 && fps >= 25) return '🟢 Excellent';
     if (packetLossRate < 2 && latency < 150 && fps >= 20) return '🟡 Good';
     return '🔴 Poor';
+  }
+
+  private async adjustBitrateBasedOnQuality() {
+    if (!this.peerConnection || !this.streamStats) return;
+
+    const { packetLossRate, latency, bitrate } = this.streamStats;
+    const videoSender = this.peerConnection.getSenders().find((s) => s.track?.kind === 'video');
+
+    if (!videoSender) return;
+
+    const params = videoSender.getParameters();
+    if (!params.encodings?.[0]) return;
+
+    let targetBitrate = params.encodings[0].maxBitrate || 5000000;
+
+    // Adjust bitrate based on network conditions
+    if (packetLossRate > 5) {
+      // High packet loss - reduce bitrate by 20%
+      targetBitrate = Math.max(1000000, targetBitrate * 0.8);
+      logger.warn(
+        `📉 High packet loss (${packetLossRate.toFixed(1)}%), reducing bitrate to ${(targetBitrate / 1000000).toFixed(1)} Mbps`
+      );
+    } else if (packetLossRate < 0.5 && latency < 50 && bitrate < targetBitrate * 0.8) {
+      // Good conditions and we're using less than 80% of target - increase bitrate by 10%
+      targetBitrate = Math.min(5000000, targetBitrate * 1.1);
+      logger.log(
+        `📈 Good network conditions, increasing bitrate to ${(targetBitrate / 1000000).toFixed(1)} Mbps`
+      );
+    }
+
+    // Only update if significantly different (> 10% change)
+    if (Math.abs(targetBitrate - (params.encodings[0].maxBitrate || 0)) > targetBitrate * 0.1) {
+      params.encodings[0].maxBitrate = Math.round(targetBitrate);
+
+      try {
+        await videoSender.setParameters(params);
+        logger.log(`✅ Adjusted bitrate to ${(targetBitrate / 1000000).toFixed(1)} Mbps`);
+      } catch (error) {
+        logger.error('Failed to adjust bitrate:', error);
+      }
+    }
   }
 
   render() {
