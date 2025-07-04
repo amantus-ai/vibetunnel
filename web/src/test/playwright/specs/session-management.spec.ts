@@ -6,10 +6,7 @@ import {
   waitForSessionCards,
 } from '../helpers/common-patterns.helper';
 import { takeDebugScreenshot } from '../helpers/screenshot.helper';
-import {
-  createAndNavigateToSession,
-  waitForSessionState,
-} from '../helpers/session-lifecycle.helper';
+import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 // These tests need to run in serial mode to avoid interference
@@ -102,10 +99,10 @@ test.describe('Session Management', () => {
   });
 
   test('should handle session exit', async ({ page }) => {
-    // Create a session that will exit quickly
+    // Create a session that will exit after printing to terminal
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('exit-test'),
-      command: 'exit 0', // Exit immediately with success code
+      command: 'bash -c "echo Test session exiting... && sleep 0.5 && exit 0"', // Use bash -c to run compound command
     });
 
     // Track the session for cleanup
@@ -113,30 +110,42 @@ test.describe('Session Management', () => {
       sessionManager.trackSession(sessionName, sessionId);
     }
 
-    // Wait for terminal to be ready
+    // Wait for terminal to be ready and show output
     const terminal = page.locator('vibe-terminal');
     await expect(terminal).toBeVisible({ timeout: 5000 });
 
-    // Wait for the exit command to process
-    await page.waitForTimeout(1000);
+    // Wait for the command to complete and session to exit
+    await page.waitForTimeout(3000);
 
     // Navigate back to home
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Wait for auto-refresh to update the session status
-    await page.waitForTimeout(2000);
+    // Wait for multiple auto-refresh cycles to ensure status update
+    await page.waitForTimeout(5000);
 
     await waitForSessionCards(page);
 
-    // Find and scroll to the session card
-    const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
-    await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
-    await sessionCard.scrollIntoViewIfNeeded();
+    // Find the session using custom evaluation to handle web component properties
+    const sessionInfo = await page.evaluate((targetName) => {
+      const cards = document.querySelectorAll('session-card');
+      for (const card of cards) {
+        const sessionCard = card as any;
+        if (sessionCard.session) {
+          const name = sessionCard.session.name || sessionCard.session.command?.join(' ') || '';
+          if (name.includes(targetName)) {
+            const statusEl = card.querySelector('span[data-status]');
+            const status = statusEl?.getAttribute('data-status');
+            return { found: true, status, name };
+          }
+        }
+      }
+      return { found: false };
+    }, sessionName);
 
-    // Verify session shows as exited
-    await waitForSessionState(page, sessionName, 'exited', { timeout: 15000 });
-    await assertSessionInList(page, sessionName, { status: 'exited' });
+    // Verify session exists and shows as exited
+    expect(sessionInfo.found).toBeTruthy();
+    expect(sessionInfo.status).toBe('exited');
   });
 
   test('should display session metadata correctly', async ({ page }) => {

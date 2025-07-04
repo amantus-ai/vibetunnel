@@ -158,6 +158,7 @@ export class SessionHeader extends LitElement {
             class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
             @click=${() => this.onOpenFileBrowser?.()}
             title="Browse Files (⌘O)"
+            data-testid="file-browser-button"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path

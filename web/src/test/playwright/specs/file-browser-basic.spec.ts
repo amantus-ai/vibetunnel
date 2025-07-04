@@ -25,7 +25,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await assertTerminalReady(page);
 
     // Look for file browser button in session header
-    const fileBrowserButton = page.locator('session-header [title="Browse Files (⌘O)"]');
+    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await expect(fileBrowserButton).toBeVisible({ timeout: 10000 });
 
     // Verify button has correct icon/appearance
@@ -40,7 +40,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('session-header [title="Browse Files (⌘O)"]');
+    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await fileBrowserButton.click();
 
     // Verify file browser opens
@@ -55,7 +55,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('session-header [title="Browse Files (⌘O)"]');
+    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await fileBrowserButton.click();
 
     const fileBrowser = page.locator('file-browser').first();
@@ -78,7 +78,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('session-header [title="Browse Files (⌘O)"]');
+    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await fileBrowserButton.click();
 
     const fileBrowser = page.locator('file-browser').first();
@@ -131,7 +131,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await assertTerminalReady(page);
 
     // File browser should be available
-    const fileBrowserButton = page.locator('session-header [title="Browse Files (⌘O)"]');
+    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await expect(fileBrowserButton).toBeVisible();
 
     // Open file browser
@@ -151,7 +151,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await assertTerminalReady(page);
 
     // Verify file browser button exists
-    const fileBrowserButton = page.locator('session-header [title="Browse Files (⌘O)"]');
+    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await expect(fileBrowserButton).toBeVisible();
 
     // Navigate away and back
@@ -181,7 +181,7 @@ test.describe('File Browser - Basic Functionality', () => {
     });
     await assertTerminalReady(page);
 
-    const fileBrowserButton = page.locator('session-header [title="Browse Files (⌘O)"]');
+    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
 
     // Click to open file browser
     await fileBrowserButton.click();
@@ -221,7 +221,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await page.waitForTimeout(1000);
 
     // File browser should still be accessible
-    const fileBrowserButton = page.locator('session-header [title="Browse Files (⌘O)"]');
+    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await expect(fileBrowserButton).toBeVisible();
 
     // Should be able to open file browser even when terminal is busy
@@ -239,7 +239,7 @@ test.describe('File Browser - Basic Functionality', () => {
     });
     await assertTerminalReady(page);
 
-    const fileBrowserButton = page.locator('session-header [title="Browse Files (⌘O)"]');
+    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
 
     // Check accessibility attributes
     const title = await fileBrowserButton.getAttribute('title');

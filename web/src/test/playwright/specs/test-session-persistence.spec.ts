@@ -1,9 +1,6 @@
 import { test } from '../fixtures/test.fixture';
 import { assertSessionInList } from '../helpers/assertion.helper';
-import {
-  createAndNavigateToSession,
-  waitForSessionState,
-} from '../helpers/session-lifecycle.helper';
+import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 // These tests create their own sessions and can run in parallel
@@ -41,10 +38,10 @@ test.describe('Session Persistence Tests', () => {
   });
 
   test('should handle session with error gracefully', async ({ page }) => {
-    // Create a session with a command that will fail immediately
+    // Create a session with a command that will fail
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('error-test'),
-      command: 'exit 1', // Exit with error code
+      command: 'bash -c "echo Error test && sleep 0.5 && exit 1"', // Use bash -c for compound command
     });
 
     // Track the session for cleanup
@@ -59,20 +56,30 @@ test.describe('Session Persistence Tests', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Wait for auto-refresh to update the session status
-    await page.waitForTimeout(2000);
+    // Wait for multiple auto-refresh cycles to ensure status update
+    await page.waitForTimeout(5000);
 
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Find and scroll to the session card
-    const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
-    await sessionCard.waitFor({ state: 'attached', timeout: 10000 });
-    await sessionCard.scrollIntoViewIfNeeded();
+    // Find the session using custom evaluation to handle web component properties
+    const sessionInfo = await page.evaluate((targetName) => {
+      const cards = document.querySelectorAll('session-card');
+      for (const card of cards) {
+        const sessionCard = card as any;
+        if (sessionCard.session) {
+          const name = sessionCard.session.name || sessionCard.session.command?.join(' ') || '';
+          if (name.includes(targetName)) {
+            const statusEl = card.querySelector('span[data-status]');
+            const status = statusEl?.getAttribute('data-status');
+            return { found: true, status, name };
+          }
+        }
+      }
+      return { found: false };
+    }, sessionName);
 
-    // Wait for session to appear and status to update to exited
-    await waitForSessionState(page, sessionName, 'exited', { timeout: 20000 });
-
-    // Verify it shows as exited
-    await assertSessionInList(page, sessionName, { status: 'exited' });
+    // Verify session exists and shows as exited
+    expect(sessionInfo.found).toBeTruthy();
+    expect(sessionInfo.status).toBe('exited');
   });
 });

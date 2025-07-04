@@ -26,7 +26,7 @@ test.describe('File Browser', () => {
     await assertTerminalReady(page);
 
     // Look for file browser button in session header
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
+    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await expect(fileBrowserButton).toBeVisible({ timeout: 10000 });
 
     // Open file browser

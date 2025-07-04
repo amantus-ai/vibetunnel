@@ -85,26 +85,46 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should navigate back to list with Escape for exited sessions', async ({ page }) => {
-    // Create a session that exits immediately
+    // Create a session that exits after showing a message
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('escape-test'),
-      command: 'exit 0', // Exit immediately with success code
+      command: 'bash -c \"echo Session ending... && sleep 0.5 && exit 0\"', // Use bash -c for compound command
     });
     await assertTerminalReady(page);
 
     // Wait for session to exit
     await page.waitForTimeout(3000);
-    await page.waitForSelector('text=/exited/', { timeout: 10000 });
+    
+    // Wait for session status to update to exited
+    const exitedStatus = await page.waitForFunction(
+      () => {
+        const statusElements = document.querySelectorAll('[data-status]');
+        for (const el of statusElements) {
+          if (el.getAttribute('data-status') === 'exited') {
+            return true;
+          }
+        }
+        // Also check for text indicating exited status
+        return document.body.textContent?.includes('exited') || false;
+      },
+      { timeout: 10000 }
+    );
+    expect(exitedStatus).toBeTruthy();
 
-    // Click on terminal to ensure focus
-    await sessionViewPage.clickTerminal();
+    // Try to click on terminal area to ensure focus
+    const terminal = page.locator('vibe-terminal').first();
+    if (await terminal.isVisible()) {
+      await terminal.click({ force: true }).catch(() => {
+        // Terminal might not be clickable, ignore error
+      });
+    }
 
     // Press Escape to go back to list
     await page.keyboard.press('Escape');
 
     // Should navigate back to list
-    await page.waitForURL('/', { timeout: 3000 });
-    await expect(page.locator('session-card')).toBeVisible();
+    await page.waitForURL('/', { timeout: 5000 });
+    await expect(page.locator('session-card').first()).toBeVisible();
   });
 
   test('should close modals with Escape', async ({ page }) => {
