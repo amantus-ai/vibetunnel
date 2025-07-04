@@ -1077,6 +1077,12 @@ export class ScreencapView extends LitElement {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
       });
 
+      // Configure codec preferences for Safari
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      if (isSafari) {
+        logger.log('🎥 Configuring H.265 preference for Safari');
+      }
+
       // Store the stream first, then update state to render video element
       let pendingStream: MediaStream | null = null;
 
@@ -1159,13 +1165,16 @@ export class ScreencapView extends LitElement {
 
       this.signalSocket.onopen = () => {
         logger.log('✅ Connected to signaling server');
-        // Send capture request
+        // Send capture request with browser info
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         this.signalSocket?.send(
           JSON.stringify({
             type: 'start-capture',
             mode: this.captureMode,
             windowId: this.selectedWindow?.cgWindowID,
             displayIndex: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
+            browser: isSafari ? 'safari' : 'other',
+            preferH265: isSafari, // Safari has excellent H.265 support
           })
         );
         resolve();
@@ -1210,6 +1219,43 @@ export class ScreencapView extends LitElement {
 
     try {
       await this.peerConnection.setRemoteDescription(offer);
+      
+      // Configure codec preferences for Safari to prefer H.265
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      if (isSafari && this.peerConnection.getTransceivers) {
+        const transceivers = this.peerConnection.getTransceivers();
+        for (const transceiver of transceivers) {
+          if (transceiver.receiver.track?.kind === 'video' && transceiver.setCodecPreferences) {
+            const codecs = RTCRtpReceiver.getCapabilities('video')?.codecs || [];
+            
+            // Log available codecs
+            logger.log('Available video codecs:', codecs.map(c => c.mimeType));
+            
+            // Sort codecs to prioritize H.265/HEVC
+            const sortedCodecs = codecs.sort((a, b) => {
+              // Prioritize H.265/HEVC
+              if (a.mimeType?.toLowerCase().includes('h265') || a.mimeType?.toLowerCase().includes('hevc')) return -1;
+              if (b.mimeType?.toLowerCase().includes('h265') || b.mimeType?.toLowerCase().includes('hevc')) return 1;
+              
+              // Then H.264 as fallback
+              if (a.mimeType?.toLowerCase().includes('h264')) return -1;
+              if (b.mimeType?.toLowerCase().includes('h264')) return 1;
+              
+              return 0;
+            });
+            
+            if (sortedCodecs.length > 0) {
+              try {
+                transceiver.setCodecPreferences(sortedCodecs);
+                logger.log('✅ Configured codec preferences for Safari (H.265 priority)');
+              } catch (e) {
+                logger.warn('Could not set codec preferences:', e);
+              }
+            }
+          }
+        }
+      }
+      
       const answer = await this.peerConnection.createAnswer();
       await this.peerConnection.setLocalDescription(answer);
 
