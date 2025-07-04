@@ -1134,19 +1134,19 @@ extension ScreencapService: SCStreamOutput {
         }
 
         // We have a pixel buffer! Process it
-        // Process WebRTC if needed - this must be done before any async work
-        // to avoid capturing non-Sendable sampleBuffer in closures
-        Task { [weak self] in
+        // For WebRTC, we need to handle the frame synchronously to avoid data races
+        // The WebRTC manager's processVideoFrame is already nonisolated and handles its own async
+        Task.detached { [weak self] in
             guard let self else { return }
-
+            
             // Check if WebRTC is enabled on MainActor
             let (useWebRTC, webRTCManager) = await MainActor.run {
                 (self.useWebRTC, self.webRTCManager)
             }
-
+            
             // Handle WebRTC if enabled
             if useWebRTC, let webRTCManager {
-                // Call the nonisolated method directly without capturing sampleBuffer
+                // Process the video frame - this is safe because processVideoFrame accepts sending parameter
                 await webRTCManager.processVideoFrame(sampleBuffer)
             }
         }
