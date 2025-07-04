@@ -20,9 +20,13 @@ interface MockWindowInfo {
 }
 
 interface MockDisplayInfo {
+  id: string;
   width: number;
   height: number;
   scaleFactor: number;
+  x: number;
+  y: number;
+  name?: string;
 }
 
 describe('ScreencapView', () => {
@@ -49,9 +53,13 @@ describe('ScreencapView', () => {
 
   const mockDisplays: MockDisplayInfo[] = [
     {
+      id: '0',
       width: 1920,
       height: 1080,
       scaleFactor: 2.0,
+      x: 0,
+      y: 0,
+      name: 'Display 1',
     },
   ];
 
@@ -181,8 +189,10 @@ describe('ScreencapView', () => {
       // We should have: 1 "All Displays" + 1 display + 2 windows = 4 total
       expect(windowElements?.length).toBe(4);
 
+      // Check that content is displayed correctly
+      const allText = Array.from(windowElements || []).map((el) => el.textContent?.trim());
+
       // Check that windows are displayed
-      const allText = Array.from(windowElements || []).map((el) => el.textContent);
       expect(allText.some((text) => text?.includes('Test Window 1'))).toBeTruthy();
       expect(allText.some((text) => text?.includes('Test App'))).toBeTruthy();
     });

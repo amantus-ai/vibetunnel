@@ -354,11 +354,11 @@ public final class ScreencapService: NSObject {
                 let display = content.displays[displayIndex]
                 streamConfig.width = Int(display.width)
                 streamConfig.height = Int(display.height)
-                
+
                 // Set source rect to capture the entire display including menu bar and dock
                 streamConfig.sourceRect = CGRect(x: 0, y: 0, width: display.width, height: display.height)
                 streamConfig.destinationRect = CGRect(x: 0, y: 0, width: display.width, height: display.height)
-                
+
                 let sourceRectStr = String(describing: streamConfig.sourceRect)
                 let destRectStr = String(describing: streamConfig.destinationRect)
                 logger
@@ -1085,19 +1085,19 @@ extension ScreencapService: SCStreamOutput {
         // to avoid capturing non-Sendable sampleBuffer in closures
         Task { [weak self] in
             guard let self else { return }
-            
+
             // Check if WebRTC is enabled on MainActor
             let (useWebRTC, webRTCManager) = await MainActor.run {
                 (self.useWebRTC, self.webRTCManager)
             }
-            
+
             // Handle WebRTC if enabled
             if useWebRTC, let webRTCManager {
                 // Call the nonisolated method directly without capturing sampleBuffer
                 await webRTCManager.processVideoFrame(sampleBuffer)
             }
         }
-        
+
         // Create CIImage and process for display
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         Task { @MainActor [weak self] in
@@ -1125,7 +1125,6 @@ extension ScreencapService: SCStreamOutput {
             logger.info("📹 Frame \(frameCount) received")
         }
     }
-
 }
 
 // MARK: - Error Types
