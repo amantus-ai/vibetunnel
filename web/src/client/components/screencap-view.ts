@@ -1201,28 +1201,43 @@ export class ScreencapView extends LitElement {
         const safariVersion = this.getSafariVersion();
         const preferH265 = isSafari && safariVersion >= 18; // Only Safari 18.0+ has stable H.265
 
-        this.signalSocket?.send(
-          JSON.stringify({
-            type: 'start-capture',
-            mode: this.captureMode,
-            windowId: this.selectedWindow?.cgWindowID,
-            displayIndex: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
-            browser: isSafari ? 'safari' : 'other',
-            browserVersion: safariVersion,
-            preferH265: preferH265,
-            codecSupport: {
-              h265:
-                'RTCRtpReceiver' in window && RTCRtpReceiver.getCapabilities
-                  ? (RTCRtpReceiver.getCapabilities('video')?.codecs || []).some(
-                      (c) =>
-                        c.mimeType?.toLowerCase().includes('h265') ||
-                        c.mimeType?.toLowerCase().includes('hevc')
-                    )
-                  : false,
-              h264: true, // H.264 is always supported
-            },
-          })
+        // Generate session ID if not already present
+        if (this.apiClient && !this.apiClient.sessionId) {
+          this.apiClient.sessionId =
+            typeof crypto.randomUUID === 'function'
+              ? crypto.randomUUID()
+              : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          logger.log(`🆕 Generated new session ID: ${this.apiClient.sessionId}`);
+        } else {
+          logger.log(`📋 Using existing session ID: ${this.apiClient?.sessionId}`);
+        }
+
+        const startCaptureMessage = {
+          type: 'start-capture',
+          sessionId: this.apiClient?.sessionId,
+          mode: this.captureMode,
+          windowId: this.selectedWindow?.cgWindowID,
+          displayIndex: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
+          browser: isSafari ? 'safari' : 'other',
+          browserVersion: safariVersion,
+          preferH265: preferH265,
+          codecSupport: {
+            h265:
+              'RTCRtpReceiver' in window && RTCRtpReceiver.getCapabilities
+                ? (RTCRtpReceiver.getCapabilities('video')?.codecs || []).some(
+                    (c) =>
+                      c.mimeType?.toLowerCase().includes('h265') ||
+                      c.mimeType?.toLowerCase().includes('hevc')
+                  )
+                : false,
+            h264: true, // H.264 is always supported
+          },
+        };
+
+        logger.log(
+          `📤 Sending start-capture message with session: ${startCaptureMessage.sessionId}`
         );
+        this.signalSocket?.send(JSON.stringify(startCaptureMessage));
         resolve();
       };
 

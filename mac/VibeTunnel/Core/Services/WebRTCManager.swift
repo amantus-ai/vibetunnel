@@ -558,12 +558,20 @@ final class WebRTCManager: NSObject {
             // Browser wants to start capture, create offer
             // Always update session for this capture
             if let sessionId = json["sessionId"] as? String {
-                if activeSessionId != sessionId {
-                    logger.info("🔄 [SECURITY] Updating session from \(activeSessionId ?? "nil") to \(sessionId)")
+                let previousSession = self.activeSessionId
+                if previousSession != sessionId {
+                    logger.info("""
+                    🔄 [SECURITY] Session update for start-capture
+                      Previous session: \(previousSession ?? "nil")
+                      New session: \(sessionId)
+                      Time since last session: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?.description ?? "N/A") seconds
+                    """)
                 }
                 activeSessionId = sessionId
                 sessionStartTime = Date()
-                logger.info("🔐 [SECURITY] Session active: \(sessionId)")
+                logger.info("🔐 [SECURITY] Session activated for start-capture: \(sessionId)")
+            } else {
+                logger.warning("⚠️ No session ID provided in start-capture message!")
             }
             await createAndSendOffer()
 
@@ -623,21 +631,35 @@ final class WebRTCManager: NSObject {
 
         // Validate session only for control operations
         if isControlOperation(method: method, endpoint: endpoint) {
+            logger.info("🔐 Validating session for control operation: \(method) \(endpoint)")
+            logger.info("  📋 Request session ID: \(sessionId ?? "nil")")
+            logger.info("  📋 Active session ID: \(self.activeSessionId ?? "nil")")
+            
             guard let sessionId,
                   let activeSessionId,
                   sessionId == activeSessionId
             else {
-                logger
-                    .error(
-                        "🚫 [SECURITY] Unauthorized control attempt - sessionId: \(sessionId ?? "nil"), activeSession: \(self.activeSessionId ?? "nil")"
-                    )
+                let errorDetails = """
+                🚫 [SECURITY] Unauthorized control attempt
+                  Method: \(method) \(endpoint)
+                  Request ID: \(requestId)
+                  Request session: \(sessionId ?? "nil")
+                  Active session: \(self.activeSessionId ?? "nil")
+                  Session match: \(sessionId == self.activeSessionId ? "YES" : "NO")
+                  Session age: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?.description ?? "N/A") seconds
+                """
+                logger.error("\(errorDetails)")
+                
+                let errorMessage = "Unauthorized: Invalid session (request: \(sessionId ?? "nil"), active: \(self.activeSessionId ?? "nil"))"
                 await sendSignalMessage([
                     "type": "api-response",
                     "requestId": requestId,
-                    "error": "Unauthorized: Invalid session"
+                    "error": errorMessage
                 ])
                 return
             }
+            
+            logger.info("✅ Session validation passed for \(method) \(endpoint)")
         }
 
         logger.info("🔧 API request: \(method) \(endpoint) from session: \(sessionId ?? "unknown")")
@@ -717,12 +739,21 @@ final class WebRTCManager: NSObject {
             // Always update session ID when starting a new capture
             // This allows switching between displays/windows with new sessions
             if let sessionId {
-                if activeSessionId != sessionId {
-                    logger.info("🔄 [SECURITY] Updating session from \(activeSessionId ?? "nil") to \(sessionId)")
+                let previousSession = self.activeSessionId
+                if previousSession != sessionId {
+                    logger.info("""
+                    🔄 [SECURITY] Session update for /capture
+                      Capture type: \(type), index: \(index)
+                      Previous session: \(previousSession ?? "nil")
+                      New session: \(sessionId)
+                      Time since last session: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?.description ?? "N/A") seconds
+                    """)
                 }
                 activeSessionId = sessionId
                 sessionStartTime = Date()
-                logger.info("🔐 [SECURITY] Session active for capture: \(sessionId)")
+                logger.info("🔐 [SECURITY] Session activated for /capture: \(sessionId) (type: \(type), index: \(index))")
+            } else {
+                logger.warning("⚠️ No session ID provided for /capture request!")
             }
 
             try await screencapService.startCapture(type: type, index: index, useWebRTC: useWebRTC)
@@ -739,12 +770,21 @@ final class WebRTCManager: NSObject {
             // Always update session ID when starting a new capture
             // This allows switching between displays/windows with new sessions
             if let sessionId {
-                if activeSessionId != sessionId {
-                    logger.info("🔄 [SECURITY] Updating session from \(activeSessionId ?? "nil") to \(sessionId)")
+                let previousSession = self.activeSessionId
+                if previousSession != sessionId {
+                    logger.info("""
+                    🔄 [SECURITY] Session update for /capture-window
+                      Window ID: \(cgWindowID)
+                      Previous session: \(previousSession ?? "nil")
+                      New session: \(sessionId)
+                      Time since last session: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?.description ?? "N/A") seconds
+                    """)
                 }
                 activeSessionId = sessionId
                 sessionStartTime = Date()
-                logger.info("🔐 [SECURITY] Session active for capture-window: \(sessionId)")
+                logger.info("🔐 [SECURITY] Session activated for /capture-window: \(sessionId) (windowID: \(cgWindowID))")
+            } else {
+                logger.warning("⚠️ No session ID provided for /capture-window request!")
             }
 
             try await screencapService.startCaptureWindow(cgWindowID: cgWindowID, useWebRTC: useWebRTC)

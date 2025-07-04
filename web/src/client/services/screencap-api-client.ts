@@ -26,7 +26,7 @@ export class ScreencapApiClient {
   >();
   private isConnected = false;
   private connectionPromise: Promise<void> | null = null;
-  private sessionId: string | null = null;
+  public sessionId: string | null = null;
 
   constructor(private wsUrl: string) {}
 
@@ -108,9 +108,18 @@ export class ScreencapApiClient {
       params,
     };
 
-    // Add sessionId for control operations
-    if (this.sessionId && this.isControlOperation(method, endpoint)) {
+    // Add sessionId for control operations and capture operations
+    if (
+      this.sessionId &&
+      (this.isControlOperation(method, endpoint) || this.isCaptureOperation(method, endpoint))
+    ) {
       request.sessionId = this.sessionId;
+      logger.log(`📤 Including session ID in ${method} ${endpoint}: ${this.sessionId}`);
+    } else if (
+      this.isControlOperation(method, endpoint) ||
+      this.isCaptureOperation(method, endpoint)
+    ) {
+      logger.warn(`⚠️ No session ID available for ${method} ${endpoint}`);
     }
 
     return new Promise((resolve, reject) => {
@@ -132,17 +141,13 @@ export class ScreencapApiClient {
   }
 
   private isControlOperation(method: string, endpoint: string): boolean {
-    const controlEndpoints = [
-      '/click',
-      '/mousedown',
-      '/mousemove',
-      '/mouseup',
-      '/key',
-      '/capture',
-      '/capture-window',
-      '/stop',
-    ];
+    const controlEndpoints = ['/click', '/mousedown', '/mousemove', '/mouseup', '/key'];
     return method === 'POST' && controlEndpoints.includes(endpoint);
+  }
+
+  private isCaptureOperation(method: string, endpoint: string): boolean {
+    const captureEndpoints = ['/capture', '/capture-window', '/stop'];
+    return method === 'POST' && captureEndpoints.includes(endpoint);
   }
 
   // Convenience methods matching the HTTP API

@@ -424,7 +424,8 @@ public final class ScreencapService: NSObject {
                     "Control Center",
                     "Notification Center",
                     "Spotlight",
-                    "AXUIElement" // Accessibility UI elements
+                    "AXUIElement", // Accessibility UI elements
+                    "Desktop" // Filter out Desktop entries
                 ]
 
                 if systemApps.contains(appName) {
@@ -443,7 +444,8 @@ public final class ScreencapService: NSObject {
                     title.contains("Shield") ||
                     title.isEmpty || // Skip windows with empty titles
                     title == "Focus Proxy" || // Common invisible window
-                    title == "Menu Bar"
+                    title == "Menu Bar" ||
+                    title == "Desktop" // Skip Desktop windows
                 {
                     return false
                 }
