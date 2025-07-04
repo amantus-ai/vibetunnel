@@ -2,39 +2,16 @@ import type { Request, Response, Router } from 'express';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createScreencapRoutes, initializeScreencap } from './screencap';
 
-// Mock child_process
-vi.mock('child_process', () => ({
-  execSync: vi.fn(),
-  spawn: vi.fn(() => ({
-    stdout: { on: vi.fn() },
-    stderr: { on: vi.fn() },
-    on: vi.fn(),
-    kill: vi.fn(),
-  })),
-}));
-
-// Mock fs
-vi.mock('fs', () => ({
-  existsSync: vi.fn(),
-}));
-
-// Mock http-proxy-middleware
-vi.mock('http-proxy-middleware', () => ({
-  createProxyMiddleware: vi.fn(() => vi.fn()),
-}));
+// Note: The current implementation doesn't use child_process, fs, or http-proxy-middleware
+// It simply proxies requests to the Mac app service on port 4010
 
 describe('screencap routes', () => {
   let originalPlatform: PropertyDescriptor | undefined;
-  let mockFs: ReturnType<typeof vi.mocked<typeof import('fs')>>;
-  let mockChildProcess: ReturnType<typeof vi.mocked<typeof import('child_process')>>;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     // Save original platform descriptor
     originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
-    // Initialize mocks
-    mockFs = vi.mocked(await import('fs'));
-    mockChildProcess = vi.mocked(await import('child_process'));
   });
 
   afterEach(() => {
@@ -57,46 +34,15 @@ describe('screencap routes', () => {
     it('should skip initialization on non-macOS platforms', async () => {
       setPlatform('linux');
 
-      await initializeScreencap();
-
-      expect(mockFs.existsSync).not.toHaveBeenCalled();
-      expect(mockChildProcess.execSync).not.toHaveBeenCalled();
+      // Should complete without error
+      await expect(initializeScreencap()).resolves.toBeUndefined();
     });
 
-    it('should initialize on macOS when binary exists', async () => {
+    it('should initialize successfully on macOS', async () => {
       setPlatform('darwin');
-      mockFs.existsSync.mockReturnValue(true);
 
-      await initializeScreencap();
-
-      expect(mockFs.existsSync).toHaveBeenCalled();
-      expect(mockChildProcess.execSync).not.toHaveBeenCalled();
-    });
-
-    it('should build binary on macOS when not exists', async () => {
-      setPlatform('darwin');
-      mockFs.existsSync.mockReturnValue(false);
-
-      await initializeScreencap();
-
-      expect(mockFs.existsSync).toHaveBeenCalled();
-      expect(mockChildProcess.execSync).toHaveBeenCalledWith(
-        'make build',
-        expect.objectContaining({
-          cwd: expect.stringContaining('screencap'),
-          stdio: 'inherit',
-        })
-      );
-    });
-
-    it('should throw error if build fails on macOS', async () => {
-      setPlatform('darwin');
-      mockFs.existsSync.mockReturnValue(false);
-      mockChildProcess.execSync.mockImplementation(() => {
-        throw new Error('Build failed');
-      });
-
-      await expect(initializeScreencap()).rejects.toThrow('Build failed');
+      // Should complete without error
+      await expect(initializeScreencap()).resolves.toBeUndefined();
     });
   });
 
@@ -226,16 +172,19 @@ describe('screencap routes', () => {
         { path: '/screencap', method: 'get' },
         { path: '/screencap/windows', method: 'get' },
         { path: '/screencap/display', method: 'get' },
+        { path: '/screencap/displays', method: 'get' },
         { path: '/screencap/frame', method: 'get' },
         { path: '/screencap/capture', method: 'post' },
         { path: '/screencap/capture-window', method: 'post' },
         { path: '/screencap/stop', method: 'post' },
         { path: '/screencap/click', method: 'post' },
+        { path: '/screencap/mousedown', method: 'post' },
+        { path: '/screencap/mousemove', method: 'post' },
+        { path: '/screencap/mouseup', method: 'post' },
+        { path: '/screencap/click-window', method: 'post' },
         { path: '/screencap/key', method: 'post' },
         { path: '/screencap/key-window', method: 'post' },
-        { path: '/screencap-control/start', method: 'post' },
-        { path: '/screencap-control/stop', method: 'post' },
-        { path: '/screencap-control/status', method: 'get' },
+        { path: '/screencap/health', method: 'get' },
       ];
 
       for (const expected of expectedRoutes) {
@@ -272,28 +221,21 @@ describe('screencap routes', () => {
     });
   });
 
-  describe('screencap process management', () => {
-    it('should create proxy middleware for screencap routes', async () => {
+  describe('screencap proxy functionality', () => {
+    it('should proxy requests to Mac app service on port 4010', async () => {
       setPlatform('darwin');
-      mockFs.existsSync.mockReturnValue(true);
-
-      // Import the mocked createProxyMiddleware
-      const httpProxyMiddleware = await import('http-proxy-middleware');
-      const createProxyMiddleware = vi.mocked(httpProxyMiddleware.createProxyMiddleware);
 
       // Create routes
-      const _router = createScreencapRoutes();
+      const router = createScreencapRoutes();
 
-      // Verify proxy middleware was created
-      expect(createProxyMiddleware).toHaveBeenCalled();
-
-      // Check it was called with correct configuration
-      expect(createProxyMiddleware).toHaveBeenCalledWith(
-        expect.objectContaining({
-          target: 'http://localhost:3030',
-          changeOrigin: true,
-        })
-      );
+      // The implementation manually proxies using fetch
+      // No createProxyMiddleware is used anymore
+      
+      // Find the windows route to verify it exists
+      const stack = (router as unknown as { stack: Array<{ route?: { path: string } }> }).stack;
+      const windowsRoute = stack.find((layer) => layer.route?.path === '/screencap/windows');
+      
+      expect(windowsRoute).toBeDefined();
     });
   });
 

@@ -73,7 +73,6 @@ final class CLIInstaller {
                             break
                         }
                     }
-                }
             }
 
             // Update state
