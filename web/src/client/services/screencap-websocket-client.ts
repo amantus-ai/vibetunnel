@@ -238,10 +238,16 @@ export class ScreencapWebSocketClient {
   }
 
   async stopCapture() {
-    const result = await this.request('POST', '/stop');
-    // Clear session ID after stopping capture
-    this.sessionId = null;
-    return result;
+    try {
+      const result = await this.request('POST', '/stop');
+      // Clear session ID only after successful stop
+      this.sessionId = null;
+      return result;
+    } catch (error) {
+      // If stop fails, don't clear the session ID
+      logger.error('Failed to stop capture, preserving session ID:', error);
+      throw error;
+    }
   }
 
   async sendClick(x: number, y: number) {

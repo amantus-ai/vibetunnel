@@ -537,6 +537,8 @@ export class ScreencapView extends LitElement {
 
   // Unified WebSocket client for API and WebRTC signaling
   private wsClient: ScreencapWebSocketClient | null = null;
+  private processRetryInterval: number | null = null;
+  private processRetryCount = 0;
 
   connectedCallback() {
     super.connectedCallback();
@@ -545,15 +547,8 @@ export class ScreencapView extends LitElement {
     this.setupKeyboardHandler();
     this.loadSidebarState();
 
-    // Retry loading windows after a delay if it failed initially
-    setTimeout(() => {
-      if (this.processGroups.length === 0) {
-        logger.log('🔄 Retrying to load process groups...');
-        this.loadWindows().catch((err) =>
-          logger.warn('⚠️ Still unable to load process groups:', err)
-        );
-      }
-    }, 3000);
+    // Set up retry mechanism for loading windows
+    this.setupProcessGroupRetry();
   }
 
   disconnectedCallback() {
@@ -562,6 +557,11 @@ export class ScreencapView extends LitElement {
     this.removeKeyboardHandler();
     this.cleanupWebRTC();
     this.cleanupWebSocketClient();
+    // Clear retry interval if it exists
+    if (this.processRetryInterval) {
+      clearInterval(this.processRetryInterval);
+      this.processRetryInterval = null;
+    }
   }
 
   private loadSidebarState() {
@@ -573,6 +573,42 @@ export class ScreencapView extends LitElement {
 
   private saveSidebarState() {
     localStorage.setItem(this.SIDEBAR_COLLAPSED_KEY, this.sidebarCollapsed.toString());
+  }
+
+  private setupProcessGroupRetry() {
+    // Clear any existing interval
+    if (this.processRetryInterval) {
+      clearInterval(this.processRetryInterval);
+    }
+
+    // Set up retry mechanism
+    this.processRetryInterval = window.setInterval(() => {
+      if (this.processGroups.length === 0 && this.processRetryCount < 10) {
+        this.processRetryCount++;
+        logger.log(`🔄 Retrying to load process groups (attempt ${this.processRetryCount}/10)...`);
+        this.loadWindows()
+          .then(() => {
+            if (this.processGroups.length > 0) {
+              logger.log('✅ Process groups loaded successfully');
+              // Clear the retry interval on success
+              if (this.processRetryInterval) {
+                clearInterval(this.processRetryInterval);
+                this.processRetryInterval = null;
+              }
+            }
+          })
+          .catch((err) => {
+            logger.warn(`⚠️ Process group load attempt ${this.processRetryCount} failed:`, err);
+          });
+      } else if (this.processRetryCount >= 10) {
+        // Stop retrying after 10 attempts
+        logger.warn('⚠️ Giving up on loading process groups after 10 attempts');
+        if (this.processRetryInterval) {
+          clearInterval(this.processRetryInterval);
+          this.processRetryInterval = null;
+        }
+      }
+    }, 3000); // Retry every 3 seconds
   }
 
   private initializeWebSocketClient() {
@@ -797,6 +833,7 @@ export class ScreencapView extends LitElement {
         await this.wsClient.stopCapture();
       }
 
+      // Only update state after successful stop
       this.isCapturing = false;
       this.frameUrl = '';
       this.fps = 0;
@@ -809,6 +846,19 @@ export class ScreencapView extends LitElement {
       logger.log('Stopped capture');
     } catch (error) {
       logger.error('Failed to stop capture:', error);
+      // Force reset the session if stop fails
+      if (this.wsClient) {
+        this.wsClient.sessionId = null;
+      }
+      // Still clean up local state even if server stop fails
+      this.isCapturing = false;
+      this.frameUrl = '';
+      this.fps = 0;
+      this.frameCounter = 0;
+      this.status = 'ready';
+      this.streamStats = null;
+      this.lastBytesReceived = 0;
+      this.lastStatsTimestamp = 0;
     }
   }
 
@@ -1155,10 +1205,12 @@ export class ScreencapView extends LitElement {
         }
         logger.log(`✅ Mac app capture started:`, result);
       } catch (error) {
-        logger.warn(
-          `⚠️ API request timed out or failed: ${error}, continuing with WebRTC setup anyway`
-        );
-        // Continue anyway - the Mac app might have started capture even if we didn't get the response
+        logger.error(`❌ Failed to start capture on Mac app: ${error}`);
+        // Don't continue with WebRTC setup if capture failed
+        this.error = `Failed to start capture: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        this.status = 'error';
+        this.isCapturing = false;
+        throw error;
       }
 
       this.isCapturing = true;
@@ -1180,9 +1232,23 @@ export class ScreencapView extends LitElement {
 
       // Store the stream first, then update state to render video element
       let pendingStream: MediaStream | null = null;
+      let streamReceived = false;
+
+      // Set up timeout for video stream
+      const streamTimeout = setTimeout(() => {
+        if (!streamReceived) {
+          logger.error('❌ Timeout waiting for video stream (10s)');
+          this.error = 'Video stream timeout - no video received from Mac app';
+          this.status = 'error';
+          this.cleanupWebRTC();
+          this.isCapturing = false;
+        }
+      }, 10000); // 10 second timeout
 
       // Set up event handlers
       this.peerConnection.ontrack = (event) => {
+        streamReceived = true;
+        clearTimeout(streamTimeout);
         logger.log('📹 Received video track:', event);
         logger.log('Track details:', {
           kind: event.track.kind,
