@@ -188,12 +188,15 @@ describe('ScreencapView', () => {
     {
       pid: 1234,
       name: 'Test App',
+      processName: 'Test App',
       icon: 'data:image/png;base64,test',
+      iconData: 'test',
       windows: [mockWindows[0]],
     },
     {
       pid: 5678,
       name: 'Another App',
+      processName: 'Another App',
       windows: [mockWindows[1]],
     },
   ];
@@ -360,8 +363,12 @@ describe('ScreencapView', () => {
       // Check that windows are displayed
       expect(allText.some((text) => text?.includes('Test Window 1'))).toBeTruthy();
       expect(allText.some((text) => text?.includes('Test Window 2'))).toBeTruthy();
-      expect(allText.some((text) => text?.includes('Test App'))).toBeTruthy();
-      expect(allText.some((text) => text?.includes('Another App'))).toBeTruthy();
+      
+      // Process names are now in process headers, not window items
+      const processHeaders = element.shadowRoot?.querySelectorAll('.process-header');
+      const processText = Array.from(processHeaders || []).map((el) => el.textContent);
+      expect(processText.some((text) => text?.includes('Test App'))).toBeTruthy();
+      expect(processText.some((text) => text?.includes('Another App'))).toBeTruthy();
     });
 
     it('should select window and start capture on click', async () => {
@@ -636,13 +643,14 @@ describe('ScreencapView', () => {
       await element.updateComplete;
 
       const headers = element.shadowRoot?.querySelectorAll('.sidebar-section h3');
-      let windowsHeader: Element | null = null;
+      let processesHeader: Element | null = null;
       headers?.forEach((h) => {
-        if (h.textContent?.includes('Windows')) {
-          windowsHeader = h;
+        if (h.textContent?.includes('Processes')) {
+          processesHeader = h;
         }
       });
-      expect(windowsHeader?.textContent).toContain('Windows (2)');
+      expect(processesHeader).toBeTruthy();
+      expect(processesHeader?.textContent).toContain('Processes (2)');
     });
 
     it('should highlight selected window', async () => {
