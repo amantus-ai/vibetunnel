@@ -55,7 +55,6 @@ class BufferWebSocketClient: NSObject {
     private var webSocket: WebSocketProtocol?
     private let webSocketFactory: WebSocketFactory
     private var subscriptions = [String: (TerminalWebSocketEvent) -> Void]()
-    private var messageQueue: [[String: Any]] = []
     private var reconnectTask: Task<Void, Never>?
     private var reconnectAttempts = 0
     private var isConnecting = false
@@ -633,29 +632,35 @@ class BufferWebSocketClient: NSObject {
     }
 
     func subscribe(to sessionId: String, handler: @escaping (TerminalWebSocketEvent) -> Void) {
-        subscriptions[sessionId] = handler
-
-        // Queue subscription message (will be sent when connected)
-        queueMessage(["type": "subscribe", "sessionId": sessionId])
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            
+            // Store the handler
+            self.subscriptions[sessionId] = handler
+            
+            // Send subscription message immediately if connected
+            if self.isConnected {
+                try? await self.sendMessage(["type": "subscribe", "sessionId": sessionId])
+            }
+        }
     }
 
     private func subscribe(to sessionId: String) async throws {
         try await sendMessage(["type": "subscribe", "sessionId": sessionId])
     }
-    
-    private func queueMessage(_ message: [String: Any]) {
-        // Only queue subscribe/unsubscribe messages
-        if let type = message["type"] as? String,
-           type == "subscribe" || type == "unsubscribe" {
-            messageQueue.append(message)
-        }
-    }
 
     func unsubscribe(from sessionId: String) {
-        subscriptions.removeValue(forKey: sessionId)
-
-        // Queue unsubscribe message (will be sent when connected)
-        queueMessage(["type": "unsubscribe", "sessionId": sessionId])
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            
+            // Remove the handler
+            self.subscriptions.removeValue(forKey: sessionId)
+            
+            // Send unsubscribe message immediately if connected
+            if self.isConnected {
+                try? await self.sendMessage(["type": "unsubscribe", "sessionId": sessionId])
+            }
+        }
     }
 
     private func sendMessage(_ message: [String: Any]) async throws {
@@ -731,7 +736,6 @@ class BufferWebSocketClient: NSObject {
         webSocket = nil
 
         subscriptions.removeAll()
-        messageQueue.removeAll()
         isConnected = false
     }
 
@@ -751,17 +755,13 @@ extension BufferWebSocketClient: WebSocketDelegate {
         reconnectAttempts = 0
         startPingTask()
 
-        // Process message queue
-        Task {
-            // Send any queued messages
-            while !messageQueue.isEmpty {
-                let message = messageQueue.removeFirst()
-                try? await sendMessage(message)
-            }
+        // Re-subscribe to all sessions that have handlers
+        Task { @MainActor [weak self] in
+            guard let self else { return }
             
-            // Re-subscribe to all sessions that still have handlers
-            for sessionId in subscriptions.keys {
-                try? await sendMessage(["type": "subscribe", "sessionId": sessionId])
+            let sessionIds = Array(self.subscriptions.keys)
+            for sessionId in sessionIds {
+                try? await self.sendMessage(["type": "subscribe", "sessionId": sessionId])
             }
         }
     }
