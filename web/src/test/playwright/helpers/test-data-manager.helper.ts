@@ -33,8 +33,8 @@ export class TestSessionManager {
     }
 
     try {
-      // Create session - use bash by default for consistency
-      await sessionListPage.createNewSession(name, spawnWindow, command || 'bash');
+      // Create session - use zsh by default to match the form's default
+      await sessionListPage.createNewSession(name, spawnWindow, command || 'zsh');
 
       // Get session ID from URL for web sessions
       let sessionId = '';

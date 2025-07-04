@@ -256,8 +256,42 @@ export class SessionListPage extends BasePage {
       throw new Error('Create button is disabled - form may not be valid');
     }
 
+    // Scroll the modal content to make sure the button is visible
+    const modalContent = this.page.locator('.modal-content').first();
+    await modalContent.evaluate((el) => {
+      // Scroll to bottom of modal content
+      const scrollableEl = el.querySelector('[class*="overflow-y-auto"]') || el;
+      scrollableEl.scrollTop = scrollableEl.scrollHeight;
+    });
+
+    // Also try to scroll the button into view
+    await submitButton.scrollIntoViewIfNeeded();
+    console.log('Submit button scrolled into view');
+
+    // Wait a bit for scroll to complete
+    await this.page.waitForTimeout(100);
+
+    // Wait for Lit element to be fully rendered
+    await this.page.waitForFunction(
+      () => {
+        const form = document.querySelector('session-create-form') as HTMLElement & {
+          updateComplete?: Promise<boolean>;
+        };
+        return form?.updateComplete;
+      },
+      { timeout: 2000 }
+    );
+
     // Click and wait for response
     console.log('Waiting for session creation response...');
+
+    // Also log any console errors from the page
+    this.page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        console.error('Browser console error:', msg.text());
+      }
+    });
+
     const responsePromise = this.page.waitForResponse(
       (response) => {
         const isSessionEndpoint = response.url().includes('/api/sessions');
@@ -272,7 +306,17 @@ export class SessionListPage extends BasePage {
       { timeout: 20000 } // Increased timeout for CI
     );
 
-    await submitButton.click({ force: true, timeout: 5000 });
+    // Try regular click now that button is in view
+    try {
+      await submitButton.click({ timeout: 5000 });
+      console.log('Submit button clicked successfully');
+    } catch (_e) {
+      console.log('Regular click failed, trying force click');
+      await submitButton.click({ force: true, timeout: 5000 });
+    }
+
+    // Add a small wait to allow event processing
+    await this.page.waitForTimeout(100);
 
     // Wait for navigation to session view (only for web sessions)
     if (!spawnWindow) {
@@ -291,6 +335,7 @@ export class SessionListPage extends BasePage {
 
           if (response.status() !== 201 && response.status() !== 200) {
             const body = await response.text();
+            console.error(`Session creation failed with status ${response.status()}: ${body}`);
             throw new Error(`Session creation failed with status ${response.status()}: ${body}`);
           }
 
@@ -298,34 +343,64 @@ export class SessionListPage extends BasePage {
           const responseBody = await response.json();
           console.log('[CI Debug] Session created:', JSON.stringify(responseBody));
           sessionId = responseBody.sessionId;
+
+          // Log if session ID is missing
+          if (!sessionId) {
+            console.error('Session created but no sessionId in response:', responseBody);
+          }
         } else {
           console.log(
             'No response received within timeout, checking if navigation happened anyway'
           );
+
+          // Check if a session was actually created by looking for it in the DOM
+          const createdSession = await this.page.evaluate((name) => {
+            const cards = document.querySelectorAll('session-card');
+            for (const card of cards) {
+              if (card.textContent?.includes(name)) {
+                return true;
+              }
+            }
+            return false;
+          }, sessionName);
+
+          console.log(`Session "${sessionName}" found in DOM: ${createdSession}`);
         }
       } catch (error) {
         console.error('Error waiting for session response:', error);
         // Don't throw yet, check if we navigated anyway
       }
 
-      // Wait for modal to close first - check for the data-modal-state attribute
-      await this.page
-        .waitForSelector('[data-modal-state="open"]', { state: 'detached', timeout: 5000 })
-        .catch(() => {
-          console.log('Modal might have already closed');
-        });
+      // Give the app time to process the session and navigate
+      console.log('Waiting 2 seconds for app to process session creation...');
+      await this.page.waitForTimeout(2000);
 
-      // Additional check to ensure modal is fully closed
-      await this.page.waitForFunction(
-        () => {
-          // Check if modal is gone
-          const modalElement = document.querySelector(
-            'session-create-form[data-modal-state="open"]'
-          );
-          return !modalElement;
-        },
-        { timeout: 5000 }
-      );
+      // Wait for modal to close - check if the form's visible property is false
+      await this.page
+        .waitForFunction(
+          () => {
+            const form = document.querySelector('session-create-form');
+            // Modal is closed if form doesn't exist or visible is false
+            return (
+              !form || !form.hasAttribute('visible') || form.getAttribute('visible') === 'false'
+            );
+          },
+          { timeout: 10000 }
+        )
+        .catch(async (error) => {
+          // Log current state for debugging
+          const modalState = await this.page.evaluate(() => {
+            const form = document.querySelector('session-create-form');
+            return {
+              exists: !!form,
+              visible: form?.getAttribute('visible'),
+              dataModalState: form?.getAttribute('data-modal-state'),
+              hasVisibleAttribute: form?.hasAttribute('visible'),
+            };
+          });
+          console.error('Modal did not close. Current state:', modalState);
+          throw error;
+        });
 
       // Check if we're already on the session page
       const currentUrl = this.page.url();
