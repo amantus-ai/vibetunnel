@@ -21,6 +21,13 @@ interface SignalMessage {
   mode?: string;
   windowId?: number;
   displayIndex?: number;
+  browser?: string;
+  browserVersion?: number;
+  preferH265?: boolean;
+  codecSupport?: {
+    h265: boolean;
+    h264: boolean;
+  };
 }
 
 type WebSocketMessage = ApiRequest | SignalMessage;
@@ -159,7 +166,7 @@ export class ScreencapWebSocketClient {
       method,
       endpoint,
       params,
-      sessionId: this.sessionId,
+      sessionId: this.sessionId || undefined,
     };
 
     return new Promise((resolve, reject) => {

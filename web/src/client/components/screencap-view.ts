@@ -33,11 +33,6 @@ interface StreamStats {
   timestamp: number;
 }
 
-interface SignalMessage {
-  type: 'offer' | 'answer' | 'ice-candidate' | 'error' | 'ready';
-  data?: RTCSessionDescriptionInit | RTCIceCandidateInit | string;
-}
-
 @customElement('screencap-view')
 export class ScreencapView extends LitElement {
   static styles = css`
@@ -1215,8 +1210,8 @@ export class ScreencapView extends LitElement {
     }
 
     const startCaptureMessage = {
-      type: 'start-capture',
-      sessionId: this.wsClient?.sessionId,
+      type: 'start-capture' as const,
+      sessionId: this.wsClient?.sessionId || undefined,
       mode: this.captureMode,
       windowId: this.selectedWindow?.cgWindowID,
       displayIndex: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
@@ -1361,6 +1356,20 @@ export class ScreencapView extends LitElement {
       }
     } catch (error) {
       logger.error('Failed to handle offer:', error);
+    }
+  }
+
+  private async handleRemoteIceCandidate(candidate: RTCIceCandidateInit) {
+    if (!this.peerConnection) {
+      logger.warn('Cannot add ICE candidate - no peer connection');
+      return;
+    }
+
+    try {
+      await this.peerConnection.addIceCandidate(candidate);
+      logger.log('✅ Added remote ICE candidate');
+    } catch (error) {
+      logger.error('Failed to add ICE candidate:', error);
     }
   }
 
