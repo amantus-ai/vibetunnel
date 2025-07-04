@@ -256,6 +256,7 @@ protocol HapticFeedbackProtocol {
 @MainActor
 struct HapticFeedback: HapticFeedbackProtocol {
     static let shared: HapticFeedbackProtocol = HapticFeedback()
+    
     func impact(_ style: ImpactStyle) {
         let generator = UIImpactFeedbackGenerator(style: style.uiKitStyle)
         generator.impactOccurred()
@@ -271,7 +272,6 @@ struct HapticFeedback: HapticFeedbackProtocol {
         generator.notificationOccurred(type.uiKitType)
     }
     
-    // Static methods for backward compatibility
     static func impact(_ style: ImpactStyle) {
         shared.impact(style)
     }
@@ -283,6 +283,7 @@ struct HapticFeedback: HapticFeedbackProtocol {
     static func notification(_ type: NotificationType) {
         shared.notification(type)
     }
+    
 
     /// SwiftUI-native style enums
     enum ImpactStyle {
