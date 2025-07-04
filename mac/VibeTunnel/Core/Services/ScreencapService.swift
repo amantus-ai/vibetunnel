@@ -934,17 +934,28 @@ public final class ScreencapService: NSObject {
     func stopCapture() async {
         guard isCapturing else { return }
 
-        let stream = captureStream
-        captureStream = nil
+        // Mark as not capturing first to stop frame processing
         isCapturing = false
+        
+        // Store references before clearing
+        let stream = captureStream
+        let webRTC = webRTCManager
+        
+        // Clear references
+        captureStream = nil
         currentFrame = nil
+        webRTCManager = nil
+        frameCounter = 0
+
+        // Wait a bit for any in-flight frames to complete
+        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Stop WebRTC if active
-        if let webRTCManager {
-            await webRTCManager.stopCapture()
-            self.webRTCManager = nil
+        if let webRTC {
+            await webRTC.stopCapture()
         }
 
+        // Stop the stream
         if let stream {
             do {
                 try await stream.stopCapture()
@@ -1504,6 +1515,11 @@ extension ScreencapService: SCStreamOutput {
         }
 
         // Create CIImage and process for display
+        // Only create and process if we have a valid pixel buffer
+        guard CVPixelBufferGetWidth(pixelBuffer) > 0 && CVPixelBufferGetHeight(pixelBuffer) > 0 else {
+            return
+        }
+        
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -1514,20 +1530,44 @@ extension ScreencapService: SCStreamOutput {
     /// Separate async function to handle frame processing
     @MainActor
     private func processFrame(ciImage: CIImage) async {
-        let context = CIContext()
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-            logger.error("Failed to create CGImage from CIImage")
+        // Check if we're still capturing before processing
+        guard isCapturing else {
+            logger.debug("Skipping frame processing - capture stopped")
             return
         }
+        
+        let context = CIContext()
+        
+        // Wrap the CGImage creation in a do-catch to handle potential crashes
+        do {
+            // Check extent is valid
+            guard !ciImage.extent.isEmpty else {
+                logger.error("CIImage has empty extent, skipping frame")
+                return
+            }
+            
+            guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+                logger.error("Failed to create CGImage from CIImage")
+                return
+            }
+            
+            // Check again if we're still capturing before updating frame
+            guard isCapturing else {
+                logger.debug("Capture stopped during frame processing")
+                return
+            }
 
-        // Update current frame
-        currentFrame = cgImage
-        let frameCount = frameCounter
-        frameCounter += 1
+            // Update current frame
+            currentFrame = cgImage
+            let frameCount = frameCounter
+            frameCounter += 1
 
-        // Log only every 300 frames (10 seconds at 30fps) to reduce noise
-        if frameCount.isMultiple(of: 300) {
-            logger.info("📹 Frame \(frameCount) received")
+            // Log only every 300 frames (10 seconds at 30fps) to reduce noise
+            if frameCount.isMultiple(of: 300) {
+                logger.info("📹 Frame \(frameCount) received")
+            }
+        } catch {
+            logger.error("Error creating CGImage: \(error)")
         }
     }
 }
