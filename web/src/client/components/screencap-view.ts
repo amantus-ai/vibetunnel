@@ -1137,8 +1137,11 @@ export class ScreencapView extends LitElement {
       let result: unknown;
       try {
         if (this.captureMode === 'desktop') {
-          const displayIndex = this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : 0;
-          logger.log(`🖥️ Starting capture for display index: ${displayIndex}`);
+          // Use -1 for all displays, or the specific display index
+          const displayIndex = this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1;
+          logger.log(
+            `🖥️ Starting capture for display index: ${displayIndex} (${displayIndex === -1 ? 'all displays' : 'single display'})`
+          );
           result = await this.wsClient.startCapture({
             type: 'desktop',
             index: displayIndex,
