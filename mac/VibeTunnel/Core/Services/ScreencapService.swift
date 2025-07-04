@@ -13,6 +13,10 @@ import VideoToolbox
 public final class ScreencapService: NSObject {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ScreencapService")
 
+    // MARK: - Singleton
+
+    static let shared = ScreencapService()
+
     // MARK: - Properties
 
     private var captureStream: SCStream?
@@ -67,6 +71,35 @@ public final class ScreencapService: NSObject {
 
     override init() {
         super.init()
+        // Connect to WebSocket for API handling when service is created
+        Task {
+            await setupWebSocketForAPIHandling()
+        }
+    }
+
+    /// Setup WebSocket connection for handling API requests
+    private func setupWebSocketForAPIHandling() async {
+        // Get server URL from environment or use default
+        let serverURLString = ProcessInfo.processInfo
+            .environment["VIBETUNNEL_SERVER_URL"] ?? "http://localhost:4020"
+        guard let serverURL = URL(string: serverURLString) else {
+            logger.error("Invalid server URL: \(serverURLString)")
+            return
+        }
+
+        // Create WebRTC manager which handles WebSocket API requests
+        if webRTCManager == nil {
+            webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self)
+
+            // Connect to signaling server for API handling
+            // This allows the browser to make API requests immediately
+            do {
+                try await webRTCManager?.connectForAPIHandling()
+                logger.info("✅ Connected to WebSocket for screencap API handling")
+            } catch {
+                logger.error("Failed to connect WebSocket for API: \(error)")
+            }
+        }
     }
 
     // MARK: - Public Methods
@@ -1133,22 +1166,26 @@ extension ScreencapService: SCStreamOutput {
             return
         }
 
-        // We have a pixel buffer! Process it
-        // For WebRTC, we need to handle the frame synchronously to avoid data races
-        // The WebRTC manager's processVideoFrame is already nonisolated and handles its own async
-        Task.detached { [weak self] in
-            guard let self else { return }
-            
-            // Check if WebRTC is enabled on MainActor
-            let (useWebRTC, webRTCManager) = await MainActor.run {
-                (self.useWebRTC, self.webRTCManager)
+        // We have a pixel buffer! Process it for WebRTC if enabled
+        // To avoid data races with CMSampleBuffer (non-Sendable), we need to be careful
+        // about how we pass it to async contexts. The WebRTC manager's processVideoFrame
+        // method accepts a sending parameter, which means it takes ownership.
+        
+        // We'll use a continuation to handle the async processing synchronously
+        let continuation = { @Sendable (buffer: CMSampleBuffer) async in
+            // Get WebRTC manager reference
+            let manager = await MainActor.run { [weak self] in
+                self?.useWebRTC == true ? self?.webRTCManager : nil
             }
             
-            // Handle WebRTC if enabled
-            if useWebRTC, let webRTCManager {
-                // Process the video frame - this is safe because processVideoFrame accepts sending parameter
-                await webRTCManager.processVideoFrame(sampleBuffer)
+            if let webRTCManager = manager {
+                await webRTCManager.processVideoFrame(buffer)
             }
+        }
+        
+        // Execute the continuation with the sample buffer
+        Task {
+            await continuation(sampleBuffer)
         }
 
         // Create CIImage and process for display

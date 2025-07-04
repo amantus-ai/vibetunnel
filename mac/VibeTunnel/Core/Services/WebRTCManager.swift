@@ -102,6 +102,22 @@ final class WebRTCManager: NSObject {
         await disconnect()
     }
 
+    /// Connect to signaling server for API handling only (no video capture)
+    func connectForAPIHandling() async throws {
+        logger.info("🔌 Connecting for API handling only")
+
+        // Connect to signaling server
+        try await connectSignaling()
+
+        // Notify server we're ready as the Mac peer for API handling
+        await sendSignalMessage([
+            "type": "mac-ready",
+            "mode": "api-only"
+        ])
+
+        logger.info("✅ Connected for screencap API handling")
+    }
+
     /// Process a video frame from ScreenCaptureKit using sending parameter
     nonisolated func processVideoFrame(_ sampleBuffer: sending CMSampleBuffer) async {
         // Check if we're connected before processing

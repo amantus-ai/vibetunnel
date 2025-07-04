@@ -218,7 +218,6 @@
 /* Begin PBXShellScriptBuildPhase section */
 		A1B2C3D4E5F6789012345678 /* Calculate Web Hash */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -259,7 +258,6 @@
 		};
 		C3D4E5F6A7B8C9D0E1F23456 /* Install Build Dependencies */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);

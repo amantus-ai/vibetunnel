@@ -248,10 +248,14 @@ class ServerManager {
                 // Check if we have screen recording permission
                 if await checkScreenRecordingPermission() {
                     logger.info("✅ Screen recording permission granted - screencap available via WebSocket API")
+                    // Initialize ScreencapService singleton which will connect to WebSocket
+                    _ = ScreencapService.shared
                 } else {
                     logger.warning("⚠️ Screen recording permission not granted - screencap service disabled")
                     logger
-                        .warning("💡 Please grant screen recording permission in System Settings > Privacy & Security > Screen Recording")
+                        .warning(
+                            "💡 Please grant screen recording permission in System Settings > Privacy & Security > Screen Recording"
+                        )
                 }
             } else {
                 logger.info("Screencap service disabled by user preference")

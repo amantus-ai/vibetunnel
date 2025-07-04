@@ -92,7 +92,11 @@ export class ScreencapApiClient {
       throw new Error('WebSocket not connected');
     }
 
-    const requestId = crypto.randomUUID();
+    // Use crypto.randomUUID if available, otherwise fallback
+    const requestId =
+      typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const request: ApiRequest = {
       type: 'api-request',
       requestId,
