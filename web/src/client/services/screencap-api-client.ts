@@ -163,7 +163,7 @@ export class ScreencapApiClient {
     // Generate a session ID for this capture session
     if (!this.sessionId) {
       this.sessionId =
-        typeof crypto.randomUUID === 'function'
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
           ? crypto.randomUUID()
           : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       logger.log(`Generated session ID: ${this.sessionId}`);
@@ -175,7 +175,7 @@ export class ScreencapApiClient {
     // Generate a session ID for this capture session
     if (!this.sessionId) {
       this.sessionId =
-        typeof crypto.randomUUID === 'function'
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
           ? crypto.randomUUID()
           : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       logger.log(`Generated session ID: ${this.sessionId}`);

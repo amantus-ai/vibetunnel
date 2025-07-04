@@ -109,6 +109,7 @@ final class WebRTCManager: NSObject {
     /// Connect to signaling server for API handling only (no video capture)
     func connectForAPIHandling() async throws {
         logger.info("🔌 Connecting for API handling only to \(self.signalURL)")
+        logger.info("  📋 Current active session: \(self.activeSessionId ?? "nil")")
 
         // Connect to signaling server
         do {
@@ -626,8 +627,13 @@ final class WebRTCManager: NSObject {
             return
         }
 
+        logger.info("📨 Received API request: \(method) \(endpoint)")
+        logger.info("  📋 Request data: \(json)")
+
         // Extract session ID from request
         let sessionId = json["sessionId"] as? String
+        logger.info("  📋 Request session ID: \(sessionId ?? "nil")")
+        logger.info("  📋 Current active session: \(self.activeSessionId ?? "nil")")
 
         // Validate session only for control operations
         if isControlOperation(method: method, endpoint: endpoint) {

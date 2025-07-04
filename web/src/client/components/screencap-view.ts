@@ -701,14 +701,19 @@ export class ScreencapView extends LitElement {
         throw new Error('API client not initialized');
       }
 
+      // Log current session state before capture
+      logger.log(`📋 Current session ID before capture: ${this.apiClient.sessionId || 'none'}`);
+
       let result: unknown;
       if (this.captureMode === 'desktop') {
+        logger.log(`🖥️ Starting desktop capture for display ${this.selectedDisplay?.id || '0'}`);
         result = await this.apiClient.startCapture({
           type: 'desktop',
           index: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : 0,
           webrtc: this.useWebRTC,
         });
       } else {
+        logger.log(`🪟 Starting window capture for window ${this.selectedWindow?.cgWindowID}`);
         result = await this.apiClient.captureWindow({
           cgWindowID: this.selectedWindow?.cgWindowID as number,
           webrtc: this.useWebRTC,
@@ -716,6 +721,7 @@ export class ScreencapView extends LitElement {
       }
 
       logger.log(`✅ Capture started successfully:`, result);
+      logger.log(`📋 Session ID after capture: ${this.apiClient.sessionId}`);
 
       this.isCapturing = true;
       this.status = 'capturing';

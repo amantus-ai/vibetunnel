@@ -90,20 +90,6 @@ describe('screencap routes', () => {
           method: 'get',
         })
       );
-
-      expect(routes).toContainEqual(
-        expect.objectContaining({
-          path: '/screencap/windows',
-          method: 'get',
-        })
-      );
-
-      expect(routes).toContainEqual(
-        expect.objectContaining({
-          path: '/screencap/capture',
-          method: 'post',
-        })
-      );
     });
 
     it('should return error on non-macOS platforms', async () => {
@@ -170,20 +156,6 @@ describe('screencap routes', () => {
     it('should have all expected routes', () => {
       const expectedRoutes = [
         { path: '/screencap', method: 'get' },
-        { path: '/screencap/windows', method: 'get' },
-        { path: '/screencap/display', method: 'get' },
-        { path: '/screencap/displays', method: 'get' },
-        { path: '/screencap/frame', method: 'get' },
-        { path: '/screencap/capture', method: 'post' },
-        { path: '/screencap/capture-window', method: 'post' },
-        { path: '/screencap/stop', method: 'post' },
-        { path: '/screencap/click', method: 'post' },
-        { path: '/screencap/mousedown', method: 'post' },
-        { path: '/screencap/mousemove', method: 'post' },
-        { path: '/screencap/mouseup', method: 'post' },
-        { path: '/screencap/click-window', method: 'post' },
-        { path: '/screencap/key', method: 'post' },
-        { path: '/screencap/key-window', method: 'post' },
         { path: '/screencap/health', method: 'get' },
       ];
 
@@ -221,21 +193,34 @@ describe('screencap routes', () => {
     });
   });
 
-  describe('screencap proxy functionality', () => {
-    it('should proxy requests to Mac app service on port 4010', async () => {
+  describe('screencap health endpoint', () => {
+    it('should return WebSocket API information', async () => {
       setPlatform('darwin');
-
-      // Create routes
       const router = createScreencapRoutes();
 
-      // The implementation manually proxies using fetch
-      // No createProxyMiddleware is used anymore
+      // Mock request/response
+      const mockReq = {} as Request;
+      const mockRes = {
+        json: vi.fn(),
+      } as unknown as Response;
+      const mockNext = vi.fn();
 
-      // Find the windows route to verify it exists
-      const stack = (router as unknown as { stack: Array<{ route?: { path: string } }> }).stack;
-      const windowsRoute = stack.find((layer) => layer.route?.path === '/screencap/windows');
+      // Find the health route handler
+      const healthRoute = (
+        router as unknown as {
+          stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }>;
+        }
+      ).stack.find((layer) => layer.route?.path === '/screencap/health');
+      const handlers = healthRoute?.route?.stack || [];
+      const healthHandler = handlers[handlers.length - 1].handle;
 
-      expect(windowsRoute).toBeDefined();
+      // Call the handler
+      await healthHandler(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith({
+        status: 'ok',
+        message: 'Screencap API now available via WebSocket at /ws/screencap-signal',
+      });
     });
   });
 
