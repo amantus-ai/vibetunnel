@@ -118,6 +118,63 @@ final class WebRTCManager: NSObject {
         logger.info("✅ Connected for screencap API handling")
     }
 
+    /// Process a video frame from ScreenCaptureKit synchronously
+    /// This method extracts the data synchronously to avoid data race warnings
+    nonisolated func processVideoFrameSync(_ sampleBuffer: CMSampleBuffer) {
+        // Extract all necessary data from the sample buffer synchronously
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            return
+        }
+        
+        // Extract timestamp
+        let timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        let timeStampNs = Int64(CMTimeGetSeconds(timestamp) * Double(NSEC_PER_SEC))
+        
+        // Create RTCCVPixelBuffer with the pixel buffer
+        let rtcPixelBuffer = RTCCVPixelBuffer(pixelBuffer: pixelBuffer)
+        
+        // Create the video frame with the buffer
+        let videoFrame = RTCVideoFrame(
+            buffer: rtcPixelBuffer,
+            rotation: ._0,
+            timeStampNs: timeStampNs
+        )
+        
+        // Now we can safely create a task without capturing CMSampleBuffer
+        Task.detached { [weak self] in
+            guard let self else { return }
+            
+            // Check if we're connected before processing
+            let connected = await MainActor.run { self.isConnected }
+            guard connected else {
+                // Only log occasionally to avoid spam
+                if Int.random(in: 0..<30) == 0 {
+                    await MainActor.run { [weak self] in
+                        self?.logger.debug("Skipping frame - WebRTC not connected yet")
+                    }
+                }
+                return
+            }
+            
+            // Send the frame to WebRTC
+            await MainActor.run { [weak self] in
+                guard let self,
+                      let videoCapturer = self.videoCapturer,
+                      let videoSource = self.videoSource else { return }
+                
+                videoSource.capturer(videoCapturer, didCapture: videoFrame)
+                
+                // Log success occasionally
+                if Int.random(in: 0..<300) == 0 {
+                    self.logger
+                        .info(
+                            "✅ Sent video frame to WebRTC"
+                        )
+                }
+            }
+        }
+    }
+    
     /// Process a video frame from ScreenCaptureKit using sending parameter
     nonisolated func processVideoFrame(_ sampleBuffer: sending CMSampleBuffer) async {
         // Check if we're connected before processing

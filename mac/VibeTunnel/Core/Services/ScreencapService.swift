@@ -16,6 +16,12 @@ public final class ScreencapService: NSObject {
     // MARK: - Singleton
 
     static let shared = ScreencapService()
+    
+    // MARK: - WebSocket Connection State
+    
+    private var isWebSocketConnecting = false
+    private var isWebSocketConnected = false
+    private var webSocketConnectionContinuations: [CheckedContinuation<Void, Error>] = []
 
     // MARK: - Properties
 
@@ -31,11 +37,62 @@ public final class ScreencapService: NSObject {
     private var frameCounter: Int = 0
 
     // WebRTC support
-    private var webRTCManager: WebRTCManager?
-    private var useWebRTC = false
+    // These properties need to be nonisolated so they can be accessed from the stream output handler
+    private nonisolated(unsafe) var webRTCManager: WebRTCManager?
+    private nonisolated(unsafe) var useWebRTC = false
     private var decompressionSession: VTDecompressionSession?
 
     // MARK: - Types
+    
+    enum ScreencapError: LocalizedError {
+        case invalidServerURL
+        case webSocketNotConnected
+        case windowNotFound(Int)
+        case noDisplay
+        case notCapturing
+        case failedToStartCapture(Error)
+        case failedToCreateEvent
+        case invalidCoordinates(x: Double, y: Double)
+        case invalidKeyInput(String)
+        case failedToGetContent(Error)
+        case invalidWindowIndex
+        case invalidApplicationIndex
+        case invalidCaptureType
+        case invalidConfiguration
+        
+        var errorDescription: String? {
+            switch self {
+            case .invalidServerURL:
+                return "Invalid server URL for WebSocket connection"
+            case .webSocketNotConnected:
+                return "WebSocket connection not established"
+            case .windowNotFound(let id):
+                return "Window with ID \(id) not found"
+            case .noDisplay:
+                return "No display available"
+            case .notCapturing:
+                return "Screen capture is not active"
+            case .failedToStartCapture(let error):
+                return "Failed to start capture: \(error.localizedDescription)"
+            case .failedToCreateEvent:
+                return "Failed to create system event"
+            case .invalidCoordinates(let x, let y):
+                return "Invalid coordinates: (\(x), \(y))"
+            case .invalidKeyInput(let key):
+                return "Invalid key input: \(key)"
+            case .failedToGetContent(let error):
+                return "Failed to get shareable content: \(error.localizedDescription)"
+            case .invalidWindowIndex:
+                return "Invalid window index"
+            case .invalidApplicationIndex:
+                return "Invalid application index"
+            case .invalidCaptureType:
+                return "Invalid capture type"
+            case .invalidConfiguration:
+                return "Invalid capture configuration"
+            }
+        }
+    }
 
     enum CaptureMode {
         case desktop(displayIndex: Int = 0)
@@ -79,30 +136,87 @@ public final class ScreencapService: NSObject {
 
     /// Setup WebSocket connection for handling API requests
     private func setupWebSocketForAPIHandling() async {
+        // Check if already connected or connecting
+        if isWebSocketConnected {
+            logger.debug("WebSocket already connected")
+            return
+        }
+        
+        if isWebSocketConnecting {
+            logger.debug("WebSocket connection already in progress, waiting...")
+            // Wait for existing connection attempt
+            try? await withCheckedThrowingContinuation { continuation in
+                webSocketConnectionContinuations.append(continuation)
+            }
+            return
+        }
+        
+        isWebSocketConnecting = true
+        
         // Get server URL from environment or use default
         let serverURLString = ProcessInfo.processInfo
             .environment["VIBETUNNEL_SERVER_URL"] ?? "http://localhost:4020"
         guard let serverURL = URL(string: serverURLString) else {
             logger.error("Invalid server URL: \(serverURLString)")
+            isWebSocketConnecting = false
+            // Fail all waiting continuations
+            for continuation in webSocketConnectionContinuations {
+                continuation.resume(throwing: ScreencapError.invalidServerURL)
+            }
+            webSocketConnectionContinuations.removeAll()
             return
         }
 
         // Create WebRTC manager which handles WebSocket API requests
         if webRTCManager == nil {
             webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self)
+        }
 
-            // Connect to signaling server for API handling
-            // This allows the browser to make API requests immediately
-            do {
-                try await webRTCManager?.connectForAPIHandling()
-                logger.info("✅ Connected to WebSocket for screencap API handling")
-            } catch {
-                logger.error("Failed to connect WebSocket for API: \(error)")
+        // Connect to signaling server for API handling
+        // This allows the browser to make API requests immediately
+        do {
+            try await webRTCManager?.connectForAPIHandling()
+            logger.info("✅ Connected to WebSocket for screencap API handling")
+            isWebSocketConnected = true
+            isWebSocketConnecting = false
+            
+            // Resume all waiting continuations
+            for continuation in webSocketConnectionContinuations {
+                continuation.resume()
             }
+            webSocketConnectionContinuations.removeAll()
+        } catch {
+            logger.error("Failed to connect WebSocket for API: \(error)")
+            isWebSocketConnecting = false
+            isWebSocketConnected = false
+            
+            // Fail all waiting continuations
+            for continuation in webSocketConnectionContinuations {
+                continuation.resume(throwing: error)
+            }
+            webSocketConnectionContinuations.removeAll()
         }
     }
 
     // MARK: - Public Methods
+    
+    /// Ensure WebSocket connection is established
+    public func ensureWebSocketConnected() async throws {
+        if !isWebSocketConnected && !isWebSocketConnecting {
+            await setupWebSocketForAPIHandling()
+        }
+        
+        // Wait for connection if still connecting
+        if isWebSocketConnecting {
+            try await withCheckedThrowingContinuation { continuation in
+                webSocketConnectionContinuations.append(continuation)
+            }
+        }
+        
+        guard isWebSocketConnected else {
+            throw ScreencapError.webSocketNotConnected
+        }
+    }
 
     /// Get all available displays
     func getDisplays() async throws -> [DisplayInfo] {
@@ -1167,25 +1281,13 @@ extension ScreencapService: SCStreamOutput {
         }
 
         // We have a pixel buffer! Process it for WebRTC if enabled
-        // To avoid data races with CMSampleBuffer (non-Sendable), we need to be careful
-        // about how we pass it to async contexts. The WebRTC manager's processVideoFrame
-        // method accepts a sending parameter, which means it takes ownership.
-        
-        // We'll use a continuation to handle the async processing synchronously
-        let continuation = { @Sendable (buffer: CMSampleBuffer) async in
-            // Get WebRTC manager reference
-            let manager = await MainActor.run { [weak self] in
-                self?.useWebRTC == true ? self?.webRTCManager : nil
-            }
-            
-            if let webRTCManager = manager {
-                await webRTCManager.processVideoFrame(buffer)
-            }
-        }
-        
-        // Execute the continuation with the sample buffer
-        Task {
-            await continuation(sampleBuffer)
+        // Process WebRTC frame if enabled
+        // To avoid data race warnings, we'll let WebRTCManager handle the async processing
+        // by calling it synchronously and letting it manage its own concurrency
+        if useWebRTC, let webRTCManager = webRTCManager {
+            // The processVideoFrame method is nonisolated and accepts a sending parameter
+            // We can call it directly without creating a Task, avoiding the closure capture issue
+            webRTCManager.processVideoFrameSync(sampleBuffer)
         }
 
         // Create CIImage and process for display
