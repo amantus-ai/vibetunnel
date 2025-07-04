@@ -663,6 +663,7 @@ class TerminalViewModel {
     private var connectionErrorTask: Task<Void, Never>?
     private var resizeDebounceTask: Task<Void, Never>?
     private var hasPerformedInitialResize = false
+    private var isPerformingInitialResize = false
     weak var terminalCoordinator: AnyObject? // Can be TerminalHostingView.Coordinator
 
     init(session: Session) {
@@ -867,13 +868,24 @@ class TerminalViewModel {
             return
         }
         
-        // Only allow one initial resize, then be very restrictive about subsequent resizes
-        if !hasPerformedInitialResize {
+        // Handle initial resize with proper synchronization
+        if !hasPerformedInitialResize && !isPerformingInitialResize {
+            isPerformingInitialResize = true
+            
+            // Always update UI dimensions immediately for consistency
+            terminalCols = cols
+            terminalRows = rows
+            
             // Perform initial resize after a short delay to let layout settle
             resizeDebounceTask?.cancel()
             resizeDebounceTask = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds for initial
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled else { 
+                    await MainActor.run {
+                        self?.isPerformingInitialResize = false
+                    }
+                    return 
+                }
                 await self?.performInitialResize(cols: cols, rows: rows)
             }
         } else {
@@ -901,20 +913,27 @@ class TerminalViewModel {
         
         do {
             try await SessionService().resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
-            // If resize succeeded, mark as completed and update dimensions
+            // If resize succeeded, mark initial resize as complete and clear any server blocks
             await MainActor.run {
+                hasPerformedInitialResize = true
+                isPerformingInitialResize = false
                 isResizeBlockedByServer = false
                 terminalCols = cols
                 terminalRows = rows
-                hasPerformedInitialResize = true
             }
         } catch {
             logger.error("Failed initial terminal resize: \(error)")
             // Check if the error is specifically about resize being disabled
             if case APIError.resizeDisabledByServer = error {
                 await MainActor.run {
+                    hasPerformedInitialResize = true // Mark as done even if blocked to prevent retries
+                    isPerformingInitialResize = false
                     isResizeBlockedByServer = true
-                    hasPerformedInitialResize = true // Still mark as done to prevent further attempts
+                }
+            } else {
+                // For other errors, allow retry by clearing the in-progress flag but leaving hasPerformedInitialResize false
+                await MainActor.run {
+                    isPerformingInitialResize = false
                 }
             }
         }
