@@ -587,8 +587,6 @@ struct TerminalView: View {
                             viewModel.sendInput(text)
                         },
                         onResize: { cols, rows in
-                            viewModel.terminalCols = cols
-                            viewModel.terminalRows = rows
                             viewModel.resize(cols: cols, rows: rows)
                         },
                         viewModel: viewModel
@@ -602,8 +600,6 @@ struct TerminalView: View {
                             viewModel.sendInput(text)
                         },
                         onResize: { cols, rows in
-                            viewModel.terminalCols = cols
-                            viewModel.terminalRows = rows
                             viewModel.resize(cols: cols, rows: rows)
                         },
                         viewModel: viewModel
@@ -662,14 +658,17 @@ class TerminalViewModel {
 
     let session: Session
     let castRecorder: CastRecorder
-    var bufferWebSocketClient: BufferWebSocketClient?
+    let bufferWebSocketClient: BufferWebSocketClient
     private var connectionStatusTask: Task<Void, Never>?
     private var connectionErrorTask: Task<Void, Never>?
+    private var resizeDebounceTask: Task<Void, Never>?
+    private var hasPerformedInitialResize = false
     weak var terminalCoordinator: AnyObject? // Can be TerminalHostingView.Coordinator
 
     init(session: Session) {
         self.session = session
         self.castRecorder = CastRecorder(sessionId: session.id, width: 80, height: 24)
+        self.bufferWebSocketClient = BufferWebSocketClient.shared
         setupTerminal()
     }
 
@@ -689,41 +688,29 @@ class TerminalViewModel {
         isConnecting = true
         errorMessage = nil
 
-        // Create WebSocket client if needed
-        if bufferWebSocketClient == nil {
-            bufferWebSocketClient = BufferWebSocketClient()
-        }
-
-        // Connect to WebSocket
-        bufferWebSocketClient?.connect()
-
-        // Load initial snapshot after a brief delay to ensure terminal is ready
-        Task { @MainActor in
-            // Wait for terminal view to be initialized
-            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s
-            await loadSnapshot()
-        }
-
-        // Subscribe to terminal events
-        bufferWebSocketClient?.subscribe(to: session.id) { [weak self] event in
+        // Subscribe to terminal events first (stores the handler)
+        bufferWebSocketClient.subscribe(to: session.id) { [weak self] event in
             Task { @MainActor in
                 self?.handleWebSocketEvent(event)
             }
         }
 
+        // Connect to WebSocket - it will automatically subscribe to stored sessions
+        bufferWebSocketClient.connect()
+
         // Monitor connection status
         connectionStatusTask?.cancel()
         connectionStatusTask = Task { [weak self] in
-            guard let client = self?.bufferWebSocketClient else { return }
+            guard let self else { return }
             while !Task.isCancelled {
-                let connected = client.isConnected
+                let connected = self.bufferWebSocketClient.isConnected
                 await MainActor.run {
-                    self?.isConnecting = false
-                    self?.isConnected = connected
+                    self.isConnecting = false
+                    self.isConnected = connected
                     if !connected {
-                        self?.errorMessage = "WebSocket disconnected"
+                        self.errorMessage = "WebSocket disconnected"
                     } else {
-                        self?.errorMessage = nil
+                        self.errorMessage = nil
                     }
                 }
                 try? await Task.sleep(nanoseconds: 500_000_000) // Check every 0.5 seconds
@@ -733,12 +720,12 @@ class TerminalViewModel {
         // Monitor connection errors
         connectionErrorTask?.cancel()
         connectionErrorTask = Task { [weak self] in
-            guard let client = self?.bufferWebSocketClient else { return }
+            guard let self else { return }
             while !Task.isCancelled {
-                if let error = client.connectionError {
+                if let error = self.bufferWebSocketClient.connectionError {
                     await MainActor.run {
-                        self?.errorMessage = error.localizedDescription
-                        self?.isConnecting = false
+                        self.errorMessage = error.localizedDescription
+                        self.isConnecting = false
                     }
                 }
                 try? await Task.sleep(nanoseconds: 500_000_000) // Check every 0.5 seconds
@@ -746,39 +733,13 @@ class TerminalViewModel {
         }
     }
 
-    @MainActor
-    private func loadSnapshot() async {
-        do {
-            let snapshot = try await APIClient.shared.getSessionSnapshot(sessionId: session.id)
-
-            // Process the snapshot events
-            if let header = snapshot.header {
-                // Initialize terminal with dimensions from header
-                terminalCols = header.width
-                terminalRows = header.height
-                logger.debug("Snapshot header: \(header.width)x\(header.height)")
-            }
-
-            // Feed all output events to the terminal
-            for event in snapshot.events {
-                if event.type == .output {
-                    // Feed the actual terminal output data
-                    if let coordinator = terminalCoordinator as? TerminalHostingView.Coordinator {
-                        coordinator.feedData(event.data)
-                    }
-                }
-            }
-        } catch {
-            logger.error("Failed to load terminal snapshot: \(error)")
-        }
-    }
 
     func disconnect() {
         connectionStatusTask?.cancel()
         connectionErrorTask?.cancel()
-        bufferWebSocketClient?.unsubscribe(from: session.id)
-        bufferWebSocketClient?.disconnect()
-        bufferWebSocketClient = nil
+        resizeDebounceTask?.cancel()
+        bufferWebSocketClient.unsubscribe(from: session.id)
+        // Note: Don't disconnect the shared client as other views might be using it
         isConnected = false
     }
 
@@ -836,12 +797,7 @@ class TerminalViewModel {
                 stopRecording()
             }
 
-            // Load final snapshot for exited session
-            Task { @MainActor in
-                // Give the server a moment to finalize the snapshot
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
-                await loadSnapshot()
-            }
+            // Session has exited - no need to load additional content
 
         case .bufferUpdate(let snapshot):
             // Update terminal buffer directly
@@ -894,15 +850,92 @@ class TerminalViewModel {
     }
 
     func resize(cols: Int, rows: Int) {
-        Task {
-            do {
-                try await SessionService.shared.resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
-                // If resize succeeded, ensure the flag is cleared
+        // Guard against invalid dimensions
+        guard cols > 0 && rows > 0 && cols <= 1000 && rows <= 1000 else {
+            logger.warning("Ignoring invalid resize: \(cols)x\(rows)")
+            return
+        }
+        
+        // Guard against unnecessary resize calls
+        guard cols != terminalCols || rows != terminalRows else {
+            return
+        }
+        
+        // Guard against blocked resize
+        guard !isResizeBlockedByServer else {
+            logger.warning("Resize blocked by server, ignoring resize: \(cols)x\(rows)")
+            return
+        }
+        
+        // Only allow one initial resize, then be very restrictive about subsequent resizes
+        if !hasPerformedInitialResize {
+            // Perform initial resize after a short delay to let layout settle
+            resizeDebounceTask?.cancel()
+            resizeDebounceTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds for initial
+                guard !Task.isCancelled else { return }
+                await self?.performInitialResize(cols: cols, rows: rows)
+            }
+        } else {
+            // For subsequent resizes, only allow significant changes and with longer debounce
+            let colDiff = abs(cols - terminalCols)
+            let rowDiff = abs(rows - terminalRows)
+            
+            // Only resize if there's a significant change (more than 5 cols/rows difference)
+            guard colDiff > 5 || rowDiff > 5 else {
+                logger.debug("Ignoring minor resize change: \(cols)x\(rows) (current: \(terminalCols)x\(terminalRows))")
+                return
+            }
+            
+            resizeDebounceTask?.cancel()
+            resizeDebounceTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second for subsequent
+                guard !Task.isCancelled else { return }
+                await self?.performResize(cols: cols, rows: rows)
+            }
+        }
+    }
+    
+    private func performInitialResize(cols: Int, rows: Int) async {
+        logger.info("Performing initial terminal resize: \(cols)x\(rows)")
+        
+        do {
+            try await SessionService.shared.resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
+            // If resize succeeded, mark as completed and update dimensions
+            await MainActor.run {
                 isResizeBlockedByServer = false
-            } catch {
-                logger.error("Failed to resize terminal: \(error)")
-                // Check if the error is specifically about resize being disabled
-                if case APIError.resizeDisabledByServer = error {
+                terminalCols = cols
+                terminalRows = rows
+                hasPerformedInitialResize = true
+            }
+        } catch {
+            logger.error("Failed initial terminal resize: \(error)")
+            // Check if the error is specifically about resize being disabled
+            if case APIError.resizeDisabledByServer = error {
+                await MainActor.run {
+                    isResizeBlockedByServer = true
+                    hasPerformedInitialResize = true // Still mark as done to prevent further attempts
+                }
+            }
+        }
+    }
+    
+    private func performResize(cols: Int, rows: Int) async {
+        logger.info("Resizing terminal: \(cols)x\(rows)")
+        
+        do {
+            try await SessionService.shared.resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
+            // If resize succeeded, ensure the flag is cleared and update dimensions
+            await MainActor.run {
+                isResizeBlockedByServer = false
+                terminalCols = cols
+                terminalRows = rows
+            }
+        } catch {
+            logger.error("Failed to resize terminal: \(error)")
+            // Check if the error is specifically about resize being disabled
+            if case APIError.resizeDisabledByServer = error {
+                await MainActor.run {
                     isResizeBlockedByServer = true
                 }
             }

@@ -124,3 +124,5 @@ test-results-*.json
 playwright-report/
 *.png
 !src/**/*.png
+.claude/settings.local.json
+buildServer.json

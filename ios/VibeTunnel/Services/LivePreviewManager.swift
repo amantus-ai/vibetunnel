@@ -22,10 +22,6 @@ final class LivePreviewManager {
     private let updateInterval: TimeInterval = 1.0
 
     private init() {
-        // Ensure WebSocket is connected when manager is created
-        if !bufferClient.isConnected {
-            bufferClient.connect()
-        }
     }
 
     /// Subscribe to live updates for a session.
