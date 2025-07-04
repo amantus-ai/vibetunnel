@@ -1246,6 +1246,10 @@ export class ScreencapView extends LitElement {
       clearInterval(this.statsInterval);
     }
 
+    // Reset stats timestamp for fresh collection
+    this.lastStatsTimestamp = Date.now();
+    this.frameCounter = 0;
+
     this.statsInterval = window.setInterval(() => {
       this.collectStats();
     }, 1000); // Update stats every second
@@ -1260,6 +1264,9 @@ export class ScreencapView extends LitElement {
     try {
       const stats = await this.peerConnection.getStats();
       logger.debug('Collecting stats, stats size:', stats.size);
+
+      // Increment frame counter
+      this.frameCounter++;
 
       // Also look for codec info in codec stats
       let codecInfo: { name: string; implementation: string } | null = null;
@@ -1322,6 +1329,19 @@ export class ScreencapView extends LitElement {
           if (this.lastBytesReceived > 0 && timeDiff > 0) {
             const bytesDiff = bytesReceived - this.lastBytesReceived;
             bitrate = (bytesDiff * 8) / timeDiff; // bits per second
+          }
+
+          // Log stat details in Safari for debugging
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          if (isSafari && this.frameCounter % 5 === 0) {
+            logger.debug('Safari video stats:', {
+              bytesReceived,
+              frameWidth: stat.frameWidth,
+              frameHeight: stat.frameHeight,
+              framesPerSecond: stat.framesPerSecond,
+              codecId: stat.codecId,
+              mimeType: stat.mimeType
+            });
           }
 
           // Try to get codec from RTP stats first, fallback to codec stats
@@ -1448,6 +1468,9 @@ export class ScreencapView extends LitElement {
           if (codecName !== 'Unknown' && this.frameCounter % 30 === 0) {
             logger.debug(`Codec: ${codecName} (${codecImplementation})`);
           }
+
+          // Force update in Safari by requesting update
+          this.requestUpdate();
         }
       });
     } catch (error) {
