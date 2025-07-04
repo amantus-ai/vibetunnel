@@ -18,8 +18,8 @@ export function isAIAssistantSession(session: Session): boolean {
     return AI_ASSISTANTS.some(
       (ai) =>
         executableName === ai ||
-        executableName.startsWith(ai + '.') || // e.g., claude.exe
-        executableName.startsWith(ai + '-wrapper') // e.g., claude-wrapper
+        executableName.startsWith(`${ai}.`) || // e.g., claude.exe
+        executableName.startsWith(`${ai}-wrapper`) // e.g., claude-wrapper
     );
   });
 }
