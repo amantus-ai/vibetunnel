@@ -596,6 +596,10 @@ final class WebRTCManager: NSObject {
         case "api-request":
             // Handle API request from browser
             await handleApiRequest(json)
+            
+        case "ready":
+            // Server acknowledging connection - no action needed
+            logger.debug("Server acknowledged connection")
 
         default:
             logger.warning("Unknown signal type: \(type)")
@@ -614,7 +618,7 @@ final class WebRTCManager: NSObject {
         // Extract session ID from request
         let sessionId = json["sessionId"] as? String
 
-        // Validate session for control operations
+        // Validate session only for control operations
         if isControlOperation(method: method, endpoint: endpoint) {
             guard let sessionId,
                   let activeSessionId,
@@ -637,12 +641,14 @@ final class WebRTCManager: NSObject {
 
         do {
             let result = try await processApiRequest(method: method, endpoint: endpoint, params: json["params"])
+            logger.info("📤 Sending API response for request \(requestId)")
             await sendSignalMessage([
                 "type": "api-response",
                 "requestId": requestId,
                 "result": result
             ])
         } catch {
+            logger.error("❌ API request failed: \(error)")
             await sendSignalMessage([
                 "type": "api-response",
                 "requestId": requestId,
@@ -855,19 +861,28 @@ final class WebRTCManager: NSObject {
     }
 
     private func sendSignalMessage(_ message: [String: Any]) async {
-        guard let socket = signalSocket,
-              socket.state == .running,
-              let data = try? JSONSerialization.data(withJSONObject: message),
+        guard let socket = signalSocket else {
+            logger.error("❌ Cannot send message - WebSocket is nil")
+            return
+        }
+        
+        guard socket.state == .running else {
+            logger.error("❌ Cannot send message - WebSocket state is \(socket.state.rawValue)")
+            return
+        }
+        
+        guard let data = try? JSONSerialization.data(withJSONObject: message),
               let text = String(data: data, encoding: .utf8)
         else {
-            logger.error("Failed to send signal message")
+            logger.error("❌ Failed to serialize signal message")
             return
         }
 
         do {
+            logger.debug("📤 Sending signal message: \(message["type"] as? String ?? "unknown")")
             try await socket.send(.string(text))
         } catch {
-            logger.error("Failed to send message: \(error)")
+            logger.error("❌ Failed to send message: \(error)")
         }
     }
 
