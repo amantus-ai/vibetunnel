@@ -422,21 +422,6 @@ export class ScreencapView extends LitElement {
       color: #ef4444;
     }
 
-    .mode-toggle {
-      font-size: 0.75rem;
-      padding: 0.25rem 0.5rem;
-      background: #1a1a1a;
-      border: 1px solid #2a2a2a;
-      border-radius: 0.25rem;
-      color: #a3a3a3;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .mode-toggle:hover {
-      background: #262626;
-      color: #e4e4e4;
-    }
 
     .capture-area {
       transition: margin-left 0.3s ease;
@@ -528,6 +513,24 @@ export class ScreencapView extends LitElement {
   private async handleRefresh() {
     await this.loadWindows();
     await this.loadDisplays();
+  }
+
+  private async toggleMode() {
+    const wasCapturing = this.isCapturing;
+
+    // Stop current capture if active
+    if (wasCapturing) {
+      await this.stopCapture();
+    }
+
+    // Toggle the mode
+    this.useWebRTC = !this.useWebRTC;
+    logger.log(`Switched to ${this.useWebRTC ? 'WebRTC' : 'JPEG'} mode`);
+
+    // Restart capture if it was active
+    if (wasCapturing) {
+      await this.startCapture();
+    }
   }
 
   private async loadInitialData() {
@@ -1525,6 +1528,19 @@ export class ScreencapView extends LitElement {
             </svg>
             Refresh
           </button>
+          <button
+            class="btn ${this.useWebRTC ? 'active' : ''}"
+            @click=${this.toggleMode}
+            title="Toggle between WebRTC (HD) and JPEG modes"
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="7" width="18" height="10" rx="2"/>
+              <path d="M7 7V5a2 2 0 012-2h6a2 2 0 012 2v2"/>
+              <circle cx="12" cy="12" r="2"/>
+            </svg>
+            ${this.useWebRTC ? 'WebRTC' : 'JPEG'}
+          </button>
           ${
             this.isCapturing && this.useWebRTC
               ? html`
@@ -1541,23 +1557,6 @@ export class ScreencapView extends LitElement {
                 <line x1="6" y1="20" x2="6" y2="14"/>
               </svg>
               Stats
-            </button>
-          `
-              : ''
-          }
-          ${
-            !this.useWebRTC && this.isCapturing
-              ? html`
-            <button 
-              class="mode-toggle" 
-              @click=${async () => {
-                this.useWebRTC = true;
-                await this.stopCapture();
-                await this.startCapture();
-              }}
-              title="Switch to WebRTC mode"
-            >
-              Switch to HD
             </button>
           `
               : ''

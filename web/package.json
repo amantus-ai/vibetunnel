@@ -12,7 +12,6 @@
     "dev:server": "tsx watch src/cli.ts --no-auth",
     "dev:client": "node scripts/dev.js --client-only",
     "build": "node scripts/build.js",
-    "build:screencap": "cd ../screencap && make build",
     "build:ci": "node scripts/build-ci.js",
     "postinstall": "node scripts/ensure-native-modules.js",
     "lint": "concurrently -n biome,tsc-server,tsc-client,tsc-sw \"biome check src\" \"tsc --noEmit --project tsconfig.server.json\" \"tsc --noEmit --project tsconfig.client.json\" \"tsc --noEmit --project tsconfig.sw.json\"",
