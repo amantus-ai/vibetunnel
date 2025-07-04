@@ -8,10 +8,8 @@ extension NSStatusBarButton {
     override public func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)
         self.highlight(true)
-        // Keep the highlight state for a brief moment to ensure it's visible
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) { [weak self] in
-            // The StatusBarMenuManager will handle highlighting through its own logic
-            self?.highlight(false)
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) {
+            self.highlight(AppDelegate.shared?.statusBarController?.menuManager.customWindow?.isWindowVisible ?? false)
         }
     }
 }
