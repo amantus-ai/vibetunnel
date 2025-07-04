@@ -146,8 +146,8 @@ export class ScreencapApiClient {
   }
 
   // Convenience methods matching the HTTP API
-  async getWindows() {
-    return this.request('GET', '/windows');
+  async getProcessGroups() {
+    return this.request('GET', '/processes');
   }
 
   async getDisplays() {

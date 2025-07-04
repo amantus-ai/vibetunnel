@@ -672,12 +672,12 @@ final class WebRTCManager: NSObject {
         }
 
         switch (method, endpoint) {
-        case ("GET", "/windows"):
-            let windows = try await screencapService.getWindows()
+        case ("GET", "/processes"):
+            let processGroups = try await screencapService.getProcessGroups()
             // Convert to dictionaries for JSON serialization
-            return try windows.map { window in
+            return try processGroups.map { group in
                 let encoder = JSONEncoder()
-                let data = try encoder.encode(window)
+                let data = try encoder.encode(group)
                 return try JSONSerialization.jsonObject(with: data, options: [])
             }
 

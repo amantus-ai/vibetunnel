@@ -1,21 +1,10 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { ScreencapApiClient } from '../services/screencap-api-client.js';
+import type { ProcessGroup, WindowInfo } from '../types/screencap.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('screencap-view');
-
-interface WindowInfo {
-  cgWindowID: number;
-  title?: string;
-  ownerName?: string;
-  ownerPID: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  isOnScreen: boolean;
-}
 
 interface DisplayInfo {
   id: string;
@@ -225,13 +214,80 @@ export class ScreencapView extends LitElement {
       gap: 0.25rem;
     }
 
+    .process-group {
+      border: 1px solid #2a2a2a;
+      border-radius: 0.375rem;
+      background: #1a1a1a;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+
+    .process-header {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      gap: 0.5rem;
+    }
+
+    .process-header:hover {
+      background: #2a2a2a;
+    }
+
+    .process-icon {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .process-icon-placeholder {
+      width: 24px;
+      height: 24px;
+      background: #2a2a2a;
+      border-radius: 0.25rem;
+      flex-shrink: 0;
+    }
+
+    .process-name {
+      flex: 1;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .window-count {
+      font-size: 0.75rem;
+      padding: 0.125rem 0.375rem;
+      background: #2a2a2a;
+      border-radius: 0.25rem;
+      color: #a3a3a3;
+    }
+
+    .expand-icon {
+      font-size: 0.75rem;
+      color: #a3a3a3;
+      transition: transform 0.2s;
+    }
+
+    .process-group.expanded .expand-icon {
+      transform: rotate(90deg);
+    }
+
+    .window-items {
+      padding: 0 0.5rem 0.5rem 2.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+
     .window-item {
-      padding: 0.5rem;
+      padding: 0.5rem 0.75rem;
       border: 1px solid #2a2a2a;
       border-radius: 0.375rem;
       cursor: pointer;
       transition: all 0.2s;
-      background: #1a1a1a;
+      background: #141414;
     }
 
     .window-item:hover {
@@ -246,20 +302,17 @@ export class ScreencapView extends LitElement {
     }
 
     .window-name {
-      font-weight: 600;
-      font-size: 0.875rem;
-      margin-bottom: 0.25rem;
-    }
-
-    .window-app {
-      font-size: 0.75rem;
-      opacity: 0.7;
+      font-weight: 500;
+      font-size: 0.8125rem;
+      margin-bottom: 0.125rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .window-size {
-      font-size: 0.75rem;
-      opacity: 0.7;
-      margin-top: 0.25rem;
+      font-size: 0.6875rem;
+      opacity: 0.6;
     }
 
     .capture-area {
@@ -458,8 +511,10 @@ export class ScreencapView extends LitElement {
     }
   `;
 
-  @state() private windows: WindowInfo[] = [];
+  @state() private processGroups: ProcessGroup[] = [];
+  @state() private expandedProcesses = new Set<number>();
   @state() private selectedWindow: WindowInfo | null = null;
+  @state() private selectedWindowProcess: ProcessGroup | null = null;
   @state() private displays: DisplayInfo[] = [];
   @state() private selectedDisplay: DisplayInfo | null = null;
   @state() private isCapturing = false;
@@ -590,17 +645,25 @@ export class ScreencapView extends LitElement {
   }
 
   private async loadWindows() {
-    logger.log('Loading windows...');
+    logger.log('Loading process groups...');
     if (!this.apiClient) {
       throw new Error('API client not initialized');
     }
     try {
-      const windows = (await this.apiClient.getWindows()) as WindowInfo[];
-      logger.log(`Loaded ${windows.length} windows:`, windows);
-      this.windows = windows;
+      const groups = (await this.apiClient.getProcessGroups()) as ProcessGroup[];
+      const totalWindows = groups.reduce((sum, g) => sum + g.windows.length, 0);
+      logger.log(`Loaded ${groups.length} processes with ${totalWindows} windows:`, groups);
+      this.processGroups = groups;
+
+      // Auto-expand processes with few windows
+      groups.forEach((group) => {
+        if (group.windows.length <= 3) {
+          this.expandedProcesses.add(group.pid);
+        }
+      });
     } catch (error) {
-      logger.error('Failed to load windows:', error);
-      throw new Error('Failed to load windows');
+      logger.error('Failed to load process groups:', error);
+      throw new Error('Failed to load process groups');
     }
   }
 
@@ -744,8 +807,9 @@ export class ScreencapView extends LitElement {
     }
   }
 
-  private async selectWindow(window: WindowInfo) {
+  private async selectWindow(window: WindowInfo, process: ProcessGroup) {
     this.selectedWindow = window;
+    this.selectedWindowProcess = process;
     this.captureMode = 'window';
 
     // Auto-start capture when selecting a window
@@ -753,6 +817,15 @@ export class ScreencapView extends LitElement {
       logger.log(`🎯 Auto-starting capture for window: ${window.title}`);
       await this.startCapture();
     }
+  }
+
+  private toggleProcess(pid: number) {
+    if (this.expandedProcesses.has(pid)) {
+      this.expandedProcesses.delete(pid);
+    } else {
+      this.expandedProcesses.add(pid);
+    }
+    this.requestUpdate();
   }
 
   private async selectDisplay(display: DisplayInfo) {
@@ -1922,19 +1995,43 @@ export class ScreencapView extends LitElement {
               <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10 2a2 2 0 00-2 2v1a2 2 0 002 2h1a2 2 0 002-2V4a2 2 0 00-2-2h-1zM4 3a2 2 0 00-2 2v1a2 2 0 002 2h1a2 2 0 002-2V5a2 2 0 00-2-2H4zM16 3a2 2 0 00-2 2v1a2 2 0 002 2h1a2 2 0 002-2V5a2 2 0 00-2-2h-1zM10 8a2 2 0 00-2 2v1a2 2 0 002 2h1a2 2 0 002-2v-1a2 2 0 00-2-2h-1zM4 9a2 2 0 00-2 2v1a2 2 0 002 2h1a2 2 0 002-2v-1a2 2 0 00-2-2H4zM16 9a2 2 0 00-2 2v1a2 2 0 002 2h1a2 2 0 002-2v-1a2 2 0 00-2-2h-1zM10 14a2 2 0 00-2 2v1a2 2 0 002 2h1a2 2 0 002-2v-1a2 2 0 00-2-2h-1zM4 15a2 2 0 00-2 2v1a2 2 0 002 2h1a2 2 0 002-2v-1a2 2 0 00-2-2H4zM16 15a2 2 0 00-2 2v1a2 2 0 002 2h1a2 2 0 002-2v-1a2 2 0 00-2-2h-1z"/>
               </svg>
-              Windows (${this.windows.length})</h3>
+              Processes (${this.processGroups.length})</h3>
             <div class="window-list">
-              ${this.windows.map(
-                (window) => html`
-                <div 
-                  class="window-item ${this.selectedWindow === window ? 'selected' : ''}"
-                  @click=${() => this.selectWindow(window)}
-                >
-                  <div class="window-name">${window.title || window.ownerName || 'Untitled'}</div>
-                  <div class="window-app">${window.ownerName || ''}</div>
-                  <div class="window-size">
-                    ${window.width}×${window.height}
+              ${this.processGroups.map(
+                (process) => html`
+                <div class="process-group ${this.expandedProcesses.has(process.pid) ? 'expanded' : ''}">
+                  <div class="process-header" @click=${() => this.toggleProcess(process.pid)}>
+                    ${
+                      process.iconData
+                        ? html`<img class="process-icon" src="data:image/png;base64,${process.iconData}" alt="${process.processName} icon" />`
+                        : html`<div class="process-icon-placeholder"></div>`
+                    }
+                    <span class="process-name">${process.processName}</span>
+                    <span class="window-count">${process.windows.length}</span>
+                    <span class="expand-icon">▶</span>
                   </div>
+                  ${
+                    this.expandedProcesses.has(process.pid)
+                      ? html`
+                    <div class="window-items">
+                      ${process.windows.map(
+                        (window) => html`
+                        <div 
+                          class="window-item ${this.selectedWindow?.cgWindowID === window.cgWindowID ? 'selected' : ''}"
+                          @click=${(e: Event) => {
+                            e.stopPropagation();
+                            this.selectWindow(window, process);
+                          }}
+                        >
+                          <div class="window-name">${window.title || 'Untitled'}</div>
+                          <div class="window-size">${Math.round(window.width)}×${Math.round(window.height)}</div>
+                        </div>
+                      `
+                      )}
+                    </div>
+                  `
+                      : ''
+                  }
                 </div>
               `
               )}
