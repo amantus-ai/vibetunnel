@@ -529,8 +529,12 @@ final class WebRTCManager: NSObject {
 
                 switch message {
                 case .string(let text):
+                    logger.info("🌐 WebSocket received string message")
+                    logger.info("  📋 Message length: \(text.count) characters")
                     await handleSignalMessage(text)
                 case .data(let data):
+                    logger.info("🌐 WebSocket received data message")
+                    logger.info("  📋 Data size: \(data.count) bytes")
                     if let text = String(data: data, encoding: .utf8) {
                         await handleSignalMessage(text)
                     }
@@ -544,15 +548,18 @@ final class WebRTCManager: NSObject {
     }
 
     private func handleSignalMessage(_ text: String) async {
+        logger.info("📥 Received WebSocket message: \(text.prefix(200))...")
+        
         guard let data = text.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = json["type"] as? String
         else {
             logger.error("Invalid signal message format")
+            logger.error("  📋 Raw message: \(text.prefix(200))")
             return
         }
 
-        logger.info("📥 Received signal: \(type)")
+        logger.info("📥 Parsed message type: \(type)")
 
         switch type {
         case "start-capture":
@@ -619,16 +626,21 @@ final class WebRTCManager: NSObject {
     }
 
     private func handleApiRequest(_ json: [String: Any]) async {
+        logger.info("🔍 Starting handleApiRequest...")
+        logger.info("  📋 JSON data: \(json)")
+        
         guard let requestId = json["requestId"] as? String,
               let method = json["method"] as? String,
               let endpoint = json["endpoint"] as? String
         else {
             logger.error("Invalid API request format")
+            logger.error("  📋 Missing fields - requestId: \(json["requestId"] != nil), method: \(json["method"] != nil), endpoint: \(json["endpoint"] != nil)")
             return
         }
 
         logger.info("📨 Received API request: \(method) \(endpoint)")
-        logger.info("  📋 Request data: \(json)")
+        logger.info("  📋 Request ID: \(requestId)")
+        logger.info("  📋 Full request data: \(json)")
 
         // Extract session ID from request
         let sessionId = json["sessionId"] as? String
@@ -947,6 +959,11 @@ final class WebRTCManager: NSObject {
     }
 
     private func sendSignalMessage(_ message: [String: Any]) async {
+        logger.info("📤 Attempting to send signal message...")
+        logger.info("  📋 Message type: \(message["type"] as? String ?? "unknown")")
+        logger.info("  📋 Socket exists: \(self.signalSocket != nil)")
+        logger.info("  📋 Socket state: \(self.signalSocket?.state.rawValue ?? -1)")
+        
         guard let socket = signalSocket else {
             logger.error("❌ Cannot send message - WebSocket is nil")
             return
@@ -965,8 +982,9 @@ final class WebRTCManager: NSObject {
         }
 
         do {
-            logger.debug("📤 Sending signal message: \(message["type"] as? String ?? "unknown")")
+            logger.info("📤 Sending signal message: \(text.prefix(200))...")
             try await socket.send(.string(text))
+            logger.info("✅ Signal message sent successfully")
         } catch {
             logger.error("❌ Failed to send message: \(error)")
         }

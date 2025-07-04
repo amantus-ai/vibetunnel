@@ -184,7 +184,7 @@ export class ScreencapWebSocketClient {
           this.pendingRequests.delete(requestId);
           reject(new Error(`Request timeout: ${method} ${endpoint}`));
         }
-      }, 30000); // 30 second timeout
+      }, 5000); // 5 second timeout - Mac should respond quickly
     });
   }
 

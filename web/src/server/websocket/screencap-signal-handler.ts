@@ -15,7 +15,7 @@ interface SignalMessage {
     // New API message types
     | 'api-request'
     | 'api-response';
-  mode?: 'desktop' | 'window';
+  mode?: 'desktop' | 'window' | 'api-only';
   windowId?: number;
   displayIndex?: number;
   data?: unknown; // Will contain SDP or ICE candidate data
@@ -29,86 +29,118 @@ interface SignalMessage {
   sessionId?: string;
 }
 
-interface PeerConnection {
-  ws: WebSocket;
-  mode?: 'desktop' | 'window';
-  windowId?: number;
-  displayIndex?: number;
-}
-
 export class ScreencapSignalHandler {
-  private macPeer: PeerConnection | null = null;
-  private browserPeers: Map<WebSocket, PeerConnection> = new Map();
-  private pendingRequests: Map<string, (response: unknown) => void> = new Map();
+  private macSocket: WebSocket | null = null;
+  private browserSocket: WebSocket | null = null;
+  private macMode: string | null = null;
 
   handleConnection(ws: WebSocket, userId: string) {
     logger.log(`New WebSocket connection from user ${userId}`);
 
-    // Initially assume it's a browser peer (Mac peer will identify itself with mac-ready)
-    this.browserPeers.set(ws, { ws });
-    logger.log(`Added as browser peer, total browser peers: ${this.browserPeers.size}`);
-
     // Send initial ready message
-    this.sendToPeer(ws, { type: 'ready' });
+    this.sendMessage(ws, { type: 'ready' });
 
     ws.on('message', (data) => {
       try {
-        const message: SignalMessage = JSON.parse(data.toString());
-        logger.log(`Received message type: ${message.type} from peer`);
+        const rawMessage = data.toString();
+        logger.log(`Received message: ${rawMessage.substring(0, 200)}...`);
+        const message: SignalMessage = JSON.parse(rawMessage);
         this.handleMessage(ws, message);
       } catch (error) {
         logger.error('Failed to parse message:', error);
-        logger.error('Raw message:', data.toString());
-        this.sendError(ws, 'Invalid message format');
+        this.sendMessage(ws, { type: 'error', data: 'Invalid message format' });
       }
     });
 
     ws.on('close', () => {
       logger.log('WebSocket connection closed');
-      this.handleDisconnect(ws);
+      if (ws === this.macSocket) {
+        logger.log('Mac disconnected');
+        this.macSocket = null;
+        this.macMode = null;
+        // Notify browser
+        if (this.browserSocket) {
+          this.sendMessage(this.browserSocket, { type: 'error', data: 'Mac disconnected' });
+        }
+      } else if (ws === this.browserSocket) {
+        logger.log('Browser disconnected');
+        this.browserSocket = null;
+      }
     });
 
     ws.on('error', (error) => {
       logger.error('WebSocket error:', error);
-      this.handleDisconnect(ws);
     });
   }
 
   private handleMessage(ws: WebSocket, message: SignalMessage) {
+    logger.log(`Handling message type: ${message.type}`);
+
+    // Identify the sender
+    if (message.type === 'mac-ready') {
+      this.handleMacReady(ws, message);
+      return;
+    }
+
+    // Determine if this is from Mac or browser
+    const isFromMac = ws === this.macSocket;
+    const isFromBrowser = ws === this.browserSocket;
+
+    // If we don't know who this is yet, assume it's browser
+    if (!isFromMac && !isFromBrowser && !this.browserSocket) {
+      logger.log('Assuming new connection is browser');
+      this.browserSocket = ws;
+    }
+
+    // Route messages
     switch (message.type) {
-      case 'mac-ready':
-        // Mac app is ready
-        this.handleMacReady(ws, message);
-        break;
-
-      case 'start-capture':
-        // Browser wants to start capture
-        this.handleStartCapture(ws, message);
-        break;
-
-      case 'offer':
-        // Mac app sends offer
-        this.handleOffer(ws, message);
-        break;
-
-      case 'answer':
-        // Browser sends answer
-        this.handleAnswer(ws, message);
-        break;
-
-      case 'ice-candidate':
-        // Forward ICE candidates
-        this.handleIceCandidate(ws, message);
-        break;
-
       case 'api-request':
-        // Forward API request from browser to Mac
-        this.handleApiRequest(ws, message);
+        // Browser -> Mac
+        if (isFromBrowser && this.macSocket) {
+          logger.log(`Forwarding API request to Mac: ${message.method} ${message.endpoint}`);
+          this.sendMessage(this.macSocket, message);
+        } else if (!this.macSocket) {
+          logger.warn('No Mac connected to handle API request');
+          this.sendMessage(ws, {
+            type: 'api-response',
+            requestId: message.requestId,
+            error: 'Mac not connected',
+          });
+        }
         break;
 
       case 'api-response':
-        // Forward API response from Mac to browser
-        this.handleApiResponse(ws, message);
+        // Mac -> Browser (or any peer -> browser during transition)
+        if (this.browserSocket) {
+          logger.log(`Forwarding API response to browser: ${message.requestId}`);
+          this.sendMessage(this.browserSocket, message);
+        }
+        break;
+
+      case 'start-capture':
+        // Browser -> Mac
+        if (isFromBrowser && this.macSocket) {
+          logger.log('Forwarding start-capture to Mac');
+          logger.log('start-capture details:', JSON.stringify(message));
+          this.sendMessage(this.macSocket, message);
+        } else {
+          logger.error(
+            `Cannot forward start-capture - isFromBrowser: ${isFromBrowser}, macSocket: ${!!this.macSocket}`
+          );
+        }
+        break;
+
+      case 'offer':
+      case 'answer':
+      case 'ice-candidate':
+        // WebRTC signaling - forward between Mac and browser
+        if (isFromMac && this.browserSocket) {
+          logger.log(`Forwarding ${message.type} to browser`);
+          this.sendMessage(this.browserSocket, message);
+        } else if (isFromBrowser && this.macSocket) {
+          logger.log(`Forwarding ${message.type} to Mac`);
+          this.sendMessage(this.macSocket, message);
+        }
         break;
 
       default:
@@ -117,207 +149,31 @@ export class ScreencapSignalHandler {
   }
 
   private handleMacReady(ws: WebSocket, message: SignalMessage) {
-    logger.log('Mac peer ready:', message.mode);
+    logger.log(`Mac ready with mode: ${message.mode}`);
 
-    // Remove from browser peers if it was there
-    this.browserPeers.delete(ws);
-    logger.log(
-      `Removed Mac peer from browser peers, remaining browser peers: ${this.browserPeers.size}`
-    );
+    // Update Mac socket and mode
+    if (this.macSocket && this.macSocket !== ws) {
+      logger.log('Closing old Mac connection');
+      this.macSocket.close();
+    }
 
-    // Store Mac peer
-    this.macPeer = {
-      ws,
-      mode: message.mode as 'desktop' | 'window',
-    };
-    logger.log('Mac peer stored successfully');
+    this.macSocket = ws;
+    this.macMode = message.mode || null;
+    logger.log(`Mac connected in ${this.macMode} mode`);
 
-    // If we have waiting browser peers, notify them
-    this.browserPeers.forEach((peer) => {
-      this.sendToPeer(peer.ws, {
+    // Notify browser
+    if (this.browserSocket) {
+      this.sendMessage(this.browserSocket, {
         type: 'ready',
         data: 'Mac peer connected',
       });
-    });
-  }
-
-  private handleStartCapture(ws: WebSocket, message: SignalMessage) {
-    logger.log('Browser requesting capture:', message);
-
-    // Update browser peer info with capture details
-    const existingPeer = this.browserPeers.get(ws);
-    if (existingPeer) {
-      existingPeer.mode = message.mode;
-      existingPeer.windowId = message.windowId;
-      existingPeer.displayIndex = message.displayIndex;
-    }
-
-    // If we have a Mac peer, notify it to create an offer
-    if (this.macPeer) {
-      this.sendToMac({
-        type: 'start-capture',
-        mode: message.mode,
-        windowId: message.windowId,
-        displayIndex: message.displayIndex,
-      });
-    } else {
-      // Mac app not connected yet
-      this.sendError(
-        ws,
-        'Mac app not connected. Please ensure VibeTunnel is running with WebRTC enabled.'
-      );
     }
   }
 
-  private handleOffer(ws: WebSocket, message: SignalMessage) {
-    logger.log('Received offer from Mac app');
-
-    // Store Mac peer
-    this.macPeer = { ws };
-
-    // Forward offer to all browser peers
-    this.browserPeers.forEach((peer) => {
-      this.sendToPeer(peer.ws, {
-        type: 'offer',
-        data: message.data,
-      });
-    });
-  }
-
-  private handleAnswer(_ws: WebSocket, message: SignalMessage) {
-    logger.log('Received answer from browser');
-
-    // Forward answer to Mac app
-    if (this.macPeer) {
-      this.sendToMac({
-        type: 'answer',
-        data: message.data,
-      });
-    }
-  }
-
-  private handleIceCandidate(ws: WebSocket, message: SignalMessage) {
-    // Determine if this is from Mac or browser and forward accordingly
-    if (ws === this.macPeer?.ws) {
-      // From Mac, forward to browsers
-      this.browserPeers.forEach((peer) => {
-        this.sendToPeer(peer.ws, {
-          type: 'ice-candidate',
-          data: message.data,
-        });
-      });
-    } else {
-      // From browser, forward to Mac
-      if (this.macPeer) {
-        this.sendToMac({
-          type: 'ice-candidate',
-          data: message.data,
-        });
-      }
-    }
-  }
-
-  private handleDisconnect(ws: WebSocket) {
-    if (ws === this.macPeer?.ws) {
-      logger.log('Mac peer disconnected');
-      this.macPeer = null;
-
-      // Notify all browsers
-      this.browserPeers.forEach((peer) => {
-        this.sendError(peer.ws, 'Mac peer disconnected');
-      });
-    } else {
-      logger.log('Browser peer disconnected');
-      this.browserPeers.delete(ws);
-    }
-  }
-
-  private sendToMac(message: SignalMessage) {
-    if (this.macPeer && this.macPeer.ws.readyState === WS.OPEN) {
-      this.macPeer.ws.send(JSON.stringify(message));
-    }
-  }
-
-  private sendToPeer(ws: WebSocket, message: SignalMessage) {
+  private sendMessage(ws: WebSocket, message: SignalMessage) {
     if (ws.readyState === WS.OPEN) {
       ws.send(JSON.stringify(message));
     }
-  }
-
-  private sendError(ws: WebSocket, error: string) {
-    this.sendToPeer(ws, {
-      type: 'error',
-      data: error,
-    });
-  }
-
-  private handleApiRequest(ws: WebSocket, message: SignalMessage) {
-    logger.log(`API request received: ${message.method} ${message.endpoint}`);
-    logger.log(
-      `Browser peers: ${this.browserPeers.size}, Mac peer: ${this.macPeer ? 'connected' : 'not connected'}`
-    );
-
-    // Only browser peers can make API requests
-    if (!this.browserPeers.has(ws)) {
-      logger.error('API request from non-browser peer');
-      logger.error(`WebSocket is Mac peer: ${ws === this.macPeer?.ws}`);
-      this.sendError(ws, 'Only browser peers can make API requests');
-      return;
-    }
-
-    if (!message.requestId || !message.method || !message.endpoint) {
-      logger.error('Invalid API request format:', message);
-      this.sendError(ws, 'Invalid API request format');
-      return;
-    }
-
-    // Forward to Mac peer if connected
-    if (this.macPeer) {
-      logger.log(`Forwarding API request to Mac peer: ${message.requestId}`);
-      this.sendToMac({
-        type: 'api-request',
-        requestId: message.requestId,
-        method: message.method,
-        endpoint: message.endpoint,
-        params: message.params,
-        sessionId: message.sessionId,
-      });
-    } else {
-      logger.warn('Mac peer not connected, sending error response');
-      // Send error response if Mac not connected
-      this.sendToPeer(ws, {
-        type: 'api-response',
-        requestId: message.requestId,
-        error: 'Mac peer not connected',
-      });
-    }
-  }
-
-  private handleApiResponse(ws: WebSocket, message: SignalMessage) {
-    // Only Mac peer can send API responses
-    if (ws !== this.macPeer?.ws) {
-      logger.warn('Received API response from non-Mac peer');
-      return;
-    }
-
-    if (!message.requestId) {
-      logger.error('API response missing requestId');
-      return;
-    }
-
-    logger.log(`API response received from Mac: ${message.requestId}`);
-
-    // Forward response to all browser peers
-    // In future, could track which browser made which request
-    this.browserPeers.forEach((peer) => {
-      logger.log(`Forwarding API response to browser peer`);
-      this.sendToPeer(peer.ws, {
-        type: 'api-response',
-        requestId: message.requestId,
-        result: message.result,
-        error: message.error,
-      });
-    });
   }
 }
 

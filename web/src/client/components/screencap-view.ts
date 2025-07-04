@@ -544,6 +544,16 @@ export class ScreencapView extends LitElement {
     this.loadInitialData();
     this.setupKeyboardHandler();
     this.loadSidebarState();
+
+    // Retry loading windows after a delay if it failed initially
+    setTimeout(() => {
+      if (this.processGroups.length === 0) {
+        logger.log('🔄 Retrying to load process groups...');
+        this.loadWindows().catch((err) =>
+          logger.warn('⚠️ Still unable to load process groups:', err)
+        );
+      }
+    }, 3000);
   }
 
   disconnectedCallback() {
@@ -636,8 +646,23 @@ export class ScreencapView extends LitElement {
     try {
       logger.log('🔄 Starting initial data load...');
       this.status = 'loading';
-      await Promise.all([this.loadWindows(), this.loadDisplays()]);
-      // Don't select any display by default - let user choose
+
+      // Load displays and windows in parallel, but don't fail if windows fails
+      const [windowsResult, displaysResult] = await Promise.allSettled([
+        this.loadWindows(),
+        this.loadDisplays(),
+      ]);
+
+      // Check if at least displays loaded
+      if (displaysResult.status === 'rejected') {
+        throw new Error('Failed to load displays');
+      }
+
+      if (windowsResult.status === 'rejected') {
+        logger.warn('⚠️ Failed to load process groups, but continuing with displays only');
+        this.processGroups = []; // Empty array so UI doesn't break
+      }
+
       logger.log('✅ Initial data loaded successfully');
       this.status = 'ready';
     } catch (error) {
@@ -821,11 +846,15 @@ export class ScreencapView extends LitElement {
     this.selectedWindowProcess = process;
     this.captureMode = 'window';
 
-    // Auto-start capture when selecting a window
-    if (!this.isCapturing) {
-      logger.log(`🎯 Auto-starting capture for window: ${window.title}`);
-      await this.startCapture();
+    // If already capturing, stop current capture first
+    if (this.isCapturing) {
+      logger.log(`🔄 Switching to window: ${window.title}`);
+      await this.stopCapture();
     }
+
+    // Auto-start capture when selecting a window
+    logger.log(`🎯 Auto-starting capture for window: ${window.title}`);
+    await this.startCapture();
   }
 
   private toggleProcess(pid: number) {
@@ -842,11 +871,15 @@ export class ScreencapView extends LitElement {
     this.selectedWindow = null;
     this.captureMode = 'desktop';
 
-    // Auto-start capture when selecting desktop
-    if (!this.isCapturing) {
-      logger.log(`🖥️ Auto-starting capture for display: ${display.name || display.id}`);
-      await this.startCapture();
+    // If already capturing, stop current capture first
+    if (this.isCapturing) {
+      logger.log(`🔄 Switching to display: ${display.name || display.id}`);
+      await this.stopCapture();
     }
+
+    // Auto-start capture when selecting desktop
+    logger.log(`🖥️ Auto-starting capture for display: ${display.name || display.id}`);
+    await this.startCapture();
   }
 
   private async selectAllDisplays() {
@@ -854,11 +887,15 @@ export class ScreencapView extends LitElement {
     this.selectedWindow = null;
     this.captureMode = 'desktop';
 
-    // Auto-start capture when selecting all displays
-    if (!this.isCapturing) {
-      logger.log(`🖥️ Auto-starting capture for all displays`);
-      await this.startCapture();
+    // If already capturing, stop current capture first
+    if (this.isCapturing) {
+      logger.log(`🔄 Switching to all displays`);
+      await this.stopCapture();
     }
+
+    // Auto-start capture when selecting all displays
+    logger.log(`🖥️ Auto-starting capture for all displays`);
+    await this.startCapture();
   }
 
   private isDragging = false;
@@ -1086,25 +1123,43 @@ export class ScreencapView extends LitElement {
     try {
       logger.log('🚀 Starting WebRTC capture...');
 
+      // Stop any existing capture first
+      if (this.isCapturing) {
+        logger.log('⚠️ Stopping existing capture before starting new one...');
+        await this.stopCapture();
+      }
+
       // First, send request to start capture on Mac app with WebRTC enabled
       if (!this.wsClient) {
         throw new Error('API client not initialized');
       }
 
       let result: unknown;
-      if (this.captureMode === 'desktop') {
-        result = await this.wsClient.startCapture({
-          type: 'desktop',
-          index: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
-          webrtc: true,
-        });
-      } else {
-        result = await this.wsClient.captureWindow({
-          cgWindowID: this.selectedWindow?.cgWindowID as number,
-          webrtc: true,
-        });
+      try {
+        if (this.captureMode === 'desktop') {
+          const displayIndex = this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : 0;
+          logger.log(`🖥️ Starting capture for display index: ${displayIndex}`);
+          result = await this.wsClient.startCapture({
+            type: 'desktop',
+            index: displayIndex,
+            webrtc: true,
+          });
+        } else {
+          result = await this.wsClient.captureWindow({
+            cgWindowID: this.selectedWindow?.cgWindowID as number,
+            webrtc: true,
+          });
+        }
+        logger.log(`✅ Mac app capture started:`, result);
+      } catch (error) {
+        logger.warn(
+          `⚠️ API request timed out or failed: ${error}, continuing with WebRTC setup anyway`
+        );
+        // Continue anyway - the Mac app might have started capture even if we didn't get the response
       }
-      logger.log(`✅ Mac app capture started:`, result);
+
+      this.isCapturing = true;
+      this.status = 'connected';
 
       // Wait a moment for Mac app to connect to signaling server
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -1232,9 +1287,13 @@ export class ScreencapView extends LitElement {
     };
 
     logger.log(`📤 Sending start-capture message with session: ${startCaptureMessage.sessionId}`);
+    logger.log(`📤 Full start-capture message:`, JSON.stringify(startCaptureMessage));
 
     if (this.wsClient) {
       await this.wsClient.sendSignal(startCaptureMessage);
+      logger.log(`✅ start-capture message sent`);
+    } else {
+      logger.error(`❌ No wsClient available to send start-capture!`);
     }
   }
 
@@ -1692,16 +1751,17 @@ export class ScreencapView extends LitElement {
 
       // Set bitrate parameters for the first encoding
       if (params.encodings[0]) {
-        // Set max bitrate to 50 Mbps for 4K@60fps
-        params.encodings[0].maxBitrate = 50000000; // 50 Mbps
+        // Start with lower bitrate and let it adapt up
+        params.encodings[0].maxBitrate = 20000000; // 20 Mbps max
+        params.encodings[0].maxFramerate = 30; // 30 fps for better quality/bandwidth trade-off
 
-        // Set initial bitrate to 20 Mbps
+        // Set initial bitrate to 5 Mbps
         // Note: initialBitrate is not in the standard type definition but is supported by some browsers
         const encoding = params.encodings[0] as RTCRtpEncodingParameters & {
           initialBitrate?: number;
         };
         if ('initialBitrate' in encoding) {
-          encoding.initialBitrate = 20000000; // 20 Mbps
+          encoding.initialBitrate = 5000000; // 5 Mbps initial
         }
 
         // Enable network adaptation
@@ -1712,9 +1772,10 @@ export class ScreencapView extends LitElement {
 
         try {
           await videoSender.setParameters(params);
-          logger.log('✅ Configured video bitrate parameters for 4K@60fps:', {
-            maxBitrate: '50 Mbps',
-            initialBitrate: '20 Mbps',
+          logger.log('✅ Configured video bitrate parameters:', {
+            maxBitrate: '20 Mbps',
+            initialBitrate: '5 Mbps',
+            maxFramerate: '30 fps',
             networkPriority: 'high',
             scaleResolutionDownBy: 1,
           });
@@ -1742,8 +1803,8 @@ export class ScreencapView extends LitElement {
       // Check if we're entering video m-line
       if (line.startsWith('m=video')) {
         // Add bandwidth constraint after video m-line
-        modifiedLines.push('b=AS:50000'); // 50 Mbps for 4K@60fps
-        logger.log('📈 Added bandwidth constraint to SDP: 50 Mbps for 4K@60fps');
+        modifiedLines.push('b=AS:20000'); // 20 Mbps max
+        logger.log('📈 Added bandwidth constraint to SDP: 20 Mbps');
       }
     }
 

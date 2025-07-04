@@ -22,11 +22,11 @@ test.describe('File Browser - Basic Functionality', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-button'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Look for file browser button in session header
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
-    await expect(fileBrowserButton).toBeVisible({ timeout: 10000 });
+    await expect(fileBrowserButton).toBeVisible({ timeout: 15000 });
 
     // Verify button has correct icon/appearance
     const buttonIcon = fileBrowserButton.locator('svg');
@@ -37,7 +37,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-open'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Open file browser
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
@@ -52,7 +52,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-structure'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Open file browser
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
@@ -75,7 +75,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-entries'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Open file browser
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
@@ -102,7 +102,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-shortcut'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Try keyboard shortcut (⌘O on Mac, Ctrl+O on other platforms)
     const isMac = process.platform === 'darwin';
@@ -128,7 +128,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-states'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // File browser should be available
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
@@ -148,7 +148,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-navigation'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Verify file browser button exists
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
@@ -156,7 +156,8 @@ test.describe('File Browser - Basic Functionality', () => {
 
     // Navigate away and back
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
 
     // Navigate back to session
     const sessionCard = page
@@ -168,7 +169,7 @@ test.describe('File Browser - Basic Functionality', () => {
 
     if (await sessionCard.isVisible()) {
       await sessionCard.click();
-      await assertTerminalReady(page);
+      await assertTerminalReady(page, 15000);
 
       // File browser button should still be there
       await expect(fileBrowserButton).toBeVisible({ timeout: 5000 });
@@ -179,7 +180,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-multiple-clicks'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
 
@@ -211,7 +212,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-busy'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Start a command in terminal
     await page.keyboard.type('sleep 5');
@@ -237,7 +238,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-a11y'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
 

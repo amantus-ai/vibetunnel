@@ -37,6 +37,8 @@ export class TerminalManager {
   private controlDir: string;
   private bufferListeners: Map<string, Set<BufferChangeListener>> = new Map();
   private changeTimers: Map<string, NodeJS.Timeout> = new Map();
+  private writeQueues: Map<string, string[]> = new Map();
+  private writeTimers: Map<string, NodeJS.Timeout> = new Map();
   private errorDeduplicator = new ErrorDeduplicator({
     keyExtractor: (error, context) => {
       // Use session ID and line prefix as context for xterm parsing errors
@@ -200,8 +202,8 @@ export class TerminalManager {
         }
 
         if (type === 'o') {
-          // Output event - write to terminal
-          sessionTerminal.terminal.write(eventData);
+          // Output event - queue write to terminal with rate limiting
+          this.queueTerminalWrite(sessionId, sessionTerminal, eventData);
           this.scheduleBufferChangeNotification(sessionId);
         } else if (type === 'r') {
           // Resize event
@@ -632,6 +634,17 @@ export class TerminalManager {
       }
       sessionTerminal.terminal.dispose();
       this.terminals.delete(sessionId);
+
+      // Clear write timer if exists
+      const writeTimer = this.writeTimers.get(sessionId);
+      if (writeTimer) {
+        clearTimeout(writeTimer);
+        this.writeTimers.delete(sessionId);
+      }
+
+      // Clear write queue
+      this.writeQueues.delete(sessionId);
+
       logger.log(chalk.yellow(`Terminal closed for session ${sessionId}`));
     }
   }
@@ -656,6 +669,59 @@ export class TerminalManager {
 
     if (toRemove.length > 0) {
       logger.log(chalk.gray(`Cleaned up ${toRemove.length} stale terminals`));
+    }
+  }
+
+  /**
+   * Queue terminal write with rate limiting to prevent flow control issues
+   */
+  private queueTerminalWrite(sessionId: string, sessionTerminal: SessionTerminal, data: string) {
+    // Get or create write queue for this session
+    let queue = this.writeQueues.get(sessionId);
+    if (!queue) {
+      queue = [];
+      this.writeQueues.set(sessionId, queue);
+    }
+
+    // Add data to queue
+    queue.push(data);
+
+    // If no write timer is active, start processing the queue
+    if (!this.writeTimers.has(sessionId)) {
+      this.processWriteQueue(sessionId, sessionTerminal);
+    }
+  }
+
+  /**
+   * Process write queue with rate limiting
+   */
+  private processWriteQueue(sessionId: string, sessionTerminal: SessionTerminal) {
+    const queue = this.writeQueues.get(sessionId);
+    if (!queue || queue.length === 0) {
+      this.writeTimers.delete(sessionId);
+      return;
+    }
+
+    // Process a batch of writes (limit batch size to prevent overwhelming the terminal)
+    const batchSize = 10;
+    const batch = queue.splice(0, batchSize);
+    const combinedData = batch.join('');
+
+    try {
+      sessionTerminal.terminal.write(combinedData);
+    } catch (error) {
+      // Log write errors but continue processing
+      logger.warn(`Terminal write error for session ${sessionId}:`, error);
+    }
+
+    // Schedule next batch processing
+    if (queue.length > 0) {
+      const timer = setTimeout(() => {
+        this.processWriteQueue(sessionId, sessionTerminal);
+      }, 10); // 10ms delay between batches
+      this.writeTimers.set(sessionId, timer);
+    } else {
+      this.writeTimers.delete(sessionId);
     }
   }
 
@@ -764,6 +830,15 @@ export class TerminalManager {
       clearTimeout(timer);
     }
     this.changeTimers.clear();
+
+    // Clear write timers
+    for (const timer of this.writeTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.writeTimers.clear();
+
+    // Clear write queues
+    this.writeQueues.clear();
 
     // Restore original console.warn
     console.warn = this.originalConsoleWarn;
