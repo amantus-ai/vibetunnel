@@ -1,4 +1,4 @@
-import { test } from '../fixtures/test.fixture';
+import { expect, test } from '../fixtures/test.fixture';
 import { assertSessionInList } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';

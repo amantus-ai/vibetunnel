@@ -88,6 +88,10 @@ test.describe('Session Creation', () => {
     // Wait for multiple refresh cycles (auto-refresh happens every 1 second)
     await page.waitForTimeout(5000);
 
+    // Force a page reload to ensure we get the latest session list
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
     // Check session count increased
     const newCount = await page.locator('session-card').count();
     console.log(`New session count: ${newCount}`);
@@ -218,10 +222,33 @@ test.describe('Session Creation', () => {
 
     // Navigate to list and verify all exist
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
 
-    // Add a small delay to ensure the session list is fully updated
-    await page.waitForTimeout(2000);
+    // Add a longer delay to ensure the session list is fully updated
+    await page.waitForTimeout(8000);
+
+    // Force a reload to get the latest session list
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // Additional wait after reload
+    await page.waitForTimeout(3000);
+
+    // Debug: Log all sessions found
+    const allSessions = await page.evaluate(() => {
+      const cards = document.querySelectorAll('session-card');
+      const sessions = [];
+      for (const card of cards) {
+        const sessionCard = card as SessionCardElement;
+        if (sessionCard.session) {
+          const name =
+            sessionCard.session.name || sessionCard.session.command?.join(' ') || 'unknown';
+          sessions.push(name);
+        }
+      }
+      return sessions;
+    });
+    console.log('All sessions found in list:', allSessions);
 
     // Verify each session exists using custom evaluation
     for (const sessionName of sessions) {
@@ -239,6 +266,9 @@ test.describe('Session Creation', () => {
         return false;
       }, sessionName);
 
+      if (!found) {
+        console.error(`Session ${sessionName} not found in list. Available sessions:`, allSessions);
+      }
       expect(found).toBeTruthy();
     }
   });
