@@ -3,7 +3,6 @@ import OSLog
 import Combine
 import CoreMedia
 
-// Try to import WebRTC - the framework should be available
 @preconcurrency import WebRTC
 
 /// Manages WebRTC connections for screen sharing
@@ -17,6 +16,7 @@ final class WebRTCManager: NSObject {
     private var peerConnection: RTCPeerConnection?
     private var localVideoTrack: RTCVideoTrack?
     private var videoSource: RTCVideoSource?
+    private var videoCapturer: RTCVideoCapturer?
     
     // WebSocket for signaling
     private var signalSocket: URLSessionWebSocketTask?
@@ -66,11 +66,11 @@ final class WebRTCManager: NSObject {
     func startCapture(mode: String) async throws {
         logger.info("🚀 Starting WebRTC capture")
         
-        // Create peer connection
-        try createPeerConnection()
-        
-        // Create video track
+        // Create video track first
         createLocalVideoTrack()
+        
+        // Create peer connection (will add the video track)
+        try createPeerConnection()
         
         // Connect to signaling server
         try await connectSignaling()
@@ -90,10 +90,30 @@ final class WebRTCManager: NSObject {
     
     /// Process a video frame from ScreenCaptureKit using sending parameter
     nonisolated func processVideoFrame(_ sampleBuffer: sending CMSampleBuffer) async {
-        // Extract all needed data from CMSampleBuffer before any async boundaries
+        // Check if we're connected before processing
+        let connected = await MainActor.run { self.isConnected }
+        guard connected else {
+            // Only log occasionally to avoid spam
+            if Int.random(in: 0..<30) == 0 {
+                await MainActor.run { [weak self] in
+                    self?.logger.debug("Skipping frame - WebRTC not connected yet")
+                }
+            }
+            return
+        }
+        
+        // Try to get pixel buffer first (for raw frames)
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-            await MainActor.run {
-                logger.error("Failed to get pixel buffer from sample buffer")
+            // This might be encoded data - for now just log it
+            await MainActor.run { [weak self] in
+                guard let self = self else { return }
+                // Only log occasionally to avoid spam
+                if Int.random(in: 0..<30) == 0 {
+                    let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer)
+                    let mediaType = formatDesc.flatMap { CMFormatDescriptionGetMediaType($0) }
+                    let mediaSubType = formatDesc.flatMap { CMFormatDescriptionGetMediaSubType($0) }
+                    self.logger.debug("No pixel buffer - mediaType: \(mediaType.map { String(format: "0x%08X", $0) } ?? "nil"), subType: \(mediaSubType.map { String(format: "0x%08X", $0) } ?? "nil")")
+                }
             }
             return
         }
@@ -102,20 +122,28 @@ final class WebRTCManager: NSObject {
         let timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         let timeStampNs = Int64(CMTimeGetSeconds(timestamp) * Double(NSEC_PER_SEC))
         
-        // Create RTCCVPixelBuffer before crossing isolation boundary
+        // Create RTCCVPixelBuffer with the pixel buffer
         let rtcPixelBuffer = RTCCVPixelBuffer(pixelBuffer: pixelBuffer)
         
-        // Now we can safely cross to MainActor with the RTCCVPixelBuffer
+        // Create the video frame with the buffer
+        let videoFrame = RTCVideoFrame(
+            buffer: rtcPixelBuffer,
+            rotation: ._0,
+            timeStampNs: timeStampNs
+        )
+        
+        // Now we can safely cross to MainActor with the video frame
         await MainActor.run { [weak self] in
-            guard let self = self, let videoSource = self.videoSource else { return }
+            guard let self = self, 
+                  let videoCapturer = self.videoCapturer,
+                  let videoSource = self.videoSource else { return }
             
-            let videoFrame = RTCVideoFrame(
-                buffer: rtcPixelBuffer,
-                rotation: ._0,
-                timeStampNs: timeStampNs
-            )
+            videoSource.capturer(videoCapturer, didCapture: videoFrame)
             
-            videoSource.capturer(RTCVideoCapturer(), didCapture: videoFrame)
+            // Log success occasionally
+            if Int.random(in: 0..<300) == 0 {
+                self.logger.info("✅ Sent video frame to WebRTC - size: \(CVPixelBufferGetWidth(pixelBuffer))x\(CVPixelBufferGetHeight(pixelBuffer))")
+            }
         }
     }
     
@@ -160,6 +188,10 @@ final class WebRTCManager: NSObject {
         }
         
         self.videoSource = videoSource
+        
+        // Create video capturer
+        let videoCapturer = RTCVideoCapturer(delegate: videoSource)
+        self.videoCapturer = videoCapturer
         
         // Create video track
         let videoTrack = peerConnectionFactory!.videoTrack(
@@ -382,6 +414,7 @@ final class WebRTCManager: NSObject {
         // Clean up tracks and sources
         localVideoTrack = nil
         videoSource = nil
+        videoCapturer = nil
         
         isConnected = false
         
@@ -414,8 +447,19 @@ extension WebRTCManager: RTCPeerConnectionDelegate {
     
     nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
         Task { @MainActor in
-            logger.info("ICE connection state: \(newState.rawValue)")
-            isConnected = newState == .connected
+            let stateString = switch newState {
+            case .new: "new"
+            case .checking: "checking"
+            case .connected: "connected"
+            case .completed: "completed"
+            case .failed: "failed"
+            case .disconnected: "disconnected"
+            case .closed: "closed"
+            case .count: "count"
+            @unknown default: "unknown"
+            }
+            logger.info("ICE connection state: \(stateString)")
+            isConnected = newState == .connected || newState == .completed
         }
     }
     
@@ -432,6 +476,7 @@ extension WebRTCManager: RTCPeerConnectionDelegate {
         let sdpMLineIndex = candidate.sdpMLineIndex
         
         Task { @MainActor in
+            logger.info("🧊 Generated ICE candidate: \(candidateSdp)")
             // Send ICE candidate through signaling
             await sendSignalMessage([
                 "type": "ice-candidate",

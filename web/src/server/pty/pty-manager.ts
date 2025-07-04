@@ -231,7 +231,7 @@ export class PtyManager extends EventEmitter {
       }
 
       // Log the final command
-      logger.log(chalk.blue(`Creating PTY session with command: ${resolvedCommand.join(' ')}`));
+      logger.debug(chalk.blue(`Creating PTY session with command: ${resolvedCommand.join(' ')}`));
       logger.debug(`Working directory: ${workingDir}`);
 
       // Create initial session info with resolved command
@@ -378,7 +378,9 @@ export class PtyManager extends EventEmitter {
       sessionInfo.status = 'running';
       this.sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
-      logger.log(chalk.green(`Session ${sessionId} created successfully (PID: ${ptyProcess.pid})`));
+      logger.debug(
+        chalk.green(`Session ${sessionId} created successfully (PID: ${ptyProcess.pid})`)
+      );
       logger.log(chalk.gray(`Running: ${resolvedCommand.join(' ')} in ${workingDir}`));
 
       // Setup PTY event handlers
@@ -1126,7 +1128,7 @@ export class PtyManager extends EventEmitter {
     // Emit event for clients to refresh their session data
     this.trackAndEmit('sessionNameChanged', sessionId, uniqueName);
 
-    logger.log(`[PtyManager] Updated session ${sessionId} name to: ${uniqueName}`);
+    logger.debug(`[PtyManager] Updated session ${sessionId} name to: ${uniqueName}`);
 
     return uniqueName;
   }
@@ -1282,13 +1284,13 @@ export class PtyManager extends EventEmitter {
             await new Promise((resolve) => setTimeout(resolve, checkInterval));
 
             if (!ProcessUtils.isProcessRunning(diskSession.pid)) {
-              logger.log(chalk.green(`External session ${sessionId} terminated gracefully`));
+              logger.debug(chalk.green(`External session ${sessionId} terminated gracefully`));
               return;
             }
           }
 
           // Process didn't terminate gracefully, force kill
-          logger.log(chalk.yellow(`External session ${sessionId} requires SIGKILL`));
+          logger.debug(chalk.yellow(`External session ${sessionId} requires SIGKILL`));
           process.kill(diskSession.pid, 'SIGKILL');
 
           // Also force kill the entire process group if on Unix
@@ -1329,7 +1331,7 @@ export class PtyManager extends EventEmitter {
     }
 
     const pid = session.ptyProcess.pid;
-    logger.log(chalk.yellow(`Terminating session ${sessionId} (PID: ${pid})`));
+    logger.debug(chalk.yellow(`Terminating session ${sessionId} (PID: ${pid})`));
 
     try {
       // Send SIGTERM first
@@ -1359,7 +1361,7 @@ export class PtyManager extends EventEmitter {
         // Check if process is still alive
         if (!ProcessUtils.isProcessRunning(pid)) {
           // Process no longer exists - it terminated gracefully
-          logger.log(chalk.green(`Session ${sessionId} terminated gracefully`));
+          logger.debug(chalk.green(`Session ${sessionId} terminated gracefully`));
           this.sessions.delete(sessionId);
           return;
         }
@@ -1369,7 +1371,7 @@ export class PtyManager extends EventEmitter {
       }
 
       // Process didn't terminate gracefully within 3 seconds, force kill
-      logger.log(chalk.yellow(`Session ${sessionId} requires SIGKILL`));
+      logger.debug(chalk.yellow(`Session ${sessionId} requires SIGKILL`));
       try {
         session.ptyProcess.kill('SIGKILL');
 
@@ -1396,7 +1398,7 @@ export class PtyManager extends EventEmitter {
 
       // Remove from sessions regardless
       this.sessions.delete(sessionId);
-      logger.log(chalk.yellow(`Session ${sessionId} forcefully terminated`));
+      logger.debug(chalk.yellow(`Session ${sessionId} forcefully terminated`));
     } catch (error) {
       // Remove from sessions even if kill failed
       this.sessions.delete(sessionId);

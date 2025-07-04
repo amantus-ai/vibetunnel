@@ -214,8 +214,9 @@ export class ScreencapView extends LitElement {
     }
 
     .capture-preview {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
       border: 1px solid #2a2a2a;
       border-radius: 0.5rem;
       background: #262626;
@@ -286,8 +287,9 @@ export class ScreencapView extends LitElement {
     }
 
     .video-preview {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
       border: 1px solid #2a2a2a;
       border-radius: 0.5rem;
       background: #262626;
@@ -433,10 +435,7 @@ export class ScreencapView extends LitElement {
       logger.log('🔄 Starting initial data load...');
       this.status = 'loading';
       await Promise.all([this.loadWindows(), this.loadDisplays()]);
-      // Select the first display by default
-      if (this.displays.length > 0 && !this.selectedDisplay) {
-        this.selectedDisplay = this.displays[0];
-      }
+      // Don't select any display by default - let user choose
       logger.log('✅ Initial data loaded successfully');
       this.status = 'ready';
     } catch (error) {
@@ -659,6 +658,18 @@ export class ScreencapView extends LitElement {
     }
   }
 
+  private async selectAllDisplays() {
+    this.selectedDisplay = null;
+    this.selectedWindow = null;
+    this.captureMode = 'desktop';
+
+    // Auto-start capture when selecting all displays
+    if (!this.isCapturing) {
+      logger.log(`🖥️ Auto-starting capture for all displays`);
+      await this.startCapture();
+    }
+  }
+
   private async handleClick(event: MouseEvent) {
     if (!this.isCapturing) return;
 
@@ -779,7 +790,7 @@ export class ScreencapView extends LitElement {
 
       if (this.captureMode === 'desktop') {
         endpoint = '/api/screencap/capture';
-        const displayIndex = this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : 0;
+        const displayIndex = this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1;
         captureData = {
           type: 'desktop',
           index: displayIndex,
@@ -812,24 +823,59 @@ export class ScreencapView extends LitElement {
       logger.log(`✅ Mac app capture started:`, responseData);
 
       // Wait a moment for Mac app to connect to signaling server
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Create peer connection
       this.peerConnection = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
       });
 
+      // Store the stream first, then update state to render video element
+      let pendingStream: MediaStream | null = null;
+
       // Set up event handlers
       this.peerConnection.ontrack = (event) => {
         logger.log('📹 Received video track:', event);
-        const videoElement = this.shadowRoot?.querySelector('video');
-        if (videoElement && event.streams[0]) {
-          videoElement.srcObject = event.streams[0];
+        logger.log('Track details:', {
+          kind: event.track.kind,
+          enabled: event.track.enabled,
+          readyState: event.track.readyState,
+          streams: event.streams.length,
+        });
+
+        if (event.streams[0]) {
+          pendingStream = event.streams[0];
+
+          // Update state to show video element
           this.isCapturing = true;
           this.status = 'capturing';
 
-          // Start collecting statistics
-          this.startStatsCollection();
+          // Force render and then set the stream
+          this.requestUpdate();
+
+          // Wait for the render to complete, then set the video source
+          this.updateComplete.then(() => {
+            const videoElement = this.shadowRoot?.querySelector('video');
+            if (videoElement && pendingStream) {
+              videoElement.srcObject = pendingStream;
+              logger.log(
+                '✅ Video element configured, isCapturing:',
+                this.isCapturing,
+                'useWebRTC:',
+                this.useWebRTC
+              );
+
+              // Start collecting statistics
+              this.startStatsCollection();
+            } else {
+              logger.error(
+                'Failed to set video stream after render - videoElement:',
+                !!videoElement
+              );
+            }
+          });
+        } else {
+          logger.error('No streams in track event');
         }
       };
 
@@ -871,7 +917,7 @@ export class ScreencapView extends LitElement {
             type: 'start-capture',
             mode: this.captureMode,
             windowId: this.selectedWindow?.cgWindowID,
-            displayIndex: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : 0,
+            displayIndex: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
           })
         );
         resolve();
@@ -1153,6 +1199,26 @@ export class ScreencapView extends LitElement {
               Capture Mode
             </h3>
             <div class="window-list">
+              ${
+                this.displays.length > 1
+                  ? html`
+                <div 
+                  class="window-item ${this.captureMode === 'desktop' && this.selectedDisplay === null ? 'selected' : ''}"
+                  @click=${() => this.selectAllDisplays()}
+                >
+                  <div class="window-name">
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="display: inline-block; margin-right: 0.5rem;">
+                      <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v6a2 2 0 01-2 2h-5v2h3a1 1 0 110 2H6a1 1 0 110-2h3v-2H4a2 2 0 01-2-2V5zm2 0v6h12V5H4z"/>
+                    </svg>
+                    All Displays
+                  </div>
+                  <div class="window-size">
+                    Combined view
+                  </div>
+                </div>
+              `
+                  : ''
+              }
               ${this.displays.map(
                 (display, index) => html`
                 <div 
@@ -1214,6 +1280,9 @@ export class ScreencapView extends LitElement {
                     logger.log(
                       `Video stream ready - size: ${video.videoWidth}x${video.videoHeight}`
                     );
+                  }}
+                  @error=${(e: Event) => {
+                    logger.error('Video element error:', e);
                   }}
                 ></video>
                 ${

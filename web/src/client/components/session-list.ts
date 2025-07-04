@@ -114,7 +114,7 @@ export class SessionList extends LitElement {
         this.requestUpdate();
       }
 
-      logger.log(`Session ${sessionId} renamed to: ${newName}`);
+      logger.debug(`Session ${sessionId} renamed to: ${newName}`);
     } catch (error) {
       logger.error('Error renaming session', { error, sessionId });
 

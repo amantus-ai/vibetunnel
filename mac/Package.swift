@@ -17,7 +17,7 @@ let package = Package(
         .package(url: "https://github.com/nicklockwood/SwiftFormat.git", from: "0.56.4"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.6.3"),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.7.1"),
-        .package(url: "https://github.com/stasel/WebRTC.git", branch: "latest")
+        .package(url: "https://github.com/stasel/WebRTC", branch: "latest")
     ],
     targets: [
         .target(

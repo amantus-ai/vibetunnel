@@ -5,6 +5,7 @@ import CoreGraphics
 import CoreImage
 import AppKit
 import OSLog
+import VideoToolbox
 
 /// Service that provides screen capture functionality with HTTP API
 @preconcurrency @MainActor
@@ -21,16 +22,19 @@ public final class ScreencapService: NSObject {
     private var currentDisplayIndex: Int = 0
     private var currentFrame: CGImage?
     private let frameQueue = DispatchQueue(label: "sh.vibetunnel.screencap.frame", qos: .userInitiated)
+    private let sampleHandlerQueue = DispatchQueue(label: "sh.vibetunnel.screencap.sampleHandler", qos: .userInitiated)
     private var frameCounter: Int = 0
     
     // WebRTC support
     private var webRTCManager: WebRTCManager?
     private var useWebRTC = false
+    private var decompressionSession: VTDecompressionSession?
     
     // MARK: - Types
     
     enum CaptureMode {
         case desktop(displayIndex: Int = 0)
+        case allDisplays
         case window(SCWindow)
         case application(SCRunningApplication)
     }
@@ -68,23 +72,49 @@ public final class ScreencapService: NSObject {
     
     /// Get all available displays
     func getDisplays() async throws -> [DisplayInfo] {
-        let screens = NSScreen.screens
-        guard !screens.isEmpty else {
+        // Use SCShareableContent to ensure consistency with capture
+        let content = try await SCShareableContent.excludingDesktopWindows(
+            false,
+            onScreenWindowsOnly: false
+        )
+        
+        guard !content.displays.isEmpty else {
             throw ScreencapError.noDisplay
         }
         
-        return screens.enumerated().map { index, screen in
-            DisplayInfo(
+        logger.info("📺 Found \(content.displays.count) displays")
+        
+        var displayInfos: [DisplayInfo] = []
+        
+        for (index, display) in content.displays.enumerated() {
+            // Try to find corresponding NSScreen for additional info
+            let nsScreen = NSScreen.screens.first { screen in
+                // Match by frame - SCDisplay and NSScreen should have the same frame
+                let xMatch = abs(screen.frame.origin.x - display.frame.origin.x) < 1.0
+                let yMatch = abs(screen.frame.origin.y - display.frame.origin.y) < 1.0
+                let widthMatch = abs(screen.frame.width - display.frame.width) < 1.0
+                let heightMatch = abs(screen.frame.height - display.frame.height) < 1.0
+                return xMatch && yMatch && widthMatch && heightMatch
+            }
+            
+            let name = nsScreen?.localizedName ?? "Display \(index + 1)"
+            logger.debug("Display \(index): '\(name)' - size: \(display.width)x\(display.height)")
+            
+            let displayInfo = DisplayInfo(
                 id: "\(index)",
-                width: Int(screen.frame.width),
-                height: Int(screen.frame.height),
-                scaleFactor: screen.backingScaleFactor,
-                refreshRate: Double(screen.maximumFramesPerSecond),
-                x: screen.frame.origin.x,
-                y: screen.frame.origin.y,
-                name: screen.localizedName
+                width: Int(display.width),
+                height: Int(display.height),
+                scaleFactor: Double(nsScreen?.backingScaleFactor ?? 2.0),
+                refreshRate: Double(nsScreen?.maximumFramesPerSecond ?? 60),
+                x: display.frame.origin.x,
+                y: display.frame.origin.y,
+                name: name
             )
+            
+            displayInfos.append(displayInfo)
         }
+        
+        return displayInfos
     }
     
     /// Get current display information (for backward compatibility)
@@ -158,18 +188,42 @@ public final class ScreencapService: NSObject {
         // Determine capture mode
         switch type {
         case "desktop":
-            // Use display index if provided, otherwise default to first display
-            let displayIndex = index < content.displays.count ? index : 0
-            guard displayIndex < content.displays.count else {
-                throw ScreencapError.noDisplay
+            // Check if index is -1 which means all displays
+            if index == -1 {
+                // Capture all displays
+                guard let primaryDisplay = content.displays.first else {
+                    throw ScreencapError.noDisplay
+                }
+                
+                captureMode = .allDisplays
+                currentDisplayIndex = -1
+                
+                // Use the method that Federico found works - include all apps
+                captureFilter = SCContentFilter(
+                    display: primaryDisplay,
+                    including: content.applications,
+                    exceptingWindows: []
+                )
+            } else {
+                // Single display capture
+                let displayIndex = index < content.displays.count ? index : 0
+                guard displayIndex < content.displays.count else {
+                    throw ScreencapError.noDisplay
+                }
+                let display = content.displays[displayIndex]
+                captureMode = .desktop(displayIndex: displayIndex)
+                currentDisplayIndex = displayIndex
+                
+                // Log display selection for debugging
+                logger.info("📺 Capturing display \(displayIndex) of \(content.displays.count) - size: \(display.width)x\(display.height)")
+                
+                // Use the method that Federico found works - include all apps
+                captureFilter = SCContentFilter(
+                    display: display,
+                    including: content.applications,
+                    exceptingWindows: []
+                )
             }
-            let display = content.displays[displayIndex]
-            captureMode = .desktop(displayIndex: displayIndex)
-            currentDisplayIndex = displayIndex
-            captureFilter = SCContentFilter(
-                display: display,
-                excludingWindows: []
-            )
             
         case "window":
             guard index < content.windows.count else {
@@ -179,14 +233,33 @@ public final class ScreencapService: NSObject {
             selectedWindow = window
             captureMode = .window(window)
             
-            // Create filter for window capture
-            guard let display = content.displays.first else {
+            logger.info("🪟 Capturing window: '\(window.title ?? "Untitled")' - size: \(window.frame.width)x\(window.frame.height)")
+            
+            // For window capture, we need to find which display contains this window
+            let windowDisplay = content.displays.first { display in
+                // Check if window's frame intersects with display's frame
+                return display.frame.intersects(window.frame)
+            } ?? content.displays.first
+            
+            guard let display = windowDisplay else {
                 throw ScreencapError.noDisplay
             }
-            captureFilter = SCContentFilter(
-                display: display,
-                including: [window]
-            )
+            
+            // Create filter that includes the owning application and the specific window
+            if let app = window.owningApplication {
+                logger.info("📱 Window owned by app: '\(app.applicationName)'")
+                captureFilter = SCContentFilter(
+                    display: display,
+                    including: [app],
+                    exceptingWindows: content.windows.filter { $0.windowID != window.windowID }
+                )
+            } else {
+                // Fallback to just the window
+                captureFilter = SCContentFilter(
+                    display: display,
+                    including: [window]
+                )
+            }
             
         case "application":
             guard index < content.applications.count else {
@@ -219,18 +292,54 @@ public final class ScreencapService: NSObject {
         }
         
         let streamConfig = SCStreamConfiguration()
-        streamConfig.width = Int(filter.contentRect.width)
-        streamConfig.height = Int(filter.contentRect.height)
+        
+        // For all displays mode, calculate the combined dimensions
+        if case .allDisplays = captureMode {
+            // Calculate the bounding rectangle that encompasses all displays
+            var minX: CGFloat = CGFloat.greatestFiniteMagnitude
+            var minY: CGFloat = CGFloat.greatestFiniteMagnitude
+            var maxX: CGFloat = -CGFloat.greatestFiniteMagnitude
+            var maxY: CGFloat = -CGFloat.greatestFiniteMagnitude
+            
+            for display in content.displays {
+                minX = min(minX, display.frame.origin.x)
+                minY = min(minY, display.frame.origin.y)
+                maxX = max(maxX, display.frame.origin.x + display.frame.width)
+                maxY = max(maxY, display.frame.origin.y + display.frame.height)
+            }
+            
+            let totalWidth = maxX - minX
+            let totalHeight = maxY - minY
+            
+            streamConfig.width = Int(totalWidth)
+            streamConfig.height = Int(totalHeight)
+            
+            // Set the source rect to capture all displays
+            streamConfig.sourceRect = CGRect(x: minX, y: minY, width: totalWidth, height: totalHeight)
+        } else if case .window(let window) = captureMode {
+            // For window capture, use the window's bounds
+            streamConfig.width = Int(window.frame.width)
+            streamConfig.height = Int(window.frame.height)
+            logger.info("🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height)")
+        } else {
+            streamConfig.width = Int(filter.contentRect.width)
+            streamConfig.height = Int(filter.contentRect.height)
+        }
+        
+        // Basic configuration
         streamConfig.minimumFrameInterval = CMTime(value: 1, timescale: 30) // 30 FPS
-        streamConfig.queueDepth = 3
+        streamConfig.queueDepth = 5
         streamConfig.showsCursor = true
         streamConfig.capturesAudio = false
+        
+        // CRITICAL: Set pixel format to get raw frames
         streamConfig.pixelFormat = kCVPixelFormatType_32BGRA
         
-        // Ensure we get raw pixel buffers, not compressed frames
-        streamConfig.colorSpaceName = CGColorSpace.sRGB
+        // No scaling to maintain quality
         streamConfig.scalesToFit = false
-        streamConfig.preservesAspectRatio = true
+        
+        // Color space
+        streamConfig.colorSpaceName = CGColorSpace.sRGB
         
         logger.info("Stream config - size: \(streamConfig.width)x\(streamConfig.height), fps: 30")
         
@@ -240,7 +349,12 @@ public final class ScreencapService: NSObject {
         
         // Add output and start capture
         do {
-            try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: frameQueue)
+            // Add output with dedicated queue for optimal performance
+            try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: sampleHandlerQueue)
+            
+            // Log stream output configuration
+            logger.info("Added stream output handler for type: .screen")
+            
             try await stream.startCapture()
             
             isCapturing = true
@@ -274,6 +388,8 @@ public final class ScreencapService: NSObject {
             switch captureMode {
             case .desktop(let index):
                 modeString = "desktop-\(index)"
+            case .allDisplays:
+                modeString = "all-displays"
             case .window(_):
                 modeString = "window"
             case .application(_):
@@ -337,21 +453,89 @@ public final class ScreencapService: NSObject {
     }
     
     /// Send click at specified coordinates
+    /// - Parameters:
+    ///   - x: X coordinate in 0-1000 normalized range
+    ///   - y: Y coordinate in 0-1000 normalized range
+    ///   - cgWindowID: Optional window ID for window-specific clicks
     func sendClick(x: Double, y: Double, cgWindowID: Int? = nil) async throws {
-        var adjustedX = x
-        var adjustedY = y
+        logger.info("🖱️ Received click at normalized coordinates: (\(x), \(y))")
         
-        // If capturing a specific display, adjust coordinates based on display origin
-        if case .desktop(let displayIndex) = captureMode {
-            let screens = NSScreen.screens
-            if displayIndex < screens.count {
-                let screen = screens[displayIndex]
-                adjustedX += screen.frame.origin.x
-                adjustedY += screen.frame.origin.y
-            }
+        // Get the capture filter to determine actual dimensions
+        guard let filter = captureFilter else {
+            throw ScreencapError.notCapturing
         }
         
-        let clickLocation = CGPoint(x: adjustedX, y: adjustedY)
+        // Convert from 0-1000 normalized coordinates to actual pixel coordinates
+        let normalizedX = x / 1000.0
+        let normalizedY = y / 1000.0
+        
+        var pixelX: Double
+        var pixelY: Double
+        
+        // Calculate pixel coordinates based on capture mode
+        switch captureMode {
+        case .desktop(let displayIndex):
+            // Get SCShareableContent to ensure consistency
+            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            
+            if displayIndex >= 0 && displayIndex < content.displays.count {
+                let display = content.displays[displayIndex]
+                // Convert normalized to pixel coordinates within the display
+                pixelX = display.frame.origin.x + (normalizedX * display.frame.width)
+                pixelY = display.frame.origin.y + (normalizedY * display.frame.height)
+                
+                logger.info("📺 Display \(displayIndex): pixel coords=(\(String(format: "%.1f", pixelX)), \(String(format: "%.1f", pixelY)))")
+            } else {
+                throw ScreencapError.noDisplay
+            }
+            
+        case .allDisplays:
+            // For all displays, we need to calculate based on the combined bounds
+            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            
+            // Calculate the bounding rectangle
+            var minX: CGFloat = CGFloat.greatestFiniteMagnitude
+            var minY: CGFloat = CGFloat.greatestFiniteMagnitude
+            var maxX: CGFloat = -CGFloat.greatestFiniteMagnitude
+            var maxY: CGFloat = -CGFloat.greatestFiniteMagnitude
+            
+            for display in content.displays {
+                minX = min(minX, display.frame.origin.x)
+                minY = min(minY, display.frame.origin.y)
+                maxX = max(maxX, display.frame.origin.x + display.frame.width)
+                maxY = max(maxY, display.frame.origin.y + display.frame.height)
+            }
+            
+            let totalWidth = maxX - minX
+            let totalHeight = maxY - minY
+            
+            // Convert normalized to pixel coordinates within the combined bounds
+            pixelX = minX + (normalizedX * totalWidth)
+            pixelY = minY + (normalizedY * totalHeight)
+            
+            logger.info("🖥️ All displays: pixel coords=(\(String(format: "%.1f", pixelX)), \(String(format: "%.1f", pixelY)))")
+            
+        case .window(let window):
+            // For window capture, use the window's frame
+            pixelX = window.frame.origin.x + (normalizedX * window.frame.width)
+            pixelY = window.frame.origin.y + (normalizedY * window.frame.height)
+            
+            logger.info("🪟 Window: pixel coords=(\(String(format: "%.1f", pixelX)), \(String(format: "%.1f", pixelY)))")
+            
+        case .application(_):
+            // For application capture, use the filter's content rect
+            pixelX = filter.contentRect.origin.x + (normalizedX * filter.contentRect.width)
+            pixelY = filter.contentRect.origin.y + (normalizedY * filter.contentRect.height)
+        }
+        
+        // Convert y-coordinate from top-left origin (screen capture) to bottom-left origin (Core Graphics)
+        // Get the main screen height for coordinate system conversion
+        let mainScreenHeight = NSScreen.main?.frame.height ?? 0
+        let flippedY = mainScreenHeight - pixelY
+        
+        let clickLocation = CGPoint(x: pixelX, y: flippedY)
+        
+        logger.info("🎯 Final click location: (\(clickLocation.x), \(clickLocation.y)) [flipped from y=\(pixelY)]")
         
         // Create mouse down event
         guard let mouseDown = CGEvent(
@@ -378,7 +562,7 @@ public final class ScreencapService: NSObject {
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms delay
         mouseUp.post(tap: .cghidEventTap)
         
-        logger.info("Sent click at screen coordinates (\(adjustedX), \(adjustedY))")
+        logger.info("✅ Click sent successfully")
     }
     
     /// Send keyboard input
@@ -499,65 +683,90 @@ extension ScreencapService: SCStreamDelegate {
 
 extension ScreencapService: SCStreamOutput {
     nonisolated public func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
-        guard type == .screen else { 
+        guard type == .screen else {
+            // Log other types occasionally
+            if Int.random(in: 0..<100) == 0 {
+                print("Received non-screen output type: \(type)")
+            }
             return 
         }
         
-        // Process the frame asynchronously to avoid blocking the stream
-        // Use detached task to avoid capturing context
-        Task.detached { [weak self] in
-            await self?.processFrame(sampleBuffer)
+        // Skip frame counting in non-isolated context to avoid concurrency issues
+        let shouldLog = Int.random(in: 0..<300) == 0
+        
+        // Log sample buffer format details
+        if let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) {
+            let mediaType = CMFormatDescriptionGetMediaType(formatDesc)
+            let mediaSubType = CMFormatDescriptionGetMediaSubType(formatDesc)
+            let dimensions = CMVideoFormatDescriptionGetDimensions(formatDesc)
+            
+            // Only log occasionally to reduce noise
+            if shouldLog {
+                let mediaTypeString = String(format: "0x%08X", mediaType)
+                let mediaSubTypeString = String(format: "0x%08X", mediaSubType)
+                print("Sample buffer - mediaType: \(mediaTypeString), subType: \(mediaSubTypeString), dimensions: \(dimensions.width)x\(dimensions.height)")
+            }
+        }
+        
+        // Check if sample buffer is ready
+        if !CMSampleBufferDataIsReady(sampleBuffer) {
+            print("Sample buffer data is not ready")
+            return
+        }
+        
+        // Get pixel buffer immediately
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            // Log this issue but only occasionally
+            if shouldLog {
+                print("No pixel buffer available in sample buffer")
+            }
+            return
+        }
+        
+        // We have a pixel buffer! Process it
+        Task { [weak self] in
+            guard let self = self else { return }
+            
+            // Check if WebRTC is enabled on MainActor
+            let (useWebRTC, webRTCManager) = await MainActor.run {
+                (self.useWebRTC, self.webRTCManager)
+            }
+            
+            // Handle WebRTC if enabled
+            if useWebRTC, let webRTCManager = webRTCManager {
+                // Process video frame directly with the sample buffer
+                await webRTCManager.processVideoFrame(sampleBuffer)
+            }
+            
+            // For regular display, create CIImage
+            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+            await MainActor.run { [weak self] in
+                guard let self = self else { return }
+                Task {
+                    await self.processFrame(ciImage: ciImage)
+                }
+            }
         }
     }
     
+    
     // Separate async function to handle frame processing
-    private func processFrame(_ sampleBuffer: sending CMSampleBuffer) async {
-        // Extract CGImage from sample buffer
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-            // This can happen if the buffer contains encoded data instead of raw pixels
-            // Log only occasionally to avoid spam
-            await MainActor.run { [weak self] in
-                guard let self = self else { return }
-                if self.frameCounter % 30 == 0 { // Log once per second at 30fps
-                    self.logger.debug("Sample buffer does not contain pixel buffer (possibly encoded data)")
-                }
-            }
-            return
-        }
-        
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+    @MainActor
+    private func processFrame(ciImage: CIImage) async {
         let context = CIContext()
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-            await MainActor.run { [weak self] in
-                self?.logger.error("Failed to create CGImage from CIImage")
-            }
+            logger.error("Failed to create CGImage from CIImage")
             return
         }
         
-        // Check if WebRTC is enabled and process frame
-        await MainActor.run { [weak self] in
-            guard let self = self else { return }
-            
-            // Update current frame
-            self.currentFrame = cgImage
-            let frameCount = self.frameCounter
-            self.frameCounter += 1
-            
-            // Log only every 300 frames (10 seconds at 30fps) to reduce noise
-            if frameCount % 300 == 0 {
-                self.logger.info("📹 Frame \(frameCount) received")
-            }
-        }
+        // Update current frame
+        currentFrame = cgImage
+        let frameCount = frameCounter
+        frameCounter += 1
         
-        // Process WebRTC frame if enabled
-        let (useWebRTC, webRTCManager) = await MainActor.run { [weak self] in
-            (self?.useWebRTC ?? false, self?.webRTCManager)
-        }
-        
-        if useWebRTC, let webRTCManager = webRTCManager {
-            // Only process frames that have pixel buffers for WebRTC
-            // The sending parameter safely transfers ownership
-            await webRTCManager.processVideoFrame(sampleBuffer)
+        // Log only every 300 frames (10 seconds at 30fps) to reduce noise
+        if frameCount % 300 == 0 {
+            logger.info("📹 Frame \(frameCount) received")
         }
     }
 }
