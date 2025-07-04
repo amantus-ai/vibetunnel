@@ -1103,10 +1103,9 @@ export class VibeTunnelApp extends LitElement {
       logger.log('🔥 Starting screenshare session...');
 
       // Navigate to screencap in same window instead of opening new window
-      const screencapUrl = '/api/screencap/';
+      const screencapUrl = '/api/screencap';
 
-      // Update browser URL and navigate to screencap
-      window.history.pushState({ previousUrl: window.location.pathname }, '', screencapUrl);
+      // Navigate to screencap (no need for pushState when using location.href)
       window.location.href = screencapUrl;
 
       logger.log('✅ Navigating to screencap in same window');

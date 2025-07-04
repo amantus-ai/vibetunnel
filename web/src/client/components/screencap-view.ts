@@ -739,7 +739,7 @@ export class ScreencapView extends LitElement {
 
     this.frameInterval = window.setInterval(() => {
       this.updateFrame();
-    }, 100); // 10 FPS updates
+    }, 50); // 20 FPS updates for smoother experience
   }
 
   private async updateFrame() {

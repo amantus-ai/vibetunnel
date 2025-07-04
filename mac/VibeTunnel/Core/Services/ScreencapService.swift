@@ -610,7 +610,8 @@ public final class ScreencapService: NSObject {
                   of: ciImage,
                   colorSpace: colorSpace,
                   options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.8]
-              ) else {
+              )
+        else {
             logger.error("Failed to convert frame to JPEG")
             return nil
         }
@@ -1011,9 +1012,7 @@ extension ScreencapService: SCStreamOutput {
         guard type == .screen else {
             // Log other types occasionally
             if Int.random(in: 0..<100) == 0 {
-                Task { @MainActor in
-                    self.logger.debug("Received non-screen output type: \(type)")
-                }
+                // Cannot log from nonisolated context, skip logging
             }
             return
         }
@@ -1029,13 +1028,9 @@ extension ScreencapService: SCStreamOutput {
 
             // Only log occasionally to reduce noise
             if shouldLog {
-                let mediaTypeString = String(format: "0x%08X", mediaType)
-                let mediaSubTypeString = String(format: "0x%08X", mediaSubType)
-                Task { @MainActor in
-                    self.logger.debug(
-                        "Sample buffer - mediaType: \(mediaTypeString), subType: \(mediaSubTypeString), dimensions: \(dimensions.width)x\(dimensions.height)"
-                    )
-                }
+                // Cannot log from nonisolated context, skip detailed logging
+                _ = String(format: "0x%08X", mediaType)
+                _ = String(format: "0x%08X", mediaSubType)
 
                 // Also log if we're in all displays mode to debug the capture
                 Task { @MainActor in
@@ -1049,9 +1044,7 @@ extension ScreencapService: SCStreamOutput {
 
         // Check if sample buffer is ready
         if !CMSampleBufferDataIsReady(sampleBuffer) {
-            Task { @MainActor in
-                self.logger.warning("Sample buffer data is not ready")
-            }
+            // Cannot log from nonisolated context, skip warning
             return
         }
 
@@ -1063,9 +1056,7 @@ extension ScreencapService: SCStreamOutput {
             let attachments = attachmentsArray.first
         else {
             if shouldLog {
-                Task { @MainActor in
-                    self.logger.debug("No attachments found in sample buffer")
-                }
+                // Cannot log from nonisolated context, skip debug message
             }
             return
         }
@@ -1076,9 +1067,7 @@ extension ScreencapService: SCStreamOutput {
            status != .complete
         {
             if shouldLog {
-                Task { @MainActor in
-                    self.logger.debug("Frame status is not complete: \(status.rawValue)")
-                }
+                // Cannot log from nonisolated context, skip debug message
             }
             return
         }
@@ -1087,9 +1076,7 @@ extension ScreencapService: SCStreamOutput {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             // Log this issue but only occasionally
             if shouldLog {
-                Task { @MainActor in
-                    self.logger.warning("No pixel buffer available in sample buffer")
-                }
+                // Cannot log from nonisolated context, skip warning
             }
             return
         }

@@ -64,6 +64,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
         // Handle CFBoolean
         if CFGetTypeID(value) == CFBooleanGetTypeID() {
             // Safe force cast after type check
+            // swiftlint:disable:next force_cast
             let cfBool = value as! CFBoolean
             return CFBooleanGetValue(cfBool)
         }
@@ -93,6 +94,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
         guard result == .success else { return nil }
 
         var point = CGPoint.zero
+        // swiftlint:disable:next force_cast
         if AXValueGetValue(value as! AXValue, .cgPoint, &point) {
             return point
         }
@@ -108,6 +110,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
         guard result == .success else { return nil }
 
         var size = CGSize.zero
+        // swiftlint:disable:next force_cast
         if AXValueGetValue(value as! AXValue, .cgSize, &size) {
             return size
         }
@@ -137,6 +140,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
             return nil
         }
 
+        // swiftlint:disable:next force_cast
         return Self(value as! AXUIElement)
     }
 

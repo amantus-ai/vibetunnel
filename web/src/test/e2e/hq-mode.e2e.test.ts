@@ -18,7 +18,9 @@ describe('HQ Mode E2E Tests', () => {
   let hqServer: ServerInstance | null = null;
   const remoteServers: ServerInstance[] = [];
   const testDirs: string[] = [];
-  const baseDir = createTestDirectory('h');
+  // Use very short path to avoid socket path length limit
+  const baseDir = path.join(os.tmpdir(), 'h' + Date.now().toString(36).slice(-4));
+  fs.mkdirSync(baseDir, { recursive: true });
 
   beforeAll(async () => {
     // Start HQ server
@@ -41,7 +43,7 @@ describe('HQ Mode E2E Tests', () => {
 
     // Start remote servers
     for (let i = 0; i < 3; i++) {
-      const remoteDir = path.join(baseDir, `r${i}`);
+      const remoteDir = path.join(baseDir, `${i}`);
       fs.mkdirSync(remoteDir, { recursive: true });
       testDirs.push(remoteDir);
 
@@ -113,7 +115,9 @@ describe('HQ Mode E2E Tests', () => {
 
     // Get remotes
     const remotesResponse = await fetch(`http://localhost:${hqServer?.port}/api/remotes`);
+    expect(remotesResponse.ok).toBe(true);
     const remotes = await remotesResponse.json();
+    expect(remotes.length).toBe(3);
 
     // Create session on each remote
     for (const remote of remotes) {
@@ -132,15 +136,18 @@ describe('HQ Mode E2E Tests', () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Failed to create session on ${remote.name}: ${response.status} ${errorText}`);
+        console.error(
+          `Failed to create session on ${remote.name}: ${response.status} ${errorText}`
+        );
+        throw new Error(`Failed to create session: ${response.status} ${errorText}`);
       }
-      expect(response.ok).toBe(true);
-      const { sessionId } = await response.json();
-      expect(sessionId).toBeDefined();
-      sessionIds.push(sessionId);
+      const data = await response.json();
+      expect(data.sessionId).toBeDefined();
+      sessionIds.push(data.sessionId);
     }
 
     // Wait for sessions to be created
+    expect(sessionIds.length).toBe(3);
     await sleep(1000);
 
     // Get all sessions and verify aggregation
@@ -175,9 +182,11 @@ describe('HQ Mode E2E Tests', () => {
     if (!createResponse.ok) {
       const errorText = await createResponse.text();
       console.error(`Failed to create session: ${createResponse.status} ${errorText}`);
+      throw new Error(`Failed to create session: ${createResponse.status} ${errorText}`);
     }
-    expect(createResponse.ok).toBe(true);
-    const { sessionId } = await createResponse.json();
+    const data = await createResponse.json();
+    expect(data.sessionId).toBeDefined();
+    const sessionId = data.sessionId;
 
     // Wait a bit for session to be fully created and registered
     await sleep(1000);

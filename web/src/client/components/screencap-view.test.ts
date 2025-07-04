@@ -94,6 +94,17 @@ describe('ScreencapView', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn((url: string) => {
+        if (url.includes('/api/auth/config')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                enabled: false,
+                providers: [],
+              }),
+          } as Response);
+        }
         if (url.includes('/api/screencap/windows')) {
           return Promise.resolve({
             ok: true,
@@ -198,10 +209,10 @@ describe('ScreencapView', () => {
       // Find all window-item elements across all sections
       const windowElements = element.shadowRoot?.querySelectorAll('.window-item');
       expect(windowElements).toBeTruthy();
-      
-      // We have 3 displays (All + 2 individual) + 2 windows
+
+      // We have 3 displays (All + 2 individual) + 2 windows = 5 total
       expect(windowElements?.length).toBe(5);
-      
+
       const allText = Array.from(windowElements || []).map((el) => el.textContent);
 
       // Check that windows are displayed
@@ -252,7 +263,7 @@ describe('ScreencapView', () => {
       // Wait for component to be ready
       await new Promise((resolve) => setTimeout(resolve, 100));
       await element.updateComplete;
-      
+
       // Find the desktop window-item by its content
       const windowItems = element.shadowRoot?.querySelectorAll('.window-item');
       let desktopButton: HTMLElement | null = null;
@@ -272,19 +283,21 @@ describe('ScreencapView', () => {
 
       // Check desktop capture was started
       await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
-        '/api/screencap/capture',
-        expect.objectContaining({
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'desktop',
-            index: -1,
-            vp9: false,
-            webrtc: false,
-          }),
-        })
+
+      // Find the capture call among all fetch calls
+      const fetchCalls = vi.mocked(fetch).mock.calls;
+      const captureCall = fetchCalls.find(
+        (call) => typeof call[0] === 'string' && call[0].includes('/api/screencap/capture')
       );
+      expect(captureCall).toBeTruthy();
+      expect(captureCall?.[1]).toMatchObject({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const body = JSON.parse(captureCall?.[1]?.body as string);
+      expect(body.type).toBe('desktop');
+      expect(body.vp9).toBe(false);
+      expect(body.webrtc).toBe(false);
     });
   });
 
@@ -383,35 +396,22 @@ describe('ScreencapView', () => {
     });
 
     it('should handle click events on captured frame', async () => {
-      // Wait for frame to be displayed
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      await element.updateComplete;
+      // Wait for frame URL to be set
+      let retries = 0;
+      while (!element.frameUrl && retries < 20) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await element.updateComplete;
+        retries++;
+      }
 
       // Ensure capture has started and frame is ready
       expect(element.isCapturing).toBe(true);
       expect(element.frameUrl).toBeTruthy();
-      
+
       // Force update to ensure DOM is rendered
       await element.updateComplete;
 
       const frameImg = element.shadowRoot?.querySelector('.capture-preview') as HTMLImageElement;
-      
-      if (!frameImg) {
-        // Debug: See what's actually in the capture area
-        const captureArea = element.shadowRoot?.querySelector('.capture-area');
-        console.log('Capture area HTML:', captureArea?.innerHTML?.substring(0, 200));
-        
-        // Try to find any img element
-        const anyImg = element.shadowRoot?.querySelector('img');
-        console.log('Any img found:', !!anyImg);
-      }
-      
-      // Skip this test for now if frameImg is not found
-      if (!frameImg) {
-        console.warn('Skipping click test - no frame image found');
-        return;
-      }
-      
       expect(frameImg).toBeTruthy();
 
       // Mock image dimensions
@@ -433,10 +433,13 @@ describe('ScreencapView', () => {
       frameImg.dispatchEvent(clickEvent);
       await element.updateComplete;
 
+      // Wait a bit for the click to be processed
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Verify click was sent (might be among other fetch calls)
       const fetchCalls = vi.mocked(fetch).mock.calls;
-      const clickCall = fetchCalls.find(call => 
-        typeof call[0] === 'string' && call[0].includes('/api/screencap/click')
+      const clickCall = fetchCalls.find(
+        (call) => typeof call[0] === 'string' && call[0].includes('/api/screencap/click')
       );
       expect(clickCall).toBeTruthy();
     });

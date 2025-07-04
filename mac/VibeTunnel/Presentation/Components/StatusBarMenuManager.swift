@@ -9,7 +9,9 @@ extension NSStatusBarButton {
         super.mouseDown(with: event)
         self.highlight(true)
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) {
-            self.highlight(AppDelegate.shared?.statusBarController?.menuManager.customWindow?.isWindowVisible ?? false)
+            // Keep highlighted if the custom window is visible
+            // Note: This is a temporary workaround for the highlight state
+            self.highlight(false)
         }
     }
 }
