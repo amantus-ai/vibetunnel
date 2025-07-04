@@ -37,5 +37,15 @@ WORKDIR /app
 # Copy the entire project
 COPY . .
 
+# Remove any existing node_modules to avoid platform conflicts
+RUN rm -rf web/node_modules
+
+# Install web dependencies and rebuild native modules for Linux
+WORKDIR /app/web
+RUN pnpm install --frozen-lockfile && pnpm rebuild
+
+# Go back to main directory
+WORKDIR /app
+
 # Build the Linux binary
 CMD ["cargo", "tauri", "build"]
