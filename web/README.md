@@ -78,4 +78,4 @@ VibeTunnel intelligently handles terminal width based on how the session was cre
 - Click the width indicator in the session header to open the width selector
 - Choose from common terminal widths (80, 120, 132, etc.) or unlimited
 - Width preferences are saved per session and persist across reloads
-- Selecting any width manually overrides automatic limitations
+- Selecting any width manually overrides automatic limitations# Trigger CI
