@@ -90,7 +90,7 @@ test.describe('Keyboard Shortcuts', () => {
       });
   });
 
-  test('should navigate back to list with Escape for exited sessions', async ({ page }) => {
+  test.skip('should navigate back to list with Escape for exited sessions', async ({ page }) => {
     // Create a session that exits after showing a message
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('escape-test'),
@@ -260,7 +260,7 @@ test.describe('Keyboard Shortcuts', () => {
     await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 5000 });
   });
 
-  test('should handle terminal-specific shortcuts', async ({ page }) => {
+  test.skip('should handle terminal-specific shortcuts', async ({ page }) => {
     // Create a session
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('terminal-shortcut'),

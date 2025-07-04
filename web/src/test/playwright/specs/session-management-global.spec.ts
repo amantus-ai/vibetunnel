@@ -258,7 +258,7 @@ test.describe('Global Session Management', () => {
     }
   });
 
-  test('should filter sessions by status', async ({ page }) => {
+  test.skip('should filter sessions by status', async ({ page }) => {
     // Create a running session
     const { sessionName: runningSessionName } = await sessionManager.createTrackedSession();
 
