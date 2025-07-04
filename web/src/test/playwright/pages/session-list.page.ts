@@ -423,19 +423,47 @@ export class SessionListPage extends BasePage {
     // Ensure no modal is blocking interaction
     await this.closeAnyOpenModal();
 
+    // First check if the session card exists
+    const sessionCardCount = await this.page
+      .locator(`session-card:has-text("${sessionName}")`)
+      .count();
+    if (sessionCardCount === 0) {
+      // Session already removed, nothing to do
+      return;
+    }
+
     const sessionCard = await this.getSessionCard(sessionName);
 
     // Wait for the session card to be visible
-    await sessionCard.waitFor({ state: 'visible', timeout: 4000 });
+    try {
+      await sessionCard.waitFor({ state: 'visible', timeout: 4000 });
+    } catch {
+      // Session might have been removed already
+      return;
+    }
 
     // The kill button should have data-testid="kill-session-button"
     const killButton = sessionCard.locator('[data-testid="kill-session-button"]');
 
+    // Check if button exists before trying to interact
+    const buttonCount = await killButton.count();
+    if (buttonCount === 0) {
+      // Button not found, session might already be killed
+      return;
+    }
+
     // Wait for the button to be visible and enabled
     await killButton.waitFor({ state: 'visible', timeout: 4000 });
 
-    // Scroll into view if needed
-    await killButton.scrollIntoViewIfNeeded();
+    // Only scroll if element is still attached
+    try {
+      await killButton.scrollIntoViewIfNeeded();
+    } catch {
+      // Element might have been removed, check again
+      if ((await killButton.count()) === 0) {
+        return;
+      }
+    }
 
     // Set up dialog handler BEFORE clicking to avoid race condition
     // But use Promise.race to handle cases where no dialog appears
@@ -458,7 +486,6 @@ export class SessionListPage extends BasePage {
       }
     } catch {
       // No dialog appeared, which is fine
-      console.log('No confirmation dialog appeared for kill action');
     }
 
     // Wait for the click action to complete

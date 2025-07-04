@@ -140,7 +140,10 @@ export class TestSessionManager {
       // Remove from tracking
       this.sessions.delete(sessionName);
     } catch (error) {
-      console.log(`Failed to cleanup session ${sessionName}:`, error);
+      // Log the error but don't throw - cleanup should be best effort
+      console.log(`Failed to cleanup session ${sessionName}:`, (error as Error).message);
+      // Still remove from tracking even if cleanup failed
+      this.sessions.delete(sessionName);
     }
   }
 
