@@ -3,6 +3,14 @@ import { assertSessionInList } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
+// Type for session card web component
+interface SessionCardElement extends HTMLElement {
+  session?: {
+    name?: string;
+    command?: string[];
+  };
+}
+
 // These tests create their own sessions and can run in parallel
 test.describe.configure({ mode: 'parallel' });
 
@@ -41,7 +49,7 @@ test.describe('Session Persistence Tests', () => {
     // Create a session with a command that will fail
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('error-test'),
-      command: 'bash -c "echo Error test && sleep 0.5 && exit 1"', // Use bash -c for compound command
+      command: 'false', // Simple command that exits with error code
     });
 
     // Track the session for cleanup
@@ -65,7 +73,7 @@ test.describe('Session Persistence Tests', () => {
     const sessionInfo = await page.evaluate((targetName) => {
       const cards = document.querySelectorAll('session-card');
       for (const card of cards) {
-        const sessionCard = card as any;
+        const sessionCard = card as SessionCardElement;
         if (sessionCard.session) {
           const name = sessionCard.session.name || sessionCard.session.command?.join(' ') || '';
           if (name.includes(targetName)) {

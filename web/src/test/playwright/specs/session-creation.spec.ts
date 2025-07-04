@@ -12,6 +12,14 @@ import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { waitForElementStable } from '../helpers/wait-strategies.helper';
 import { SessionListPage } from '../pages/session-list.page';
 
+// Type for session card web component
+interface SessionCardElement extends HTMLElement {
+  session?: {
+    name?: string;
+    command?: string[];
+  };
+}
+
 // These tests create their own sessions and can run in parallel
 test.describe.configure({ mode: 'parallel' });
 
@@ -90,7 +98,7 @@ test.describe('Session Creation', () => {
       const sessions = [];
       for (const card of cards) {
         // Session cards are web components with properties
-        const sessionCard = card as any;
+        const sessionCard = card as SessionCardElement;
         let name = 'unknown';
 
         // Try to get session name from the card's session property
@@ -179,28 +187,22 @@ test.describe('Session Creation', () => {
       // Create session
       await page.click('[data-testid="create-session-submit"]', { force: true });
 
-      // Wait for either navigation or modal to close
-      const navigationPromise = page.waitForURL(/\?session=/, { timeout: 10000 });
-      const modalClosePromise = page.waitForSelector('[data-modal-state="open"]', {
-        state: 'detached',
-        timeout: 10000,
-      });
-
+      // Wait for modal to close (session might be created in background)
       try {
-        await Promise.race([navigationPromise, modalClosePromise]);
+        await page.waitForSelector('[data-modal-state="open"]', {
+          state: 'detached',
+          timeout: 5000,
+        });
+      } catch (_error) {
+        console.log(`Modal close timeout for session ${sessionName}, continuing...`);
+      }
 
-        // Check if we navigated
-        if (page.url().includes('?session=')) {
-          // Wait for terminal to be ready before navigating back
-          await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 5000 });
-        } else {
-          console.log(
-            `No navigation after create, session ${sessionName} may have been created in background`
-          );
-        }
-      } catch (error) {
-        console.error(`Failed to create session ${sessionName}:`, error);
-        continue;
+      // Check if we navigated to the session
+      if (page.url().includes('?session=')) {
+        // Wait for terminal to be ready before navigating back
+        await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 5000 });
+      } else {
+        console.log(`Session ${sessionName} created in background`);
       }
 
       // Track the session
@@ -226,7 +228,7 @@ test.describe('Session Creation', () => {
       const found = await page.evaluate((targetName) => {
         const cards = document.querySelectorAll('session-card');
         for (const card of cards) {
-          const sessionCard = card as any;
+          const sessionCard = card as SessionCardElement;
           if (sessionCard.session) {
             const name = sessionCard.session.name || sessionCard.session.command?.join(' ') || '';
             if (name.includes(targetName)) {

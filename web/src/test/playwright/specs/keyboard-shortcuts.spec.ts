@@ -88,13 +88,13 @@ test.describe('Keyboard Shortcuts', () => {
     // Create a session that exits after showing a message
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('escape-test'),
-      command: 'bash -c \"echo Session ending... && sleep 0.5 && exit 0\"', // Use bash -c for compound command
+      command: 'echo "Session ending"', // Simple command that exits immediately
     });
     await assertTerminalReady(page);
 
     // Wait for session to exit
     await page.waitForTimeout(3000);
-    
+
     // Wait for session status to update to exited
     const exitedStatus = await page.waitForFunction(
       () => {

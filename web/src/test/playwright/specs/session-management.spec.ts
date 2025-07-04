@@ -9,6 +9,14 @@ import { takeDebugScreenshot } from '../helpers/screenshot.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
+// Type for session card web component
+interface SessionCardElement extends HTMLElement {
+  session?: {
+    name?: string;
+    command?: string[];
+  };
+}
+
 // These tests need to run in serial mode to avoid interference
 test.describe.configure({ mode: 'serial' });
 
@@ -102,7 +110,7 @@ test.describe('Session Management', () => {
     // Create a session that will exit after printing to terminal
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('exit-test'),
-      command: 'bash -c "echo Test session exiting... && sleep 0.5 && exit 0"', // Use bash -c to run compound command
+      command: 'echo "Test session exiting"', // Simple command that exits immediately
     });
 
     // Track the session for cleanup
@@ -130,7 +138,7 @@ test.describe('Session Management', () => {
     const sessionInfo = await page.evaluate((targetName) => {
       const cards = document.querySelectorAll('session-card');
       for (const card of cards) {
-        const sessionCard = card as any;
+        const sessionCard = card as SessionCardElement;
         if (sessionCard.session) {
           const name = sessionCard.session.name || sessionCard.session.command?.join(' ') || '';
           if (name.includes(targetName)) {

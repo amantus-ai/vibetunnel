@@ -4,6 +4,11 @@ import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper'
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { waitForModalClosed } from '../helpers/wait-strategies.helper';
 
+// Type for file browser web component
+interface FileBrowserElement extends HTMLElement {
+  visible?: boolean;
+}
+
 // These tests create their own sessions and can run in parallel
 test.describe.configure({ mode: 'parallel' });
 
@@ -36,7 +41,7 @@ test.describe('UI Features', () => {
     const fileBrowserVisible = await page.waitForFunction(
       () => {
         const browser = document.querySelector('file-browser');
-        return browser && (browser as any).visible === true;
+        return browser && (browser as FileBrowserElement).visible === true;
       },
       { timeout: 5000 }
     );
@@ -49,7 +54,7 @@ test.describe('UI Features', () => {
     await page.waitForFunction(
       () => {
         const browser = document.querySelector('file-browser');
-        return !browser || (browser as any).visible === false;
+        return !browser || (browser as FileBrowserElement).visible === false;
       },
       { timeout: 5000 }
     );
@@ -70,7 +75,7 @@ test.describe('UI Features', () => {
     const fileBrowserVisible = await page.waitForFunction(
       () => {
         const browser = document.querySelector('file-browser');
-        return browser && (browser as any).visible === true;
+        return browser && (browser as FileBrowserElement).visible === true;
       },
       { timeout: 5000 }
     );
