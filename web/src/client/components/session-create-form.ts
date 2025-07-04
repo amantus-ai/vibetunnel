@@ -172,6 +172,10 @@ export class SessionCreateForm extends LitElement {
     // Handle visibility changes
     if (changedProperties.has('visible')) {
       if (this.visible) {
+        // Remove any lingering modal-closing class that might make the modal invisible
+        document.body.classList.remove('modal-closing');
+        logger.debug(`Modal visibility changed to true - removed modal-closing class`);
+
         // Load from localStorage when form becomes visible
         this.loadFromLocalStorage();
         // Add global keyboard listener
@@ -384,8 +388,24 @@ export class SessionCreateForm extends LitElement {
   }
 
   render() {
+    logger.debug(`render() called, visible=${this.visible}`);
     if (!this.visible) {
       return html``;
+    }
+
+    // Ensure modal-closing class is removed when rendering visible modal
+    if (this.visible) {
+      // Remove immediately
+      document.body.classList.remove('modal-closing');
+      logger.debug(`render() - modal visible, removed modal-closing class`);
+      // Also check if element has data-testid
+      requestAnimationFrame(() => {
+        document.body.classList.remove('modal-closing');
+        const modalEl = this.shadowRoot?.querySelector('[data-testid="session-create-modal"]');
+        logger.debug(
+          `render() - modal element found: ${!!modalEl}, classes on body: ${document.body.className}`
+        );
+      });
     }
 
     return html`

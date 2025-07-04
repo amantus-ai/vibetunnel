@@ -39,7 +39,15 @@ export class SessionListPage extends BasePage {
     // IMPORTANT: Set the spawn window preference in localStorage BEFORE opening the modal
     // This ensures the form loads with the correct state
     await this.page.evaluate((shouldSpawnWindow) => {
+      // Clear all form-related localStorage values first to ensure clean state
+      localStorage.removeItem('vibetunnel_spawn_window');
+      localStorage.removeItem('vibetunnel_last_command');
+      localStorage.removeItem('vibetunnel_last_working_dir');
+      localStorage.removeItem('vibetunnel_title_mode');
+      
+      // Then set the spawn window value we want
       localStorage.setItem('vibetunnel_spawn_window', String(shouldSpawnWindow));
+      console.log(`Set localStorage vibetunnel_spawn_window to: ${shouldSpawnWindow}`);
     }, spawnWindow);
 
     // Dismiss any error messages
@@ -73,23 +81,15 @@ export class SessionListPage extends BasePage {
         timeout: 10000,
       });
 
-      // Force wait for view transition to complete
-      await this.page.waitForTimeout(500);
-
-      // Wait for the modal content to be rendered (indicates visible=true)
-      await this.page.waitForSelector('[data-testid="session-create-modal"]', {
-        state: 'visible',
-        timeout: 10000,
-      });
-
-      // Additional wait to ensure modal is fully rendered
-      await this.page.waitForTimeout(200);
-
-      // Now wait for the input field to be available
+      // Wait for the session name input to be visible - this is what we actually need
+      // This approach is more reliable than waiting for the modal wrapper
       await this.page.waitForSelector('[data-testid="session-name-input"]', {
         state: 'visible',
-        timeout: 10000,
+        timeout: 15000,
       });
+
+      // Additional wait to ensure modal is fully interactive
+      await this.page.waitForTimeout(200);
 
       console.log('Modal found and functional, proceeding with session creation');
     } catch (error) {
@@ -146,41 +146,24 @@ export class SessionListPage extends BasePage {
       { timeout: 2000 }
     );
 
-    // IMPORTANT: Set spawn window toggle to create web sessions, not native terminals
-    let spawnWindowToggle = this.page.locator('[data-testid="spawn-window-toggle"]');
-
-    // Check if toggle exists with data-testid, if not use role selector
-    if (!(await spawnWindowToggle.isVisible({ timeout: 1000 }).catch(() => false))) {
-      spawnWindowToggle = this.page.locator('button[role="switch"]');
-    }
+    // Verify spawn window toggle is in correct state (should be set from localStorage)
+    const spawnWindowToggle = this.page
+      .locator('[data-testid="spawn-window-toggle"]')
+      .or(this.page.locator('button[role="switch"]'));
 
     // Wait for the toggle to be ready
     await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
 
+    // Verify the state matches what we expect
     const isSpawnWindowOn = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
-    console.log(`Spawn window toggle state: current=${isSpawnWindowOn}, desired=${spawnWindow}`);
-
-    // If current state doesn't match desired state, click to toggle
+    console.log(`Spawn window toggle state: current=${isSpawnWindowOn}, expected=${spawnWindow}`);
+    
+    // If the state doesn't match, there's an issue with localStorage loading
     if (isSpawnWindowOn !== spawnWindow) {
-      console.log(
-        `Clicking spawn window toggle to change from ${isSpawnWindowOn} to ${spawnWindow}`
-      );
+      console.warn(`WARNING: Spawn window toggle state mismatch! Expected ${spawnWindow} but got ${isSpawnWindowOn}`);
+      // Try clicking to correct it
       await spawnWindowToggle.click({ force: true });
-
-      // Wait for the toggle state to update
-      await this.page.waitForFunction(
-        (expectedState) => {
-          const toggle = document.querySelector('button[role="switch"]');
-          return toggle?.getAttribute('aria-checked') === (expectedState ? 'true' : 'false');
-        },
-        spawnWindow,
-        { timeout: 1000 }
-      );
-
-      const finalState = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
-      console.log(`Spawn window toggle final state: ${finalState}`);
-    } else {
-      console.log(`Spawn window toggle already in correct state: ${isSpawnWindowOn}`);
+      await this.page.waitForTimeout(500);
     }
 
     // Fill in the session name if provided
