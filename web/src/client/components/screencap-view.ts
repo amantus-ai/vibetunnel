@@ -2043,6 +2043,7 @@ export class ScreencapView extends LitElement {
                             e.stopPropagation();
                             this.selectWindow(window, process);
                           }}
+                          title="${window.title || 'Untitled'}"
                         >
                           <div class="window-name">${window.title || 'Untitled'}</div>
                           <div class="window-size">${Math.round(window.width)}×${Math.round(window.height)}</div>
