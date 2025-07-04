@@ -3,10 +3,18 @@ target/
 dist/
 build/
 *.log
+web/native/vibetunnel
+web/native/*.node
+web/native/spawn-helper
+web/public/bundle/
 
-# Ignore node_modules
+# Ignore node_modules - CRITICAL for cross-platform builds
 node_modules/
 **/node_modules/
+web/node_modules/
+tauri/node_modules/
+mac/node_modules/
+ios/node_modules/
 
 # Ignore git
 .git/

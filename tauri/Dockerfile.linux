@@ -38,7 +38,7 @@ WORKDIR /app
 COPY . .
 
 # Remove any existing node_modules to avoid platform conflicts
-RUN rm -rf web/node_modules
+RUN find . -name "node_modules" -type d -prune -exec rm -rf '{}' + || true
 
 # Install web dependencies and rebuild native modules for Linux
 WORKDIR /app/web
