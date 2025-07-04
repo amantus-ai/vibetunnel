@@ -151,18 +151,19 @@ export class ScreencapSignalHandler {
   private handleMacReady(ws: WebSocket, message: SignalMessage) {
     logger.log(`Mac ready with mode: ${message.mode}`);
 
-    // Update Mac socket and mode
-    if (this.macSocket && this.macSocket !== ws) {
+    // Only close old connection if it's actually different and still open
+    if (this.macSocket && this.macSocket !== ws && this.macSocket.readyState === WS.OPEN) {
       logger.log('Closing old Mac connection');
       this.macSocket.close();
     }
 
+    // Update to new socket
     this.macSocket = ws;
     this.macMode = message.mode || null;
     logger.log(`Mac connected in ${this.macMode} mode`);
 
     // Notify browser
-    if (this.browserSocket) {
+    if (this.browserSocket && this.browserSocket.readyState === WS.OPEN) {
       this.sendMessage(this.browserSocket, {
         type: 'ready',
         data: 'Mac peer connected',

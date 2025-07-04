@@ -900,6 +900,8 @@ export class ScreencapView extends LitElement {
     if (this.isCapturing) {
       logger.log(`🔄 Switching to window: ${window.title}`);
       await this.stopCapture();
+      // Add a small delay to ensure clean disconnection
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     // Auto-start capture when selecting a window
@@ -925,6 +927,8 @@ export class ScreencapView extends LitElement {
     if (this.isCapturing) {
       logger.log(`🔄 Switching to display: ${display.name || display.id}`);
       await this.stopCapture();
+      // Add a small delay to ensure clean disconnection
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     // Auto-start capture when selecting desktop
@@ -941,6 +945,8 @@ export class ScreencapView extends LitElement {
     if (this.isCapturing) {
       logger.log(`🔄 Switching to all displays`);
       await this.stopCapture();
+      // Add a small delay to ensure clean disconnection
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     // Auto-start capture when selecting all displays
@@ -1177,6 +1183,14 @@ export class ScreencapView extends LitElement {
       if (this.isCapturing) {
         logger.log('⚠️ Stopping existing capture before starting new one...');
         await this.stopCapture();
+        // Wait a bit for clean disconnection
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      // Clean up any existing WebRTC connection
+      if (this.peerConnection) {
+        logger.log('🧹 Cleaning up existing peer connection');
+        this.cleanupWebRTC();
       }
 
       // First, send request to start capture on Mac app with WebRTC enabled
