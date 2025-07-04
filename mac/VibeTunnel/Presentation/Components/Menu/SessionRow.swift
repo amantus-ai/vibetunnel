@@ -392,12 +392,15 @@ struct SessionRow: View {
 
     private var isAIAssistantSession: Bool {
         // Check if this is an AI assistant session by looking at the command
+        let aiAssistants = ["claude", "gemini", "openhands", "aider", "codex"]
         let cmd = commandName.lowercased()
-        return cmd == "claude" || cmd.contains("claude") ||
-               cmd == "gemini" || cmd.contains("gemini") ||
-               cmd == "openhands" || cmd.contains("openhands") ||
-               cmd == "aider" || cmd.contains("aider") ||
-               cmd == "codex" || cmd.contains("codex")
+        
+        // Match exact executable names or at word boundaries
+        return aiAssistants.contains { ai in
+            cmd == ai ||
+            cmd.hasPrefix(ai + ".") || // e.g., claude.exe
+            cmd.hasPrefix(ai + "-wrapper") // e.g., claude-wrapper
+        }
     }
 
     private var sessionName: String {

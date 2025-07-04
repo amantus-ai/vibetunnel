@@ -24,6 +24,7 @@ import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
 import './inline-edit.js';
 import { formatSessionDuration } from '../../shared/utils/time.js';
+import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { createLogger } from '../utils/logger.js';
 import { formatPathForDisplay } from '../utils/path-utils.js';
 
@@ -37,24 +38,6 @@ export class SessionList extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;
-  }
-
-  // Check if session is an AI assistant based on command
-  private isAIAssistantSession(session: Session): boolean {
-    const cmd =
-      (Array.isArray(session.command) ? session.command[0] : session.command)?.toLowerCase() || '';
-    return (
-      cmd === 'claude' ||
-      cmd.includes('claude') ||
-      cmd === 'gemini' ||
-      cmd.includes('gemini') ||
-      cmd === 'openhands' ||
-      cmd.includes('openhands') ||
-      cmd === 'aider' ||
-      cmd.includes('aider') ||
-      cmd === 'codex' ||
-      cmd.includes('codex')
-    );
   }
 
   @property({ type: Array }) sessions: Session[] = [];
@@ -166,28 +149,11 @@ export class SessionList extends LitElement {
     );
   };
 
-  private async sendAIPrompt(sessionId: string) {
+  private async handleSendAIPrompt(sessionId: string) {
     try {
-      const prompt =
-        "use vt title to update the terminal title with what you're currently working on";
-      const response = await fetch(`/api/sessions/${sessionId}/input`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.authClient.getAuthHeader(),
-        },
-        body: JSON.stringify({ data: prompt + '\n' }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        logger.error('Failed to send AI prompt', { errorData, sessionId });
-        throw new Error(`Failed to send prompt: ${response.status}`);
-      }
-
-      logger.log(`AI prompt sent to session ${sessionId}`);
+      await sendAIPrompt(sessionId, this.authClient);
     } catch (error) {
-      logger.error('Error sending AI prompt', { error, sessionId });
+      logger.error('Failed to send AI prompt', error);
       this.dispatchEvent(
         new CustomEvent('error', {
           detail: `Failed to send AI prompt: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -470,13 +436,13 @@ export class SessionList extends LitElement {
                               } transition-opacity absolute right-0">
                                 <!-- Magic wand button for AI sessions -->
                                 ${
-                                  session.status === 'running' && this.isAIAssistantSession(session)
+                                  session.status === 'running' && isAIAssistantSession(session)
                                     ? html`
                                       <button
                                         class="btn-ghost text-accent-primary p-1.5 rounded-md transition-all hover:bg-dark-bg-elevated hover:shadow-sm hover:scale-110"
                                         @click=${async (e: Event) => {
                                           e.stopPropagation();
-                                          await this.sendAIPrompt(session.id);
+                                          await this.handleSendAIPrompt(session.id);
                                         }}
                                         title="Send prompt to update terminal title"
                                       >
