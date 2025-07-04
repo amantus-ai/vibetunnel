@@ -171,7 +171,7 @@ final class WebRTCManager: NSObject {
         let h265Available = isH265HardwareEncodingAvailable()
         logger.info("🎥 H.265 hardware encoding available: \(h265Available)")
 
-        // Use default factory which in M137 should include H.265
+        // Use default factory - the pre-built package doesn't have H.265 enabled
         let encoderFactory = RTCDefaultVideoEncoderFactory()
 
         // Log what codecs the factory actually supports
@@ -181,7 +181,11 @@ final class WebRTCManager: NSObject {
             logger.info("  - \(codec.name): \(codec.parameters)")
         }
 
-        logger.info("✅ Created encoder factory (M137 should include H.265)")
+        if h265Available && !supportedCodecs.contains(where: { $0.name == "H265" }) {
+            logger.warning("⚠️ H.265 hardware available but not in factory - will add manually to SDP")
+        }
+
+        logger.info("✅ Created default encoder factory")
         return encoderFactory
     }
 
@@ -242,61 +246,22 @@ final class WebRTCManager: NSObject {
 
         for transceiver in transceivers {
             if transceiver.mediaType == .video {
-                // Get all available codecs
-                let allCodecs = RTCRtpSender.capabilities(for: .video).codecs
+                // The stasel/WebRTC package doesn't expose RTCRtpSender.capabilities
+                // So we'll work with the codecs that are available in the transceiver
+                let receiver = transceiver.receiver
 
-                // Log available codecs
-                logger.info("📋 Available video codecs from RTP capabilities:")
-                for codec in allCodecs {
-                    logger
-                        .info(
-                            "  - \(codec.name) (\(codec.mimeType)) clockRate: \(codec.clockRate) channels: \(codec.numChannels ?? 0)"
-                        )
+                // Log current parameters
+                let params = receiver.parameters
+                logger.info("📋 Current receiver codec parameters:")
+                for codec in params.codecs {
+                    logger.info("  - \(codec.name): \(codec.parameters)")
                 }
 
-                // Filter H.265/HEVC codecs - check multiple possible names
-                let h265Codecs = allCodecs.filter { codec in
-                    let name = codec.name.uppercased()
-                    let mime = codec.mimeType.lowercased()
-                    return mime == "video/h265" ||
-                        mime == "video/hevc" ||
-                        name == "H265" ||
-                        name == "HEVC"
-                }
+                // Since we can't get capabilities directly, we'll use SDP manipulation
+                logger.info("📝 Note: Direct codec preferences not available in this WebRTC version")
+                logger.info("  Using SDP manipulation to prioritize H.265 when available")
 
-                // Filter H.264 codecs
-                let h264Codecs = allCodecs.filter { codec in
-                    codec.mimeType.lowercased() == "video/h264" ||
-                        codec.name.uppercased() == "H264"
-                }
-
-                // Get other codecs (VP8, VP9, etc)
-                let otherCodecs = allCodecs.filter { codec in
-                    !h264Codecs.contains(codec) && !h265Codecs.contains(codec)
-                }
-
-                // Set codec preference order: H.265 first (if available), then H.264, then others
-                var preferredCodecs: [RTCRtpCodecCapability] = []
-                if !h265Codecs.isEmpty {
-                    preferredCodecs.append(contentsOf: h265Codecs)
-                    logger.info("🎯 H.265 codecs found and prioritized: \(h265Codecs.count)")
-                } else {
-                    logger.warning("⚠️ No H.265 codecs found in RTP capabilities")
-                }
-                preferredCodecs.append(contentsOf: h264Codecs)
-                preferredCodecs.append(contentsOf: otherCodecs)
-
-                // Apply the codec preferences
-                do {
-                    try transceiver.setCodecPreferences(preferredCodecs)
-                    logger.info("✅ Configured codec preferences")
-                    logger
-                        .info(
-                            "  Preference order: \(preferredCodecs.map { "\($0.name) (\($0.mimeType))" }.joined(separator: ", "))"
-                        )
-                } catch {
-                    logger.error("❌ Failed to set codec preferences: \(error)")
-                }
+                // The actual H.265 prioritization happens in addBandwidthToSdp where we modify the SDP
             }
         }
     }
@@ -592,6 +557,8 @@ final class WebRTCManager: NSObject {
         var inVideoSection = false
         var h265Found = false
         var h264Found = false
+        var videoPayloadTypes: [String] = []
+        let h265PayloadType = "96" // Dynamic payload type for H.265
 
         for (index, line) in lines.enumerated() {
             var modifiedLine = line
@@ -599,6 +566,21 @@ final class WebRTCManager: NSObject {
             // Check if we're entering video m-line
             if line.starts(with: "m=video") {
                 inVideoSection = true
+
+                // Extract existing payload types
+                let components = line.components(separatedBy: " ")
+                if components.count > 3 {
+                    videoPayloadTypes = Array(components[3...])
+
+                    // If H.265 hardware is available but not in SDP, manually add it
+                    if isH265HardwareEncodingAvailable() && !videoPayloadTypes.contains(h265PayloadType) {
+                        // Add H.265 payload type at the beginning for priority
+                        videoPayloadTypes.insert(h265PayloadType, at: 0)
+                        modifiedLine = components[0...2].joined(separator: " ") + " " + videoPayloadTypes
+                            .joined(separator: " ")
+                        logger.info("🚀 Manually added H.265 payload type to m=video line")
+                    }
+                }
             } else if line.starts(with: "m=") {
                 inVideoSection = false
             }
@@ -631,12 +613,24 @@ final class WebRTCManager: NSObject {
             if inVideoSection && line.starts(with: "m=video") {
                 // Use different bitrates for H.265 vs H.264
                 // H.265 is more efficient, so we can use lower bitrate for same quality
-                let bitrate = h265Found ? 30_000 : 50_000 // 30 Mbps for H.265, 50 Mbps for H.264
+                let bitrate = (h265Found || isH265HardwareEncodingAvailable()) ? 30_000 :
+                    50_000 // 30 Mbps for H.265, 50 Mbps for H.264
                 modifiedLines.append("b=AS:\(bitrate)")
                 logger
                     .info(
-                        "📈 Added bandwidth constraint to SDP: \(bitrate / 1_000) Mbps for 4K@60fps (\(h265Found ? "H.265" : "H.264"))"
+                        "📈 Added bandwidth constraint to SDP: \(bitrate / 1_000) Mbps for 4K@60fps (\((h265Found || isH265HardwareEncodingAvailable()) ? "H.265" : "H.264"))"
                     )
+
+                // If H.265 hardware is available but not found in SDP, manually add it
+                if isH265HardwareEncodingAvailable() && !h265Found && videoPayloadTypes.contains(h265PayloadType) {
+                    modifiedLines.append("a=rtpmap:\(h265PayloadType) H265/90000")
+                    modifiedLines
+                        .append(
+                            "a=fmtp:\(h265PayloadType) profile-level-id=1;packetization-mode=1;level-asymmetry-allowed=1"
+                        )
+                    logger.info("🔧 Manually added H.265 codec attributes to SDP")
+                    h265Found = true
+                }
             }
 
             // Add codec preference if we're at the end of video section

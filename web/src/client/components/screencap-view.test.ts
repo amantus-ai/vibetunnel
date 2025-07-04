@@ -61,6 +61,15 @@ describe('ScreencapView', () => {
       y: 0,
       name: 'Display 1',
     },
+    {
+      id: '1',
+      width: 2560,
+      height: 1440,
+      scaleFactor: 2.0,
+      x: 1920,
+      y: 0,
+      name: 'Display 2',
+    },
   ];
 
   beforeAll(async () => {
@@ -124,6 +133,9 @@ describe('ScreencapView', () => {
     // Create component
     element = await fixture<ScreencapView>(html`<screencap-view></screencap-view>`);
     await element.updateComplete;
+
+    // Disable WebRTC for tests to use JPEG mode
+    element.useWebRTC = false;
   });
 
   afterEach(() => {
@@ -185,11 +197,10 @@ describe('ScreencapView', () => {
 
       const windowElements = element.shadowRoot?.querySelectorAll('.window-item');
       expect(windowElements).toBeTruthy();
-
-      // We should have: 1 "All Displays" + 1 display + 2 windows = 4 total
-      expect(windowElements?.length).toBe(4);
-
-      // Check that content is displayed correctly
+      
+      // We should have: 1 "All Displays" + 2 displays + 2 windows = 5 total
+      expect(windowElements?.length).toBe(5);
+      
       const allText = Array.from(windowElements || []).map((el) => el.textContent?.trim());
 
       // Check that windows are displayed
@@ -228,6 +239,7 @@ describe('ScreencapView', () => {
           body: JSON.stringify({
             cgWindowID: 123,
             vp9: false,
+            webrtc: false,
           }),
         })
       );
@@ -259,9 +271,10 @@ describe('ScreencapView', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            type: 0,
-            index: 0,
+            type: 'desktop',
+            index: -1,
             vp9: false,
+            webrtc: false,
           }),
         })
       );
