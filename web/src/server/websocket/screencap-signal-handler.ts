@@ -46,6 +46,7 @@ export class ScreencapSignalHandler {
 
     // Initially assume it's a browser peer (Mac peer will identify itself with mac-ready)
     this.browserPeers.set(ws, { ws });
+    logger.log(`Added as browser peer, total browser peers: ${this.browserPeers.size}`);
 
     // Send initial ready message
     this.sendToPeer(ws, { type: 'ready' });
@@ -53,9 +54,11 @@ export class ScreencapSignalHandler {
     ws.on('message', (data) => {
       try {
         const message: SignalMessage = JSON.parse(data.toString());
+        logger.log(`Received message type: ${message.type} from peer`);
         this.handleMessage(ws, message);
       } catch (error) {
         logger.error('Failed to parse message:', error);
+        logger.error('Raw message:', data.toString());
         this.sendError(ws, 'Invalid message format');
       }
     });
@@ -118,12 +121,14 @@ export class ScreencapSignalHandler {
 
     // Remove from browser peers if it was there
     this.browserPeers.delete(ws);
+    logger.log(`Removed Mac peer from browser peers, remaining browser peers: ${this.browserPeers.size}`);
 
     // Store Mac peer
     this.macPeer = {
       ws,
       mode: message.mode as 'desktop' | 'window',
     };
+    logger.log('Mac peer stored successfully');
 
     // If we have waiting browser peers, notify them
     this.browserPeers.forEach((peer) => {
@@ -246,10 +251,12 @@ export class ScreencapSignalHandler {
 
   private handleApiRequest(ws: WebSocket, message: SignalMessage) {
     logger.log(`API request received: ${message.method} ${message.endpoint}`);
+    logger.log(`Browser peers: ${this.browserPeers.size}, Mac peer: ${this.macPeer ? 'connected' : 'not connected'}`);
 
     // Only browser peers can make API requests
     if (!this.browserPeers.has(ws)) {
       logger.error('API request from non-browser peer');
+      logger.error(`WebSocket is Mac peer: ${ws === this.macPeer?.ws}`);
       this.sendError(ws, 'Only browser peers can make API requests');
       return;
     }
