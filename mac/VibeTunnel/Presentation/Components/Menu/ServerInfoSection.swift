@@ -128,7 +128,7 @@ struct ServerAddressRow: View {
             }
             .buttonStyle(.plain)
             .pointingHandCursor()
-            
+
             // Copy button that appears on hover
             if isHovered {
                 Button(action: {
@@ -166,18 +166,18 @@ struct ServerAddressRow: View {
             return "0.0.0.0:\(serverManager.port)"
         }
     }
-    
+
     private var urlToCopy: String {
         // If we have a full URL, return it as-is
         if let providedUrl = url {
             return providedUrl.absoluteString
         }
-        
+
         // For Tailscale, return the full URL
         if label == "Tailscale:" && !address.isEmpty {
             return "http://\(address):\(serverManager.port)"
         }
-        
+
         // For local addresses, build the full URL
         if computedAddress.starts(with: "127.0.0.1:") {
             return "http://\(computedAddress)"
@@ -185,17 +185,17 @@ struct ServerAddressRow: View {
             return "http://\(computedAddress)"
         }
     }
-    
+
     private func copyToClipboard() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(urlToCopy, forType: .string)
-        
+
         // Show feedback
         withAnimation(.easeInOut(duration: 0.15)) {
             showCopiedFeedback = true
         }
-        
+
         // Hide feedback after 2 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             withAnimation(.easeInOut(duration: 0.15)) {

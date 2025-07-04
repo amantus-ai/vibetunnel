@@ -274,12 +274,19 @@ export class ScreencapView extends LitElement {
     .capture-preview {
       width: 100%;
       height: 100%;
-      object-fit: contain;
       border: 1px solid #2a2a2a;
       border-radius: 0.5rem;
       background: #262626;
       cursor: crosshair;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    
+    .capture-preview.fit-contain {
+      object-fit: contain;
+    }
+    
+    .capture-preview.fit-cover {
+      object-fit: cover;
     }
 
     .capture-overlay {
@@ -347,12 +354,19 @@ export class ScreencapView extends LitElement {
     .video-preview {
       width: 100%;
       height: 100%;
-      object-fit: contain;
       border: 1px solid #2a2a2a;
       border-radius: 0.5rem;
       background: #262626;
       cursor: crosshair;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    
+    .video-preview.fit-contain {
+      object-fit: contain;
+    }
+    
+    .video-preview.fit-cover {
+      object-fit: cover;
     }
 
     .stats-panel {
@@ -457,6 +471,7 @@ export class ScreencapView extends LitElement {
   @state() private streamStats: StreamStats | null = null;
   @state() private useWebRTC = true; // Default to WebRTC, fallback to JPEG
   @state() private sidebarCollapsed = false;
+  @state() private fitMode: 'contain' | 'cover' = 'cover'; // Default to cover to show full screen
 
   private frameInterval: number | null = null;
   private frameCounter = 0;
@@ -508,6 +523,11 @@ export class ScreencapView extends LitElement {
     logger.log('Stats toggled to:', this.showStats, 'streamStats:', this.streamStats);
     // Force a re-render in Safari
     this.requestUpdate();
+  };
+
+  private toggleFitMode = () => {
+    this.fitMode = this.fitMode === 'contain' ? 'cover' : 'contain';
+    logger.log('Fit mode toggled to:', this.fitMode);
   };
 
   private async handleRefresh() {
@@ -1534,7 +1554,13 @@ export class ScreencapView extends LitElement {
             resolution: `${frameWidth}x${frameHeight}`,
             fps: Math.round(framesPerSecond),
             bitrate: bitrate,
-            latency: stat.jitterBufferDelay ? Math.round(stat.jitterBufferDelay * 1000) : 0,
+            // jitterBufferDelay is typically in seconds, but we should also check for reasonable values
+            // If the value is already in milliseconds (> 1), use it directly
+            latency: stat.jitterBufferDelay 
+              ? (stat.jitterBufferDelay > 1 
+                  ? Math.round(stat.jitterBufferDelay)  // Already in ms
+                  : Math.round(stat.jitterBufferDelay * 1000))  // Convert from seconds to ms
+              : 0,
             packetsLost: packetsLost,
             packetLossRate: packetsReceived > 0 ? (packetsLost / packetsReceived) * 100 : 0,
             jitter: Math.round((stat.jitter || 0) * 1000),
@@ -1606,16 +1632,16 @@ export class ScreencapView extends LitElement {
 
       // Set bitrate parameters for the first encoding
       if (params.encodings[0]) {
-        // Set max bitrate to 5 Mbps
-        params.encodings[0].maxBitrate = 5000000; // 5 Mbps
+        // Set max bitrate to 50 Mbps for 4K@60fps
+        params.encodings[0].maxBitrate = 50000000; // 50 Mbps
 
-        // Set initial bitrate to 3 Mbps
+        // Set initial bitrate to 20 Mbps
         // Note: initialBitrate is not in the standard type definition but is supported by some browsers
         const encoding = params.encodings[0] as RTCRtpEncodingParameters & {
           initialBitrate?: number;
         };
         if ('initialBitrate' in encoding) {
-          encoding.initialBitrate = 3000000; // 3 Mbps
+          encoding.initialBitrate = 20000000; // 20 Mbps
         }
 
         // Enable network adaptation
@@ -1626,9 +1652,9 @@ export class ScreencapView extends LitElement {
 
         try {
           await videoSender.setParameters(params);
-          logger.log('✅ Configured video bitrate parameters:', {
-            maxBitrate: '5 Mbps',
-            initialBitrate: '3 Mbps',
+          logger.log('✅ Configured video bitrate parameters for 4K@60fps:', {
+            maxBitrate: '50 Mbps',
+            initialBitrate: '20 Mbps',
             networkPriority: 'high',
             scaleResolutionDownBy: 1,
           });
@@ -1656,8 +1682,8 @@ export class ScreencapView extends LitElement {
       // Check if we're entering video m-line
       if (line.startsWith('m=video')) {
         // Add bandwidth constraint after video m-line
-        modifiedLines.push('b=AS:5000'); // 5 Mbps
-        logger.log('📈 Added bandwidth constraint to SDP: 5 Mbps');
+        modifiedLines.push('b=AS:50000'); // 50 Mbps for 4K@60fps
+        logger.log('📈 Added bandwidth constraint to SDP: 50 Mbps for 4K@60fps');
       }
     }
 
@@ -1685,18 +1711,18 @@ export class ScreencapView extends LitElement {
     const params = videoSender.getParameters();
     if (!params.encodings?.[0]) return;
 
-    let targetBitrate = params.encodings[0].maxBitrate || 5000000;
+    let targetBitrate = params.encodings[0].maxBitrate || 50000000;
 
     // Adjust bitrate based on network conditions
     if (packetLossRate > 5) {
       // High packet loss - reduce bitrate by 20%
-      targetBitrate = Math.max(1000000, targetBitrate * 0.8);
+      targetBitrate = Math.max(10000000, targetBitrate * 0.8); // Min 10 Mbps for 4K
       logger.warn(
         `📉 High packet loss (${packetLossRate.toFixed(1)}%), reducing bitrate to ${(targetBitrate / 1000000).toFixed(1)} Mbps`
       );
     } else if (packetLossRate < 0.5 && latency < 50 && bitrate < targetBitrate * 0.8) {
       // Good conditions and we're using less than 80% of target - increase bitrate by 10%
-      targetBitrate = Math.min(5000000, targetBitrate * 1.1);
+      targetBitrate = Math.min(50000000, targetBitrate * 1.1); // Max 50 Mbps
       logger.log(
         `📈 Good network conditions, increasing bitrate to ${(targetBitrate / 1000000).toFixed(1)} Mbps`
       );
@@ -1781,6 +1807,32 @@ export class ScreencapView extends LitElement {
                 <line x1="6" y1="20" x2="6" y2="14"/>
               </svg>
               Stats
+            </button>
+          `
+              : ''
+          }
+          ${
+            this.isCapturing
+              ? html`
+            <button 
+              class="btn" 
+              @click=${this.toggleFitMode}
+              title="${this.fitMode === 'contain' ? 'Switch to fill mode (may crop edges)' : 'Switch to fit mode (may show bars)'}"
+              type="button"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                ${this.fitMode === 'contain' 
+                  ? html`
+                    <rect x="3" y="6" width="18" height="12" rx="2"/>
+                    <path d="M7 10h10M7 14h10"/>
+                  `
+                  : html`
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+                  `
+                }
+              </svg>
+              ${this.fitMode === 'contain' ? 'Fit' : 'Fill'}
             </button>
           `
               : ''
@@ -1895,7 +1947,7 @@ export class ScreencapView extends LitElement {
             if (this.isCapturing && this.useWebRTC) {
               return html`
                 <video 
-                  class="video-preview"
+                  class="video-preview fit-${this.fitMode}"
                   autoplay
                   playsinline
                   @mousedown=${this.handleMouseDown}
@@ -1970,7 +2022,7 @@ export class ScreencapView extends LitElement {
               return html`
                 <img 
                   src="${this.frameUrl}" 
-                  class="capture-preview"
+                  class="capture-preview fit-${this.fitMode}"
                   @mousedown=${this.handleMouseDown}
                   @mousemove=${this.handleMouseMove}
                   @mouseup=${this.handleMouseUp}

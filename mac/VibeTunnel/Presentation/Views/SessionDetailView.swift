@@ -202,7 +202,7 @@ struct SessionDetailView: View {
         .onAppear {
             updateWindowTitle()
             findWindow()
-            
+
             // Check permissions
             Task {
                 await permissionManager.checkAllPermissions()
@@ -420,7 +420,6 @@ struct SessionDetailView: View {
             logger.error("Failed to capture screenshot: \(error)")
         }
     }
-
 }
 
 // MARK: - Supporting Views

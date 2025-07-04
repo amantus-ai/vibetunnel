@@ -1,8 +1,8 @@
 import Foundation
 import Observation
 import OSLog
-import SwiftUI
 import ScreenCaptureKit
+import SwiftUI
 
 /// Errors that can occur during server operations
 enum ServerError: LocalizedError {
@@ -243,7 +243,7 @@ class ServerManager {
             }
 
             logger.info("Started server on port \(self.port)")
-            
+
             // Start screencap HTTP server if enabled
             if AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) {
                 do {
@@ -254,7 +254,10 @@ class ServerManager {
                         logger.info("✅ Started screencap server on port 4010")
                     } else {
                         logger.warning("⚠️ Screen recording permission not granted - screencap service disabled")
-                        logger.warning("💡 Please grant screen recording permission in System Settings > Privacy & Security > Screen Recording")
+                        logger
+                            .warning(
+                                "💡 Please grant screen recording permission in System Settings > Privacy & Security > Screen Recording"
+                            )
                     }
                 } catch {
                     logger.error("Failed to start screencap server: \(error)")
@@ -294,11 +297,11 @@ class ServerManager {
 
         await server.stop()
         bunServer = nil
-        
+
         // Stop screencap server
         screencapServer?.stop()
         screencapServer = nil
-        
+
         isRunning = false
 
         // Clear the auth token from SessionMonitor
@@ -423,7 +426,7 @@ class ServerManager {
         // Update state immediately
         isRunning = false
         bunServer = nil
-        
+
         // Stop screencap server on crash
         screencapServer?.stop()
         screencapServer = nil
