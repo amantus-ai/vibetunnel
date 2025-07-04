@@ -700,8 +700,11 @@ export class ScreencapView extends LitElement {
       this.isCapturing = false;
       this.frameUrl = '';
       this.fps = 0;
+      this.frameCounter = 0;
       this.status = 'ready';
       this.streamStats = null;
+      this.lastBytesReceived = 0;
+      this.lastStatsTimestamp = 0;
 
       logger.log('Stopped capture');
     } catch (error) {
@@ -1279,7 +1282,9 @@ export class ScreencapView extends LitElement {
 
         stats.forEach((stat) => {
           statTypes.add(stat.type);
-          if (stat.type === 'inbound-rtp' && stat.mediaType === 'video') {
+          // Safari may use 'kind' instead of 'mediaType'
+          const mediaType = stat.mediaType || stat.kind;
+          if (stat.type === 'inbound-rtp' && mediaType === 'video') {
             logger.log('Found video RTP stats:', stat);
           }
         });
@@ -1319,7 +1324,9 @@ export class ScreencapView extends LitElement {
           }
         }
 
-        if (stat.type === 'inbound-rtp' && stat.mediaType === 'video') {
+        // Safari may use 'kind' instead of 'mediaType'
+        const mediaType = stat.mediaType || stat.kind;
+        if (stat.type === 'inbound-rtp' && mediaType === 'video') {
           const currentTimestamp = Date.now();
           const timeDiff = (currentTimestamp - this.lastStatsTimestamp) / 1000;
 
@@ -1750,7 +1757,10 @@ export class ScreencapView extends LitElement {
                     `
                         : html`
                     <div style="color: #a3a3a3; text-align: center; padding: 1rem;">
-                      Collecting statistics...
+                      <div>Collecting statistics...</div>
+                      <div style="font-size: 0.75rem; margin-top: 0.5rem;">
+                        ${this.frameCounter > 0 ? `Frames: ${this.frameCounter}` : ''}
+                      </div>
                     </div>
                     `
                     }
