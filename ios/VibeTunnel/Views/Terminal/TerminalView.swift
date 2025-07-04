@@ -838,7 +838,7 @@ class TerminalViewModel {
     func sendInput(_ text: String) {
         Task {
             do {
-                try await SessionService.shared.sendInput(to: session.id, text: text)
+                try await SessionService().sendInput(to: session.id, text: text)
             } catch {
                 logger.error("Failed to send input: \(error)")
             }
@@ -856,19 +856,20 @@ class TerminalViewModel {
             return
         }
         
-        // Guard against unnecessary resize calls
-        guard cols != terminalCols || rows != terminalRows else {
-            return
-        }
-        
         // Guard against blocked resize
         guard !isResizeBlockedByServer else {
             logger.warning("Resize blocked by server, ignoring resize: \(cols)x\(rows)")
             return
         }
         
-        // Only allow one initial resize, then be very restrictive about subsequent resizes
+        // Set the initial resize flag immediately to prevent race conditions
         if !hasPerformedInitialResize {
+            hasPerformedInitialResize = true
+            
+            // Always update UI dimensions immediately for consistency
+            terminalCols = cols
+            terminalRows = rows
+            
             // Perform initial resize after a short delay to let layout settle
             resizeDebounceTask?.cancel()
             resizeDebounceTask = Task { [weak self] in
@@ -876,23 +877,33 @@ class TerminalViewModel {
                 guard !Task.isCancelled else { return }
                 await self?.performInitialResize(cols: cols, rows: rows)
             }
-        } else {
-            // For subsequent resizes, only allow significant changes and with longer debounce
-            let colDiff = abs(cols - terminalCols)
-            let rowDiff = abs(rows - terminalRows)
-            
-            // Only resize if there's a significant change (more than 5 cols/rows difference)
-            guard colDiff > 5 || rowDiff > 5 else {
-                logger.debug("Ignoring minor resize change: \(cols)x\(rows) (current: \(terminalCols)x\(terminalRows))")
-                return
-            }
-            
-            resizeDebounceTask?.cancel()
-            resizeDebounceTask = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second for subsequent
-                guard !Task.isCancelled else { return }
-                await self?.performResize(cols: cols, rows: rows)
-            }
+            return
+        }
+        
+        // For subsequent resizes, compare against current UI dimensions (not server dimensions)
+        guard cols != terminalCols || rows != terminalRows else {
+            return
+        }
+        
+        // Only allow significant changes for subsequent resizes
+        let colDiff = abs(cols - terminalCols)
+        let rowDiff = abs(rows - terminalRows)
+        
+        // Only resize if there's a significant change (more than 5 cols/rows difference)
+        guard colDiff > 5 || rowDiff > 5 else {
+            logger.debug("Ignoring minor resize change: \(cols)x\(rows) (current: \(terminalCols)x\(terminalRows))")
+            return
+        }
+        
+        // Update UI dimensions immediately
+        terminalCols = cols
+        terminalRows = rows
+        
+        resizeDebounceTask?.cancel()
+        resizeDebounceTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second for subsequent
+            guard !Task.isCancelled else { return }
+            await self?.performResize(cols: cols, rows: rows)
         }
     }
     
@@ -900,13 +911,10 @@ class TerminalViewModel {
         logger.info("Performing initial terminal resize: \(cols)x\(rows)")
         
         do {
-            try await SessionService.shared.resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
-            // If resize succeeded, mark as completed and update dimensions
+            try await SessionService().resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
+            // If resize succeeded, clear any server blocks
             await MainActor.run {
                 isResizeBlockedByServer = false
-                terminalCols = cols
-                terminalRows = rows
-                hasPerformedInitialResize = true
             }
         } catch {
             logger.error("Failed initial terminal resize: \(error)")
@@ -914,9 +922,9 @@ class TerminalViewModel {
             if case APIError.resizeDisabledByServer = error {
                 await MainActor.run {
                     isResizeBlockedByServer = true
-                    hasPerformedInitialResize = true // Still mark as done to prevent further attempts
                 }
             }
+            // Note: hasPerformedInitialResize is already set, so we won't retry initial resize
         }
     }
     
@@ -924,12 +932,10 @@ class TerminalViewModel {
         logger.info("Resizing terminal: \(cols)x\(rows)")
         
         do {
-            try await SessionService.shared.resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
-            // If resize succeeded, ensure the flag is cleared and update dimensions
+            try await SessionService().resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
+            // If resize succeeded, ensure the flag is cleared
             await MainActor.run {
                 isResizeBlockedByServer = false
-                terminalCols = cols
-                terminalRows = rows
             }
         } catch {
             logger.error("Failed to resize terminal: \(error)")
@@ -939,6 +945,7 @@ class TerminalViewModel {
                     isResizeBlockedByServer = true
                 }
             }
+            // Note: UI dimensions remain as set, representing the actual terminal view size
         }
     }
 

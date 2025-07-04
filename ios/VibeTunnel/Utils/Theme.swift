@@ -247,21 +247,43 @@ extension View {
 // MARK: - Haptic Feedback
 
 @MainActor
-struct HapticFeedback {
-    static func impact(_ style: ImpactStyle) {
+protocol HapticFeedbackProtocol {
+    func impact(_ style: HapticFeedback.ImpactStyle)
+    func selection()
+    func notification(_ type: HapticFeedback.NotificationType)
+}
+
+@MainActor
+struct HapticFeedback: HapticFeedbackProtocol {
+    static let shared: HapticFeedbackProtocol = HapticFeedback()
+    
+    func impact(_ style: ImpactStyle) {
         let generator = UIImpactFeedbackGenerator(style: style.uiKitStyle)
         generator.impactOccurred()
     }
 
-    static func selection() {
+    func selection() {
         let generator = UISelectionFeedbackGenerator()
         generator.selectionChanged()
     }
 
-    static func notification(_ type: NotificationType) {
+    func notification(_ type: NotificationType) {
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(type.uiKitType)
     }
+    
+    static func impact(_ style: ImpactStyle) {
+        shared.impact(style)
+    }
+
+    static func selection() {
+        shared.selection()
+    }
+
+    static func notification(_ type: NotificationType) {
+        shared.notification(type)
+    }
+    
 
     /// SwiftUI-native style enums
     enum ImpactStyle {

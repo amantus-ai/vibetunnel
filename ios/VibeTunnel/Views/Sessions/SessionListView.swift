@@ -7,49 +7,13 @@ import UniformTypeIdentifiers
 /// Shows active and exited sessions with options to create new sessions,
 /// manage existing ones, and navigate to terminal views.
 struct SessionListView: View {
-    @Environment(ConnectionManager.self)
-    var connectionManager
     @Environment(NavigationManager.self)
     var navigationManager
-    @State private var networkMonitor = NetworkMonitor.shared
-    @State private var viewModel = SessionListViewModel()
-    @State private var showingCreateSession = false
-    @State private var selectedSession: Session?
-    @State private var showExitedSessions = true
-    @State private var showingFileBrowser = false
-    @State private var showingSettings = false
-    @State private var searchText = ""
-    @State private var showingCastImporter = false
-    @State private var importedCastFile: CastFileItem?
-    @State private var presentedError: IdentifiableError?
-    @AppStorage("enableLivePreviews") private var enableLivePreviews = true
-
-    var filteredSessions: [Session] {
-        let sessions = viewModel.sessions.filter { showExitedSessions || $0.isRunning }
-
-        if searchText.isEmpty {
-            return sessions
-        }
-
-        return sessions.filter { session in
-            // Search in session name
-            if let name = session.name, name.localizedCaseInsensitiveContains(searchText) {
-                return true
-            }
-            // Search in command
-            if session.command.joined(separator: " ").localizedCaseInsensitiveContains(searchText) {
-                return true
-            }
-            // Search in working directory
-            if session.workingDir.localizedCaseInsensitiveContains(searchText) {
-                return true
-            }
-            // Search in PID
-            if let pid = session.pid, String(pid).contains(searchText) {
-                return true
-            }
-            return false
-        }
+    @State private var viewModel: SessionListViewModel
+    
+    // Inject ViewModel directly - clean separation
+    init(viewModel: SessionListViewModel = SessionListViewModel()) {
+        _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
@@ -62,7 +26,7 @@ struct SessionListView: View {
                 VStack {
                     // Error banner at the top
                     if let errorMessage = viewModel.errorMessage {
-                        ErrorBanner(message: errorMessage, isOffline: !networkMonitor.isConnected)
+                        ErrorBanner(message: errorMessage, isOffline: !viewModel.isNetworkConnected)
                             .transition(.move(edge: .top).combined(with: .opacity))
                     }
 
@@ -72,9 +36,9 @@ struct SessionListView: View {
                             .font(Theme.Typography.terminalSystem(size: 14))
                             .foregroundColor(Theme.Colors.terminalForeground)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if !networkMonitor.isConnected && viewModel.sessions.isEmpty {
+                    } else if !viewModel.isNetworkConnected && viewModel.sessions.isEmpty {
                         offlineStateView
-                    } else if filteredSessions.isEmpty && !searchText.isEmpty {
+                    } else if viewModel.filteredSessions.isEmpty && !viewModel.searchText.isEmpty {
                         noSearchResultsView
                     } else if viewModel.sessions.isEmpty {
                         emptyStateView
@@ -90,7 +54,7 @@ struct SessionListView: View {
                     Button(action: {
                         HapticFeedback.impact(.medium)
                         Task {
-                            await connectionManager.disconnect()
+                            await viewModel.disconnect()
                         }
                     }, label: {
                         HStack(spacing: 4) {
@@ -106,14 +70,14 @@ struct SessionListView: View {
                         Menu {
                             Button(action: {
                                 HapticFeedback.impact(.light)
-                                showingSettings = true
+                                viewModel.showingSettings = true
                             }, label: {
                                 Label("Settings", systemImage: "gearshape")
                             })
 
                             Button(action: {
                                 HapticFeedback.impact(.light)
-                                showingCastImporter = true
+                                viewModel.showingCastImporter = true
                             }, label: {
                                 Label("Import Recording", systemImage: "square.and.arrow.down")
                             })
@@ -125,7 +89,7 @@ struct SessionListView: View {
 
                         Button(action: {
                             HapticFeedback.impact(.light)
-                            showingFileBrowser = true
+                            viewModel.showingFileBrowser = true
                         }, label: {
                             Image(systemName: "folder.fill")
                                 .font(.title3)
@@ -134,7 +98,7 @@ struct SessionListView: View {
 
                         Button(action: {
                             HapticFeedback.impact(.light)
-                            showingCreateSession = true
+                            viewModel.showingCreateSession = true
                         }, label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.title3)
@@ -143,50 +107,50 @@ struct SessionListView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingCreateSession) {
-                SessionCreateView(isPresented: $showingCreateSession) { newSessionId in
+            .sheet(isPresented: $viewModel.showingCreateSession) {
+                SessionCreateView(isPresented: $viewModel.showingCreateSession) { newSessionId in
                     Task {
                         await viewModel.loadSessions()
                         // Find and select the new session
                         if let newSession = viewModel.sessions.first(where: { $0.id == newSessionId }) {
-                            selectedSession = newSession
+                            viewModel.selectedSession = newSession
                         }
                     }
                 }
             }
-            .fullScreenCover(item: $selectedSession) { session in
+            .fullScreenCover(item: $viewModel.selectedSession) { session in
                 TerminalView(session: session)
             }
-            .sheet(isPresented: $showingFileBrowser) {
+            .sheet(isPresented: $viewModel.showingFileBrowser) {
                 FileBrowserView(mode: .browseFiles) { _ in
                     // For browse mode, we don't need to handle path selection
                 }
             }
-            .sheet(isPresented: $showingSettings) {
+            .sheet(isPresented: $viewModel.showingSettings) {
                 SettingsView()
             }
             .fileImporter(
-                isPresented: $showingCastImporter,
+                isPresented: $viewModel.showingCastImporter,
                 allowedContentTypes: [.json, .data],
                 allowsMultipleSelection: false
             ) { result in
                 switch result {
                 case .success(let urls):
                     if let url = urls.first {
-                        importedCastFile = CastFileItem(url: url)
+                        viewModel.importedCastFile = CastFileItem(url: url)
                     }
                 case .failure(let error):
                     logger.error("Failed to import cast file: \(error)")
                 }
             }
-            .sheet(item: $importedCastFile) { item in
+            .sheet(item: $viewModel.importedCastFile) { item in
                 CastPlayerView(castFileURL: item.url)
             }
-            .errorAlert(item: $presentedError)
+            .errorAlert(item: $viewModel.presentedError)
             .refreshable {
                 await viewModel.loadSessions()
             }
-            .searchable(text: $searchText, prompt: "Search sessions")
+            .searchable(text: $viewModel.searchText, prompt: "Search sessions")
             .task {
                 await viewModel.loadSessions()
 
@@ -204,13 +168,13 @@ struct SessionListView: View {
                let sessionId = navigationManager.selectedSessionId,
                let session = viewModel.sessions.first(where: { $0.id == sessionId })
             {
-                selectedSession = session
+                viewModel.selectedSession = session
                 navigationManager.clearNavigation()
             }
         }
         .onChange(of: viewModel.errorMessage) { _, newError in
             if let error = newError {
-                presentedError = IdentifiableError(error: APIError.serverError(0, error))
+                viewModel.presentedError = IdentifiableError(error: APIError.serverError(0, error))
                 viewModel.errorMessage = nil
             }
         }
@@ -244,7 +208,7 @@ struct SessionListView: View {
 
             Button(action: {
                 HapticFeedback.impact(.medium)
-                showingCreateSession = true
+                viewModel.showingCreateSession = true
             }, label: {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "plus.circle")
@@ -275,7 +239,7 @@ struct SessionListView: View {
                     .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
             }
 
-            Button(action: { searchText = "" }, label: {
+            Button(action: { viewModel.searchText = "" }, label: {
                 Label("Clear Search", systemImage: "xmark.circle.fill")
                     .font(Theme.Typography.terminalSystem(size: 14))
             })
@@ -289,7 +253,7 @@ struct SessionListView: View {
             VStack(spacing: Theme.Spacing.large) {
                 SessionHeaderView(
                     sessions: viewModel.sessions,
-                    showExitedSessions: $showExitedSessions,
+                    showExitedSessions: $viewModel.showExitedSessions,
                     onKillAll: {
                         Task {
                             await viewModel.killAllSessions()
@@ -314,11 +278,11 @@ struct SessionListView: View {
                     GridItem(.flexible(), spacing: Theme.Spacing.medium),
                     GridItem(.flexible(), spacing: Theme.Spacing.medium)
                 ], spacing: Theme.Spacing.medium) {
-                    ForEach(filteredSessions) { session in
+                    ForEach(viewModel.filteredSessions) { session in
                         SessionCardView(session: session) {
                             HapticFeedback.selection()
                             if session.isRunning {
-                                selectedSession = session
+                                viewModel.selectedSession = session
                             }
                         } onKill: {
                             HapticFeedback.impact(.medium)
@@ -331,7 +295,7 @@ struct SessionListView: View {
                                 await viewModel.cleanupSession(session.id)
                             }
                         }
-                        .livePreview(for: session.id, enabled: session.isRunning && enableLivePreviews)
+                        .livePreview(for: session.id, enabled: session.isRunning && viewModel.enableLivePreviews)
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.8).combined(with: .opacity),
                             removal: .scale(scale: 0.8).combined(with: .opacity)
@@ -385,21 +349,100 @@ struct SessionListView: View {
                 .fontWeight(.medium)
             })
             .terminalButton()
-            .disabled(!networkMonitor.isConnected)
+            .disabled(!viewModel.isNetworkConnected)
         }
         .padding()
     }
 }
 
+/// Protocol defining the interface for session list view model
+@MainActor
+protocol SessionListViewModelProtocol: Observable {
+    var sessions: [Session] { get }
+    var filteredSessions: [Session] { get }
+    var isLoading: Bool { get }
+    var errorMessage: String? { get set }
+    var showExitedSessions: Bool { get set }
+    var searchText: String { get set }
+    var isNetworkConnected: Bool { get }
+    
+    
+    func loadSessions() async
+    func killSession(_ sessionId: String) async
+    func cleanupSession(_ sessionId: String) async
+    func cleanupAllExited() async
+    func killAllSessions() async
+}
+
 /// View model for managing session list state and operations.
 @MainActor
 @Observable
-class SessionListViewModel {
+class SessionListViewModel: SessionListViewModelProtocol {
     var sessions: [Session] = []
     var isLoading = false
     var errorMessage: String?
+    var showExitedSessions = true
+    var searchText = ""
+    
+    var filteredSessions: [Session] {
+        let visibleSessions = sessions.filter { showExitedSessions || $0.isRunning }
+        
+        if searchText.isEmpty {
+            return visibleSessions
+        }
+        
+        return visibleSessions.filter { session in
+            // Search in session name
+            if let name = session.name, name.localizedCaseInsensitiveContains(searchText) {
+                return true
+            }
+            // Search in command
+            if session.command.joined(separator: " ").localizedCaseInsensitiveContains(searchText) {
+                return true
+            }
+            // Search in working directory
+            if session.workingDir.localizedCaseInsensitiveContains(searchText) {
+                return true
+            }
+            // Search in PID
+            if let pid = session.pid, String(pid).contains(searchText) {
+                return true
+            }
+            return false
+        }
+    }
+    
+    var isNetworkConnected: Bool {
+        networkMonitor.isConnected
+    }
+    
+    // UI State
+    var showingCreateSession = false
+    var selectedSession: Session?
+    var showingFileBrowser = false
+    var showingSettings = false
+    var showingCastImporter = false
+    var importedCastFile: CastFileItem?
+    var presentedError: IdentifiableError?
+    var enableLivePreviews = true
 
-    private let sessionService = SessionService.shared
+    private let sessionService: SessionServiceProtocol
+    private let networkMonitor: NetworkMonitoring
+    private let connectionManager: ConnectionManager
+
+    init(
+        sessionService: SessionServiceProtocol = SessionService(),
+        networkMonitor: NetworkMonitoring = NetworkMonitor.shared,
+        connectionManager: ConnectionManager = ConnectionManager.shared
+    ) {
+        self.sessionService = sessionService
+        self.networkMonitor = networkMonitor
+        self.connectionManager = connectionManager
+    }
+    
+    func disconnect() async {
+        await connectionManager.disconnect()
+    }
 
     func loadSessions() async {
         if sessions.isEmpty {
