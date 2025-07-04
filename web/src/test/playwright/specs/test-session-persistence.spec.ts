@@ -41,10 +41,10 @@ test.describe('Session Persistence Tests', () => {
   });
 
   test('should handle session with error gracefully', async ({ page }) => {
-    // Create a session with a command that will fail after a small delay
+    // Create a session with a command that will fail immediately
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('error-test'),
-      command: 'sleep 1 && false', // Sleep before failing to ensure status tracking
+      command: 'exit 1', // Exit with error code
     });
 
     // Track the session for cleanup

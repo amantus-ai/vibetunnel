@@ -85,10 +85,10 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should navigate back to list with Escape for exited sessions', async ({ page }) => {
-    // Create a session that exits after a small delay
+    // Create a session that exits immediately
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('escape-test'),
-      command: 'sleep 1 && exit', // Sleep before exiting to ensure status tracking
+      command: 'exit 0', // Exit immediately with success code
     });
     await assertTerminalReady(page);
 

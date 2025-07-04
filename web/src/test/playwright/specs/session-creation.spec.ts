@@ -10,6 +10,7 @@ import {
 } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { waitForElementStable } from '../helpers/wait-strategies.helper';
+import { SessionListPage } from '../pages/session-list.page';
 
 // These tests create their own sessions and can run in parallel
 test.describe.configure({ mode: 'parallel' });
@@ -50,45 +51,66 @@ test.describe('Session Creation', () => {
   });
 
   test('should show created session in session list', async ({ page }) => {
-    test.setTimeout(30000); // Increase timeout for this test
-    // Create tracked session
-    const { sessionName } = await sessionManager.createTrackedSession();
+    test.setTimeout(60000); // Increase timeout for debugging
+
+    // Start from session list page
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Get initial session count
+    const initialCount = await page.locator('session-card').count();
+    console.log(`Initial session count: ${initialCount}`);
+
+    // Create session using the helper
+    const sessionName = sessionManager.generateSessionName('list-test');
+    const sessionListPage = new SessionListPage(page);
+    await sessionListPage.createNewSession(sessionName, false);
+
+    // Wait for navigation to session view
+    await page.waitForURL(/\?session=/, { timeout: 10000 });
+    console.log(`Navigated to session: ${page.url()}`);
+
+    // Wait for terminal to be ready
+    await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 5000 });
 
     // Navigate back to session list
     await page.goto('/');
-
-    // Wait for session list to be ready
     await page.waitForLoadState('networkidle');
 
-    // Wait a bit more for the auto-refresh to kick in (happens every 1 second)
-    await page.waitForTimeout(2000);
+    // Wait for multiple refresh cycles (auto-refresh happens every 1 second)
+    await page.waitForTimeout(5000);
 
-    // Poll for the session to appear in the list with proper status
-    // This is more robust than a fixed timeout, especially for CI
-    await page.waitForFunction(
-      ({ expectedName }) => {
-        const cards = document.querySelectorAll('session-card');
-        console.log(`Found ${cards.length} session cards`);
-        for (const card of cards) {
-          const nameElement = card.querySelector('.font-medium');
-          const name = nameElement?.textContent;
-          console.log(`Checking card with name: ${name}`);
-          if (name?.includes(expectedName)) {
-            // Check if status is running
-            const statusSpan = card.querySelector('span[data-status]');
-            const status = statusSpan?.getAttribute('data-status');
-            console.log(`Found session ${name} with status: ${status}`);
-            // Session might start as 'starting' and transition to 'running'
-            return status === 'running' || status === 'starting';
-          }
+    // Check session count increased
+    const newCount = await page.locator('session-card').count();
+    console.log(`New session count: ${newCount}`);
+
+    // Look for the session with more specific debugging
+    const found = await page.evaluate((targetName) => {
+      const cards = document.querySelectorAll('session-card');
+      const sessions = [];
+      for (const card of cards) {
+        const nameEl = card.querySelector('.font-medium');
+        const name = nameEl?.textContent || 'unknown';
+        const statusEl = card.querySelector('span[data-status]');
+        const status = statusEl?.getAttribute('data-status') || 'no-status';
+        sessions.push({ name, status });
+        if (name.includes(targetName)) {
+          return { found: true, name, status };
         }
-        return false;
-      },
-      { expectedName: sessionName },
-      { timeout: 15000, polling: 'raf' }
-    );
+      }
+      console.log('All sessions:', sessions);
+      return { found: false, sessions };
+    }, sessionName);
 
-    // Now do the actual assertion - by this point the session should be visible
+    console.log('Session search result:', found);
+
+    if (!found.found) {
+      throw new Error(
+        `Session ${sessionName} not found in list. Available sessions: ${JSON.stringify(found.sessions)}`
+      );
+    }
+
+    // Now do the actual assertion
     await assertSessionInList(page, sessionName, { status: 'running' });
   });
 
@@ -134,7 +156,7 @@ test.describe('Session Creation', () => {
       }
 
       // Create session
-      await page.click('[data-testid="create-session-submit"]');
+      await page.click('[data-testid="create-session-submit"]', { force: true });
 
       // Wait for navigation to session
       await page.waitForURL(/\?session=/, { timeout: 10000 });

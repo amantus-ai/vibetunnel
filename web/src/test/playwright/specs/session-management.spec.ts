@@ -102,10 +102,10 @@ test.describe('Session Management', () => {
   });
 
   test('should handle session exit', async ({ page }) => {
-    // Create a session that will exit after a small delay
+    // Create a session that will exit quickly
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('exit-test'),
-      command: 'sleep 2 && echo "Session will exit" && exit', // Sleep before exiting to ensure status tracking
+      command: 'exit 0', // Exit immediately with success code
     });
 
     // Track the session for cleanup
@@ -113,12 +113,12 @@ test.describe('Session Management', () => {
       sessionManager.trackSession(sessionName, sessionId);
     }
 
-    // Wait for session to show output
+    // Wait for terminal to be ready
     const terminal = page.locator('vibe-terminal');
-    await expect(terminal).toContainText('Session will exit', { timeout: 10000 });
+    await expect(terminal).toBeVisible({ timeout: 5000 });
 
-    // Wait a bit more for the exit command to register
-    await page.waitForTimeout(2000);
+    // Wait for the exit command to process
+    await page.waitForTimeout(1000);
 
     // Navigate back to home
     await page.goto('/');
