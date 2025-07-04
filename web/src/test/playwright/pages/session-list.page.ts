@@ -76,23 +76,21 @@ export class SessionListPage extends BasePage {
       // Force wait for view transition to complete
       await this.page.waitForTimeout(500);
 
-      // Now wait for modal to be considered visible by Playwright
-      try {
-        await this.page.waitForSelector('session-create-form', {
-          state: 'visible',
-          timeout: 5000,
-        });
-      } catch (_visibilityError) {
-        // If modal is still not visible, it might be due to view transitions
-        // Force interaction since we know it's there
-        console.log('Modal not visible to Playwright, will use force interaction');
-      }
+      // Wait for the modal content to be rendered (indicates visible=true)
+      await this.page.waitForSelector('[data-testid="session-create-modal"]', {
+        state: 'visible',
+        timeout: 10000,
+      });
 
-      // Check if modal is actually functional (can find input elements)
+      // Additional wait to ensure modal is fully rendered
+      await this.page.waitForTimeout(200);
+
+      // Now wait for the input field to be available
       await this.page.waitForSelector(
-        '[data-testid="session-name-input"], input[placeholder="My Session"]',
+        '[data-testid="session-name-input"]',
         {
-          timeout: 5000,
+          state: 'visible',
+          timeout: 10000,
         }
       );
 
