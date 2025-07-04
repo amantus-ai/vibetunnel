@@ -14,6 +14,7 @@ import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
+import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { createLogger } from '../utils/logger.js';
 import { copyToClipboard } from '../utils/path-utils.js';
 
@@ -279,6 +280,22 @@ export class SessionCard extends LitElement {
     }
   }
 
+  private async handleSendAIPrompt() {
+    try {
+      await sendAIPrompt(this.session.id, this.authClient);
+    } catch (error) {
+      logger.error('Failed to send AI prompt', error);
+      // Dispatch error event for user notification
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: `Failed to send AI prompt: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
+  }
+
   render() {
     // Debug logging to understand what's in the session
     if (!this.session.name) {
@@ -325,47 +342,84 @@ export class SessionCard extends LitElement {
               }}
             ></inline-edit>
           </div>
-          ${
-            this.session.status === 'running' || this.session.status === 'exited'
-              ? html`
-                <button
-                  class="p-1 rounded-full transition-all duration-200 disabled:opacity-50 flex-shrink-0 ${
-                    this.session.status === 'running'
-                      ? 'text-status-error hover:bg-status-error hover:bg-opacity-20'
-                      : 'text-status-warning hover:bg-status-warning hover:bg-opacity-20'
-                  }"
-                  @click=${this.handleKillClick}
-                  ?disabled=${this.killing}
-                  title="${this.session.status === 'running' ? 'Kill session' : 'Clean up session'}"
-                  data-testid="kill-session-button"
-                >
-                  ${
-                    this.killing
-                      ? html`<span class="block w-5 h-5 flex items-center justify-center"
-                        >${this.getKillingText()}</span
-                      >`
-                      : html`
-                        <svg
-                          class="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <circle cx="12" cy="12" r="10" stroke-width="2" />
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M15 9l-6 6m0-6l6 6"
-                          />
-                        </svg>
-                      `
-                  }
-                </button>
-              `
-              : ''
-          }
+          <div class="flex items-center gap-1 flex-shrink-0">
+            ${
+              this.session.status === 'running' && isAIAssistantSession(this.session)
+                ? html`
+                  <button
+                    class="p-1 rounded-full transition-all duration-200 text-accent-primary hover:bg-accent-primary hover:bg-opacity-20"
+                    @click=${async (e: Event) => {
+                      e.stopPropagation();
+                      await this.handleSendAIPrompt();
+                    }}
+                    title="Send prompt to update terminal title"
+                  >
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                      />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.5"
+                        d="M12 8l-2 2m4-2l-2 2m4 0l-2 2"
+                        opacity="0.6"
+                      />
+                    </svg>
+                  </button>
+                `
+                : ''
+            }
+            ${
+              this.session.status === 'running' || this.session.status === 'exited'
+                ? html`
+                  <button
+                    class="p-1 rounded-full transition-all duration-200 disabled:opacity-50 flex-shrink-0 ${
+                      this.session.status === 'running'
+                        ? 'text-status-error hover:bg-status-error hover:bg-opacity-20'
+                        : 'text-status-warning hover:bg-status-warning hover:bg-opacity-20'
+                    }"
+                    @click=${this.handleKillClick}
+                    ?disabled=${this.killing}
+                    title="${this.session.status === 'running' ? 'Kill session' : 'Clean up session'}"
+                    data-testid="kill-session-button"
+                  >
+                    ${
+                      this.killing
+                        ? html`<span class="block w-5 h-5 flex items-center justify-center"
+                          >${this.getKillingText()}</span
+                        >`
+                        : html`
+                          <svg
+                            class="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <circle cx="12" cy="12" r="10" stroke-width="2" />
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M15 9l-6 6m0-6l6 6"
+                            />
+                          </svg>
+                        `
+                    }
+                  </button>
+                `
+                : ''
+            }
+          </div>
         </div>
 
         <!-- Terminal display (main content) -->

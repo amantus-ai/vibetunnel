@@ -24,6 +24,7 @@ import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
 import './inline-edit.js';
 import { formatSessionDuration } from '../../shared/utils/time.js';
+import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { createLogger } from '../utils/logger.js';
 import { formatPathForDisplay } from '../utils/path-utils.js';
 
@@ -147,6 +148,19 @@ export class SessionList extends LitElement {
       })
     );
   };
+
+  private async handleSendAIPrompt(sessionId: string) {
+    try {
+      await sendAIPrompt(sessionId, this.authClient);
+    } catch (error) {
+      logger.error('Failed to send AI prompt', error);
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: `Failed to send AI prompt: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      );
+    }
+  }
 
   public async handleCleanupExited() {
     if (this.cleaningExited) return;
@@ -414,60 +428,100 @@ export class SessionList extends LitElement {
                                 ${session.startedAt ? formatSessionDuration(session.startedAt) : ''}
                               </div>
                               
-                              <!-- Close button (overlaps duration on hover) -->
-                              ${
-                                session.status === 'running' || session.status === 'exited'
-                                  ? html`
-                                    <button
-                                      class="btn-ghost text-status-error p-1.5 rounded-md transition-all ${
-                                        'ontouchstart' in window
-                                          ? 'opacity-100 flex-shrink-0'
-                                          : 'opacity-0 group-hover:opacity-100 absolute right-0'
-                                      } hover:bg-dark-bg-elevated hover:shadow-sm hover:scale-110"
-                                      @click=${async (e: Event) => {
-                                        e.stopPropagation();
-                                        // Kill the session
-                                        try {
-                                          const endpoint =
-                                            session.status === 'exited'
-                                              ? `/api/sessions/${session.id}/cleanup`
-                                              : `/api/sessions/${session.id}`;
-                                          const response = await fetch(endpoint, {
-                                            method: 'DELETE',
-                                            headers: this.authClient.getAuthHeader(),
-                                          });
-                                          if (response.ok) {
-                                            this.handleSessionKilled({
-                                              detail: { sessionId: session.id },
-                                            } as CustomEvent);
-                                          }
-                                        } catch (error) {
-                                          logger.error('Failed to kill session', error);
-                                        }
-                                      }}
-                                      title="${
-                                        session.status === 'running'
-                                          ? 'Kill session'
-                                          : 'Clean up session'
-                                      }"
-                                    >
-                                      <svg
-                                        class="w-4 h-4"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
+                              <!-- Buttons container -->
+                              <div class="flex items-center gap-1 ${
+                                'ontouchstart' in window
+                                  ? 'opacity-100'
+                                  : 'opacity-0 group-hover:opacity-100'
+                              } transition-opacity absolute right-0">
+                                <!-- Magic wand button for AI sessions -->
+                                ${
+                                  session.status === 'running' && isAIAssistantSession(session)
+                                    ? html`
+                                      <button
+                                        class="btn-ghost text-accent-primary p-1.5 rounded-md transition-all hover:bg-dark-bg-elevated hover:shadow-sm hover:scale-110"
+                                        @click=${async (e: Event) => {
+                                          e.stopPropagation();
+                                          await this.handleSendAIPrompt(session.id);
+                                        }}
+                                        title="Send prompt to update terminal title"
                                       >
-                                        <path
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                          stroke-width="2"
-                                          d="M6 18L18 6M6 6l12 12"
-                                        />
-                                      </svg>
-                                    </button>
-                                  `
-                                  : ''
-                              }
+                                        <svg
+                                          class="w-4 h-4"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                          />
+                                          <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="1.5"
+                                            d="M12 8l-2 2m4-2l-2 2m4 0l-2 2"
+                                            opacity="0.6"
+                                          />
+                                        </svg>
+                                      </button>
+                                    `
+                                    : ''
+                                }
+                                
+                                <!-- Close button -->
+                                ${
+                                  session.status === 'running' || session.status === 'exited'
+                                    ? html`
+                                      <button
+                                        class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-dark-bg-elevated hover:shadow-sm hover:scale-110"
+                                        @click=${async (e: Event) => {
+                                          e.stopPropagation();
+                                          // Kill the session
+                                          try {
+                                            const endpoint =
+                                              session.status === 'exited'
+                                                ? `/api/sessions/${session.id}/cleanup`
+                                                : `/api/sessions/${session.id}`;
+                                            const response = await fetch(endpoint, {
+                                              method: 'DELETE',
+                                              headers: this.authClient.getAuthHeader(),
+                                            });
+                                            if (response.ok) {
+                                              this.handleSessionKilled({
+                                                detail: { sessionId: session.id },
+                                              } as CustomEvent);
+                                            }
+                                          } catch (error) {
+                                            logger.error('Failed to kill session', error);
+                                          }
+                                        }}
+                                        title="${
+                                          session.status === 'running'
+                                            ? 'Kill session'
+                                            : 'Clean up session'
+                                        }"
+                                      >
+                                        <svg
+                                          class="w-4 h-4"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"
+                                          />
+                                        </svg>
+                                      </button>
+                                    `
+                                    : ''
+                                }
+                              </div>
                             </div>
                           </div>
                         `
