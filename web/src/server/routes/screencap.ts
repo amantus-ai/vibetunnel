@@ -228,6 +228,66 @@ export function createScreencapRoutes(): Router {
     }
   });
 
+  router.post('/screencap/mousedown', requireMacOS, express.json(), async (req, res) => {
+    try {
+      const response = await fetch(`${SCREENCAP_URL}/mousedown`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        res.json(data);
+      } else {
+        res.status(response.status).json({ error: 'Failed to send mouse down' });
+      }
+    } catch (error) {
+      logger.error('Failed to proxy mousedown request:', error);
+      res.status(502).json({ error: 'Cannot reach screencap service' });
+    }
+  });
+
+  router.post('/screencap/mousemove', requireMacOS, express.json(), async (req, res) => {
+    try {
+      const response = await fetch(`${SCREENCAP_URL}/mousemove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        res.json(data);
+      } else {
+        res.status(response.status).json({ error: 'Failed to send mouse move' });
+      }
+    } catch (error) {
+      logger.error('Failed to proxy mousemove request:', error);
+      res.status(502).json({ error: 'Cannot reach screencap service' });
+    }
+  });
+
+  router.post('/screencap/mouseup', requireMacOS, express.json(), async (req, res) => {
+    try {
+      const response = await fetch(`${SCREENCAP_URL}/mouseup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        res.json(data);
+      } else {
+        res.status(response.status).json({ error: 'Failed to send mouse up' });
+      }
+    } catch (error) {
+      logger.error('Failed to proxy mouseup request:', error);
+      res.status(502).json({ error: 'Cannot reach screencap service' });
+    }
+  });
+
   router.post('/screencap/click-window', requireMacOS, express.json(), async (req, res) => {
     try {
       const response = await fetch(`${SCREENCAP_URL}/click-window`, {

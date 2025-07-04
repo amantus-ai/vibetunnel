@@ -141,6 +141,15 @@ public final class ScreencapHTTPServer {
         case ("POST", "/key-window"):
             await handleKeyWindow(body: body, connection: connection)
             
+        case ("POST", "/mousedown"):
+            await handleMouseDown(body: body, connection: connection)
+            
+        case ("POST", "/mousemove"):
+            await handleMouseMove(body: body, connection: connection)
+            
+        case ("POST", "/mouseup"):
+            await handleMouseUp(body: body, connection: connection)
+            
         case ("GET", "/health"):
             await sendJSON(connection: connection, data: ["status": "ok"])
             
@@ -343,6 +352,66 @@ public final class ScreencapHTTPServer {
         // For now, just forward to regular key handler
         // In the future, could focus specific window first
         await handleKey(body: body, connection: connection)
+    }
+    
+    private func handleMouseDown(body: Data?, connection: NWConnection) async {
+        struct MouseRequest: Codable {
+            let x: Double
+            let y: Double
+        }
+        
+        guard let body = body,
+              let request = try? decoder.decode(MouseRequest.self, from: body) else {
+            await sendError(connection: connection, statusCode: 400, message: "Invalid request body")
+            return
+        }
+        
+        do {
+            try await screencapService.sendMouseDown(x: request.x, y: request.y)
+            await sendJSON(connection: connection, data: ["status": "mousedown"])
+        } catch {
+            await sendError(connection: connection, statusCode: 500, message: error.localizedDescription)
+        }
+    }
+    
+    private func handleMouseMove(body: Data?, connection: NWConnection) async {
+        struct MouseRequest: Codable {
+            let x: Double
+            let y: Double
+        }
+        
+        guard let body = body,
+              let request = try? decoder.decode(MouseRequest.self, from: body) else {
+            await sendError(connection: connection, statusCode: 400, message: "Invalid request body")
+            return
+        }
+        
+        do {
+            try await screencapService.sendMouseMove(x: request.x, y: request.y)
+            await sendJSON(connection: connection, data: ["status": "mousemove"])
+        } catch {
+            await sendError(connection: connection, statusCode: 500, message: error.localizedDescription)
+        }
+    }
+    
+    private func handleMouseUp(body: Data?, connection: NWConnection) async {
+        struct MouseRequest: Codable {
+            let x: Double
+            let y: Double
+        }
+        
+        guard let body = body,
+              let request = try? decoder.decode(MouseRequest.self, from: body) else {
+            await sendError(connection: connection, statusCode: 400, message: "Invalid request body")
+            return
+        }
+        
+        do {
+            try await screencapService.sendMouseUp(x: request.x, y: request.y)
+            await sendJSON(connection: connection, data: ["status": "mouseup"])
+        } catch {
+            await sendError(connection: connection, statusCode: 500, message: error.localizedDescription)
+        }
     }
     
     // MARK: - Response Helpers

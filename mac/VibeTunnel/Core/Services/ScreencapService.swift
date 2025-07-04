@@ -198,12 +198,22 @@ public final class ScreencapService: NSObject {
                 captureMode = .allDisplays
                 currentDisplayIndex = -1
                 
-                // Use the method that Federico found works - include all apps
+                logger.info("🖥️ Setting up all displays capture mode")
+                logger.info("  Primary display: size=\(primaryDisplay.width)x\(primaryDisplay.height)")
+                logger.info("  Total displays: \(content.displays.count)")
+                
+                // For all displays, we need a different approach
+                // Based on research, including all applications is the key to capturing across displays
+                logger.info("🔍 Creating content filter for all displays with all applications")
+                
+                // Create filter that includes all applications - this is the workaround that works
                 captureFilter = SCContentFilter(
                     display: primaryDisplay,
                     including: content.applications,
                     exceptingWindows: []
                 )
+                
+                logger.info("✅ Created content filter for all displays capture with \(content.applications.count) applications")
             } else {
                 // Single display capture
                 let displayIndex = index < content.displays.count ? index : 0
@@ -293,7 +303,9 @@ public final class ScreencapService: NSObject {
             var maxX: CGFloat = -CGFloat.greatestFiniteMagnitude
             var maxY: CGFloat = -CGFloat.greatestFiniteMagnitude
             
-            for display in content.displays {
+            logger.info("🖥️ Calculating bounds for \(content.displays.count) displays:")
+            for (index, display) in content.displays.enumerated() {
+                logger.info("  Display \(index): origin=(\(display.frame.origin.x), \(display.frame.origin.y)), size=\(display.frame.width)x\(display.frame.height)")
                 minX = min(minX, display.frame.origin.x)
                 minY = min(minY, display.frame.origin.y)
                 maxX = max(maxX, display.frame.origin.x + display.frame.width)
@@ -303,16 +315,23 @@ public final class ScreencapService: NSObject {
             let totalWidth = maxX - minX
             let totalHeight = maxY - minY
             
+            logger.info("📐 Combined display bounds: origin=(\(minX), \(minY)), size=\(totalWidth)x\(totalHeight)")
+            
             streamConfig.width = Int(totalWidth)
             streamConfig.height = Int(totalHeight)
             
-            // Set the source rect to capture all displays
-            streamConfig.sourceRect = CGRect(x: minX, y: minY, width: totalWidth, height: totalHeight)
+            // IMPORTANT: Set destination rect to ensure proper scaling
+            streamConfig.destinationRect = CGRect(x: 0, y: 0, width: totalWidth, height: totalHeight)
+            
+            // Don't set source rect - let it capture the entire display content
+            logger.info("📐 Stream config: destination rect = (0, 0, \(totalWidth), \(totalHeight))")
         } else if case .window(let window) = captureMode {
             // For window capture, use the window's bounds
-            streamConfig.width = Int(window.frame.width)
-            streamConfig.height = Int(window.frame.height)
-            logger.info("🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height)")
+            // Note: The window frame might need to be scaled for Retina displays
+            let scaleFactor = NSScreen.main?.backingScaleFactor ?? 2.0
+            streamConfig.width = Int(window.frame.width * scaleFactor)
+            streamConfig.height = Int(window.frame.height * scaleFactor)
+            logger.info("🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor))")
         } else {
             streamConfig.width = Int(filter.contentRect.width)
             streamConfig.height = Int(filter.contentRect.height)
@@ -327,8 +346,16 @@ public final class ScreencapService: NSObject {
         // CRITICAL: Set pixel format to get raw frames
         streamConfig.pixelFormat = kCVPixelFormatType_32BGRA
         
-        // No scaling to maintain quality
-        streamConfig.scalesToFit = false
+        // Configure scaling behavior
+        if case .allDisplays = captureMode {
+            // For all displays, we want to capture the full virtual desktop
+            streamConfig.scalesToFit = true
+            streamConfig.preservesAspectRatio = true
+            logger.info("📐 All displays mode: scalesToFit=true, preservesAspectRatio=true")
+        } else {
+            // No scaling for single display/window
+            streamConfig.scalesToFit = false
+        }
         
         // Color space
         streamConfig.colorSpaceName = CGColorSpace.sRGB
@@ -553,6 +580,148 @@ public final class ScreencapService: NSObject {
         logger.info("✅ Click sent successfully")
     }
     
+    /// Send mouse down event at specified coordinates
+    /// - Parameters:
+    ///   - x: X coordinate in 0-1000 normalized range
+    ///   - y: Y coordinate in 0-1000 normalized range
+    func sendMouseDown(x: Double, y: Double) async throws {
+        logger.info("🖱️ Received mouse down at normalized coordinates: (\(x), \(y))")
+        
+        // Calculate pixel coordinates (reuse the conversion logic)
+        let clickLocation = try await calculateClickLocation(x: x, y: y)
+        
+        // Create mouse down event
+        guard let mouseDown = CGEvent(
+            mouseEventSource: nil,
+            mouseType: .leftMouseDown,
+            mouseCursorPosition: clickLocation,
+            mouseButton: .left
+        ) else {
+            throw ScreencapError.failedToCreateEvent
+        }
+        
+        // Post event
+        mouseDown.post(tap: .cghidEventTap)
+        
+        logger.info("✅ Mouse down sent successfully")
+    }
+    
+    /// Send mouse move (drag) event at specified coordinates
+    /// - Parameters:
+    ///   - x: X coordinate in 0-1000 normalized range
+    ///   - y: Y coordinate in 0-1000 normalized range
+    func sendMouseMove(x: Double, y: Double) async throws {
+        // Calculate pixel coordinates
+        let moveLocation = try await calculateClickLocation(x: x, y: y)
+        
+        // Create mouse dragged event
+        guard let mouseDrag = CGEvent(
+            mouseEventSource: nil,
+            mouseType: .leftMouseDragged,
+            mouseCursorPosition: moveLocation,
+            mouseButton: .left
+        ) else {
+            throw ScreencapError.failedToCreateEvent
+        }
+        
+        // Post event
+        mouseDrag.post(tap: .cghidEventTap)
+    }
+    
+    /// Send mouse up event at specified coordinates
+    /// - Parameters:
+    ///   - x: X coordinate in 0-1000 normalized range
+    ///   - y: Y coordinate in 0-1000 normalized range
+    func sendMouseUp(x: Double, y: Double) async throws {
+        logger.info("🖱️ Received mouse up at normalized coordinates: (\(x), \(y))")
+        
+        // Calculate pixel coordinates
+        let clickLocation = try await calculateClickLocation(x: x, y: y)
+        
+        // Create mouse up event
+        guard let mouseUp = CGEvent(
+            mouseEventSource: nil,
+            mouseType: .leftMouseUp,
+            mouseCursorPosition: clickLocation,
+            mouseButton: .left
+        ) else {
+            throw ScreencapError.failedToCreateEvent
+        }
+        
+        // Post event
+        mouseUp.post(tap: .cghidEventTap)
+        
+        logger.info("✅ Mouse up sent successfully")
+    }
+    
+    /// Calculate pixel location from normalized coordinates
+    private func calculateClickLocation(x: Double, y: Double) async throws -> CGPoint {
+        // Get the capture filter to determine actual dimensions
+        guard let filter = captureFilter else {
+            throw ScreencapError.notCapturing
+        }
+        
+        // Convert from 0-1000 normalized coordinates to actual pixel coordinates
+        let normalizedX = x / 1000.0
+        let normalizedY = y / 1000.0
+        
+        var pixelX: Double
+        var pixelY: Double
+        
+        // Calculate pixel coordinates based on capture mode
+        switch captureMode {
+        case .desktop(let displayIndex):
+            // Get SCShareableContent to ensure consistency
+            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            
+            if displayIndex >= 0 && displayIndex < content.displays.count {
+                let display = content.displays[displayIndex]
+                // Convert normalized to pixel coordinates within the display
+                pixelX = display.frame.origin.x + (normalizedX * display.frame.width)
+                pixelY = display.frame.origin.y + (normalizedY * display.frame.height)
+            } else {
+                throw ScreencapError.noDisplay
+            }
+            
+        case .allDisplays:
+            // For all displays, we need to calculate based on the combined bounds
+            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            
+            // Calculate the bounding rectangle
+            var minX: CGFloat = CGFloat.greatestFiniteMagnitude
+            var minY: CGFloat = CGFloat.greatestFiniteMagnitude
+            var maxX: CGFloat = -CGFloat.greatestFiniteMagnitude
+            var maxY: CGFloat = -CGFloat.greatestFiniteMagnitude
+            
+            for display in content.displays {
+                minX = min(minX, display.frame.origin.x)
+                minY = min(minY, display.frame.origin.y)
+                maxX = max(maxX, display.frame.origin.x + display.frame.width)
+                maxY = max(maxY, display.frame.origin.y + display.frame.height)
+            }
+            
+            let totalWidth = maxX - minX
+            let totalHeight = maxY - minY
+            
+            // Convert normalized to pixel coordinates within the combined bounds
+            pixelX = minX + (normalizedX * totalWidth)
+            pixelY = minY + (normalizedY * totalHeight)
+            
+        case .window(let window):
+            // For window capture, use the window's frame
+            pixelX = window.frame.origin.x + (normalizedX * window.frame.width)
+            pixelY = window.frame.origin.y + (normalizedY * window.frame.height)
+            
+        case .application(_):
+            // For application capture, use the filter's content rect
+            pixelX = filter.contentRect.origin.x + (normalizedX * filter.contentRect.width)
+            pixelY = filter.contentRect.origin.y + (normalizedY * filter.contentRect.height)
+        }
+        
+        // CGEvent uses screen coordinates which have top-left origin, same as our pixel coordinates
+        return CGPoint(x: pixelX, y: pixelY)
+    }
+    
     /// Send keyboard input
     func sendKey(key: String, metaKey: Bool = false, ctrlKey: Bool = false, altKey: Bool = false, shiftKey: Bool = false) async throws {
         // Convert key string to key code
@@ -693,12 +862,41 @@ extension ScreencapService: SCStreamOutput {
                 let mediaTypeString = String(format: "0x%08X", mediaType)
                 let mediaSubTypeString = String(format: "0x%08X", mediaSubType)
                 print("Sample buffer - mediaType: \(mediaTypeString), subType: \(mediaSubTypeString), dimensions: \(dimensions.width)x\(dimensions.height)")
+                
+                // Also log if we're in all displays mode to debug the capture
+                Task { @MainActor in
+                    if case .allDisplays = self.captureMode {
+                        self.logger.info("📊 All displays capture - receiving frames: \(dimensions.width)x\(dimensions.height)")
+                    }
+                }
             }
         }
         
         // Check if sample buffer is ready
         if !CMSampleBufferDataIsReady(sampleBuffer) {
             print("Sample buffer data is not ready")
+            return
+        }
+        
+        // Get sample buffer attachments to check frame status
+        guard let attachmentsArray = CMSampleBufferGetSampleAttachmentsArray(
+            sampleBuffer,
+            createIfNecessary: false
+        ) as? [[SCStreamFrameInfo: Any]],
+              let attachments = attachmentsArray.first else {
+            if shouldLog {
+                print("No attachments found in sample buffer")
+            }
+            return
+        }
+        
+        // Check frame status - only process complete frames
+        if let statusRawValue = attachments[SCStreamFrameInfo.status] as? Int,
+           let status = SCFrameStatus(rawValue: statusRawValue),
+           status != .complete {
+            if shouldLog {
+                print("Frame status is not complete: \(status.rawValue)")
+            }
             return
         }
         

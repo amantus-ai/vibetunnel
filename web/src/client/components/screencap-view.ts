@@ -141,6 +141,55 @@ export class ScreencapView extends LitElement {
       background: #141414;
       border-right: 1px solid #2a2a2a;
       overflow-y: auto;
+      transition: width 0.3s ease, opacity 0.3s ease;
+    }
+
+    .sidebar.collapsed {
+      width: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+
+    .sidebar-toggle {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      padding: 0.5rem 0.25rem;
+      background: #262626;
+      border: 1px solid #2a2a2a;
+      border-left: none;
+      border-radius: 0 0.375rem 0.375rem 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sidebar-toggle:hover {
+      background: #2a2a2a;
+      border-color: #10B981;
+    }
+
+    .sidebar-toggle svg {
+      width: 16px;
+      height: 16px;
+      fill: #a3a3a3;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-toggle:hover svg {
+      fill: #10B981;
+    }
+
+    .sidebar-toggle.collapsed {
+      left: 0;
+    }
+
+    .sidebar-toggle.collapsed svg {
+      transform: rotate(180deg);
     }
 
     .sidebar-section {
@@ -380,6 +429,10 @@ export class ScreencapView extends LitElement {
       color: #e4e4e4;
     }
 
+    .capture-area {
+      transition: margin-left 0.3s ease;
+    }
+
     @media (max-width: 768px) {
       .main-content {
         flex-direction: column;
@@ -388,6 +441,10 @@ export class ScreencapView extends LitElement {
       .sidebar {
         width: 100%;
         height: 200px;
+      }
+      
+      .sidebar-toggle {
+        display: none;
       }
     }
   `;
@@ -405,9 +462,11 @@ export class ScreencapView extends LitElement {
   @state() private showStats = false;
   @state() private streamStats: StreamStats | null = null;
   @state() private useWebRTC = true; // Default to WebRTC, fallback to JPEG
+  @state() private sidebarCollapsed = false;
 
   private frameInterval: number | null = null;
   private frameCounter = 0;
+  private readonly SIDEBAR_COLLAPSED_KEY = 'screencap-sidebar-collapsed';
   private lastFpsUpdate = 0;
 
   // WebRTC properties
@@ -421,6 +480,7 @@ export class ScreencapView extends LitElement {
     super.connectedCallback();
     this.loadInitialData();
     this.setupKeyboardHandler();
+    this.loadSidebarState();
   }
 
   disconnectedCallback() {
@@ -428,6 +488,22 @@ export class ScreencapView extends LitElement {
     this.stopCapture();
     this.removeKeyboardHandler();
     this.cleanupWebRTC();
+  }
+
+  private loadSidebarState() {
+    const savedState = localStorage.getItem(this.SIDEBAR_COLLAPSED_KEY);
+    if (savedState !== null) {
+      this.sidebarCollapsed = savedState === 'true';
+    }
+  }
+
+  private saveSidebarState() {
+    localStorage.setItem(this.SIDEBAR_COLLAPSED_KEY, this.sidebarCollapsed.toString());
+  }
+
+  private toggleSidebar() {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
+    this.saveSidebarState();
   }
 
   private async loadInitialData() {
@@ -670,41 +746,132 @@ export class ScreencapView extends LitElement {
     }
   }
 
-  private async handleClick(event: MouseEvent) {
+  private isDragging = false;
+  private dragStartX = 0;
+  private dragStartY = 0;
+
+  private async handleMouseDown(event: MouseEvent) {
     if (!this.isCapturing) return;
 
-    const img = event.target as HTMLImageElement;
-    const rect = img.getBoundingClientRect();
+    // Handle both video and image elements
+    const element = event.target as HTMLElement;
+    const rect = element.getBoundingClientRect();
 
-    // Calculate click position relative to the image element's displayed size
-    const imageClickX = event.clientX - rect.left;
-    const imageClickY = event.clientY - rect.top;
+    // Calculate position relative to the element's displayed size
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
 
-    // Clamp to image bounds to prevent out-of-bounds clicks
-    const clampedX = Math.max(0, Math.min(imageClickX, rect.width));
-    const clampedY = Math.max(0, Math.min(imageClickY, rect.height));
+    // Clamp to bounds to prevent out-of-bounds clicks
+    const clampedX = Math.max(0, Math.min(clickX, rect.width));
+    const clampedY = Math.max(0, Math.min(clickY, rect.height));
 
-    // Convert to normalized coordinates (0.0 to 1.0) within the displayed image
+    // Convert to normalized coordinates (0.0 to 1.0) within the displayed element
     const relativeX = clampedX / rect.width;
     const relativeY = clampedY / rect.height;
 
-    // Send as 0-1000 range for precision (matches original node-sharer implementation)
+    // Store drag start position
+    this.isDragging = true;
+    this.dragStartX = relativeX * 1000;
+    this.dragStartY = relativeY * 1000;
+
+    // Send mouse down event
+    try {
+      await fetch('/api/screencap/mousedown', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ x: this.dragStartX, y: this.dragStartY }),
+      });
+
+      logger.log(
+        `🖱️ Mouse down at: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${this.dragStartX}, ${this.dragStartY})`
+      );
+    } catch (error) {
+      logger.error('Failed to send mouse down:', error);
+    }
+  }
+
+  private async handleMouseMove(event: MouseEvent) {
+    if (!this.isCapturing || !this.isDragging) return;
+
+    const element = event.target as HTMLElement;
+    const rect = element.getBoundingClientRect();
+
+    const moveX = event.clientX - rect.left;
+    const moveY = event.clientY - rect.top;
+
+    const clampedX = Math.max(0, Math.min(moveX, rect.width));
+    const clampedY = Math.max(0, Math.min(moveY, rect.height));
+
+    const relativeX = clampedX / rect.width;
+    const relativeY = clampedY / rect.height;
+
     const x = Math.round(relativeX * 1000);
     const y = Math.round(relativeY * 1000);
 
     try {
-      await fetch('/api/screencap/click', {
+      await fetch('/api/screencap/mousemove', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ x, y }),
       });
-
-      logger.log(
-        `🖱️ Clicked at relative coordinates: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${x}, ${y})`
-      );
     } catch (error) {
-      logger.error('Failed to send click:', error);
+      logger.error('Failed to send mouse move:', error);
     }
+  }
+
+  private async handleMouseUp(event: MouseEvent) {
+    if (!this.isCapturing) return;
+
+    const element = event.target as HTMLElement;
+    const rect = element.getBoundingClientRect();
+
+    const upX = event.clientX - rect.left;
+    const upY = event.clientY - rect.top;
+
+    const clampedX = Math.max(0, Math.min(upX, rect.width));
+    const clampedY = Math.max(0, Math.min(upY, rect.height));
+
+    const relativeX = clampedX / rect.width;
+    const relativeY = clampedY / rect.height;
+
+    const x = Math.round(relativeX * 1000);
+    const y = Math.round(relativeY * 1000);
+
+    try {
+      if (this.isDragging) {
+        // Send mouse up event
+        await fetch('/api/screencap/mouseup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ x, y }),
+        });
+
+        logger.log(
+          `🖱️ Mouse up at: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${x}, ${y})`
+        );
+      } else {
+        // If no drag occurred, treat as a click
+        await fetch('/api/screencap/click', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ x, y }),
+        });
+
+        logger.log(
+          `🖱️ Clicked at: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${x}, ${y})`
+        );
+      }
+    } catch (error) {
+      logger.error('Failed to send mouse event:', error);
+    }
+
+    this.isDragging = false;
+  }
+
+  // Legacy method for backwards compatibility
+  private async handleClick(event: MouseEvent) {
+    // Prevent default click behavior as we're handling it in mouseup
+    event.preventDefault();
   }
 
   private boundHandleKeyDown = this.handleKeyDown.bind(this);
@@ -1012,7 +1179,51 @@ export class ScreencapView extends LitElement {
     try {
       const stats = await this.peerConnection.getStats();
 
+      // Also look for codec info in codec stats
+      let codecInfo: { name: string; implementation: string } | null = null;
+
+      // Log all stats types once for debugging
+      if (this.frameCounter === 1) {
+        const statTypes = new Set<string>();
+        stats.forEach((stat) => {
+          statTypes.add(stat.type);
+        });
+        logger.log('Available WebRTC stat types:', Array.from(statTypes));
+      }
+
       stats.forEach((stat) => {
+        // First check codec stats
+        if (stat.type === 'codec') {
+          const mimeType = stat.mimeType || '';
+          let codecName = 'Unknown';
+
+          // More comprehensive codec detection
+          if (mimeType.includes('H264') || mimeType.includes('h264')) {
+            codecName = 'H.264 (AVC)';
+          } else if (
+            mimeType.includes('H265') ||
+            mimeType.includes('h265') ||
+            mimeType.includes('HEVC') ||
+            mimeType.includes('hevc')
+          ) {
+            codecName = 'H.265 (HEVC)';
+          } else if (mimeType.includes('VP9') || mimeType.includes('vp9')) {
+            codecName = 'VP9';
+          } else if (mimeType.includes('VP8') || mimeType.includes('vp8')) {
+            codecName = 'VP8';
+          } else if (mimeType.includes('AV1') || mimeType.includes('av01')) {
+            codecName = 'AV1';
+          }
+
+          // Store codec info from codec stats
+          if (codecName !== 'Unknown' && !codecInfo) {
+            codecInfo = {
+              name: codecName,
+              implementation: stat.implementation || 'unknown',
+            };
+          }
+        }
+
         if (stat.type === 'inbound-rtp' && stat.mediaType === 'video') {
           const currentTimestamp = Date.now();
           const timeDiff = (currentTimestamp - this.lastStatsTimestamp) / 1000;
@@ -1024,20 +1235,101 @@ export class ScreencapView extends LitElement {
             bitrate = (bytesDiff * 8) / timeDiff; // bits per second
           }
 
-          // Parse codec info
-          const mimeType = stat.mimeType || '';
+          // Try to get codec from RTP stats first, fallback to codec stats
           let codecName = 'Unknown';
+          let codecImplementation = 'unknown';
 
-          if (mimeType.includes('H264')) codecName = 'H.264 (AVC)';
-          else if (mimeType.includes('H265') || mimeType.includes('HEVC'))
-            codecName = 'H.265 (HEVC)';
-          else if (mimeType.includes('VP9')) codecName = 'VP9';
-          else if (mimeType.includes('VP8')) codecName = 'VP8';
-          else if (mimeType.includes('AV1')) codecName = 'AV1';
+          // Check RTP stats for codec info
+          if (stat.codecId) {
+            // If we have a codecId, try to find the corresponding codec stat
+            stats.forEach((codecStat) => {
+              if (codecStat.type === 'codec' && codecStat.id === stat.codecId) {
+                const mimeType = codecStat.mimeType || '';
+                if (mimeType.includes('H264') || mimeType.includes('h264')) {
+                  codecName = 'H.264 (AVC)';
+                } else if (
+                  mimeType.includes('H265') ||
+                  mimeType.includes('h265') ||
+                  mimeType.includes('HEVC') ||
+                  mimeType.includes('hevc')
+                ) {
+                  codecName = 'H.265 (HEVC)';
+                } else if (mimeType.includes('VP9') || mimeType.includes('vp9')) {
+                  codecName = 'VP9';
+                } else if (mimeType.includes('VP8') || mimeType.includes('vp8')) {
+                  codecName = 'VP8';
+                } else if (mimeType.includes('AV1') || mimeType.includes('av01')) {
+                  codecName = 'AV1';
+                }
+                codecImplementation = codecStat.implementation || 'unknown';
+              }
+            });
+          }
+
+          // Fallback to mimeType from RTP stats
+          if (codecName === 'Unknown' && stat.mimeType) {
+            const mimeType = stat.mimeType;
+            if (mimeType.includes('H264') || mimeType.includes('h264')) {
+              codecName = 'H.264 (AVC)';
+            } else if (
+              mimeType.includes('H265') ||
+              mimeType.includes('h265') ||
+              mimeType.includes('HEVC') ||
+              mimeType.includes('hevc')
+            ) {
+              codecName = 'H.265 (HEVC)';
+            } else if (mimeType.includes('VP9') || mimeType.includes('vp9')) {
+              codecName = 'VP9';
+            } else if (mimeType.includes('VP8') || mimeType.includes('vp8')) {
+              codecName = 'VP8';
+            } else if (mimeType.includes('AV1') || mimeType.includes('av01')) {
+              codecName = 'AV1';
+            }
+          }
+
+          // Final fallback to codec info collected earlier
+          if (codecName === 'Unknown' && codecInfo) {
+            codecName = codecInfo.name;
+            codecImplementation = codecInfo.implementation;
+          }
+
+          // Determine implementation type
+          if (stat.decoderImplementation) {
+            codecImplementation = stat.decoderImplementation;
+          }
+
+          // Check if hardware accelerated based on implementation string
+          const implLower = codecImplementation.toLowerCase();
+          if (
+            implLower.includes('hardware') ||
+            implLower.includes('videotoolbox') ||
+            implLower.includes('vaapi') ||
+            implLower.includes('nvdec') ||
+            implLower.includes('qsv') ||
+            implLower.includes('d3d11') ||
+            implLower.includes('dxva')
+          ) {
+            codecImplementation = 'Hardware';
+          } else if (
+            implLower.includes('software') ||
+            implLower.includes('libvpx') ||
+            implLower.includes('ffmpeg') ||
+            implLower.includes('openh264')
+          ) {
+            codecImplementation = 'Software';
+          } else if (implLower === 'unknown') {
+            // On macOS, if using H.264/H.265, it's likely hardware accelerated
+            if (
+              (codecName.includes('H.264') || codecName.includes('H.265')) &&
+              navigator.platform.includes('Mac')
+            ) {
+              codecImplementation = 'Hardware (VideoToolbox)';
+            }
+          }
 
           this.streamStats = {
             codec: codecName,
-            codecImplementation: stat.decoderImplementation || 'unknown',
+            codecImplementation: codecImplementation,
             resolution: `${stat.frameWidth || 0}x${stat.frameHeight || 0}`,
             fps: Math.round(stat.framesPerSecond || 0),
             bitrate: bitrate,
@@ -1051,6 +1343,11 @@ export class ScreencapView extends LitElement {
 
           this.lastBytesReceived = stat.bytesReceived;
           this.lastStatsTimestamp = currentTimestamp;
+
+          // Log codec info for debugging
+          if (codecName !== 'Unknown' && this.frameCounter % 30 === 0) {
+            logger.debug(`Codec: ${codecName} (${codecImplementation})`);
+          }
         }
       });
     } catch (error) {
@@ -1190,7 +1487,17 @@ export class ScreencapView extends LitElement {
       </div>
 
       <div class="main-content">
-        <div class="sidebar">
+        <button
+          class="sidebar-toggle ${this.sidebarCollapsed ? 'collapsed' : ''}"
+          @click=${this.toggleSidebar}
+          title="${this.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}"
+          style="left: ${this.sidebarCollapsed ? '0' : '320px'}"
+        >
+          <svg viewBox="0 0 16 16">
+            <path d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+          </svg>
+        </button>
+        <div class="sidebar ${this.sidebarCollapsed ? 'collapsed' : ''}">
           <div class="sidebar-section">
             <h3>
               <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -1265,7 +1572,7 @@ export class ScreencapView extends LitElement {
           </div>
         </div>
 
-        <div class="capture-area">
+        <div class="capture-area" style="margin-left: ${this.sidebarCollapsed ? '0' : '0'}">
           ${(() => {
             // WebRTC mode - show video element
             if (this.isCapturing && this.useWebRTC) {
@@ -1274,6 +1581,9 @@ export class ScreencapView extends LitElement {
                   class="video-preview"
                   autoplay
                   playsinline
+                  @mousedown=${this.handleMouseDown}
+                  @mousemove=${this.handleMouseMove}
+                  @mouseup=${this.handleMouseUp}
                   @click=${this.handleClick}
                   @loadedmetadata=${(e: Event) => {
                     const video = e.target as HTMLVideoElement;
@@ -1331,6 +1641,9 @@ export class ScreencapView extends LitElement {
                 <img 
                   src="${this.frameUrl}" 
                   class="capture-preview"
+                  @mousedown=${this.handleMouseDown}
+                  @mousemove=${this.handleMouseMove}
+                  @mouseup=${this.handleMouseUp}
                   @click=${this.handleClick}
                   @load=${(e: Event) => {
                     const img = e.target as HTMLImageElement;
