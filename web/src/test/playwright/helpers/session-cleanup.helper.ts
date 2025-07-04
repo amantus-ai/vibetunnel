@@ -135,9 +135,7 @@ export class SessionCleanupHelper {
       }, this.baseUrl);
 
       // Filter exited sessions
-      const toDelete = sessions.filter(
-        (s: SessionInfo) => s.status === 'EXITED' || s.status === 'EXIT' || !s.active
-      );
+      const toDelete = sessions.filter((s: SessionInfo) => s.status === 'exited' || !s.active);
 
       if (toDelete.length === 0) return 0;
 

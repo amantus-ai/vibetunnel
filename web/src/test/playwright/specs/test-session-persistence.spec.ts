@@ -69,6 +69,6 @@ test.describe('Session Persistence Tests', () => {
     await waitForSessionState(page, sessionName, 'exited', { timeout: 15000 });
 
     // Verify it shows as exited
-    await assertSessionInList(page, sessionName, { status: 'EXITED' });
+    await assertSessionInList(page, sessionName, { status: 'exited' });
   });
 });

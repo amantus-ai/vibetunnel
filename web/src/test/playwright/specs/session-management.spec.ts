@@ -104,7 +104,7 @@ test.describe('Session Management', () => {
 
     // Verify session shows as exited
     await waitForSessionState(page, sessionName, 'exited', { timeout: 10000 });
-    await assertSessionInList(page, sessionName, { status: 'EXITED' });
+    await assertSessionInList(page, sessionName, { status: 'exited' });
   });
 
   test('should display session metadata correctly', async ({ page }) => {
@@ -113,7 +113,7 @@ test.describe('Session Management', () => {
     await page.goto('/');
 
     // Verify session card displays correct information
-    await assertSessionInList(page, sessionName, { status: 'RUNNING' });
+    await assertSessionInList(page, sessionName, { status: 'running' });
 
     // Verify session card contains name
     const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);

@@ -421,7 +421,7 @@ export class SessionListPage extends BasePage {
     // Look for the status text in the footer area
     const statusText = await sessionCard.locator('span:has(.w-2.h-2.rounded-full)').textContent();
     // Sessions show "RUNNING" when active, not "active"
-    return statusText?.toUpperCase().includes('RUNNING') || false;
+    return statusText?.toLowerCase() === 'running' || false;
   }
 
   async killSession(sessionName: string) {

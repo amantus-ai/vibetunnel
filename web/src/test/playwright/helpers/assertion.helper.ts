@@ -6,7 +6,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 export async function assertSessionInList(
   page: Page,
   sessionName: string,
-  options: { timeout?: number; status?: 'RUNNING' | 'EXITED' | 'KILLED' } = {}
+  options: { timeout?: number; status?: 'running' | 'exited' } = {}
 ): Promise<void> {
   const { timeout = 5000, status } = options;
 
@@ -83,7 +83,7 @@ export async function assertSessionInList(
       }
 
       // If status is RUNNING but shows "waiting", that's also acceptable
-      if (status === 'RUNNING' && statusText?.toLowerCase().includes('waiting')) {
+      if (status === 'running' && statusText?.toLowerCase().includes('waiting')) {
         return;
       }
 
@@ -108,7 +108,7 @@ export async function assertSessionInList(
           if (
             text &&
             (text.toUpperCase().includes(status) ||
-              (status === 'RUNNING' && text.toLowerCase().includes('waiting')))
+              (status === 'running' && text.toLowerCase().includes('waiting')))
           ) {
             return;
           }
@@ -120,8 +120,8 @@ export async function assertSessionInList(
       // Final fallback: check if the status text exists anywhere in the card
       const cardText = await sessionCard.textContent();
       if (
-        !cardText?.toUpperCase().includes(status) &&
-        !(status === 'RUNNING' && cardText?.toLowerCase().includes('waiting'))
+        !cardText?.toUpperCase().includes(status.toUpperCase()) &&
+        !(status === 'running' && cardText?.toLowerCase().includes('waiting'))
       ) {
         throw new Error(
           `Could not find status "${status}" in session card. Card text: "${cardText}"`

@@ -180,7 +180,7 @@ export class BatchOperations {
   /**
    * Get all sessions with specific status
    */
-  async getSessionsByStatus(status: 'RUNNING' | 'EXITED' | 'all' = 'all'): Promise<SessionInfo[]> {
+  async getSessionsByStatus(status: 'running' | 'exited' | 'all' = 'all'): Promise<SessionInfo[]> {
     try {
       const sessions = await this.page.evaluate(async (url) => {
         const response = await fetch(`${url}/api/sessions`);

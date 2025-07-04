@@ -54,9 +54,12 @@ test.describe('Session Creation', () => {
     // Create tracked session
     const { sessionName } = await sessionManager.createTrackedSession();
 
+    // Wait a moment for session to fully initialize
+    await page.waitForTimeout(1000);
+
     // Navigate back and verify
     await page.goto('/');
-    await assertSessionInList(page, sessionName, { status: 'RUNNING' });
+    await assertSessionInList(page, sessionName, { status: 'running' });
   });
 
   test('should handle multiple session creation', async ({ page }) => {
