@@ -9,7 +9,7 @@ extension NSStatusBarButton {
         super.mouseDown(with: event)
         self.highlight(true)
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) {
-            self.highlight(AppDelegate.shared.statusBarController?.menuManager.customWindow?.isWindowVisible ?? false)
+            self.highlight(AppDelegate.shared?.statusBarController?.menuManager.customWindow?.isWindowVisible ?? false)
         }
     }
 }
