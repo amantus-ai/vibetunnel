@@ -7,10 +7,25 @@ import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('terminal-manager');
 
+// Flow control configuration
+const FLOW_CONTROL_CONFIG = {
+  // When buffer exceeds this percentage of max lines, pause reading
+  highWatermark: 0.8,
+  // Resume reading when buffer drops below this percentage
+  lowWatermark: 0.5,
+  // Check interval for resuming paused sessions
+  checkInterval: 100, // ms
+  // Maximum pending lines to accumulate while paused
+  maxPendingLines: 10000,
+};
+
 interface SessionTerminal {
   terminal: XtermTerminal;
   watcher?: fs.FSWatcher;
   lastUpdate: number;
+  isPaused?: boolean;
+  pendingLines?: string[];
+  lastProcessedOffset?: number;
 }
 
 type BufferChangeListener = (sessionId: string, snapshot: BufferSnapshot) => void;
@@ -47,6 +62,7 @@ export class TerminalManager {
     },
   });
   private originalConsoleWarn: typeof console.warn;
+  private flowControlTimer?: NodeJS.Timeout;
 
   constructor(controlDir: string) {
     this.controlDir = controlDir;
@@ -66,6 +82,9 @@ export class TerminalManager {
       }
       this.originalConsoleWarn.apply(console, args);
     };
+
+    // Start flow control check timer
+    this.startFlowControlTimer();
   }
 
   /**
@@ -175,9 +194,105 @@ export class TerminalManager {
   }
 
   /**
+   * Start flow control timer to check paused sessions
+   */
+  private startFlowControlTimer(): void {
+    this.flowControlTimer = setInterval(() => {
+      for (const [sessionId, sessionTerminal] of this.terminals) {
+        if (sessionTerminal.isPaused) {
+          this.checkBufferPressure(sessionId);
+        }
+      }
+    }, FLOW_CONTROL_CONFIG.checkInterval);
+  }
+
+  /**
+   * Check buffer pressure and pause/resume as needed
+   */
+  private checkBufferPressure(sessionId: string): boolean {
+    const sessionTerminal = this.terminals.get(sessionId);
+    if (!sessionTerminal) return false;
+
+    const terminal = sessionTerminal.terminal;
+    const buffer = terminal.buffer.active;
+    const maxLines = terminal.options.scrollback || 10000;
+    const currentLines = buffer.length;
+    const bufferUtilization = currentLines / maxLines;
+
+    const wasPaused = sessionTerminal.isPaused || false;
+
+    // Check if we should pause
+    if (!wasPaused && bufferUtilization > FLOW_CONTROL_CONFIG.highWatermark) {
+      sessionTerminal.isPaused = true;
+      sessionTerminal.pendingLines = [];
+      logger.warn(
+        chalk.yellow(
+          `Buffer pressure high for session ${sessionId}: ${Math.round(bufferUtilization * 100)}% ` +
+            `(${currentLines}/${maxLines} lines). Pausing file processing.`
+        )
+      );
+      return true;
+    }
+
+    // Check if we should resume
+    if (wasPaused && bufferUtilization < FLOW_CONTROL_CONFIG.lowWatermark) {
+      sessionTerminal.isPaused = false;
+      logger.log(
+        chalk.green(
+          `Buffer pressure normalized for session ${sessionId}: ${Math.round(bufferUtilization * 100)}% ` +
+            `(${currentLines}/${maxLines} lines). Resuming file processing.`
+        )
+      );
+
+      // Process any pending lines
+      if (sessionTerminal.pendingLines && sessionTerminal.pendingLines.length > 0) {
+        const pendingCount = sessionTerminal.pendingLines.length;
+        logger.debug(`Processing ${pendingCount} pending lines for session ${sessionId}`);
+
+        for (const pendingLine of sessionTerminal.pendingLines) {
+          this.processStreamLine(sessionId, sessionTerminal, pendingLine);
+        }
+        sessionTerminal.pendingLines = [];
+      }
+      return false;
+    }
+
+    return wasPaused;
+  }
+
+  /**
    * Handle stream line
    */
   private handleStreamLine(sessionId: string, sessionTerminal: SessionTerminal, line: string) {
+    // Check buffer pressure before processing
+    const isPaused = this.checkBufferPressure(sessionId);
+
+    if (isPaused) {
+      // Queue the line for later processing
+      if (!sessionTerminal.pendingLines) {
+        sessionTerminal.pendingLines = [];
+      }
+
+      // Limit pending lines to prevent memory issues
+      if (sessionTerminal.pendingLines.length < FLOW_CONTROL_CONFIG.maxPendingLines) {
+        sessionTerminal.pendingLines.push(line);
+      } else {
+        logger.warn(
+          chalk.red(
+            `Pending lines limit reached for session ${sessionId}. Dropping new data to prevent memory overflow.`
+          )
+        );
+      }
+      return;
+    }
+
+    this.processStreamLine(sessionId, sessionTerminal, line);
+  }
+
+  /**
+   * Process a stream line (separated from handleStreamLine for flow control)
+   */
+  private processStreamLine(sessionId: string, sessionTerminal: SessionTerminal, line: string) {
     try {
       const data = JSON.parse(line);
 
@@ -246,7 +361,11 @@ export class TerminalManager {
   async getBufferStats(sessionId: string) {
     const terminal = await this.getTerminal(sessionId);
     const buffer = terminal.buffer.active;
+    const sessionTerminal = this.terminals.get(sessionId);
     logger.debug(`Getting buffer stats for session ${sessionId}: ${buffer.length} total rows`);
+
+    const maxLines = terminal.options.scrollback || 10000;
+    const bufferUtilization = buffer.length / maxLines;
 
     return {
       totalRows: buffer.length,
@@ -256,6 +375,11 @@ export class TerminalManager {
       cursorX: buffer.cursorX,
       cursorY: buffer.cursorY,
       scrollback: terminal.options.scrollback || 0,
+      // Flow control metrics
+      isPaused: sessionTerminal?.isPaused || false,
+      pendingLines: sessionTerminal?.pendingLines?.length || 0,
+      bufferUtilization: Math.round(bufferUtilization * 100),
+      maxBufferLines: maxLines,
     };
   }
 
@@ -839,6 +963,12 @@ export class TerminalManager {
 
     // Clear write queues
     this.writeQueues.clear();
+
+    // Clear flow control timer
+    if (this.flowControlTimer) {
+      clearInterval(this.flowControlTimer);
+      this.flowControlTimer = undefined;
+    }
 
     // Restore original console.warn
     console.warn = this.originalConsoleWarn;
