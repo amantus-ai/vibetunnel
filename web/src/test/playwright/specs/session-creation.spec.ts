@@ -54,11 +54,34 @@ test.describe('Session Creation', () => {
     // Create tracked session
     const { sessionName } = await sessionManager.createTrackedSession();
 
-    // Wait a moment for session to fully initialize
-    await page.waitForTimeout(1000);
-
-    // Navigate back and verify
+    // Navigate back to session list
     await page.goto('/');
+
+    // Wait for session list to be ready
+    await page.waitForLoadState('networkidle');
+
+    // Poll for the session to appear in the list with proper status
+    // This is more robust than a fixed timeout, especially for CI
+    await page.waitForFunction(
+      ({ expectedName }) => {
+        const cards = document.querySelectorAll('session-card');
+        for (const card of cards) {
+          const nameElement = card.querySelector('.font-medium');
+          if (nameElement?.textContent?.includes(expectedName)) {
+            // Check if status is running
+            const statusSpan = card.querySelector('span[data-status]');
+            const status = statusSpan?.getAttribute('data-status');
+            // Session might start as 'starting' and transition to 'running'
+            return status === 'running' || status === 'starting';
+          }
+        }
+        return false;
+      },
+      { expectedName: sessionName },
+      { timeout: 10000, polling: 'mutation' }
+    );
+
+    // Now do the actual assertion - by this point the session should be visible
     await assertSessionInList(page, sessionName, { status: 'running' });
   });
 
@@ -86,7 +109,7 @@ test.describe('Session Creation', () => {
 
       // Fill session details
       await page.fill('input[placeholder="My Session"]', sessionName);
-      await page.fill('input[placeholder="zsh, bash, etc."]', 'bash');
+      await page.fill('input[placeholder="zsh"]', 'bash');
 
       // Make sure spawn window is off
       const spawnToggle = page.locator('input[type="checkbox"]').first();
