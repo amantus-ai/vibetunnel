@@ -78,7 +78,7 @@ test.describe('Session Creation', () => {
         return false;
       },
       { expectedName: sessionName },
-      { timeout: 10000, polling: 'mutation' }
+      { timeout: 10000, polling: 'raf' }
     );
 
     // Now do the actual assertion - by this point the session should be visible
@@ -112,10 +112,18 @@ test.describe('Session Creation', () => {
       await page.fill('input[placeholder="zsh"]', 'bash');
 
       // Make sure spawn window is off
-      const spawnToggle = page.locator('input[type="checkbox"]').first();
-      const isChecked = await spawnToggle.isChecked();
+      const spawnToggle = page.locator('button[role="switch"]').first();
+      const isChecked = (await spawnToggle.getAttribute('aria-checked')) === 'true';
       if (isChecked) {
         await spawnToggle.click();
+        // Wait for toggle state to update
+        await page.waitForFunction(
+          () => {
+            const toggle = document.querySelector('button[role="switch"]');
+            return toggle?.getAttribute('aria-checked') === 'false';
+          },
+          { timeout: 1000 }
+        );
       }
 
       // Create session
