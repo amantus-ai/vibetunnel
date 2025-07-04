@@ -130,7 +130,9 @@ export class ScreencapApiClient {
 
       logger.log(`📤 Sending WebSocket message:`, request);
       if (this.ws) {
-        logger.log(`WebSocket state: ${this.ws.readyState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
+        logger.log(
+          `WebSocket state: ${this.ws.readyState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`
+        );
         this.ws.send(JSON.stringify(request));
       } else {
         logger.error('WebSocket is null!');

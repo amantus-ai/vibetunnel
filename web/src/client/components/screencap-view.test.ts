@@ -363,7 +363,7 @@ describe('ScreencapView', () => {
       // Check that windows are displayed
       expect(allText.some((text) => text?.includes('Test Window 1'))).toBeTruthy();
       expect(allText.some((text) => text?.includes('Test Window 2'))).toBeTruthy();
-      
+
       // Process names are now in process headers, not window items
       const processHeaders = element.shadowRoot?.querySelectorAll('.process-header');
       const processText = Array.from(processHeaders || []).map((el) => el.textContent);

@@ -121,7 +121,9 @@ export class ScreencapSignalHandler {
 
     // Remove from browser peers if it was there
     this.browserPeers.delete(ws);
-    logger.log(`Removed Mac peer from browser peers, remaining browser peers: ${this.browserPeers.size}`);
+    logger.log(
+      `Removed Mac peer from browser peers, remaining browser peers: ${this.browserPeers.size}`
+    );
 
     // Store Mac peer
     this.macPeer = {
@@ -251,7 +253,9 @@ export class ScreencapSignalHandler {
 
   private handleApiRequest(ws: WebSocket, message: SignalMessage) {
     logger.log(`API request received: ${message.method} ${message.endpoint}`);
-    logger.log(`Browser peers: ${this.browserPeers.size}, Mac peer: ${this.macPeer ? 'connected' : 'not connected'}`);
+    logger.log(
+      `Browser peers: ${this.browserPeers.size}, Mac peer: ${this.macPeer ? 'connected' : 'not connected'}`
+    );
 
     // Only browser peers can make API requests
     if (!this.browserPeers.has(ws)) {
