@@ -10,13 +10,23 @@ const logger = createLogger('terminal-manager');
 // Flow control configuration
 const FLOW_CONTROL_CONFIG = {
   // When buffer exceeds this percentage of max lines, pause reading
+  // 80% gives a good buffer before hitting the scrollback limit
   highWatermark: 0.8,
   // Resume reading when buffer drops below this percentage
+  // 50% ensures enough space is cleared before resuming
   lowWatermark: 0.5,
   // Check interval for resuming paused sessions
+  // 100ms provides responsive resumption without excessive CPU usage
   checkInterval: 100, // ms
   // Maximum pending lines to accumulate while paused
+  // 10K lines handles bursts without excessive memory (avg ~1MB at 100 chars/line)
   maxPendingLines: 10000,
+  // Maximum time a session can be paused before timing out
+  // 5 minutes handles temporary client issues without indefinite memory growth
+  maxPauseTime: 5 * 60 * 1000, // 5 minutes
+  // Lines to process between buffer pressure checks
+  // Checking every 100 lines balances performance with responsiveness
+  bufferCheckInterval: 100,
 };
 
 interface SessionTerminal {
@@ -25,7 +35,11 @@ interface SessionTerminal {
   lastUpdate: number;
   isPaused?: boolean;
   pendingLines?: string[];
-  lastProcessedOffset?: number;
+  pausedAt?: number;
+  linesProcessedSinceCheck?: number;
+  isProcessingPending?: boolean;
+  lastFileOffset?: number;
+  lineBuffer?: string;
 }
 
 type BufferChangeListener = (sessionId: string, snapshot: BufferSnapshot) => void;
@@ -129,8 +143,8 @@ export class TerminalManager {
     if (!sessionTerminal) return;
 
     const streamPath = path.join(this.controlDir, sessionId, 'stdout');
-    let lastOffset = 0;
-    let lineBuffer = '';
+    let lastOffset = sessionTerminal.lastFileOffset || 0;
+    let lineBuffer = sessionTerminal.lineBuffer || '';
 
     // Check if the file exists
     if (!fs.existsSync(streamPath)) {
@@ -165,6 +179,7 @@ export class TerminalManager {
 
               // Update offset
               lastOffset = stats.size;
+              sessionTerminal.lastFileOffset = lastOffset;
 
               // Process new data
               const newData = buffer.toString('utf8');
@@ -173,6 +188,7 @@ export class TerminalManager {
               // Process complete lines
               const lines = lineBuffer.split('\n');
               lineBuffer = lines.pop() || ''; // Keep incomplete line for next time
+              sessionTerminal.lineBuffer = lineBuffer;
 
               for (const line of lines) {
                 if (line.trim()) {
@@ -197,11 +213,54 @@ export class TerminalManager {
    * Start flow control timer to check paused sessions
    */
   private startFlowControlTimer(): void {
+    let checkIndex = 0;
+    const sessionIds: string[] = [];
+
     this.flowControlTimer = setInterval(() => {
-      for (const [sessionId, sessionTerminal] of this.terminals) {
-        if (sessionTerminal.isPaused) {
-          this.checkBufferPressure(sessionId);
+      // Rebuild session list periodically
+      if (checkIndex === 0) {
+        sessionIds.length = 0;
+        for (const [sessionId, sessionTerminal] of this.terminals) {
+          if (sessionTerminal.isPaused) {
+            sessionIds.push(sessionId);
+          }
         }
+      }
+
+      // Process one session per tick to avoid thundering herd
+      if (sessionIds.length > 0) {
+        const sessionId = sessionIds[checkIndex % sessionIds.length];
+        const sessionTerminal = this.terminals.get(sessionId);
+
+        if (sessionTerminal?.isPaused) {
+          // Check for timeout
+          if (
+            sessionTerminal.pausedAt &&
+            Date.now() - sessionTerminal.pausedAt > FLOW_CONTROL_CONFIG.maxPauseTime
+          ) {
+            logger.warn(
+              chalk.red(
+                `Session ${sessionId} has been paused for too long. ` +
+                  `Dropping ${sessionTerminal.pendingLines?.length || 0} pending lines.`
+              )
+            );
+            sessionTerminal.isPaused = false;
+            sessionTerminal.pendingLines = [];
+            sessionTerminal.pausedAt = undefined;
+
+            // Resume file watching after timeout
+            this.resumeFileWatcher(sessionId).catch((error) => {
+              logger.error(
+                `Failed to resume file watcher for session ${sessionId} after timeout:`,
+                error
+              );
+            });
+          } else {
+            this.checkBufferPressure(sessionId);
+          }
+        }
+
+        checkIndex = (checkIndex + 1) % Math.max(sessionIds.length, 1);
       }
     }, FLOW_CONTROL_CONFIG.checkInterval);
   }
@@ -225,10 +284,18 @@ export class TerminalManager {
     if (!wasPaused && bufferUtilization > FLOW_CONTROL_CONFIG.highWatermark) {
       sessionTerminal.isPaused = true;
       sessionTerminal.pendingLines = [];
+      sessionTerminal.pausedAt = Date.now();
+
+      // Apply backpressure by closing the file watcher
+      if (sessionTerminal.watcher) {
+        sessionTerminal.watcher.close();
+        sessionTerminal.watcher = undefined;
+      }
+
       logger.warn(
         chalk.yellow(
           `Buffer pressure high for session ${sessionId}: ${Math.round(bufferUtilization * 100)}% ` +
-            `(${currentLines}/${maxLines} lines). Pausing file processing.`
+            `(${currentLines}/${maxLines} lines). Pausing file watcher.`
         )
       );
       return true;
@@ -236,23 +303,55 @@ export class TerminalManager {
 
     // Check if we should resume
     if (wasPaused && bufferUtilization < FLOW_CONTROL_CONFIG.lowWatermark) {
-      sessionTerminal.isPaused = false;
-      logger.log(
-        chalk.green(
-          `Buffer pressure normalized for session ${sessionId}: ${Math.round(bufferUtilization * 100)}% ` +
-            `(${currentLines}/${maxLines} lines). Resuming file processing.`
-        )
-      );
+      // Avoid race condition: mark as processing pending before resuming
+      if (
+        sessionTerminal.pendingLines &&
+        sessionTerminal.pendingLines.length > 0 &&
+        !sessionTerminal.isProcessingPending
+      ) {
+        sessionTerminal.isProcessingPending = true;
 
-      // Process any pending lines
-      if (sessionTerminal.pendingLines && sessionTerminal.pendingLines.length > 0) {
         const pendingCount = sessionTerminal.pendingLines.length;
-        logger.debug(`Processing ${pendingCount} pending lines for session ${sessionId}`);
+        logger.log(
+          chalk.green(
+            `Buffer pressure normalized for session ${sessionId}: ${Math.round(bufferUtilization * 100)}% ` +
+              `(${currentLines}/${maxLines} lines). Processing ${pendingCount} pending lines.`
+          )
+        );
 
-        for (const pendingLine of sessionTerminal.pendingLines) {
-          this.processStreamLine(sessionId, sessionTerminal, pendingLine);
-        }
-        sessionTerminal.pendingLines = [];
+        // Process pending lines asynchronously to avoid blocking
+        setImmediate(() => {
+          const lines = sessionTerminal.pendingLines || [];
+          sessionTerminal.pendingLines = [];
+          sessionTerminal.isPaused = false;
+          sessionTerminal.pausedAt = undefined;
+          sessionTerminal.isProcessingPending = false;
+
+          for (const pendingLine of lines) {
+            this.processStreamLine(sessionId, sessionTerminal, pendingLine);
+          }
+
+          // Resume file watching after processing pending lines
+          this.resumeFileWatcher(sessionId).catch((error) => {
+            logger.error(`Failed to resume file watcher for session ${sessionId}:`, error);
+          });
+        });
+      } else if (!sessionTerminal.pendingLines || sessionTerminal.pendingLines.length === 0) {
+        // No pending lines, just resume
+        sessionTerminal.isPaused = false;
+        sessionTerminal.pausedAt = undefined;
+
+        // Resume file watching
+        this.resumeFileWatcher(sessionId).catch((error) => {
+          logger.error(`Failed to resume file watcher for session ${sessionId}:`, error);
+        });
+
+        logger.log(
+          chalk.green(
+            `Buffer pressure normalized for session ${sessionId}: ${Math.round(bufferUtilization * 100)}% ` +
+              `(${currentLines}/${maxLines} lines). Resuming file watcher.`
+          )
+        );
       }
       return false;
     }
@@ -264,8 +363,20 @@ export class TerminalManager {
    * Handle stream line
    */
   private handleStreamLine(sessionId: string, sessionTerminal: SessionTerminal, line: string) {
-    // Check buffer pressure before processing
-    const isPaused = this.checkBufferPressure(sessionId);
+    // Initialize line counter if needed
+    if (sessionTerminal.linesProcessedSinceCheck === undefined) {
+      sessionTerminal.linesProcessedSinceCheck = 0;
+    }
+
+    // Check buffer pressure periodically or if already paused
+    let isPaused = sessionTerminal.isPaused || false;
+    if (
+      !isPaused &&
+      sessionTerminal.linesProcessedSinceCheck >= FLOW_CONTROL_CONFIG.bufferCheckInterval
+    ) {
+      isPaused = this.checkBufferPressure(sessionId);
+      sessionTerminal.linesProcessedSinceCheck = 0;
+    }
 
     if (isPaused) {
       // Queue the line for later processing
@@ -286,6 +397,7 @@ export class TerminalManager {
       return;
     }
 
+    sessionTerminal.linesProcessedSinceCheck++;
     this.processStreamLine(sessionId, sessionTerminal, line);
   }
 
@@ -938,6 +1050,18 @@ export class TerminalManager {
     } catch (error) {
       logger.error(`Error getting buffer snapshot for notification ${sessionId}:`, error);
     }
+  }
+
+  /**
+   * Resume file watching for a paused session
+   */
+  private async resumeFileWatcher(sessionId: string): Promise<void> {
+    const sessionTerminal = this.terminals.get(sessionId);
+    if (!sessionTerminal || sessionTerminal.watcher) {
+      return; // Already watching or session doesn't exist
+    }
+
+    await this.watchStreamFile(sessionId);
   }
 
   /**
