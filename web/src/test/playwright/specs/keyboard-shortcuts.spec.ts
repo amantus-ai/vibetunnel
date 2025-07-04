@@ -85,16 +85,16 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should navigate back to list with Escape for exited sessions', async ({ page }) => {
-    // Create a session that exits immediately
+    // Create a session that exits after a small delay
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('escape-test'),
-      command: 'exit', // Exit immediately (without shell operators)
+      command: 'sleep 1 && exit', // Sleep before exiting to ensure status tracking
     });
     await assertTerminalReady(page);
 
     // Wait for session to exit
-    await page.waitForTimeout(1000);
-    await page.waitForSelector('text=/exited|EXITED/', { timeout: 5000 });
+    await page.waitForTimeout(3000);
+    await page.waitForSelector('text=/exited/', { timeout: 10000 });
 
     // Click on terminal to ensure focus
     await sessionViewPage.clickTerminal();

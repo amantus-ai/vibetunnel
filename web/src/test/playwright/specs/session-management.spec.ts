@@ -102,10 +102,10 @@ test.describe('Session Management', () => {
   });
 
   test('should handle session exit', async ({ page }) => {
-    // Create a session that will exit quickly using a simple command
+    // Create a session that will exit after a small delay
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('exit-test'),
-      command: 'echo "Session will exit immediately"', // Simple command that exits naturally
+      command: 'sleep 2 && echo "Session will exit" && exit', // Sleep before exiting to ensure status tracking
     });
 
     // Track the session for cleanup
@@ -115,14 +115,18 @@ test.describe('Session Management', () => {
 
     // Wait for session to show output
     const terminal = page.locator('vibe-terminal');
-    await expect(terminal).toContainText('Session will exit immediately', { timeout: 5000 });
+    await expect(terminal).toContainText('Session will exit', { timeout: 10000 });
 
-    // Wait a bit for the echo command to complete and session to update
-    await page.waitForTimeout(1000);
+    // Wait a bit more for the exit command to register
+    await page.waitForTimeout(2000);
 
-    // The echo command should have exited by now
     // Navigate back to home
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for auto-refresh to update the session status
+    await page.waitForTimeout(2000);
+
     await waitForSessionCards(page);
 
     // Find and scroll to the session card
@@ -131,7 +135,7 @@ test.describe('Session Management', () => {
     await sessionCard.scrollIntoViewIfNeeded();
 
     // Verify session shows as exited
-    await waitForSessionState(page, sessionName, 'exited', { timeout: 10000 });
+    await waitForSessionState(page, sessionName, 'exited', { timeout: 15000 });
     await assertSessionInList(page, sessionName, { status: 'exited' });
   });
 

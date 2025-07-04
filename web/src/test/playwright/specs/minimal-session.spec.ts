@@ -44,6 +44,12 @@ test.describe('Minimal Session Tests', () => {
 
       // Navigate back to home after each creation
       await page.goto('/');
+      await page.waitForLoadState('networkidle');
+
+      // Wait for auto-refresh to update the list (happens every 1 second)
+      await page.waitForTimeout(2000);
+
+      // Wait for session cards to be visible
       await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
       // Add a small delay between creations to avoid race conditions

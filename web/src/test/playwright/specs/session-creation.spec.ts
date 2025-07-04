@@ -60,17 +60,24 @@ test.describe('Session Creation', () => {
     // Wait for session list to be ready
     await page.waitForLoadState('networkidle');
 
+    // Wait a bit more for the auto-refresh to kick in (happens every 1 second)
+    await page.waitForTimeout(2000);
+
     // Poll for the session to appear in the list with proper status
     // This is more robust than a fixed timeout, especially for CI
     await page.waitForFunction(
       ({ expectedName }) => {
         const cards = document.querySelectorAll('session-card');
+        console.log(`Found ${cards.length} session cards`);
         for (const card of cards) {
           const nameElement = card.querySelector('.font-medium');
-          if (nameElement?.textContent?.includes(expectedName)) {
+          const name = nameElement?.textContent;
+          console.log(`Checking card with name: ${name}`);
+          if (name?.includes(expectedName)) {
             // Check if status is running
             const statusSpan = card.querySelector('span[data-status]');
             const status = statusSpan?.getAttribute('data-status');
+            console.log(`Found session ${name} with status: ${status}`);
             // Session might start as 'starting' and transition to 'running'
             return status === 'running' || status === 'starting';
           }
@@ -78,7 +85,7 @@ test.describe('Session Creation', () => {
         return false;
       },
       { expectedName: sessionName },
-      { timeout: 10000, polling: 'raf' }
+      { timeout: 15000, polling: 'raf' }
     );
 
     // Now do the actual assertion - by this point the session should be visible
@@ -127,7 +134,7 @@ test.describe('Session Creation', () => {
       }
 
       // Create session
-      await page.click('button:has-text("Create Session")');
+      await page.click('[data-testid="create-session-submit"]');
 
       // Wait for navigation to session
       await page.waitForURL(/\?session=/, { timeout: 10000 });

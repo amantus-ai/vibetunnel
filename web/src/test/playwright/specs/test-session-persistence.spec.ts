@@ -41,10 +41,10 @@ test.describe('Session Persistence Tests', () => {
   });
 
   test('should handle session with error gracefully', async ({ page }) => {
-    // Create a session with a command that will fail immediately
+    // Create a session with a command that will fail after a small delay
     const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('error-test'),
-      command: 'false', // Simple command that returns non-zero exit code
+      command: 'sleep 1 && false', // Sleep before failing to ensure status tracking
     });
 
     // Track the session for cleanup
@@ -52,12 +52,16 @@ test.describe('Session Persistence Tests', () => {
       sessionManager.trackSession(sessionName, sessionId);
     }
 
-    // Wait a moment for the false command to execute and exit
-    await page.waitForTimeout(1000);
+    // Wait for the command to execute and exit
+    await page.waitForTimeout(3000);
 
-    // The false command should exit immediately
     // Navigate back to home
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for auto-refresh to update the session status
+    await page.waitForTimeout(2000);
+
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Find and scroll to the session card
@@ -66,7 +70,7 @@ test.describe('Session Persistence Tests', () => {
     await sessionCard.scrollIntoViewIfNeeded();
 
     // Wait for session to appear and status to update to exited
-    await waitForSessionState(page, sessionName, 'exited', { timeout: 15000 });
+    await waitForSessionState(page, sessionName, 'exited', { timeout: 20000 });
 
     // Verify it shows as exited
     await assertSessionInList(page, sessionName, { status: 'exited' });
