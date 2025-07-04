@@ -635,6 +635,21 @@ final class WebRTCManager: NSObject {
         logger.info("  📋 Request session ID: \(sessionId ?? "nil")")
         logger.info("  📋 Current active session: \(self.activeSessionId ?? "nil")")
 
+        // For capture operations, update the session ID first before validation
+        if (endpoint == "/capture" || endpoint == "/capture-window") && sessionId != nil {
+            let previousSession = self.activeSessionId
+            if previousSession != sessionId {
+                logger.info("""
+                🔄 [SECURITY] Session update for \(endpoint) (pre-validation)
+                  Previous session: \(previousSession ?? "nil")
+                  New session: \(sessionId!)
+                """)
+            }
+            activeSessionId = sessionId
+            sessionStartTime = Date()
+            logger.info("🔐 [SECURITY] Session pre-activated for \(endpoint): \(sessionId!)")
+        }
+
         // Validate session only for control operations
         if isControlOperation(method: method, endpoint: endpoint) {
             logger.info("🔐 Validating session for control operation: \(method) \(endpoint)")
@@ -742,23 +757,8 @@ final class WebRTCManager: NSObject {
             }
             let useWebRTC = params["webrtc"] as? Bool ?? false
 
-            // Always update session ID when starting a new capture
-            // This allows switching between displays/windows with new sessions
-            if let sessionId {
-                let previousSession = self.activeSessionId
-                if previousSession != sessionId {
-                    logger.info("""
-                    🔄 [SECURITY] Session update for /capture
-                      Capture type: \(type), index: \(index)
-                      Previous session: \(previousSession ?? "nil")
-                      New session: \(sessionId)
-                      Time since last session: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?.description ?? "N/A") seconds
-                    """)
-                }
-                activeSessionId = sessionId
-                sessionStartTime = Date()
-                logger.info("🔐 [SECURITY] Session activated for /capture: \(sessionId) (type: \(type), index: \(index))")
-            } else {
+            // Session is already updated in handleApiRequest for capture operations
+            if sessionId == nil {
                 logger.warning("⚠️ No session ID provided for /capture request!")
             }
 
@@ -773,23 +773,8 @@ final class WebRTCManager: NSObject {
             }
             let useWebRTC = params["webrtc"] as? Bool ?? false
 
-            // Always update session ID when starting a new capture
-            // This allows switching between displays/windows with new sessions
-            if let sessionId {
-                let previousSession = self.activeSessionId
-                if previousSession != sessionId {
-                    logger.info("""
-                    🔄 [SECURITY] Session update for /capture-window
-                      Window ID: \(cgWindowID)
-                      Previous session: \(previousSession ?? "nil")
-                      New session: \(sessionId)
-                      Time since last session: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?.description ?? "N/A") seconds
-                    """)
-                }
-                activeSessionId = sessionId
-                sessionStartTime = Date()
-                logger.info("🔐 [SECURITY] Session activated for /capture-window: \(sessionId) (windowID: \(cgWindowID))")
-            } else {
+            // Session is already updated in handleApiRequest for capture operations
+            if sessionId == nil {
                 logger.warning("⚠️ No session ID provided for /capture-window request!")
             }
 
