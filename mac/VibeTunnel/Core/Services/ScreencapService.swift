@@ -245,21 +245,13 @@ public final class ScreencapService: NSObject {
                 throw ScreencapError.noDisplay
             }
             
-            // Create filter that includes the owning application and the specific window
-            if let app = window.owningApplication {
-                logger.info("📱 Window owned by app: '\(app.applicationName)'")
-                captureFilter = SCContentFilter(
-                    display: display,
-                    including: [app],
-                    exceptingWindows: content.windows.filter { $0.windowID != window.windowID }
-                )
-            } else {
-                // Fallback to just the window
-                captureFilter = SCContentFilter(
-                    display: display,
-                    including: [window]
-                )
-            }
+            // Create filter for single window - use a simpler approach
+            logger.info("📱 Creating filter for window on display")
+            
+            // Create a filter with just the single window
+            captureFilter = SCContentFilter(
+                desktopIndependentWindow: window
+            )
             
         case "application":
             guard index < content.applications.count else {
@@ -528,14 +520,10 @@ public final class ScreencapService: NSObject {
             pixelY = filter.contentRect.origin.y + (normalizedY * filter.contentRect.height)
         }
         
-        // Convert y-coordinate from top-left origin (screen capture) to bottom-left origin (Core Graphics)
-        // Get the main screen height for coordinate system conversion
-        let mainScreenHeight = NSScreen.main?.frame.height ?? 0
-        let flippedY = mainScreenHeight - pixelY
+        // CGEvent uses screen coordinates which have top-left origin, same as our pixel coordinates
+        let clickLocation = CGPoint(x: pixelX, y: pixelY)
         
-        let clickLocation = CGPoint(x: pixelX, y: flippedY)
-        
-        logger.info("🎯 Final click location: (\(clickLocation.x), \(clickLocation.y)) [flipped from y=\(pixelY)]")
+        logger.info("🎯 Final click location: (\(String(format: "%.1f", clickLocation.x)), \(String(format: "%.1f", clickLocation.y)))")
         
         // Create mouse down event
         guard let mouseDown = CGEvent(
