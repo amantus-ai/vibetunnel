@@ -41,12 +41,15 @@ export class ScreencapApiClient {
         this.ws.onopen = () => {
           logger.log('WebSocket connected');
           this.isConnected = true;
+          // The server will send a 'ready' message when connected
+          // We don't need to send anything special to identify as a browser peer
           resolve();
         };
 
         this.ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data) as ApiResponse;
+            logger.log('📥 Received WebSocket message:', message);
             if (message.type === 'api-response' && message.requestId) {
               const pending = this.pendingRequests.get(message.requestId);
               if (pending) {
@@ -69,8 +72,8 @@ export class ScreencapApiClient {
           reject(error);
         };
 
-        this.ws.onclose = () => {
-          logger.log('WebSocket closed');
+        this.ws.onclose = (event) => {
+          logger.log(`WebSocket closed - code: ${event.code}, reason: ${event.reason}`);
           this.isConnected = false;
           this.connectionPromise = null;
           // Reject all pending requests
@@ -91,6 +94,7 @@ export class ScreencapApiClient {
     await this.connect();
 
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      logger.error(`WebSocket not ready - state: ${this.ws?.readyState}, isConnected: ${this.isConnected}`);
       throw new Error('WebSocket not connected');
     }
 
