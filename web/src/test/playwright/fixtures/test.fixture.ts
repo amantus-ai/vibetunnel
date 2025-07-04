@@ -60,6 +60,10 @@ export const test = base.extend<TestFixtures>({
           // This ensures sessions are created as web sessions, not native terminals
           localStorage.setItem('vibetunnel_spawn_window', 'false');
 
+          // Clear any saved command to ensure tests use the default
+          localStorage.removeItem('vibetunnel_last_command');
+          localStorage.removeItem('vibetunnel_last_working_dir');
+
           // Clear IndexedDB if present
           if (typeof indexedDB !== 'undefined' && indexedDB.deleteDatabase) {
             indexedDB.deleteDatabase('vibetunnel-offline').catch(() => {});

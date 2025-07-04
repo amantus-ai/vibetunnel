@@ -114,15 +114,16 @@ export class SessionCreateForm extends LitElement {
         `loading from localStorage: workingDir=${savedWorkingDir}, command=${savedCommand}, spawnWindow=${savedSpawnWindow}, titleMode=${savedTitleMode}`
       );
 
-      if (savedWorkingDir) {
-        this.workingDir = savedWorkingDir;
-      }
-      if (savedCommand) {
-        this.command = savedCommand;
-      }
+      // Always set values, using saved values or defaults
+      this.workingDir = savedWorkingDir || '~/';
+      this.command = savedCommand || 'zsh';
+
+      // For spawn window, only use saved value if it exists
+      // This ensures we respect the default (false) when nothing is saved
       if (savedSpawnWindow !== null) {
         this.spawnWindow = savedSpawnWindow === 'true';
       }
+
       if (savedTitleMode !== null) {
         // Validate the saved mode is a valid enum value
         if (Object.values(TitleMode).includes(savedTitleMode as TitleMode)) {
@@ -176,8 +177,16 @@ export class SessionCreateForm extends LitElement {
         document.body.classList.remove('modal-closing');
         logger.debug(`Modal visibility changed to true - removed modal-closing class`);
 
-        // Load from localStorage when form becomes visible
+        // Reset to defaults first to ensure clean state
+        this.workingDir = '~/';
+        this.command = 'zsh';
+        this.sessionName = '';
+        this.spawnWindow = false;
+        this.titleMode = TitleMode.DYNAMIC;
+
+        // Then load from localStorage which may override the defaults
         this.loadFromLocalStorage();
+
         // Add global keyboard listener
         document.addEventListener('keydown', this.handleGlobalKeyDown);
 

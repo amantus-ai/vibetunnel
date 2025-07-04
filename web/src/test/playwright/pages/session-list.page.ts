@@ -40,11 +40,20 @@ export class SessionListPage extends BasePage {
     // This ensures the form loads with the correct state
     await this.page.evaluate((shouldSpawnWindow) => {
       // Clear all form-related localStorage values first to ensure clean state
+      console.log('Clearing localStorage values before creating session...');
+      console.log('Current command value:', localStorage.getItem('vibetunnel_last_command'));
+
       localStorage.removeItem('vibetunnel_spawn_window');
       localStorage.removeItem('vibetunnel_last_command');
       localStorage.removeItem('vibetunnel_last_working_dir');
       localStorage.removeItem('vibetunnel_title_mode');
-      
+
+      // Double-check they're really cleared
+      console.log(
+        'After clearing, command value:',
+        localStorage.getItem('vibetunnel_last_command')
+      );
+
       // Then set the spawn window value we want
       localStorage.setItem('vibetunnel_spawn_window', String(shouldSpawnWindow));
       console.log(`Set localStorage vibetunnel_spawn_window to: ${shouldSpawnWindow}`);
@@ -52,6 +61,9 @@ export class SessionListPage extends BasePage {
 
     // Dismiss any error messages
     await this.dismissErrors();
+
+    // Add a small delay to ensure localStorage changes are processed
+    await this.page.waitForTimeout(100);
 
     // Click the create session button
     // Try to find the create button in different possible locations
@@ -157,10 +169,12 @@ export class SessionListPage extends BasePage {
     // Verify the state matches what we expect
     const isSpawnWindowOn = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
     console.log(`Spawn window toggle state: current=${isSpawnWindowOn}, expected=${spawnWindow}`);
-    
+
     // If the state doesn't match, there's an issue with localStorage loading
     if (isSpawnWindowOn !== spawnWindow) {
-      console.warn(`WARNING: Spawn window toggle state mismatch! Expected ${spawnWindow} but got ${isSpawnWindowOn}`);
+      console.warn(
+        `WARNING: Spawn window toggle state mismatch! Expected ${spawnWindow} but got ${isSpawnWindowOn}`
+      );
       // Try clicking to correct it
       await spawnWindowToggle.click({ force: true });
       await this.page.waitForTimeout(500);
