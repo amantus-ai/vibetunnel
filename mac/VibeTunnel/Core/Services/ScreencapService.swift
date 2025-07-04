@@ -251,7 +251,7 @@ public final class ScreencapService: NSObject {
                 return display.frame.intersects(window.frame)
             } ?? content.displays.first
             
-            guard let display = windowDisplay else {
+            guard windowDisplay != nil else {
                 throw ScreencapError.noDisplay
             }
             

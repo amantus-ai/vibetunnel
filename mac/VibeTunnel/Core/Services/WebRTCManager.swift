@@ -338,25 +338,27 @@ final class WebRTCManager: NSObject {
             // Create offer and set local description
             let (offerType, offerSdp) = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<(String, String), Error>) in
                 peerConnection.offer(for: constraints) { offer, error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                    } else if let offer = offer {
-                        // Modify SDP to increase bandwidth before setting local description
-                        var modifiedSdp = offer.sdp
-                        modifiedSdp = self.addBandwidthToSdp(modifiedSdp)
-                        let modifiedOffer = RTCSessionDescription(type: offer.type, sdp: modifiedSdp)
-                        
-                        // Set local description within the same callback to avoid sendability issues
-                        peerConnection.setLocalDescription(modifiedOffer) { error in
-                            if let error = error {
-                                continuation.resume(throwing: error)
-                            } else {
-                                let typeString = modifiedOffer.type == .offer ? "offer" : modifiedOffer.type == .answer ? "answer" : "unknown"
-                                continuation.resume(returning: (typeString, modifiedOffer.sdp))
+                    Task { @MainActor in
+                        if let error = error {
+                            continuation.resume(throwing: error)
+                        } else if let offer = offer {
+                            // Modify SDP to increase bandwidth before setting local description
+                            var modifiedSdp = offer.sdp
+                            modifiedSdp = self.addBandwidthToSdp(modifiedSdp)
+                            let modifiedOffer = RTCSessionDescription(type: offer.type, sdp: modifiedSdp)
+                            
+                            // Set local description within the same callback to avoid sendability issues
+                            peerConnection.setLocalDescription(modifiedOffer) { error in
+                                if let error = error {
+                                    continuation.resume(throwing: error)
+                                } else {
+                                    let typeString = modifiedOffer.type == .offer ? "offer" : modifiedOffer.type == .answer ? "answer" : "unknown"
+                                    continuation.resume(returning: (typeString, modifiedOffer.sdp))
+                                }
                             }
+                        } else {
+                            continuation.resume(throwing: WebRTCError.failedToCreatePeerConnection)
                         }
-                    } else {
-                        continuation.resume(throwing: WebRTCError.failedToCreatePeerConnection)
                     }
                 }
             }
@@ -423,7 +425,7 @@ final class WebRTCManager: NSObject {
     }
     
     private func addBandwidthToSdp(_ sdp: String) -> String {
-        var lines = sdp.components(separatedBy: "\n")
+        let lines = sdp.components(separatedBy: "\n")
         var modifiedLines: [String] = []
         var inVideoSection = false
         

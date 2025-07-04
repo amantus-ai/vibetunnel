@@ -1611,7 +1611,9 @@ export class ScreencapView extends LitElement {
 
         // Set initial bitrate to 3 Mbps
         // Note: initialBitrate is not in the standard type definition but is supported by some browsers
-        const encoding: any = params.encodings[0];
+        const encoding = params.encodings[0] as RTCRtpEncodingParameters & {
+          initialBitrate?: number;
+        };
         if ('initialBitrate' in encoding) {
           encoding.initialBitrate = 3000000; // 3 Mbps
         }

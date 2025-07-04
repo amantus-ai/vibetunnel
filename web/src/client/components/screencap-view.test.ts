@@ -47,11 +47,13 @@ describe('ScreencapView', () => {
     },
   ];
 
-  const mockDisplayInfo: MockDisplayInfo = {
-    width: 1920,
-    height: 1080,
-    scaleFactor: 2.0,
-  };
+  const mockDisplays: MockDisplayInfo[] = [
+    {
+      width: 1920,
+      height: 1080,
+      scaleFactor: 2.0,
+    },
+  ];
 
   beforeAll(async () => {
     // Mock window dimensions for happy-dom
@@ -82,11 +84,11 @@ describe('ScreencapView', () => {
             json: () => Promise.resolve(mockWindows),
           } as Response);
         }
-        if (url.includes('/api/screencap/display')) {
+        if (url.includes('/api/screencap/displays')) {
           return Promise.resolve({
             ok: true,
             status: 200,
-            json: () => Promise.resolve(mockDisplayInfo),
+            json: () => Promise.resolve(mockDisplays),
           } as Response);
         }
         if (url.includes('/api/screencap/capture')) {
@@ -129,11 +131,11 @@ describe('ScreencapView', () => {
 
       // Check that fetch was called
       expect(fetch).toHaveBeenCalledWith('/api/screencap/windows');
-      expect(fetch).toHaveBeenCalledWith('/api/screencap/display');
+      expect(fetch).toHaveBeenCalledWith('/api/screencap/displays');
 
       // Check that data was loaded
       expect(element.windows).toHaveLength(2);
-      expect(element.displayInfo).toEqual(mockDisplayInfo);
+      expect(element.displays).toEqual(mockDisplays);
       expect(element.status).toBe('ready');
     });
 
@@ -163,17 +165,26 @@ describe('ScreencapView', () => {
       await element.updateComplete;
     });
 
-    it('should display window list in sidebar', () => {
-      const windowElements = element.shadowRoot?.querySelectorAll('.window-item');
-      // Filter out the desktop window item
-      const actualWindows = Array.from(windowElements).filter(
-        (el) => !el.textContent?.includes('Full Desktop')
-      );
-      expect(actualWindows).toHaveLength(2);
+    it('should display window list in sidebar', async () => {
+      // Wait for status to be ready
+      let retries = 0;
+      while (element.status !== 'ready' && retries < 10) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        await element.updateComplete;
+        retries++;
+      }
+      expect(element.status).toBe('ready');
 
-      const firstWindow = actualWindows[0];
-      expect(firstWindow.textContent).toContain('Test Window 1');
-      expect(firstWindow.textContent).toContain('Test App');
+      const windowElements = element.shadowRoot?.querySelectorAll('.window-item');
+      expect(windowElements).toBeTruthy();
+
+      // We should have: 1 "All Displays" + 1 display + 2 windows = 4 total
+      expect(windowElements?.length).toBe(4);
+
+      // Check that windows are displayed
+      const allText = Array.from(windowElements || []).map((el) => el.textContent);
+      expect(allText.some((text) => text?.includes('Test Window 1'))).toBeTruthy();
+      expect(allText.some((text) => text?.includes('Test App'))).toBeTruthy();
     });
 
     it('should select window and start capture on click', async () => {
@@ -218,7 +229,7 @@ describe('ScreencapView', () => {
       let desktopButton: HTMLElement | null = null;
 
       windowItems.forEach((item) => {
-        if (item.textContent?.includes('Full Desktop')) {
+        if (item.textContent?.includes('All Displays')) {
           desktopButton = item as HTMLElement;
         }
       });
@@ -258,7 +269,7 @@ describe('ScreencapView', () => {
       let desktopButton: HTMLElement | null = null;
 
       windowItems.forEach((item) => {
-        if (item.textContent?.includes('Full Desktop')) {
+        if (item.textContent?.includes('All Displays')) {
           desktopButton = item as HTMLElement;
         }
       });
@@ -277,7 +288,7 @@ describe('ScreencapView', () => {
       let desktopButton: HTMLElement | null = null;
 
       windowItems.forEach((item) => {
-        if (item.textContent?.includes('Full Desktop')) {
+        if (item.textContent?.includes('All Displays')) {
           desktopButton = item as HTMLElement;
         }
       });
@@ -330,7 +341,7 @@ describe('ScreencapView', () => {
       let desktopButton: HTMLElement | null = null;
 
       windowItems.forEach((item) => {
-        if (item.textContent?.includes('Full Desktop')) {
+        if (item.textContent?.includes('All Displays')) {
           desktopButton = item as HTMLElement;
         }
       });
@@ -429,10 +440,10 @@ describe('ScreencapView', () => {
             json: () => Promise.resolve(mockWindows),
           } as Response);
         }
-        if (url.includes('/api/screencap/display')) {
+        if (url.includes('/api/screencap/displays')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve(mockDisplayInfo),
+            json: () => Promise.resolve(mockDisplays),
           } as Response);
         }
         return Promise.resolve({ ok: false } as Response);
@@ -447,7 +458,7 @@ describe('ScreencapView', () => {
       let desktopButton: HTMLElement | null = null;
 
       windowItems.forEach((item) => {
-        if (item.textContent?.includes('Full Desktop')) {
+        if (item.textContent?.includes('All Displays')) {
           desktopButton = item as HTMLElement;
         }
       });
