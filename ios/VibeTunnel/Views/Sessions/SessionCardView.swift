@@ -15,7 +15,7 @@ struct SessionCardView: View {
     @State private var opacity: Double = 1.0
     @State private var scale: CGFloat = 1.0
     @State private var rotation: Double = 0
-    @State private var brightness: Double = 1.0
+    @State private var brightness: Double = 0
 
     @Environment(\.livePreviewSubscription) private var livePreview
 
