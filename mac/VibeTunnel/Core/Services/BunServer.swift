@@ -711,7 +711,7 @@ extension BunServer {
                     chunkNumber += 1
 
                     // Add small delay between chunks to avoid rate limiting
-                    if chunkNumber % 10 == 0 {
+                    if chunkNumber.isMultiple(of: 10) {
                         usleep(1_000) // 1ms delay every 10 chunks
                     }
                 }

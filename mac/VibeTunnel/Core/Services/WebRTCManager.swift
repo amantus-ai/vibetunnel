@@ -35,10 +35,15 @@ final class WebRTCManager: NSObject {
 
     init(serverURL: URL) {
         // Convert HTTP URL to WebSocket URL
-        var components = URLComponents(url: serverURL, resolvingAgainstBaseURL: false)!
+        guard var components = URLComponents(url: serverURL, resolvingAgainstBaseURL: false) else {
+            fatalError("Invalid server URL: \(serverURL)")
+        }
         components.scheme = components.scheme == "https" ? "wss" : "ws"
         components.path = "/ws/screencap-signal"
-        self.signalURL = components.url!
+        guard let signalURL = components.url else {
+            fatalError("Failed to construct WebSocket URL from: \(serverURL)")
+        }
+        self.signalURL = signalURL
 
         super.init()
 
@@ -244,25 +249,23 @@ final class WebRTCManager: NSObject {
         // Get the transceivers to configure codec preferences
         let transceivers = peerConnection.transceivers
 
-        for transceiver in transceivers {
-            if transceiver.mediaType == .video {
-                // The stasel/WebRTC package doesn't expose RTCRtpSender.capabilities
-                // So we'll work with the codecs that are available in the transceiver
-                let receiver = transceiver.receiver
+        for transceiver in transceivers where transceiver.mediaType == .video {
+            // The stasel/WebRTC package doesn't expose RTCRtpSender.capabilities
+            // So we'll work with the codecs that are available in the transceiver
+            let receiver = transceiver.receiver
 
-                // Log current parameters
-                let params = receiver.parameters
-                logger.info("📋 Current receiver codec parameters:")
-                for codec in params.codecs {
-                    logger.info("  - \(codec.name): \(codec.parameters)")
-                }
-
-                // Since we can't get capabilities directly, we'll use SDP manipulation
-                logger.info("📝 Note: Direct codec preferences not available in this WebRTC version")
-                logger.info("  Using SDP manipulation to prioritize H.265 when available")
-
-                // The actual H.265 prioritization happens in addBandwidthToSdp where we modify the SDP
+            // Log current parameters
+            let params = receiver.parameters
+            logger.info("📋 Current receiver codec parameters:")
+            for codec in params.codecs {
+                logger.info("  - \(codec.name): \(codec.parameters)")
             }
+
+            // Since we can't get capabilities directly, we'll use SDP manipulation
+            logger.info("📝 Note: Direct codec preferences not available in this WebRTC version")
+            logger.info("  Using SDP manipulation to prioritize H.265 when available")
+
+            // The actual H.265 prioritization happens in addBandwidthToSdp where we modify the SDP
         }
     }
 
@@ -326,7 +329,11 @@ final class WebRTCManager: NSObject {
         logger.info("📹 Created video capturer")
 
         // Create video track
-        let videoTrack = peerConnectionFactory!.videoTrack(
+        guard let peerConnectionFactory else {
+            logger.error("Peer connection factory not initialized")
+            return
+        }
+        let videoTrack = peerConnectionFactory.videoTrack(
             with: videoSource,
             trackId: "screen-video-track"
         )

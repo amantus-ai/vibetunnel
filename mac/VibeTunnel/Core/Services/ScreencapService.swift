@@ -8,7 +8,8 @@ import OSLog
 import VideoToolbox
 
 /// Service that provides screen capture functionality with HTTP API
-@preconcurrency @MainActor
+@preconcurrency
+@MainActor
 public final class ScreencapService: NSObject {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ScreencapService")
 
@@ -604,11 +605,12 @@ public final class ScreencapService: NSObject {
         let context = CIContext()
 
         // Convert to JPEG with good quality
-        guard let jpegData = context.jpegRepresentation(
-            of: ciImage,
-            colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
-            options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.8]
-        ) else {
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+              let jpegData = context.jpegRepresentation(
+                  of: ciImage,
+                  colorSpace: colorSpace,
+                  options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.8]
+              ) else {
             logger.error("Failed to convert frame to JPEG")
             return nil
         }
@@ -1009,7 +1011,9 @@ extension ScreencapService: SCStreamOutput {
         guard type == .screen else {
             // Log other types occasionally
             if Int.random(in: 0..<100) == 0 {
-                print("Received non-screen output type: \(type)")
+                Task { @MainActor in
+                    self.logger.debug("Received non-screen output type: \(type)")
+                }
             }
             return
         }
@@ -1027,9 +1031,11 @@ extension ScreencapService: SCStreamOutput {
             if shouldLog {
                 let mediaTypeString = String(format: "0x%08X", mediaType)
                 let mediaSubTypeString = String(format: "0x%08X", mediaSubType)
-                print(
-                    "Sample buffer - mediaType: \(mediaTypeString), subType: \(mediaSubTypeString), dimensions: \(dimensions.width)x\(dimensions.height)"
-                )
+                Task { @MainActor in
+                    self.logger.debug(
+                        "Sample buffer - mediaType: \(mediaTypeString), subType: \(mediaSubTypeString), dimensions: \(dimensions.width)x\(dimensions.height)"
+                    )
+                }
 
                 // Also log if we're in all displays mode to debug the capture
                 Task { @MainActor in
@@ -1043,7 +1049,9 @@ extension ScreencapService: SCStreamOutput {
 
         // Check if sample buffer is ready
         if !CMSampleBufferDataIsReady(sampleBuffer) {
-            print("Sample buffer data is not ready")
+            Task { @MainActor in
+                self.logger.warning("Sample buffer data is not ready")
+            }
             return
         }
 
@@ -1055,7 +1063,9 @@ extension ScreencapService: SCStreamOutput {
             let attachments = attachmentsArray.first
         else {
             if shouldLog {
-                print("No attachments found in sample buffer")
+                Task { @MainActor in
+                    self.logger.debug("No attachments found in sample buffer")
+                }
             }
             return
         }
@@ -1066,7 +1076,9 @@ extension ScreencapService: SCStreamOutput {
            status != .complete
         {
             if shouldLog {
-                print("Frame status is not complete: \(status.rawValue)")
+                Task { @MainActor in
+                    self.logger.debug("Frame status is not complete: \(status.rawValue)")
+                }
             }
             return
         }
@@ -1075,7 +1087,9 @@ extension ScreencapService: SCStreamOutput {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             // Log this issue but only occasionally
             if shouldLog {
-                print("No pixel buffer available in sample buffer")
+                Task { @MainActor in
+                    self.logger.warning("No pixel buffer available in sample buffer")
+                }
             }
             return
         }
@@ -1121,7 +1135,7 @@ extension ScreencapService: SCStreamOutput {
         frameCounter += 1
 
         // Log only every 300 frames (10 seconds at 30fps) to reduce noise
-        if frameCount % 300 == 0 {
+        if frameCount.isMultiple(of: 300) {
             logger.info("📹 Frame \(frameCount) received")
         }
     }

@@ -130,6 +130,10 @@ describe('HQ Mode E2E Tests', () => {
         }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Failed to create session on ${remote.name}: ${response.status} ${errorText}`);
+      }
       expect(response.ok).toBe(true);
       const { sessionId } = await response.json();
       expect(sessionId).toBeDefined();
@@ -168,6 +172,10 @@ describe('HQ Mode E2E Tests', () => {
       }),
     });
 
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.error(`Failed to create session: ${createResponse.status} ${errorText}`);
+    }
     expect(createResponse.ok).toBe(true);
     const { sessionId } = await createResponse.json();
 
