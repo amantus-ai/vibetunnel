@@ -34,7 +34,7 @@ enum SystemPermission {
         case .appleScript:
             "Required to launch and control terminal applications"
         case .screenRecording:
-            "Required to track and focus terminal windows"
+            "Required for screen capture and tracking terminal windows"
         case .accessibility:
             "Required to send keystrokes to terminal windows"
         }

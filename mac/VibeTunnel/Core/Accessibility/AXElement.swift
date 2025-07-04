@@ -63,7 +63,9 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
 
         // Handle CFBoolean
         if CFGetTypeID(value) == CFBooleanGetTypeID() {
-            return CFBooleanGetValue(value as! CFBoolean)
+            // Safe force cast after type check
+            let cfBool = value as! CFBoolean
+            return CFBooleanGetValue(cfBool)
         }
 
         return nil

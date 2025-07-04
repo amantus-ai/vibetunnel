@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import OSLog
 import SwiftUI
+import ScreenCaptureKit
 
 /// Errors that can occur during server operations
 enum ServerError: LocalizedError {
@@ -80,6 +81,7 @@ class ServerManager {
     }
 
     private(set) var bunServer: BunServer?
+    private var screencapServer: ScreencapHTTPServer?
     private(set) var isRunning = false
     private(set) var isRestarting = false
     private(set) var lastError: Error?
@@ -241,6 +243,26 @@ class ServerManager {
             }
 
             logger.info("Started server on port \(self.port)")
+            
+            // Start screencap HTTP server if enabled
+            if AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) {
+                do {
+                    // Check if we have screen recording permission
+                    if await checkScreenRecordingPermission() {
+                        screencapServer = ScreencapHTTPServer()
+                        try screencapServer?.start()
+                        logger.info("✅ Started screencap server on port 4010")
+                    } else {
+                        logger.warning("⚠️ Screen recording permission not granted - screencap service disabled")
+                        logger.warning("💡 Please grant screen recording permission in System Settings > Privacy & Security > Screen Recording")
+                    }
+                } catch {
+                    logger.error("Failed to start screencap server: \(error)")
+                    // Continue anyway - screencap is optional
+                }
+            } else {
+                logger.info("Screencap service disabled by user preference")
+            }
 
             // Pass the local auth token to SessionMonitor
             SessionMonitor.shared.setLocalAuthToken(server.localToken)
@@ -272,6 +294,11 @@ class ServerManager {
 
         await server.stop()
         bunServer = nil
+        
+        // Stop screencap server
+        screencapServer?.stop()
+        screencapServer = nil
+        
         isRunning = false
 
         // Clear the auth token from SessionMonitor
@@ -396,6 +423,10 @@ class ServerManager {
         // Update state immediately
         isRunning = false
         bunServer = nil
+        
+        // Stop screencap server on crash
+        screencapServer?.stop()
+        screencapServer = nil
 
         // Allow sleep when server crashes
         powerManager.updateSleepPrevention(enabled: false, serverRunning: false)
@@ -585,6 +616,22 @@ enum ServerManagerError: LocalizedError {
         switch self {
         case .portInUseByApp:
             "port-conflict"
+        }
+    }
+}
+
+// MARK: - ServerManager Extension
+
+extension ServerManager {
+    /// Check if we have screen recording permission
+    private func checkScreenRecordingPermission() async -> Bool {
+        do {
+            // Try to get shareable content - this will fail if we don't have permission
+            _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            return true
+        } catch {
+            logger.warning("Screen recording permission check failed: \(error)")
+            return false
         }
     }
 }

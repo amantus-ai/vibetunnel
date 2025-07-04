@@ -374,8 +374,8 @@ export async function createApp(): Promise<AppInstance> {
   const server = createServer(app);
   const wss = new WebSocketServer({ noServer: true });
 
-  // Add JSON body parser middleware
-  app.use(express.json());
+  // Add JSON body parser middleware with size limit
+  app.use(express.json({ limit: '10mb' }));
   logger.debug('Configured express middleware');
 
   // Control directory for session data
@@ -612,8 +612,12 @@ export async function createApp(): Promise<AppInstance> {
     // Parse the URL to extract path and query parameters
     const parsedUrl = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
 
-    // Handle both /buffers and /ws/input paths
-    if (parsedUrl.pathname !== '/buffers' && parsedUrl.pathname !== '/ws/input') {
+    // Handle WebSocket paths
+    if (
+      parsedUrl.pathname !== '/buffers' &&
+      parsedUrl.pathname !== '/ws/input' &&
+      parsedUrl.pathname !== '/ws/screencap-signal'
+    ) {
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
       socket.destroy();
       return;
@@ -760,6 +764,12 @@ export async function createApp(): Promise<AppInstance> {
       const userId = wsReq.userId || 'unknown';
 
       websocketInputHandler.handleConnection(ws, sessionId, userId);
+    } else if (pathname === '/ws/screencap-signal') {
+      // Handle screencap WebRTC signaling
+      const userId = wsReq.userId || 'unknown';
+      import('./websocket/screencap-signal-handler.js').then(({ screencapSignalHandler }) => {
+        screencapSignalHandler.handleConnection(ws, userId);
+      });
     } else {
       logger.error(`Unknown WebSocket path: ${pathname}`);
       ws.close();
