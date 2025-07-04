@@ -673,10 +673,22 @@ final class WebRTCManager: NSObject {
 
         switch (method, endpoint) {
         case ("GET", "/windows"):
-            return try await screencapService.getWindows()
+            let windows = try await screencapService.getWindows()
+            // Convert to dictionaries for JSON serialization
+            return try windows.map { window in
+                let encoder = JSONEncoder()
+                let data = try encoder.encode(window)
+                return try JSONSerialization.jsonObject(with: data, options: [])
+            }
 
         case ("GET", "/displays"):
-            return try await screencapService.getDisplays()
+            let displays = try await screencapService.getDisplays()
+            // Convert to dictionaries for JSON serialization
+            return try displays.map { display in
+                let encoder = JSONEncoder()
+                let data = try encoder.encode(display)
+                return try JSONSerialization.jsonObject(with: data, options: [])
+            }
 
         case ("POST", "/capture"):
             guard let params = params as? [String: Any],
