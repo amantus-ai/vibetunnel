@@ -100,6 +100,9 @@ export class ScreencapView extends LitElement {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
     }
 
     .btn:hover {
@@ -122,6 +125,12 @@ export class ScreencapView extends LitElement {
     .btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+
+    .btn.active {
+      background: #2a2a2a;
+      border-color: #10B981;
+      color: #10B981;
     }
 
     .btn svg {
@@ -506,6 +515,21 @@ export class ScreencapView extends LitElement {
     this.saveSidebarState();
   }
 
+  private toggleStats = (event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    logger.log('Stats button clicked, current showStats:', this.showStats);
+    this.showStats = !this.showStats;
+    logger.log('Stats toggled to:', this.showStats, 'streamStats:', this.streamStats);
+    // Force a re-render in Safari
+    this.requestUpdate();
+  };
+
+  private async handleRefresh() {
+    await this.loadWindows();
+    await this.loadDisplays();
+  }
+
   private async loadInitialData() {
     try {
       logger.log('🔄 Starting initial data load...');
@@ -753,37 +777,25 @@ export class ScreencapView extends LitElement {
   private async handleMouseDown(event: MouseEvent) {
     if (!this.isCapturing) return;
 
-    // Handle both video and image elements
-    const element = event.target as HTMLElement;
-    const rect = element.getBoundingClientRect();
-
-    // Calculate position relative to the element's displayed size
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
-
-    // Clamp to bounds to prevent out-of-bounds clicks
-    const clampedX = Math.max(0, Math.min(clickX, rect.width));
-    const clampedY = Math.max(0, Math.min(clickY, rect.height));
-
-    // Convert to normalized coordinates (0.0 to 1.0) within the displayed element
-    const relativeX = clampedX / rect.width;
-    const relativeY = clampedY / rect.height;
+    // Calculate actual content position accounting for object-fit: contain
+    const coords = this.calculateContentCoordinates(event);
+    if (!coords) return;
 
     // Store drag start position
     this.isDragging = true;
-    this.dragStartX = relativeX * 1000;
-    this.dragStartY = relativeY * 1000;
+    this.dragStartX = coords.x;
+    this.dragStartY = coords.y;
 
     // Send mouse down event
     try {
       await fetch('/api/screencap/mousedown', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x: this.dragStartX, y: this.dragStartY }),
+        body: JSON.stringify({ x: coords.x, y: coords.y }),
       });
 
       logger.log(
-        `🖱️ Mouse down at: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${this.dragStartX}, ${this.dragStartY})`
+        `🖱️ Mouse down at: ${(coords.x / 1000).toFixed(3)}, ${(coords.y / 1000).toFixed(3)} (sent as ${coords.x}, ${coords.y})`
       );
     } catch (error) {
       logger.error('Failed to send mouse down:', error);
@@ -793,26 +805,14 @@ export class ScreencapView extends LitElement {
   private async handleMouseMove(event: MouseEvent) {
     if (!this.isCapturing || !this.isDragging) return;
 
-    const element = event.target as HTMLElement;
-    const rect = element.getBoundingClientRect();
-
-    const moveX = event.clientX - rect.left;
-    const moveY = event.clientY - rect.top;
-
-    const clampedX = Math.max(0, Math.min(moveX, rect.width));
-    const clampedY = Math.max(0, Math.min(moveY, rect.height));
-
-    const relativeX = clampedX / rect.width;
-    const relativeY = clampedY / rect.height;
-
-    const x = Math.round(relativeX * 1000);
-    const y = Math.round(relativeY * 1000);
+    const coords = this.calculateContentCoordinates(event);
+    if (!coords) return;
 
     try {
       await fetch('/api/screencap/mousemove', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x, y }),
+        body: JSON.stringify({ x: coords.x, y: coords.y }),
       });
     } catch (error) {
       logger.error('Failed to send mouse move:', error);
@@ -822,20 +822,8 @@ export class ScreencapView extends LitElement {
   private async handleMouseUp(event: MouseEvent) {
     if (!this.isCapturing) return;
 
-    const element = event.target as HTMLElement;
-    const rect = element.getBoundingClientRect();
-
-    const upX = event.clientX - rect.left;
-    const upY = event.clientY - rect.top;
-
-    const clampedX = Math.max(0, Math.min(upX, rect.width));
-    const clampedY = Math.max(0, Math.min(upY, rect.height));
-
-    const relativeX = clampedX / rect.width;
-    const relativeY = clampedY / rect.height;
-
-    const x = Math.round(relativeX * 1000);
-    const y = Math.round(relativeY * 1000);
+    const coords = this.calculateContentCoordinates(event);
+    if (!coords) return;
 
     try {
       if (this.isDragging) {
@@ -843,22 +831,22 @@ export class ScreencapView extends LitElement {
         await fetch('/api/screencap/mouseup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ x, y }),
+          body: JSON.stringify({ x: coords.x, y: coords.y }),
         });
 
         logger.log(
-          `🖱️ Mouse up at: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${x}, ${y})`
+          `🖱️ Mouse up at: ${(coords.x / 1000).toFixed(3)}, ${(coords.y / 1000).toFixed(3)} (sent as ${coords.x}, ${coords.y})`
         );
       } else {
         // If no drag occurred, treat as a click
         await fetch('/api/screencap/click', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ x, y }),
+          body: JSON.stringify({ x: coords.x, y: coords.y }),
         });
 
         logger.log(
-          `🖱️ Clicked at: ${relativeX.toFixed(3)}, ${relativeY.toFixed(3)} (sent as ${x}, ${y})`
+          `🖱️ Clicked at: ${(coords.x / 1000).toFixed(3)}, ${(coords.y / 1000).toFixed(3)} (sent as ${coords.x}, ${coords.y})`
         );
       }
     } catch (error) {
@@ -872,6 +860,92 @@ export class ScreencapView extends LitElement {
   private async handleClick(event: MouseEvent) {
     // Prevent default click behavior as we're handling it in mouseup
     event.preventDefault();
+  }
+
+  /**
+   * Calculate mouse coordinates accounting for object-fit: contain
+   * This handles the case where the content is centered with gaps
+   */
+  private calculateContentCoordinates(event: MouseEvent): { x: number; y: number } | null {
+    const element = event.target as HTMLElement;
+    const rect = element.getBoundingClientRect();
+
+    // Get the natural dimensions of the content
+    let naturalWidth: number;
+    let naturalHeight: number;
+
+    if (element instanceof HTMLVideoElement) {
+      naturalWidth = element.videoWidth;
+      naturalHeight = element.videoHeight;
+    } else if (element instanceof HTMLImageElement) {
+      naturalWidth = element.naturalWidth;
+      naturalHeight = element.naturalHeight;
+    } else {
+      return null;
+    }
+
+    if (!naturalWidth || !naturalHeight) {
+      return null;
+    }
+
+    // Calculate the scale factor to fit content within container
+    const containerAspect = rect.width / rect.height;
+    const contentAspect = naturalWidth / naturalHeight;
+
+    let scale: number;
+    let offsetX = 0;
+    let offsetY = 0;
+    let scaledWidth: number;
+    let scaledHeight: number;
+
+    if (contentAspect > containerAspect) {
+      // Content is wider - scale based on width (letterboxing - gaps top/bottom)
+      scale = rect.width / naturalWidth;
+      scaledWidth = rect.width;
+      scaledHeight = naturalHeight * scale;
+      offsetY = (rect.height - scaledHeight) / 2;
+    } else {
+      // Content is taller - scale based on height (pillarboxing - gaps left/right)
+      scale = rect.height / naturalHeight;
+      scaledHeight = rect.height;
+      scaledWidth = naturalWidth * scale;
+      offsetX = (rect.width - scaledWidth) / 2;
+    }
+
+    // Calculate click position relative to the container
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    // Check if click is within the actual content area
+    if (
+      clickX < offsetX ||
+      clickX > offsetX + scaledWidth ||
+      clickY < offsetY ||
+      clickY > offsetY + scaledHeight
+    ) {
+      // Click is in the letterbox/pillarbox area, clamp to content bounds
+      const clampedX = Math.max(offsetX, Math.min(clickX, offsetX + scaledWidth));
+      const clampedY = Math.max(offsetY, Math.min(clickY, offsetY + scaledHeight));
+
+      // Calculate relative position within the content
+      const relativeX = (clampedX - offsetX) / scaledWidth;
+      const relativeY = (clampedY - offsetY) / scaledHeight;
+
+      return {
+        x: Math.round(relativeX * 1000),
+        y: Math.round(relativeY * 1000),
+      };
+    }
+
+    // Calculate relative position within the actual content
+    const relativeX = (clickX - offsetX) / scaledWidth;
+    const relativeY = (clickY - offsetY) / scaledHeight;
+
+    // Convert to 0-1000 range
+    return {
+      x: Math.round(relativeX * 1000),
+      y: Math.round(relativeY * 1000),
+    };
   }
 
   private boundHandleKeyDown = this.handleKeyDown.bind(this);
@@ -1033,6 +1107,7 @@ export class ScreencapView extends LitElement {
               );
 
               // Start collecting statistics
+              logger.log('Starting stats collection for WebRTC stream');
               this.startStatsCollection();
             } else {
               logger.error(
@@ -1174,10 +1249,14 @@ export class ScreencapView extends LitElement {
   }
 
   private async collectStats() {
-    if (!this.peerConnection) return;
+    if (!this.peerConnection) {
+      logger.warn('No peer connection available for stats collection');
+      return;
+    }
 
     try {
       const stats = await this.peerConnection.getStats();
+      logger.debug('Collecting stats, stats size:', stats.size);
 
       // Also look for codec info in codec stats
       let codecInfo: { name: string; implementation: string } | null = null;
@@ -1185,8 +1264,14 @@ export class ScreencapView extends LitElement {
       // Log all stats types once for debugging
       if (this.frameCounter === 1) {
         const statTypes = new Set<string>();
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        logger.log('Browser info - Safari:', isSafari, 'UserAgent:', navigator.userAgent);
+
         stats.forEach((stat) => {
           statTypes.add(stat.type);
+          if (stat.type === 'inbound-rtp' && stat.mediaType === 'video') {
+            logger.log('Found video RTP stats:', stat);
+          }
         });
         logger.log('Available WebRTC stat types:', Array.from(statTypes));
       }
@@ -1230,8 +1315,9 @@ export class ScreencapView extends LitElement {
 
           // Calculate bitrate
           let bitrate = 0;
+          const bytesReceived = stat.bytesReceived || 0;
           if (this.lastBytesReceived > 0 && timeDiff > 0) {
-            const bytesDiff = stat.bytesReceived - this.lastBytesReceived;
+            const bytesDiff = bytesReceived - this.lastBytesReceived;
             bitrate = (bytesDiff * 8) / timeDiff; // bits per second
           }
 
@@ -1327,21 +1413,32 @@ export class ScreencapView extends LitElement {
             }
           }
 
+          // Safari might use different property names
+          const frameWidth = stat.frameWidth || stat.width || 0;
+          const frameHeight = stat.frameHeight || stat.height || 0;
+          const framesPerSecond = stat.framesPerSecond || stat.framerate || 0;
+          const packetsReceived = stat.packetsReceived || 0;
+          const packetsLost = stat.packetsLost || 0;
+
           this.streamStats = {
             codec: codecName,
             codecImplementation: codecImplementation,
-            resolution: `${stat.frameWidth || 0}x${stat.frameHeight || 0}`,
-            fps: Math.round(stat.framesPerSecond || 0),
+            resolution: `${frameWidth}x${frameHeight}`,
+            fps: Math.round(framesPerSecond),
             bitrate: bitrate,
             latency: stat.jitterBufferDelay ? Math.round(stat.jitterBufferDelay * 1000) : 0,
-            packetsLost: stat.packetsLost || 0,
-            packetLossRate:
-              stat.packetsReceived > 0 ? ((stat.packetsLost || 0) / stat.packetsReceived) * 100 : 0,
+            packetsLost: packetsLost,
+            packetLossRate: packetsReceived > 0 ? (packetsLost / packetsReceived) * 100 : 0,
             jitter: Math.round((stat.jitter || 0) * 1000),
             timestamp: currentTimestamp,
           };
 
-          this.lastBytesReceived = stat.bytesReceived;
+          // Log when stats are updated
+          if (this.frameCounter % 10 === 0) {
+            logger.debug('Stats updated:', this.streamStats);
+          }
+
+          this.lastBytesReceived = bytesReceived;
           this.lastStatsTimestamp = currentTimestamp;
 
           // Log codec info for debugging
@@ -1419,10 +1516,7 @@ export class ScreencapView extends LitElement {
         <div class="header-actions">
           <button 
             class="btn" 
-            @click=${async () => {
-              await this.loadWindows();
-              await this.loadDisplays();
-            }}
+            @click=${this.handleRefresh}
             ?disabled=${this.status === 'loading'}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1436,10 +1530,10 @@ export class ScreencapView extends LitElement {
               ? html`
             <button 
               class="btn ${this.showStats ? 'active' : ''}" 
-              @click=${() => {
-                this.showStats = !this.showStats;
-              }}
+              @click=${this.toggleStats}
+              @touchstart=${this.toggleStats}
               title="Toggle statistics"
+              type="button"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="20" x2="18" y2="10"/>
@@ -1596,10 +1690,13 @@ export class ScreencapView extends LitElement {
                   }}
                 ></video>
                 ${
-                  this.showStats && this.streamStats
+                  this.showStats
                     ? html`
                   <div class="stats-panel">
                     <h4>📊 Stream Statistics</h4>
+                    ${
+                      this.streamStats
+                        ? html`
                     <div class="stat-row">
                       <span class="stat-label">Codec:</span>
                       <span class="stat-value ${this.getCodecClass()}">${this.streamStats.codec}</span>
@@ -1628,6 +1725,13 @@ export class ScreencapView extends LitElement {
                       <span class="stat-label">Quality:</span>
                       <span class="stat-value">${this.getQualityIndicator()}</span>
                     </div>
+                    `
+                        : html`
+                    <div style="color: #a3a3a3; text-align: center; padding: 1rem;">
+                      Collecting statistics...
+                    </div>
+                    `
+                    }
                   </div>
                 `
                     : ''
