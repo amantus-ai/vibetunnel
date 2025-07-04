@@ -1,4 +1,5 @@
 import AppKit
+import OSLog
 import SwiftUI
 
 /// Row component displaying a single terminal session.
@@ -29,6 +30,8 @@ struct SessionRow: View {
     @State private var editedName = ""
     @State private var isHoveringFolder = false
     @FocusState private var isEditFieldFocused: Bool
+
+    private static let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionRow")
 
     /// Computed property that reads directly from the monitor's cache
     /// This will automatically update when the monitor refreshes
@@ -460,7 +463,7 @@ struct SessionRow: View {
                 try await sessionService.sendKey(to: session.key, key: "enter")
             } catch {
                 // Silently handle errors for now
-                print("Failed to send prompt to AI assistant: \(error)")
+                Self.logger.error("Failed to send prompt to AI assistant: \(error)")
             }
         }
     }

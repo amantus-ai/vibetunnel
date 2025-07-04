@@ -100,7 +100,9 @@ public final class ScreencapHTTPServer {
 
         // Extract body if present
         var body: Data?
-        if let doubleNewline = data.range(of: "\r\n\r\n".data(using: .utf8)!) {
+        if let separator = "\r\n\r\n".data(using: .utf8),
+           let doubleNewline = data.range(of: separator)
+        {
             let bodyStart = doubleNewline.upperBound
             if bodyStart < data.count {
                 body = data[bodyStart...]
@@ -212,7 +214,9 @@ public final class ScreencapHTTPServer {
 
         """
 
-        var response = headers.data(using: .utf8)!
+        guard var response = headers.data(using: .utf8) else {
+            return
+        }
         response.append(frameData)
 
         connection.send(content: response, completion: .contentProcessed { [weak self] error in
@@ -441,7 +445,10 @@ public final class ScreencapHTTPServer {
 
             """
 
-            var response = headers.data(using: .utf8)!
+            guard var response = headers.data(using: .utf8) else {
+                connection.cancel()
+                return
+            }
             response.append(jsonData)
 
             connection.send(content: response, completion: .contentProcessed { _ in

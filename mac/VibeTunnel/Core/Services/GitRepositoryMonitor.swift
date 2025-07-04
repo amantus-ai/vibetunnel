@@ -45,10 +45,8 @@ public final class GitRepositoryMonitor {
     private let gitPath: String = {
         // Check common locations
         let locations = ["/usr/bin/git", "/opt/homebrew/bin/git", "/usr/local/bin/git"]
-        for path in locations {
-            if FileManager.default.fileExists(atPath: path) {
-                return path
-            }
+        for path in locations where FileManager.default.fileExists(atPath: path) {
+            return path
         }
         return "/usr/bin/git" // fallback
     }()

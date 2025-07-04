@@ -162,9 +162,7 @@ final class BunServer {
             vibetunnelArgs.append(contentsOf: ["--enable-ssh-keys", "--disallow-user-password"])
         case "both":
             vibetunnelArgs.append("--enable-ssh-keys")
-        case "os":
-            fallthrough
-        default:
+        case "os", _:
             // OS authentication is the default, no special flags needed
             break
         }

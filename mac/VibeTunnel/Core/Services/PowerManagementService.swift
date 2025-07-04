@@ -1,6 +1,7 @@
 import Foundation
 import IOKit.pwr_mgt
 import Observation
+import OSLog
 
 /// Manages system power assertions to prevent the Mac from sleeping while VibeTunnel is running.
 ///
@@ -17,6 +18,8 @@ final class PowerManagementService {
 
     private var assertionID: IOPMAssertionID = 0
     private var isAssertionActive = false
+
+    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "PowerManagement")
 
     private init() {}
 
@@ -37,9 +40,9 @@ final class PowerManagementService {
         if success == kIOReturnSuccess {
             isAssertionActive = true
             isSleepPrevented = true
-            print("Sleep prevention enabled")
+            logger.info("Sleep prevention enabled")
         } else {
-            print("Failed to prevent sleep: \(success)")
+            logger.error("Failed to prevent sleep: \(success)")
         }
     }
 
@@ -53,9 +56,9 @@ final class PowerManagementService {
             isAssertionActive = false
             isSleepPrevented = false
             assertionID = 0
-            print("Sleep prevention disabled")
+            logger.info("Sleep prevention disabled")
         } else {
-            print("Failed to release sleep assertion: \(success)")
+            logger.error("Failed to release sleep assertion: \(success)")
         }
     }
 
