@@ -1,6 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 
-const logger = createLogger('screencap-api-client');
+const logger = createLogger('screencap-websocket');
 
 interface ApiRequest {
   type: 'api-request';
@@ -11,14 +11,21 @@ interface ApiRequest {
   sessionId?: string;
 }
 
-interface ApiResponse {
-  type: 'api-response';
-  requestId: string;
+interface SignalMessage {
+  type: 'start-capture' | 'offer' | 'answer' | 'ice-candidate' | 'error' | 'ready' | 'api-response';
+  data?: unknown;
+  requestId?: string;
   result?: unknown;
   error?: string;
+  sessionId?: string;
+  mode?: string;
+  windowId?: number;
+  displayIndex?: number;
 }
 
-export class ScreencapApiClient {
+type WebSocketMessage = ApiRequest | SignalMessage;
+
+export class ScreencapWebSocketClient {
   private ws: WebSocket | null = null;
   private pendingRequests = new Map<
     string,
@@ -27,6 +34,13 @@ export class ScreencapApiClient {
   private isConnected = false;
   private connectionPromise: Promise<void> | null = null;
   public sessionId: string | null = null;
+
+  // Event handlers for WebRTC signaling
+  public onOffer?: (data: RTCSessionDescriptionInit) => void;
+  public onAnswer?: (data: RTCSessionDescriptionInit) => void;
+  public onIceCandidate?: (data: RTCIceCandidateInit) => void;
+  public onError?: (error: string) => void;
+  public onReady?: () => void;
 
   constructor(private wsUrl: string) {}
 
@@ -41,26 +55,14 @@ export class ScreencapApiClient {
         this.ws.onopen = () => {
           logger.log('WebSocket connected');
           this.isConnected = true;
-          // The server will send a 'ready' message when connected
-          // We don't need to send anything special to identify as a browser peer
           resolve();
         };
 
         this.ws.onmessage = (event) => {
           try {
-            const message = JSON.parse(event.data) as ApiResponse;
-            logger.log('📥 Received WebSocket message:', message);
-            if (message.type === 'api-response' && message.requestId) {
-              const pending = this.pendingRequests.get(message.requestId);
-              if (pending) {
-                this.pendingRequests.delete(message.requestId);
-                if (message.error) {
-                  pending.reject(new Error(message.error));
-                } else {
-                  pending.resolve(message.result);
-                }
-              }
-            }
+            const message = JSON.parse(event.data) as WebSocketMessage;
+            logger.log('📥 Received message:', message);
+            this.handleMessage(message);
           } catch (error) {
             logger.error('Failed to parse WebSocket message:', error);
           }
@@ -90,19 +92,64 @@ export class ScreencapApiClient {
     return this.connectionPromise;
   }
 
+  private handleMessage(message: WebSocketMessage) {
+    switch (message.type) {
+      case 'ready':
+        logger.log('Server ready');
+        if (this.onReady) this.onReady();
+        break;
+
+      case 'offer':
+        if (this.onOffer && message.data) {
+          this.onOffer(message.data as RTCSessionDescriptionInit);
+        }
+        break;
+
+      case 'answer':
+        if (this.onAnswer && message.data) {
+          this.onAnswer(message.data as RTCSessionDescriptionInit);
+        }
+        break;
+
+      case 'ice-candidate':
+        if (this.onIceCandidate && message.data) {
+          this.onIceCandidate(message.data as RTCIceCandidateInit);
+        }
+        break;
+
+      case 'error':
+        if (this.onError && typeof message.data === 'string') {
+          this.onError(message.data);
+        }
+        break;
+
+      case 'api-response':
+        if (message.requestId) {
+          const pending = this.pendingRequests.get(message.requestId);
+          if (pending) {
+            this.pendingRequests.delete(message.requestId);
+            if (message.error) {
+              pending.reject(new Error(message.error));
+            } else {
+              pending.resolve(message.result);
+            }
+          }
+        }
+        break;
+    }
+  }
+
   async request<T = unknown>(method: string, endpoint: string, params?: unknown): Promise<T> {
     await this.connect();
 
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      logger.error(
-        `WebSocket not ready - state: ${this.ws?.readyState}, isConnected: ${this.isConnected}`
-      );
+      logger.error(`WebSocket not ready - state: ${this.ws?.readyState}`);
       throw new Error('WebSocket not connected');
     }
 
-    // Use crypto.randomUUID if available, otherwise fallback
+    // Generate request ID
     const requestId =
-      typeof crypto.randomUUID === 'function'
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -112,21 +159,8 @@ export class ScreencapApiClient {
       method,
       endpoint,
       params,
+      sessionId: this.sessionId,
     };
-
-    // Add sessionId for control operations and capture operations
-    if (
-      this.sessionId &&
-      (this.isControlOperation(method, endpoint) || this.isCaptureOperation(method, endpoint))
-    ) {
-      request.sessionId = this.sessionId;
-      logger.log(`📤 Including session ID in ${method} ${endpoint}: ${this.sessionId}`);
-    } else if (
-      this.isControlOperation(method, endpoint) ||
-      this.isCaptureOperation(method, endpoint)
-    ) {
-      logger.warn(`⚠️ No session ID available for ${method} ${endpoint}`);
-    }
 
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(requestId, {
@@ -134,16 +168,8 @@ export class ScreencapApiClient {
         reject,
       });
 
-      logger.log(`📤 Sending WebSocket message:`, request);
-      if (this.ws) {
-        logger.log(
-          `WebSocket state: ${this.ws.readyState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`
-        );
-        this.ws.send(JSON.stringify(request));
-      } else {
-        logger.error('WebSocket is null!');
-        reject(new Error('WebSocket not initialized'));
-      }
+      logger.log(`📤 Sending API request:`, request);
+      this.ws?.send(JSON.stringify(request));
 
       // Add timeout
       setTimeout(() => {
@@ -155,17 +181,23 @@ export class ScreencapApiClient {
     });
   }
 
-  private isControlOperation(method: string, endpoint: string): boolean {
-    const controlEndpoints = ['/click', '/mousedown', '/mousemove', '/mouseup', '/key'];
-    return method === 'POST' && controlEndpoints.includes(endpoint);
+  async sendSignal(message: Partial<SignalMessage>) {
+    await this.connect();
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error('WebSocket not connected');
+    }
+
+    // Add session ID to signaling messages if available
+    if (this.sessionId && !message.sessionId) {
+      message.sessionId = this.sessionId;
+    }
+
+    logger.log(`📤 Sending signal:`, message);
+    this.ws.send(JSON.stringify(message));
   }
 
-  private isCaptureOperation(method: string, endpoint: string): boolean {
-    const captureEndpoints = ['/capture', '/capture-window', '/stop'];
-    return method === 'POST' && captureEndpoints.includes(endpoint);
-  }
-
-  // Convenience methods matching the HTTP API
+  // Convenience methods for API requests
   async getProcessGroups() {
     return this.request('GET', '/processes');
   }
@@ -175,7 +207,7 @@ export class ScreencapApiClient {
   }
 
   async startCapture(params: { type: string; index: number; webrtc?: boolean }) {
-    // Generate a session ID for this capture session
+    // Generate a session ID for this capture session if not present
     if (!this.sessionId) {
       this.sessionId =
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -187,7 +219,7 @@ export class ScreencapApiClient {
   }
 
   async captureWindow(params: { cgWindowID: number; webrtc?: boolean }) {
-    // Generate a session ID for this capture session
+    // Generate a session ID for this capture session if not present
     if (!this.sessionId) {
       this.sessionId =
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'

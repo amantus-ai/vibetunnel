@@ -1,6 +1,6 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { ScreencapApiClient } from '../services/screencap-api-client.js';
+import { ScreencapWebSocketClient } from '../services/screencap-websocket-client.js';
 import type { ProcessGroup, WindowInfo } from '../types/screencap.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -536,17 +536,16 @@ export class ScreencapView extends LitElement {
 
   // WebRTC properties
   private peerConnection: RTCPeerConnection | null = null;
-  private signalSocket: WebSocket | null = null;
   private statsInterval: number | null = null;
   private lastBytesReceived = 0;
   private lastStatsTimestamp = 0;
 
-  // API client for screencap operations
-  private apiClient: ScreencapApiClient | null = null;
+  // Unified WebSocket client for API and WebRTC signaling
+  private wsClient: ScreencapWebSocketClient | null = null;
 
   connectedCallback() {
     super.connectedCallback();
-    this.initializeApiClient();
+    this.initializeWebSocketClient();
     this.loadInitialData();
     this.setupKeyboardHandler();
     this.loadSidebarState();
@@ -557,7 +556,7 @@ export class ScreencapView extends LitElement {
     this.stopCapture();
     this.removeKeyboardHandler();
     this.cleanupWebRTC();
-    this.cleanupApiClient();
+    this.cleanupWebSocketClient();
   }
 
   private loadSidebarState() {
@@ -571,18 +570,27 @@ export class ScreencapView extends LitElement {
     localStorage.setItem(this.SIDEBAR_COLLAPSED_KEY, this.sidebarCollapsed.toString());
   }
 
-  private initializeApiClient() {
-    // Construct WebSocket URL for API client
+  private initializeWebSocketClient() {
+    // Construct WebSocket URL for unified client
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/screencap-signal`;
-    this.apiClient = new ScreencapApiClient(wsUrl);
-    logger.log('API client initialized with URL:', wsUrl);
+    this.wsClient = new ScreencapWebSocketClient(wsUrl);
+
+    // Set up WebRTC signaling handlers
+    this.wsClient.onOffer = (offer) => this.handleOffer(offer);
+    this.wsClient.onIceCandidate = (candidate) => this.handleRemoteIceCandidate(candidate);
+    this.wsClient.onError = (error) => {
+      logger.error('WebSocket error:', error);
+      this.error = error;
+    };
+
+    logger.log('WebSocket client initialized with URL:', wsUrl);
   }
 
-  private cleanupApiClient() {
-    if (this.apiClient) {
-      this.apiClient.close();
-      this.apiClient = null;
+  private cleanupWebSocketClient() {
+    if (this.wsClient) {
+      this.wsClient.close();
+      this.wsClient = null;
     }
   }
 
@@ -646,11 +654,11 @@ export class ScreencapView extends LitElement {
 
   private async loadWindows() {
     logger.log('Loading process groups...');
-    if (!this.apiClient) {
+    if (!this.wsClient) {
       throw new Error('API client not initialized');
     }
     try {
-      const groups = (await this.apiClient.getProcessGroups()) as ProcessGroup[];
+      const groups = (await this.wsClient.getProcessGroups()) as ProcessGroup[];
       const totalWindows = groups.reduce((sum, g) => sum + g.windows.length, 0);
       logger.log(`Loaded ${groups.length} processes with ${totalWindows} windows:`, groups);
       this.processGroups = groups;
@@ -669,11 +677,11 @@ export class ScreencapView extends LitElement {
 
   private async loadDisplays() {
     logger.log('Loading displays...');
-    if (!this.apiClient) {
+    if (!this.wsClient) {
       throw new Error('API client not initialized');
     }
     try {
-      const displays = (await this.apiClient.getDisplays()) as DisplayInfo[];
+      const displays = (await this.wsClient.getDisplays()) as DisplayInfo[];
       logger.debug(`Loaded ${displays.length} displays`);
       this.displays = displays;
     } catch (error) {
@@ -697,31 +705,31 @@ export class ScreencapView extends LitElement {
       // Fallback to JPEG mode
       logger.log('📸 Using WebSocket API mode');
 
-      if (!this.apiClient) {
+      if (!this.wsClient) {
         throw new Error('API client not initialized');
       }
 
       // Log current session state before capture
-      logger.log(`📋 Current session ID before capture: ${this.apiClient.sessionId || 'none'}`);
+      logger.log(`📋 Current session ID before capture: ${this.wsClient.sessionId || 'none'}`);
 
       let result: unknown;
       if (this.captureMode === 'desktop') {
         logger.log(`🖥️ Starting desktop capture for display ${this.selectedDisplay?.id || '0'}`);
-        result = await this.apiClient.startCapture({
+        result = await this.wsClient.startCapture({
           type: 'desktop',
           index: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : 0,
           webrtc: this.useWebRTC,
         });
       } else {
         logger.log(`🪟 Starting window capture for window ${this.selectedWindow?.cgWindowID}`);
-        result = await this.apiClient.captureWindow({
+        result = await this.wsClient.captureWindow({
           cgWindowID: this.selectedWindow?.cgWindowID as number,
           webrtc: this.useWebRTC,
         });
       }
 
       logger.log(`✅ Capture started successfully:`, result);
-      logger.log(`📋 Session ID after capture: ${this.apiClient.sessionId}`);
+      logger.log(`📋 Session ID after capture: ${this.wsClient.sessionId}`);
 
       this.isCapturing = true;
       this.status = 'capturing';
@@ -765,8 +773,8 @@ export class ScreencapView extends LitElement {
       }
 
       // Stop server-side capture
-      if (this.isCapturing && this.apiClient) {
-        await this.apiClient.stopCapture();
+      if (this.isCapturing && this.wsClient) {
+        await this.wsClient.stopCapture();
       }
 
       this.isCapturing = false;
@@ -876,8 +884,8 @@ export class ScreencapView extends LitElement {
 
     // Send mouse down event
     try {
-      if (this.apiClient) {
-        await this.apiClient.sendMouseDown(coords.x, coords.y);
+      if (this.wsClient) {
+        await this.wsClient.sendMouseDown(coords.x, coords.y);
       }
 
       logger.log(
@@ -895,8 +903,8 @@ export class ScreencapView extends LitElement {
     if (!coords) return;
 
     try {
-      if (this.apiClient) {
-        await this.apiClient.sendMouseMove(coords.x, coords.y);
+      if (this.wsClient) {
+        await this.wsClient.sendMouseMove(coords.x, coords.y);
       }
     } catch (error) {
       logger.error('Failed to send mouse move:', error);
@@ -912,8 +920,8 @@ export class ScreencapView extends LitElement {
     try {
       if (this.isDragging) {
         // Send mouse up event
-        if (this.apiClient) {
-          await this.apiClient.sendMouseUp(coords.x, coords.y);
+        if (this.wsClient) {
+          await this.wsClient.sendMouseUp(coords.x, coords.y);
         }
 
         logger.log(
@@ -921,8 +929,8 @@ export class ScreencapView extends LitElement {
         );
       } else {
         // If no drag occurred, treat as a click
-        if (this.apiClient) {
-          await this.apiClient.sendClick(coords.x, coords.y);
+        if (this.wsClient) {
+          await this.wsClient.sendClick(coords.x, coords.y);
         }
 
         logger.log(
@@ -1062,8 +1070,8 @@ export class ScreencapView extends LitElement {
         `⌨️ Sending key: ${event.key} (modifiers: ${event.ctrlKey ? 'Ctrl+' : ''}${event.metaKey ? 'Cmd+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Shift+' : ''})`
       );
 
-      if (this.apiClient) {
-        await this.apiClient.sendKey({
+      if (this.wsClient) {
+        await this.wsClient.sendKey({
           key: event.key,
           metaKey: event.metaKey,
           ctrlKey: event.ctrlKey,
@@ -1084,19 +1092,19 @@ export class ScreencapView extends LitElement {
       logger.log('🚀 Starting WebRTC capture...');
 
       // First, send request to start capture on Mac app with WebRTC enabled
-      if (!this.apiClient) {
+      if (!this.wsClient) {
         throw new Error('API client not initialized');
       }
 
       let result: unknown;
       if (this.captureMode === 'desktop') {
-        result = await this.apiClient.startCapture({
+        result = await this.wsClient.startCapture({
           type: 'desktop',
           index: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
           webrtc: true,
         });
       } else {
-        result = await this.apiClient.captureWindow({
+        result = await this.wsClient.captureWindow({
           cgWindowID: this.selectedWindow?.cgWindowID as number,
           webrtc: true,
         });
@@ -1171,18 +1179,16 @@ export class ScreencapView extends LitElement {
       };
 
       this.peerConnection.onicecandidate = (event) => {
-        if (event.candidate && this.signalSocket?.readyState === WebSocket.OPEN) {
-          this.signalSocket.send(
-            JSON.stringify({
-              type: 'ice-candidate',
-              data: event.candidate,
-            })
-          );
+        if (event.candidate && this.wsClient) {
+          this.wsClient.sendSignal({
+            type: 'ice-candidate',
+            data: event.candidate,
+          });
         }
       };
 
-      // Connect to signaling server
-      await this.connectSignaling();
+      // Set up WebRTC signaling using the same WebSocket
+      await this.setupWebRTCSignaling();
     } catch (error) {
       logger.error('Failed to start WebRTC capture:', error);
       this.error = 'Failed to start WebRTC capture. Falling back to JPEG mode.';
@@ -1192,93 +1198,49 @@ export class ScreencapView extends LitElement {
     }
   }
 
-  private async connectSignaling() {
-    return new Promise<void>((resolve, reject) => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/screencap-signal`;
+  private async setupWebRTCSignaling() {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const safariVersion = this.getSafariVersion();
+    const preferH265 = isSafari && safariVersion >= 18; // Only Safari 18.0+ has stable H.265
 
-      logger.log('📡 Connecting to signaling server:', wsUrl);
-      this.signalSocket = new WebSocket(wsUrl);
+    // Generate session ID if not already present
+    if (this.wsClient && !this.wsClient.sessionId) {
+      this.wsClient.sessionId =
+        typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      logger.log(`🆕 Generated new session ID: ${this.wsClient.sessionId}`);
+    } else {
+      logger.log(`📋 Using existing session ID: ${this.wsClient?.sessionId}`);
+    }
 
-      this.signalSocket.onopen = () => {
-        logger.log('✅ Connected to signaling server');
-        // Send capture request with browser info
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        const safariVersion = this.getSafariVersion();
-        const preferH265 = isSafari && safariVersion >= 18; // Only Safari 18.0+ has stable H.265
+    const startCaptureMessage = {
+      type: 'start-capture',
+      sessionId: this.wsClient?.sessionId,
+      mode: this.captureMode,
+      windowId: this.selectedWindow?.cgWindowID,
+      displayIndex: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
+      browser: isSafari ? 'safari' : 'other',
+      browserVersion: safariVersion,
+      preferH265: preferH265,
+      codecSupport: {
+        h265:
+          'RTCRtpReceiver' in window && RTCRtpReceiver.getCapabilities
+            ? (RTCRtpReceiver.getCapabilities('video')?.codecs || []).some(
+                (c) =>
+                  c.mimeType?.toLowerCase().includes('h265') ||
+                  c.mimeType?.toLowerCase().includes('hevc')
+              )
+            : false,
+        h264: true, // H.264 is always supported
+      },
+    };
 
-        // Generate session ID if not already present
-        if (this.apiClient && !this.apiClient.sessionId) {
-          this.apiClient.sessionId =
-            typeof crypto.randomUUID === 'function'
-              ? crypto.randomUUID()
-              : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          logger.log(`🆕 Generated new session ID: ${this.apiClient.sessionId}`);
-        } else {
-          logger.log(`📋 Using existing session ID: ${this.apiClient?.sessionId}`);
-        }
+    logger.log(`📤 Sending start-capture message with session: ${startCaptureMessage.sessionId}`);
 
-        const startCaptureMessage = {
-          type: 'start-capture',
-          sessionId: this.apiClient?.sessionId,
-          mode: this.captureMode,
-          windowId: this.selectedWindow?.cgWindowID,
-          displayIndex: this.selectedDisplay ? Number.parseInt(this.selectedDisplay.id) : -1,
-          browser: isSafari ? 'safari' : 'other',
-          browserVersion: safariVersion,
-          preferH265: preferH265,
-          codecSupport: {
-            h265:
-              'RTCRtpReceiver' in window && RTCRtpReceiver.getCapabilities
-                ? (RTCRtpReceiver.getCapabilities('video')?.codecs || []).some(
-                    (c) =>
-                      c.mimeType?.toLowerCase().includes('h265') ||
-                      c.mimeType?.toLowerCase().includes('hevc')
-                  )
-                : false,
-            h264: true, // H.264 is always supported
-          },
-        };
-
-        logger.log(
-          `📤 Sending start-capture message with session: ${startCaptureMessage.sessionId}`
-        );
-        this.signalSocket?.send(JSON.stringify(startCaptureMessage));
-        resolve();
-      };
-
-      this.signalSocket.onmessage = async (event) => {
-        const message: SignalMessage = JSON.parse(event.data);
-
-        switch (message.type) {
-          case 'offer':
-            logger.log('📥 Received offer');
-            await this.handleOffer(message.data as RTCSessionDescriptionInit);
-            break;
-
-          case 'ice-candidate':
-            logger.log('🧊 Received ICE candidate');
-            if (this.peerConnection && message.data) {
-              await this.peerConnection.addIceCandidate(message.data as RTCIceCandidateInit);
-            }
-            break;
-
-          case 'error':
-            logger.error('❌ Signaling error:', message.data);
-            reject(new Error(message.data as string));
-            break;
-        }
-      };
-
-      this.signalSocket.onerror = (error) => {
-        logger.error('❌ WebSocket error:', error);
-        reject(error);
-      };
-
-      this.signalSocket.onclose = () => {
-        logger.log('📡 Signaling connection closed');
-      };
-    });
+    if (this.wsClient) {
+      await this.wsClient.sendSignal(startCaptureMessage);
+    }
   }
 
   private async handleOffer(offer: RTCSessionDescriptionInit) {
@@ -1391,13 +1353,11 @@ export class ScreencapView extends LitElement {
 
       await this.peerConnection.setLocalDescription(modifiedAnswer);
 
-      if (this.signalSocket?.readyState === WebSocket.OPEN) {
-        this.signalSocket.send(
-          JSON.stringify({
-            type: 'answer',
-            data: modifiedAnswer,
-          })
-        );
+      if (this.wsClient) {
+        await this.wsClient.sendSignal({
+          type: 'answer',
+          data: modifiedAnswer,
+        });
       }
     } catch (error) {
       logger.error('Failed to handle offer:', error);
@@ -1405,10 +1365,7 @@ export class ScreencapView extends LitElement {
   }
 
   private cleanupWebRTC() {
-    if (this.signalSocket) {
-      this.signalSocket.close();
-      this.signalSocket = null;
-    }
+    // WebSocket is managed by wsClient, no need to close it here
 
     if (this.peerConnection) {
       this.peerConnection.close();
