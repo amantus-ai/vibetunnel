@@ -55,6 +55,7 @@ class BufferWebSocketClient: NSObject {
     private var webSocket: WebSocketProtocol?
     private let webSocketFactory: WebSocketFactory
     private var subscriptions = [String: (TerminalWebSocketEvent) -> Void]()
+    private var messageQueue: [[String: Any]] = []
     private var reconnectTask: Task<Void, Never>?
     private var reconnectAttempts = 0
     private var isConnecting = false
@@ -85,7 +86,14 @@ class BufferWebSocketClient: NSObject {
     }
 
     func connect() {
-        guard !isConnecting else { return }
+        guard !isConnecting else { 
+            logger.warning("Already connecting, ignoring connect() call")
+            return 
+        }
+        guard !isConnected else {
+            logger.warning("Already connected, ignoring connect() call")
+            return
+        }
         guard let baseURL else {
             connectionError = WebSocketError.invalidURL
             return
@@ -98,6 +106,11 @@ class BufferWebSocketClient: NSObject {
         var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
         components?.scheme = baseURL.scheme == "https" ? "wss" : "ws"
         components?.path = "/buffers"
+        
+        // Add authentication token as query parameter (not header)
+        if let token = authenticationService?.getTokenForQuery() {
+            components?.queryItems = [URLQueryItem(name: "token", value: token)]
+        }
 
         guard let wsURL = components?.url else {
             connectionError = WebSocketError.invalidURL
@@ -622,21 +635,27 @@ class BufferWebSocketClient: NSObject {
     func subscribe(to sessionId: String, handler: @escaping (TerminalWebSocketEvent) -> Void) {
         subscriptions[sessionId] = handler
 
-        Task {
-            try? await subscribe(to: sessionId)
-        }
+        // Queue subscription message (will be sent when connected)
+        queueMessage(["type": "subscribe", "sessionId": sessionId])
     }
 
     private func subscribe(to sessionId: String) async throws {
         try await sendMessage(["type": "subscribe", "sessionId": sessionId])
     }
+    
+    private func queueMessage(_ message: [String: Any]) {
+        // Only queue subscribe/unsubscribe messages
+        if let type = message["type"] as? String,
+           type == "subscribe" || type == "unsubscribe" {
+            messageQueue.append(message)
+        }
+    }
 
     func unsubscribe(from sessionId: String) {
         subscriptions.removeValue(forKey: sessionId)
 
-        Task {
-            try? await sendMessage(["type": "unsubscribe", "sessionId": sessionId])
-        }
+        // Queue unsubscribe message (will be sent when connected)
+        queueMessage(["type": "unsubscribe", "sessionId": sessionId])
     }
 
     private func sendMessage(_ message: [String: Any]) async throws {
@@ -712,6 +731,7 @@ class BufferWebSocketClient: NSObject {
         webSocket = nil
 
         subscriptions.removeAll()
+        messageQueue.removeAll()
         isConnected = false
     }
 
@@ -731,10 +751,17 @@ extension BufferWebSocketClient: WebSocketDelegate {
         reconnectAttempts = 0
         startPingTask()
 
-        // Re-subscribe to all sessions
+        // Process message queue
         Task {
+            // Send any queued messages
+            while !messageQueue.isEmpty {
+                let message = messageQueue.removeFirst()
+                try? await sendMessage(message)
+            }
+            
+            // Re-subscribe to all sessions that still have handlers
             for sessionId in subscriptions.keys {
-                try? await subscribe(to: sessionId)
+                try? await sendMessage(["type": "subscribe", "sessionId": sessionId])
             }
         }
     }
