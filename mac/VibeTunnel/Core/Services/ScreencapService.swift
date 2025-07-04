@@ -122,7 +122,7 @@ public final class ScreencapService: NSObject {
         let width: Double
         let height: Double
     }
-    
+
     struct ProcessGroup: Codable {
         let processName: String
         let pid: Int32
@@ -317,13 +317,17 @@ public final class ScreencapService: NSObject {
 
         for (index, display) in content.displays.enumerated() {
             // Log display details for debugging
-            logger.debug("📺 SCDisplay \(index): frame=\(display.frame), width=\(display.width), height=\(display.height)")
-            
+            logger
+                .debug(
+                    "📺 SCDisplay \(index): frame=\(String(describing: display.frame)), width=\(display.width), height=\(display.height)"
+                )
+
             // Log all NSScreen frames for comparison
             for (screenIndex, screen) in NSScreen.screens.enumerated() {
-                logger.debug("🖥️ NSScreen \(screenIndex): frame=\(screen.frame), name=\(screen.localizedName ?? "unnamed")")
+                let screenName = screen.localizedName
+                logger.debug("🖥️ NSScreen \(screenIndex): frame=\(String(describing: screen.frame)), name=\(screenName)")
             }
-            
+
             // Try to find corresponding NSScreen for additional info
             // First attempt: try direct matching
             var nsScreen = NSScreen.screens.first { screen in
@@ -332,23 +336,25 @@ public final class ScreencapService: NSObject {
                 let yMatch = abs(screen.frame.origin.y - display.frame.origin.y) < 1.0
                 let widthMatch = abs(screen.frame.width - display.frame.width) < 1.0
                 let heightMatch = abs(screen.frame.height - display.frame.height) < 1.0
-                
+
                 let matches = xMatch && yMatch && widthMatch && heightMatch
                 if matches {
-                    logger.debug("✅ Matched SCDisplay \(index) with NSScreen: \(screen.localizedName ?? "unnamed")")
+                    let screenName = screen.localizedName
+                    logger.debug("✅ Matched SCDisplay \(index) with NSScreen: \(screenName)")
                 }
                 return matches
             }
-            
+
             // If no match found, try matching by size only (position might be different)
             if nsScreen == nil {
                 nsScreen = NSScreen.screens.first { screen in
                     let widthMatch = abs(screen.frame.width - display.frame.width) < 1.0
                     let heightMatch = abs(screen.frame.height - display.frame.height) < 1.0
-                    
+
                     let matches = widthMatch && heightMatch
                     if matches {
-                        logger.debug("✅ Matched SCDisplay \(index) with NSScreen by size: \(screen.localizedName ?? "unnamed")")
+                        let screenName = screen.localizedName
+                        logger.debug("✅ Matched SCDisplay \(index) with NSScreen by size: \(screenName)")
                     }
                     return matches
                 }
@@ -389,56 +395,73 @@ public final class ScreencapService: NSObject {
             false,
             onScreenWindowsOnly: false
         )
-        
+
         // Filter windows first
         let filteredWindows = content.windows.filter { window in
             // Skip windows that are not on screen
             guard window.isOnScreen else { return false }
-            
+
             // Skip windows with zero size
             guard window.frame.width > 0 && window.frame.height > 0 else { return false }
-            
+
+            // Skip very small windows (less than 100x100 pixels)
+            // These are often invisible utility windows or focus proxies
+            guard window.frame.width >= 100 && window.frame.height >= 100 else {
+                logger
+                    .debug(
+                        "Filtering out small window: \(window.title ?? "Untitled") - size: \(window.frame.width)x\(window.frame.height)"
+                    )
+                return false
+            }
+
             // Skip system windows
             if let appName = window.owningApplication?.applicationName {
                 let systemApps = [
                     "Window Server",
-                    "WindowManager", 
+                    "WindowManager",
                     "Dock",
                     "SystemUIServer",
                     "Control Center",
-                    "Notification Center"
+                    "Notification Center",
+                    "Spotlight",
+                    "AXUIElement" // Accessibility UI elements
                 ]
-                
+
                 if systemApps.contains(appName) {
                     return false
                 }
-                
+
                 // Skip VibeTunnel itself
                 if appName.lowercased().contains("vibetunnel") {
                     return false
                 }
             }
-            
+
             // Skip windows with certain titles
             if let title = window.title {
-                if title.contains("Event Tap") || title.contains("Shield") {
+                if title.contains("Event Tap") ||
+                    title.contains("Shield") ||
+                    title.isEmpty || // Skip windows with empty titles
+                    title == "Focus Proxy" || // Common invisible window
+                    title == "Menu Bar"
+                {
                     return false
                 }
             }
-            
+
             return true
         }
-        
+
         // Group windows by process
         let groupedWindows = Dictionary(grouping: filteredWindows) { window in
             window.owningApplication?.processID ?? 0
         }
-        
+
         // Convert to ProcessGroups
-        let processGroups = groupedWindows.compactMap { (pid, windows) -> ProcessGroup? in
+        let processGroups = groupedWindows.compactMap { _, windows -> ProcessGroup? in
             guard let firstWindow = windows.first,
                   let app = firstWindow.owningApplication else { return nil }
-            
+
             let windowInfos = windows.map { window in
                 WindowInfo(
                     cgWindowID: Int(window.windowID),
@@ -449,7 +472,7 @@ public final class ScreencapService: NSObject {
                     height: window.frame.height
                 )
             }
-            
+
             return ProcessGroup(
                 processName: app.applicationName,
                 pid: app.processID,
@@ -458,35 +481,45 @@ public final class ScreencapService: NSObject {
                 windows: windowInfos
             )
         }
-        
-        // Sort by process name
-        return processGroups.sorted { $0.processName.localizedCaseInsensitiveCompare($1.processName) == .orderedAscending }
+
+        // Sort by largest window area (descending) - processes with bigger windows appear first
+        return processGroups.sorted { group1, group2 in
+            // Find the largest window area in each process group
+            let maxArea1 = group1.windows.map { $0.width * $0.height }.max() ?? 0
+            let maxArea2 = group2.windows.map { $0.width * $0.height }.max() ?? 0
+
+            // Sort by area descending (larger windows first)
+            return maxArea1 > maxArea2
+        }
     }
-    
+
     /// Get application icon as base64 encoded PNG
     private func getAppIcon(for pid: Int32) -> String? {
         guard let app = NSRunningApplication(processIdentifier: pid),
               let icon = app.icon else { return nil }
-        
+
         // Resize icon to reasonable size (32x32 for retina displays)
         let targetSize = NSSize(width: 32, height: 32)
         let resizedIcon = NSImage(size: targetSize)
-        
+
         resizedIcon.lockFocus()
         NSGraphicsContext.current?.imageInterpolation = .high
-        icon.draw(in: NSRect(origin: .zero, size: targetSize),
-                 from: NSRect(origin: .zero, size: icon.size),
-                 operation: .copy,
-                 fraction: 1.0)
+        icon.draw(
+            in: NSRect(origin: .zero, size: targetSize),
+            from: NSRect(origin: .zero, size: icon.size),
+            operation: .copy,
+            fraction: 1.0
+        )
         resizedIcon.unlockFocus()
-        
+
         // Convert to PNG
         guard let tiffData = resizedIcon.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmap.representation(using: .png, properties: [:]) else {
+              let pngData = bitmap.representation(using: .png, properties: [:])
+        else {
             return nil
         }
-        
+
         return pngData.base64EncodedString()
     }
 

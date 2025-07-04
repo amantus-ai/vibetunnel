@@ -135,33 +135,33 @@ final class WebRTCManager: NSObject {
     /// Disconnect from signaling server
     func disconnect() async {
         logger.info("🔌 Disconnecting from signaling server")
-        
+
         // Clear session information
         if let sessionId = activeSessionId {
             logger.info("🔒 [SECURITY] Session terminated: \(sessionId)")
             activeSessionId = nil
             sessionStartTime = nil
         }
-        
+
         // Close peer connection
         peerConnection?.close()
         peerConnection = nil
-        
+
         // Close WebSocket
         if let socket = signalSocket {
             socket.cancel(with: .normalClosure, reason: nil)
             signalSocket = nil
         }
-        
+
         signalSession = nil
-        
+
         // Clean up tracks and sources
         localVideoTrack = nil
         videoSource = nil
         videoCapturer = nil
-        
+
         isConnected = false
-        
+
         logger.info("Disconnected WebRTC")
     }
 
@@ -556,11 +556,14 @@ final class WebRTCManager: NSObject {
         switch type {
         case "start-capture":
             // Browser wants to start capture, create offer
-            // Initialize session for this capture
+            // Always update session for this capture
             if let sessionId = json["sessionId"] as? String {
+                if activeSessionId != sessionId {
+                    logger.info("🔄 [SECURITY] Updating session from \(activeSessionId ?? "nil") to \(sessionId)")
+                }
                 activeSessionId = sessionId
                 sessionStartTime = Date()
-                logger.info("🔐 [SECURITY] Session initialized: \(sessionId)")
+                logger.info("🔐 [SECURITY] Session active: \(sessionId)")
             }
             await createAndSendOffer()
 
@@ -596,7 +599,7 @@ final class WebRTCManager: NSObject {
         case "api-request":
             // Handle API request from browser
             await handleApiRequest(json)
-            
+
         case "ready":
             // Server acknowledging connection - no action needed
             logger.debug("Server acknowledged connection")
@@ -640,7 +643,12 @@ final class WebRTCManager: NSObject {
         logger.info("🔧 API request: \(method) \(endpoint) from session: \(sessionId ?? "unknown")")
 
         do {
-            let result = try await processApiRequest(method: method, endpoint: endpoint, params: json["params"], sessionId: sessionId)
+            let result = try await processApiRequest(
+                method: method,
+                endpoint: endpoint,
+                params: json["params"],
+                sessionId: sessionId
+            )
             logger.info("📤 Sending API response for request \(requestId)")
             await sendSignalMessage([
                 "type": "api-response",
@@ -666,7 +674,14 @@ final class WebRTCManager: NSObject {
         return method == "POST" && controlEndpoints.contains(endpoint)
     }
 
-    private func processApiRequest(method: String, endpoint: String, params: Any?, sessionId: String?) async throws -> Any {
+    private func processApiRequest(
+        method: String,
+        endpoint: String,
+        params: Any?,
+        sessionId: String?
+    )
+        async throws -> Any
+    {
         guard let screencapService else {
             throw WebRTCError.invalidConfiguration
         }
@@ -698,16 +713,18 @@ final class WebRTCManager: NSObject {
                 throw WebRTCError.invalidConfiguration
             }
             let useWebRTC = params["webrtc"] as? Bool ?? false
-            
-            // Initialize session if not already done
-            if activeSessionId == nil {
-                if let sessionId = sessionId {
-                    activeSessionId = sessionId
-                    sessionStartTime = Date()
-                    logger.info("🔐 [SECURITY] Session initialized during capture request: \(sessionId)")
+
+            // Always update session ID when starting a new capture
+            // This allows switching between displays/windows with new sessions
+            if let sessionId {
+                if activeSessionId != sessionId {
+                    logger.info("🔄 [SECURITY] Updating session from \(activeSessionId ?? "nil") to \(sessionId)")
                 }
+                activeSessionId = sessionId
+                sessionStartTime = Date()
+                logger.info("🔐 [SECURITY] Session active for capture: \(sessionId)")
             }
-            
+
             try await screencapService.startCapture(type: type, index: index, useWebRTC: useWebRTC)
             return ["status": "started", "type": type, "webrtc": useWebRTC]
 
@@ -718,16 +735,18 @@ final class WebRTCManager: NSObject {
                 throw WebRTCError.invalidConfiguration
             }
             let useWebRTC = params["webrtc"] as? Bool ?? false
-            
-            // Initialize session if not already done
-            if activeSessionId == nil {
-                if let sessionId = sessionId {
-                    activeSessionId = sessionId
-                    sessionStartTime = Date()
-                    logger.info("🔐 [SECURITY] Session initialized during capture-window request: \(sessionId)")
+
+            // Always update session ID when starting a new capture
+            // This allows switching between displays/windows with new sessions
+            if let sessionId {
+                if activeSessionId != sessionId {
+                    logger.info("🔄 [SECURITY] Updating session from \(activeSessionId ?? "nil") to \(sessionId)")
                 }
+                activeSessionId = sessionId
+                sessionStartTime = Date()
+                logger.info("🔐 [SECURITY] Session active for capture-window: \(sessionId)")
             }
-            
+
             try await screencapService.startCaptureWindow(cgWindowID: cgWindowID, useWebRTC: useWebRTC)
             return ["status": "started", "cgWindowID": cgWindowID, "webrtc": useWebRTC]
 
@@ -901,12 +920,12 @@ final class WebRTCManager: NSObject {
             logger.error("❌ Cannot send message - WebSocket is nil")
             return
         }
-        
+
         guard socket.state == .running else {
             logger.error("❌ Cannot send message - WebSocket state is \(socket.state.rawValue)")
             return
         }
-        
+
         guard let data = try? JSONSerialization.data(withJSONObject: message),
               let text = String(data: data, encoding: .utf8)
         else {
@@ -1015,7 +1034,6 @@ final class WebRTCManager: NSObject {
 
         return modifiedLines.joined(separator: "\n")
     }
-
 }
 
 // MARK: - RTCPeerConnectionDelegate
