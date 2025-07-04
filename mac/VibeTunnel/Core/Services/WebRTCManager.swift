@@ -30,7 +30,7 @@ final class WebRTCManager: NSObject {
     private let signalURL: URL
 
     /// Local auth token for WebSocket authentication
-    private let localAuthToken: String?
+    let localAuthToken: String?
 
     // Session management for security
     private var activeSessionId: String?
@@ -114,6 +114,9 @@ final class WebRTCManager: NSObject {
         do {
             try await connectSignaling()
             logger.info("✅ WebSocket connected successfully")
+
+            // Mark as connected
+            isConnected = true
         } catch {
             logger.error("❌ Failed to connect to signaling server: \(error)")
             throw error
@@ -127,6 +130,39 @@ final class WebRTCManager: NSObject {
         ])
 
         logger.info("✅ Connected for screencap API handling and sent mac-ready")
+    }
+
+    /// Disconnect from signaling server
+    func disconnect() async {
+        logger.info("🔌 Disconnecting from signaling server")
+        
+        // Clear session information
+        if let sessionId = activeSessionId {
+            logger.info("🔒 [SECURITY] Session terminated: \(sessionId)")
+            activeSessionId = nil
+            sessionStartTime = nil
+        }
+        
+        // Close peer connection
+        peerConnection?.close()
+        peerConnection = nil
+        
+        // Close WebSocket
+        if let socket = signalSocket {
+            socket.cancel(with: .normalClosure, reason: nil)
+            signalSocket = nil
+        }
+        
+        signalSession = nil
+        
+        // Clean up tracks and sources
+        localVideoTrack = nil
+        videoSource = nil
+        videoCapturer = nil
+        
+        isConnected = false
+        
+        logger.info("Disconnected WebRTC")
     }
 
     /// Process a video frame from ScreenCaptureKit synchronously
@@ -442,6 +478,8 @@ final class WebRTCManager: NSObject {
         if let localAuthToken {
             request.setValue(localAuthToken, forHTTPHeaderField: "X-VibeTunnel-Local")
             logger.info("🔑 Adding local auth token to WebSocket request")
+        } else {
+            logger.warning("⚠️ No local auth token available for WebSocket connection")
         }
         logger.info("📋 Creating WebSocket with request: \(request)")
 
@@ -927,33 +965,6 @@ final class WebRTCManager: NSObject {
         return modifiedLines.joined(separator: "\n")
     }
 
-    private func disconnect() async {
-        // Clear session information
-        if let sessionId = activeSessionId {
-            logger.info("🔒 [SECURITY] Session terminated: \(sessionId)")
-            activeSessionId = nil
-            sessionStartTime = nil
-        }
-
-        // Close peer connection
-        peerConnection?.close()
-        peerConnection = nil
-
-        // Close WebSocket
-        if let socket = signalSocket {
-            socket.cancel(with: .normalClosure, reason: nil)
-            signalSocket = nil
-        }
-
-        // Clean up tracks and sources
-        localVideoTrack = nil
-        videoSource = nil
-        videoCapturer = nil
-
-        isConnected = false
-
-        logger.info("Disconnected WebRTC")
-    }
 }
 
 // MARK: - RTCPeerConnectionDelegate
@@ -1051,7 +1062,7 @@ extension WebRTCManager: URLSessionWebSocketDelegate {
         didOpenWithProtocol protocol: String?
     ) {
         Task { @MainActor in
-            logger.info("✅ WebSocket connected")
+            logger.info("✅ WebSocket connected with protocol: \(`protocol` ?? "none")")
         }
     }
 
@@ -1062,7 +1073,46 @@ extension WebRTCManager: URLSessionWebSocketDelegate {
         reason: Data?
     ) {
         Task { @MainActor in
-            logger.info("WebSocket closed: \(closeCode.rawValue)")
+            let reasonString = reason.flatMap { String(data: $0, encoding: .utf8) } ?? "unknown"
+            logger.error("❌ WebSocket closed with code: \(closeCode.rawValue), reason: \(reasonString)")
+
+            // Mark as disconnected
+            self.isConnected = false
+
+            // Notify screencap service about disconnection
+            if let screencapService = self.screencapService {
+                Task {
+                    await screencapService.handleWebSocketDisconnection()
+                }
+            }
+        }
+    }
+}
+
+// MARK: - URLSessionDelegate
+
+extension WebRTCManager: URLSessionDelegate {
+    nonisolated func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        // Accept server trust for localhost connections
+        if challenge.protectionSpace.host == "localhost" || challenge.protectionSpace.host == "127.0.0.1" {
+            if let serverTrust = challenge.protectionSpace.serverTrust {
+                let credential = URLCredential(trust: serverTrust)
+                completionHandler(.useCredential, credential)
+                return
+            }
+        }
+        completionHandler(.performDefaultHandling, nil)
+    }
+
+    nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error {
+            Task { @MainActor in
+                logger.error("❌ URLSession task failed: \(error.localizedDescription)")
+            }
         }
     }
 }

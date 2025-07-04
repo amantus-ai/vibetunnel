@@ -22,6 +22,8 @@ public final class ScreencapService: NSObject {
     private var isWebSocketConnecting = false
     private var isWebSocketConnected = false
     private var webSocketConnectionContinuations: [CheckedContinuation<Void, Error>] = []
+    private var reconnectTask: Task<Void, Never>?
+    private var shouldReconnect = true
 
     // MARK: - Properties
 
@@ -171,9 +173,24 @@ public final class ScreencapService: NSObject {
 
         // Create WebRTC manager which handles WebSocket API requests
         if webRTCManager == nil {
-            // Get local auth token from ServerManager
+            // Get local auth token from ServerManager - this might be nil if server isn't started yet
             let localAuthToken = ServerManager.shared.bunServer?.localToken
+            if localAuthToken == nil {
+                logger.warning("⚠️ No local auth token available yet - server might not be started")
+            }
             webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self, localAuthToken: localAuthToken)
+        } else if webRTCManager?.localAuthToken == nil {
+            // Update auth token if it wasn't available during initial creation
+            let localAuthToken = ServerManager.shared.bunServer?.localToken
+            if let localAuthToken {
+                logger.info("🔑 Updating WebRTC manager with newly available auth token")
+                // Recreate WebRTC manager with auth token
+                webRTCManager = WebRTCManager(
+                    serverURL: serverURL,
+                    screencapService: self,
+                    localAuthToken: localAuthToken
+                )
+            }
         }
 
         // Connect to signaling server for API handling
@@ -189,6 +206,9 @@ public final class ScreencapService: NSObject {
                 continuation.resume()
             }
             webSocketConnectionContinuations.removeAll()
+
+            // Start monitoring connection
+            startConnectionMonitor()
         } catch {
             logger.error("Failed to connect WebSocket for API: \(error)")
             isWebSocketConnecting = false
@@ -199,10 +219,62 @@ public final class ScreencapService: NSObject {
                 continuation.resume(throwing: error)
             }
             webSocketConnectionContinuations.removeAll()
+
+            // Schedule reconnection
+            scheduleReconnection()
+        }
+    }
+
+    /// Start monitoring the WebSocket connection
+    private func startConnectionMonitor() {
+        // Cancel any existing monitor
+        reconnectTask?.cancel()
+
+        reconnectTask = Task { [weak self] in
+            guard let self else { return }
+
+            while !Task.isCancelled && shouldReconnect {
+                try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+
+                // Check if still connected
+                if let webRTCManager = self.webRTCManager {
+                    let connected = webRTCManager.isConnected
+                    if !connected && self.isWebSocketConnected {
+                        logger.warning("⚠️ WebSocket disconnected, marking as disconnected")
+                        self.isWebSocketConnected = false
+                        self.scheduleReconnection()
+                    }
+                }
+            }
+        }
+    }
+
+    /// Schedule a reconnection attempt
+    private func scheduleReconnection() {
+        guard shouldReconnect else { return }
+
+        Task { [weak self] in
+            guard let self else { return }
+
+            // Wait before reconnecting (exponential backoff could be added here)
+            logger.info("⏳ Scheduling reconnection in 2 seconds...")
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+
+            if !self.isWebSocketConnected && self.shouldReconnect {
+                logger.info("🔄 Attempting to reconnect WebSocket...")
+                await self.setupWebSocketForAPIHandling()
+            }
         }
     }
 
     // MARK: - Public Methods
+
+    /// Handle WebSocket disconnection notification
+    public func handleWebSocketDisconnection() async {
+        logger.warning("⚠️ WebSocket disconnected, will attempt to reconnect")
+        isWebSocketConnected = false
+        scheduleReconnection()
+    }
 
     /// Ensure WebSocket connection is established
     public func ensureWebSocketConnected() async throws {
