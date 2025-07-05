@@ -204,30 +204,66 @@ public final class ScreencapService: NSObject {
 
         // Create WebRTC manager which handles WebSocket API requests
         if webRTCManager == nil {
-            // Get local auth token from ServerManager - this might be nil if server isn't started yet
-            let localAuthToken = ServerManager.shared.bunServer?.localToken
-            if localAuthToken == nil {
-                logger.warning("⚠️ No local auth token available yet - server might not be started")
+            // Check if authentication is disabled
+            let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
+            let isNoAuth = authMode == "none"
+            
+            if isNoAuth {
+                // Authentication is disabled, create WebRTC manager without token
+                logger.info("🔓 Authentication disabled, creating WebRTC manager without token")
+                webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self, localAuthToken: nil)
+            } else {
+                // Get local auth token from ServerManager - this might be nil if server isn't started yet
+                let localAuthToken = ServerManager.shared.bunServer?.localToken
+                if localAuthToken == nil {
+                    logger.warning("⚠️ No local auth token available yet - server might not be started")
+                    logger.warning("⚠️ Will retry connection when auth token becomes available")
+                    // Schedule a retry
+                    scheduleReconnection()
+                    
+                    // Transition to error state temporarily
+                    stateMachine.processEvent(.connectionFailed(ScreencapError.webSocketNotConnected))
+                    isWebSocketConnecting = false
+                    
+                    // Fail waiting continuations
+                    for continuation in webSocketConnectionContinuations {
+                        continuation.resume(throwing: ScreencapError.webSocketNotConnected)
+                    }
+                    webSocketConnectionContinuations.removeAll()
+                    return
+                }
+                webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self, localAuthToken: localAuthToken)
             }
-            webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self, localAuthToken: localAuthToken)
         } else if webRTCManager?.localAuthToken == nil {
-            // Update auth token if it wasn't available during initial creation
-            let localAuthToken = ServerManager.shared.bunServer?.localToken
-            if let localAuthToken {
-                logger.info("🔑 Updating WebRTC manager with newly available auth token")
-                // Recreate WebRTC manager with auth token
-                webRTCManager = WebRTCManager(
-                    serverURL: serverURL,
-                    screencapService: self,
-                    localAuthToken: localAuthToken
-                )
+            // Check if authentication is disabled
+            let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
+            let isNoAuth = authMode == "none"
+            
+            if !isNoAuth {
+                // Update auth token if it wasn't available during initial creation
+                let localAuthToken = ServerManager.shared.bunServer?.localToken
+                if let localAuthToken {
+                    logger.info("🔑 Updating WebRTC manager with newly available auth token")
+                    // Recreate WebRTC manager with auth token
+                    webRTCManager = WebRTCManager(
+                        serverURL: serverURL,
+                        screencapService: self,
+                        localAuthToken: localAuthToken
+                    )
+                }
             }
         }
 
         // Connect to signaling server for API handling
         // This allows the browser to make API requests immediately
         do {
-            try await webRTCManager?.connectForAPIHandling()
+            // Ensure WebRTC manager exists
+            guard let webRTCManager = self.webRTCManager else {
+                logger.error("❌ WebRTC manager not available - cannot connect for API handling")
+                throw ScreencapError.webSocketNotConnected
+            }
+            
+            try await webRTCManager.connectForAPIHandling()
             logger.info("✅ Connected to WebSocket for screencap API handling")
             isWebSocketConnected = true
             isWebSocketConnecting = false
@@ -1037,8 +1073,13 @@ public final class ScreencapService: NSObject {
                 return
             }
 
-            // Create WebRTC manager
-            webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self)
+            // Check if authentication is disabled
+            let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
+            let isNoAuth = authMode == "none"
+            
+            // Create WebRTC manager with appropriate auth token
+            let localAuthToken = isNoAuth ? nil : ServerManager.shared.bunServer?.localToken
+            webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self, localAuthToken: localAuthToken)
 
             // Start WebRTC capture
             let modeString: String = switch captureMode {

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Screencap WebSocket Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+        #output {
+            background: #000;
+            padding: 10px;
+            border: 1px solid #333;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #333;
+            color: #fff;
+            border: 1px solid #666;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #444;
+        }
+    </style>
+</head>
+<body>
+    <h1>Screencap WebSocket Test</h1>
+    <div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="getProcesses()">Get Processes</button>
+        <button onclick="startCapture()">Start Capture</button>
+        <button onclick="disconnect()">Disconnect</button>
+    </div>
+    <div id="output"></div>
+
+    <script>
+        let ws = null;
+        let requestId = 0;
+
+        function log(message) {
+            const output = document.getElementById('output');
+            output.textContent += `[${new Date().toLocaleTimeString()}] ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function connect() {
+            if (ws) {
+                log('Already connected');
+                return;
+            }
+
+            ws = new WebSocket('ws://localhost:4020/ws/screencap-signal', {
+                headers: {
+                    'X-VibeTunnel-Local': 'R5o9f1i92iic0ghtL-R8MwNr7_h7IS5RNJAogI4C-K8'
+                }
+            });
+
+            ws.onopen = () => {
+                log('Connected to screencap WebSocket');
+            };
+
+            ws.onmessage = (event) => {
+                log('Received: ' + event.data);
+                try {
+                    const parsed = JSON.parse(event.data);
+                    log('Parsed: ' + JSON.stringify(parsed, null, 2));
+                } catch (e) {
+                    log('Could not parse as JSON');
+                }
+            };
+
+            ws.onerror = (error) => {
+                log('WebSocket error: ' + error);
+            };
+
+            ws.onclose = (event) => {
+                log(`WebSocket closed: ${event.code} ${event.reason}`);
+                ws = null;
+            };
+        }
+
+        function getProcesses() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('Not connected');
+                return;
+            }
+
+            const request = {
+                id: String(++requestId),
+                method: 'GET',
+                path: '/processes'
+            };
+            
+            log('Sending: ' + JSON.stringify(request));
+            ws.send(JSON.stringify(request));
+        }
+
+        function startCapture() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('Not connected');
+                return;
+            }
+
+            const request = {
+                id: String(++requestId),
+                method: 'POST',
+                path: '/start-capture',
+                body: {
+                    sessionId: `test-${Date.now()}`,
+                    targetDisplay: 0
+                }
+            };
+            
+            log('Sending: ' + JSON.stringify(request));
+            ws.send(JSON.stringify(request));
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+    </script>
+</body>
+</html>

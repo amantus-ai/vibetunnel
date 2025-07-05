@@ -58,8 +58,13 @@ final class BunServer {
     }()
 
     /// Get the local auth token for use in HTTP requests
-    var localToken: String {
-        localAuthToken
+    var localToken: String? {
+        // Check if authentication is disabled
+        let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
+        if authMode == "none" {
+            return nil
+        }
+        return localAuthToken
     }
 
     // MARK: - Initialization

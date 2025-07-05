@@ -128,3 +128,4 @@ playwright-report/
 .claude/settings.local.json
 buildServer.json
 /temp
+/temp/webrtc-check

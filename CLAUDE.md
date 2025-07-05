@@ -32,6 +32,12 @@ VibeTunnel is a macOS application that allows users to access their terminal ses
    - DO NOT create new versions with different file names (e.g., file_v2.ts, file_new.ts)
    - Users hate having to manually clean up duplicate files
 
+5. **NEVER restart VibeTunnel directly with pkill/open - ALWAYS clean and rebuild**
+   - The Mac app builds and embeds the web server during the Xcode build process
+   - Simply restarting the app will serve a STALE, CACHED version of the server
+   - You MUST clean and rebuild with Xcode to get the latest server code
+   - Always use: clean → build → run (the build process rebuilds the embedded server)
+
 ### Git Workflow Reminders
 - Our workflow: start from main → create branch → make PR → merge → return to main
 - PRs sometimes contain multiple different features and that's okay

@@ -378,6 +378,11 @@ export class PtyManager extends EventEmitter {
       sessionInfo.status = 'running';
       this.sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
+      // Setup session.json watcher for external sessions
+      if (options.forwardToStdout) {
+        this.setupSessionWatcher(session);
+      }
+
       logger.debug(
         chalk.green(`Session ${sessionId} created successfully (PID: ${ptyProcess.pid})`)
       );
@@ -591,6 +596,9 @@ export class PtyManager extends EventEmitter {
         this.lastBellTime.delete(session.id);
         this.sessionExitTimes.delete(session.id);
 
+        // Emit session exited event
+        this.emit('sessionExited', session.id);
+
         // Call exit callback if provided (for fwd.ts)
         if (onExit) {
           onExit(exitCode || 0, signal);
@@ -704,6 +712,54 @@ export class PtyManager extends EventEmitter {
     }
 
     // All IPC goes through this socket
+  }
+
+  /**
+   * Setup file watcher for session.json changes
+   */
+  private setupSessionWatcher(session: PtySession): void {
+    const sessionJsonPath = path.join(session.controlDir, 'session.json');
+
+    try {
+      // Use polling approach for better reliability on macOS
+      // Check for changes every 100ms
+      const checkInterval = setInterval(() => {
+        try {
+          // Read the current session info from disk
+          const updatedInfo = this.sessionManager.loadSessionInfo(session.id);
+          if (updatedInfo && updatedInfo.name !== session.sessionInfo.name) {
+            // Name has changed, update our internal state
+            const oldName = session.sessionInfo.name;
+            session.sessionInfo.name = updatedInfo.name;
+
+            logger.debug(
+              `Session ${session.id} name changed from "${oldName}" to "${updatedInfo.name}"`
+            );
+
+            // Emit event for name change
+            this.trackAndEmit('sessionNameChanged', session.id, updatedInfo.name);
+
+            // Update title if needed for external terminals
+            if (
+              session.isExternalTerminal &&
+              (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
+            ) {
+              this.markTitleUpdateNeeded(session);
+            }
+          }
+        } catch (error) {
+          // Session file might be deleted, ignore
+          logger.debug(`Failed to read session file for ${session.id}:`, error);
+        }
+      }, 100);
+
+      // Store interval for cleanup (reuse the sessionJsonWatcher property)
+      // We'll store the interval ID as a number and handle it properly in cleanup
+      (session as any).sessionJsonInterval = checkInterval;
+      logger.debug(`Session watcher setup for ${session.id}`);
+    } catch (error) {
+      logger.error(`Failed to setup session watcher for ${session.id}:`, error);
+    }
   }
 
   /**
@@ -1801,6 +1857,16 @@ export class PtyManager extends EventEmitter {
     if (session.titleFilter) {
       // No need to reset, just remove reference
       session.titleFilter = undefined;
+    }
+
+    // Clean up session.json watcher/interval
+    if (session.sessionJsonWatcher) {
+      session.sessionJsonWatcher.close();
+      session.sessionJsonWatcher = undefined;
+    }
+    if ((session as any).sessionJsonInterval) {
+      clearInterval((session as any).sessionJsonInterval);
+      (session as any).sessionJsonInterval = undefined;
     }
 
     // Clean up connected socket clients

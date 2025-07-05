@@ -226,6 +226,45 @@ export class ScreencapView extends LitElement {
     .toggle-btn.active {
       color: #10B981;
     }
+
+    .status-log {
+      position: absolute;
+      bottom: 3rem;
+      left: 1rem;
+      right: 1rem;
+      max-width: 600px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(10, 10, 10, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(64, 64, 64, 0.3);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      line-height: 1.5;
+      color: #a3a3a3;
+    }
+
+    .status-log-entry {
+      margin-bottom: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .status-log-time {
+      color: #737373;
+      flex-shrink: 0;
+    }
+
+    .status-log-message {
+      flex: 1;
+    }
+
+    .status-log-entry.info { color: #60a5fa; }
+    .status-log-entry.success { color: #10b981; }
+    .status-log-entry.warning { color: #f59e0b; }
+    .status-log-entry.error { color: #ef4444; }
   `;
 
   @state() private processGroups: ProcessGroup[] = [];
@@ -247,6 +286,11 @@ export class ScreencapView extends LitElement {
   @state() private sidebarCollapsed = false;
   @state() private fitMode: 'contain' | 'cover' = 'cover';
   @state() private frameCounter = 0;
+  @state() private statusLog: Array<{
+    time: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+    message: string;
+  }> = [];
 
   @query('video') private videoElement?: HTMLVideoElement;
 
@@ -271,6 +315,34 @@ export class ScreencapView extends LitElement {
     }
   }
 
+  private logStatus(type: 'info' | 'success' | 'warning' | 'error', message: string) {
+    const now = new Date();
+    const time =
+      now.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }) +
+      '.' +
+      now.getMilliseconds().toString().padStart(3, '0');
+
+    this.statusLog = [...this.statusLog, { time, type, message }];
+
+    // Keep only last 50 entries
+    if (this.statusLog.length > 50) {
+      this.statusLog = this.statusLog.slice(-50);
+    }
+
+    // Auto-scroll status log to bottom after update
+    this.updateComplete.then(() => {
+      const logElement = this.shadowRoot?.querySelector('.status-log');
+      if (logElement) {
+        logElement.scrollTop = logElement.scrollHeight;
+      }
+    });
+  }
+
   private loadSidebarState() {
     const saved = localStorage.getItem('screencap-sidebar-collapsed');
     if (saved === 'true') {
@@ -284,17 +356,21 @@ export class ScreencapView extends LitElement {
 
   private initializeWebSocketClient() {
     if (!this.wsClient) {
+      this.logStatus('info', 'Initializing WebSocket connection...');
       this.wsClient = new ScreencapWebSocketClient(
         `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/screencap-signal`
       );
 
       this.wsClient.onReady = () => {
         logger.log('WebSocket ready');
+        this.logStatus('success', 'WebSocket connection established');
+        this.logStatus('info', 'Ready to start capture');
         this.status = 'ready';
       };
 
       this.wsClient.onError = (error: string) => {
         logger.error('WebSocket error:', error);
+        this.logStatus('error', `WebSocket error: ${error}`);
         this.error = error;
         this.status = 'error';
       };
@@ -420,41 +496,91 @@ export class ScreencapView extends LitElement {
   private async startCapture() {
     if (!this.wsClient) {
       this.error = 'WebSocket not connected';
+      this.logStatus('error', 'Cannot start capture: WebSocket not connected');
       return;
     }
 
     this.status = 'starting';
     this.error = '';
     this.frameCounter = 0;
+    this.statusLog = []; // Clear previous logs
+
+    this.logStatus('info', 'Starting capture process...');
 
     try {
       if (this.useWebRTC) {
+        this.logStatus('info', 'Using WebRTC mode for high-quality streaming');
         await this.startWebRTCCapture();
       } else {
+        this.logStatus('info', 'Using JPEG mode for compatibility');
         await this.startJPEGCapture();
       }
 
       this.isCapturing = true;
       this.status = 'capturing';
+      this.logStatus('success', 'Capture started successfully');
     } catch (error) {
       logger.error('Failed to start capture:', error);
-      this.error = error instanceof Error ? error.message : 'Failed to start capture';
+      
+      // Extract error message from various error types
+      let errorMessage = 'Failed to start capture';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Handle error objects from API responses
+        if ('message' in error) {
+          errorMessage = String(error.message);
+        } else if ('error' in error) {
+          errorMessage = String(error.error);
+        } else if ('details' in error) {
+          errorMessage = String(error.details);
+        } else {
+          // Last resort - try to stringify the object
+          try {
+            errorMessage = JSON.stringify(error);
+          } catch {
+            errorMessage = 'Unknown error (could not serialize)';
+          }
+        }
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      this.error = errorMessage;
+      this.logStatus('error', `Failed to start capture: ${errorMessage}`);
       this.status = 'error';
       this.isCapturing = false;
     }
   }
 
   private async startWebRTCCapture() {
-    if (!this.webrtcHandler) return;
+    if (!this.webrtcHandler || !this.wsClient) return;
 
     const callbacks = {
-      onStreamReady: (stream: MediaStream) => {
-        if (this.videoElement) {
-          this.videoElement.srcObject = stream;
-          this.videoElement.play().catch((error) => {
-            logger.error('Failed to play video:', error);
-          });
-        }
+      onStreamReady: async (stream: MediaStream) => {
+        this.logStatus('success', 'WebRTC stream ready, connecting to video element...');
+        // Wait for the component to update and video element to be rendered
+        await this.updateComplete;
+
+        // Try to set the stream with a retry mechanism
+        const setVideoStream = () => {
+          if (this.videoElement) {
+            logger.log('Setting video stream on element');
+            this.logStatus('info', 'Attaching video stream to player');
+            this.videoElement.srcObject = stream;
+            this.videoElement.play().catch((error) => {
+              logger.error('Failed to play video:', error);
+              this.logStatus('error', `Failed to start video playback: ${error}`);
+            });
+            this.logStatus('success', 'Video stream connected and playing');
+          } else {
+            logger.warn('Video element not found, retrying in 100ms');
+            setTimeout(setVideoStream, 100);
+          }
+        };
+
+        setVideoStream();
       },
       onStatsUpdate: (stats: StreamStats) => {
         this.streamStats = stats;
@@ -462,10 +588,17 @@ export class ScreencapView extends LitElement {
       },
       onError: (error: Error) => {
         logger.error('WebRTC error:', error);
+        this.logStatus('error', `WebRTC error: ${error.message}`);
         this.error = error.message;
         this.status = 'error';
       },
+      onStatusUpdate: (type: 'info' | 'success' | 'warning' | 'error', message: string) => {
+        this.logStatus(type, message);
+      },
     };
+
+    // First send the actual capture request to start screen capture with WebRTC enabled
+    let captureResponse: CaptureResponse | undefined;
 
     if (this.captureMode === 'desktop') {
       const displayIndex = this.allDisplaysSelected
@@ -473,8 +606,51 @@ export class ScreencapView extends LitElement {
         : this.selectedDisplay
           ? Number.parseInt(this.selectedDisplay.id)
           : 0;
+
+      if (this.allDisplaysSelected) {
+        this.logStatus('info', 'Requesting capture of all displays');
+      } else {
+        this.logStatus('info', `Requesting capture of display ${displayIndex}`);
+      }
+
+      this.logStatus('info', 'Sending screen capture request to Mac app...');
+      captureResponse = (await this.wsClient.startCapture({
+        type: 'desktop',
+        index: displayIndex,
+        webrtc: true,
+      })) as CaptureResponse;
+
+      if (captureResponse?.sessionId) {
+        this.logStatus(
+          'success',
+          `Screen capture started with session: ${captureResponse.sessionId.substring(0, 8)}...`
+        );
+      }
+
+      // Then start WebRTC connection
+      this.logStatus('info', 'Initiating WebRTC connection...');
       await this.webrtcHandler.startCapture('desktop', displayIndex, undefined, callbacks);
     } else if (this.captureMode === 'window' && this.selectedWindow) {
+      this.logStatus(
+        'info',
+        `Requesting capture of window: ${this.selectedWindow.title || 'Untitled'}`
+      );
+
+      this.logStatus('info', 'Sending window capture request to Mac app...');
+      captureResponse = (await this.wsClient.captureWindow({
+        cgWindowID: this.selectedWindow.cgWindowID,
+        webrtc: true,
+      })) as CaptureResponse;
+
+      if (captureResponse?.sessionId) {
+        this.logStatus(
+          'success',
+          `Window capture started with session: ${captureResponse.sessionId.substring(0, 8)}...`
+        );
+      }
+
+      // Then start WebRTC connection
+      this.logStatus('info', 'Initiating WebRTC connection...');
       await this.webrtcHandler.startCapture(
         'window',
         undefined,
@@ -494,16 +670,16 @@ export class ScreencapView extends LitElement {
         : this.selectedDisplay
           ? Number.parseInt(this.selectedDisplay.id)
           : 0;
-      response = await this.wsClient.request<CaptureResponse>('POST', '/start-capture', {
+      response = (await this.wsClient.startCapture({
         type: 'desktop',
         index: displayIndex,
-        useWebRTC: false,
-      });
+        webrtc: this.useWebRTC,
+      })) as CaptureResponse;
     } else if (this.captureMode === 'window' && this.selectedWindow) {
-      response = await this.wsClient.request<CaptureResponse>('POST', '/start-capture-window', {
+      response = (await this.wsClient.captureWindow({
         cgWindowID: this.selectedWindow.cgWindowID,
-        useWebRTC: false,
-      });
+        webrtc: this.useWebRTC,
+      })) as CaptureResponse;
     }
 
     if (response?.sessionId) {
@@ -528,7 +704,7 @@ export class ScreencapView extends LitElement {
       }
     } else if (this.wsClient) {
       try {
-        await this.wsClient.request('POST', '/stop-capture');
+        await this.wsClient.stopCapture();
       } catch (error) {
         logger.error('Failed to stop capture:', error);
       }
@@ -695,6 +871,7 @@ export class ScreencapView extends LitElement {
         `
             : ''
         }
+        ${this.renderStatusLog()}
       `;
     }
 
@@ -712,6 +889,7 @@ export class ScreencapView extends LitElement {
           </svg>
           ${this.fps} FPS
         </div>
+        ${this.renderStatusLog()}
       `;
     }
 
@@ -737,6 +915,24 @@ export class ScreencapView extends LitElement {
                     : 'Initializing...'
           }
         </div>
+        ${this.renderStatusLog()}
+      </div>
+    `;
+  }
+
+  private renderStatusLog() {
+    if (this.statusLog.length === 0) return '';
+
+    return html`
+      <div class="status-log">
+        ${this.statusLog.map(
+          (entry) => html`
+          <div class="status-log-entry ${entry.type}">
+            <span class="status-log-time">${entry.time}</span>
+            <span class="status-log-message">${entry.message}</span>
+          </div>
+        `
+        )}
       </div>
     `;
   }

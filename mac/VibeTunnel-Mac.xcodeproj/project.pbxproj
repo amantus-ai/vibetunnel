@@ -579,10 +579,10 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		788D7C1F2E17700900664395 /* XCRemoteSwiftPackageReference "WebRTC" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/steipete/WebRTC";
+			repositoryURL = "https://github.com/stasel/WebRTC";
 			requirement = {
-				kind = revision;
-				revision = 65af693ea81722af200415cba51acc89d6ced6b9;
+				kind = upToNextMajorVersion;
+				minimumVersion = 137.0.0;
 			};
 		};
 		78AD8B8E2E051EB50009725C /* XCRemoteSwiftPackageReference "swift-log" */ = {

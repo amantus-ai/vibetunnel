@@ -25,6 +25,10 @@ export class WebRTCHandler {
   private onStreamReady?: (stream: MediaStream) => void;
   private onStatsUpdate?: (stats: StreamStats) => void;
   private onError?: (error: Error) => void;
+  private onStatusUpdate?: (
+    type: 'info' | 'success' | 'warning' | 'error',
+    message: string
+  ) => void;
   private customConfig?: RTCConfiguration;
 
   constructor(wsClient: ScreencapWebSocketClient) {
@@ -46,6 +50,7 @@ export class WebRTCHandler {
       onStreamReady?: (stream: MediaStream) => void;
       onStatsUpdate?: (stats: StreamStats) => void;
       onError?: (error: Error) => void;
+      onStatusUpdate?: (type: 'info' | 'success' | 'warning' | 'error', message: string) => void;
     }
   ): Promise<void> {
     logger.log('Starting WebRTC capture...');
@@ -54,6 +59,7 @@ export class WebRTCHandler {
       this.onStreamReady = callbacks.onStreamReady;
       this.onStatsUpdate = callbacks.onStatsUpdate;
       this.onError = callbacks.onError;
+      this.onStatusUpdate = callbacks.onStatusUpdate;
     }
 
     // Generate session ID if not already present
@@ -63,6 +69,10 @@ export class WebRTCHandler {
           ? crypto.randomUUID()
           : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       logger.log(`Generated session ID: ${this.wsClient.sessionId}`);
+      this.onStatusUpdate?.(
+        'info',
+        `Created session: ${this.wsClient.sessionId.substring(0, 8)}...`
+      );
     }
 
     // Send start-capture message to Mac app
@@ -103,6 +113,7 @@ export class WebRTCHandler {
 
   private async setupWebRTCSignaling(): Promise<void> {
     logger.log('Setting up WebRTC signaling...');
+    this.onStatusUpdate?.('info', 'Setting up WebRTC connection...');
 
     let configuration: RTCConfiguration;
 
@@ -125,12 +136,14 @@ export class WebRTCHandler {
       };
     }
 
+    this.onStatusUpdate?.('info', 'Creating peer connection...');
     this.peerConnection = new RTCPeerConnection(configuration);
 
     // Set up event handlers
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         logger.log('Sending ICE candidate to Mac');
+        this.onStatusUpdate?.('info', 'Exchanging network connectivity information...');
         this.wsClient.sendSignal({
           type: 'ice-candidate',
           data: event.candidate,
@@ -138,11 +151,49 @@ export class WebRTCHandler {
       }
     };
 
+    this.peerConnection.oniceconnectionstatechange = () => {
+      const state = this.peerConnection?.iceConnectionState;
+      logger.log('ICE connection state:', state);
+
+      switch (state) {
+        case 'checking':
+          this.onStatusUpdate?.('info', 'Checking network connectivity...');
+          break;
+        case 'connected':
+          this.onStatusUpdate?.('success', 'Network connection established');
+          break;
+        case 'completed':
+          this.onStatusUpdate?.('success', 'Network connection optimized');
+          break;
+        case 'failed':
+          this.onStatusUpdate?.('error', 'Network connection failed');
+          break;
+        case 'disconnected':
+          this.onStatusUpdate?.('warning', 'Network connection lost');
+          break;
+      }
+    };
+
     this.peerConnection.ontrack = (event) => {
       logger.log('Received remote track:', event.track.kind);
+      logger.log('Event streams:', event.streams);
+      logger.log('Event streams length:', event.streams?.length);
+      this.onStatusUpdate?.('success', `Received ${event.track.kind} stream from Mac`);
+
       if (event.streams?.[0]) {
         this.remoteStream = event.streams[0];
+        logger.log('Setting remote stream, calling onStreamReady');
         this.onStreamReady?.(this.remoteStream);
+
+        // Start collecting statistics
+        this.startStatsCollection();
+      } else {
+        logger.warn('No streams available in track event');
+        // Create a new MediaStream and add the track
+        const stream = new MediaStream([event.track]);
+        this.remoteStream = stream;
+        logger.log('Created new MediaStream with track, calling onStreamReady');
+        this.onStreamReady?.(stream);
 
         // Start collecting statistics
         this.startStatsCollection();
@@ -187,6 +238,7 @@ export class WebRTCHandler {
     switch (message.type) {
       case 'offer':
         logger.log('Received offer from Mac');
+        this.onStatusUpdate?.('info', 'Received connection offer from Mac app');
         try {
           await this.peerConnection.setRemoteDescription(
             new RTCSessionDescription(message.data as RTCSessionDescriptionInit)
@@ -194,10 +246,12 @@ export class WebRTCHandler {
           logger.log('Remote description set successfully');
 
           // Create and send answer
+          this.onStatusUpdate?.('info', 'Negotiating connection parameters...');
           const answer = await this.peerConnection.createAnswer();
           await this.peerConnection.setLocalDescription(answer);
 
           logger.log('Sending answer to Mac');
+          this.onStatusUpdate?.('info', 'Sending connection response...');
           this.wsClient.sendSignal({
             type: 'answer',
             data: answer,
@@ -207,6 +261,7 @@ export class WebRTCHandler {
           await this.configureBitrateParameters();
         } catch (error) {
           logger.error('Failed to handle offer:', error);
+          this.onStatusUpdate?.('error', `Failed to establish connection: ${error}`);
           this.onError?.(error as Error);
         }
         break;
