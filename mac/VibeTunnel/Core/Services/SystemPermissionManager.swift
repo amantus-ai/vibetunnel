@@ -249,7 +249,7 @@ final class SystemPermissionManager {
     private func checkScreenRecordingPermission() async -> Bool {
         // Use ScreenCaptureKit to check permission status
         // This is the modern API for macOS 14+
-        
+
         do {
             // Try to get shareable content - this will fail without permission
             _ = try await SCShareableContent.current

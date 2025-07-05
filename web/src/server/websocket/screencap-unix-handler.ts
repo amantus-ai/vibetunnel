@@ -19,6 +19,7 @@ interface SignalMessage {
     | 'api-request'
     | 'api-response'
     | 'bitrate-adjustment'
+    | 'state-change'
     | 'ping'
     | 'pong';
   mode?: 'desktop' | 'window' | 'api-only';
@@ -58,12 +59,9 @@ export class ScreencapUnixHandler {
   }
 
   async start(): Promise<void> {
-    // Clean up any existing socket file
-    try {
-      await fs.promises.unlink(this.socketPath);
-    } catch (_error) {
-      // Ignore if file doesn't exist
-    }
+    // The socket file is cleaned up on stop(). We don't unlink it here
+    // to prevent race conditions on fast restarts. The server will fail
+    // with EADDRINUSE if another instance is running, which is correct.
 
     // Create UNIX socket server
     this.unixServer = net.createServer((socket) => {
@@ -158,26 +156,29 @@ export class ScreencapUnixHandler {
     }
 
     // Buffer for incomplete messages
-    let buffer = '';
+    let buffer = Buffer.alloc(0);
 
     socket.on('data', (data) => {
-      buffer += data.toString();
+      // Append new data to our buffer
+      buffer = Buffer.concat([buffer, data]);
 
-      // Log received data size
       logger.log(`Received from Mac: ${data.length} bytes, buffer size: ${buffer.length}`);
 
       // Process complete messages (separated by newlines)
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep incomplete line in buffer
+      let newlineIndex;
+      while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+        const messageBuffer = buffer.subarray(0, newlineIndex);
+        
+        // Remove the message and the newline from the main buffer
+        buffer = buffer.subarray(newlineIndex + 1);
 
-      for (const line of lines) {
-        if (line.trim()) {
+        if (messageBuffer.length > 0) {
           try {
-            const message: SignalMessage = JSON.parse(line);
+            const message: SignalMessage = JSON.parse(messageBuffer.toString('utf-8'));
             this.handleMacMessage(message);
           } catch (error) {
             logger.error('Failed to parse Mac message:', error);
-            logger.error('Raw message:', line);
+            logger.error('Raw message buffer:', messageBuffer.toString('utf-8'));
           }
         }
       }

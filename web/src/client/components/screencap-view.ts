@@ -284,7 +284,7 @@ export class ScreencapView extends LitElement {
   @state() private streamStats: StreamStats | null = null;
   @state() private useWebRTC = true;
   @state() private sidebarCollapsed = false;
-  @state() private fitMode: 'contain' | 'cover' = 'cover';
+  @state() private fitMode: 'contain' | 'cover' = 'contain';
   @state() private frameCounter = 0;
   @state() private statusLog: Array<{
     time: string;

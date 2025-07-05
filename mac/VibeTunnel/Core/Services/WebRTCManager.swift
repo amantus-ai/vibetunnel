@@ -25,7 +25,7 @@ final class WebRTCManager: NSObject {
 
     /// UNIX socket for signaling
     private var unixSocket: UnixSocketConnection?
-    
+
     /// Message handler ID for cleanup
     private var messageHandlerID: UUID?
 
@@ -41,8 +41,8 @@ final class WebRTCManager: NSObject {
 
     // Adaptive bitrate control
     private var statsTimer: Timer?
-    private var currentBitrate: Int = 10_000_000 // Start at 10 Mbps
-    private var targetBitrate: Int = 10_000_000
+    private var currentBitrate: Int = 40_000_000 // Start at 40 Mbps
+    private var targetBitrate: Int = 40_000_000
     private let minBitrate: Int = 1_000_000 // 1 Mbps minimum
     private let maxBitrate: Int = 50_000_000 // 50 Mbps maximum
     private var lastPacketLoss: Double = 0.0
@@ -82,14 +82,14 @@ final class WebRTCManager: NSObject {
         localVideoTrack = nil
         videoSource = nil
         peerConnection = nil
-        
+
         // Remove message handler if still registered
         if let handlerID = messageHandlerID {
             Task { @MainActor in
                 SharedUnixSocketManager.shared.removeMessageHandler(handlerID)
             }
         }
-        
+
         RTCCleanupSSL()
     }
 
@@ -184,6 +184,11 @@ final class WebRTCManager: NSObject {
         // Connect if not already connected
         if unixSocket?.isConnected == false {
             unixSocket?.connect()
+        } else if unixSocket?.isConnected == true {
+            // If the shared socket is already connected, we won't get a .ready
+            // state change. We need to manually sync our state.
+            logger.info("✅ Shared socket is already connected, syncing state.")
+            self.handleSocketStateChange(.ready)
         }
 
         // Wait for connection to be ready
@@ -257,8 +262,21 @@ final class WebRTCManager: NSObject {
     /// Process a video frame from ScreenCaptureKit synchronously
     /// This method extracts the data synchronously to avoid data race warnings
     nonisolated func processVideoFrameSync(_ sampleBuffer: CMSampleBuffer) {
+        // Track first frame - using nonisolated struct
+        enum FrameTracker {
+            nonisolated(unsafe) static var frameCount = 0
+            nonisolated(unsafe) static var firstFrameLogged = false
+        }
+        FrameTracker.frameCount += 1
+        let isFirstFrame = FrameTracker.frameCount == 1
+
         // Extract all necessary data from the sample buffer synchronously
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            if isFirstFrame {
+                Task { @MainActor in
+                    self.logger.error("❌ First frame has no pixel buffer!")
+                }
+            }
             return
         }
 
@@ -277,37 +295,60 @@ final class WebRTCManager: NSObject {
         )
 
         // Now we can safely create a task without capturing CMSampleBuffer
-        Task.detached { [weak self] in
-            guard let self else { return }
+        // Capture necessary values
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
 
-            // Check if we're connected before processing
-            let connected = await MainActor.run { self.isConnected }
-            guard connected else {
-                // Only log occasionally to avoid spam
-                if Int.random(in: 0..<30) == 0 {
-                    await MainActor.run { [weak self] in
-                        self?.logger.debug("Skipping frame - WebRTC not connected yet")
-                    }
-                }
-                return
+        // Use nonisolated async variant with sending parameter
+        Task.detached {
+            await self.sendVideoFrame(
+                videoFrame,
+                width: Int32(width),
+                height: Int32(height),
+                isFirstFrame: isFirstFrame,
+                frameCount: FrameTracker.frameCount
+            )
+        }
+    }
+
+    @MainActor
+    private func sendVideoFrame(
+        _ videoFrame: RTCVideoFrame,
+        width: Int32,
+        height: Int32,
+        isFirstFrame: Bool,
+        frameCount: Int
+    )
+        async
+    {
+        // Check if we're connected before processing
+        guard self.isConnected else {
+            // Only log occasionally to avoid spam
+            if Int.random(in: 0..<30) == 0 {
+                self.logger.debug("Skipping frame - WebRTC not connected yet")
             }
+            return
+        }
 
-            // Send the frame to WebRTC
-            await MainActor.run { [weak self] in
-                guard let self,
-                      let videoCapturer = self.videoCapturer,
-                      let videoSource = self.videoSource else { return }
+        // Send the frame to WebRTC
+        guard let videoCapturer = self.videoCapturer,
+              let videoSource = self.videoSource else { return }
 
-                videoSource.capturer(videoCapturer, didCapture: videoFrame)
+        // Log first frame or periodically
+        if isFirstFrame || frameCount % 300 == 0 {
+            self.logger.info("🎬 Sending frame \(frameCount) to WebRTC: \(width)x\(height)")
+            self.logger
+                .info(
+                    "📊 Current bitrate: \(self.currentBitrate / 1_000_000) Mbps, target: \(self.targetBitrate / 1_000_000) Mbps"
+                )
+        }
 
-                // Log success occasionally
-                if Int.random(in: 0..<300) == 0 {
-                    self.logger
-                        .info(
-                            "✅ Sent video frame to WebRTC"
-                        )
-                }
-            }
+        videoSource.capturer(videoCapturer, didCapture: videoFrame)
+
+        if isFirstFrame {
+            self.logger.info("✅ FIRST VIDEO FRAME SENT TO WEBRTC!")
+            self.logger.info("🎥 Video source active: \(self.videoSource != nil)")
+            self.logger.info("📡 Peer connection state: \(String(describing: self.connectionState))")
         }
     }
 
@@ -386,98 +427,115 @@ final class WebRTCManager: NSObject {
     // MARK: - Private Methods
 
     private func createVideoEncoderFactory() -> RTCVideoEncoderFactory {
-        // Create a hybrid encoder factory that supports both H.265 and H.264
-        // M137 WebRTC should have built-in H.265 support
-
-        // Check if hardware H.265 encoding is available
-        let h265Available = isH265HardwareEncodingAvailable()
-        logger.info("🎥 H.265 hardware encoding available: \(h265Available)")
-
-        // Use default factory - steipete/WebRTC has native H.265 support built-in
+        // Create encoder factory that supports H.264 and VP8
+        // Use default factory which includes both codecs
         let encoderFactory = RTCDefaultVideoEncoderFactory()
 
         // Log what codecs the factory actually supports
         let supportedCodecs = encoderFactory.supportedCodecs()
         logger.info("📋 Factory supported codecs:")
+
+        var hasH264 = false
+        var hasVP8 = false
+
         for codec in supportedCodecs {
             logger.info("  - \(codec.name): \(codec.parameters)")
+            if codec.name.uppercased() == "H264" {
+                hasH264 = true
+            } else if codec.name.uppercased() == "VP8" {
+                hasVP8 = true
+            }
         }
 
-        logger.info("✅ Created encoder factory with native H.265 support")
+        logger.info("✅ Created encoder factory - H.264: \(hasH264), VP8: \(hasVP8)")
         return encoderFactory
     }
 
-    private func isH265HardwareEncodingAvailable() -> Bool {
-        // Check if the system supports hardware H.265 encoding
-        // macOS 14+ on Apple Silicon or Intel with T2 chip should support it
-
-        // Check for hardware support using VideoToolbox
-        var isHardwareAccelerated = false
-
-        // Create a test encoding session to check HEVC support
-        let encoderSpecification = [
-            kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder: true,
-            kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: true
-        ] as CFDictionary
-
-        var compressionSession: VTCompressionSession?
-        let status = VTCompressionSessionCreate(
-            allocator: nil,
-            width: 1_920,
-            height: 1_080,
-            codecType: kCMVideoCodecType_HEVC,
-            encoderSpecification: encoderSpecification,
-            imageBufferAttributes: nil,
-            compressedDataAllocator: nil,
-            outputCallback: nil,
-            refcon: nil,
-            compressionSessionOut: &compressionSession
-        )
-
-        if status == noErr, let session = compressionSession {
-            isHardwareAccelerated = true
-            VTCompressionSessionInvalidate(session)
-        }
-
-        logger
-            .info(
-                "🔍 VideoToolbox HEVC hardware encoding check: \(isHardwareAccelerated ? "supported" : "not supported") (status: \(status))"
-            )
-        return isHardwareAccelerated
-    }
-
     private func logCodecCapabilities() {
-        let h265Available = isH265HardwareEncodingAvailable()
         logger.info("🎬 WebRTC codec capabilities:")
         logger.info("  - Default encoder factory created")
-        logger.info("  - H.265/HEVC support: \(h265Available ? "Available" : "Not available")")
-        logger.info("  - H.264/AVC support: Always available")
+        logger.info("  - H.264/AVC support: Available with hardware acceleration")
+        logger.info("  - VP8 support: Available as software codec")
+        logger.info("  - Codec priority: H.264 > VP8 > Others")
         logger.info("  - Hardware acceleration: Automatic when available")
-
-        // The WebRTC library version we're using doesn't expose getCapabilities
-        // But the default factory will automatically use the best available codec
     }
 
+    private func setInitialBitrateParameters(for peerConnection: RTCPeerConnection) {
+        // Set initial encoder parameters with proper bitrate
+        guard let transceiver = peerConnection.transceivers.first(where: { $0.mediaType == .video }) else {
+            logger.warning("⚠️ No video transceiver found to set initial bitrate")
+            return
+        }
+        
+        let sender = transceiver.sender
+        
+        let parameters = sender.parameters
+        
+        // Configure initial encoding parameters
+        if parameters.encodings.isEmpty {
+            // Create a new encoding if none exist
+            let encoding = RTCRtpEncodingParameters()
+            encoding.maxBitrateBps = NSNumber(value: currentBitrate)
+            encoding.isActive = true
+            parameters.encodings = [encoding]
+        } else {
+            // Update existing encodings
+            for encoding in parameters.encodings {
+                encoding.maxBitrateBps = NSNumber(value: currentBitrate)
+                encoding.isActive = true
+            }
+        }
+        
+        sender.parameters = parameters
+        
+        logger.info("📊 Set initial bitrate parameters:")
+        logger.info("  - Initial bitrate: \(self.currentBitrate / 1_000_000) Mbps")
+        logger.info("  - Encodings count: \(parameters.encodings.count)")
+    }
+    
     private func configureCodecPreferences(for peerConnection: RTCPeerConnection) {
         // Get the transceivers to configure codec preferences
         let transceivers = peerConnection.transceivers
 
         for transceiver in transceivers where transceiver.mediaType == .video {
-            // The stasel/WebRTC package doesn't expose RTCRtpSender.capabilities
-            // So we'll work with the codecs that are available in the transceiver
-            let receiver = transceiver.receiver
+            let sender = transceiver.sender
+            let _ = transceiver.receiver
 
-            // Log current parameters
-            let params = receiver.parameters
-            logger.info("📋 Current receiver codec parameters:")
+            // Get current parameters
+            let params = sender.parameters
+            logger.info("📋 Current sender codec parameters:")
+
+            // Find H.264 and VP8 codecs
+            var h264Codecs: [RTCRtpCodecParameters] = []
+            var vp8Codecs: [RTCRtpCodecParameters] = []
+            var otherCodecs: [RTCRtpCodecParameters] = []
+
             for codec in params.codecs {
                 logger.info("  - \(codec.name): \(codec.parameters)")
+
+                if codec.name.uppercased() == "H264" {
+                    h264Codecs.append(codec)
+                } else if codec.name.uppercased() == "VP8" {
+                    vp8Codecs.append(codec)
+                } else {
+                    otherCodecs.append(codec)
+                }
             }
 
-            // The steipete/WebRTC package should handle codec preferences natively
-            logger.info("📝 Using native codec negotiation from steipete/WebRTC package")
+            // Reorder codecs: H.264 first, then VP8, then others
+            var orderedCodecs: [RTCRtpCodecParameters] = []
+            orderedCodecs.append(contentsOf: h264Codecs)
+            orderedCodecs.append(contentsOf: vp8Codecs)
+            orderedCodecs.append(contentsOf: otherCodecs)
 
-            // The actual H.265 prioritization happens in addBandwidthToSdp where we modify the SDP
+            // Update parameters with reordered codecs
+            params.codecs = orderedCodecs
+            sender.parameters = params
+
+            logger.info("📝 Configured codec preferences: H.264 first, VP8 second")
+            logger.info("  - H.264 codecs: \(h264Codecs.count)")
+            logger.info("  - VP8 codecs: \(vp8Codecs.count)")
+            logger.info("  - Other codecs: \(otherCodecs.count)")
         }
     }
 
@@ -510,20 +568,44 @@ final class WebRTCManager: NSObject {
 
         // Add local video track
         if let localVideoTrack {
+            logger.info("🎥 Adding local video track to peer connection")
+            logger.info("  - Track ID: \(localVideoTrack.trackId)")
+            logger.info("  - Track enabled: \(localVideoTrack.isEnabled)")
+            logger.info("  - Video source exists: \(self.videoSource != nil)")
+
+            // Configure codec preferences and bitrate BEFORE adding the track
+            // This ensures the sender is configured correctly from the start.
+            setInitialBitrateParameters(for: peerConnection)
+            configureCodecPreferences(for: peerConnection)
+
             peerConnection.add(localVideoTrack, streamIds: ["screen-share"])
 
-            // Configure codec preferences after adding the track
-            configureCodecPreferences(for: peerConnection)
+            logger.info("✅ Video track added to peer connection")
+            logger.info("📡 Transceivers count: \(peerConnection.transceivers.count)")
+
+            // Log transceiver details
+            for (index, transceiver) in peerConnection.transceivers.enumerated() {
+                let mediaTypeString = transceiver.mediaType == .video ? "video" : "audio"
+                let directionString = String(describing: transceiver.direction)
+                logger.info("  Transceiver \(index): type=\(mediaTypeString), direction=\(directionString)")
+            }
+        } else {
+            logger.error("❌ No local video track to add!")
         }
 
         logger.info("✅ Created peer connection")
     }
 
     private func createLocalVideoTrack() {
-        guard let videoSource = peerConnectionFactory?.videoSource() else {
-            logger.error("Failed to create video source")
+        logger.info("🎥 Creating local video track...")
+
+        guard let peerConnectionFactory = self.peerConnectionFactory else {
+            logger.error("❌ Peer connection factory is nil!")
             return
         }
+
+        let videoSource = peerConnectionFactory.videoSource()
+        logger.info("🎥 Created video source")
 
         // Configure video source for 4K quality at 60 FPS
         videoSource.adaptOutputFormat(
@@ -541,10 +623,6 @@ final class WebRTCManager: NSObject {
         logger.info("📹 Created video capturer")
 
         // Create video track
-        guard let peerConnectionFactory else {
-            logger.error("Peer connection factory not initialized")
-            return
-        }
         let videoTrack = peerConnectionFactory.videoTrack(
             with: videoSource,
             trackId: "screen-video-track"
@@ -554,6 +632,11 @@ final class WebRTCManager: NSObject {
         self.localVideoTrack = videoTrack
 
         logger.info("✅ Created local video track with 4K quality settings: 3840x2160@60fps")
+        logger.info("📦 Video components created:")
+        logger.info("  - Video source: \(self.videoSource != nil)")
+        logger.info("  - Video capturer: \(self.videoCapturer != nil)")
+        logger.info("  - Local video track: \(self.localVideoTrack != nil)")
+        logger.info("  - Track enabled: \(videoTrack.isEnabled)")
     }
 
     private func handleSocketMessage(_ data: Data) async {
@@ -746,16 +829,16 @@ final class WebRTCManager: NSObject {
                   sessionId == activeSessionId
             else {
                 let errorDetails = """
-                  🚫 [SECURITY] Unauthorized control attempt
-                  Method: \(method) \(endpoint)
-                  Request ID: \(requestId)
-                  Request session: \(sessionId ?? "nil")
-                  Active session: \(self.activeSessionId ?? "nil")
-                  Session match: \(sessionId == self.activeSessionId ? "YES" : "NO")
-                  Session age: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?
+                🚫 [SECURITY] Unauthorized control attempt
+                Method: \(method) \(endpoint)
+                Request ID: \(requestId)
+                Request session: \(sessionId ?? "nil")
+                Active session: \(self.activeSessionId ?? "nil")
+                Session match: \(sessionId == self.activeSessionId ? "YES" : "NO")
+                Session age: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?
                     .description ?? "N/A"
-                  ) seconds
-                  """
+                ) seconds
+                """
                 logger.error("\(errorDetails)")
 
                 let errorMessage =
@@ -1082,10 +1165,9 @@ final class WebRTCManager: NSObject {
         let lines = sdp.components(separatedBy: "\n")
         var modifiedLines: [String] = []
         var inVideoSection = false
-        var h265Found = false
-        var h264Found = false
-        var videoPayloadTypes: [String] = []
-        let h265PayloadType = "96" // Dynamic payload type for H.265
+        var h264PayloadTypes: [String] = []
+        var vp8PayloadTypes: [String] = []
+        var otherPayloadTypes: [String] = []
 
         for (index, line) in lines.enumerated() {
             var modifiedLine = line
@@ -1097,76 +1179,73 @@ final class WebRTCManager: NSObject {
                 // Extract existing payload types
                 let components = line.components(separatedBy: " ")
                 if components.count > 3 {
-                    videoPayloadTypes = Array(components[3...])
+                    let existingPayloadTypes = Array(components[3...])
 
-                    // With steipete/WebRTC, H.265 should already be in the SDP
-                    if !videoPayloadTypes.contains(h265PayloadType) {
-                        logger.debug("H.265 payload type not found in initial SDP")
+                    // Find H.264 and VP8 payload types from the rtpmap lines we've seen
+                    var reorderedPayloadTypes: [String] = []
+
+                    // Add H.264 first
+                    for pt in h264PayloadTypes {
+                        if existingPayloadTypes.contains(pt) {
+                            reorderedPayloadTypes.append(pt)
+                        }
+                    }
+
+                    // Then VP8
+                    for pt in vp8PayloadTypes {
+                        if existingPayloadTypes.contains(pt) && !reorderedPayloadTypes.contains(pt) {
+                            reorderedPayloadTypes.append(pt)
+                        }
+                    }
+
+                    // Then others
+                    for pt in existingPayloadTypes {
+                        if !reorderedPayloadTypes.contains(pt) {
+                            reorderedPayloadTypes.append(pt)
+                        }
+                    }
+
+                    // Reconstruct the m=video line with reordered codecs
+                    if !reorderedPayloadTypes.isEmpty {
+                        modifiedLine = components[0...2].joined(separator: " ") + " " + reorderedPayloadTypes
+                            .joined(separator: " ")
+                        logger.info("📝 Reordered video codecs: H.264 first, VP8 second")
                     }
                 }
             } else if line.starts(with: "m=") {
                 inVideoSection = false
             }
 
-            // Look for H.265/HEVC codec in rtpmap
-            if inVideoSection && line.contains("rtpmap") {
-                if line.contains("H265") || line.contains("HEVC") {
-                    h265Found = true
-                    logger.info("🎥 Found H.265 codec in SDP: \(line)")
-                } else if line.contains("H264") {
-                    h264Found = true
-                }
-            }
+            // Look for codecs in rtpmap before processing m=video line
+            if line.contains("rtpmap") {
+                let payloadType = line.components(separatedBy: " ")[0]
+                    .replacingOccurrences(of: "a=rtpmap:", with: "")
 
-            // Add Safari-specific H.265 parameters if needed
-            if inVideoSection && line.starts(with: "a=fmtp:") && (line.contains("H265") || line.contains("HEVC")) {
-                // Add Safari-specific parameters for H.265
-                if !line.contains("level-asymmetry-allowed") {
-                    modifiedLine += ";level-asymmetry-allowed=1"
+                if line.uppercased().contains("H264/90000") {
+                    h264PayloadTypes.append(payloadType)
+                    logger.info("🎥 Found H.264 codec with payload type: \(payloadType)")
+                } else if line.uppercased().contains("VP8/90000") {
+                    vp8PayloadTypes.append(payloadType)
+                    logger.info("🎥 Found VP8 codec with payload type: \(payloadType)")
+                } else if inVideoSection {
+                    otherPayloadTypes.append(payloadType)
                 }
-                if !line.contains("packetization-mode") {
-                    modifiedLine += ";packetization-mode=1"
-                }
-                logger.info("📝 Modified H.265 fmtp line for Safari: \(modifiedLine)")
             }
 
             modifiedLines.append(modifiedLine)
 
             // Add bandwidth constraint after video m-line
             if inVideoSection && line.starts(with: "m=video") {
-                // Use adaptive bitrate, with different defaults for H.265 vs H.264
-                // H.265 is more efficient, so we can use lower bitrate for same quality
-                let isH265 = h265Found || isH265HardwareEncodingAvailable()
                 let bitrate = currentBitrate / 1_000 // Convert to kbps for SDP
                 modifiedLines.append("b=AS:\(bitrate)")
-                logger
-                    .info(
-                        "📈 Added bandwidth constraint to SDP: \(bitrate / 1_000) Mbps (adaptive) for 4K@60fps (\(isH265 ? "H.265" : "H.264"))"
-                    )
-
-                // With steipete/WebRTC, H.265 should be included natively
-                if !h265Found && isH265HardwareEncodingAvailable() {
-                    logger
-                        .info(
-                            "📝 H.265 hardware available but not found in SDP - the new WebRTC package should include it"
-                        )
-                }
-            }
-
-            // Add codec preference if we're at the end of video section
-            if inVideoSection && index + 1 < lines.count && lines[index + 1].starts(with: "m=") {
-                // If we have both codecs, ensure H.265 is preferred for Safari
-                if h265Found && h264Found {
-                    modifiedLines.append("a=x-google-flag:conference")
-                    logger.info("🎯 Added codec preference flag for Safari H.265 priority")
-                }
+                logger.info("📈 Added bandwidth constraint to SDP: \(bitrate / 1_000) Mbps (adaptive) for 4K@60fps")
             }
         }
 
         // Log codec detection results
         logger
             .info(
-                "📊 SDP Codec Analysis - H.265: \(h265Found ? "present" : "absent"), H.264: \(h264Found ? "present" : "absent")"
+                "📊 SDP Codec Analysis - H.264: \(h264PayloadTypes.count), VP8: \(vp8PayloadTypes.count), Others: \(otherPayloadTypes.count)"
             )
 
         return modifiedLines.joined(separator: "\n")
@@ -1296,12 +1375,25 @@ extension WebRTCManager {
         let stats = await peerConnection.statistics()
 
         // Process stats to find outbound RTP stats
-        let currentPacketLoss: Double = 0.0
-        let currentRtt: Double = 0.0
-        let bytesSent: Int64 = 0
+        var currentPacketLoss: Double = 0.0
+        var currentRtt: Double = 0.0
+        var bytesSent: Int64 = 0
 
-        // Log stats for debugging - actual stats processing would need proper types
-        logger.debug("📊 WebRTC stats received: \(stats.statistics.count) entries")
+        // Find the outbound-rtp report for video
+        for report in stats.statistics.values {
+            if report.type == "outbound-rtp", report.values["mediaType"] == "video" {
+                bytesSent = report.values["bytesSent"] as? Int64 ?? 0
+                
+                // Find the corresponding remote-inbound-rtp report for packet loss and RTT
+                if let remoteId = report.values["remoteId"] as? String,
+                   let remoteReport = stats.statistics[remoteId],
+                   remoteReport.type == "remote-inbound-rtp" {
+                    currentPacketLoss = remoteReport.values["fractionLost"] as? Double ?? 0
+                    currentRtt = remoteReport.values["roundTripTime"] as? Double ?? 0
+                }
+                break // Found the main video stream report
+            }
+        }
 
         // Adjust bitrate based on network conditions
         adjustBitrate(packetLoss: currentPacketLoss, rtt: currentRtt)
@@ -1349,8 +1441,8 @@ extension WebRTCManager {
         let newBitrate = Int(Double(currentBitrate) * adjustment)
         targetBitrate = max(minBitrate, min(maxBitrate, newBitrate))
 
-        // Apply bitrate change if significant (> 10% change)
-        if abs(targetBitrate - currentBitrate) > currentBitrate / 10 {
+        // Apply bitrate change if significant (> 5% change)
+        if abs(Float(targetBitrate - currentBitrate)) > Float(currentBitrate) * 0.05 {
             applyBitrateChange(targetBitrate)
         }
     }

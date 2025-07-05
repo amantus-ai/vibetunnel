@@ -139,6 +139,11 @@ export class WebRTCHandler {
     this.onStatusUpdate?.('info', 'Creating peer connection...');
     this.peerConnection = new RTCPeerConnection(configuration);
 
+    // Configure codec preferences for H.264 and VP8
+    this.peerConnection.addEventListener('track', () => {
+      this.configureCodecPreferences();
+    });
+
     // Set up event handlers
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
@@ -232,6 +237,107 @@ export class WebRTCHandler {
 
   // Removed createAndSendOffer - Mac app creates the offer now
 
+  private preferCodecsInSdp(sdp: string): string {
+    const lines = sdp.split('\r\n');
+    const modifiedLines: string[] = [];
+    const h264PayloadTypes: string[] = [];
+    const vp8PayloadTypes: string[] = [];
+    const otherPayloadTypes: string[] = [];
+
+    // First pass: find codec payload types
+    for (const line of lines) {
+      if (line.includes('rtpmap')) {
+        const match = line.match(/a=rtpmap:(\d+) (\w+)\/\d+/);
+        if (match) {
+          const [, payloadType, codecName] = match;
+          if (codecName.toUpperCase() === 'H264') {
+            h264PayloadTypes.push(payloadType);
+            logger.log(`Found H.264 codec with payload type: ${payloadType}`);
+          } else if (codecName.toUpperCase() === 'VP8') {
+            vp8PayloadTypes.push(payloadType);
+            logger.log(`Found VP8 codec with payload type: ${payloadType}`);
+          } else if (line.includes('video')) {
+            otherPayloadTypes.push(payloadType);
+          }
+        }
+      }
+    }
+
+    // Second pass: modify m=video line to reorder codecs
+    for (const line of lines) {
+      let modifiedLine = line;
+
+      if (line.startsWith('m=video')) {
+        const parts = line.split(' ');
+        if (parts.length > 3) {
+          const existingPayloadTypes = parts.slice(3);
+          const reorderedPayloadTypes: string[] = [];
+
+          // Add H.264 first
+          for (const pt of h264PayloadTypes) {
+            if (existingPayloadTypes.includes(pt)) {
+              reorderedPayloadTypes.push(pt);
+            }
+          }
+
+          // Then VP8
+          for (const pt of vp8PayloadTypes) {
+            if (existingPayloadTypes.includes(pt) && !reorderedPayloadTypes.includes(pt)) {
+              reorderedPayloadTypes.push(pt);
+            }
+          }
+
+          // Then others
+          for (const pt of existingPayloadTypes) {
+            if (!reorderedPayloadTypes.includes(pt)) {
+              reorderedPayloadTypes.push(pt);
+            }
+          }
+
+          modifiedLine = `${parts.slice(0, 3).join(' ')} ${reorderedPayloadTypes.join(' ')}`;
+          logger.log('Reordered video codecs: H.264 first, VP8 second');
+        }
+      }
+
+      modifiedLines.push(modifiedLine);
+    }
+
+    logger.log(
+      `SDP Codec Analysis - H.264: ${h264PayloadTypes.length}, VP8: ${vp8PayloadTypes.length}`
+    );
+    return modifiedLines.join('\r\n');
+  }
+
+  private configureCodecPreferences(): void {
+    if (!this.peerConnection) return;
+
+    const transceivers = this.peerConnection.getTransceivers();
+    for (const transceiver of transceivers) {
+      if (transceiver.receiver.track?.kind === 'video' && 'setCodecPreferences' in transceiver) {
+        // Get available codecs
+        const codecs = RTCRtpReceiver.getCapabilities?.('video')?.codecs || [];
+
+        // Sort codecs: H.264 first, then VP8, then others
+        const h264Codecs = codecs.filter((codec) => codec.mimeType.toLowerCase().includes('h264'));
+        const vp8Codecs = codecs.filter((codec) => codec.mimeType.toLowerCase().includes('vp8'));
+        const otherCodecs = codecs.filter(
+          (codec) =>
+            !codec.mimeType.toLowerCase().includes('h264') &&
+            !codec.mimeType.toLowerCase().includes('vp8')
+        );
+
+        const orderedCodecs = [...h264Codecs, ...vp8Codecs, ...otherCodecs];
+
+        if (orderedCodecs.length > 0) {
+          (transceiver as any).setCodecPreferences(orderedCodecs);
+          logger.log(
+            `Configured codec preferences - H.264: ${h264Codecs.length}, VP8: ${vp8Codecs.length}`
+          );
+        }
+      }
+    }
+  }
+
   private async handleSignalingMessage(message: { type: string; data?: unknown }): Promise<void> {
     if (!this.peerConnection) return;
 
@@ -240,21 +346,35 @@ export class WebRTCHandler {
         logger.log('Received offer from Mac');
         this.onStatusUpdate?.('info', 'Received connection offer from Mac app');
         try {
-          await this.peerConnection.setRemoteDescription(
-            new RTCSessionDescription(message.data as RTCSessionDescriptionInit)
-          );
+          // Modify offer SDP to prefer H.264 and VP8
+          const offer = message.data as RTCSessionDescriptionInit;
+          const modifiedSdp = this.preferCodecsInSdp(offer.sdp || '');
+          const modifiedOffer = new RTCSessionDescription({
+            type: offer.type,
+            sdp: modifiedSdp,
+          });
+
+          await this.peerConnection.setRemoteDescription(modifiedOffer);
           logger.log('Remote description set successfully');
 
           // Create and send answer
           this.onStatusUpdate?.('info', 'Negotiating connection parameters...');
           const answer = await this.peerConnection.createAnswer();
-          await this.peerConnection.setLocalDescription(answer);
+
+          // Modify answer SDP to prefer H.264 and VP8
+          const modifiedAnswerSdp = this.preferCodecsInSdp(answer.sdp || '');
+          const modifiedAnswer = new RTCSessionDescription({
+            type: answer.type,
+            sdp: modifiedAnswerSdp,
+          });
+
+          await this.peerConnection.setLocalDescription(modifiedAnswer);
 
           logger.log('Sending answer to Mac');
           this.onStatusUpdate?.('info', 'Sending connection response...');
           this.wsClient.sendSignal({
             type: 'answer',
-            data: answer,
+            data: modifiedAnswer,
           });
 
           // Configure bitrate after connection is established
@@ -421,6 +541,11 @@ export class WebRTCHandler {
   }
 
   private async adjustBitrateBasedOnQuality(stats: StreamStats): Promise<void> {
+    // Skip adjustment if we don't have meaningful bitrate data yet
+    if (stats.bitrate === 0) {
+      return;
+    }
+
     // Determine if we need to adjust bitrate
     const shouldReduceBitrate = stats.packetLossRate > 2 || stats.latency > 200;
     const shouldIncreaseBitrate = stats.packetLossRate < 0.5 && stats.latency < 50;
@@ -429,15 +554,18 @@ export class WebRTCHandler {
       const adjustment = shouldReduceBitrate ? 0.8 : 1.2; // 20% adjustment
       const newBitrate = Math.round(stats.bitrate * adjustment);
 
+      // Ensure we have a reasonable bitrate range (1 Mbps to 50 Mbps)
+      const clampedBitrate = Math.max(1_000_000, Math.min(50_000_000, newBitrate));
+
       logger.log(
-        `Adjusting bitrate: ${stats.bitrate} -> ${newBitrate} (${shouldReduceBitrate ? 'reduce' : 'increase'})`
+        `Adjusting bitrate: ${stats.bitrate} -> ${clampedBitrate} (${shouldReduceBitrate ? 'reduce' : 'increase'})`
       );
 
       // Send bitrate adjustment to Mac app
       this.wsClient.sendSignal({
         type: 'bitrate-adjustment',
         data: {
-          targetBitrate: newBitrate,
+          targetBitrate: clampedBitrate,
           reason: shouldReduceBitrate ? 'quality-degradation' : 'quality-improvement',
         },
       });

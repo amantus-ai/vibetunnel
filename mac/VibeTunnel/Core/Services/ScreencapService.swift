@@ -182,8 +182,16 @@ public final class ScreencapService: NSObject {
 
         isWebSocketConnecting = true
 
-        // Transition to connecting state
-        stateMachine.processEvent(.connect)
+        // Transition to connecting state only if not already connected/capturing
+        switch stateMachine.currentState {
+        case .idle, .error:
+            stateMachine.processEvent(.connect)
+        case .capturing, .ready:
+            // Already connected, this is a reconnection
+            logger.info("🔄 Reconnecting WebSocket while in \(self.stateMachine.currentState) state")
+        default:
+            logger.warning("⚠️ Unexpected state when starting WebSocket connection: \(self.stateMachine.currentState)")
+        }
 
         // Get server URL from environment or use default
         let serverPort = UserDefaults.standard.string(forKey: "serverPort") ?? "4020"
@@ -275,11 +283,17 @@ public final class ScreencapService: NSObject {
             isWebSocketConnected = true
             isWebSocketConnecting = false
 
-            // Transition to ready state - check if we're recovering from error
-            if stateMachine.currentState == .error {
+            // Transition to ready state - check current state
+            switch stateMachine.currentState {
+            case .error:
                 stateMachine.processEvent(.errorRecovered)
-            } else {
+            case .connecting:
                 stateMachine.processEvent(.connectionEstablished)
+            case .capturing, .ready:
+                // Already in a good state, no transition needed
+                logger.info("🔄 WebSocket reconnected while in \(self.stateMachine.currentState) state")
+            default:
+                logger.warning("⚠️ Unexpected state during WebSocket connection: \(self.stateMachine.currentState)")
             }
 
             // Resume all waiting continuations
@@ -789,7 +803,16 @@ public final class ScreencapService: NSObject {
 
     /// Start capture with specified mode
     func startCapture(type: String, index: Int, useWebRTC: Bool = false) async throws {
-        logger.info("Starting capture - type: \(type), index: \(index), WebRTC: \(useWebRTC)")
+        logger.info("🎬 Starting capture - type: \(type), index: \(index), WebRTC: \(useWebRTC)")
+
+        // Check screen recording permission first
+        let hasPermission = await isScreenRecordingAllowed()
+        logger.info("🔒 Screen recording permission: \(hasPermission)")
+        if !hasPermission {
+            logger.error("❌ No screen recording permission!")
+            logger.error("💡 Please grant Screen Recording permission in:")
+            logger.error("   System Settings > Privacy & Security > Screen Recording > VibeTunnel")
+        }
 
         // Ensure WebSocket is connected first
         try await ensureWebSocketConnected()
@@ -860,12 +883,8 @@ public final class ScreencapService: NSObject {
                 // For all displays, capture everything including menu bar
                 logger.info("🔍 Creating content filter for all displays including menu bar")
 
-                // Create filter that includes all applications - this is required for proper capture
-                captureFilter = SCContentFilter(
-                    display: primaryDisplay,
-                    including: content.applications, // Include all applications for all displays capture
-                    exceptingWindows: []
-                )
+                // Create filter that includes the entire display content.
+                captureFilter = SCContentFilter(display: primaryDisplay, excludingWindows: [])
 
                 logger.info("✅ Created content filter for all displays capture including system UI")
             } else {
@@ -885,12 +904,7 @@ public final class ScreencapService: NSObject {
                     )
 
                 // Create filter to capture entire display including menu bar
-                // Include all applications to ensure proper desktop capture
-                captureFilter = SCContentFilter(
-                    display: display,
-                    including: content.applications, // Include all applications for desktop capture
-                    exceptingWindows: []
-                )
+                captureFilter = SCContentFilter(display: display, excludingWindows: [])
             }
 
         case "window":
@@ -1066,13 +1080,17 @@ public final class ScreencapService: NSObject {
 
             isCapturing = true
             logger.info("✅ Successfully started \(type) capture")
+            logger.info("📺 Stream is now active and should be producing frames")
 
             // Transition to capturing state
             stateMachine.processEvent(.captureStarted)
 
             // Start WebRTC if enabled
             if useWebRTC {
+                logger.info("🌐 Starting WebRTC capture...")
                 await startWebRTCCapture()
+            } else {
+                logger.info("🖼️ Using JPEG mode (WebRTC disabled)")
             }
         } catch {
             logger.error("Failed to start capture: \(error)")
@@ -1184,7 +1202,10 @@ public final class ScreencapService: NSObject {
 
             // Start WebRTC if enabled
             if useWebRTC {
+                logger.info("🌐 Starting WebRTC capture...")
                 await startWebRTCCapture()
+            } else {
+                logger.info("🖼️ Using JPEG mode (WebRTC disabled)")
             }
         } catch {
             logger.error("Failed to start capture: \(error)")
@@ -1194,6 +1215,7 @@ public final class ScreencapService: NSObject {
     }
 
     private func startWebRTCCapture() async {
+        logger.info("🌐 startWebRTCCapture called")
         do {
             // Get server URL from environment or use default
             let serverPort = UserDefaults.standard.string(forKey: "serverPort") ?? "4020"
@@ -1223,11 +1245,13 @@ public final class ScreencapService: NSObject {
             case .application:
                 "application"
             }
+            logger.info("🚀 Calling WebRTC manager startCapture with mode: \(modeString)")
             try await webRTCManager?.startCapture(mode: modeString)
 
-            logger.info("✅ WebRTC capture started")
+            logger.info("✅ WebRTC capture started successfully")
         } catch {
-            logger.error("Failed to start WebRTC capture: \(error)")
+            logger.error("❌ Failed to start WebRTC capture: \(error)")
+            logger.error("🔄 Falling back to JPEG mode")
             // Continue with JPEG mode
             self.useWebRTC = false
         }
@@ -1903,27 +1927,26 @@ extension ScreencapService: SCStreamOutput {
             return
         }
 
-        // Skip frame counting in non-isolated context to avoid concurrency issues
+        // Track frame reception - log first frame and then periodically
+        // Use random sampling to avoid concurrency issues
         let shouldLog = Int.random(in: 0..<300) == 0
 
         // Log sample buffer format details
         if let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) {
-            let mediaType = CMFormatDescriptionGetMediaType(formatDesc)
+            _ = CMFormatDescriptionGetMediaType(formatDesc)
             let mediaSubType = CMFormatDescriptionGetMediaSubType(formatDesc)
             let dimensions = CMVideoFormatDescriptionGetDimensions(formatDesc)
 
             // Only log occasionally to reduce noise
             if shouldLog {
-                // Cannot log from nonisolated context, skip detailed logging
-                _ = String(format: "0x%08X", mediaType)
-                _ = String(format: "0x%08X", mediaSubType)
-
-                // Also log if we're in all displays mode to debug the capture
                 Task { @MainActor in
-                    if case .allDisplays = self.captureMode {
-                        self.logger
-                            .info("📊 All displays capture - receiving frames: \(dimensions.width)x\(dimensions.height)")
+                    self.logger.info("📊 Frame received - dimensions: \(dimensions.width)x\(dimensions.height)")
+                    self.logger.info("🎨 Pixel format: \(String(format: "0x%08X", mediaSubType))")
+                    // Mark that we're receiving frames
+                    if self.frameCounter == 0 {
+                        self.logger.info("🎬 FIRST FRAME RECEIVED!")
                     }
+                    self.frameCounter += 1
                 }
             }
         }
@@ -1968,13 +1991,21 @@ extension ScreencapService: SCStreamOutput {
         }
 
         // We have a pixel buffer! Process it for WebRTC if enabled
-        // Process WebRTC frame if enabled
-        // To avoid data race warnings, we'll let WebRTCManager handle the async processing
-        // by calling it synchronously and letting it manage its own concurrency
         if useWebRTC, let webRTCManager {
             // The processVideoFrame method is nonisolated and accepts a sending parameter
             // We can call it directly without creating a Task, avoiding the closure capture issue
             webRTCManager.processVideoFrameSync(sampleBuffer)
+
+            // Log occasionally
+            if shouldLog {
+                Task { @MainActor in
+                    self.logger.info("🌐 Forwarding frame to WebRTC manager")
+                }
+            }
+        } else if shouldLog {
+            Task { @MainActor in
+                self.logger.info("🖼️ WebRTC disabled - using JPEG mode")
+            }
         }
 
         // Create CIImage and process for display
