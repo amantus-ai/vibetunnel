@@ -845,8 +845,8 @@ final class UnixSocketConnection {
             receiveBuffer.removeAll()
         }
     }
+}
 
-    }
 // MARK: - Errors
 
 enum UnixSocketError: LocalizedError {

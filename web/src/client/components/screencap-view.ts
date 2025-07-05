@@ -144,8 +144,8 @@ export class ScreencapView extends LitElement {
     .capture-preview {
       max-width: 100%;
       max-height: 100%;
-      width: auto;
-      height: auto;
+      width: 100%;
+      height: 100%;
       display: block;
       cursor: crosshair;
       user-select: none;
@@ -157,8 +157,6 @@ export class ScreencapView extends LitElement {
 
     .capture-preview.fit-cover {
       object-fit: cover;
-      width: 100%;
-      height: 100%;
     }
 
     video.capture-preview {
@@ -265,6 +263,44 @@ export class ScreencapView extends LitElement {
     .status-log-entry.success { color: #10b981; }
     .status-log-entry.warning { color: #f59e0b; }
     .status-log-entry.error { color: #ef4444; }
+
+    .switch {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .switch input {
+      appearance: none;
+      width: 36px;
+      height: 20px;
+      border-radius: 10px;
+      background: #3f3f46;
+      position: relative;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .switch input::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: white;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+    }
+
+    .switch input:checked {
+      background-color: #10B981;
+    }
+
+    .switch input:checked::before {
+      transform: translateX(16px);
+    }
   `;
 
   @state() private processGroups: ProcessGroup[] = [];
@@ -281,8 +317,10 @@ export class ScreencapView extends LitElement {
   @state() private error = '';
   @state() private fps = 0;
   @state() private showStats = false;
+  @state() private showLog = false;
   @state() private streamStats: StreamStats | null = null;
   @state() private useWebRTC = true;
+  @state() private use8k = false;
   @state() private sidebarCollapsed = false;
   @state() private fitMode: 'contain' | 'cover' = 'contain';
   @state() private frameCounter = 0;
@@ -402,6 +440,18 @@ export class ScreencapView extends LitElement {
 
   private toggleFitMode() {
     this.fitMode = this.fitMode === 'contain' ? 'cover' : 'contain';
+  }
+
+  private toggleLog() {
+    this.showLog = !this.showLog;
+  }
+
+  private handleWebRTCToggle(e: Event) {
+    this.useWebRTC = (e.target as HTMLInputElement).checked;
+  }
+
+  private handle8kToggle(e: Event) {
+    this.use8k = (e.target as HTMLInputElement).checked;
   }
 
   private async handleRefresh() {
@@ -618,6 +668,7 @@ export class ScreencapView extends LitElement {
         type: 'desktop',
         index: displayIndex,
         webrtc: true,
+        use8k: this.use8k,
       })) as CaptureResponse;
 
       if (captureResponse?.sessionId) {
@@ -640,6 +691,7 @@ export class ScreencapView extends LitElement {
       captureResponse = (await this.wsClient.captureWindow({
         cgWindowID: this.selectedWindow.cgWindowID,
         webrtc: true,
+        use8k: this.use8k,
       })) as CaptureResponse;
 
       if (captureResponse?.sessionId) {
@@ -770,10 +822,31 @@ export class ScreencapView extends LitElement {
         </h1>
 
         <div class="header-actions">
+          <div class="switch" title="Toggle between WebRTC and JPEG stream">
+            <span>JPEG</span>
+            <input type="checkbox" .checked=${this.useWebRTC} @change=${this.handleWebRTCToggle}>
+            <span>WebRTC</span>
+          </div>
+
+          <div class="switch" title="Toggle 8K quality (WebRTC only)">
+            <span>4K</span>
+            <input type="checkbox" .checked=${this.use8k} @change=${this.handle8kToggle} ?disabled=${!this.useWebRTC}>
+            <span>8K</span>
+          </div>
 
           ${
             this.isCapturing
               ? html`
+            <button 
+              class="toggle-btn ${this.showLog ? 'active' : ''}"
+              @click=${this.toggleLog}
+              title="Toggle Log"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+              </svg>
+            </button>
+
             <button 
               class="toggle-btn ${this.showStats ? 'active' : ''}"
               @click=${this.toggleStats}
@@ -871,7 +944,7 @@ export class ScreencapView extends LitElement {
         `
             : ''
         }
-        ${this.renderStatusLog()}
+        ${this.showLog ? this.renderStatusLog() : ''}
       `;
     }
 
@@ -889,13 +962,13 @@ export class ScreencapView extends LitElement {
           </svg>
           ${this.fps} FPS
         </div>
-        ${this.renderStatusLog()}
+        ${this.showLog ? this.renderStatusLog() : ''}
       `;
     }
 
     // Show overlay when not capturing or waiting to start
     return html`
-      <div class="capture-overlay">
+      <div class.capture-overlay>
         <div class="status-message ${this.status}">
           ${
             this.status === 'loading'
@@ -915,7 +988,7 @@ export class ScreencapView extends LitElement {
                     : 'Initializing...'
           }
         </div>
-        ${this.renderStatusLog()}
+        ${this.showLog || this.status !== 'capturing' ? this.renderStatusLog() : ''}
       </div>
     `;
   }

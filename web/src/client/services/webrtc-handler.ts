@@ -487,7 +487,12 @@ export class WebRTCHandler {
 
         // Get codec info
         const codecName = codecStats?.mimeType?.split('/')[1] || 'unknown';
-        const codecImplementation = (inboundVideoStats as any).decoderImplementation || 'unknown';
+        
+        // Check for hardware acceleration hint
+        let codecImplementation = (inboundVideoStats as any).decoderImplementation || 'Software';
+        if (codecStats?.id?.toLowerCase().includes('videotoolbox')) {
+          codecImplementation = 'Hardware (VideoToolbox)';
+        }
 
         const streamStats: StreamStats = {
           codec: codecName.toUpperCase(),

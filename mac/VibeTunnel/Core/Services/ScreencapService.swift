@@ -802,8 +802,8 @@ public final class ScreencapService: NSObject {
     }
 
     /// Start capture with specified mode
-    func startCapture(type: String, index: Int, useWebRTC: Bool = false) async throws {
-        logger.info("🎬 Starting capture - type: \(type), index: \(index), WebRTC: \(useWebRTC)")
+    func startCapture(type: String, index: Int, useWebRTC: Bool = false, use8k: Bool = false) async throws {
+        logger.info("🎬 Starting capture - type: \(type), index: \(index), WebRTC: \(useWebRTC), 8K: \(use8k)")
 
         // Check screen recording permission first
         let hasPermission = await isScreenRecordingAllowed()
@@ -850,10 +850,7 @@ public final class ScreencapService: NSObject {
         logger.debug("Requesting shareable content...")
         let content: SCShareableContent
         do {
-            content = try await SCShareableContent.excludingDesktopWindows(
-                false,
-                onScreenWindowsOnly: false
-            )
+            content = try await SCShareableContent.current
             logger
                 .info(
                     "Got shareable content - displays: \(content.displays.count), windows: \(content.windows.count), apps: \(content.applications.count)"
@@ -926,17 +923,13 @@ public final class ScreencapService: NSObject {
                 display.frame.intersects(window.frame)
             } ?? content.displays.first
 
-            guard windowDisplay != nil else {
+            guard let display = windowDisplay else {
                 throw ScreencapError.noDisplay
             }
 
-            // Create filter for single window - use a simpler approach
-            logger.info("📱 Creating filter for window on display")
-
-            // Create a filter with just the single window
-            captureFilter = SCContentFilter(
-                desktopIndependentWindow: window
-            )
+            // Create a filter that includes just the single window on its display.
+            // This is the most reliable way to capture a single window.
+            captureFilter = SCContentFilter(display: display, including: [window])
 
         case "application":
             guard index < content.applications.count else {
@@ -1088,7 +1081,7 @@ public final class ScreencapService: NSObject {
             // Start WebRTC if enabled
             if useWebRTC {
                 logger.info("🌐 Starting WebRTC capture...")
-                await startWebRTCCapture()
+                await startWebRTCCapture(use8k: use8k)
             } else {
                 logger.info("🖼️ Using JPEG mode (WebRTC disabled)")
             }
@@ -1104,8 +1097,8 @@ public final class ScreencapService: NSObject {
     }
 
     /// Start capture for a specific window by its cgWindowID
-    func startCaptureWindow(cgWindowID: Int, useWebRTC: Bool = false) async throws {
-        logger.info("Starting window capture - cgWindowID: \(cgWindowID), WebRTC: \(useWebRTC)")
+    func startCaptureWindow(cgWindowID: Int, useWebRTC: Bool = false, use8k: Bool = false) async throws {
+        logger.info("Starting window capture - cgWindowID: \(cgWindowID), WebRTC: \(useWebRTC), 8K: \(use8k)")
 
         self.useWebRTC = useWebRTC
 
@@ -1115,10 +1108,7 @@ public final class ScreencapService: NSObject {
         logger.debug("Requesting shareable content...")
         let content: SCShareableContent
         do {
-            content = try await SCShareableContent.excludingDesktopWindows(
-                false,
-                onScreenWindowsOnly: false
-            )
+            content = try await SCShareableContent.current
             logger
                 .info(
                     "Got shareable content - displays: \(content.displays.count), windows: \(content.windows.count), apps: \(content.applications.count)"
@@ -1203,7 +1193,7 @@ public final class ScreencapService: NSObject {
             // Start WebRTC if enabled
             if useWebRTC {
                 logger.info("🌐 Starting WebRTC capture...")
-                await startWebRTCCapture()
+                await startWebRTCCapture(use8k: use8k)
             } else {
                 logger.info("🖼️ Using JPEG mode (WebRTC disabled)")
             }
@@ -1214,7 +1204,7 @@ public final class ScreencapService: NSObject {
         }
     }
 
-    private func startWebRTCCapture() async {
+    private func startWebRTCCapture(use8k: Bool) async {
         logger.info("🌐 startWebRTCCapture called")
         do {
             // Get server URL from environment or use default
@@ -1233,6 +1223,9 @@ public final class ScreencapService: NSObject {
             // Create WebRTC manager with appropriate auth token
             let localAuthToken = isNoAuth ? nil : ServerManager.shared.bunServer?.localToken
             webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self, localAuthToken: localAuthToken)
+            
+            // Set quality before starting
+            webRTCManager?.setQuality(use8k: use8k)
 
             // Start WebRTC capture
             let modeString: String = switch captureMode {
@@ -1723,7 +1716,8 @@ public final class ScreencapService: NSObject {
     }
 
     /// Handle display configuration changes
-    @objc private func displayConfigurationChanged(_ notification: Notification) {
+    @objc
+    private func displayConfigurationChanged(_ notification: Notification) {
         logger.warning("⚠️ Display configuration changed")
 
         // Check if we're currently capturing

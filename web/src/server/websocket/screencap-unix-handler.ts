@@ -59,9 +59,15 @@ export class ScreencapUnixHandler {
   }
 
   async start(): Promise<void> {
-    // The socket file is cleaned up on stop(). We don't unlink it here
-    // to prevent race conditions on fast restarts. The server will fail
-    // with EADDRINUSE if another instance is running, which is correct.
+    // Clean up any existing socket file to prevent EADDRINUSE errors on restart.
+    try {
+      if (fs.existsSync(this.socketPath)) {
+        fs.unlinkSync(this.socketPath);
+        logger.log('Removed existing stale socket file.');
+      }
+    } catch (error) {
+      logger.warn('Failed to remove stale socket file:', error);
+    }
 
     // Create UNIX socket server
     this.unixServer = net.createServer((socket) => {

@@ -52,6 +52,7 @@ final class WebRTCManager: NSObject {
 
     @Published private(set) var connectionState: RTCPeerConnectionState = .new
     @Published private(set) var isConnected = false
+    @Published private(set) var use8k = false
 
     // MARK: - Initialization
 
@@ -94,6 +95,11 @@ final class WebRTCManager: NSObject {
     }
 
     // MARK: - Public Methods
+    
+    func setQuality(use8k: Bool) {
+        self.use8k = use8k
+        logger.info("📺 Quality set to \(use8k ? "8K" : "4K")")
+    }
 
     /// Start WebRTC capture for the given mode
     func startCapture(mode: String) async throws {
@@ -335,7 +341,7 @@ final class WebRTCManager: NSObject {
               let videoSource = self.videoSource else { return }
 
         // Log first frame or periodically
-        if isFirstFrame || frameCount % 300 == 0 {
+        if isFirstFrame || frameCount.isMultiple(of: 300) {
             self.logger.info("🎬 Sending frame \(frameCount) to WebRTC: \(width)x\(height)")
             self.logger
                 .info(
@@ -466,11 +472,11 @@ final class WebRTCManager: NSObject {
             logger.warning("⚠️ No video transceiver found to set initial bitrate")
             return
         }
-        
+
         let sender = transceiver.sender
-        
+
         let parameters = sender.parameters
-        
+
         // Configure initial encoding parameters
         if parameters.encodings.isEmpty {
             // Create a new encoding if none exist
@@ -485,21 +491,21 @@ final class WebRTCManager: NSObject {
                 encoding.isActive = true
             }
         }
-        
+
         sender.parameters = parameters
-        
+
         logger.info("📊 Set initial bitrate parameters:")
         logger.info("  - Initial bitrate: \(self.currentBitrate / 1_000_000) Mbps")
         logger.info("  - Encodings count: \(parameters.encodings.count)")
     }
-    
+
     private func configureCodecPreferences(for peerConnection: RTCPeerConnection) {
         // Get the transceivers to configure codec preferences
         let transceivers = peerConnection.transceivers
 
         for transceiver in transceivers where transceiver.mediaType == .video {
             let sender = transceiver.sender
-            let _ = transceiver.receiver
+            _ = transceiver.receiver
 
             // Get current parameters
             let params = sender.parameters
@@ -607,11 +613,14 @@ final class WebRTCManager: NSObject {
         let videoSource = peerConnectionFactory.videoSource()
         logger.info("🎥 Created video source")
 
-        // Configure video source for 4K quality at 60 FPS
+        // Configure video source for 4K or 8K quality at 60 FPS
+        let width = use8k ? 7680 : 3840
+        let height = use8k ? 4320 : 2160
+        
         videoSource.adaptOutputFormat(
-            toWidth: 3_840, // 4K width
-            height: 2_160, // 4K height
-            fps: 60 // 60 FPS for smooth motion
+            toWidth: Int32(width),
+            height: Int32(height),
+            fps: 60
         )
 
         self.videoSource = videoSource
@@ -631,7 +640,7 @@ final class WebRTCManager: NSObject {
 
         self.localVideoTrack = videoTrack
 
-        logger.info("✅ Created local video track with 4K quality settings: 3840x2160@60fps")
+        logger.info("✅ Created local video track with \(self.use8k ? "8K" : "4K") quality settings: \(width)x\(height)@60fps")
         logger.info("📦 Video components created:")
         logger.info("  - Video source: \(self.videoSource != nil)")
         logger.info("  - Video capturer: \(self.videoCapturer != nil)")
@@ -810,12 +819,12 @@ final class WebRTCManager: NSObject {
                 logger.info("""
                 🔄 [SECURITY] Session update for \(endpoint) (pre-validation)
                   Previous session: \(previousSession ?? "nil")
-                  New session: \(sessionId!)
+                  New session: \(sessionId ?? "unknown")
                 """)
             }
             activeSessionId = sessionId
             sessionStartTime = Date()
-            logger.info("🔐 [SECURITY] Session pre-activated for \(endpoint): \(sessionId!)")
+            logger.info("🔐 [SECURITY] Session pre-activated for \(endpoint): \(sessionId ?? "unknown")")
         }
 
         // Validate session only for control operations
@@ -1169,7 +1178,7 @@ final class WebRTCManager: NSObject {
         var vp8PayloadTypes: [String] = []
         var otherPayloadTypes: [String] = []
 
-        for (index, line) in lines.enumerated() {
+        for line in lines {
             var modifiedLine = line
 
             // Check if we're entering video m-line
@@ -1185,10 +1194,8 @@ final class WebRTCManager: NSObject {
                     var reorderedPayloadTypes: [String] = []
 
                     // Add H.264 first
-                    for pt in h264PayloadTypes {
-                        if existingPayloadTypes.contains(pt) {
-                            reorderedPayloadTypes.append(pt)
-                        }
+                    for pt in h264PayloadTypes where existingPayloadTypes.contains(pt) {
+                        reorderedPayloadTypes.append(pt)
                     }
 
                     // Then VP8
@@ -1199,10 +1206,8 @@ final class WebRTCManager: NSObject {
                     }
 
                     // Then others
-                    for pt in existingPayloadTypes {
-                        if !reorderedPayloadTypes.contains(pt) {
-                            reorderedPayloadTypes.append(pt)
-                        }
+                    for pt in existingPayloadTypes where !reorderedPayloadTypes.contains(pt) {
+                        reorderedPayloadTypes.append(pt)
                     }
 
                     // Reconstruct the m=video line with reordered codecs
@@ -1381,13 +1386,14 @@ extension WebRTCManager {
 
         // Find the outbound-rtp report for video
         for report in stats.statistics.values {
-            if report.type == "outbound-rtp", report.values["mediaType"] == "video" {
+            if report.type == "outbound-rtp", report.values["mediaType"] as? String == "video" {
                 bytesSent = report.values["bytesSent"] as? Int64 ?? 0
-                
+
                 // Find the corresponding remote-inbound-rtp report for packet loss and RTT
                 if let remoteId = report.values["remoteId"] as? String,
                    let remoteReport = stats.statistics[remoteId],
-                   remoteReport.type == "remote-inbound-rtp" {
+                   remoteReport.type == "remote-inbound-rtp"
+                {
                     currentPacketLoss = remoteReport.values["fractionLost"] as? Double ?? 0
                     currentRtt = remoteReport.values["roundTripTime"] as? Double ?? 0
                 }
