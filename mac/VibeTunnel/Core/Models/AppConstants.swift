@@ -14,12 +14,15 @@ enum AppConstants {
     enum UserDefaultsKeys {
         static let welcomeVersion = "welcomeVersion"
         static let preventSleepWhenRunning = "preventSleepWhenRunning"
+        static let enableScreencapService = "enableScreencapService"
     }
 
     /// Default values for UserDefaults
     enum Defaults {
         /// Sleep prevention is enabled by default for better user experience
         static let preventSleepWhenRunning = true
+        /// Screencap service is enabled by default for screen sharing
+        static let enableScreencapService = true
     }
 
     /// Helper to get boolean value with proper default
@@ -29,6 +32,8 @@ enum AppConstants {
             switch key {
             case UserDefaultsKeys.preventSleepWhenRunning:
                 return Defaults.preventSleepWhenRunning
+            case UserDefaultsKeys.enableScreencapService:
+                return Defaults.enableScreencapService
             default:
                 return false
             }

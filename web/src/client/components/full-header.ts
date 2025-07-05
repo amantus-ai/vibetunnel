@@ -52,6 +52,18 @@ export class FullHeader extends HeaderBase {
               </svg>
             </button>
             <button
+              class="p-2 text-dark-text border border-dark-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
+              @click=${this.handleScreenshare}
+              title="Start Screenshare"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+                <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
+              </svg>
+            </button>
+            <button
               class="p-2 bg-accent-green text-dark-bg hover:bg-accent-green-light rounded-lg transition-all duration-200 vt-create-button"
               @click=${this.handleCreateSession}
               title="Create New Session"

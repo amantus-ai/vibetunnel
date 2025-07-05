@@ -53,10 +53,8 @@ enum AppleScriptSecurity {
         // Additional check: ensure it doesn't contain AppleScript keywords that could be dangerous
         let dangerousKeywords = ["tell", "end", "do", "script", "run", "activate", "quit", "delete", "set", "get"]
         let lowercased = identifier.lowercased()
-        for keyword in dangerousKeywords {
-            if lowercased.contains(keyword) {
-                return nil
-            }
+        for keyword in dangerousKeywords where lowercased.contains(keyword) {
+            return nil
         }
 
         return identifier

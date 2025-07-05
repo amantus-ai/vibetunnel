@@ -30,6 +30,9 @@ VibeTunnel/Resources/node-server/
 # Local development configuration
 VibeTunnel/Local.xcconfig
 
+# Build output
+build_output.txt
+
 # Sparkle private key - NEVER commit this!
 sparkle-private-ed-key.pem
 sparkle-private-key-KEEP-SECURE.txt

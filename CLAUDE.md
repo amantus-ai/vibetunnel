@@ -32,6 +32,12 @@ VibeTunnel is a macOS application that allows users to access their terminal ses
    - DO NOT create new versions with different file names (e.g., file_v2.ts, file_new.ts)
    - Users hate having to manually clean up duplicate files
 
+5. **NEVER restart VibeTunnel directly with pkill/open - ALWAYS clean and rebuild**
+   - The Mac app builds and embeds the web server during the Xcode build process
+   - Simply restarting the app will serve a STALE, CACHED version of the server
+   - You MUST clean and rebuild with Xcode to get the latest server code
+   - Always use: clean → build → run (the build process rebuilds the embedded server)
+
 ### Git Workflow Reminders
 - Our workflow: start from main → create branch → make PR → merge → return to main
 - PRs sometimes contain multiple different features and that's okay
@@ -124,6 +130,98 @@ Then access from the external device using `http://[mac-ip]:4021`
 
 For detailed instructions, see `docs/TESTING_EXTERNAL_DEVICES.md`
 
+## MCP (Model Context Protocol) Servers
+
+MCP servers extend Claude Code's capabilities with additional tools. Here's how to add them:
+
+### Installing MCP Servers for Claude Code
+
+**Important**: MCP server configuration for Claude Code is different from Claude Desktop. Claude Code uses CLI commands, not JSON configuration files.
+
+#### Quick Installation Steps:
+
+1. **Open a terminal** (outside of Claude Code)
+2. **Run the add command** with the MCP server you want:
+   ```bash
+   # For Playwright (web testing)
+   claude mcp add playwright -- npx -y @playwright/mcp@latest
+   
+   # For XcodeBuildMCP (iOS/macOS development)
+   claude mcp add XcodeBuildMCP -- npx -y xcodebuildmcp@latest
+   ```
+3. **Restart Claude Code** to load the new MCP servers
+4. **Verify installation** by running `/mcp` in Claude Code
+
+### Adding MCP Servers to Claude Code
+
+```bash
+# Basic syntax for adding a stdio server
+claude mcp add <name> -- <command> [args...]
+
+# Examples:
+# Add playwright MCP (highly recommended for web testing)
+claude mcp add playwright -- npx -y @playwright/mcp@latest
+
+# Add XcodeBuildMCP for macOS development
+claude mcp add XcodeBuildMCP -- npx -y xcodebuildmcp@latest
+
+# Add with environment variables
+claude mcp add my-server -e API_KEY=value -- /path/to/server
+
+# List all configured servers
+claude mcp list
+
+# Remove a server
+claude mcp remove <name>
+```
+
+### Recommended MCP Servers for This Project
+
+1. **Playwright MCP** - Web testing and browser automation
+   - Browser control, screenshots, automated testing
+   - Install: `claude mcp add playwright -- npx -y @playwright/mcp@latest`
+
+2. **XcodeBuildMCP** - macOS/iOS development (Mac only)
+   - Xcode build, test, project management
+   - Install: `claude mcp add XcodeBuildMCP -- npx -y xcodebuildmcp@latest`
+
+3. **Peekaboo MCP** - Visual analysis and screenshots (Mac only)
+   - Take screenshots, analyze visual content with AI
+   - Install: `claude mcp add peekaboo -- npx -y @steipete/peekaboo-mcp`
+
+4. **macOS Automator MCP** - System automation (Mac only)
+   - Control macOS UI, automate system tasks
+   - Install: `claude mcp add macos-automator -- npx -y macos-automator-mcp`
+
+5. **RepoPrompt** - Repository context management
+   - Generate comprehensive codebase summaries
+   - Install: `claude mcp add RepoPrompt -- /path/to/repoprompt_cli`
+
+6. **Zen MCP Server** - Advanced AI reasoning
+   - Multi-model consensus, deep analysis, code review
+   - Install: See setup instructions in zen-mcp-server repository
+
+### Configuration Scopes
+
+- **local** (default): Project-specific, private to you
+- **project**: Shared via `.mcp.json` file in project root
+- **user**: Available across all projects
+
+Use `-s` or `--scope` flag to specify scope:
+```bash
+claude mcp add -s project playwright -- npx -y @playwright/mcp@latest
+```
+
+## Alternative Tools for Complex Tasks
+
+### Gemini CLI
+
+For tasks requiring massive context windows (up to 2M tokens) or full codebase analysis:
+- Analyze entire repositories with `@` syntax for file inclusion
+- Useful for architecture reviews, finding implementations, security audits
+- Example: `gemini -p "@src/ @tests/ Is authentication properly implemented?"`
+- See `docs/gemini.md` for detailed usage and examples
+
 ## Key Files Quick Reference
 
 - Architecture Details: `docs/ARCHITECTURE.md`
@@ -131,3 +229,4 @@ For detailed instructions, see `docs/TESTING_EXTERNAL_DEVICES.md`
 - Server Implementation Guide: `web/spec.md`
 - Build Configuration: `web/package.json`, `mac/Package.swift`
 - External Device Testing: `docs/TESTING_EXTERNAL_DEVICES.md`
+- Gemini CLI Instructions: `docs/gemini.md`

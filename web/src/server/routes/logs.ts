@@ -36,8 +36,8 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
         });
       }
 
-      // Add [CLIENT] prefix to module name to distinguish from server logs
-      const clientModule = `CLIENT:${module}`;
+      // Add [FE] prefix to module name to distinguish frontend logs from server logs
+      const clientModule = `[FE] ${module}`;
 
       // Map client levels to server levels (uppercase)
       const serverLevel = level.toUpperCase();

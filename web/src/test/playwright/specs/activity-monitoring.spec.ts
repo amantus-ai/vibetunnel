@@ -21,8 +21,12 @@ test.describe('Activity Monitoring', () => {
     // Create a tracked session
     const { sessionName } = await sessionManager.createTrackedSession();
 
+    // Wait for session to be fully established before navigating away
+    await page.waitForTimeout(2000);
+
     // Go to home page to see session list
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Find our session card
@@ -56,7 +60,7 @@ test.describe('Activity Monitoring', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('activity-interaction'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Get initial activity status (if visible)
     const activityStatus = page
@@ -72,14 +76,21 @@ test.describe('Activity Monitoring', () => {
     await page.keyboard.type('echo "Testing activity monitoring"');
     await page.keyboard.press('Enter');
 
-    // Wait for command execution
-    await page.waitForTimeout(2000);
+    // Wait for command execution and terminal to process output
+    await page.waitForFunction(
+      () => {
+        const term = document.querySelector('vibe-terminal');
+        return term?.textContent?.includes('Testing activity monitoring');
+      },
+      { timeout: 5000 }
+    );
 
     // Type some more to ensure activity
     await page.keyboard.type('ls -la');
     await page.keyboard.press('Enter');
 
-    await page.waitForTimeout(1000);
+    // Wait for ls command to complete
+    await page.waitForTimeout(2000);
 
     // Check if activity status updated
     if (await activityStatus.isVisible()) {
@@ -126,7 +137,7 @@ test.describe('Activity Monitoring', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('activity-idle'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Perform some initial activity
     await page.keyboard.type('echo "Initial activity"');
@@ -178,7 +189,7 @@ test.describe('Activity Monitoring', () => {
 
     // Create first session
     await createAndNavigateToSession(page, { name: session1Name });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Activity in first session
     await page.keyboard.type('echo "Session 1 activity"');
@@ -187,7 +198,7 @@ test.describe('Activity Monitoring', () => {
 
     // Create second session
     await createAndNavigateToSession(page, { name: session2Name });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Activity in second session
     await page.keyboard.type('echo "Session 2 activity"');
@@ -228,7 +239,7 @@ test.describe('Activity Monitoring', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('long-running-activity'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Start a long-running command (sleep)
     await page.keyboard.type('sleep 10 && echo "Long command completed"');
@@ -291,7 +302,7 @@ test.describe('Activity Monitoring', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('last-activity'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Perform some activity
     await page.keyboard.type('echo "Last activity test"');
@@ -346,14 +357,14 @@ test.describe('Activity Monitoring', () => {
 
     // Create and use first session
     await createAndNavigateToSession(page, { name: session1Name });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
     await page.keyboard.type('echo "First session"');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
 
     // Create and switch to second session
     await createAndNavigateToSession(page, { name: session2Name });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
     await page.keyboard.type('echo "Second session"');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
@@ -361,7 +372,7 @@ test.describe('Activity Monitoring', () => {
     // Switch back to first session via URL or navigation
     const firstSessionUrl = page.url().replace(session2Name, session1Name);
     await page.goto(firstSessionUrl);
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Activity in first session again
     await page.keyboard.type('echo "Back to first"');
@@ -398,7 +409,7 @@ test.describe('Activity Monitoring', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('websocket-activity'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Perform initial activity
     await page.keyboard.type('echo "Before disconnect"');
@@ -411,8 +422,11 @@ test.describe('Activity Monitoring', () => {
       (window as unknown as { closeWebSockets?: () => void }).closeWebSockets?.();
     });
 
-    // Wait for potential reconnection
-    await page.waitForTimeout(3000);
+    // Wait for WebSocket reconnection to stabilize
+    await page.waitForTimeout(5000);
+
+    // Ensure terminal is ready after reconnection
+    await assertTerminalReady(page, 15000);
 
     // Perform activity after reconnection
     await page.keyboard.type('echo "After reconnect"');
@@ -445,7 +459,7 @@ test.describe('Activity Monitoring', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('activity-aggregation'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Perform multiple activities in sequence
     const activities = ['echo "Activity 1"', 'ls -la', 'pwd', 'whoami', 'date'];

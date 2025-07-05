@@ -20,7 +20,7 @@ enum LogLevel: Int, Comparable {
         }
     }
     
-    static func < (lhs: LogLevel, rhs: LogLevel) -> Bool {
+    static func < (lhs: Self, rhs: Self) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
 }

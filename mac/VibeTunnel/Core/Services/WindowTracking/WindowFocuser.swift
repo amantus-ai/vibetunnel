@@ -375,8 +375,10 @@ final class WindowFocuser {
                 }
             }
 
-            if matchScore > 0 && (bestMatch == nil || matchScore > bestMatch!.score) {
-                bestMatch = (window, matchScore)
+            if matchScore > 0 {
+                if bestMatch == nil || matchScore > bestMatch?.score ?? 0 {
+                    bestMatch = (window, matchScore)
+                }
             }
         }
 
@@ -510,9 +512,11 @@ final class WindowFocuser {
             }
 
             // Keep track of best match
-            if matchScore > 0 && (bestMatchWindow == nil || matchScore > bestMatchWindow!.score) {
-                bestMatchWindow = (window, matchScore)
-                logger.debug("Window \(index) is new best match with score: \(matchScore)")
+            if matchScore > 0 {
+                if bestMatchWindow == nil || matchScore > bestMatchWindow?.score ?? 0 {
+                    bestMatchWindow = (window, matchScore)
+                    logger.debug("Window \(index) is new best match with score: \(matchScore)")
+                }
             }
 
             // Try the improved approach: get tab group first

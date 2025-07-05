@@ -159,6 +159,11 @@ private struct PermissionsSection: View {
         return permissionManager.hasPermission(.accessibility)
     }
 
+    private var hasScreenRecordingPermission: Bool {
+        _ = permissionUpdateTrigger
+        return permissionManager.hasPermission(.screenRecording)
+    }
+
     var body: some View {
         Section {
             // Automation permission
@@ -224,13 +229,45 @@ private struct PermissionsSection: View {
                     .controlSize(.small)
                 }
             }
+
+            // Screen Recording permission
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Screen Recording")
+                        .font(.body)
+                    Text("Required for screen sharing and remote viewing.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if hasScreenRecordingPermission {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Granted")
+                            .foregroundColor(.secondary)
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 2)
+                    .frame(height: 22) // Match small button height
+                } else {
+                    Button("Grant Permission") {
+                        permissionManager.requestPermission(.screenRecording)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
         } header: {
             Text("Permissions")
                 .font(.headline)
         } footer: {
-            if hasAppleScriptPermission && hasAccessibilityPermission {
+            if hasAppleScriptPermission && hasAccessibilityPermission && hasScreenRecordingPermission {
                 Text(
-                    "All permissions granted. New sessions will spawn new terminal windows."
+                    "All permissions granted. VibeTunnel has full functionality."
                 )
                 .font(.caption)
                 .frame(maxWidth: .infinity)

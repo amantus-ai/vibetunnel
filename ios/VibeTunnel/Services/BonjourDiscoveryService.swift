@@ -37,7 +37,7 @@ struct DiscoveredServer: Identifiable, Equatable {
     }
     
     /// Creates a copy of a DiscoveredServer with updated values but same UUID
-    init(from server: DiscoveredServer, host: String? = nil, port: Int? = nil) {
+    init(from server: Self, host: String? = nil, port: Int? = nil) {
         self.id = server.id
         self.name = server.name
         self.host = host ?? server.host

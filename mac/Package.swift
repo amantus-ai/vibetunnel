@@ -16,14 +16,16 @@ let package = Package(
         .package(url: "https://github.com/realm/SwiftLint.git", from: "0.59.1"),
         .package(url: "https://github.com/nicklockwood/SwiftFormat.git", from: "0.56.4"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.6.3"),
-        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.7.1")
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.7.1"),
+        .package(url: "https://github.com/stasel/WebRTC.git", .upToNextMajor(from: "137.0.0"))
     ],
     targets: [
         .target(
             name: "VibeTunnel",
             dependencies: [
                 .product(name: "Logging", package: "swift-log"),
-                .product(name: "Sparkle", package: "Sparkle")
+                .product(name: "Sparkle", package: "Sparkle"),
+                .product(name: "WebRTC", package: "WebRTC")
             ],
             path: "VibeTunnel",
             exclude: [

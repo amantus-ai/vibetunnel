@@ -58,8 +58,13 @@ final class BunServer {
     }()
 
     /// Get the local auth token for use in HTTP requests
-    var localToken: String {
-        localAuthToken
+    var localToken: String? {
+        // Check if authentication is disabled
+        let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
+        if authMode == "none" {
+            return nil
+        }
+        return localAuthToken
     }
 
     // MARK: - Initialization
@@ -162,9 +167,7 @@ final class BunServer {
             vibetunnelArgs.append(contentsOf: ["--enable-ssh-keys", "--disallow-user-password"])
         case "both":
             vibetunnelArgs.append("--enable-ssh-keys")
-        case "os":
-            fallthrough
-        default:
+        case "os", _:
             // OS authentication is the default, no special flags needed
             break
         }
@@ -711,7 +714,7 @@ extension BunServer {
                     chunkNumber += 1
 
                     // Add small delay between chunks to avoid rate limiting
-                    if chunkNumber % 10 == 0 {
+                    if chunkNumber.isMultiple(of: 10) {
                         usleep(1_000) // 1ms delay every 10 chunks
                     }
                 }

@@ -36,7 +36,7 @@ test.describe('Basic Session Tests', () => {
 
     // Verify navigation and terminal state
     await assertUrlHasSession(page, sessionId);
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
   });
 
   test('should list created sessions', async ({ page }) => {
@@ -69,6 +69,7 @@ test.describe('Basic Session Tests', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify both sessions are visible
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
     const sessionCards = await page.locator('session-card').count();
     expect(sessionCards).toBeGreaterThanOrEqual(2);

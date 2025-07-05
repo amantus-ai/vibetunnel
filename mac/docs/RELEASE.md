@@ -1,6 +1,48 @@
-# VibeTunnel Release Process
+# VibeTunnel Release Documentation
 
-This guide explains how to create and publish releases for VibeTunnel, a macOS menu bar application using Sparkle 2.x for automatic updates.
+This guide provides comprehensive documentation for creating and publishing releases for VibeTunnel, a macOS menu bar application using Sparkle 2.x for automatic updates.
+
+## 🚀 Quick Release Commands
+
+### Standard Release Flow
+```bash
+# 1. Update versions
+vim VibeTunnel/version.xcconfig  # Set MARKETING_VERSION and increment CURRENT_PROJECT_VERSION
+vim ../web/package.json          # Match version with MARKETING_VERSION
+
+# 2. Update changelog
+vim CHANGELOG.md                 # Add entry for new version
+
+# 3. Run release
+export SPARKLE_ACCOUNT="VibeTunnel"
+./scripts/release.sh beta 5      # For beta.5
+./scripts/release.sh stable      # For stable release
+```
+
+### If Release Script Fails
+
+#### After Notarization Success
+```bash
+# 1. Create DMG (if missing)
+./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app
+
+# 2. Create GitHub release
+gh release create "v1.0.0-beta.5" \
+  --title "VibeTunnel 1.0.0-beta.5" \
+  --prerelease \
+  --notes-file RELEASE_NOTES.md \
+  build/VibeTunnel-*.dmg \
+  build/VibeTunnel-*.zip
+
+# 3. Get Sparkle signature
+sign_update build/VibeTunnel-*.dmg --account VibeTunnel
+
+# 4. Update appcast manually (add to appcast-prerelease.xml)
+# 5. Commit and push
+git add ../appcast-prerelease.xml
+git commit -m "Update appcast for v1.0.0-beta.5"
+git push
+```
 
 ## 🎯 Release Process Overview
 
@@ -9,7 +51,7 @@ VibeTunnel uses an automated release process that handles all the complexity of:
 - Code signing and notarization with Apple
 - Creating DMG and ZIP files
 - Publishing to GitHub
-- Updating Sparkle appcast files
+- Updating Sparkle appcast files with EdDSA signatures
 
 ## ⚠️ Version Management Best Practices
 
@@ -66,12 +108,23 @@ For releasing 1.0.0-beta.2:
    # The "beta 2" parameters are ONLY for git tagging
    ```
 
-## 🚀 Creating a Release
-
-### 📋 Pre-Release Checklist (MUST DO FIRST!)
+## 📋 Pre-Release Checklist
 
 Before running ANY release commands, verify these items:
 
+### Environment Setup
+- [ ] Ensure stable internet connection (notarization requires consistent connectivity)
+- [ ] Check Apple Developer status page for any service issues
+- [ ] Have at least 30 minutes available (full release takes 15-20 minutes)
+- [ ] Close other resource-intensive applications
+- [ ] Ensure you're on main branch
+  ```bash
+  git checkout main
+  git pull --rebase origin main
+  git status  # Check for uncommitted changes
+  ```
+
+### Version Verification
 - [ ] **⚠️ CRITICAL: Version in version.xcconfig is EXACTLY what you want to release**
   ```bash
   grep MARKETING_VERSION VibeTunnel/version.xcconfig
@@ -100,10 +153,39 @@ Before running ANY release commands, verify these items:
   # Must exist with release notes
   ```
 
-- [ ] **Clean build and derived data if needed**
+### Environment Variables
+- [ ] Set required environment variables:
   ```bash
-  rm -rf build DerivedData
+  export SPARKLE_ACCOUNT="VibeTunnel"
+  export APP_STORE_CONNECT_KEY_ID="YOUR_KEY_ID"
+  export APP_STORE_CONNECT_ISSUER_ID="YOUR_ISSUER_ID"
+  export APP_STORE_CONNECT_API_KEY_P8="-----BEGIN PRIVATE KEY-----
+  YOUR_PRIVATE_KEY_CONTENT
+  -----END PRIVATE KEY-----"
   ```
+
+### Clean Build
+- [ ] Clean build and derived data if needed:
+  ```bash
+  ./scripts/clean.sh
+  rm -rf build DerivedData
+  rm -rf ~/Library/Developer/Xcode/DerivedData/VibeTunnel-*
+  ```
+
+### File Verification
+- [ ] CHANGELOG.md exists and has entry for new version
+- [ ] Sparkle private key exists at expected location
+- [ ] No stuck DMG volumes in /Volumes/
+  ```bash
+  # Check for stuck volumes
+  ls /Volumes/VibeTunnel*
+  # Unmount if needed
+  for volume in /Volumes/VibeTunnel*; do
+      hdiutil detach "$volume" -force
+  done
+  ```
+
+## 🚀 Creating a Release
 
 ### Step 1: Pre-flight Check
 ```bash
@@ -151,6 +233,13 @@ All notable changes to VibeTunnel will be documented in this file.
 
 The script will NEVER modify the version - it uses version.xcconfig exactly as configured!
 
+For long-running operations, consider using screen or tmux:
+```bash
+# Run in a screen/tmux session to prevent disconnection
+screen -S release
+./scripts/release.sh beta 5 --verbose --log
+```
+
 ```bash
 # For stable releases:
 ./scripts/release.sh stable
@@ -179,6 +268,8 @@ The script will:
 5. Update the appcast files with EdDSA signatures
 6. Commit and push all changes
 
+**Note**: Notarization can take 5-10 minutes depending on Apple's servers. This is normal.
+
 ### Step 5: Verify Success
 - Check the GitHub releases page
 - Verify the appcast was updated correctly with proper changelog content
@@ -192,6 +283,94 @@ The script will:
 - Test updating from a previous version
 - **Important**: Verify that the Sparkle update dialog shows the formatted changelog, not HTML tags
 - Check that update installs without "improperly signed" errors
+
+### If Interrupted
+
+If the release script is interrupted:
+```bash
+./scripts/check-release-status.sh 1.0.0-beta.5
+./scripts/release.sh --resume
+```
+
+## 🛠️ Manual Process (If Needed)
+
+If the automated script fails, here's the manual process:
+
+### 1. Update Version Numbers
+Edit version configuration files:
+
+**macOS App** (`VibeTunnel/version.xcconfig`):
+- Update MARKETING_VERSION
+- Update CURRENT_PROJECT_VERSION (build number)
+
+**Web Frontend** (`../web/package.json`):
+- Update "version" field to match MARKETING_VERSION
+
+**Note**: The Xcode project file is named `VibeTunnel-Mac.xcodeproj`
+
+### 2. Clean and Build Universal Binary
+```bash
+rm -rf build DerivedData
+./scripts/build.sh --configuration Release
+```
+
+### 3. Sign and Notarize
+```bash
+./scripts/sign-and-notarize.sh build/Build/Products/Release/VibeTunnel.app
+```
+
+### 4. Create DMG and ZIP
+```bash
+./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app
+./scripts/create-zip.sh build/Build/Products/Release/VibeTunnel.app
+```
+
+### 5. Sign DMG for Sparkle
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+sign_update build/VibeTunnel-X.X.X.dmg
+```
+
+### 6. Create GitHub Release
+```bash
+gh release create "v1.0.0-beta.1" \
+  --title "VibeTunnel 1.0.0-beta.1" \
+  --notes "Beta release 1" \
+  --prerelease \
+  build/VibeTunnel-*.dmg \
+  build/VibeTunnel-*.zip
+```
+
+### 7. Update Appcast
+```bash
+./scripts/update-appcast.sh
+git add appcast*.xml
+git commit -m "Update appcast for v1.0.0-beta.1"
+git push
+```
+
+## 🔍 Verification Commands
+
+```bash
+# Check release artifacts
+ls -la build/VibeTunnel-*.dmg
+ls -la build/VibeTunnel-*.zip
+
+# Check GitHub release
+gh release view v1.0.0-beta.5
+
+# Verify Sparkle signature
+curl -L -o test.dmg [github-dmg-url]
+sign_update test.dmg --account VibeTunnel
+
+# Check appcast
+grep "1.0.0-beta.5" ../appcast-prerelease.xml
+
+# Verify app in DMG
+hdiutil attach test.dmg
+spctl -a -vv /Volumes/VibeTunnel/VibeTunnel.app
+hdiutil detach /Volumes/VibeTunnel
+```
 
 ## ⚠️ Critical Requirements
 
@@ -262,38 +441,17 @@ The `notarize-app.sh` script should sign the app:
 codesign --force --sign "Developer ID Application" --entitlements VibeTunnel.entitlements --options runtime VibeTunnel.app
 ```
 
-### Common Version Sync Issues
+### Architecture Support
 
-#### Web Version Out of Sync
-**Problem**: Web server shows different version than macOS app (e.g., "beta.3" when app is "beta.4").
+VibeTunnel uses universal binaries that include both architectures:
+- **Apple Silicon (arm64)**: Optimized for M1+ Macs
+- **Intel (x86_64)**: For Intel-based Macs
 
-**Cause**: web/package.json was not updated when BuildNumber.xcconfig was changed.
-
-**Solution**: 
-1. Update package.json to match BuildNumber.xcconfig:
-   ```bash
-   # Check current versions
-   grep MARKETING_VERSION VibeTunnel/version.xcconfig
-   grep "version" ../web/package.json
-   
-   # Update web version to match
-   vim ../web/package.json
-   ```
-
-2. Validate sync before building:
-   ```bash
-   cd ../web && node scripts/validate-version-sync.js
-   ```
-
-**Note**: The web UI automatically displays the version from package.json (injected at build time).
-
-### Common Sparkle Errors and Solutions
-
-| Error | Cause | Solution |
-|-------|-------|----------|
-| "You're up to date!" when update exists | Build number not incrementing | Check build numbers in appcast are correct |
-| "Update installation failed" | Signing or permission issues | Verify app signature and entitlements |
-| "Cannot verify update signature" | EdDSA key mismatch | Ensure sparkle-public-ed-key.txt matches private key |
+The build system creates a single universal binary that works on all Mac architectures. This approach:
+- Simplifies distribution with one DMG/ZIP per release
+- Works seamlessly with Sparkle auto-updates
+- Provides optimal performance on each architecture
+- Follows Apple's recommended best practices
 
 ## 📋 Update Channels
 
@@ -306,18 +464,6 @@ VibeTunnel supports two update channels:
 2. **Pre-release Channel** (`appcast-prerelease.xml`)
    - Includes beta, alpha, and RC versions
    - Users opt-in via Settings
-
-### Architecture Support
-
-VibeTunnel uses universal binaries that include both architectures:
-- **Apple Silicon (arm64)**: Optimized for M1+ Macs
-- **Intel (x86_64)**: For Intel-based Macs
-
-The build system creates a single universal binary that works on all Mac architectures. This approach:
-- Simplifies distribution with one DMG/ZIP per release
-- Works seamlessly with Sparkle auto-updates
-- Provides optimal performance on each architecture
-- Follows Apple's recommended best practices
 
 ## 🐛 Common Issues and Solutions
 
@@ -364,6 +510,39 @@ The build system creates a single universal binary that works on all Mac archite
 ./scripts/release.sh beta 2  # Correct - matches the suffix
 ```
 
+### Common Version Sync Issues
+
+#### Web Version Out of Sync
+**Problem**: Web server shows different version than macOS app (e.g., "beta.3" when app is "beta.4").
+
+**Cause**: web/package.json was not updated when BuildNumber.xcconfig was changed.
+
+**Solution**: 
+1. Update package.json to match BuildNumber.xcconfig:
+   ```bash
+   # Check current versions
+   grep MARKETING_VERSION VibeTunnel/version.xcconfig
+   grep "version" ../web/package.json
+   
+   # Update web version to match
+   vim ../web/package.json
+   ```
+
+2. Validate sync before building:
+   ```bash
+   cd ../web && node scripts/validate-version-sync.js
+   ```
+
+**Note**: The web UI automatically displays the version from package.json (injected at build time).
+
+### "Uncommitted changes detected"
+```bash
+git status --porcelain  # Check what's changed
+git stash              # Temporarily store changes
+# Run release
+git stash pop          # Restore changes
+```
+
 ### Appcast Shows HTML Tags Instead of Formatted Text
 **Problem**: Sparkle update dialog shows escaped HTML like `&lt;h2&gt;` instead of formatted text.
 
@@ -379,64 +558,119 @@ The build system creates a single universal binary that works on all Mac archite
 
 **Solution**: Always increment the build number in the Xcode project before releasing.
 
-## 🛠️ Manual Process (If Needed)
+### Stuck DMG Volumes
+**Problem**: "Resource temporarily unavailable" errors when creating DMG.
 
-If the automated script fails, here's the manual process:
+**Symptoms**:
+- `hdiutil: create failed - Resource temporarily unavailable`
+- Multiple VibeTunnel volumes visible in Finder
+- DMG creation fails repeatedly
 
-### 1. Update Version Numbers
-Edit version configuration files:
-
-**macOS App** (`VibeTunnel/version.xcconfig`):
-- Update MARKETING_VERSION
-- Update CURRENT_PROJECT_VERSION (build number)
-
-**Web Frontend** (`../web/package.json`):
-- Update "version" field to match MARKETING_VERSION
-
-**Note**: The Xcode project file is named `VibeTunnel-Mac.xcodeproj`
-
-### 2. Clean and Build Universal Binary
+**Solution**:
 ```bash
-rm -rf build DerivedData
-./scripts/build.sh --configuration Release
+# Manually unmount all VibeTunnel volumes
+for volume in /Volumes/VibeTunnel*; do
+    hdiutil detach "$volume" -force
+done
+
+# Kill any stuck DMG processes
+pkill -f "VibeTunnel.*\.dmg"
 ```
 
-### 3. Sign and Notarize
+**Prevention**: Scripts now clean up volumes automatically before DMG creation.
+
+### Build Number Already Exists
+**Problem**: Sparkle requires unique build numbers for each release.
+
+**Solution**:
+1. Check existing build numbers:
+   ```bash
+   grep -E '<sparkle:version>[0-9]+</sparkle:version>' ../appcast*.xml
+   ```
+2. Update `mac/VibeTunnel/version.xcconfig`:
+   ```
+   CURRENT_PROJECT_VERSION = <new_unique_number>
+   ```
+
+### Notarization Failures
+**Problem**: App notarization fails or takes too long.
+
+**Common Causes**:
+- Missing API credentials
+- Network issues
+- Apple service outages
+- Unsigned frameworks or binaries
+
+**Solution**:
 ```bash
-./scripts/sign-and-notarize.sh build/Build/Products/Release/VibeTunnel.app
+# Check notarization status
+xcrun notarytool history --key-id "$APP_STORE_CONNECT_KEY_ID" \
+    --key "$APP_STORE_CONNECT_API_KEY_P8" \
+    --issuer-id "$APP_STORE_CONNECT_ISSUER_ID"
+
+# Get detailed log for failed submission
+xcrun notarytool log <submission-id> --key-id ...
 ```
 
-### 4. Create DMG and ZIP
-```bash
-./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app
-./scripts/create-zip.sh build/Build/Products/Release/VibeTunnel.app
-```
+**Normal Duration**: Notarization typically takes 2-10 minutes. If it's taking longer than 15 minutes, check Apple System Status.
 
-### 5. Sign DMG for Sparkle
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-sign_update build/VibeTunnel-X.X.X.dmg
-```
+### GitHub Release Already Exists
+**Problem**: Tag or release already exists on GitHub.
 
-### 6. Create GitHub Release
-```bash
-gh release create "v1.0.0-beta.1" \
-  --title "VibeTunnel 1.0.0-beta.1" \
-  --notes "Beta release 1" \
-  --prerelease \
-  build/VibeTunnel-*.dmg \
-  build/VibeTunnel-*.zip
-```
+**Solution**: The release script now prompts you to:
+1. Delete the existing release and tag
+2. Cancel the release
 
-### 7. Update Appcast
-```bash
-./scripts/update-appcast.sh
-git add appcast*.xml
-git commit -m "Update appcast for v1.0.0-beta.1"
-git push
-```
+**Prevention**: Always pull latest changes before releasing.
 
-## 🔍 Troubleshooting
+### DMG Shows "Unnotarized Developer ID"
+**Problem**: The DMG shows as "Unnotarized Developer ID" when checked with spctl.
+
+**Explanation**: This is NORMAL - DMGs are not notarized themselves, only the app inside is notarized. Check the app inside: it should show "Notarized Developer ID".
+
+### Generate Appcast Fails
+**Problem**: `generate-appcast.sh` failed with GitHub API error despite valid authentication.
+
+**Workaround**: 
+- Manually add entry to appcast-prerelease.xml
+- Use signature from: `sign_update [dmg] --account VibeTunnel`
+- Follow existing entry format (see template below)
+
+## 🔧 Troubleshooting Common Issues
+
+### Script Timeouts
+If the release script times out:
+1. Check `.release-state` for the last successful step
+2. Run `./scripts/release.sh --resume` to continue
+3. Or manually complete remaining steps (see Manual Recovery below)
+
+### Manual Recovery Steps
+If automated release fails after notarization:
+
+1. **Create DMG** (if missing):
+   ```bash
+   ./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app
+   ```
+
+2. **Create GitHub Release**:
+   ```bash
+   gh release create "v$VERSION" \
+     --title "VibeTunnel $VERSION" \
+     --notes-file RELEASE_NOTES.md \
+     --prerelease \
+     build/VibeTunnel-*.dmg \
+     build/VibeTunnel-*.zip
+   ```
+
+3. **Sign DMG for Sparkle**:
+   ```bash
+   export SPARKLE_ACCOUNT="VibeTunnel"
+   sign_update build/VibeTunnel-$VERSION.dmg --account VibeTunnel
+   ```
+
+4. **Update Appcast Manually**:
+   - Add entry to appcast-prerelease.xml with signature from step 3
+   - Commit and push: `git add appcast*.xml && git commit -m "Update appcast" && git push`
 
 ### "Update is improperly signed" Error
 **Problem**: Users see "The update is improperly signed and could not be validated."
@@ -488,12 +722,270 @@ codesign -dvv "VibeTunnel.app/Contents/Frameworks/Sparkle.framework/Versions/B/X
 grep '<sparkle:version>' appcast-prerelease.xml
 ```
 
+## 📝 Appcast Entry Template
+
+```xml
+<item>
+    <title>VibeTunnel VERSION</title>
+    <link>https://github.com/amantus-ai/vibetunnel/releases/download/vVERSION/VibeTunnel-VERSION.dmg</link>
+    <sparkle:version>BUILD_NUMBER</sparkle:version>
+    <sparkle:shortVersionString>VERSION</sparkle:shortVersionString>
+    <description><![CDATA[
+        <h2>VibeTunnel VERSION</h2>
+        <p><strong>Pre-release version</strong></p>
+        <!-- Copy from CHANGELOG.md -->
+    ]]></description>
+    <pubDate>DATE</pubDate>
+    <enclosure url="https://github.com/amantus-ai/vibetunnel/releases/download/vVERSION/VibeTunnel-VERSION.dmg" 
+               sparkle:version="BUILD_NUMBER" 
+               sparkle:shortVersionString="VERSION" 
+               length="SIZE_IN_BYTES" 
+               type="application/x-apple-diskimage" 
+               sparkle:edSignature="SIGNATURE_FROM_SIGN_UPDATE"/>
+</item>
+```
+
+## 🎯 Release Success Criteria
+
+- [ ] GitHub release created with both DMG and ZIP
+- [ ] DMG downloads and mounts correctly
+- [ ] App inside DMG shows as notarized
+- [ ] Appcast updated and pushed
+- [ ] Sparkle signature in appcast matches DMG
+- [ ] Version and build numbers correct everywhere
+- [ ] Previous version can update via Sparkle
+
+## 🚨 Emergency Fixes
+
+### Wrong Sparkle Signature
+```bash
+# 1. Get correct signature
+sign_update [dmg-url] --account VibeTunnel
+
+# 2. Update appcast-prerelease.xml with correct signature
+# 3. Commit and push immediately
+```
+
+### Missing from Appcast
+```bash
+# Users won't see update until appcast is fixed
+# Add entry manually following template above
+# Test with: curl https://raw.githubusercontent.com/amantus-ai/vibetunnel/main/appcast-prerelease.xml
+```
+
+### Build Number Conflict
+```bash
+# If Sparkle complains about duplicate build number
+# Increment build number in version.xcconfig
+# Create new release with higher build number
+# Old release will be ignored by Sparkle
+```
+
+## 🔍 Key File Locations
+
+**Important**: Files are not always where scripts expect them to be.
+
+**Key Locations**:
+- **Appcast files**: Located in project root (`/vibetunnel/`), NOT in `mac/`
+  - `appcast.xml`
+  - `appcast-prerelease.xml`
+- **CHANGELOG.md**: Can be in either:
+  - `mac/CHANGELOG.md` (preferred by release script)
+  - Project root `/vibetunnel/CHANGELOG.md` (common location)
+- **Sparkle private key**: Usually in `mac/private/sparkle_private_key`
+
+## 📚 Common Commands
+
+### Test Sparkle Signature
+```bash
+# Find sign_update binary
+find . -name sign_update -type f
+
+# Test signing with specific account
+./path/to/sign_update file.dmg -f private/sparkle_private_key -p --account VibeTunnel
+```
+
+### Verify Appcast URLs
+```bash
+# Check that appcast files are accessible
+curl -I https://raw.githubusercontent.com/amantus-ai/vibetunnel/main/appcast.xml
+curl -I https://raw.githubusercontent.com/amantus-ai/vibetunnel/main/appcast-prerelease.xml
+```
+
+### Manual Appcast Generation
+```bash
+# If automatic generation fails
+cd mac
+export SPARKLE_ACCOUNT="VibeTunnel"
+./scripts/generate-appcast.sh
+```
+
+### Release Status Script
+Create `scripts/check-release-status.sh`:
+```bash
+#!/bin/bash
+VERSION=$1
+
+echo "Checking release status for v$VERSION..."
+
+# Check local artifacts
+echo -n "✓ Local DMG: "
+[ -f "build/VibeTunnel-$VERSION.dmg" ] && echo "EXISTS" || echo "MISSING"
+
+echo -n "✓ Local ZIP: "
+[ -f "build/VibeTunnel-$VERSION.zip" ] && echo "EXISTS" || echo "MISSING"
+
+# Check GitHub
+echo -n "✓ GitHub Release: "
+gh release view "v$VERSION" &>/dev/null && echo "EXISTS" || echo "MISSING"
+
+# Check appcast
+echo -n "✓ Appcast Entry: "
+grep -q "$VERSION" ../appcast-prerelease.xml && echo "EXISTS" || echo "MISSING"
+```
+
+## 📋 Post-Release Verification
+
+1. **Check GitHub Release**:
+   - Verify assets are attached
+   - Check file sizes match
+   - Ensure release notes are formatted correctly
+
+2. **Test Update in App**:
+   - Install previous version
+   - Check for updates
+   - Verify update downloads and installs
+   - Check signature verification in Console.app
+
+3. **Monitor for Issues**:
+   - Watch Console.app for Sparkle errors
+   - Check GitHub issues for user reports
+   - Verify download counts on GitHub
+
+## 🛠️ Recommended Script Improvements
+
+Based on release experience, consider implementing:
+
+### 1. Release Script Enhancements
+
+Add state tracking for resumability:
+```bash
+# Add to release.sh
+
+# State file to track progress
+STATE_FILE=".release-state"
+
+# Save state after each major step
+save_state() {
+    echo "$1" > "$STATE_FILE"
+}
+
+# Resume from last state
+resume_from_state() {
+    if [ -f "$STATE_FILE" ]; then
+        LAST_STATE=$(cat "$STATE_FILE")
+        echo "Resuming from: $LAST_STATE"
+    fi
+}
+
+# Add --resume flag handling
+if [[ "$1" == "--resume" ]]; then
+    resume_from_state
+    shift
+fi
+```
+
+### 2. Better Progress Reporting
+```bash
+# Add progress function
+progress() {
+    local step=$1
+    local total=$2
+    local message=$3
+    echo "[${step}/${total}] ${message}"
+}
+
+# Use throughout script
+progress 1 8 "Running pre-flight checks..."
+progress 2 8 "Building application..."
+```
+
+### 3. Parallel Operations
+Where possible, run independent operations in parallel:
+```bash
+# Run signing and changelog generation in parallel
+{
+    sign_app &
+    PID1=$!
+    
+    generate_changelog &
+    PID2=$!
+    
+    wait $PID1 $PID2
+}
+```
+
+## 📝 Key Learnings
+
+1. **Always use explicit accounts** when dealing with signing operations
+2. **Clean up resources** (volumes, processes) before operations
+3. **Verify file locations** - don't assume standard paths
+4. **Test the full update flow** before announcing the release
+5. **Keep credentials secure** but easily accessible for scripts
+6. **Document everything** - future you will thank present you
+7. **Plan for long-running operations** - notarization can take 10+ minutes
+8. **Implement resumable workflows** - scripts should handle interruptions gracefully
+9. **DMG signing is separate from notarization** - DMGs themselves aren't notarized, only the app inside
+10. **Command timeouts** are a real issue - use screen/tmux for releases
+
+### Additional Lessons from v1.0.0-beta.5 Release
+
+#### DMG Notarization Confusion
+**Issue**: The DMG shows as "Unnotarized Developer ID" when checked with spctl, but this is normal.
+**Explanation**: 
+- DMGs are not notarized themselves - only the app inside is notarized
+- The app inside the DMG shows correctly as "Notarized Developer ID"
+- This is expected behavior and not an error
+
+#### Release Script Timeout Handling
+**Issue**: Release script timed out during notarization (took ~5 minutes).
+**Solution**: 
+- Run release scripts in a terminal without timeout constraints
+- Consider using `screen` or `tmux` for long operations
+- Add progress indicators to show the script is still running
+
+#### Appcast Generation Failures
+**Issue**: `generate-appcast.sh` failed with GitHub API errors despite valid auth.
+**Workaround**: 
+- Manually create appcast entries when automation fails
+- Always verify the Sparkle signature with `sign_update --account VibeTunnel`
+- Keep a template of appcast entries for quick manual updates
+
+## 🚀 Long-term Improvements
+
+1. **CI/CD Integration**: Move releases to GitHub Actions for reliability
+2. **Release Dashboard**: Web UI showing release progress and status
+3. **Automated Testing**: Test Sparkle updates in CI before publishing
+4. **Rollback Capability**: Script to quickly revert a bad release
+5. **Release Templates**: Pre-configured release notes and changelog formats
+6. **Monitoring Improvements**: Add detailed logging with timestamps and metrics
+
+## Summary
+
+The VibeTunnel release process is complex but well-automated. The main challenges are:
+- Command timeouts during long operations (especially notarization)
+- Lack of resumability after failures
+- Missing progress indicators
+- No automated recovery options
+- File location confusion
+
+Following this guide and implementing the suggested improvements will make releases more reliable and less stressful, especially when using tools with timeout constraints.
+
+**Remember**: Always use the automated release script, ensure build numbers increment, and test updates before announcing!
+
 ## 📚 Important Links
 
 - [Sparkle Sandboxing Guide](https://sparkle-project.org/documentation/sandboxing/)
 - [Sparkle Code Signing](https://sparkle-project.org/documentation/sandboxing/#code-signing)
 - [Apple Notarization](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
-
----
-
-**Remember**: Always use the automated release script, ensure build numbers increment, and test updates before announcing!
+- [GitHub Releases API](https://docs.github.com/en/rest/releases/releases)

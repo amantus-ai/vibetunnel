@@ -108,6 +108,7 @@ server/vibetunnel-fwd
 linux/vibetunnel
 *.o
 
+
 # Rust build artifacts
 tty-fwd/target/
 tty-fwd/Cargo.lock
@@ -126,3 +127,5 @@ playwright-report/
 !src/**/*.png
 .claude/settings.local.json
 buildServer.json
+/temp
+/temp/webrtc-check

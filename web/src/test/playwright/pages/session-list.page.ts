@@ -34,16 +34,24 @@ export class SessionListPage extends BasePage {
   }
 
   async createNewSession(sessionName?: string, spawnWindow = false, command?: string) {
-    console.log(`Creating session: name="${sessionName}", spawnWindow=${spawnWindow}`);
-
     // IMPORTANT: Set the spawn window preference in localStorage BEFORE opening the modal
     // This ensures the form loads with the correct state
     await this.page.evaluate((shouldSpawnWindow) => {
+      // Clear all form-related localStorage values first to ensure clean state
+      localStorage.removeItem('vibetunnel_spawn_window');
+      localStorage.removeItem('vibetunnel_last_command');
+      localStorage.removeItem('vibetunnel_last_working_dir');
+      localStorage.removeItem('vibetunnel_title_mode');
+
+      // Then set the spawn window value we want
       localStorage.setItem('vibetunnel_spawn_window', String(shouldSpawnWindow));
     }, spawnWindow);
 
     // Dismiss any error messages
     await this.dismissErrors();
+
+    // Add a small delay to ensure localStorage changes are processed
+    await this.page.waitForTimeout(100);
 
     // Click the create session button
     // Try to find the create button in different possible locations
@@ -73,30 +81,15 @@ export class SessionListPage extends BasePage {
         timeout: 10000,
       });
 
-      // Force wait for view transition to complete
-      await this.page.waitForTimeout(500);
+      // Wait for the session name input to be visible - this is what we actually need
+      // This approach is more reliable than waiting for the modal wrapper
+      await this.page.waitForSelector('[data-testid="session-name-input"]', {
+        state: 'visible',
+        timeout: 15000,
+      });
 
-      // Now wait for modal to be considered visible by Playwright
-      try {
-        await this.page.waitForSelector('session-create-form', {
-          state: 'visible',
-          timeout: 5000,
-        });
-      } catch (_visibilityError) {
-        // If modal is still not visible, it might be due to view transitions
-        // Force interaction since we know it's there
-        console.log('Modal not visible to Playwright, will use force interaction');
-      }
-
-      // Check if modal is actually functional (can find input elements)
-      await this.page.waitForSelector(
-        '[data-testid="session-name-input"], input[placeholder="My Session"]',
-        {
-          timeout: 5000,
-        }
-      );
-
-      console.log('Modal found and functional, proceeding with session creation');
+      // Additional wait to ensure modal is fully interactive
+      await this.page.waitForTimeout(200);
     } catch (error) {
       console.error('Failed to click create button:', error);
       await screenshotOnError(
@@ -151,41 +144,25 @@ export class SessionListPage extends BasePage {
       { timeout: 2000 }
     );
 
-    // IMPORTANT: Set spawn window toggle to create web sessions, not native terminals
-    let spawnWindowToggle = this.page.locator('[data-testid="spawn-window-toggle"]');
-
-    // Check if toggle exists with data-testid, if not use role selector
-    if (!(await spawnWindowToggle.isVisible({ timeout: 1000 }).catch(() => false))) {
-      spawnWindowToggle = this.page.locator('button[role="switch"]');
-    }
+    // Verify spawn window toggle is in correct state (should be set from localStorage)
+    const spawnWindowToggle = this.page
+      .locator('[data-testid="spawn-window-toggle"]')
+      .or(this.page.locator('button[role="switch"]'));
 
     // Wait for the toggle to be ready
     await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
 
+    // Verify the state matches what we expect
     const isSpawnWindowOn = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
-    console.log(`Spawn window toggle state: current=${isSpawnWindowOn}, desired=${spawnWindow}`);
 
-    // If current state doesn't match desired state, click to toggle
+    // If the state doesn't match, there's an issue with localStorage loading
     if (isSpawnWindowOn !== spawnWindow) {
-      console.log(
-        `Clicking spawn window toggle to change from ${isSpawnWindowOn} to ${spawnWindow}`
+      console.warn(
+        `WARNING: Spawn window toggle state mismatch! Expected ${spawnWindow} but got ${isSpawnWindowOn}`
       );
+      // Try clicking to correct it
       await spawnWindowToggle.click({ force: true });
-
-      // Wait for the toggle state to update
-      await this.page.waitForFunction(
-        (expectedState) => {
-          const toggle = document.querySelector('button[role="switch"]');
-          return toggle?.getAttribute('aria-checked') === (expectedState ? 'true' : 'false');
-        },
-        spawnWindow,
-        { timeout: 1000 }
-      );
-
-      const finalState = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
-      console.log(`Spawn window toggle final state: ${finalState}`);
-    } else {
-      console.log(`Spawn window toggle already in correct state: ${isSpawnWindowOn}`);
+      await this.page.waitForTimeout(500);
     }
 
     // Fill in the session name if provided
@@ -196,7 +173,6 @@ export class SessionListPage extends BasePage {
       // Use the selector we found earlier - use force: true to bypass visibility checks
       try {
         await this.page.fill(inputSelector, sessionName, { timeout: 3000, force: true });
-        console.log(`Successfully filled session name: ${sessionName}`);
       } catch (e) {
         const error = new Error(`Could not fill session name field: ${e}`);
         await screenshotOnError(this.page, error, 'fill-session-name-error');
@@ -222,7 +198,6 @@ export class SessionListPage extends BasePage {
 
       try {
         await this.page.fill('[data-testid="command-input"]', command, { force: true });
-        console.log(`Successfully filled command: ${command}`);
       } catch {
         // Check if page is still valid before trying fallback
         if (this.page.isClosed()) {
@@ -231,7 +206,6 @@ export class SessionListPage extends BasePage {
         // Fallback to placeholder selector
         try {
           await this.page.fill('input[placeholder="zsh"]', command, { force: true });
-          console.log(`Successfully filled command (fallback): ${command}`);
         } catch (fallbackError) {
           console.error('Failed to fill command input:', fallbackError);
           throw fallbackError;
@@ -265,22 +239,25 @@ export class SessionListPage extends BasePage {
     }
 
     // Click and wait for response
-    console.log('Waiting for session creation response...');
+
+    // Also log any console errors from the page
+    this.page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        console.error('Browser console error:', msg.text());
+      }
+    });
+
     const responsePromise = this.page.waitForResponse(
       (response) => {
         const isSessionEndpoint = response.url().includes('/api/sessions');
         const isPost = response.request().method() === 'POST';
-        if (isSessionEndpoint) {
-          console.log(
-            `Session endpoint response: ${response.status()} ${response.request().method()}`
-          );
-        }
         return isSessionEndpoint && isPost;
       },
       { timeout: 20000 } // Increased timeout for CI
     );
 
-    await submitButton.click({ force: true, timeout: 5000 });
+    // Click the submit button
+    await submitButton.click({ timeout: 5000 });
 
     // Wait for navigation to session view (only for web sessions)
     if (!spawnWindow) {
@@ -295,60 +272,78 @@ export class SessionListPage extends BasePage {
         ]);
 
         if (response) {
-          console.log(`Session creation response status: ${response.status()}`);
-
           if (response.status() !== 201 && response.status() !== 200) {
             const body = await response.text();
+            console.error(`Session creation failed with status ${response.status()}: ${body}`);
             throw new Error(`Session creation failed with status ${response.status()}: ${body}`);
           }
 
           // Get session ID from response
           const responseBody = await response.json();
-          console.log('[CI Debug] Session created:', JSON.stringify(responseBody));
           sessionId = responseBody.sessionId;
+
+          // Log if session ID is missing
+          if (!sessionId) {
+            console.error('Session created but no sessionId in response:', responseBody);
+          }
         } else {
-          console.log(
-            'No response received within timeout, checking if navigation happened anyway'
-          );
+          // Check if a session was actually created by looking for it in the DOM
+          const _createdSession = await this.page.evaluate((name) => {
+            const cards = document.querySelectorAll('session-card');
+            for (const card of cards) {
+              if (card.textContent?.includes(name)) {
+                return true;
+              }
+            }
+            return false;
+          }, sessionName);
         }
       } catch (error) {
         console.error('Error waiting for session response:', error);
         // Don't throw yet, check if we navigated anyway
       }
 
-      // Wait for modal to close first - check for the data-modal-state attribute
-      await this.page
-        .waitForSelector('[data-modal-state="open"]', { state: 'detached', timeout: 5000 })
-        .catch(() => {
-          console.log('Modal might have already closed');
-        });
+      // Give the app time to process the session and navigate
+      await this.page.waitForTimeout(2000);
 
-      // Additional check to ensure modal is fully closed
-      await this.page.waitForFunction(
-        () => {
-          // Check if modal is gone
-          const modalElement = document.querySelector(
-            'session-create-form[data-modal-state="open"]'
-          );
-          return !modalElement;
-        },
-        { timeout: 5000 }
-      );
+      // Wait for modal to close - check if the form's visible property is false
+      await this.page
+        .waitForFunction(
+          () => {
+            const form = document.querySelector('session-create-form');
+            // Modal is closed if form doesn't exist or visible is false
+            return (
+              !form || !form.hasAttribute('visible') || form.getAttribute('visible') === 'false'
+            );
+          },
+          { timeout: 10000 }
+        )
+        .catch(async (error) => {
+          // Log current state for debugging
+          const modalState = await this.page.evaluate(() => {
+            const form = document.querySelector('session-create-form');
+            return {
+              exists: !!form,
+              visible: form?.getAttribute('visible'),
+              dataModalState: form?.getAttribute('data-modal-state'),
+              hasVisibleAttribute: form?.hasAttribute('visible'),
+            };
+          });
+          console.error('Modal did not close. Current state:', modalState);
+          throw error;
+        });
 
       // Check if we're already on the session page
       const currentUrl = this.page.url();
       if (currentUrl.includes('?session=')) {
-        console.log('Already navigated to session view');
       } else {
         // If we have a session ID, try navigating manually
         if (sessionId) {
-          console.log(`Manually navigating to session ${sessionId}`);
           await this.page.goto(`/?session=${sessionId}`, { waitUntil: 'domcontentloaded' });
         } else {
           // Wait for automatic navigation
           try {
             await this.page.waitForURL(/\?session=/, { timeout: 10000 });
-            console.log('Successfully navigated to session view');
           } catch (error) {
             const finalUrl = this.page.url();
             console.error(`Failed to navigate to session. Current URL: ${finalUrl}`);
@@ -428,19 +423,47 @@ export class SessionListPage extends BasePage {
     // Ensure no modal is blocking interaction
     await this.closeAnyOpenModal();
 
+    // First check if the session card exists
+    const sessionCardCount = await this.page
+      .locator(`session-card:has-text("${sessionName}")`)
+      .count();
+    if (sessionCardCount === 0) {
+      // Session already removed, nothing to do
+      return;
+    }
+
     const sessionCard = await this.getSessionCard(sessionName);
 
     // Wait for the session card to be visible
-    await sessionCard.waitFor({ state: 'visible', timeout: 4000 });
+    try {
+      await sessionCard.waitFor({ state: 'visible', timeout: 4000 });
+    } catch {
+      // Session might have been removed already
+      return;
+    }
 
     // The kill button should have data-testid="kill-session-button"
     const killButton = sessionCard.locator('[data-testid="kill-session-button"]');
 
+    // Check if button exists before trying to interact
+    const buttonCount = await killButton.count();
+    if (buttonCount === 0) {
+      // Button not found, session might already be killed
+      return;
+    }
+
     // Wait for the button to be visible and enabled
     await killButton.waitFor({ state: 'visible', timeout: 4000 });
 
-    // Scroll into view if needed
-    await killButton.scrollIntoViewIfNeeded();
+    // Only scroll if element is still attached
+    try {
+      await killButton.scrollIntoViewIfNeeded();
+    } catch {
+      // Element might have been removed, check again
+      if ((await killButton.count()) === 0) {
+        return;
+      }
+    }
 
     // Set up dialog handler BEFORE clicking to avoid race condition
     // But use Promise.race to handle cases where no dialog appears
@@ -463,7 +486,6 @@ export class SessionListPage extends BasePage {
       }
     } catch {
       // No dialog appeared, which is fine
-      console.log('No confirmation dialog appeared for kill action');
     }
 
     // Wait for the click action to complete

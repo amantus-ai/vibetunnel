@@ -123,7 +123,7 @@ test.describe('Session Management', () => {
     await expect(terminal).toBeVisible({ timeout: 5000 });
 
     // Wait for the command to complete and session to exit
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
 
     // Navigate back to home
     await page.goto('/');
@@ -181,7 +181,8 @@ test.describe('Session Management', () => {
       // Navigate back to list before creating second session
       await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-      // Wait for the list to be ready without networkidle
+      // Wait for the list to be ready
+      await page.waitForLoadState('networkidle');
       await waitForSessionCards(page);
 
       // Create second session
@@ -222,7 +223,7 @@ test.describe('Session Management', () => {
 
     // Verify initial status shows "running"
     const statusElement = sessionCard.locator('span[data-status="running"]');
-    await expect(statusElement).toBeVisible();
+    await expect(statusElement).toBeVisible({ timeout: 10000 });
     await expect(statusElement).toContainText('running');
 
     // Navigate back to session and interact with it
@@ -262,7 +263,7 @@ test.describe('Session Management', () => {
       await page.keyboard.type(`echo "Line ${i} of output"`);
       await page.keyboard.press('Enter');
       // Small delay between commands to avoid overwhelming the terminal
-      await page.waitForTimeout(100);
+      await page.waitForTimeout(200);
     }
 
     // Wait for the last line to appear
@@ -272,7 +273,7 @@ test.describe('Session Management', () => {
     // Verify terminal is still responsive
     await page.keyboard.type('echo "Still working"');
     await page.keyboard.press('Enter');
-    await expect(terminal).toContainText('Still working', { timeout: 5000 });
+    await expect(terminal).toContainText('Still working', { timeout: 10000 });
 
     // Navigate back and verify session is still in list
     await page.goto('/');

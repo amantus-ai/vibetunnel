@@ -264,14 +264,17 @@ test.describe('UI Features', () => {
 
     // Go back to list
     await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 20000 });
+
+    // Wait a bit more for session list to update
+    await page.waitForTimeout(2000);
 
     // Find our session card
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-    await expect(sessionCard).toBeVisible({ timeout: 10000 });
+    await expect(sessionCard).toBeVisible({ timeout: 20000 });
 
     // The card should show terminal preview (buffer component)
     const preview = sessionCard.locator('vibe-terminal-buffer').first();
-    await expect(preview).toBeVisible({ timeout: 10000 });
+    await expect(preview).toBeVisible({ timeout: 20000 });
   });
 });

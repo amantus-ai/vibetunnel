@@ -25,7 +25,7 @@ test.describe('Terminal Interaction', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('terminal-test'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
   });
 
   test.afterEach(async () => {

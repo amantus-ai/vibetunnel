@@ -156,9 +156,9 @@ BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$APP_PATH/Contents/I
 echo "Version: $VERSION ($BUILD)"
 
 # Verify version matches xcconfig
-if [[ -f "$PROJECT_DIR/VibeTunnel/version.xcconfig" ]]; then
-    EXPECTED_VERSION=$(grep 'MARKETING_VERSION' "$PROJECT_DIR/VibeTunnel/version.xcconfig" | sed 's/.*MARKETING_VERSION = //')
-    EXPECTED_BUILD=$(grep 'CURRENT_PROJECT_VERSION' "$PROJECT_DIR/VibeTunnel/version.xcconfig" | sed 's/.*CURRENT_PROJECT_VERSION = //')
+if [[ -f "$MAC_DIR/VibeTunnel/version.xcconfig" ]]; then
+    EXPECTED_VERSION=$(grep 'MARKETING_VERSION' "$MAC_DIR/VibeTunnel/version.xcconfig" | sed 's/.*MARKETING_VERSION = //')
+    EXPECTED_BUILD=$(grep 'CURRENT_PROJECT_VERSION' "$MAC_DIR/VibeTunnel/version.xcconfig" | sed 's/.*CURRENT_PROJECT_VERSION = //')
     
     if [[ "$VERSION" != "$EXPECTED_VERSION" ]]; then
         echo "⚠️  WARNING: Built version ($VERSION) doesn't match version.xcconfig ($EXPECTED_VERSION)"

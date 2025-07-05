@@ -29,7 +29,7 @@ export class ControlDirWatcher {
   start(): void {
     // Create control directory if it doesn't exist
     if (!fs.existsSync(this.config.controlDir)) {
-      logger.log(
+      logger.debug(
         chalk.yellow(`Control directory ${this.config.controlDir} does not exist, creating it`)
       );
       fs.mkdirSync(this.config.controlDir, { recursive: true });
@@ -45,7 +45,7 @@ export class ControlDirWatcher {
       }
     );
 
-    logger.log(chalk.green(`Control directory watcher started for ${this.config.controlDir}`));
+    logger.debug(chalk.green(`Control directory watcher started for ${this.config.controlDir}`));
   }
 
   private async handleFileChange(filename: string): Promise<void> {
@@ -84,14 +84,14 @@ export class ControlDirWatcher {
           // Session was created
           const sessionId = (sessionData.id || sessionData.session_id || filename) as string;
 
-          logger.log(chalk.blue(`Detected new external session: ${sessionId}`));
+          logger.debug(chalk.blue(`Detected new external session: ${sessionId}`));
 
           // Check if PtyManager already knows about this session
           if (this.config.ptyManager) {
             const existingSession = this.config.ptyManager.getSession(sessionId);
             if (!existingSession) {
               // This is a new external session, PtyManager needs to track it
-              logger.log(chalk.green(`Attaching to external session: ${sessionId}`));
+              logger.debug(chalk.green(`Attaching to external session: ${sessionId}`));
               // PtyManager will pick it up through its own session listing
               // since it reads from the control directory
             }
@@ -114,7 +114,7 @@ export class ControlDirWatcher {
       } else if (!fs.existsSync(sessionPath)) {
         // Session directory was removed
         const sessionId = filename;
-        logger.log(chalk.yellow(`Detected removed session: ${sessionId}`));
+        logger.debug(chalk.yellow(`Detected removed session: ${sessionId}`));
 
         // If we're a remote server registered with HQ, immediately notify HQ
         if (this.config.hqClient && !isShuttingDown()) {
@@ -184,14 +184,14 @@ export class ControlDirWatcher {
     }
 
     const duration = Date.now() - startTime;
-    logger.log(chalk.green(`Notified HQ about ${action} session ${sessionId} (${duration}ms)`));
+    logger.debug(chalk.green(`Notified HQ about ${action} session ${sessionId} (${duration}ms)`));
   }
 
   stop(): void {
     if (this.watcher) {
       this.watcher.close();
       this.watcher = null;
-      logger.log(chalk.yellow('Control directory watcher stopped'));
+      logger.debug(chalk.yellow('Control directory watcher stopped'));
     } else {
       logger.debug('Stop called but watcher was not running');
     }
