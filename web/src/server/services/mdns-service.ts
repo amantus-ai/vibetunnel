@@ -20,12 +20,15 @@ export class MDNSService {
     }
 
     try {
-      this.bonjour = new Bonjour();
+      this.bonjour = Bonjour();
 
       // Use hostname or custom name as the instance name
       const name = instanceName || os.hostname() || 'VibeTunnel Server';
 
       // Advertise the service
+      if (!this.bonjour) {
+        throw new Error('Failed to initialize Bonjour');
+      }
       this.service = this.bonjour.publish({
         name,
         type: 'vibetunnel',
@@ -45,8 +48,8 @@ export class MDNSService {
           log.debug('mDNS service is up');
         });
 
-        this.service.on('error', (err) => {
-          log.error('mDNS service error:', err);
+        this.service.on('error', (...args: unknown[]) => {
+          log.error('mDNS service error:', args[0]);
         });
       }
     } catch (error) {

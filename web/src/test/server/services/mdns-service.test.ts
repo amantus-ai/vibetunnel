@@ -14,7 +14,7 @@ vi.mock('../../../server/utils/logger.js', () => ({
 // Mock bonjour-service
 const mockService = {
   on: vi.fn(),
-  stop: vi.fn((callback) => callback && callback()),
+  stop: vi.fn((callback) => callback?.()),
 };
 
 const mockBonjour = {
@@ -32,25 +32,6 @@ vi.mock('node:os', () => ({
     hostname: vi.fn().mockReturnValue('test-hostname'),
   },
 }));
-
-interface MockService {
-  start: () => void;
-  stop: () => void;
-  on: (event: string, handler: (...args: unknown[]) => void) => void;
-}
-
-interface PublishOptions {
-  name: string;
-  type: string;
-  port: number;
-  txt?: Record<string, string>;
-}
-
-interface MockBonjour {
-  publish: (options: PublishOptions) => MockService;
-  unpublishAll: () => void;
-  destroy: () => void;
-}
 
 describe('MDNSService', () => {
   let mdnsService: MDNSService;
