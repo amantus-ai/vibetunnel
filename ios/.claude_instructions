@@ -1,0 +1,82 @@
+# iOS Development Instructions
+
+## Logging with vtlog
+
+Use the `vtlog` command to monitor iOS app logs:
+
+```bash
+# Monitor all VibeTunnel logs
+vtlog
+
+# Filter for specific categories
+vtlog | grep BonjourDiscovery
+vtlog | grep Logger
+
+# Show verbose logs
+vtlog -v
+
+# Monitor specific subsystem
+vtlog --subsystem sh.vibetunnel.vibetunnel
+```
+
+## Building with xcodebuildmcp
+
+Use the `xcodebuildmcp` tool to build and test the iOS app:
+
+```bash
+# Build the iOS app
+xcodebuildmcp build -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS
+
+# Run tests
+xcodebuildmcp test -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS
+
+# Run specific test suite
+xcodebuildmcp test -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS -only-testing:VibeTunnelTests/ServerConfigTests
+
+# Build for device
+xcodebuildmcp build -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS -destination "generic/platform=iOS"
+
+# Clean build
+xcodebuildmcp clean -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS
+```
+
+## Common Development Tasks
+
+### Running the app
+1. Open Xcode: `open ../VibeTunnel.xcworkspace`
+2. Select VibeTunnel-iOS scheme
+3. Choose a simulator or device
+4. Press Cmd+R to run
+
+### Debugging
+- Use `vtlog` to monitor real-time logs
+- Set breakpoints in Xcode
+- Use the Debug View Hierarchy for UI issues
+
+### Testing
+- Run all tests: `xcodebuildmcp test -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS`
+- Run specific test: Add `-only-testing:` parameter
+- View test results in Xcode's Test Navigator
+
+### Code Quality
+- Format code: `./scripts/lint.sh`
+- Run SwiftLint: `swiftlint`
+- Run SwiftFormat: `swiftformat .`
+
+## Important Files
+- Main app entry: `VibeTunnel/App/VibeTunnelApp.swift`
+- Bonjour discovery: `VibeTunnel/Services/BonjourDiscoveryService.swift`
+- Logger utility: `VibeTunnel/Utils/Logger.swift`
+- Server config: `VibeTunnel/Models/ServerConfig.swift`
+
+## CI/CD
+The iOS CI runs on GitHub Actions and includes:
+- Building for release
+- Running SwiftFormat and SwiftLint
+- Running all tests with coverage
+- Uploading artifacts
+
+Monitor CI status with:
+```bash
+gh pr checks --json name,state | jq -r '.[] | select(.name | contains("iOS")) | "\(.name): \(.state)"'
+```

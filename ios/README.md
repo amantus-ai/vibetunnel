@@ -78,9 +78,22 @@ For the best experience, add Fira Code font:
 
 ### 6. Build and Run
 
+#### Using Xcode
 1. Select your device or simulator (iOS 18+)
 2. Press **⌘R** to build and run
 3. The app will launch with the beautiful connection screen
+
+#### Using xcodebuildmcp
+```bash
+# Build the app
+xcodebuildmcp build -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS
+
+# Run tests
+xcodebuildmcp test -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS
+
+# Build for device
+xcodebuildmcp build -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS -destination "generic/platform=iOS"
+```
 
 ## 🏗️ Architecture
 
@@ -133,6 +146,39 @@ VibeTunnel/
 - **Swift**: 6.0 compatible
 - **Dependencies**: SwiftTerm for terminal emulation
 - **Architecture**: MVVM with SwiftUI and Combine
+
+### Logging with vtlog
+
+Monitor app logs in real-time using `vtlog`:
+
+```bash
+# Monitor all VibeTunnel logs
+vtlog
+
+# Filter for specific components
+vtlog | grep BonjourDiscovery
+vtlog | grep Logger
+vtlog | grep ServerConfig
+
+# Verbose logging
+vtlog -v
+
+# Monitor specific subsystem
+vtlog --subsystem sh.vibetunnel.vibetunnel
+```
+
+### Code Quality
+
+```bash
+# Format and lint code
+./scripts/lint.sh
+
+# Run SwiftFormat only
+swiftformat .
+
+# Run SwiftLint only
+swiftlint
+```
 
 ## 🐛 Troubleshooting
 
