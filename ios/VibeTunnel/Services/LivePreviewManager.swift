@@ -21,8 +21,7 @@ final class LivePreviewManager {
     /// Update interval for previews (in seconds)
     private let updateInterval: TimeInterval = 1.0
 
-    private init() {
-    }
+    private init() {}
 
     /// Subscribe to live updates for a session.
     func subscribe(to sessionId: String) -> LivePreviewSubscription {

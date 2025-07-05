@@ -153,11 +153,11 @@ struct TerminalHostingView: UIViewRepresentable {
         weak var terminal: SwiftTerm.TerminalView?
         private let logger = Logger(category: "Terminal")
 
-        // Track previous buffer state for incremental updates
+        /// Track previous buffer state for incremental updates
         private var previousSnapshot: BufferSnapshot?
         private var isFirstUpdate = true
 
-        // Selection support
+        /// Selection support
         private var selectionStart: (x: Int, y: Int)?
         private var selectionEnd: (x: Int, y: Int)?
 

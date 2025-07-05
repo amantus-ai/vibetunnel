@@ -43,9 +43,10 @@ struct WidthSelectorPopover: View {
                 // Show recent custom widths if any
                 let customWidths = TerminalWidthManager.shared.customWidths
                 if !customWidths.isEmpty {
-                    Section(header: Text("Recent Custom Widths")
-                        .font(.caption)
-                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
+                    Section(
+                        header: Text("Recent Custom Widths")
+                            .font(.caption)
+                            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
                     ) {
                         ForEach(customWidths, id: \.self) { width in
                             WidthPresetRow(

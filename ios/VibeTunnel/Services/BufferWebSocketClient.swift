@@ -61,7 +61,7 @@ class BufferWebSocketClient: NSObject {
     private var pingTask: Task<Void, Never>?
     private(set) var authenticationService: AuthenticationService?
 
-    // Observable properties
+    /// Observable properties
     private(set) var isConnected = false
     private(set) var connectionError: Error?
 
@@ -85,9 +85,9 @@ class BufferWebSocketClient: NSObject {
     }
 
     func connect() {
-        guard !isConnecting else { 
+        guard !isConnecting else {
             logger.warning("Already connecting, ignoring connect() call")
-            return 
+            return
         }
         guard !isConnected else {
             logger.warning("Already connected, ignoring connect() call")
@@ -105,7 +105,7 @@ class BufferWebSocketClient: NSObject {
         var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
         components?.scheme = baseURL.scheme == "https" ? "wss" : "ws"
         components?.path = "/buffers"
-        
+
         // Add authentication token as query parameter (not header)
         if let token = authenticationService?.getTokenForQuery() {
             components?.queryItems = [URLQueryItem(name: "token", value: token)]
@@ -634,10 +634,10 @@ class BufferWebSocketClient: NSObject {
     func subscribe(to sessionId: String, handler: @escaping (TerminalWebSocketEvent) -> Void) {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            
+
             // Store the handler
             self.subscriptions[sessionId] = handler
-            
+
             // Send subscription message immediately if connected
             if self.isConnected {
                 try? await self.sendMessage(["type": "subscribe", "sessionId": sessionId])
@@ -652,10 +652,10 @@ class BufferWebSocketClient: NSObject {
     func unsubscribe(from sessionId: String) {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            
+
             // Remove the handler
             self.subscriptions.removeValue(forKey: sessionId)
-            
+
             // Send unsubscribe message immediately if connected
             if self.isConnected {
                 try? await self.sendMessage(["type": "unsubscribe", "sessionId": sessionId])
@@ -758,7 +758,7 @@ extension BufferWebSocketClient: WebSocketDelegate {
         // Re-subscribe to all sessions that have handlers
         Task { @MainActor [weak self] in
             guard let self else { return }
-            
+
             let sessionIds = Array(self.subscriptions.keys)
             for sessionId in sessionIds {
                 try? await self.sendMessage(["type": "subscribe", "sessionId": sessionId])

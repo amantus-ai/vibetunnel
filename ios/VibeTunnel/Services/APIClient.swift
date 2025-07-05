@@ -120,7 +120,7 @@ class APIClient: APIClientProtocol {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         addAuthenticationIfNeeded(&request)
-        
+
         let (data, response) = try await session.data(for: request)
 
         try validateResponse(response)
@@ -150,7 +150,7 @@ class APIClient: APIClientProtocol {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         addAuthenticationIfNeeded(&request)
-        
+
         let (data, response) = try await session.data(for: request)
 
         try validateResponse(response)
@@ -369,9 +369,9 @@ class APIClient: APIClientProtocol {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         addAuthenticationIfNeeded(&request)
-        
+
         logger.debug("📡 [APIClient] Making getSessionSnapshot request to: \(url.absoluteString)")
-        
+
         let (data, response) = try await session.data(for: request)
 
         try validateResponse(response)

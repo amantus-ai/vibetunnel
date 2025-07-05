@@ -734,7 +734,6 @@ class TerminalViewModel {
         }
     }
 
-
     func disconnect() {
         connectionStatusTask?.cancel()
         connectionErrorTask?.cancel()
@@ -852,59 +851,59 @@ class TerminalViewModel {
 
     func resize(cols: Int, rows: Int) {
         // Guard against invalid dimensions
-        guard cols > 0 && rows > 0 && cols <= 1000 && rows <= 1000 else {
+        guard cols > 0 && rows > 0 && cols <= 1_000 && rows <= 1_000 else {
             logger.warning("Ignoring invalid resize: \(cols)x\(rows)")
             return
         }
-        
+
         // Guard against blocked resize
         guard !isResizeBlockedByServer else {
             logger.warning("Resize blocked by server, ignoring resize: \(cols)x\(rows)")
             return
         }
-        
+
         // Handle initial resize with proper synchronization
         if !hasPerformedInitialResize && !isPerformingInitialResize {
             isPerformingInitialResize = true
-            
+
             // Always update UI dimensions immediately for consistency
             terminalCols = cols
             terminalRows = rows
-            
+
             // Perform initial resize after a short delay to let layout settle
             resizeDebounceTask?.cancel()
             resizeDebounceTask = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds for initial
-                guard !Task.isCancelled else { 
+                guard !Task.isCancelled else {
                     await MainActor.run {
                         self?.isPerformingInitialResize = false
                     }
-                    return 
+                    return
                 }
                 await self?.performInitialResize(cols: cols, rows: rows)
             }
             return
         }
-        
+
         // For subsequent resizes, compare against current UI dimensions (not server dimensions)
         guard cols != terminalCols || rows != terminalRows else {
             return
         }
-        
+
         // Only allow significant changes for subsequent resizes
         let colDiff = abs(cols - terminalCols)
         let rowDiff = abs(rows - terminalRows)
-        
+
         // Only resize if there's a significant change (more than 5 cols/rows difference)
         guard colDiff > 5 || rowDiff > 5 else {
             logger.debug("Ignoring minor resize change: \(cols)x\(rows) (current: \(terminalCols)x\(terminalRows))")
             return
         }
-        
+
         // Update UI dimensions immediately
         terminalCols = cols
         terminalRows = rows
-        
+
         resizeDebounceTask?.cancel()
         resizeDebounceTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second for subsequent
@@ -912,10 +911,10 @@ class TerminalViewModel {
             await self?.performResize(cols: cols, rows: rows)
         }
     }
-    
+
     private func performInitialResize(cols: Int, rows: Int) async {
         logger.info("Performing initial terminal resize: \(cols)x\(rows)")
-        
+
         do {
             try await SessionService().resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
             // If resize succeeded, mark initial resize as complete and clear any server blocks
@@ -934,17 +933,18 @@ class TerminalViewModel {
                     isResizeBlockedByServer = true
                 }
             } else {
-                // For other errors, allow retry by clearing the in-progress flag but leaving hasPerformedInitialResize false
+                // For other errors, allow retry by clearing the in-progress flag but leaving hasPerformedInitialResize
+                // false
                 await MainActor.run {
                     isPerformingInitialResize = false
                 }
             }
         }
     }
-    
+
     private func performResize(cols: Int, rows: Int) async {
         logger.info("Resizing terminal: \(cols)x\(rows)")
-        
+
         do {
             try await SessionService().resizeTerminal(sessionId: session.id, cols: cols, rows: rows)
             // If resize succeeded, ensure the flag is cleared

@@ -29,7 +29,23 @@ struct ServerConfig: Codable, Equatable {
     /// a file URL as fallback to ensure non-nil return.
     var baseURL: URL {
         // Handle IPv6 addresses by wrapping in brackets
-        let formattedHost = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
+        var formattedHost = host
+
+        // First, strip any existing brackets to normalize
+        if formattedHost.hasPrefix("[") && formattedHost.hasSuffix("]") {
+            formattedHost = String(formattedHost.dropFirst().dropLast())
+        }
+
+        // Check if this is an IPv6 address (contains colons but isn't already a full URL)
+        let isIPv6 = formattedHost.contains(":") &&
+            !formattedHost.contains("://") &&
+            !formattedHost.hasPrefix("[")
+
+        // Add brackets for IPv6 addresses
+        if isIPv6 {
+            formattedHost = "[\(formattedHost)]"
+        }
+
         // This should always succeed with valid host and port
         // Fallback ensures we always have a valid URL
         return URL(string: "http://\(formattedHost):\(port)") ?? URL(fileURLWithPath: "/")

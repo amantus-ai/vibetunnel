@@ -10,8 +10,8 @@ struct SessionListView: View {
     @Environment(NavigationManager.self)
     var navigationManager
     @State private var viewModel: SessionListViewModel
-    
-    // Inject ViewModel directly - clean separation
+
+    /// Inject ViewModel directly - clean separation
     init(viewModel: SessionListViewModel = SessionListViewModel()) {
         _viewModel = State(initialValue: viewModel)
     }
@@ -365,8 +365,7 @@ protocol SessionListViewModelProtocol: Observable {
     var showExitedSessions: Bool { get set }
     var searchText: String { get set }
     var isNetworkConnected: Bool { get }
-    
-    
+
     func loadSessions() async
     func killSession(_ sessionId: String) async
     func cleanupSession(_ sessionId: String) async
@@ -383,14 +382,14 @@ class SessionListViewModel: SessionListViewModelProtocol {
     var errorMessage: String?
     var showExitedSessions = true
     var searchText = ""
-    
+
     var filteredSessions: [Session] {
         let visibleSessions = sessions.filter { showExitedSessions || $0.isRunning }
-        
+
         if searchText.isEmpty {
             return visibleSessions
         }
-        
+
         return visibleSessions.filter { session in
             // Search in session name
             if let name = session.name, name.localizedCaseInsensitiveContains(searchText) {
@@ -411,12 +410,12 @@ class SessionListViewModel: SessionListViewModelProtocol {
             return false
         }
     }
-    
+
     var isNetworkConnected: Bool {
         networkMonitor.isConnected
     }
-    
-    // UI State
+
+    /// UI State
     var showingCreateSession = false
     var selectedSession: Session?
     var showingFileBrowser = false
@@ -439,7 +438,7 @@ class SessionListViewModel: SessionListViewModelProtocol {
         self.networkMonitor = networkMonitor
         self.connectionManager = connectionManager
     }
-    
+
     func disconnect() async {
         await connectionManager.disconnect()
     }

@@ -46,7 +46,7 @@ struct ServerConfigForm: View {
                             .onSubmit {
                                 focusedField = .port
                             }
-                        
+
                         Button {
                             showingDiscoverySheet = true
                             HapticFeedback.impact(.light)
@@ -163,14 +163,16 @@ struct ServerConfigForm: View {
                     .frame(maxWidth: .infinity)
                 }
             })
-            .foregroundColor(isConnecting || !networkMonitor.isConnected ? Theme.Colors.terminalForeground : Theme
-                .Colors.primaryAccent
+            .foregroundColor(
+                isConnecting || !networkMonitor.isConnected ? Theme.Colors.terminalForeground : Theme
+                    .Colors.primaryAccent
             )
             .padding(.vertical, Theme.Spacing.medium)
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                    .fill(isConnecting || !networkMonitor.isConnected ? Theme.Colors.cardBackground : Theme.Colors
-                        .terminalBackground
+                    .fill(
+                        isConnecting || !networkMonitor.isConnected ? Theme.Colors.cardBackground : Theme.Colors
+                            .terminalBackground
                     )
             )
             .overlay(
@@ -235,8 +237,8 @@ struct ServerConfigForm: View {
         }
         .sheet(isPresented: $showingDiscoverySheet) {
             ServerDiscoverySheet(
-                selectedHost: $host, 
-                selectedPort: $port, 
+                selectedHost: $host,
+                selectedPort: $port,
                 selectedName: Binding<String?>(
                     get: { name.isEmpty ? nil : name },
                     set: { name = $0 ?? "" }

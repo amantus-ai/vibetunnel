@@ -59,8 +59,9 @@ struct SessionCardView: View {
                         } else {
                             Image(systemName: session.isRunning ? "xmark.circle" : "trash.circle")
                                 .font(.system(size: 18))
-                                .foregroundColor(session.isRunning ? Theme.Colors.errorAccent : Theme.Colors
-                                    .terminalForeground.opacity(0.6)
+                                .foregroundColor(
+                                    session.isRunning ? Theme.Colors.errorAccent : Theme.Colors
+                                        .terminalForeground.opacity(0.6)
                                 )
                         }
                     })
@@ -88,7 +89,7 @@ struct SessionCardView: View {
                                     Text("Session exited")
                                         .font(Theme.Typography.terminalSystem(size: 12))
                                         .foregroundColor(Theme.Colors.errorAccent)
-                                    
+
                                     Text("Exit code: \(session.exitCode ?? 0)")
                                         .font(Theme.Typography.terminalSystem(size: 10))
                                         .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
@@ -104,14 +105,16 @@ struct SessionCardView: View {
                     // Status indicator
                     HStack(spacing: 4) {
                         Circle()
-                            .fill(session.isRunning ? Theme.Colors.successAccent : Theme.Colors.terminalForeground
-                                .opacity(0.3)
+                            .fill(
+                                session.isRunning ? Theme.Colors.successAccent : Theme.Colors.terminalForeground
+                                    .opacity(0.3)
                             )
                             .frame(width: 6, height: 6)
                         Text(session.isRunning ? "running" : "exited")
                             .font(Theme.Typography.terminalSystem(size: 10))
-                            .foregroundColor(session.isRunning ? Theme.Colors.successAccent : Theme.Colors
-                                .terminalForeground.opacity(0.5)
+                            .foregroundColor(
+                                session.isRunning ? Theme.Colors.successAccent : Theme.Colors
+                                    .terminalForeground.opacity(0.5)
                             )
 
                         // Live preview indicator
@@ -186,7 +189,6 @@ struct SessionCardView: View {
         }
     }
 
-
     private func animateKill() {
         guard !isKilling else { return }
         isKilling = true
@@ -259,5 +261,4 @@ struct SessionCardView: View {
         }
         .padding(Theme.Spacing.small)
     }
-
 }

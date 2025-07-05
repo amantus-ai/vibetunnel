@@ -251,7 +251,7 @@ struct EnhancedConnectionView: View {
 
         // Create profile from form data
         let hostWithPort = viewModel.port.isEmpty ? viewModel.host : "\(viewModel.host):\(viewModel.port)"
-        
+
         // The createProfileFromURL method will add http:// if needed
         guard let profile = profilesViewModel.createProfileFromURL(hostWithPort) else {
             viewModel.errorMessage = "Invalid server URL"
@@ -261,7 +261,8 @@ struct EnhancedConnectionView: View {
         var updatedProfile = profile
         updatedProfile.name = viewModel.name.isEmpty ? profile.name : viewModel.name
         updatedProfile.requiresAuth = !viewModel.password.isEmpty
-        updatedProfile.username = updatedProfile.requiresAuth ? (viewModel.username.isEmpty ? "admin" : viewModel.username) : nil
+        updatedProfile.username = updatedProfile
+            .requiresAuth ? (viewModel.username.isEmpty ? "admin" : viewModel.username) : nil
 
         // Save profile and password
         Task {
@@ -276,7 +277,6 @@ struct EnhancedConnectionView: View {
         showingNewServerForm = false
     }
 }
-
 
 // MARK: - Server Profile Edit View
 

@@ -10,7 +10,7 @@ protocol ServerListViewModelProtocol: Observable {
     var showLoginView: Bool { get set }
     var currentConnectingProfile: ServerProfile? { get set }
     var connectionManager: ConnectionManager { get }
-    
+
     func loadProfiles()
     func addProfile(_ profile: ServerProfile, password: String?) async throws
     func updateProfile(_ profile: ServerProfile, password: String?) async throws
@@ -30,7 +30,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
     var errorMessage: String?
     var showLoginView = false
     var currentConnectingProfile: ServerProfile?
-    
+
     let connectionManager: ConnectionManager
     private let networkMonitor: NetworkMonitoring
     private let keychainService: KeychainServiceProtocol
@@ -119,7 +119,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
     func connectToProfile(_ profile: ServerProfile) async throws {
         print("🔗 Starting connection to profile: \(profile.name) (id: \(profile.id))")
         print("🔗 Profile details: requiresAuth=\(profile.requiresAuth), username=\(profile.username ?? "nil")")
-        
+
         isLoading = true
         errorMessage = nil
         showLoginView = false
@@ -146,7 +146,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
         // Check if server requires authentication
         let authConfig = try await authService.getAuthConfig()
         print("🔗 Auth config: noAuth=\(authConfig.noAuth)")
-        
+
         if authConfig.noAuth {
             // No auth required, test connection directly
             print("🔗 No auth required, testing connection directly")
@@ -163,18 +163,20 @@ class ServerListViewModel: ServerListViewModelProtocol {
         do {
             try await authService.attemptAutoLogin(profile: profile)
             print("🔗 ✅ Auto-login successful")
-            
+
             // Auto-login successful, test connection
             _ = try await APIClient.shared.getSessions()
             connectionManager.isConnected = true
             ServerProfile.updateLastConnected(for: profile.id, in: userDefaults)
             loadProfiles()
             print("🔗 ✅ Connection fully established")
-            print("🔗 📊 ConnectionManager state: isConnected=\(connectionManager.isConnected), serverConfig=\(connectionManager.serverConfig != nil ? "✅" : "❌")")
+            print(
+                "🔗 📊 ConnectionManager state: isConnected=\(connectionManager.isConnected), serverConfig=\(connectionManager.serverConfig != nil ? "✅" : "❌")"
+            )
         } catch let authError as AuthenticationError {
             // Auto-login failed, show login view
             print("🔗 ⚠️ Auto-login failed: \(authError.localizedDescription)")
-            
+
             // If profile says no auth required but server requires it, update profile
             if !profile.requiresAuth {
                 switch authError {
@@ -182,14 +184,14 @@ class ServerListViewModel: ServerListViewModelProtocol {
                     print("🔗 📝 Updating profile to require authentication")
                     var updatedProfile = profile
                     updatedProfile.requiresAuth = true
-                    updatedProfile.username = "admin"  // Default username
+                    updatedProfile.username = "admin" // Default username
                     ServerProfile.save(updatedProfile, to: userDefaults)
                     loadProfiles()
                 default:
                     break
                 }
             }
-            
+
             showLoginView = true
             // Don't throw - UI will handle login modal
         }
@@ -211,7 +213,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
             return false
         }
     }
-    
+
     /// Initiate connection to a profile (replaces View logic)
     func initiateConnectionToProfile(_ profile: ServerProfile) async {
         guard networkMonitor.isConnected else {
@@ -230,49 +232,49 @@ class ServerListViewModel: ServerListViewModelProtocol {
             errorMessage = "Failed to connect: \(error.localizedDescription)"
         }
     }
-    
+
     /// Handle successful login and save credentials
     func handleLoginSuccess(username: String, password: String) async throws {
         guard let profile = currentConnectingProfile else {
             print("⚠️ No current connecting profile found")
             throw AuthenticationError.invalidCredentials
         }
-        
+
         print("💾 Saving credentials after successful login for profile: \(profile.name)")
         print("💾 Username: \(username), Password length: \(password.count)")
-        
+
         // Save password to keychain with profile ID
         if !password.isEmpty {
             try keychainService.savePassword(password, for: profile.id)
             print("💾 Password saved to keychain successfully")
         }
-        
+
         // Update profile with correct username and auth requirement
         var updatedProfile = profile
         updatedProfile.requiresAuth = true
         updatedProfile.username = username
         ServerProfile.save(updatedProfile, to: userDefaults)
         print("💾 Profile updated with username: \(username)")
-        
+
         // Mark connection as successful
         connectionManager.isConnected = true
-        
+
         // Reload profiles to reflect changes
         loadProfiles()
     }
-    
+
     func connectToServer(config: ServerConfig) async {
         guard networkMonitor.isConnected else {
             errorMessage = "No internet connection available"
             return
         }
-        
+
         isLoading = true
         defer { isLoading = false }
-        
+
         // Save connection temporarily
         connectionManager.saveConnection(config)
-        
+
         do {
             // Try to get sessions to check if auth is required
             _ = try await APIClient.shared.getSessions()

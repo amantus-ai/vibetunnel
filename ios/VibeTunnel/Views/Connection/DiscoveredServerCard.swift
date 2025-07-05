@@ -4,9 +4,9 @@ import SwiftUI
 struct DiscoveredServerCard: View {
     let server: DiscoveredServer
     let onTap: () -> Void
-    
+
     @State private var isPressed = false
-    
+
     var body: some View {
         HStack(spacing: Theme.Spacing.medium) {
             // Bonjour icon
@@ -16,13 +16,13 @@ struct DiscoveredServerCard: View {
                 .frame(width: 40, height: 40)
                 .background(Theme.Colors.secondaryAccent.opacity(0.1))
                 .cornerRadius(Theme.CornerRadius.small)
-            
+
             // Server Info
             VStack(alignment: .leading, spacing: 2) {
                 Text(server.displayName)
                     .font(Theme.Typography.terminalSystem(size: 16, weight: .medium))
                     .foregroundColor(Theme.Colors.terminalForeground)
-                
+
                 if !server.host.isEmpty {
                     Text("\(server.host):\(server.port)")
                         .font(Theme.Typography.terminalSystem(size: 12))
@@ -32,7 +32,7 @@ struct DiscoveredServerCard: View {
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.secondaryText.opacity(0.7))
                 }
-                
+
                 HStack(spacing: 4) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 10))
@@ -41,9 +41,9 @@ struct DiscoveredServerCard: View {
                 }
                 .foregroundColor(Theme.Colors.secondaryAccent)
             }
-            
+
             Spacer()
-            
+
             // Connect button
             Button(action: onTap) {
                 Image(systemName: "plus.circle.fill")
@@ -82,7 +82,7 @@ struct DiscoveryDetailSheet: View {
     let discoveredServers: [DiscoveredServer]
     let onConnect: (DiscoveredServer) -> Void
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {

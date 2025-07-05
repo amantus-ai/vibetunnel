@@ -39,8 +39,9 @@ struct SettingsView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Theme.Spacing.medium)
-                            .foregroundColor(selectedTab == tab ? Theme.Colors.primaryAccent : Theme.Colors
-                                .terminalForeground.opacity(0.5)
+                            .foregroundColor(
+                                selectedTab == tab ? Theme.Colors.primaryAccent : Theme.Colors
+                                    .terminalForeground.opacity(0.5)
                             )
                             .background(
                                 selectedTab == tab ? Theme.Colors.primaryAccent.opacity(0.1) : Color.clear
@@ -98,12 +99,12 @@ struct GeneralSettingsView: View {
     private var enableLivePreviews = true
     @AppStorage("colorSchemePreference")
     private var colorSchemePreferenceRaw = "system"
-    
+
     enum ColorSchemePreference: String, CaseIterable {
         case system = "system"
         case light = "light"
         case dark = "dark"
-        
+
         var displayName: String {
             switch self {
             case .system: "System"
@@ -112,7 +113,7 @@ struct GeneralSettingsView: View {
             }
         }
     }
-    
+
     private var colorSchemePreference: ColorSchemePreference {
         ColorSchemePreference(rawValue: colorSchemePreferenceRaw) ?? .system
     }
@@ -338,9 +339,10 @@ struct AdvancedSettingsView: View {
                                 windowManager.setWindowStyle(style)
                             }
 
-                            Text(macWindowStyle == .inline ?
-                                "Traffic light buttons appear inline with content" :
-                                "Standard macOS title bar with traffic lights"
+                            Text(
+                                macWindowStyle == .inline ?
+                                    "Traffic light buttons appear inline with content" :
+                                    "Standard macOS title bar with traffic lights"
                             )
                             .font(Theme.Typography.terminalSystem(size: 12))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
