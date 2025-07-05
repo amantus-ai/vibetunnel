@@ -23,7 +23,7 @@ handle_sudo_error() {
     echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
     echo -e "vtlog needs to use sudo to show complete log data (Apple hides sensitive info by default)."
     echo -e "\nTo avoid password prompts, configure passwordless sudo for the log command:"
-    echo -e "See: ${BLUE}docs/apple/logging-private-fix.md${NC}\n"
+    echo -e "See: ${BLUE}apple/docs/logging-private-fix.md${NC}\n"
     echo -e "Quick fix:"
     echo -e "  1. Run: ${GREEN}sudo visudo${NC}"
     echo -e "  2. Add: ${GREEN}$(whoami) ALL=(ALL) NOPASSWD: /usr/bin/log${NC}"
