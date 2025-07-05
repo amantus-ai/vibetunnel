@@ -12,7 +12,7 @@ interface ApiRequest {
 }
 
 interface SignalMessage {
-  type: 'start-capture' | 'offer' | 'answer' | 'ice-candidate' | 'error' | 'ready' | 'api-response';
+  type: 'start-capture' | 'offer' | 'answer' | 'ice-candidate' | 'error' | 'ready' | 'api-response' | 'bitrate-adjustment';
   data?: unknown;
   requestId?: string;
   result?: unknown;
@@ -184,7 +184,7 @@ export class ScreencapWebSocketClient {
           this.pendingRequests.delete(requestId);
           reject(new Error(`Request timeout: ${method} ${endpoint}`));
         }
-      }, 5000); // 5 second timeout - Mac should respond quickly
+      }, 30000); // 30 second timeout - allow time for loading process icons
     });
   }
 

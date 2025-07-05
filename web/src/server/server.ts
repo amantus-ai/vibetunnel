@@ -35,6 +35,7 @@ import { TerminalManager } from './services/terminal-manager.js';
 import { closeLogger, createLogger, initLogger, setDebugMode } from './utils/logger.js';
 import { VapidManager } from './utils/vapid-manager.js';
 import { getVersionInfo, printVersionBanner } from './version.js';
+import { screencapUnixHandler } from './websocket/screencap-unix-handler.js';
 
 // Extended WebSocket request with authentication and routing info
 interface WebSocketRequest extends http.IncomingMessage {
@@ -601,7 +602,7 @@ export async function createApp(): Promise<AppInstance> {
   // Mount screencap routes
   app.use('/api', createScreencapRoutes());
   logger.debug('Mounted screencap routes');
-  
+
   // WebRTC configuration route
   app.use('/api', createWebRTCConfigRouter());
   logger.debug('Mounted WebRTC config routes');
@@ -613,19 +614,17 @@ export async function createApp(): Promise<AppInstance> {
   });
 
   // Start UNIX socket server for Mac app communication
-  import('./websocket/screencap-unix-handler.js').then(({ screencapUnixHandler }) => {
-    screencapUnixHandler
-      .start()
-      .then(() => {
-        logger.log(
-          chalk.green('Screen Capture UNIX socket: LISTENING at /tmp/vibetunnel-screencap.sock')
-        );
-      })
-      .catch((error) => {
-        logger.error('Failed to start UNIX socket server:', error);
-        logger.warn('Screen capture Mac app communication will not work');
-      });
-  });
+  screencapUnixHandler
+    .start()
+    .then(() => {
+      logger.log(
+        chalk.green('Screen Capture UNIX socket: LISTENING at /tmp/vibetunnel-screencap.sock')
+      );
+    })
+    .catch((error) => {
+      logger.error('Failed to start UNIX socket server:', error);
+      logger.warn('Screen capture Mac app communication will not work');
+    });
 
   // Handle WebSocket upgrade with authentication
   server.on('upgrade', async (request, socket, head) => {
@@ -787,9 +786,7 @@ export async function createApp(): Promise<AppInstance> {
     } else if (pathname === '/ws/screencap-signal') {
       // Handle screencap WebRTC signaling from browser
       const _userId = wsReq.userId || 'unknown';
-      import('./websocket/screencap-unix-handler.js').then(({ screencapUnixHandler }) => {
-        screencapUnixHandler.handleBrowserConnection(ws);
-      });
+      screencapUnixHandler.handleBrowserConnection(ws);
     } else {
       logger.error(`Unknown WebSocket path: ${pathname}`);
       ws.close();

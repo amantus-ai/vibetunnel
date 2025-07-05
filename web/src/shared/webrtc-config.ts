@@ -36,13 +36,13 @@ export function getWebRTCConfig(): WebRTCConfig {
     iceServers: [...DEFAULT_STUN_SERVERS],
     bundlePolicy: 'max-bundle',
     rtcpMuxPolicy: 'require',
-    iceCandidatePoolSize: 0
+    iceCandidatePoolSize: 0,
   };
 
   // Check for environment variables (browser environment)
-  if (typeof window !== 'undefined') {
+  if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
     // In browser, we might get config from a meta tag or global variable
-    const customConfig = (window as any).__WEBRTC_CONFIG__;
+    const customConfig = (globalThis as any).window.__WEBRTC_CONFIG__;
     if (customConfig?.iceServers) {
       config.iceServers = customConfig.iceServers;
     }
@@ -53,24 +53,25 @@ export function getWebRTCConfig(): WebRTCConfig {
     // TURN server configuration from environment
     if (process.env.TURN_SERVER_URL) {
       const turnServer: IceServer = {
-        urls: process.env.TURN_SERVER_URL
+        urls: process.env.TURN_SERVER_URL,
       };
-      
+
       if (process.env.TURN_USERNAME) {
         turnServer.username = process.env.TURN_USERNAME;
       }
-      
+
       if (process.env.TURN_CREDENTIAL) {
         turnServer.credential = process.env.TURN_CREDENTIAL;
       }
-      
+
       config.iceServers.push(turnServer);
     }
 
     // Additional STUN servers from environment
     if (process.env.ADDITIONAL_STUN_SERVERS) {
-      const additionalStunServers = process.env.ADDITIONAL_STUN_SERVERS.split(',')
-        .map(url => ({ urls: url.trim() }));
+      const additionalStunServers = process.env.ADDITIONAL_STUN_SERVERS.split(',').map((url) => ({
+        urls: url.trim(),
+      }));
       config.iceServers.push(...additionalStunServers);
     }
 
@@ -89,19 +90,19 @@ export function getWebRTCConfig(): WebRTCConfig {
 export function parseWebRTCConfig(jsonString: string): WebRTCConfig | null {
   try {
     const parsed = JSON.parse(jsonString);
-    
+
     // Validate the structure
     if (!parsed.iceServers || !Array.isArray(parsed.iceServers)) {
       return null;
     }
-    
+
     // Validate each ice server
     for (const server of parsed.iceServers) {
       if (!server.urls) {
         return null;
       }
     }
-    
+
     return parsed as WebRTCConfig;
   } catch (error) {
     console.error('Failed to parse WebRTC config:', error);
@@ -113,12 +114,12 @@ export function parseWebRTCConfig(jsonString: string): WebRTCConfig | null {
  * Create a configuration string for display/debugging
  */
 export function formatWebRTCConfig(config: WebRTCConfig): string {
-  const servers = config.iceServers.map(server => {
+  const servers = config.iceServers.map((server) => {
     const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
     const serverType = urls[0].startsWith('turn:') ? 'TURN' : 'STUN';
     const hasAuth = server.username && server.credential;
     return `${serverType}: ${urls[0]}${hasAuth ? ' (authenticated)' : ''}`;
   });
-  
+
   return servers.join('\n');
 }

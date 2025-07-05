@@ -37,6 +37,9 @@ public final class ScreencapService: NSObject {
     private let frameQueue = DispatchQueue(label: "sh.vibetunnel.screencap.frame", qos: .userInitiated)
     private let sampleHandlerQueue = DispatchQueue(label: "sh.vibetunnel.screencap.sampleHandler", qos: .userInitiated)
     private var frameCounter: Int = 0
+    
+    // Icon cache
+    private var iconCache: [Int32: String?] = [:] // PID -> base64 icon
 
     // WebRTC support
     // These properties need to be nonisolated so they can be accessed from the stream output handler
@@ -152,14 +155,6 @@ public final class ScreencapService: NSObject {
         }
     }
     
-    /// Set up state machine callbacks
-    private func setupStateMachine() {
-        stateMachine.onStateChange = { [weak self] newState, previousState in
-            guard let self else { return }
-            let prev = previousState?.rawValue ?? "nil"
-            self.logger.info("🔄 State change: \(prev) → \(newState.rawValue)")
-        }
-    }
     
     deinit {
         // Remove display notifications
@@ -428,10 +423,31 @@ public final class ScreencapService: NSObject {
 
     /// Get process groups with their windows
     func getProcessGroups() async throws -> [ProcessGroup] {
-        let content = try await SCShareableContent.excludingDesktopWindows(
-            false,
-            onScreenWindowsOnly: false
-        )
+        logger.info("🔍 getProcessGroups called")
+        
+        // Add timeout to detect if SCShareableContent is hanging
+        let startTime = Date()
+        defer {
+            let elapsed = Date().timeIntervalSince(startTime)
+            logger.info("🔍 getProcessGroups completed in \(elapsed) seconds")
+        }
+        
+        logger.info("🔍 About to call SCShareableContent.excludingDesktopWindows")
+        
+        // Try to get shareable content with better error handling
+        let content: SCShareableContent
+        do {
+            content = try await SCShareableContent.excludingDesktopWindows(
+                false,
+                onScreenWindowsOnly: false
+            )
+            logger.info("🔍 Got shareable content with \(content.windows.count) windows")
+        } catch {
+            logger.error("❌ Failed to get shareable content: \(error)")
+            logger.error("❌ Error type: \(type(of: error))")
+            logger.error("❌ Error description: \(error.localizedDescription)")
+            throw ScreencapError.failedToGetContent(error)
+        }
 
         // Filter windows first
         let filteredWindows = content.windows.filter { window in
@@ -490,13 +506,18 @@ public final class ScreencapService: NSObject {
 
             return true
         }
+        
+        logger.info("🔍 Filtered to \(filteredWindows.count) windows")
 
         // Group windows by process
         let groupedWindows = Dictionary(grouping: filteredWindows) { window in
             window.owningApplication?.processID ?? 0
         }
+        
+        logger.info("🔍 Grouped into \(groupedWindows.count) process groups")
 
         // Convert to ProcessGroups
+        // OPTIMIZATION: Skip icon loading for now to avoid timeout
         let processGroups = groupedWindows.compactMap { _, windows -> ProcessGroup? in
             guard let firstWindow = windows.first,
                   let app = firstWindow.owningApplication else { return nil }
@@ -516,7 +537,7 @@ public final class ScreencapService: NSObject {
                 processName: app.applicationName,
                 pid: app.processID,
                 bundleIdentifier: app.bundleIdentifier,
-                iconData: getAppIcon(for: app.processID),
+                iconData: getCachedAppIcon(for: app.processID),
                 windows: windowInfos
             )
         }
@@ -532,10 +553,49 @@ public final class ScreencapService: NSObject {
         }
     }
 
+    /// Check if screen recording permission is granted
+    private func isScreenRecordingAllowed() -> Bool {
+        // Create a small test window capture to check permission
+        let rect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        guard let displayID = CGMainDisplayID() as CGDirectDisplayID? else {
+            return false
+        }
+        
+        // Try to create a screenshot - will fail if no permission
+        if CGDisplayCreateImage(displayID, rect: rect) != nil {
+            // Successfully created screenshot, permission is granted
+            return true
+        }
+        
+        return false
+    }
+    
+    /// Get cached application icon or load it if not cached
+    private func getCachedAppIcon(for pid: Int32) -> String? {
+        // Check cache first
+        if let cachedIcon = iconCache[pid] {
+            return cachedIcon
+        }
+        
+        // Load icon and cache it
+        let icon = getAppIcon(for: pid)
+        iconCache[pid] = icon
+        return icon
+    }
+    
     /// Get application icon as base64 encoded PNG
     private func getAppIcon(for pid: Int32) -> String? {
+        let startTime = Date()
+        defer {
+            let elapsed = Date().timeIntervalSince(startTime)
+            logger.info("⏱️ getAppIcon for PID \(pid) took \(elapsed) seconds")
+        }
+        
         guard let app = NSRunningApplication(processIdentifier: pid),
-              let icon = app.icon else { return nil }
+              let icon = app.icon else { 
+            logger.info("⚠️ No icon found for PID \(pid)")
+            return nil 
+        }
 
         // Resize icon to reasonable size (32x32 for retina displays)
         let targetSize = NSSize(width: 32, height: 32)
@@ -556,6 +616,7 @@ public final class ScreencapService: NSObject {
               let bitmap = NSBitmapImageRep(data: tiffData),
               let pngData = bitmap.representation(using: .png, properties: [:])
         else {
+            logger.error("❌ Failed to convert icon to PNG for PID \(pid)")
             return nil
         }
 
@@ -568,7 +629,7 @@ public final class ScreencapService: NSObject {
         
         // Check if we can start capture
         guard stateMachine.canPerformAction(.startCapture) else {
-            logger.error("Cannot start capture in state: \(stateMachine.currentState)")
+            logger.error("Cannot start capture in state: \(self.stateMachine.currentState)")
             throw ScreencapError.invalidConfiguration
         }
 
@@ -587,8 +648,9 @@ public final class ScreencapService: NSObject {
                 captureMode = .desktop(displayIndex: index)
             }
         case "window":
-            // We don't have the window yet, but we can still set the mode
-            captureMode = .window(SCWindow.init())
+            // For window capture, we'll need to select the window later
+            // Use desktop mode as a placeholder until window is selected
+            captureMode = .desktop(displayIndex: 0)
         default:
             captureMode = .desktop(displayIndex: 0)
         }
@@ -622,7 +684,7 @@ public final class ScreencapService: NSObject {
                     throw ScreencapError.noDisplay
                 }
 
-                captureMode = .allDisplays
+                self.captureMode = .allDisplays
                 currentDisplayIndex = -1
 
                 logger.info("🖥️ Setting up all displays capture mode")
@@ -647,7 +709,7 @@ public final class ScreencapService: NSObject {
                     throw ScreencapError.noDisplay
                 }
                 let display = content.displays[displayIndex]
-                captureMode = .desktop(displayIndex: displayIndex)
+                self.captureMode = .desktop(displayIndex: displayIndex)
                 currentDisplayIndex = displayIndex
 
                 // Log display selection for debugging
@@ -671,7 +733,7 @@ public final class ScreencapService: NSObject {
             }
             let window = content.windows[index]
             selectedWindow = window
-            captureMode = .window(window)
+            self.captureMode = .window(window)
 
             logger
                 .info(
@@ -701,7 +763,7 @@ public final class ScreencapService: NSObject {
                 throw ScreencapError.invalidApplicationIndex
             }
             let app = content.applications[index]
-            captureMode = .application(app)
+            self.captureMode = .application(app)
 
             // Get all windows for this application
             let appWindows = content.windows.filter { window in
@@ -889,7 +951,7 @@ public final class ScreencapService: NSObject {
         }
 
         selectedWindow = window
-        captureMode = .window(window)
+        self.captureMode = .window(window)
 
         logger
             .info(
@@ -1539,6 +1601,12 @@ public final class ScreencapService: NSObject {
                 // For all displays mode, just restart
                 logger.info("🔄 Restarting all displays capture after configuration change")
                 try await startCapture(type: "display", index: -1, useWebRTC: useWebRTC)
+                
+            case .application:
+                // For application capture, try to restart with the same application
+                logger.info("🔄 Application capture mode - checking if still available")
+                // For now, just notify that the display configuration changed
+                await notifyDisplayDisconnected()
             }
             
         } catch {

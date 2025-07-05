@@ -40,8 +40,8 @@ enum ScreencapErrorCode: String, Codable {
     case notImplemented = "NOT_IMPLEMENTED"
 }
 
-/// Standardized error structure for screen capture
-struct ScreencapError: Codable, LocalizedError {
+/// Standardized error structure for screen capture API responses
+struct ScreencapErrorResponse: Codable, LocalizedError {
     let code: ScreencapErrorCode
     let message: String
     let details: AnyCodable?

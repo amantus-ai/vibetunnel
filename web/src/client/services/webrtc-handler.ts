@@ -1,6 +1,6 @@
+import { getWebRTCConfig } from '../../shared/webrtc-config.js';
 import { createLogger } from '../utils/logger.js';
 import type { ScreencapWebSocketClient } from './screencap-websocket-client.js';
-import { getWebRTCConfig } from '../../shared/webrtc-config.js';
 
 const logger = createLogger('webrtc-handler');
 
@@ -26,11 +26,11 @@ export class WebRTCHandler {
   private onStatsUpdate?: (stats: StreamStats) => void;
   private onError?: (error: Error) => void;
   private customConfig?: RTCConfiguration;
-  
+
   constructor(wsClient: ScreencapWebSocketClient) {
     this.wsClient = wsClient;
   }
-  
+
   /**
    * Set custom WebRTC configuration
    */
@@ -49,18 +49,37 @@ export class WebRTCHandler {
     }
   ): Promise<void> {
     logger.log('Starting WebRTC capture...');
-    
+
     if (callbacks) {
       this.onStreamReady = callbacks.onStreamReady;
       this.onStatsUpdate = callbacks.onStatsUpdate;
       this.onError = callbacks.onError;
     }
 
+    // Generate session ID if not already present
+    if (!this.wsClient.sessionId) {
+      this.wsClient.sessionId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      logger.log(`Generated session ID: ${this.wsClient.sessionId}`);
+    }
+
     // Send start-capture message to Mac app
     if (captureMode === 'desktop') {
-      await this.wsClient.sendStartCapture('desktop', displayIndex ?? 0);
+      await this.wsClient.sendSignal({
+        type: 'start-capture',
+        mode: 'desktop',
+        displayIndex: displayIndex ?? 0,
+        sessionId: this.wsClient.sessionId,
+      });
     } else if (captureMode === 'window' && windowId !== undefined) {
-      await this.wsClient.sendStartCaptureWindow(windowId);
+      await this.wsClient.sendSignal({
+        type: 'start-capture',
+        mode: 'window',
+        windowId: windowId,
+        sessionId: this.wsClient.sessionId,
+      });
     }
 
     await this.setupWebRTCSignaling();
@@ -68,7 +87,7 @@ export class WebRTCHandler {
 
   async stopCapture(): Promise<void> {
     logger.log('Stopping WebRTC capture...');
-    
+
     if (this.statsInterval) {
       clearInterval(this.statsInterval);
       this.statsInterval = null;
@@ -86,7 +105,7 @@ export class WebRTCHandler {
     logger.log('Setting up WebRTC signaling...');
 
     let configuration: RTCConfiguration;
-    
+
     if (this.customConfig) {
       // Use custom configuration if provided
       configuration = this.customConfig;
@@ -101,8 +120,8 @@ export class WebRTCHandler {
         iceServers: webrtcConfig.iceServers,
         iceTransportPolicy: webrtcConfig.iceTransportPolicy,
         bundlePolicy: webrtcConfig.bundlePolicy || 'max-bundle',
-        rtcpMuxPolicy: webrtcConfig.rtcpMuxPolicy || 'require',
-        iceCandidatePoolSize: webrtcConfig.iceCandidatePoolSize
+        rtcpMuxPolicy: webrtcConfig.rtcpMuxPolicy === 'negotiate' ? undefined : 'require',
+        iceCandidatePoolSize: webrtcConfig.iceCandidatePoolSize,
       };
     }
 
@@ -114,7 +133,7 @@ export class WebRTCHandler {
         logger.log('Sending ICE candidate to Mac');
         this.wsClient.sendSignal({
           type: 'ice-candidate',
-          data: event.candidate
+          data: event.candidate,
         });
       }
     };
@@ -124,7 +143,7 @@ export class WebRTCHandler {
       if (event.streams && event.streams[0]) {
         this.remoteStream = event.streams[0];
         this.onStreamReady?.(this.remoteStream);
-        
+
         // Start collecting statistics
         this.startStatsCollection();
       }
@@ -137,9 +156,22 @@ export class WebRTCHandler {
       }
     };
 
-    // Listen for signaling messages
-    this.wsClient.onSignal = async (message) => {
-      await this.handleSignalingMessage(message);
+    // Set up WebRTC signaling callbacks
+    this.wsClient.onOffer = async (data) => {
+      await this.handleSignalingMessage({ type: 'offer', data });
+    };
+    
+    this.wsClient.onAnswer = async (data) => {
+      await this.handleSignalingMessage({ type: 'answer', data });
+    };
+    
+    this.wsClient.onIceCandidate = async (data) => {
+      await this.handleSignalingMessage({ type: 'ice-candidate', data });
+    };
+    
+    this.wsClient.onError = (error) => {
+      logger.error('WebRTC signaling error:', error);
+      this.onError?.(new Error(error));
     };
 
     // Create and send offer
@@ -153,12 +185,12 @@ export class WebRTCHandler {
       // Add transceiver for video
       this.peerConnection.addTransceiver('video', {
         direction: 'recvonly',
-        streams: []
+        streams: [],
       });
 
       const offer = await this.peerConnection.createOffer({
         offerToReceiveVideo: true,
-        offerToReceiveAudio: false
+        offerToReceiveAudio: false,
       });
 
       await this.peerConnection.setLocalDescription(offer);
@@ -166,7 +198,7 @@ export class WebRTCHandler {
       logger.log('Sending offer to Mac');
       this.wsClient.sendSignal({
         type: 'offer',
-        data: offer
+        data: offer,
       });
     } catch (error) {
       logger.error('Failed to create offer:', error);
@@ -174,18 +206,16 @@ export class WebRTCHandler {
     }
   }
 
-  private async handleSignalingMessage(message: any): Promise<void> {
+  private async handleSignalingMessage(message: { type: string; data?: unknown }): Promise<void> {
     if (!this.peerConnection) return;
 
     switch (message.type) {
       case 'answer':
         logger.log('Received answer from Mac');
         try {
-          await this.peerConnection.setRemoteDescription(
-            new RTCSessionDescription(message.data)
-          );
+          await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.data as RTCSessionDescriptionInit));
           logger.log('Remote description set successfully');
-          
+
           // Configure bitrate after connection is established
           await this.configureBitrateParameters();
         } catch (error) {
@@ -197,9 +227,9 @@ export class WebRTCHandler {
       case 'ice-candidate':
         logger.log('Received ICE candidate from Mac');
         try {
-          await this.peerConnection.addIceCandidate(
-            new RTCIceCandidate(message.data)
-          );
+          if (message.data) {
+            await this.peerConnection.addIceCandidate(new RTCIceCandidate(message.data as RTCIceCandidateInit));
+          }
         } catch (error) {
           logger.error('Failed to add ICE candidate:', error);
         }
@@ -214,10 +244,10 @@ export class WebRTCHandler {
     for (const transceiver of transceivers) {
       if (transceiver.receiver.track?.kind === 'video') {
         const params = transceiver.receiver.getParameters();
-        
+
         // Log current parameters
         logger.log('Current receiver parameters:', JSON.stringify(params, null, 2));
-        
+
         // Note: Receiver parameters are typically read-only
         // Bitrate control is usually done on the sender side
       }
@@ -239,39 +269,40 @@ export class WebRTCHandler {
 
     try {
       const stats = await this.peerConnection.getStats();
-      let inboundVideoStats: RTCInboundRTPStreamStats | null = null;
-      let remoteOutboundStats: RTCRemoteOutboundRTPStreamStats | null = null;
+      let inboundVideoStats: RTCInboundRtpStreamStats | null = null;
+      let remoteOutboundStats: RTCOutboundRtpStreamStats | null = null;
       let candidatePairStats: RTCIceCandidatePairStats | null = null;
-      let codecStats: RTCCodecStats | null = null;
+      let codecStats: any | null = null;
 
-      stats.forEach(report => {
-        if (report.type === 'inbound-rtp' && report.kind === 'video') {
-          inboundVideoStats = report as RTCInboundRTPStreamStats;
-        } else if (report.type === 'remote-outbound-rtp' && report.kind === 'video') {
-          remoteOutboundStats = report as RTCRemoteOutboundRTPStreamStats;
-        } else if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+      stats.forEach((report) => {
+        if (report.type === 'inbound-rtp' && (report as any).kind === 'video') {
+          inboundVideoStats = report as RTCInboundRtpStreamStats;
+        } else if (report.type === 'remote-outbound-rtp' && (report as any).kind === 'video') {
+          remoteOutboundStats = report as RTCOutboundRtpStreamStats;
+        } else if (report.type === 'candidate-pair' && (report as any).state === 'succeeded') {
           candidatePairStats = report as RTCIceCandidatePairStats;
-        } else if (report.type === 'codec' && report.mimeType?.includes('video')) {
-          codecStats = report as RTCCodecStats;
+        } else if (report.type === 'codec' && (report as any).mimeType?.includes('video')) {
+          codecStats = report;
         }
       });
 
       if (inboundVideoStats) {
         const videoTrack = this.remoteStream.getVideoTracks()[0];
         const settings = videoTrack?.getSettings();
-        
+
         // Calculate bitrate
         const now = Date.now();
         const timeDiff = now - (this.lastStatsTime || now);
-        const bytesDiff = (inboundVideoStats.bytesReceived || 0) - (this.lastBytesReceived || 0);
+        const bytesReceived = (inboundVideoStats as any).bytesReceived || 0;
+        const bytesDiff = bytesReceived - (this.lastBytesReceived || 0);
         const bitrate = timeDiff > 0 ? (bytesDiff * 8 * 1000) / timeDiff : 0;
-        
+
         this.lastStatsTime = now;
-        this.lastBytesReceived = inboundVideoStats.bytesReceived || 0;
+        this.lastBytesReceived = bytesReceived;
 
         // Calculate latency
-        const latency = candidatePairStats?.currentRoundTripTime 
-          ? Math.round(candidatePairStats.currentRoundTripTime * 1000)
+        const latency = (candidatePairStats as any)?.currentRoundTripTime
+          ? Math.round((candidatePairStats as any).currentRoundTripTime * 1000)
           : 0;
 
         // Get codec info
@@ -282,13 +313,13 @@ export class WebRTCHandler {
           codec: codecName.toUpperCase(),
           codecImplementation: codecImplementation,
           resolution: `${settings?.width || 0}×${settings?.height || 0}`,
-          fps: Math.round(inboundVideoStats.framesPerSecond || 0),
+          fps: Math.round((inboundVideoStats as any).framesPerSecond || 0),
           bitrate: Math.round(bitrate),
           latency: latency,
-          packetsLost: inboundVideoStats.packetsLost || 0,
+          packetsLost: (inboundVideoStats as any).packetsLost || 0,
           packetLossRate: this.calculatePacketLossRate(inboundVideoStats),
-          jitter: Math.round((inboundVideoStats.jitter || 0) * 1000),
-          timestamp: now
+          jitter: Math.round(((inboundVideoStats as any).jitter || 0) * 1000),
+          timestamp: now,
         };
 
         this.onStatsUpdate?.(streamStats);
@@ -306,18 +337,18 @@ export class WebRTCHandler {
   private lastPacketsReceived?: number;
   private lastPacketsLost?: number;
 
-  private calculatePacketLossRate(stats: RTCInboundRTPStreamStats): number {
-    const packetsReceived = stats.packetsReceived || 0;
-    const packetsLost = stats.packetsLost || 0;
-    
+  private calculatePacketLossRate(stats: RTCInboundRtpStreamStats): number {
+    const packetsReceived = (stats as any).packetsReceived || 0;
+    const packetsLost = (stats as any).packetsLost || 0;
+
     if (this.lastPacketsReceived !== undefined && this.lastPacketsLost !== undefined) {
       const receivedDiff = packetsReceived - this.lastPacketsReceived;
       const lostDiff = packetsLost - this.lastPacketsLost;
       const totalPackets = receivedDiff + lostDiff;
-      
+
       this.lastPacketsReceived = packetsReceived;
       this.lastPacketsLost = packetsLost;
-      
+
       if (totalPackets > 0) {
         return (lostDiff / totalPackets) * 100;
       }
@@ -325,7 +356,7 @@ export class WebRTCHandler {
       this.lastPacketsReceived = packetsReceived;
       this.lastPacketsLost = packetsLost;
     }
-    
+
     return 0;
   }
 
@@ -337,16 +368,18 @@ export class WebRTCHandler {
     if (shouldReduceBitrate || shouldIncreaseBitrate) {
       const adjustment = shouldReduceBitrate ? 0.8 : 1.2; // 20% adjustment
       const newBitrate = Math.round(stats.bitrate * adjustment);
-      
-      logger.log(`Adjusting bitrate: ${stats.bitrate} -> ${newBitrate} (${shouldReduceBitrate ? 'reduce' : 'increase'})`);
-      
+
+      logger.log(
+        `Adjusting bitrate: ${stats.bitrate} -> ${newBitrate} (${shouldReduceBitrate ? 'reduce' : 'increase'})`
+      );
+
       // Send bitrate adjustment to Mac app
       this.wsClient.sendSignal({
         type: 'bitrate-adjustment',
         data: {
           targetBitrate: newBitrate,
-          reason: shouldReduceBitrate ? 'quality-degradation' : 'quality-improvement'
-        }
+          reason: shouldReduceBitrate ? 'quality-degradation' : 'quality-improvement',
+        },
       });
     }
   }

@@ -1,6 +1,6 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { ProcessGroup, WindowInfo, DisplayInfo } from '../types/screencap.js';
+import type { DisplayInfo, ProcessGroup, WindowInfo } from '../types/screencap.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('screencap-sidebar');
@@ -22,48 +22,21 @@ export class ScreencapSidebar extends LitElement {
       padding: 1rem;
       border-bottom: 1px solid #2a2a2a;
       background: linear-gradient(to bottom, #141414, #0f0f0f);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
     }
 
     .sidebar-header h3 {
-      margin: 0 0 0.5rem 0;
+      margin: 0;
       font-size: 1rem;
       font-weight: 600;
       color: #e4e4e4;
       display: flex;
       align-items: center;
       gap: 0.5rem;
-    }
-
-    .mode-toggle {
-      display: flex;
-      gap: 0.5rem;
-      background: #1a1a1a;
-      padding: 0.25rem;
-      border-radius: 0.5rem;
-      border: 1px solid #2a2a2a;
-    }
-
-    .mode-btn {
-      padding: 0.375rem 0.75rem;
-      border: none;
-      border-radius: 0.375rem;
-      background: transparent;
-      color: #a3a3a3;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 0.875rem;
-      font-family: inherit;
-    }
-
-    .mode-btn.active {
-      background: #10B981;
-      color: #0a0a0a;
-      font-weight: 500;
-    }
-
-    .mode-btn:hover:not(.active) {
-      background: #262626;
-      color: #e4e4e4;
+      flex: 1;
     }
 
     .sidebar-section {
@@ -208,7 +181,7 @@ export class ScreencapSidebar extends LitElement {
       display: none;
       flex-direction: column;
       gap: 0.25rem;
-      padding: 0.5rem 0.75rem 0.75rem 3.25rem;
+      padding: 0.5rem 0.75rem 0.75rem 0.75rem;
       background: #0a0a0a;
     }
 
@@ -218,8 +191,9 @@ export class ScreencapSidebar extends LitElement {
 
     .window-item {
       display: flex;
-      align-items: center;
-      padding: 0.5rem 0.75rem;
+      flex-direction: column;
+      align-items: stretch;
+      padding: 0.75rem;
       background: #141414;
       border: 1px solid #262626;
       border-radius: 0.375rem;
@@ -227,7 +201,8 @@ export class ScreencapSidebar extends LitElement {
       transition: all 0.2s;
       font-size: 0.875rem;
       color: #e4e4e4;
-      gap: 0.5rem;
+      gap: 0.25rem;
+      min-height: 3.5rem;
     }
 
     .window-item:hover {
@@ -244,9 +219,12 @@ export class ScreencapSidebar extends LitElement {
 
     .window-title {
       flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
+      line-height: 1.3;
     }
 
     .window-size {
@@ -335,7 +313,7 @@ export class ScreencapSidebar extends LitElement {
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
     }
 
     .all-displays-btn:hover {
@@ -357,7 +335,7 @@ export class ScreencapSidebar extends LitElement {
   @property({ type: Object }) selectedWindow: WindowInfo | null = null;
   @property({ type: Object }) selectedDisplay: DisplayInfo | null = null;
   @property({ type: Boolean }) allDisplaysSelected = false;
-  
+
   @state() private expandedProcesses = new Set<number>();
   @state() private loadingRefresh = false;
 
@@ -373,164 +351,163 @@ export class ScreencapSidebar extends LitElement {
   private async handleRefresh() {
     this.loadingRefresh = true;
     this.dispatchEvent(new CustomEvent('refresh-request'));
-    
+
     // Reset loading state after a timeout
     setTimeout(() => {
       this.loadingRefresh = false;
     }, 1000);
   }
 
-  private handleModeChange(mode: 'desktop' | 'window') {
-    this.dispatchEvent(new CustomEvent('mode-change', { detail: mode }));
-  }
-
   private handleWindowSelect(window: WindowInfo, process: ProcessGroup) {
-    this.dispatchEvent(new CustomEvent('window-select', { 
-      detail: { window, process } 
-    }));
+    this.dispatchEvent(
+      new CustomEvent('window-select', {
+        detail: { window, process },
+      })
+    );
   }
 
   private handleDisplaySelect(display: DisplayInfo) {
-    this.dispatchEvent(new CustomEvent('display-select', { 
-      detail: display 
-    }));
+    this.dispatchEvent(
+      new CustomEvent('display-select', {
+        detail: display,
+      })
+    );
   }
 
   private handleAllDisplaysSelect() {
     this.dispatchEvent(new CustomEvent('all-displays-select'));
   }
 
+  private getSortedProcessGroups(): ProcessGroup[] {
+    // Sort process groups by the size of their largest window (width * height)
+    return [...this.processGroups].sort((a, b) => {
+      const maxSizeA = Math.max(...a.windows.map((w) => w.width * w.height), 0);
+      const maxSizeB = Math.max(...b.windows.map((w) => w.width * w.height), 0);
+      return maxSizeB - maxSizeA;
+    });
+  }
+
   render() {
+    const sortedProcessGroups = this.getSortedProcessGroups();
+
     return html`
       <div class="sidebar-header">
         <h3>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/>
           </svg>
-          Screen Capture
+          Capture Sources
         </h3>
-        <div class="mode-toggle">
-          <button 
-            class="mode-btn ${this.captureMode === 'desktop' ? 'active' : ''}"
-            @click=${() => this.handleModeChange('desktop')}
-          >
-            Desktop
-          </button>
-          <button 
-            class="mode-btn ${this.captureMode === 'window' ? 'active' : ''}"
-            @click=${() => this.handleModeChange('window')}
-          >
-            Window
-          </button>
+        <button 
+          class="refresh-btn ${this.loadingRefresh ? 'loading' : ''}"
+          @click=${this.handleRefresh}
+          ?disabled=${this.loadingRefresh}
+          title="Refresh sources"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Desktop Displays Section -->
+      <div class="sidebar-section">
+        <div class="section-title">
+          <span>Desktop</span>
+        </div>
+        <div class="display-list">
+          ${
+            this.displays.length > 1
+              ? html`
+            <button 
+              class="all-displays-btn ${this.allDisplaysSelected ? 'selected' : ''}"
+              @click=${this.handleAllDisplaysSelect}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"/>
+                <path d="M5 6h14v6H5z" opacity="0.3"/>
+              </svg>
+              All Displays
+            </button>
+          `
+              : ''
+          }
+          ${this.displays.map(
+            (display, index) => html`
+            <div 
+              class="display-item ${!this.allDisplaysSelected && this.selectedDisplay?.id === display.id ? 'selected' : ''}"
+              @click=${() => this.handleDisplaySelect(display)}
+            >
+              <div class="display-info">
+                <div class="display-icon">
+                  <svg width="24" height="18" viewBox="0 0 24 18" fill="currentColor">
+                    <rect x="2" y="2" width="20" height="12" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <line x1="7" y1="17" x2="17" y2="17" stroke="currentColor" stroke-width="2"/>
+                    <line x1="12" y1="14" x2="12" y2="17" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="display-name">${display.name || `Display ${index + 1}`}</div>
+                  <div class="display-size">${display.width} × ${display.height}</div>
+                </div>
+              </div>
+            </div>
+          `
+          )}
         </div>
       </div>
 
-      ${this.captureMode === 'window' ? html`
-        <div class="sidebar-section">
-          <div class="section-title">
-            <span>Windows</span>
-            <button 
-              class="refresh-btn ${this.loadingRefresh ? 'loading' : ''}"
-              @click=${this.handleRefresh}
-              ?disabled=${this.loadingRefresh}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-              </svg>
-              Refresh
-            </button>
-          </div>
-          <div class="process-list">
-            ${this.processGroups.map(process => html`
-              <div class="process-item ${this.expandedProcesses.has(process.pid) ? 'expanded' : ''}">
-                <div class="process-header" @click=${() => this.toggleProcess(process.pid)}>
-                  <div class="process-icon">
-                    ${process.iconData 
+      <!-- Windows Section -->
+      <div class="sidebar-section">
+        <div class="section-title">
+          <span>Windows</span>
+        </div>
+        <div class="process-list">
+          ${sortedProcessGroups.map(
+            (process) => html`
+            <div class="process-item ${this.expandedProcesses.has(process.pid) ? 'expanded' : ''}">
+              <div class="process-header" @click=${() => this.toggleProcess(process.pid)}>
+                <div class="process-icon">
+                  ${
+                    process.iconData
                       ? html`<img src="data:image/png;base64,${process.iconData}" alt="${process.processName}">`
                       : html`<svg width="20" height="20" viewBox="0 0 24 24" fill="#737373">
-                          <rect x="3" y="3" width="18" height="18" rx="2" />
-                        </svg>`
-                    }
-                  </div>
-                  <div class="process-info">
-                    <div class="process-name">${process.processName}</div>
-                    <div class="process-details">
-                      <span>PID: ${process.pid}</span>
-                    </div>
-                  </div>
-                  <span class="window-count">${process.windows.length}</span>
-                  <div class="expand-icon">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
-                    </svg>
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                      </svg>`
+                  }
+                </div>
+                <div class="process-info">
+                  <div class="process-name">${process.processName}</div>
+                  <div class="process-details">
+                    <span>PID: ${process.pid}</span>
                   </div>
                 </div>
-                <div class="window-list">
-                  ${process.windows.map(window => html`
-                    <div 
-                      class="window-item ${this.selectedWindow?.cgWindowID === window.cgWindowID ? 'selected' : ''}"
-                      @click=${() => this.handleWindowSelect(window, process)}
-                    >
-                      <span class="window-title">${window.title ?? 'Untitled'}</span>
-                      <span class="window-size">${window.width}×${window.height}</span>
-                    </div>
-                  `)}
+                <span class="window-count">${process.windows.length}</span>
+                <div class="expand-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                  </svg>
                 </div>
               </div>
-            `)}
-          </div>
-        </div>
-      ` : html`
-        <div class="sidebar-section">
-          <div class="section-title">
-            <span>Displays</span>
-            <button 
-              class="refresh-btn ${this.loadingRefresh ? 'loading' : ''}"
-              @click=${this.handleRefresh}
-              ?disabled=${this.loadingRefresh}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-              </svg>
-              Refresh
-            </button>
-          </div>
-          <div class="display-list">
-            ${this.displays.map((display, index) => html`
-              <div 
-                class="display-item ${!this.allDisplaysSelected && this.selectedDisplay?.id === display.id ? 'selected' : ''}"
-                @click=${() => this.handleDisplaySelect(display)}
-              >
-                <div class="display-info">
-                  <div class="display-icon">
-                    <svg width="24" height="18" viewBox="0 0 24 18" fill="currentColor">
-                      <rect x="2" y="2" width="20" height="12" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
-                      <line x1="7" y1="17" x2="17" y2="17" stroke="currentColor" stroke-width="2"/>
-                      <line x1="12" y1="14" x2="12" y2="17" stroke="currentColor" stroke-width="2"/>
-                    </svg>
+              <div class="window-list">
+                ${process.windows.map(
+                  (window) => html`
+                  <div 
+                    class="window-item ${this.selectedWindow?.cgWindowID === window.cgWindowID ? 'selected' : ''}"
+                    @click=${() => this.handleWindowSelect(window, process)}
+                    title="${window.title ?? 'Untitled'}"
+                  >
+                    <div class="window-title">${window.title ?? 'Untitled'}</div>
+                    <div class="window-size">${window.width}×${window.height}</div>
                   </div>
-                  <div>
-                    <div class="display-name">${display.name || `Display ${index + 1}`}</div>
-                    <div class="display-size">${display.width} × ${display.height}</div>
-                  </div>
-                </div>
+                `
+                )}
               </div>
-            `)}
-            ${this.displays.length > 1 ? html`
-              <button 
-                class="all-displays-btn ${this.allDisplaysSelected ? 'selected' : ''}"
-                @click=${this.handleAllDisplaysSelect}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"/>
-                  <path d="M5 6h14v6H5z" opacity="0.3"/>
-                </svg>
-                All Displays
-              </button>
-            ` : ''}
-          </div>
+            </div>
+          `
+          )}
         </div>
-      `}
+      </div>
     `;
   }
 }

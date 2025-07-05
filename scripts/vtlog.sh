@@ -68,6 +68,18 @@ LOG FLOW ARCHITECTURE:
     
     This tool captures ALL logs from the entire stack in one unified view.
 
+LOG PREFIX SYSTEM:
+    To identify where logs originate, VibeTunnel uses these prefixes:
+    
+    • [FE] module-name    - Frontend (browser) logs forwarded from the web UI
+    • [SRV] module-name   - Server-side logs from Node.js/Bun components
+    • [category-name]     - Native Mac app logs (no prefix needed)
+    
+    Examples:
+    • [FE] terminal       - Terminal component in the browser
+    • [SRV] api          - Server API endpoint handler
+    • [ServerManager]     - Native Swift component
+
 LOG PREFIXES BY COMPONENT:
     • [ServerManager]     - Server lifecycle and configuration
     • [SessionService]    - Terminal session management  

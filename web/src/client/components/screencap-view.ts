@@ -1,11 +1,27 @@
 import { css, html, LitElement } from 'lit';
-import { customElement, state, query } from 'lit/decorators.js';
+import { customElement, query, state } from 'lit/decorators.js';
 import { ScreencapWebSocketClient } from '../services/screencap-websocket-client.js';
-import { WebRTCHandler, type StreamStats } from '../services/webrtc-handler.js';
-import type { ProcessGroup, WindowInfo, DisplayInfo } from '../types/screencap.js';
+import { type StreamStats, WebRTCHandler } from '../services/webrtc-handler.js';
+import type { DisplayInfo, ProcessGroup, WindowInfo } from '../types/screencap.js';
 import { createLogger } from '../utils/logger.js';
 import './screencap-sidebar.js';
 import './screencap-stats.js';
+
+interface ProcessesResponse {
+  processes: ProcessGroup[];
+}
+
+interface DisplaysResponse {
+  displays: DisplayInfo[];
+}
+
+interface CaptureResponse {
+  sessionId?: string;
+}
+
+interface FrameResponse {
+  frame?: string;
+}
 
 const logger = createLogger('screencap-view');
 
@@ -221,7 +237,8 @@ export class ScreencapView extends LitElement {
   @state() private isCapturing = false;
   @state() private captureMode: 'desktop' | 'window' = 'desktop';
   @state() private frameUrl = '';
-  @state() private status: 'idle' | 'ready' | 'loading' | 'starting' | 'capturing' | 'error' = 'idle';
+  @state() private status: 'idle' | 'ready' | 'loading' | 'starting' | 'capturing' | 'error' =
+    'idle';
   @state() private error = '';
   @state() private fps = 0;
   @state() private showStats = false;
@@ -268,15 +285,14 @@ export class ScreencapView extends LitElement {
   private initializeWebSocketClient() {
     if (!this.wsClient) {
       this.wsClient = new ScreencapWebSocketClient(
-        `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/screencap-ws`,
-        this.localAuthToken
+        `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/screencap-signal`
       );
-      
-      this.wsClient.onReady = (data: any) => {
-        logger.log('WebSocket ready:', data);
+
+      this.wsClient.onReady = () => {
+        logger.log('WebSocket ready');
         this.status = 'ready';
       };
-      
+
       this.wsClient.onError = (error: string) => {
         logger.error('WebSocket error:', error);
         this.error = error;
@@ -316,27 +332,17 @@ export class ScreencapView extends LitElement {
     await this.loadInitialData();
   }
 
-  private async toggleMode(event: CustomEvent) {
-    this.captureMode = event.detail;
-    if (this.isCapturing) {
-      await this.stopCapture();
-    }
-  }
-
   private async loadInitialData() {
     this.status = 'loading';
-    
+
     try {
-      await Promise.all([
-        this.loadWindows(),
-        this.loadDisplays()
-      ]);
-      
+      await Promise.all([this.loadWindows(), this.loadDisplays()]);
+
       // Auto-select first display in desktop mode
       if (this.captureMode === 'desktop' && this.displays.length > 0 && !this.selectedDisplay) {
         this.selectedDisplay = this.displays[0];
       }
-      
+
       this.status = 'ready';
     } catch (error) {
       logger.error('Failed to load initial data:', error);
@@ -347,10 +353,10 @@ export class ScreencapView extends LitElement {
 
   private async loadWindows() {
     if (!this.wsClient) return;
-    
+
     try {
-      const response = await this.wsClient.sendApiRequest('GET', '/windows');
-      this.processGroups = response.windows || [];
+      const response = await this.wsClient.request<ProcessesResponse>('GET', '/processes');
+      this.processGroups = response.processes || [];
       logger.log(`Loaded ${this.processGroups.length} process groups`);
     } catch (error) {
       logger.error('Failed to load windows:', error);
@@ -360,9 +366,9 @@ export class ScreencapView extends LitElement {
 
   private async loadDisplays() {
     if (!this.wsClient) return;
-    
+
     try {
-      const response = await this.wsClient.sendApiRequest('GET', '/displays');
+      const response = await this.wsClient.request<DisplaysResponse>('GET', '/displays');
       this.displays = response.displays || [];
       logger.log(`Loaded ${this.displays.length} displays`);
     } catch (error) {
@@ -377,7 +383,8 @@ export class ScreencapView extends LitElement {
     this.selectedWindowProcess = process;
     this.selectedDisplay = null;
     this.allDisplaysSelected = false;
-    
+    this.captureMode = 'window';
+
     if (this.isCapturing) {
       await this.stopCapture();
       await this.startCapture();
@@ -389,7 +396,8 @@ export class ScreencapView extends LitElement {
     this.selectedWindow = null;
     this.selectedWindowProcess = null;
     this.allDisplaysSelected = false;
-    
+    this.captureMode = 'desktop';
+
     if (this.isCapturing) {
       await this.stopCapture();
       await this.startCapture();
@@ -401,7 +409,8 @@ export class ScreencapView extends LitElement {
     this.selectedDisplay = null;
     this.selectedWindow = null;
     this.selectedWindowProcess = null;
-    
+    this.captureMode = 'desktop';
+
     if (this.isCapturing) {
       await this.stopCapture();
       await this.startCapture();
@@ -424,7 +433,7 @@ export class ScreencapView extends LitElement {
       } else {
         await this.startJPEGCapture();
       }
-      
+
       this.isCapturing = true;
       this.status = 'capturing';
     } catch (error) {
@@ -442,7 +451,7 @@ export class ScreencapView extends LitElement {
       onStreamReady: (stream: MediaStream) => {
         if (this.videoElement) {
           this.videoElement.srcObject = stream;
-          this.videoElement.play().catch(error => {
+          this.videoElement.play().catch((error) => {
             logger.error('Failed to play video:', error);
           });
         }
@@ -455,34 +464,45 @@ export class ScreencapView extends LitElement {
         logger.error('WebRTC error:', error);
         this.error = error.message;
         this.status = 'error';
-      }
+      },
     };
 
     if (this.captureMode === 'desktop') {
-      const displayIndex = this.allDisplaysSelected ? -1 : 
-        (this.selectedDisplay ? parseInt(this.selectedDisplay.id) : 0);
+      const displayIndex = this.allDisplaysSelected
+        ? -1
+        : this.selectedDisplay
+          ? Number.parseInt(this.selectedDisplay.id)
+          : 0;
       await this.webrtcHandler.startCapture('desktop', displayIndex, undefined, callbacks);
     } else if (this.captureMode === 'window' && this.selectedWindow) {
-      await this.webrtcHandler.startCapture('window', undefined, this.selectedWindow.cgWindowID, callbacks);
+      await this.webrtcHandler.startCapture(
+        'window',
+        undefined,
+        this.selectedWindow.cgWindowID,
+        callbacks
+      );
     }
   }
 
   private async startJPEGCapture() {
     if (!this.wsClient) return;
 
-    let response;
+    let response: CaptureResponse | undefined;
     if (this.captureMode === 'desktop') {
-      const displayIndex = this.allDisplaysSelected ? -1 : 
-        (this.selectedDisplay ? parseInt(this.selectedDisplay.id) : 0);
-      response = await this.wsClient.sendApiRequest('POST', '/start-capture', {
+      const displayIndex = this.allDisplaysSelected
+        ? -1
+        : this.selectedDisplay
+          ? Number.parseInt(this.selectedDisplay.id)
+          : 0;
+      response = await this.wsClient.request<CaptureResponse>('POST', '/start-capture', {
         type: 'desktop',
         index: displayIndex,
-        useWebRTC: false
+        useWebRTC: false,
       });
     } else if (this.captureMode === 'window' && this.selectedWindow) {
-      response = await this.wsClient.sendApiRequest('POST', '/start-capture-window', {
+      response = await this.wsClient.request<CaptureResponse>('POST', '/start-capture-window', {
         cgWindowID: this.selectedWindow.cgWindowID,
-        useWebRTC: false
+        useWebRTC: false,
       });
     }
 
@@ -495,7 +515,7 @@ export class ScreencapView extends LitElement {
   private async stopCapture() {
     this.isCapturing = false;
     this.status = 'ready';
-    
+
     if (this.frameUpdateInterval) {
       clearInterval(this.frameUpdateInterval);
       this.frameUpdateInterval = null;
@@ -508,7 +528,7 @@ export class ScreencapView extends LitElement {
       }
     } else if (this.wsClient) {
       try {
-        await this.wsClient.sendApiRequest('POST', '/stop-capture');
+        await this.wsClient.request('POST', '/stop-capture');
       } catch (error) {
         logger.error('Failed to stop capture:', error);
       }
@@ -527,7 +547,7 @@ export class ScreencapView extends LitElement {
     let lastFrameTime = Date.now();
     this.frameUpdateInterval = window.setInterval(() => {
       this.updateFrame();
-      
+
       // Calculate FPS
       const now = Date.now();
       const timeDiff = now - lastFrameTime;
@@ -542,7 +562,7 @@ export class ScreencapView extends LitElement {
     if (!this.wsClient || !this.isCapturing || this.useWebRTC) return;
 
     try {
-      const response = await this.wsClient.sendApiRequest('GET', '/frame');
+      const response = await this.wsClient.request<FrameResponse>('GET', '/frame');
       if (response.frame) {
         this.frameUrl = `data:image/jpeg;base64,${response.frame}`;
         this.frameCounter++;
@@ -574,7 +594,9 @@ export class ScreencapView extends LitElement {
             </svg>
           </button>
 
-          ${this.isCapturing ? html`
+          ${
+            this.isCapturing
+              ? html`
             <button 
               class="toggle-btn ${this.showStats ? 'active' : ''}"
               @click=${this.toggleStats}
@@ -591,12 +613,16 @@ export class ScreencapView extends LitElement {
               title="Toggle fit mode (${this.fitMode})"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                ${this.fitMode === 'contain' ? html`
+                ${
+                  this.fitMode === 'contain'
+                    ? html`
                   <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/>
                   <path d="M15 9l-3-3v2H8v2h4v2l3-3z"/>
-                ` : html`
+                `
+                    : html`
                   <path d="M7 9V7c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v2c1.1 0 2 .9 2 2v6c0 1.1-.9 2-2 2h-2c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2v-6c0-1.1.9-2 2-2zm0 2v6h6v-6H7zm2-2h6V7H9v2zm0 0v2h2V9H9zm6 2v2h2v-2h-2zm0 0V9h-2v2h2z"/>
-                `}
+                `
+                }
               </svg>
             </button>
 
@@ -606,7 +632,8 @@ export class ScreencapView extends LitElement {
               </svg>
               Stop
             </button>
-          ` : html`
+          `
+              : html`
             <button 
               class="btn primary" 
               @click=${this.startCapture}
@@ -617,7 +644,8 @@ export class ScreencapView extends LitElement {
               </svg>
               Start
             </button>
-          `}
+          `
+          }
         </div>
       </div>
 
@@ -630,7 +658,6 @@ export class ScreencapView extends LitElement {
             .selectedWindow=${this.selectedWindow}
             .selectedDisplay=${this.selectedDisplay}
             .allDisplaysSelected=${this.allDisplaysSelected}
-            @mode-change=${this.toggleMode}
             @refresh-request=${this.handleRefresh}
             @window-select=${this.handleWindowSelect}
             @display-select=${this.handleDisplaySelect}
@@ -657,12 +684,16 @@ export class ScreencapView extends LitElement {
           playsinline
           muted
         ></video>
-        ${this.showStats ? html`
+        ${
+          this.showStats
+            ? html`
           <screencap-stats
             .stats=${this.streamStats}
             .frameCounter=${this.frameCounter}
           ></screencap-stats>
-        ` : ''}
+        `
+            : ''
+        }
       `;
     }
 
@@ -687,15 +718,23 @@ export class ScreencapView extends LitElement {
     return html`
       <div class="capture-overlay">
         <div class="status-message ${this.status}">
-          ${this.status === 'loading' ? 'Loading...' :
-            this.status === 'starting' ? 'Starting capture...' :
-            this.status === 'error' ? this.error :
-            this.status === 'ready' ? 
-              (this.captureMode === 'desktop' ? 
-                (this.selectedDisplay || this.allDisplaysSelected ? 'Click Start to begin screen capture' : 'Select a display to capture') :
-                (this.selectedWindow ? 'Click Start to begin window capture' : 'Select a window to capture')
-              ) :
-            'Initializing...'}
+          ${
+            this.status === 'loading'
+              ? 'Loading...'
+              : this.status === 'starting'
+                ? 'Starting capture...'
+                : this.status === 'error'
+                  ? this.error
+                  : this.status === 'ready'
+                    ? this.captureMode === 'desktop'
+                      ? this.selectedDisplay || this.allDisplaysSelected
+                        ? 'Click Start to begin screen capture'
+                        : 'Select a display to capture'
+                      : this.selectedWindow
+                        ? 'Click Start to begin window capture'
+                        : 'Select a window to capture'
+                    : 'Initializing...'
+          }
         </div>
       </div>
     `;

@@ -9,32 +9,32 @@ export enum ScreencapErrorCode {
   CONNECTION_TIMEOUT = 'CONNECTION_TIMEOUT',
   WEBSOCKET_CLOSED = 'WEBSOCKET_CLOSED',
   UNIX_SOCKET_ERROR = 'UNIX_SOCKET_ERROR',
-  
+
   // Permission errors
   PERMISSION_DENIED = 'PERMISSION_DENIED',
   PERMISSION_REVOKED = 'PERMISSION_REVOKED',
-  
+
   // Display/Window errors
   DISPLAY_NOT_FOUND = 'DISPLAY_NOT_FOUND',
   DISPLAY_DISCONNECTED = 'DISPLAY_DISCONNECTED',
   WINDOW_NOT_FOUND = 'WINDOW_NOT_FOUND',
   WINDOW_CLOSED = 'WINDOW_CLOSED',
-  
+
   // Capture errors
   CAPTURE_FAILED = 'CAPTURE_FAILED',
   CAPTURE_NOT_ACTIVE = 'CAPTURE_NOT_ACTIVE',
   INVALID_CAPTURE_TYPE = 'INVALID_CAPTURE_TYPE',
-  
+
   // WebRTC errors
   WEBRTC_INIT_FAILED = 'WEBRTC_INIT_FAILED',
   WEBRTC_OFFER_FAILED = 'WEBRTC_OFFER_FAILED',
   WEBRTC_ANSWER_FAILED = 'WEBRTC_ANSWER_FAILED',
   WEBRTC_ICE_FAILED = 'WEBRTC_ICE_FAILED',
-  
+
   // Session errors
   INVALID_SESSION = 'INVALID_SESSION',
   SESSION_EXPIRED = 'SESSION_EXPIRED',
-  
+
   // General errors
   INVALID_REQUEST = 'INVALID_REQUEST',
   INTERNAL_ERROR = 'INTERNAL_ERROR',
@@ -49,11 +49,7 @@ export interface ScreencapError {
 }
 
 export class ScreencapErrorBuilder {
-  static create(
-    code: ScreencapErrorCode,
-    message: string,
-    details?: unknown
-  ): ScreencapError {
+  static create(code: ScreencapErrorCode, message: string, details?: unknown): ScreencapError {
     return {
       code,
       message,
@@ -61,7 +57,7 @@ export class ScreencapErrorBuilder {
       timestamp: new Date().toISOString(),
     };
   }
-  
+
   static fromError(error: unknown): ScreencapError {
     if (error && typeof error === 'object' && 'code' in error) {
       const e = error as any;
@@ -74,7 +70,7 @@ export class ScreencapErrorBuilder {
         };
       }
     }
-    
+
     // Convert unknown errors
     const message = error instanceof Error ? error.message : String(error);
     return {
@@ -84,7 +80,7 @@ export class ScreencapErrorBuilder {
       timestamp: new Date().toISOString(),
     };
   }
-  
+
   static isScreencapError(error: unknown): error is ScreencapError {
     return (
       error !== null &&

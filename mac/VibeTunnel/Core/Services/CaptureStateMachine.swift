@@ -210,6 +210,8 @@ final class CaptureStateMachine {
                     return "Capturing window"
                 case .allDisplays:
                     return "Capturing all displays"
+                case .application:
+                    return "Capturing application"
                 }
             }
             return "Capturing"

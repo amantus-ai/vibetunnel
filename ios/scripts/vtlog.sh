@@ -57,6 +57,38 @@ DESCRIPTION:
     View VibeTunnel logs with full details (bypasses Apple's privacy redaction).
     Requires sudo access configured for /usr/bin/log command.
 
+IMPORTANT NOTE:
+    The iOS app currently uses print() statements for logging, which are only
+    visible in Xcode console or when running the app in debug mode.
+    
+    This script is provided for future compatibility when the iOS app is
+    updated to use os_log with the unified logging system.
+    
+    To see current iOS app logs:
+    1. Run the app from Xcode and check the console
+    2. Use Console.app and filter by the app name
+    3. Check device logs in Xcode (Window > Devices and Simulators)
+
+LOG ARCHITECTURE:
+    The iOS app is a client that connects to the VibeTunnel Mac server.
+    This tool will capture logs from the iOS app when it's updated to use os_log.
+    
+    To see server logs, use vtlog on the Mac hosting the server.
+
+LOG CATEGORIES:
+    • [APIClient]             - HTTP API communication with server
+    • [AuthenticationService] - Server authentication handling
+    • [BufferWebSocket]       - WebSocket for terminal data streaming
+    • [NetworkMonitor]        - Network connectivity monitoring
+    • [SessionService]        - Terminal session management
+    • [SessionListView]       - Session list UI
+    • [Terminal]              - Terminal rendering logic
+    • [TerminalView]          - Terminal display component
+    • [XtermWebView]          - Web-based terminal renderer
+    • [SSEClient]             - Server-sent events for real-time updates
+    • [LivePreviewManager]    - Live preview functionality
+    • [AdvancedKeyboard]      - Advanced keyboard input handling
+
 QUICK START:
     vtlog -n 100             Show last 100 lines
     vtlog -f                 Follow logs in real-time

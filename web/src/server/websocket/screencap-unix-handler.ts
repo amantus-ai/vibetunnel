@@ -39,8 +39,18 @@ export class ScreencapUnixHandler {
   private readonly socketPath: string;
 
   constructor() {
-    // Use a unique socket path
-    this.socketPath = path.join('/tmp', 'vibetunnel-screencap.sock');
+    // Use a unique socket path in user's home directory to avoid /tmp issues
+    const home = process.env.HOME || '/tmp';
+    const socketDir = path.join(home, '.vibetunnel');
+
+    // Ensure directory exists
+    try {
+      fs.mkdirSync(socketDir, { recursive: true });
+    } catch (e) {
+      // Ignore if already exists
+    }
+
+    this.socketPath = path.join(socketDir, 'screencap.sock');
   }
 
   async start(): Promise<void> {
@@ -60,6 +70,26 @@ export class ScreencapUnixHandler {
     await new Promise<void>((resolve, reject) => {
       this.unixServer?.listen(this.socketPath, () => {
         logger.log(`UNIX socket server listening at ${this.socketPath}`);
+
+        // Check if socket file exists
+        fs.access(this.socketPath, fs.constants.F_OK, (accessErr) => {
+          if (accessErr) {
+            logger.error('Socket file does not exist after creation!', accessErr);
+          } else {
+            logger.log('Socket file exists, checking stats...');
+            fs.stat(this.socketPath, (statErr, stats) => {
+              if (statErr) {
+                logger.error('Failed to stat socket file:', statErr);
+              } else {
+                logger.log('Socket file stats:', {
+                  isSocket: stats.isSocket(),
+                  mode: stats.mode.toString(8),
+                  size: stats.size,
+                });
+              }
+            });
+          }
+        });
 
         // Set restrictive permissions - only owner can read/write
         fs.chmod(this.socketPath, 0o600, (err) => {
@@ -168,14 +198,9 @@ export class ScreencapUnixHandler {
         this.handleBrowserMessage(ws, message);
       } catch (error) {
         logger.error('Failed to parse browser message:', error);
-        this.sendToBrowser({ 
-          type: 'error', 
-          error: {
-            code: 'INVALID_REQUEST',
-            message: 'Invalid message format',
-            details: error instanceof Error ? error.message : String(error),
-            timestamp: new Date().toISOString()
-          }
+        this.sendToBrowser({
+          type: 'error',
+          data: error instanceof Error ? error.message : String(error),
         });
       }
     });

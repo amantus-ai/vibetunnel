@@ -27,9 +27,11 @@ final class UnixSocketConnection {
     
     // MARK: - Initialization
     
-    init(socketPath: String = "/tmp/vibetunnel-screencap.sock") {
-        self.socketPath = socketPath
-        logger.info("Unix socket initialized with path: \(socketPath)")
+    init(socketPath: String? = nil) {
+        // Use socket path in user's home directory to avoid /tmp issues
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        self.socketPath = socketPath ?? "\(home)/.vibetunnel/screencap.sock"
+        logger.info("Unix socket initialized with path: \(self.socketPath)")
     }
     
     // MARK: - Public Methods
@@ -188,17 +190,38 @@ final class UnixSocketConnection {
         // Append new data to buffer
         receiveBuffer.append(data)
         
+        // Log buffer state for debugging
+        logger.debug("📥 Buffer after append: \(self.receiveBuffer.count) bytes")
+        if let str = String(data: receiveBuffer.prefix(200), encoding: .utf8) {
+            logger.debug("📋 Buffer content preview: \(str)")
+        }
+        
         // Process complete messages (delimited by newlines)
         while let newlineIndex = receiveBuffer.firstIndex(of: 0x0A) { // 0x0A is newline
-            // Extract message up to and including the newline
-            let messageData = receiveBuffer.prefix(newlineIndex)
+            // Calculate the offset from the start of the buffer
+            let newlineOffset = receiveBuffer.distance(from: receiveBuffer.startIndex, to: newlineIndex)
+            
+            // Extract message up to the newline (not including it)
+            let messageData = receiveBuffer.prefix(newlineOffset)
+            
+            // Calculate how much to remove (message + newline)
+            let bytesToRemove = newlineOffset + 1
+            
+            logger.debug("🔍 Found newline at offset \(newlineOffset), message size: \(messageData.count), removing: \(bytesToRemove) bytes")
             
             // Remove processed data from buffer (including newline)
-            receiveBuffer.removeFirst(newlineIndex + 1)
+            receiveBuffer.removeFirst(bytesToRemove)
+            logger.debug("✅ Removed \(bytesToRemove) bytes, buffer now: \(self.receiveBuffer.count) bytes")
             
             // Skip empty messages
             if messageData.isEmpty {
+                logger.debug("⏭️ Skipping empty message")
                 continue
+            }
+            
+            // Log the message being delivered
+            if let msgStr = String(data: messageData, encoding: .utf8) {
+                logger.debug("📤 Delivering message: \(msgStr)")
             }
             
             // Deliver the complete message
@@ -227,14 +250,10 @@ final class UnixSocketConnection {
             }
         }
         
-        // Remove existing socket file if present
-        if fileManager.fileExists(atPath: socketPath) {
-            do {
-                try fileManager.removeItem(atPath: socketPath)
-            } catch {
-                logger.warning("Failed to remove existing socket file: \(error)")
-            }
-        }
+        // IMPORTANT: Do NOT remove the socket file here!
+        // The server creates and manages the socket file.
+        // Removing it here causes a race condition where we delete
+        // the server's socket and then fail to connect.
         
         // Set restrictive permissions after socket is created
         // This will be done by the server when it creates the socket

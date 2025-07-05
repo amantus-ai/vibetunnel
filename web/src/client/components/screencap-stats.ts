@@ -167,28 +167,28 @@ export class ScreencapStats extends LitElement {
     return 'latency-bad';
   }
 
-  private getQualityIndicator(): string {
-    if (!this.stats) return '';
+  private getQualityIndicator() {
+    if (!this.stats) return html``;
 
     // Determine quality based on multiple factors
     const { latency, packetLossRate, bitrate } = this.stats;
-    
+
     let score = 100;
-    
+
     // Latency impact
     if (latency > 200) score -= 30;
     else if (latency > 100) score -= 15;
     else if (latency > 50) score -= 5;
-    
+
     // Packet loss impact
     if (packetLossRate > 5) score -= 40;
     else if (packetLossRate > 2) score -= 20;
     else if (packetLossRate > 0.5) score -= 10;
-    
+
     // Bitrate impact
     if (bitrate < 500000) score -= 20;
     else if (bitrate < 1000000) score -= 10;
-    
+
     return html`
       <span class="quality-indicator ${this.getQualityClass(score)}">
         <span class="quality-dot"></span>
@@ -215,7 +215,9 @@ export class ScreencapStats extends LitElement {
     return html`
       <div class="stats-panel">
         <h4>📊 Stream Statistics</h4>
-        ${this.stats ? html`
+        ${
+          this.stats
+            ? html`
           <div class="stat-row">
             <span class="stat-label">Codec:</span>
             <span class="stat-value ${this.getCodecClass()}">${this.stats.codec}</span>
@@ -244,14 +246,16 @@ export class ScreencapStats extends LitElement {
             <span class="stat-label">Quality:</span>
             <span class="stat-value">${this.getQualityIndicator()}</span>
           </div>
-        ` : html`
+        `
+            : html`
           <div class="loading-message">
             <div>Collecting statistics...</div>
             <div>
               ${this.frameCounter > 0 ? `Frames: ${this.frameCounter}` : ''}
             </div>
           </div>
-        `}
+        `
+        }
       </div>
     `;
   }
