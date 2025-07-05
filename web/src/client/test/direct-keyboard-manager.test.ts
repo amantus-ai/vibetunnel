@@ -4,7 +4,6 @@ import { DirectKeyboardManager } from '../components/session-view/direct-keyboar
 describe('DirectKeyboardManager', () => {
   let manager: DirectKeyboardManager;
   let mockInputManager: { sendInputText: ReturnType<typeof vi.fn> };
-  let originalClipboard: typeof navigator.clipboard;
   let originalRequestAnimationFrame: typeof requestAnimationFrame;
 
   beforeEach(() => {
@@ -20,16 +19,17 @@ describe('DirectKeyboardManager', () => {
     mockInputManager = { sendInputText: vi.fn() };
     manager.setInputManager(mockInputManager as any);
 
-    // Mock clipboard API
-    originalClipboard = navigator.clipboard;
-    (navigator as any).clipboard = {
-      readText: vi.fn().mockResolvedValue('clipboard content'),
-    };
+    // Mock clipboard API using Object.defineProperty
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        readText: vi.fn().mockResolvedValue('clipboard content'),
+      },
+      writable: true,
+      configurable: true,
+    });
   });
 
   afterEach(() => {
-    // Restore clipboard
-    (navigator as any).clipboard = originalClipboard;
     // Restore requestAnimationFrame
     global.requestAnimationFrame = originalRequestAnimationFrame;
   });
