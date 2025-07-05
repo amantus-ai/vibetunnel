@@ -119,5 +119,11 @@
 	</array>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>VibeTunnel uses the local network to discover servers on your network.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_vibetunnel._tcp</string>
+	</array>
 </dict>
 </plist>
