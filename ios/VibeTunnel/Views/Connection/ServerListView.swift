@@ -95,7 +95,7 @@ struct ServerListView: View {
                     initialHost: selectedDiscoveredServer?.host,
                     initialPort: selectedDiscoveredServer != nil ? String(selectedDiscoveredServer!.port) : nil,
                     initialName: selectedDiscoveredServer?.displayName
-                ) { newProfile in
+                ) { _ in
                     viewModel.loadProfiles()
                 }
             }
@@ -104,7 +104,7 @@ struct ServerListView: View {
                     initialHost: server.host,
                     initialPort: String(server.port),
                     initialName: server.displayName
-                ) { newProfile in
+                ) { _ in
                     viewModel.loadProfiles()
                     serverToAdd = nil
                 }
@@ -140,13 +140,12 @@ struct ServerListView: View {
         }
         .sheet(isPresented: $showingDiscoverySheet) {
             DiscoveryDetailSheet(
-                discoveredServers: filteredDiscoveredServers,
-                onConnect: { server in
+                discoveredServers: filteredDiscoveredServers
+            )                { _ in
                     showingDiscoverySheet = false
                     // Auto-fill add server form with discovered server
                     showingAddServer = true
                 }
-            )
         }
     }
 
@@ -353,11 +352,10 @@ struct ServerListView: View {
         VStack(spacing: Theme.Spacing.small) {
             ForEach(Array(filteredDiscoveredServers.prefix(3))) { server in
                 DiscoveredServerCard(
-                    server: server,
-                    onTap: {
+                    server: server
+                )                    {
                         connectToDiscoveredServer(server)
                     }
-                )
             }
 
             if filteredDiscoveredServers.count > 3 {

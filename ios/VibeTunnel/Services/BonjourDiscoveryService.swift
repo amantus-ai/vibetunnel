@@ -159,16 +159,15 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                     Task { @MainActor [weak self] in
                         guard let self else { return }
 
-                        let hostString: String
-                        switch host {
+                        let hostString: String = switch host {
                         case .ipv4(let address):
-                            hostString = "\(address)"
+                            "\(address)"
                         case .ipv6(let address):
-                            hostString = "\(address)"
+                            "\(address)"
                         case .name(let name, _):
-                            hostString = name
+                            name
                         @unknown default:
-                            hostString = ""
+                            ""
                         }
 
                         // Remove network interface suffix (e.g., %en0) from IP addresses

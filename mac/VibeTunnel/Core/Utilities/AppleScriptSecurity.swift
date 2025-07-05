@@ -3,7 +3,6 @@ import CoreGraphics
 
 /// Security utilities for AppleScript execution
 enum AppleScriptSecurity {
-    
     /// Escapes a string for safe use in AppleScript
     /// 
     /// This function properly escapes all special characters that could be used
@@ -67,7 +66,7 @@ enum AppleScriptSecurity {
     /// - Parameter value: The numeric value
     /// - Returns: The string representation of the number
     static func escapeNumber(_ value: Int) -> String {
-        return String(value)
+        String(value)
     }
     
     /// Escapes a numeric value for safe use in AppleScript
@@ -75,7 +74,7 @@ enum AppleScriptSecurity {
     /// - Parameter value: The numeric value (UInt32/CGWindowID)
     /// - Returns: The string representation of the number
     static func escapeNumber(_ value: UInt32) -> String {
-        return String(value)
+        String(value)
     }
     
     /// Creates a safe AppleScript string literal
@@ -83,6 +82,6 @@ enum AppleScriptSecurity {
     /// - Parameter string: The string to make into a literal
     /// - Returns: A properly quoted and escaped AppleScript string literal
     static func createStringLiteral(_ string: String) -> String {
-        return "\"\(escapeString(string))\""
+        "\"\(escapeString(string))\""
     }
 }

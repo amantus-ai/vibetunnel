@@ -255,7 +255,7 @@ protocol HapticFeedbackProtocol {
 
 @MainActor
 struct HapticFeedback: HapticFeedbackProtocol {
-    static let shared: HapticFeedbackProtocol = HapticFeedback()
+    static let shared: HapticFeedbackProtocol = Self()
 
     func impact(_ style: ImpactStyle) {
         let generator = UIImpactFeedbackGenerator(style: style.uiKitStyle)

@@ -105,7 +105,7 @@ public enum AXPermissions {
     /// - Returns: `true` if permissions are granted, `false` otherwise
     @MainActor
     public static func requestPermissionsAsync() async -> Bool {
-        return requestPermissions()
+        requestPermissions()
     }
 }
 

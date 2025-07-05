@@ -89,11 +89,10 @@ struct DiscoveryDetailSheet: View {
                 VStack(spacing: Theme.Spacing.small) {
                     ForEach(discoveredServers) { server in
                         DiscoveredServerCard(
-                            server: server,
-                            onTap: {
+                            server: server
+                        )                            {
                                 onConnect(server)
                             }
-                        )
                     }
                 }
                 .padding()

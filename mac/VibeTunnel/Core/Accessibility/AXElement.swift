@@ -25,13 +25,13 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
     // MARK: - Factory Methods
     
     /// Creates an element for the system-wide accessibility object
-    public static var systemWide: AXElement {
-        AXElement(AXUIElementCreateSystemWide())
+    public static var systemWide: Self {
+        Self(AXUIElementCreateSystemWide())
     }
     
     /// Creates an element for an application with the given process ID
-    public static func application(pid: pid_t) -> AXElement {
-        AXElement(AXUIElementCreateApplication(pid))
+    public static func application(pid: pid_t) -> Self {
+        Self(AXUIElementCreateApplication(pid))
     }
     
     // MARK: - Attribute Access
@@ -122,7 +122,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
     }
     
     /// Gets an AXUIElement attribute value
-    public func element(for attribute: String) -> AXElement? {
+    public func element(for attribute: String) -> Self? {
         var value: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
         
@@ -131,11 +131,11 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
             return nil
         }
         
-        return AXElement(value as! AXUIElement)
+        return Self(value as! AXUIElement)
     }
     
     /// Gets an array of AXUIElement attribute values
-    public func elements(for attribute: String) -> [AXElement]? {
+    public func elements(for attribute: String) -> [Self]? {
         var value: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
         
@@ -144,7 +144,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
             return nil
         }
         
-        return array.map { AXElement($0) }
+        return array.map { Self($0) }
     }
     
     /// Gets the raw attribute value as CFTypeRef
@@ -257,17 +257,17 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
     // MARK: - Hierarchy
     
     /// Gets the parent element
-    public var parent: AXElement? {
+    public var parent: Self? {
         element(for: kAXParentAttribute)
     }
     
     /// Gets the children elements
-    public var children: [AXElement]? {
+    public var children: [Self]? {
         elements(for: kAXChildrenAttribute)
     }
     
     /// Gets the windows (for application elements)
-    public var windows: [AXElement]? {
+    public var windows: [Self]? {
         elements(for: kAXWindowsAttribute)
     }
     
@@ -282,7 +282,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
     
     // MARK: - Equatable & Hashable
     
-    public static func == (lhs: AXElement, rhs: AXElement) -> Bool {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
         CFEqual(lhs.element, rhs.element)
     }
     

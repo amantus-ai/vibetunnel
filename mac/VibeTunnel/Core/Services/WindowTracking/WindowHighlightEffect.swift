@@ -20,7 +20,7 @@ struct WindowHighlightConfig {
     let isEnabled: Bool
     
     /// Default configuration with VibeTunnel branding
-    static let `default` = WindowHighlightConfig(
+    static let `default` = Self(
         color: NSColor(red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0), // Green to match frontend
         duration: 0.8,
         borderWidth: 4.0,
@@ -29,7 +29,7 @@ struct WindowHighlightConfig {
     )
     
     /// A more subtle configuration
-    static let subtle = WindowHighlightConfig(
+    static let subtle = Self(
         color: .systemBlue,
         duration: 0.5,
         borderWidth: 2.0,
@@ -38,7 +38,7 @@ struct WindowHighlightConfig {
     )
     
     /// A vibrant neon-style configuration
-    static let neon = WindowHighlightConfig(
+    static let neon = Self(
         color: NSColor(red: 0.0, green: 1.0, blue: 0.8, alpha: 1.0), // Cyan
         duration: 1.2,
         borderWidth: 6.0,
