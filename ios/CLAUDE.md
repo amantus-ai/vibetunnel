@@ -64,7 +64,7 @@ Use the provided script to view iOS app logs with unredacted private data:
 ./ios/scripts/vtlog.sh -s "connection"
 ```
 
-If prompted for password when viewing logs, see [docs/logging-private-fix.md](../docs/logging-private-fix.md) for setup instructions.
+If prompted for password when viewing logs, see [docs/apple/logging-private-fix.md](../docs/apple/logging-private-fix.md) for setup instructions.
 
 ## Common Issues
 

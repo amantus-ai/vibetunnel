@@ -23,7 +23,7 @@ handle_sudo_error() {
     echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
     echo -e "vtlog needs to use sudo to show complete log data (Apple hides sensitive info by default)."
     echo -e "\nTo avoid password prompts, configure passwordless sudo for the log command:"
-    echo -e "See: ${BLUE}docs/logging-private-fix.md${NC}\n"
+    echo -e "See: ${BLUE}docs/apple/logging-private-fix.md${NC}\n"
     echo -e "Quick fix:"
     echo -e "  1. Run: ${GREEN}sudo visudo${NC}"
     echo -e "  2. Add: ${GREEN}$(whoami) ALL=(ALL) NOPASSWD: /usr/bin/log${NC}"
@@ -57,11 +57,33 @@ DESCRIPTION:
     View VibeTunnel logs with full details (bypasses Apple's privacy redaction).
     Requires sudo access configured for /usr/bin/log command.
 
+LOG FLOW ARCHITECTURE:
+    VibeTunnel logs flow through multiple layers:
+    
+    1. Web Frontend (Browser) → Uses console.log/error
+       ↓
+    2. Node.js Server → Logs prefixed with server component names
+       ↓
+    3. macOS System Logs → Captured by this tool
+    
+    This tool captures ALL logs from the entire stack in one unified view.
+
+LOG PREFIXES BY COMPONENT:
+    • [ServerManager]     - Server lifecycle and configuration
+    • [SessionService]    - Terminal session management  
+    • [TerminalManager]   - Terminal spawning and control
+    • [WebRTCManager]     - WebRTC screen sharing connections
+    • [UnixSocket]        - Unix socket communication
+    • [WindowTracker]     - Window focus and tracking
+    • [ServerOutput]      - Raw Node.js server console output
+    • [GitAppLauncher]    - Git app integration
+    • [ScreencapService]  - Screen capture functionality
+
 QUICK START:
-    vtlog -n 100             Show last 100 lines
+    vtlog -n 100             Show last 100 lines from all components
     vtlog -f                 Follow logs in real-time
     vtlog -e                 Show only errors
-    vtlog -c ServerManager   Show logs from ServerManager
+    vtlog -c ServerManager   Show logs from ServerManager only
 
 OPTIONS:
     -h, --help              Show this help message
