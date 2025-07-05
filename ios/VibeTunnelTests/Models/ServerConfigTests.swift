@@ -10,7 +10,7 @@ struct ServerConfigTests {
         let config = ServerConfig(
             host: "localhost",
             port: 8_888,
-            name: nil,
+            name: nil
         )
 
         // Act
@@ -29,7 +29,7 @@ struct ServerConfigTests {
         let config = ServerConfig(
             host: "example.com",
             port: 443,
-            name: "user",
+            name: "user"
         )
 
         // Act
@@ -46,8 +46,8 @@ struct ServerConfigTests {
     func displayNameWithCustomName() {
         let config = ServerConfig(
             host: "localhost",
-            port: 8888,
-            name: "My Server",
+            port: 8_888,
+            name: "My Server"
         )
         #expect(config.displayName == "My Server")
     }
@@ -57,14 +57,14 @@ struct ServerConfigTests {
         // HTTP standard port (80)
         let httpConfig = ServerConfig(
             host: "example.com",
-            port: 80,
+            port: 80
         )
         #expect(httpConfig.baseURL.absoluteString == "http://example.com:80")
 
         // Another port
         let httpsConfig = ServerConfig(
             host: "example.com",
-            port: 443,
+            port: 443
         )
         #expect(httpsConfig.baseURL.absoluteString == "http://example.com:443")
     }
@@ -75,7 +75,7 @@ struct ServerConfigTests {
         let originalConfig = ServerConfig(
             host: "test.local",
             port: 9_999,
-            name: "testuser",
+            name: "testuser"
         )
 
         // Act
@@ -96,7 +96,7 @@ struct ServerConfigTests {
         // Config without credentials
         let configNoAuth = ServerConfig(
             host: "public.server",
-            port: 8_080,
+            port: 8_080
         )
 
         let data = try JSONEncoder().encode(configNoAuth)
@@ -109,17 +109,17 @@ struct ServerConfigTests {
     func equality() {
         let config1 = ServerConfig(
             host: "localhost",
-            port: 8_888,
+            port: 8_888
         )
 
         let config2 = ServerConfig(
             host: "localhost",
-            port: 8_888,
+            port: 8_888
         )
 
         let config3 = ServerConfig(
             host: "localhost",
-            port: 9_999, // Different port
+            port: 9_999 // Different port
         )
 
         #expect(config1 == config2)
@@ -130,20 +130,20 @@ struct ServerConfigTests {
     func iPv6Address() {
         let config = ServerConfig(
             host: "::1",
-            port: 8_888,
+            port: 8_888
         )
 
         let url = config.baseURL
         // IPv6 addresses need brackets in URLs
         #expect(url.absoluteString == "http://[::1]:8888" || url.absoluteString == "http://::1:8888")
-        #expect(url.port == 8888)
+        #expect(url.port == 8_888)
     }
 
     @Test("Handles domain with subdomain")
     func subdomainHandling() {
         let config = ServerConfig(
             host: "api.staging.example.com",
-            port: 443,
+            port: 443
         )
 
         let url = config.baseURL
@@ -156,7 +156,7 @@ struct ServerConfigTests {
         // Without custom name
         let simpleConfig = ServerConfig(
             host: "localhost",
-            port: 8_888,
+            port: 8_888
         )
         #expect(simpleConfig.displayName == "localhost:8888")
 
@@ -175,7 +175,7 @@ struct ServerConfigTests {
         let config = ServerConfig(
             host: "test.server",
             port: 3_000,
-            name: "user",
+            name: "user"
         )
 
         // Act

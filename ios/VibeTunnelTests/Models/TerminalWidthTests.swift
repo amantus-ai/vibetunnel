@@ -4,7 +4,6 @@ import Testing
 
 @Suite("TerminalWidth Tests", .tags(.models))
 struct TerminalWidthTests {
-
     @Test("All predefined widths have correct values")
     func predefinedWidthValues() {
         #expect(TerminalWidth.unlimited.value == 0)
@@ -63,7 +62,7 @@ struct TerminalWidthTests {
         #expect(TerminalWidth.from(value: 120) == .wide120)
         #expect(TerminalWidth.from(value: 132) == .mainframe132)
         #expect(TerminalWidth.from(value: 160) == .ultraWide160)
-        
+
         // Custom values
         #expect(TerminalWidth.from(value: 95) == .custom(95))
         #expect(TerminalWidth.from(value: 200) == .custom(200))
@@ -92,18 +91,18 @@ struct TerminalWidthTests {
     @MainActor
     func widthManagerDefaultWidth() {
         let manager = TerminalWidthManager.shared
-        
+
         // Store original value
         let originalDefault = manager.defaultWidth
         defer {
             // Restore original value
             manager.defaultWidth = originalDefault
         }
-        
+
         // Set and get default width
         manager.defaultWidth = 100
         #expect(manager.defaultWidth == 100)
-        
+
         manager.defaultWidth = 120
         #expect(manager.defaultWidth == 120)
     }
@@ -112,29 +111,29 @@ struct TerminalWidthTests {
     @MainActor
     func widthManagerCustomWidths() {
         let manager = TerminalWidthManager.shared
-        
+
         // Store original custom widths
         let originalCustom = manager.customWidths
         defer {
             // Restore original custom widths
             manager.customWidths = originalCustom
         }
-        
+
         // Clear custom widths
         manager.customWidths = []
         #expect(manager.customWidths.isEmpty)
-        
+
         // Add custom widths
         manager.addCustomWidth(95)
         manager.addCustomWidth(110)
         #expect(manager.customWidths.count == 2)
         #expect(manager.customWidths.contains(95))
         #expect(manager.customWidths.contains(110))
-        
+
         // Adding duplicate should not increase count
         manager.addCustomWidth(95)
         #expect(manager.customWidths.count == 2)
-        
+
         // Adding invalid widths should be ignored
         manager.addCustomWidth(10) // Too small
         manager.addCustomWidth(600) // Too large
@@ -145,23 +144,23 @@ struct TerminalWidthTests {
     @MainActor
     func widthManagerCustomWidthLimits() {
         let manager = TerminalWidthManager.shared
-        
+
         // Store original custom widths
         let originalCustom = manager.customWidths
         defer {
             // Restore original custom widths
             manager.customWidths = originalCustom
         }
-        
+
         // Clear and add many custom widths
         manager.customWidths = []
         for i in 1...10 {
             manager.addCustomWidth(90 + i)
         }
-        
+
         // Should only keep last 5
         #expect(manager.customWidths.count == 5)
-        #expect(manager.customWidths.contains(96))  // 90 + 6
+        #expect(manager.customWidths.contains(96)) // 90 + 6
         #expect(manager.customWidths.contains(100)) // 90 + 10
         #expect(!manager.customWidths.contains(91)) // 90 + 1 (should be removed)
     }
@@ -170,20 +169,20 @@ struct TerminalWidthTests {
     @MainActor
     func widthManagerAllWidthsIncludesCustom() {
         let manager = TerminalWidthManager.shared
-        
+
         // Store original custom widths
         let originalCustom = manager.customWidths
         defer {
             // Restore original custom widths
             manager.customWidths = originalCustom
         }
-        
+
         // Clear and add custom width
         manager.customWidths = []
         manager.addCustomWidth(95)
-        
+
         let allWidths = manager.allWidths()
-        
+
         // Should include all presets plus custom
         #expect(allWidths.count >= 7) // 6 presets + 1 custom
         #expect(allWidths.contains(.unlimited))
@@ -195,23 +194,23 @@ struct TerminalWidthTests {
     @MainActor
     func widthManagerIgnoresDuplicatePresets() {
         let manager = TerminalWidthManager.shared
-        
+
         // Store original custom widths
         let originalCustom = manager.customWidths
         defer {
             // Restore original custom widths
             manager.customWidths = originalCustom
         }
-        
+
         // Add a preset value as custom
         manager.customWidths = [80, 95] // 80 is already a preset
-        
+
         let allWidths = manager.allWidths()
-        
+
         // Should not have duplicate 80 width
-        let width80Count = allWidths.filter { $0.value == 80 }.count
+        let width80Count = allWidths.count(where: { $0.value == 80 })
         #expect(width80Count == 1)
-        
+
         // Should still have the custom 95
         #expect(allWidths.contains(.custom(95)))
     }
@@ -220,23 +219,23 @@ struct TerminalWidthTests {
     @MainActor
     func widthManagerValidatesRanges() {
         let manager = TerminalWidthManager.shared
-        
+
         // Store original custom widths
         let originalCustom = manager.customWidths
         defer {
             // Restore original custom widths
             manager.customWidths = originalCustom
         }
-        
+
         // Clear custom widths
         manager.customWidths = []
-        
+
         // Test edge case values
         manager.addCustomWidth(19) // Below minimum
         manager.addCustomWidth(20) // At minimum
         manager.addCustomWidth(500) // At maximum
         manager.addCustomWidth(501) // Above maximum
-        
+
         // Should only accept valid ranges
         #expect(manager.customWidths.contains(20))
         #expect(manager.customWidths.contains(500))

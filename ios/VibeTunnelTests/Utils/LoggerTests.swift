@@ -4,7 +4,6 @@ import Testing
 
 @Suite("Logger Tests", .tags(.utilities))
 struct LoggerTests {
-
     @Test("Log level prefixes")
     func logLevelPrefixes() {
         #expect(LogLevel.verbose.prefix == "🔍")
@@ -41,7 +40,7 @@ struct LoggerTests {
             // Restore original log level
             Logger.globalLevel = originalLogLevel
         }
-        
+
         // Test setting different log levels
         Logger.globalLevel = .verbose
         #expect(Logger.globalLevel == .verbose)
@@ -92,7 +91,7 @@ struct LoggerTests {
         // Note: This test might not work as expected because the static var
         // is already initialized by the time tests run
         #else
-        // In release builds, default should be .warning
+            // In release builds, default should be .warning
         #endif
 
         // Just verify we can read the global level

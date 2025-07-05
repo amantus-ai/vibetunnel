@@ -37,7 +37,8 @@ struct AuthenticationTests {
 
         // Decode and verify
         if let decodedData = Data(base64Encoded: encodedCredentials),
-           let decodedString = String(data: decodedData, encoding: .utf8) {
+           let decodedString = String(data: decodedData, encoding: .utf8)
+        {
             #expect(decodedString == credentials)
         }
     }
@@ -330,7 +331,8 @@ struct AuthenticationTests {
                     let pattern = allowed.replacingOccurrences(of: "*", with: "[^.]+")
                     let regex = try? NSRegularExpression(pattern: "^" + pattern + "$")
                     if let regex,
-                       regex.firstMatch(in: origin, range: NSRange(origin.startIndex..., in: origin)) != nil {
+                       regex.firstMatch(in: origin, range: NSRange(origin.startIndex..., in: origin)) != nil
+                    {
                         return true
                     }
                 }

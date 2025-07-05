@@ -46,7 +46,8 @@ extension MockURLProtocol {
         data: Data? = nil,
         headers: [String: String] = [:]
     )
-        -> (HTTPURLResponse, Data?) {
+        -> (HTTPURLResponse, Data?)
+    {
         let response = HTTPURLResponse(
             url: url,
             statusCode: statusCode,
@@ -61,7 +62,8 @@ extension MockURLProtocol {
         statusCode: Int = 200,
         json: Any
     )
-        throws -> (HTTPURLResponse, Data?) {
+        throws -> (HTTPURLResponse, Data?)
+    {
         let data = try JSONSerialization.data(withJSONObject: json)
         let headers = ["Content-Type": "application/json"]
         return successResponse(for: url, statusCode: statusCode, data: data, headers: headers)
@@ -72,7 +74,8 @@ extension MockURLProtocol {
         statusCode: Int,
         message: String? = nil
     )
-        -> (HTTPURLResponse, Data?) {
+        -> (HTTPURLResponse, Data?)
+    {
         var data: Data?
         if let message {
             let json = ["error": message]

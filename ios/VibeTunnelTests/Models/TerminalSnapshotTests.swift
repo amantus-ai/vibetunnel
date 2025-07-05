@@ -4,7 +4,6 @@ import Testing
 
 @Suite("TerminalSnapshot Tests", .tags(.models))
 struct TerminalSnapshotTests {
-
     @Test("Terminal snapshot initialization")
     func terminalSnapshotInit() {
         let events = [
@@ -12,8 +11,17 @@ struct TerminalSnapshotTests {
             AsciinemaEvent(time: 1.0, type: .output, data: "Line 2 with some text\n"),
             AsciinemaEvent(time: 2.0, type: .output, data: "Line 3\n")
         ]
-        
-        let header = AsciinemaHeader(version: 2, width: 80, height: 24, timestamp: nil, duration: nil, command: nil, title: nil, env: nil)
+
+        let header = AsciinemaHeader(
+            version: 2,
+            width: 80,
+            height: 24,
+            timestamp: nil,
+            duration: nil,
+            command: nil,
+            title: nil,
+            env: nil
+        )
         let snapshot = TerminalSnapshot(sessionId: "test-session", header: header, events: events)
 
         #expect(snapshot.sessionId == "test-session")
@@ -148,13 +156,13 @@ struct TerminalSnapshotTests {
 
         // Should include the last line
         #expect(preview.contains("Line 100"))
-        
+
         // Should NOT contain early lines (they should be truncated)
         // The issue might be that "Line 1" is a substring of "Line 10", "Line 11", etc.
         // Let's be more specific about what we're testing
         #expect(!preview.hasPrefix("Line 1\n"))
         #expect(!preview.contains("Line 1\n"))
-        
+
         // Should contain recent lines
         #expect(preview.contains("Line 97") || preview.contains("Line 98") || preview.contains("Line 99"))
     }
@@ -167,9 +175,9 @@ struct TerminalSnapshotTests {
             AsciinemaEvent(time: 2.0, type: .output, data: "Output 2\n"),
             AsciinemaEvent(time: 3.0, type: .resize, data: "80x24")
         ]
-        
+
         let snapshot = TerminalSnapshot(sessionId: "mixed", header: nil, events: events)
-        
+
         // Output preview should only include output events
         let preview = snapshot.outputPreview
         #expect(preview.contains("Output 1"))
@@ -184,19 +192,19 @@ struct TerminalSnapshotTests {
             version: 2,
             width: 120,
             height: 40,
-            timestamp: 1700000000,
+            timestamp: 1_700_000_000,
             duration: nil,
             command: nil,
             title: "Test Recording",
             env: ["SHELL": "/bin/zsh", "TERM": "xterm-256color"]
         )
-        
+
         let snapshot = TerminalSnapshot(sessionId: "header-test", header: header, events: [])
-        
+
         #expect(snapshot.header?.version == 2)
         #expect(snapshot.header?.width == 120)
         #expect(snapshot.header?.height == 40)
-        #expect(snapshot.header?.timestamp == 1700000000)
+        #expect(snapshot.header?.timestamp == 1_700_000_000)
         #expect(snapshot.header?.title == "Test Recording")
         #expect(snapshot.header?.env?["SHELL"] == "/bin/zsh")
         #expect(snapshot.header?.env?["TERM"] == "xterm-256color")

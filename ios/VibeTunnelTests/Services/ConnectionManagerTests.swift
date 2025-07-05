@@ -37,7 +37,6 @@ struct ConnectionManagerTests {
         #expect(manager.isConnected == false)
     }
 
-
     @Test("Saves connection timestamp")
     func connectionTimestamp() throws {
         // Arrange
@@ -197,7 +196,7 @@ struct ConnectionManagerTests {
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
         let config = TestFixtures.validServerConfig
         manager.saveConnection(config)
-        
+
         // Verify auth service is created
         #expect(manager.authenticationService != nil)
 
@@ -227,18 +226,18 @@ struct ConnectionManagerTests {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
-        
+
         // Verify initial state
         #expect(manager.isConnected == false)
         #expect(mockStorage.bool(forKey: "connectionState") == false)
 
         // Act - Change state and verify immediate observation
         manager.isConnected = true
-        
+
         // Assert - State should be immediately observable (synchronous)
         #expect(manager.isConnected == true)
         #expect(mockStorage.bool(forKey: "connectionState") == true)
-        
+
         // Test state change back to false
         manager.isConnected = false
         #expect(manager.isConnected == false)
@@ -262,23 +261,22 @@ struct ConnectionManagerTests {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
-        
+
         // Initially false
         #expect(manager.isConnected == false)
-        
+
         // Setting to same value shouldn't trigger storage write
         manager.isConnected = false
         #expect(mockStorage.bool(forKey: "connectionState") == false)
-        
+
         // Change to true should trigger storage write
         manager.isConnected = true
         #expect(mockStorage.bool(forKey: "connectionState") == true)
-        
+
         // Setting to same value again shouldn't trigger additional write
         manager.isConnected = true
         #expect(mockStorage.bool(forKey: "connectionState") == true)
     }
-
 
     @Test("Authentication service cleanup on failed logout")
     func authServiceCleanupOnFailedLogout() async throws {
@@ -287,7 +285,7 @@ struct ConnectionManagerTests {
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
         let config = TestFixtures.validServerConfig
         manager.saveConnection(config)
-        
+
         // Verify auth service is created
         #expect(manager.authenticationService != nil)
 
@@ -304,11 +302,11 @@ struct ConnectionManagerTests {
         // This test verifies that if encoding fails, the connection isn't saved
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
-        
+
         // Create a config that should encode successfully first
         let validConfig = TestFixtures.validServerConfig
         manager.saveConnection(validConfig)
-        
+
         // Verify the config was saved
         #expect(manager.serverConfig != nil)
         #expect(mockStorage.hasValue(forKey: "savedServerConfig"))

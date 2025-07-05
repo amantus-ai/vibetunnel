@@ -4,7 +4,6 @@ import Testing
 
 @Suite("CastFile Tests", .tags(.models))
 struct CastFileTests {
-
     @Test("Parse simple cast file")
     func parseSimpleCastFile() throws {
         let castContent = """
@@ -49,7 +48,7 @@ struct CastFileTests {
         #expect(player.header.version == 2)
         #expect(player.header.width == 120)
         #expect(player.header.height == 40)
-        #expect(player.header.timestamp == 1700000000)
+        #expect(player.header.timestamp == 1_700_000_000)
         #expect(player.header.title == "Demo Recording")
         #expect(player.header.env?["SHELL"] == "/bin/bash")
         #expect(player.header.env?["TERM"] == "xterm-256color")
@@ -248,16 +247,16 @@ struct CastFileTests {
 
         actor EventCollector {
             private var events: [CastEvent] = []
-            
+
             func addEvent(_ event: CastEvent) {
                 events.append(event)
             }
-            
+
             func getEvents() -> [CastEvent] {
-                return events
+                events
             }
         }
-        
+
         let collector = EventCollector()
 
         // Test async play method

@@ -36,13 +36,13 @@ struct PerformanceTests {
         #expect(result1 == result2)
         #expect(!result1.isEmpty)
         #expect(!result2.isEmpty)
-        
+
         // Verify the content is correct
         let lines1 = result1.split(separator: "\n")
         let lines2 = result2.split(separator: "\n")
         #expect(lines1.count == iterations)
         #expect(lines2.count == iterations)
-        
+
         // Verify first and last lines
         #expect(lines1.first == "Line 0")
         #expect(lines1.last == "Line \(iterations - 1)")
@@ -178,20 +178,20 @@ struct PerformanceTests {
 
         actor ResultsActor {
             private var results: [Int]
-            
+
             init(count: Int) {
                 self.results = [Int](repeating: 0, count: count)
             }
-            
+
             func set(_ value: Int, at index: Int) {
                 results[index] = value
             }
-            
+
             func getResults() -> [Int] {
                 results
             }
         }
-        
+
         let resultsActor = ResultsActor(count: iterations)
 
         // Perform concurrent operations
@@ -224,16 +224,16 @@ struct PerformanceTests {
     func lockContention() {
         actor SharedCounter {
             private var value = 0
-            
+
             func increment() {
                 value += 1
             }
-            
+
             func getValue() -> Int {
                 value
             }
         }
-        
+
         let sharedCounter = SharedCounter()
         let iterations = 1_000
         let queues = 4
@@ -304,19 +304,19 @@ struct PerformanceTests {
         let session = URLSession(configuration: .ephemeral)
         let iterations = 10
         let group = DispatchGroup()
-        
+
         actor SuccessCounter {
             private var count = 0
-            
+
             func increment() {
                 count += 1
             }
-            
+
             func getCount() -> Int {
                 count
             }
         }
-        
+
         let successCounter = SuccessCounter()
 
         for i in 0..<iterations {
@@ -362,7 +362,7 @@ struct PerformanceTests {
         // Verify both sorted correctly
         #expect(array1 == Array(0..<size))
         #expect(array2 == Array(0..<size))
-        
+
         // Verify sorting is stable and complete
         for i in 0..<size {
             #expect(array1[i] == i)
@@ -395,7 +395,7 @@ struct PerformanceTests {
         // Verify both methods work correctly
         #expect(dictionary.count == iterations)
         #expect(preSized.count == iterations)
-        
+
         // Verify all values are stored correctly
         for i in 0..<iterations {
             #expect(dictionary[i] == "Value \(i)")

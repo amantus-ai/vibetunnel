@@ -4,7 +4,6 @@ import Testing
 
 @Suite("TerminalData Tests", .tags(.models))
 struct TerminalDataTests {
-
     // MARK: - TerminalEvent Tests
 
     @Test("Parse header event")
@@ -25,11 +24,11 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: headerJSON)
         #expect(event != nil)
 
-        if case let .header(header) = event {
+        if case .header(let header) = event {
             #expect(header.version == 2)
             #expect(header.width == 80)
             #expect(header.height == 24)
-            #expect(header.timestamp == 1234567890.5)
+            #expect(header.timestamp == 1_234_567_890.5)
             #expect(header.duration == 120.5)
             #expect(header.command == "/bin/bash")
             #expect(header.title == "Test Session")
@@ -53,7 +52,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: headerJSON)
         #expect(event != nil)
 
-        if case let .header(header) = event {
+        if case .header(let header) = event {
             #expect(header.version == 2)
             #expect(header.width == 80)
             #expect(header.height == 24)
@@ -74,7 +73,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: outputJSON)
         #expect(event != nil)
 
-        if case let .output(timestamp, data) = event {
+        if case .output(let timestamp, let data) = event {
             #expect(timestamp == 1.5)
             #expect(data == "Hello, world!\r\n")
         } else {
@@ -89,7 +88,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: resizeJSON)
         #expect(event != nil)
 
-        if case let .resize(timestamp, dimensions) = event {
+        if case .resize(let timestamp, let dimensions) = event {
             #expect(timestamp == 2.5)
             #expect(dimensions == "80x25")
         } else {
@@ -104,7 +103,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: exitJSON)
         #expect(event != nil)
 
-        if case let .exit(code, sessionId) = event {
+        if case .exit(let code, let sessionId) = event {
             #expect(code == 0)
             #expect(sessionId == "test-session-123")
         } else {
@@ -119,7 +118,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: exitJSON)
         #expect(event != nil)
 
-        if case let .exit(code, sessionId) = event {
+        if case .exit(let code, let sessionId) = event {
             #expect(code == 127)
             #expect(sessionId == "error-session")
         } else {
@@ -192,7 +191,7 @@ struct TerminalDataTests {
             version: 2,
             width: 120,
             height: 40,
-            timestamp: 1234567890.123,
+            timestamp: 1_234_567_890.123,
             duration: 300.5,
             command: "/bin/zsh",
             title: "My Terminal Session",

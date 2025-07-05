@@ -4,7 +4,6 @@ import Testing
 
 @Suite("TerminalRenderer Tests", .tags(.models))
 struct TerminalRendererTests {
-
     let userDefaultsKey = "selectedTerminalRenderer"
 
     @Test("All cases have raw values")
@@ -33,7 +32,10 @@ struct TerminalRendererTests {
         #expect(TerminalRenderer.selected == .swiftTerm)
     }
 
-    @Test("Selection persists to UserDefaults", .disabled("UserDefaults direct usage needs dependency injection refactor"))
+    @Test(
+        "Selection persists to UserDefaults",
+        .disabled("UserDefaults direct usage needs dependency injection refactor")
+    )
     func selectionPersistence() {
         // Store original value to restore after test
         let originalRenderer = TerminalRenderer.selected
@@ -41,7 +43,7 @@ struct TerminalRendererTests {
             // Restore original value
             TerminalRenderer.selected = originalRenderer
         }
-        
+
         // Set to xterm
         TerminalRenderer.selected = .xterm
 
@@ -63,7 +65,10 @@ struct TerminalRendererTests {
         #expect(TerminalRenderer.selected == .swiftTerm)
     }
 
-    @Test("Invalid UserDefaults value returns default", .disabled("UserDefaults direct usage needs dependency injection refactor"))
+    @Test(
+        "Invalid UserDefaults value returns default",
+        .disabled("UserDefaults direct usage needs dependency injection refactor")
+    )
     func invalidUserDefaultsValue() {
         // Set invalid value directly
         UserDefaults.standard.set("InvalidRenderer", forKey: userDefaultsKey)
@@ -104,7 +109,7 @@ struct TerminalRendererTests {
             // Restore original value
             TerminalRenderer.selected = originalRenderer
         }
-        
+
         // Test each renderer
         for renderer in TerminalRenderer.allCases {
             // Clear UserDefaults

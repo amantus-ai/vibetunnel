@@ -124,7 +124,7 @@ class MockWebSocket: WebSocketProtocol {
         messageDeliveryTask?.cancel()
         messageDeliveryTask = nil
     }
-    
+
     /// Clear tracked state but preserve connection state
     func reset(preserveConnection: Bool) {
         let wasConnected = isConnected
@@ -157,7 +157,8 @@ class MockWebSocket: WebSocketProtocol {
     func sentJSONMessages() -> [[String: Any]] {
         sentStringMessages().compactMap { string in
             guard let data = string.data(using: .utf8),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else {
                 return nil
             }
             return json
@@ -167,7 +168,7 @@ class MockWebSocket: WebSocketProtocol {
     private func startMessageDelivery() {
         messageDeliveryTask = Task { [weak self] in
             while !Task.isCancelled {
-                guard let self = self else { break }
+                guard let self else { break }
 
                 if !messageQueue.isEmpty {
                     let message = messageQueue.removeFirst()
