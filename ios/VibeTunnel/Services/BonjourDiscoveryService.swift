@@ -13,7 +13,8 @@ protocol BonjourDiscoveryProtocol {
     func stopDiscovery()
 }
 
-/// Represents a discovered VibeTunnel server
+/// Represents a discovered VibeTunnel server.
+/// Contains server information including name, host, port, and metadata.
 struct DiscoveredServer: Identifiable, Equatable {
     let id = UUID()
     let name: String
@@ -207,6 +208,8 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
 
 // MARK: - Discovery Sheet View
 
+/// Sheet view for discovering VibeTunnel servers on the local network.
+/// Displays found servers and allows selection for connection.
 struct ServerDiscoverySheet: View {
     @Binding var selectedHost: String
     @Binding var selectedPort: String

@@ -322,6 +322,8 @@ struct SystemLogsView: View {
 }
 
 /// Custom toggle style for filter chips
+/// Custom toggle style resembling a selectable chip.
+/// Provides a compact, button-like appearance for filter toggles.
 struct ChipToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button(action: { configuration.isOn.toggle() }, label: {

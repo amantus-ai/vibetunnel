@@ -1,6 +1,7 @@
 import Foundation
 
-/// Simple logger for VibeTunnel iOS app
+/// Log severity levels for filtering output.
+/// Higher raw values indicate more severe messages.
 enum LogLevel: Int {
     case verbose = 0
     case debug = 1
@@ -19,6 +20,8 @@ enum LogLevel: Int {
     }
 }
 
+/// Simple logging utility for debugging and diagnostics.
+/// Provides category-based logging with configurable severity levels.
 struct Logger {
     private let category: String
 

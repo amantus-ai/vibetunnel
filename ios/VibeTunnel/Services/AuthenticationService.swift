@@ -21,7 +21,8 @@ enum AuthenticationError: LocalizedError {
     }
 }
 
-/// Authentication service for managing JWT token-based authentication
+/// Authentication service for managing JWT token-based authentication.
+/// Handles login, token storage, and authentication state management.
 @MainActor
 final class AuthenticationService: ObservableObject {
     private let logger = Logger(category: "AuthenticationService")
@@ -35,18 +36,24 @@ final class AuthenticationService: ObservableObject {
 
     // MARK: - Types
 
+    /// Supported authentication methods.
+    /// Defines the different ways users can authenticate with the server.
     enum AuthMethod: String, Codable {
         case password = "password"
         case sshKey = "ssh-key"
         case noAuth = "no-auth"
     }
 
+    /// Server authentication configuration.
+    /// Describes which authentication methods are enabled on the server.
     struct AuthConfig: Codable {
         let noAuth: Bool
         let enableSSHKeys: Bool
         let disallowUserPassword: Bool
     }
 
+    /// Authentication response from the server.
+    /// Contains authentication result and optional token/error information.
     struct AuthResponse: Codable {
         let success: Bool
         let token: String?
@@ -55,6 +62,8 @@ final class AuthenticationService: ObservableObject {
         let error: String?
     }
 
+    /// User authentication data stored locally.
+    /// Persists user information and login metadata.
     struct UserData: Codable {
         let userId: String
         let authMethod: String

@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Terminal color theme definition.
+/// Defines a complete color palette for terminal rendering including ANSI colors.
 struct TerminalTheme: Identifiable, Equatable {
     let id: String
     let name: String

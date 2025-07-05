@@ -5,6 +5,8 @@ import SwiftUI
 
     // MARK: - Window Style
 
+    /// Mac Catalyst window appearance styles.
+    /// Controls title bar visibility and traffic light positioning.
     enum MacWindowStyle {
         case standard // Normal title bar with traffic lights
         case inline // Hidden title bar with repositioned traffic lights
@@ -12,6 +14,8 @@ import SwiftUI
 
     // MARK: - UIWindow Extension
 
+    /// UIWindow extension for accessing NSWindow in Mac Catalyst.
+    /// Provides bridge to AppKit window functionality on macOS.
     extension UIWindow {
         /// Access the underlying NSWindow in Mac Catalyst
         var nsWindow: NSObject? {
@@ -23,6 +27,8 @@ import SwiftUI
 
     // MARK: - Window Manager
 
+    /// Manages Mac Catalyst window customizations.
+    /// Handles window style changes and traffic light button repositioning.
     @MainActor
     class MacCatalystWindowManager: ObservableObject {
         static let shared = MacCatalystWindowManager()
@@ -264,6 +270,8 @@ import SwiftUI
 
     // MARK: - View Modifier
 
+    /// View modifier for applying Mac Catalyst window styles.
+    /// Configures window appearance when the view appears.
     struct MacCatalystWindowStyle: ViewModifier {
         let style: MacWindowStyle
         @StateObject private var windowManager = MacCatalystWindowManager.shared
@@ -288,6 +296,8 @@ import SwiftUI
 
     // MARK: - View Extension
 
+    /// View extension for Mac Catalyst window configuration.
+    /// Enables views to configure window style on Mac Catalyst builds.
     extension View {
         /// Configure the Mac Catalyst window style
         func macCatalystWindowStyle(_ style: MacWindowStyle) -> some View {

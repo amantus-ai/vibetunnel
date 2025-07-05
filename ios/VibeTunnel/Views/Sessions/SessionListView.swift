@@ -356,6 +356,8 @@ struct SessionListView: View {
 }
 
 /// Protocol defining the interface for session list view model
+/// Protocol defining the interface for session list view models.
+/// Ensures testability and separation of concerns for session management.
 @MainActor
 protocol SessionListViewModelProtocol: Observable {
     var sessions: [Session] { get }
@@ -374,6 +376,8 @@ protocol SessionListViewModelProtocol: Observable {
 }
 
 /// View model for managing session list state and operations.
+/// View model managing terminal session state and operations.
+/// Handles session creation, deletion, and real-time updates via WebSocket.
 @MainActor
 @Observable
 class SessionListViewModel: SessionListViewModelProtocol {
@@ -501,6 +505,8 @@ class SessionListViewModel: SessionListViewModelProtocol {
 
 // MARK: - Extracted Components
 
+/// Header component displaying session list title and actions.
+/// Shows session count and provides quick access to create new sessions.
 struct SessionHeaderView: View {
     let sessions: [Session]
     @Binding var showExitedSessions: Bool
@@ -550,6 +556,8 @@ struct SessionHeaderView: View {
     }
 }
 
+/// Badge component showing the total number of sessions.
+/// Displays count with consistent styling across the app.
 struct SessionCountBadge: View {
     let label: String
     let count: Int

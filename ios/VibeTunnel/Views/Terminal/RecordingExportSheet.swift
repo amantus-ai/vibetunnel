@@ -153,6 +153,8 @@ struct RecordingExportSheet: View {
 ///
 /// Presents the system share sheet for exporting files
 /// and sharing content with other apps.
+/// UIKit share sheet wrapper for exporting files.
+/// Presents the system share interface for cast file sharing.
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
 

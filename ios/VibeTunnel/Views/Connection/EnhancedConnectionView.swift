@@ -278,6 +278,8 @@ struct EnhancedConnectionView: View {
 
 // MARK: - Server Profile Edit View
 
+/// Form view for editing server profile details.
+/// Allows modification of server name, URL, and authentication settings.
 struct ServerProfileEditView: View {
     @State var profile: ServerProfile
     let onSave: (ServerProfile, String?) -> Void

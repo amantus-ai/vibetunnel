@@ -1,7 +1,8 @@
 import Foundation
 import Network
 
-/// Manages automatic reconnection with exponential backoff
+/// Manages automatic reconnection with exponential backoff.
+/// Monitors network status and attempts to restore connections when possible.
 @MainActor
 @Observable
 class ReconnectionManager {

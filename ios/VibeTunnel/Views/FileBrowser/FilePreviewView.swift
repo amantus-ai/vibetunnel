@@ -142,6 +142,8 @@ struct FilePreviewView: View {
 }
 
 /// WebView-based syntax highlighted text view
+/// UIKit view wrapper for syntax-highlighted text display.
+/// Uses NSAttributedString to render code with appropriate syntax coloring.
 struct SyntaxHighlightedView: UIViewRepresentable {
     let content: String
     let language: String
@@ -215,6 +217,8 @@ struct SyntaxHighlightedView: UIViewRepresentable {
 }
 
 /// View for displaying git diffs
+/// View for displaying Git diff content with visual indicators.
+/// Shows additions, deletions, and context lines with appropriate styling.
 struct GitDiffView: View {
     let diff: FileDiff
     @Environment(\.dismiss)
@@ -243,6 +247,8 @@ struct GitDiffView: View {
 }
 
 /// WebView for displaying diffs with syntax highlighting
+/// Web view wrapper for rendering complex diff visualizations.
+/// Uses WebKit to display formatted diff content with highlighting.
 struct DiffWebView: UIViewRepresentable {
     let content: String
 

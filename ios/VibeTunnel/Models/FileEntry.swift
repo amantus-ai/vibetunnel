@@ -1,6 +1,7 @@
 import Foundation
 
-/// Git status for a file
+/// Git status for a file.
+/// Represents the various states a file can have in a Git repository.
 enum GitFileStatus: String, Codable {
     case modified
     case added
@@ -126,7 +127,8 @@ struct FileEntry: Codable, Identifiable {
     }
 }
 
-/// Git status information for a directory
+/// Git status information for a directory.
+/// Contains repository state including branch and file change lists.
 struct GitStatus: Codable {
     let isGitRepo: Bool
     let branch: String?

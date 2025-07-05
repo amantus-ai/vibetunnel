@@ -1,6 +1,7 @@
 import Foundation
 
-/// Common terminal width presets
+/// Common terminal width presets.
+/// Provides standard terminal column widths with descriptive labels.
 enum TerminalWidth: CaseIterable, Equatable {
     case unlimited
     case classic80
@@ -71,7 +72,8 @@ enum TerminalWidth: CaseIterable, Equatable {
     }
 }
 
-/// Manager for terminal width preferences
+/// Manager for terminal width preferences.
+/// Handles persistent storage of default and custom terminal widths.
 @MainActor
 class TerminalWidthManager {
     static let shared = TerminalWidthManager()

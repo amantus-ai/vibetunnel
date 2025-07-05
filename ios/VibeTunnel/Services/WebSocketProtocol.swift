@@ -1,6 +1,7 @@
 import Foundation
 
-/// Protocol for WebSocket operations to enable testing
+/// Protocol for WebSocket operations to enable testing.
+/// Defines the interface for WebSocket connections and messaging.
 @MainActor
 protocol WebSocketProtocol: AnyObject {
     var delegate: WebSocketDelegate? { get set }
@@ -11,13 +12,15 @@ protocol WebSocketProtocol: AnyObject {
     func disconnect(with code: URLSessionWebSocketTask.CloseCode, reason: Data?)
 }
 
-/// WebSocket message types
+/// WebSocket message types.
+/// Represents different types of messages that can be sent over WebSocket.
 enum WebSocketMessage {
     case string(String)
     case data(Data)
 }
 
-/// Delegate protocol for WebSocket events
+/// Delegate protocol for WebSocket events.
+/// Provides callbacks for connection state changes and message reception.
 @MainActor
 protocol WebSocketDelegate: AnyObject {
     func webSocketDidConnect(_ webSocket: WebSocketProtocol)
@@ -30,7 +33,8 @@ protocol WebSocketDelegate: AnyObject {
     )
 }
 
-/// Real implementation of WebSocketProtocol using URLSessionWebSocketTask
+/// Real implementation of WebSocketProtocol using URLSessionWebSocketTask.
+/// Provides WebSocket functionality using iOS native URLSession APIs.
 @MainActor
 class URLSessionWebSocket: NSObject, WebSocketProtocol {
     weak var delegate: WebSocketDelegate?

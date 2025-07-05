@@ -395,6 +395,8 @@ struct ServerListView: View {
 
 // MARK: - Server Profile Card (moved from EnhancedConnectionView)
 
+/// Card component displaying server profile information.
+/// Shows server name, URL, authentication status, and last connection time.
 struct ServerProfileCard: View {
     let profile: ServerProfile
     let isLoading: Bool

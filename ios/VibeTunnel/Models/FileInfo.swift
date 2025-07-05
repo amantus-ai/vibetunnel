@@ -1,5 +1,7 @@
 import Foundation
 
+/// Detailed file metadata including MIME type and permissions.
+/// Extended version of FileEntry with additional properties for file operations.
 struct FileInfo: Codable {
     let name: String
     let path: String

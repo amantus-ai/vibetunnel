@@ -200,6 +200,8 @@ struct AdvancedKeyboardView: View {
 }
 
 /// Special key button component
+/// Button component for special terminal keys.
+/// Renders keys like Tab, Esc with consistent styling and tap feedback.
 struct SpecialKeyButton: View {
     let label: String
     let key: String
@@ -225,6 +227,8 @@ struct SpecialKeyButton: View {
 }
 
 /// Control key combination button
+/// Button component for Ctrl key combinations.
+/// Displays the key combination and sends appropriate control sequences.
 struct CtrlKeyButton: View {
     let char: String
     let onPress: (String) -> Void
@@ -254,6 +258,8 @@ struct CtrlKeyButton: View {
 }
 
 /// Function key button
+/// Button component for function keys (F1-F12).
+/// Provides access to function key inputs with visual feedback.
 struct FunctionKeyButton: View {
     let number: Int
     let onPress: (String) -> Void

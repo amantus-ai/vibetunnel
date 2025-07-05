@@ -133,6 +133,8 @@ struct CtrlKeyGrid: View {
 }
 
 /// Individual Ctrl key button for the grid
+/// Individual button in the Ctrl key grid.
+/// Displays the key label and handles tap to send control sequence.
 struct CtrlGridKeyButton: View {
     let key: String
     let description: String

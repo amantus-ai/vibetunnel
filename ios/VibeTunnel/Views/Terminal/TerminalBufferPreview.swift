@@ -130,6 +130,8 @@ struct TerminalBufferPreview: View {
 
 /// A simplified terminal preview that shows only the last visible lines.
 /// More efficient for small previews in session cards.
+/// Compact terminal preview for session cards.
+/// Displays a small, non-interactive view of terminal content.
 struct CompactTerminalPreview: View {
     let snapshot: BufferSnapshot
     let maxLines: Int

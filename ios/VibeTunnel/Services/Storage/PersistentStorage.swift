@@ -1,6 +1,7 @@
 import Foundation
 
-/// Protocol for persistent storage operations used by ConnectionManager
+/// Protocol for persistent storage operations used by ConnectionManager.
+/// Provides abstraction over storage implementation for testability.
 protocol PersistentStorage {
     func data(forKey key: String) -> Data?
     func set(_ value: Any?, forKey key: String)
@@ -9,7 +10,8 @@ protocol PersistentStorage {
     func removeObject(forKey key: String)
 }
 
-/// UserDefaults implementation of PersistentStorage
+/// UserDefaults implementation of PersistentStorage.
+/// Stores connection data and preferences in standard UserDefaults.
 final class UserDefaultsStorage: PersistentStorage {
     private let userDefaults: UserDefaults
 
@@ -38,7 +40,8 @@ final class UserDefaultsStorage: PersistentStorage {
     }
 }
 
-/// In-memory mock implementation for testing
+/// In-memory mock implementation for testing.
+/// Provides isolated storage for unit tests without persisting data.
 final class MockStorage: PersistentStorage {
     private var storage: [String: Any] = [:]
 

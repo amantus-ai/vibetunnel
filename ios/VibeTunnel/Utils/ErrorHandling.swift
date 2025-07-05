@@ -2,7 +2,8 @@ import SwiftUI
 
 // MARK: - Error Alert Modifier
 
-/// A view modifier that presents errors using SwiftUI's built-in alert system
+/// A view modifier that presents errors using SwiftUI's built-in alert system.
+/// Provides consistent error presentation throughout the app with alert dialogs.
 struct ErrorAlertModifier: ViewModifier {
     @Binding var error: Error?
     let onDismiss: (() -> Void)?
@@ -24,6 +25,8 @@ struct ErrorAlertModifier: ViewModifier {
     }
 }
 
+/// View extension for error presentation.
+/// Provides convenient methods to show error alerts in SwiftUI views.
 extension View {
     /// Presents an error alert when an error is present
     func errorAlert(
@@ -38,12 +41,15 @@ extension View {
 
 // MARK: - Identifiable Error
 
-/// Makes any Error conform to Identifiable for SwiftUI presentation
+/// Makes any Error conform to Identifiable for SwiftUI presentation.
+/// Wraps errors with a unique ID to enable SwiftUI sheet and alert presentation.
 struct IdentifiableError: Identifiable {
     let id = UUID()
     let error: Error
 }
 
+/// View extension for identifiable error alerts.
+/// Enables error presentation using SwiftUI's item-based alert API.
 extension View {
     /// Presents an error alert using an identifiable error wrapper
     func errorAlert(item: Binding<IdentifiableError?>) -> some View {
@@ -63,11 +69,14 @@ extension View {
 
 // MARK: - Error Recovery
 
-/// Protocol for errors that can provide recovery suggestions
+/// Protocol for errors that can provide recovery suggestions.
+/// Enables errors to provide user-friendly recovery guidance.
 protocol RecoverableError: Error {
     var recoverySuggestion: String? { get }
 }
 
+/// APIError extension for recovery suggestions.
+/// Provides user-friendly recovery messages for API-related errors.
 extension APIError: RecoverableError {
     var recoverySuggestion: String? {
         switch self {
@@ -94,7 +103,8 @@ extension APIError: RecoverableError {
 
 // MARK: - Error Banner View
 
-/// A reusable error banner component
+/// A reusable error banner component.
+/// Displays inline error messages with optional offline indicators and dismiss actions.
 struct ErrorBanner: View {
     let message: String
     let isOffline: Bool
@@ -146,6 +156,8 @@ struct ErrorBanner: View {
 
 // MARK: - Task Error Handling
 
+/// Task extension for async error handling.
+/// Provides a convenient way to handle errors in async operations with automatic main actor dispatch.
 extension Task where Failure == Error {
     /// Executes an async operation with error handling
     @discardableResult

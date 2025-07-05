@@ -2,7 +2,6 @@ import SwiftUI
 import UIKit
 
 /// Design system for the VibeTunnel app.
-///
 /// Centralizes all visual styling including colors, typography,
 /// spacing, corner radii, and animations for consistent UI.
 enum Theme {
@@ -164,6 +163,8 @@ enum Theme {
 
 // MARK: - Color Extensions
 
+/// Color extension for hex initialization and dark mode support.
+/// Provides convenience initializers for creating colors from hex strings and adaptive colors.
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -205,6 +206,8 @@ extension Color {
 
 // MARK: - View Modifiers
 
+/// View extension for terminal UI styling.
+/// Provides pre-configured modifiers for consistent terminal app appearance.
 extension View {
     func terminalCard() -> some View {
         self
@@ -246,6 +249,8 @@ extension View {
 
 // MARK: - Haptic Feedback
 
+/// Protocol for haptic feedback functionality.
+/// Provides methods for various types of tactile feedback.
 @MainActor
 protocol HapticFeedbackProtocol {
     func impact(_ style: HapticFeedback.ImpactStyle)
@@ -253,6 +258,8 @@ protocol HapticFeedbackProtocol {
     func notification(_ type: HapticFeedback.NotificationType)
 }
 
+/// Provides haptic feedback for user interactions.
+/// Wraps UIKit haptic generators with a SwiftUI-friendly API.
 @MainActor
 struct HapticFeedback: HapticFeedbackProtocol {
     static let shared: HapticFeedbackProtocol = Self()

@@ -125,6 +125,8 @@ struct ConnectionView: View {
 }
 
 /// View model for managing connection form state and validation.
+/// View model for managing connection state and server discovery.
+/// Handles server configuration, Bonjour discovery, and connection initiation.
 @Observable
 class ConnectionViewModel {
     var host: String = "127.0.0.1"

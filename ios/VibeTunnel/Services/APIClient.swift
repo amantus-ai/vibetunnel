@@ -740,6 +740,8 @@ class APIClient: APIClientProtocol {
 
 // MARK: - File Preview Types
 
+/// Contains preview information for a file.
+/// Includes content type, language hints, and metadata for display.
 struct FilePreview: Codable {
     let type: FilePreviewType
     let content: String?
@@ -748,17 +750,23 @@ struct FilePreview: Codable {
     let mimeType: String?
 }
 
+/// Types of file previews supported by the system.
+/// Determines how file content should be displayed.
 enum FilePreviewType: String, Codable {
     case text
     case image
     case binary
 }
 
+/// Git diff information for a file.
+/// Contains the diff content and file path.
 struct FileDiff: Codable {
     let diff: String
     let path: String
 }
 
+/// Information about system log files.
+/// Provides metadata about log size and modification time.
 struct LogsInfo: Codable {
     let size: Int64
     let lastModified: String?

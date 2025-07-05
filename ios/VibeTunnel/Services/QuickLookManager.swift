@@ -2,6 +2,8 @@ import Foundation
 import QuickLook
 import SwiftUI
 
+/// Manager for previewing files using iOS QuickLook framework.
+/// Handles file downloads and presentation of preview controllers.
 @MainActor
 class QuickLookManager: NSObject, ObservableObject {
     static let shared = QuickLookManager()
@@ -125,6 +127,8 @@ extension QuickLookManager: QLPreviewControllerDelegate {
 
 // MARK: - Preview Item
 
+/// Wrapper class for QuickLook preview items.
+/// Provides URL and title for files to be previewed.
 private class PreviewItem: NSObject, QLPreviewItem {
     let previewItemURL: URL?
     let previewItemTitle: String?
@@ -137,6 +141,8 @@ private class PreviewItem: NSObject, QLPreviewItem {
 
 // MARK: - Errors
 
+/// Errors that can occur during QuickLook operations.
+/// Provides specific error cases for preview failures.
 enum QuickLookError: LocalizedError {
     case isDirectory
     case downloadFailed

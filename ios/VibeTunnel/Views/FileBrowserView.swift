@@ -440,6 +440,8 @@ struct FileBrowserView: View {
 ///
 /// Shows file/directory icon, name, size, and modification time
 /// with appropriate styling for directories and parent navigation.
+/// Row component for displaying a file or directory in the browser.
+/// Shows icon, name, and optional Git status with appropriate styling.
 struct FileBrowserRow: View {
     let name: String
     let isDirectory: Bool
@@ -635,6 +637,8 @@ struct FileBrowserRow: View {
 ///
 /// Provides subtle scale and opacity animations on press
 /// for a responsive terminal-like interaction feel.
+/// Custom button style matching terminal aesthetics.
+/// Provides consistent appearance for interactive elements in the file browser.
 struct TerminalButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -645,6 +649,8 @@ struct TerminalButtonStyle: ButtonStyle {
 }
 
 /// View model for file browser navigation and operations.
+/// View model for file browser operations.
+/// Manages file system navigation, file operations, and Git status tracking.
 @MainActor
 @Observable
 class FileBrowserViewModel {
@@ -785,6 +791,8 @@ class FileBrowserViewModel {
 }
 
 /// Git status badge component for displaying file status
+/// Badge component displaying Git file status.
+/// Shows visual indicators for modified, new, deleted, or renamed files.
 struct GitStatusBadge: View {
     let status: GitFileStatus
 

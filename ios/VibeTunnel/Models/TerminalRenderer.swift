@@ -1,6 +1,7 @@
 import Foundation
 
-/// Available terminal renderer implementations
+/// Available terminal renderer implementations.
+/// Allows users to choose between native Swift or web-based terminal rendering.
 enum TerminalRenderer: String, CaseIterable, Codable {
     case swiftTerm = "SwiftTerm"
     case xterm = "xterm.js"

@@ -10,7 +10,8 @@ protocol NetworkMonitoring {
     var isConnected: Bool { get }
 }
 
-/// Monitors network connectivity and provides offline/online state
+/// Monitors network connectivity and provides offline/online state.
+/// Tracks connection type, expense status, and provides reachability checks.
 @MainActor
 @Observable
 final class NetworkMonitor: NetworkMonitoring {
@@ -122,6 +123,8 @@ final class NetworkMonitor: NetworkMonitoring {
 
 // MARK: - Notification Names
 
+/// Network-related notification names.
+/// Used to broadcast network state changes throughout the app.
 extension Notification.Name {
     static let networkBecameAvailable = Notification.Name("networkBecameAvailable")
     static let networkBecameUnavailable = Notification.Name("networkBecameUnavailable")
@@ -129,6 +132,8 @@ extension Notification.Name {
 
 // MARK: - View Modifier for Offline Banner
 
+/// View modifier that displays an offline banner when network connection is lost.
+/// Automatically shows/hides based on network status changes.
 struct OfflineBanner: ViewModifier {
     @State private var networkMonitor = NetworkMonitor.shared
     @State private var showBanner = false
@@ -178,6 +183,8 @@ struct OfflineBanner: ViewModifier {
     }
 }
 
+/// View extension for adding offline status banner.
+/// Provides a convenient way to add network status monitoring to any view.
 extension View {
     func offlineBanner() -> some View {
         modifier(OfflineBanner())
@@ -186,6 +193,8 @@ extension View {
 
 // MARK: - Connection Status View
 
+/// View displaying the current network connection status.
+/// Shows online/offline state with connection type and quality indicators.
 struct ConnectionStatusView: View {
     @State private var networkMonitor = NetworkMonitor.shared
 

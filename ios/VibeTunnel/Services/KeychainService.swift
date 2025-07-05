@@ -1,10 +1,13 @@
 import Foundation
 import Security
 
-/// Service for securely storing credentials in the iOS Keychain
+/// Service for securely storing credentials in the iOS Keychain.
+/// Provides secure storage and retrieval of passwords and tokens.
 class KeychainService: KeychainServiceProtocol {
     private let serviceName = "com.vibetunnel.ios"
 
+    /// Errors that can occur during keychain operations.
+    /// Provides specific error cases for keychain failures.
     enum KeychainError: Error {
         case unexpectedData
         case unexpectedPasswordData

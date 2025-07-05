@@ -78,6 +78,8 @@ struct DiscoveredServerCard: View {
 }
 
 /// Sheet view for showing all discovered servers
+/// Detail sheet displaying comprehensive information about a discovered server.
+/// Shows server details including hostname, addresses, and port information.
 struct DiscoveryDetailSheet: View {
     let discoveredServers: [DiscoveredServer]
     let onConnect: (DiscoveredServer) -> Void

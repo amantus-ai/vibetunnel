@@ -112,6 +112,8 @@ struct TerminalThemeSheet: View {
 }
 
 /// Preview of a terminal theme showing sample text with colors.
+/// Preview component for terminal color themes.
+/// Shows a sample of how text will appear with the selected theme.
 struct TerminalThemePreview: View {
     let theme: TerminalTheme
 

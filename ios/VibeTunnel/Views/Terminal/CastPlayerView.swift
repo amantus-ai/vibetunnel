@@ -184,6 +184,8 @@ struct CastPlayerView: View {
 /// Provides a read-only terminal emulator for displaying recorded
 /// terminal sessions, handling font sizing and terminal dimensions
 /// based on the cast file metadata.
+/// UIKit terminal view for rendering cast file playback.
+/// Displays terminal content frame-by-frame during recording playback.
 struct CastTerminalView: UIViewRepresentable {
     @Binding var fontSize: CGFloat
     let viewModel: CastPlayerViewModel
@@ -260,6 +262,8 @@ struct CastTerminalView: UIViewRepresentable {
 }
 
 /// View model for cast file playback control.
+/// View model for cast file playback control.
+/// Manages playback state, timing, and frame navigation for recordings.
 @MainActor
 @Observable
 class CastPlayerViewModel {

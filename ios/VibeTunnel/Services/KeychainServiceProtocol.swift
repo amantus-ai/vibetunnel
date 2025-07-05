@@ -1,7 +1,7 @@
 import Foundation
 
-/// Protocol defining the interface for keychain operations
-/// Provides secure storage for passwords, tokens, and other sensitive data
+/// Protocol defining the interface for keychain operations.
+/// Provides secure storage for passwords, tokens, and other sensitive data.
 protocol KeychainServiceProtocol {
     // MARK: - Server Profile Password Management
 

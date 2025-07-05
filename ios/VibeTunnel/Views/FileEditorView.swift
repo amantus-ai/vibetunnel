@@ -121,6 +121,8 @@ struct FileEditorView: View {
 }
 
 /// View model for file editing operations.
+/// View model for file editing operations.
+/// Handles file loading, saving, and content management.
 @MainActor
 @Observable
 class FileEditorViewModel {

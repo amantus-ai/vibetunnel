@@ -262,6 +262,8 @@ struct TerminalToolbar: View {
     }
 }
 
+/// Individual button component for the terminal toolbar.
+/// Provides consistent styling and haptic feedback for toolbar actions.
 struct ToolbarButton: View {
     let label: String?
     let systemImage: String?

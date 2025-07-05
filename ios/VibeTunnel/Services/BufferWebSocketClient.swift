@@ -1,6 +1,7 @@
 import Foundation
 
 /// Terminal event types that match the server's output.
+/// Represents various events that can occur during terminal interaction.
 enum TerminalWebSocketEvent {
     case header(width: Int, height: Int)
     case output(timestamp: Double, data: String)
@@ -11,7 +12,8 @@ enum TerminalWebSocketEvent {
     case alert(title: String?, message: String)
 }
 
-/// Binary buffer snapshot data
+/// Binary buffer snapshot data.
+/// Contains the complete terminal buffer state including cells, cursor position, and viewport.
 struct BufferSnapshot {
     let cols: Int
     let rows: Int
@@ -21,7 +23,8 @@ struct BufferSnapshot {
     let cells: [[BufferCell]]
 }
 
-/// Individual cell data
+/// Individual cell data.
+/// Represents a single character cell in the terminal with its styling attributes.
 struct BufferCell {
     let char: String
     let width: Int

@@ -641,6 +641,8 @@ struct TerminalView: View {
 }
 
 /// View model for terminal session management.
+/// View model for terminal session management.
+/// Handles terminal I/O, recording, state management, and WebSocket communication.
 @MainActor
 @Observable
 class TerminalViewModel {

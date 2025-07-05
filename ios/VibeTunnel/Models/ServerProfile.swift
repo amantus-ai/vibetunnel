@@ -1,6 +1,7 @@
 import Foundation
 
-/// A saved server configuration profile
+/// A saved server configuration profile.
+/// Stores persistent server connection details with metadata for easy management.
 struct ServerProfile: Identifiable, Codable, Equatable {
     let id: UUID
     var name: String

@@ -1,6 +1,7 @@
 import Foundation
 
-/// App configuration for VibeTunnel
+/// App-wide configuration settings.
+/// Provides centralized configuration for logging and other app behaviors.
 enum AppConfig {
     /// Set the logging level for the app
     /// Change this to control verbosity of logs
