@@ -814,6 +814,9 @@ public final class ScreencapService: NSObject {
             logger.error("   System Settings > Privacy & Security > Screen Recording > VibeTunnel")
         }
 
+        // Stop any existing capture first to ensure clean state
+        await stopCapture()
+
         // Ensure WebSocket is connected first
         try await ensureWebSocketConnected()
 
@@ -824,9 +827,6 @@ public final class ScreencapService: NSObject {
         }
 
         self.useWebRTC = useWebRTC
-
-        // Stop any existing capture
-        await stopCapture()
 
         // Determine capture mode for state machine
         let captureMode: CaptureMode = switch type {
