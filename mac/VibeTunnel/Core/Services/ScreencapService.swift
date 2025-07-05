@@ -43,6 +43,9 @@ public final class ScreencapService: NSObject {
     private nonisolated(unsafe) var webRTCManager: WebRTCManager?
     private nonisolated(unsafe) var useWebRTC = false
     private var decompressionSession: VTDecompressionSession?
+    
+    // State machine for capture lifecycle
+    private let stateMachine = CaptureStateMachine()
 
     // MARK: - Types
 
@@ -136,10 +139,31 @@ public final class ScreencapService: NSObject {
     override init() {
         super.init()
         logger.info("🚀 ScreencapService initialized, setting up WebSocket connection...")
+        
+        // Register for display configuration changes
+        setupDisplayNotifications()
+        
+        // Set up state machine callbacks
+        setupStateMachine()
+        
         // Connect to WebSocket for API handling when service is created
         Task {
             await setupWebSocketForAPIHandling()
         }
+    }
+    
+    /// Set up state machine callbacks
+    private func setupStateMachine() {
+        stateMachine.onStateChange = { [weak self] newState, previousState in
+            guard let self else { return }
+            let prev = previousState?.rawValue ?? "nil"
+            self.logger.info("🔄 State change: \(prev) → \(newState.rawValue)")
+        }
+    }
+    
+    deinit {
+        // Remove display notifications
+        NotificationCenter.default.removeObserver(self)
     }
 
     /// Setup WebSocket connection for handling API requests
@@ -160,6 +184,9 @@ public final class ScreencapService: NSObject {
         }
 
         isWebSocketConnecting = true
+        
+        // Transition to connecting state
+        stateMachine.processEvent(.connect)
 
         // Get server URL from environment or use default
         let serverURLString = ProcessInfo.processInfo
@@ -168,6 +195,10 @@ public final class ScreencapService: NSObject {
         guard let serverURL = URL(string: serverURLString) else {
             logger.error("Invalid server URL: \(serverURLString)")
             isWebSocketConnecting = false
+            
+            // Transition to error state
+            stateMachine.processEvent(.connectionFailed(ScreencapError.invalidServerURL))
+            
             // Fail all waiting continuations
             for continuation in webSocketConnectionContinuations {
                 continuation.resume(throwing: ScreencapError.invalidServerURL)
@@ -205,6 +236,9 @@ public final class ScreencapService: NSObject {
             logger.info("✅ Connected to WebSocket for screencap API handling")
             isWebSocketConnected = true
             isWebSocketConnecting = false
+            
+            // Transition to ready state
+            stateMachine.processEvent(.connectionEstablished)
 
             // Resume all waiting continuations
             for continuation in webSocketConnectionContinuations {
@@ -218,6 +252,9 @@ public final class ScreencapService: NSObject {
             logger.error("Failed to connect WebSocket for API: \(error)")
             isWebSocketConnecting = false
             isWebSocketConnected = false
+            
+            // Transition to error state
+            stateMachine.processEvent(.connectionFailed(error))
 
             // Fail all waiting continuations
             for continuation in webSocketConnectionContinuations {
@@ -528,11 +565,36 @@ public final class ScreencapService: NSObject {
     /// Start capture with specified mode
     func startCapture(type: String, index: Int, useWebRTC: Bool = false) async throws {
         logger.info("Starting capture - type: \(type), index: \(index), WebRTC: \(useWebRTC)")
+        
+        // Check if we can start capture
+        guard stateMachine.canPerformAction(.startCapture) else {
+            logger.error("Cannot start capture in state: \(stateMachine.currentState)")
+            throw ScreencapError.invalidConfiguration
+        }
 
         self.useWebRTC = useWebRTC
 
         // Stop any existing capture
         await stopCapture()
+        
+        // Determine capture mode for state machine
+        let captureMode: CaptureMode
+        switch type {
+        case "desktop":
+            if index == -1 {
+                captureMode = .allDisplays
+            } else {
+                captureMode = .desktop(displayIndex: index)
+            }
+        case "window":
+            // We don't have the window yet, but we can still set the mode
+            captureMode = .window(SCWindow.init())
+        default:
+            captureMode = .desktop(displayIndex: 0)
+        }
+        
+        // Transition to starting state
+        stateMachine.processEvent(.startCapture(mode: captureMode, useWebRTC: useWebRTC))
 
         logger.debug("Requesting shareable content...")
         let content: SCShareableContent
@@ -776,6 +838,9 @@ public final class ScreencapService: NSObject {
 
             isCapturing = true
             logger.info("✅ Successfully started \(type) capture")
+            
+            // Transition to capturing state
+            stateMachine.processEvent(.captureStarted)
 
             // Start WebRTC if enabled
             if useWebRTC {
@@ -784,6 +849,10 @@ public final class ScreencapService: NSObject {
         } catch {
             logger.error("Failed to start capture: \(error)")
             captureStream = nil
+            
+            // Transition to error state
+            stateMachine.processEvent(.captureFailure(error))
+            
             throw ScreencapError.failedToStartCapture(error)
         }
     }
@@ -933,6 +1002,11 @@ public final class ScreencapService: NSObject {
     /// Stop current capture
     func stopCapture() async {
         guard isCapturing else { return }
+        
+        // Transition to stopping state
+        if stateMachine.currentState == .capturing {
+            stateMachine.processEvent(.stopCapture)
+        }
 
         // Mark as not capturing first to stop frame processing
         isCapturing = false
@@ -964,6 +1038,9 @@ public final class ScreencapService: NSObject {
                 logger.error("Failed to stop capture: \(error)")
             }
         }
+        
+        // Transition to stopped state
+        stateMachine.processEvent(.captureStopped)
     }
 
     /// Get current captured frame as JPEG data
@@ -988,6 +1065,14 @@ public final class ScreencapService: NSObject {
         }
 
         return jpegData
+    }
+    
+    /// Get current capture state information
+    func getCaptureState() -> (state: String, description: String) {
+        return (
+            state: stateMachine.currentState.rawValue,
+            description: stateMachine.stateDescription()
+        )
     }
 
     /// Send click at specified coordinates
@@ -1343,6 +1428,145 @@ public final class ScreencapService: NSObject {
         logger.info("Sent key: \(key) with modifiers")
     }
 
+    // MARK: - State Machine Setup
+    
+    /// Configure state machine callbacks
+    private func setupStateMachine() {
+        stateMachine.onStateChange = { [weak self] newState, previousState in
+            guard let self else { return }
+            self.logger.info("📊 State changed: \(previousState?.description ?? "nil") → \(newState)")
+            
+            // Notify WebRTC manager of state changes
+            if let webRTCManager = self.webRTCManager {
+                Task {
+                    await webRTCManager.sendSignalMessage([
+                        "type": "state-change",
+                        "state": newState.rawValue,
+                        "previousState": previousState?.rawValue as Any
+                    ])
+                }
+            }
+        }
+    }
+    
+    // MARK: - Display Monitoring
+    
+    /// Set up notifications for display configuration changes
+    private func setupDisplayNotifications() {
+        // Monitor for display configuration changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(displayConfigurationChanged),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+        
+        logger.info("📺 Display monitoring enabled")
+    }
+    
+    /// Handle display configuration changes
+    @objc private func displayConfigurationChanged(_ notification: Notification) {
+        logger.warning("⚠️ Display configuration changed")
+        
+        // Check if we're currently capturing
+        guard isCapturing else {
+            logger.info("Not capturing, ignoring display change")
+            return
+        }
+        
+        Task { @MainActor in
+            await handleDisplayChange()
+        }
+    }
+    
+    /// Handle display disconnection or reconfiguration during capture
+    private func handleDisplayChange() async {
+        logger.info("🔄 Handling display configuration change during capture")
+        
+        // Transition to reconnecting state
+        stateMachine.processEvent(.displayChanged)
+        
+        // Get current capture mode
+        let captureMode = self.captureMode
+        
+        // Stop current capture
+        await stopCapture()
+        
+        // Wait a moment for the system to stabilize
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        do {
+            // Check if displays are still available
+            let displays = try await getDisplays()
+            
+            switch captureMode {
+            case .desktop(let displayIndex):
+                // Check if the display index is still valid
+                if displayIndex < displays.count {
+                    // Restart capture with same display
+                    logger.info("✅ Display \(displayIndex) still available, restarting capture")
+                    try await startCapture(type: "display", index: displayIndex, useWebRTC: useWebRTC)
+                } else if displays.count > 0 {
+                    // Fall back to primary display
+                    logger.warning("⚠️ Display \(displayIndex) no longer available, falling back to primary display")
+                    try await startCapture(type: "display", index: 0, useWebRTC: useWebRTC)
+                } else {
+                    logger.error("❌ No displays available after configuration change")
+                    // Notify connected clients
+                    await notifyDisplayDisconnected()
+                }
+                
+            case .window:
+                // For window capture, try to restart with the same window
+                if let window = selectedWindow {
+                    do {
+                        // Verify window still exists
+                        let content = try await SCShareableContent.current
+                        if content.windows.contains(where: { $0.windowID == window.windowID }) {
+                            logger.info("✅ Window still available, restarting capture")
+                            try await startCaptureWindow(cgWindowID: Int(window.windowID), useWebRTC: useWebRTC)
+                        } else {
+                            logger.warning("⚠️ Window no longer available after display change")
+                            await notifyWindowDisconnected()
+                        }
+                    } catch {
+                        logger.error("Failed to verify window availability: \(error)")
+                        await notifyWindowDisconnected()
+                    }
+                }
+                
+            case .allDisplays:
+                // For all displays mode, just restart
+                logger.info("🔄 Restarting all displays capture after configuration change")
+                try await startCapture(type: "display", index: -1, useWebRTC: useWebRTC)
+            }
+            
+        } catch {
+            logger.error("❌ Failed to handle display change: \(error)")
+            await notifyDisplayDisconnected()
+        }
+    }
+    
+    /// Notify connected clients that display was disconnected
+    private func notifyDisplayDisconnected() async {
+        if let webRTCManager {
+            await webRTCManager.sendSignalMessage([
+                "type": "display-disconnected",
+                "message": "Display disconnected during capture"
+            ])
+        }
+    }
+    
+    /// Notify connected clients that window was disconnected
+    private func notifyWindowDisconnected() async {
+        if let webRTCManager {
+            await webRTCManager.sendSignalMessage([
+                "type": "window-disconnected", 
+                "message": "Window closed or became unavailable"
+            ])
+        }
+    }
+
     // MARK: - Private Methods
 
     private func keyStringToKeyCode(_ key: String) -> CGKeyCode {
@@ -1538,36 +1762,31 @@ extension ScreencapService: SCStreamOutput {
         
         let context = CIContext()
         
-        // Wrap the CGImage creation in a do-catch to handle potential crashes
-        do {
-            // Check extent is valid
-            guard !ciImage.extent.isEmpty else {
-                logger.error("CIImage has empty extent, skipping frame")
-                return
-            }
-            
-            guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-                logger.error("Failed to create CGImage from CIImage")
-                return
-            }
-            
-            // Check again if we're still capturing before updating frame
-            guard isCapturing else {
-                logger.debug("Capture stopped during frame processing")
-                return
-            }
+        // Check extent is valid
+        guard !ciImage.extent.isEmpty else {
+            logger.error("CIImage has empty extent, skipping frame")
+            return
+        }
+        
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            logger.error("Failed to create CGImage from CIImage")
+            return
+        }
+        
+        // Check again if we're still capturing before updating frame
+        guard isCapturing else {
+            logger.debug("Capture stopped during frame processing")
+            return
+        }
 
-            // Update current frame
-            currentFrame = cgImage
-            let frameCount = frameCounter
-            frameCounter += 1
+        // Update current frame
+        currentFrame = cgImage
+        let frameCount = frameCounter
+        frameCounter += 1
 
-            // Log only every 300 frames (10 seconds at 30fps) to reduce noise
-            if frameCount.isMultiple(of: 300) {
-                logger.info("📹 Frame \(frameCount) received")
-            }
-        } catch {
-            logger.error("Error creating CGImage: \(error)")
+        // Log only every 300 frames (10 seconds at 30fps) to reduce noise
+        if frameCount.isMultiple(of: 300) {
+            logger.info("📹 Frame \(frameCount) received")
         }
     }
 }

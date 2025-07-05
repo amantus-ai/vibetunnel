@@ -19,6 +19,7 @@ import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createScreencapRoutes, initializeScreencap } from './routes/screencap.js';
 import { createSessionRoutes } from './routes/sessions.js';
+import { createWebRTCConfigRouter } from './routes/webrtc-config.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
 import { AuthService } from './services/auth-service.js';
@@ -600,11 +601,30 @@ export async function createApp(): Promise<AppInstance> {
   // Mount screencap routes
   app.use('/api', createScreencapRoutes());
   logger.debug('Mounted screencap routes');
+  
+  // WebRTC configuration route
+  app.use('/api', createWebRTCConfigRouter());
+  logger.debug('Mounted WebRTC config routes');
 
   // Initialize screencap service in background
   initializeScreencap().catch((error) => {
     logger.error('Failed to initialize screencap service:', error);
     logger.warn('Continuing without screencap service');
+  });
+
+  // Start UNIX socket server for Mac app communication
+  import('./websocket/screencap-unix-handler.js').then(({ screencapUnixHandler }) => {
+    screencapUnixHandler
+      .start()
+      .then(() => {
+        logger.log(
+          chalk.green('Screen Capture UNIX socket: LISTENING at /tmp/vibetunnel-screencap.sock')
+        );
+      })
+      .catch((error) => {
+        logger.error('Failed to start UNIX socket server:', error);
+        logger.warn('Screen capture Mac app communication will not work');
+      });
   });
 
   // Handle WebSocket upgrade with authentication
@@ -765,10 +785,10 @@ export async function createApp(): Promise<AppInstance> {
 
       websocketInputHandler.handleConnection(ws, sessionId, userId);
     } else if (pathname === '/ws/screencap-signal') {
-      // Handle screencap WebRTC signaling
-      const userId = wsReq.userId || 'unknown';
-      import('./websocket/screencap-signal-handler.js').then(({ screencapSignalHandler }) => {
-        screencapSignalHandler.handleConnection(ws, userId);
+      // Handle screencap WebRTC signaling from browser
+      const _userId = wsReq.userId || 'unknown';
+      import('./websocket/screencap-unix-handler.js').then(({ screencapUnixHandler }) => {
+        screencapUnixHandler.handleBrowserConnection(ws);
       });
     } else {
       logger.error(`Unknown WebSocket path: ${pathname}`);
@@ -1041,6 +1061,15 @@ export async function startVibeTunnelServer() {
       if (controlDirWatcher) {
         controlDirWatcher.stop();
         logger.debug('Stopped control directory watcher');
+      }
+
+      // Stop UNIX socket server
+      try {
+        const { screencapUnixHandler } = await import('./websocket/screencap-unix-handler.js');
+        screencapUnixHandler.stop();
+        logger.debug('Stopped UNIX socket server');
+      } catch (_error) {
+        // Ignore if module not loaded
       }
 
       if (hqClient) {

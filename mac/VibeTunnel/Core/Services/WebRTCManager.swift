@@ -1,6 +1,7 @@
 import Combine
 import CoreMedia
 import Foundation
+import Network
 import OSLog
 import VideoToolbox
 
@@ -22,19 +23,27 @@ final class WebRTCManager: NSObject {
     private var videoSource: RTCVideoSource?
     private var videoCapturer: RTCVideoCapturer?
 
-    // WebSocket for signaling
-    private var signalSocket: URLSessionWebSocketTask?
-    private var signalSession: URLSession?
+    // UNIX socket for signaling
+    private var unixSocket: UnixSocketConnection?
 
-    /// Signaling server URL
-    private let signalURL: URL
+    /// Server URL (kept for reference)
+    private let serverURL: URL
 
-    /// Local auth token for WebSocket authentication
+    /// Local auth token (no longer needed for UNIX socket)
     let localAuthToken: String?
 
     // Session management for security
     private var activeSessionId: String?
     private var sessionStartTime: Date?
+    
+    // Adaptive bitrate control
+    private var statsTimer: Timer?
+    private var currentBitrate: Int = 10_000_000 // Start at 10 Mbps
+    private var targetBitrate: Int = 10_000_000
+    private let minBitrate: Int = 1_000_000 // 1 Mbps minimum
+    private let maxBitrate: Int = 50_000_000 // 50 Mbps maximum
+    private var lastPacketLoss: Double = 0.0
+    private var lastRtt: Double = 0.0
 
     // MARK: - Published Properties
 
@@ -44,16 +53,7 @@ final class WebRTCManager: NSObject {
     // MARK: - Initialization
 
     init(serverURL: URL, screencapService: ScreencapService, localAuthToken: String? = nil) {
-        // Convert HTTP URL to WebSocket URL
-        guard var components = URLComponents(url: serverURL, resolvingAgainstBaseURL: false) else {
-            fatalError("Invalid server URL: \(serverURL)")
-        }
-        components.scheme = components.scheme == "https" ? "wss" : "ws"
-        components.path = "/ws/screencap-signal"
-        guard let signalURL = components.url else {
-            fatalError("Failed to construct WebSocket URL from: \(serverURL)")
-        }
-        self.signalURL = signalURL
+        self.serverURL = serverURL
         self.screencapService = screencapService
         self.localAuthToken = localAuthToken
 
@@ -71,10 +71,14 @@ final class WebRTCManager: NSObject {
             decoderFactory: videoDecoderFactory
         )
 
-        logger.info("✅ WebRTC Manager initialized with signal URL: \(self.signalURL)")
+        logger.info("✅ WebRTC Manager initialized with server URL: \(self.serverURL)")
     }
 
     deinit {
+        // Ensure all resources are cleaned up
+        Task { @MainActor in
+            await cleanupResources()
+        }
         RTCCleanupSSL()
     }
 
@@ -90,10 +94,12 @@ final class WebRTCManager: NSObject {
         // Create peer connection (will add the video track)
         try createPeerConnection()
 
-        // Connect to signaling server
-        try await connectSignaling()
+        // Ensure we have a UNIX socket connection
+        if unixSocket == nil || !isConnected {
+            try await connectForAPIHandling()
+        }
 
-        // Notify server we're ready as the Mac peer
+        // Notify server we're ready as the Mac peer with video mode
         await sendSignalMessage([
             "type": "mac-ready",
             "mode": mode
@@ -111,11 +117,24 @@ final class WebRTCManager: NSObject {
             sessionStartTime = nil
         }
         
+        // Stop stats monitoring
+        stopStatsMonitoring()
+        
+        // Stop video track
+        localVideoTrack?.isEnabled = false
+        
         // Close peer connection but keep WebSocket for API
-        peerConnection?.close()
+        if let pc = peerConnection {
+            // Remove all transceivers properly
+            pc.transceivers.forEach { transceiver in
+                pc.removeTrack(transceiver.sender)
+            }
+            pc.close()
+        }
         peerConnection = nil
         
         // Clean up video tracks and sources
+        videoSource?.capturer(videoCapturer!, didCapture: nil)
         localVideoTrack = nil
         videoSource = nil
         videoCapturer = nil
@@ -125,27 +144,40 @@ final class WebRTCManager: NSObject {
 
     /// Connect to signaling server for API handling only (no video capture)
     func connectForAPIHandling() async throws {
-        // Don't connect if already connecting or connected
-        guard signalSocket == nil || signalSocket?.state != .running else {
-            logger.info("WebSocket connection already in progress, waiting...")
+        // Don't connect if already connected
+        if unixSocket != nil && isConnected {
+            logger.info("UNIX socket already connected")
             return
         }
         
-        logger.info("🔌 Connecting for API handling only to \(self.signalURL)")
+        logger.info("🔌 Connecting for API handling via UNIX socket")
         logger.info("  📋 Current active session: \(self.activeSessionId ?? "nil")")
 
-        // Connect to signaling server
-        do {
-            try await connectSignaling()
-            logger.info("✅ WebSocket connected successfully")
-
-            // Mark as connected
-            isConnected = true
-        } catch {
-            logger.error("❌ Failed to connect to signaling server: \(error)")
-            isConnected = false
-            throw error
+        // Create and connect UNIX socket
+        unixSocket = UnixSocketConnection()
+        
+        // Set up message handler
+        unixSocket?.onMessage = { [weak self] data in
+            Task { @MainActor [weak self] in
+                await self?.handleSocketMessage(data)
+            }
         }
+        
+        // Set up state change handler
+        unixSocket?.onStateChange = { [weak self] state in
+            Task { @MainActor [weak self] in
+                self?.handleSocketStateChange(state)
+            }
+        }
+        
+        // Connect
+        unixSocket?.connect()
+        
+        // Wait a bit for connection
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Mark as connected
+        isConnected = true
 
         // Notify server we're ready as the Mac peer for API handling
         logger.info("📤 Sending mac-ready message...")
@@ -159,8 +191,13 @@ final class WebRTCManager: NSObject {
 
     /// Disconnect from signaling server
     func disconnect() async {
-        logger.info("🔌 Disconnecting from signaling server")
-
+        logger.info("🔌 Disconnecting from UNIX socket")
+        await cleanupResources()
+        logger.info("Disconnected WebRTC and UNIX socket")
+    }
+    
+    /// Clean up all resources - called from deinit and disconnect
+    private func cleanupResources() async {
         // Clear session information
         if let sessionId = activeSessionId {
             logger.info("🔒 [SECURITY] Session terminated: \(sessionId)")
@@ -168,26 +205,30 @@ final class WebRTCManager: NSObject {
             sessionStartTime = nil
         }
 
-        // Close peer connection
-        peerConnection?.close()
+        // Stop video track if active
+        localVideoTrack?.isEnabled = false
+        
+        // Close peer connection properly
+        if let pc = peerConnection {
+            // Remove all transceivers
+            pc.transceivers.forEach { transceiver in
+                pc.removeTrack(transceiver.sender)
+            }
+            pc.close()
+        }
         peerConnection = nil
 
-        // Close WebSocket
-        if let socket = signalSocket {
-            socket.cancel(with: .normalClosure, reason: nil)
-            signalSocket = nil
-        }
+        // Disconnect UNIX socket
+        unixSocket?.disconnect()
+        unixSocket = nil
 
-        signalSession = nil
-
-        // Clean up tracks and sources
+        // Clean up video resources
+        videoSource?.capturer(videoCapturer!, didCapture: nil)
         localVideoTrack = nil
         videoSource = nil
         videoCapturer = nil
 
         isConnected = false
-
-        logger.info("Disconnected WebRTC")
     }
 
     /// Process a video frame from ScreenCaptureKit synchronously
@@ -492,116 +533,42 @@ final class WebRTCManager: NSObject {
         logger.info("✅ Created local video track with 4K quality settings: 3840x2160@60fps")
     }
 
-    private func connectSignaling() async throws {
-        logger.info("📡 Connecting to signaling server: \(self.signalURL)")
-
-        let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-        self.signalSession = session
-
-        var request = URLRequest(url: signalURL)
-        // Add local auth token if available
-        if let localAuthToken {
-            request.setValue(localAuthToken, forHTTPHeaderField: "X-VibeTunnel-Local")
-            logger.info("🔑 Adding local auth token to WebSocket request")
-        } else {
-            logger.warning("⚠️ No local auth token available for WebSocket connection")
-        }
-        logger.info("📋 Creating WebSocket with request: \(request)")
-
-        let socketTask = session.webSocketTask(with: request)
-        self.signalSocket = socketTask
-
-        logger.info("▶️ Resuming WebSocket task...")
-        socketTask.resume()
-
-        // Start receiving messages
-        Task {
-            logger.info("👂 Starting to receive messages...")
-            await receiveSignalMessages()
-        }
-
-        // Wait for connection with shorter timeout
-        logger.info("⏳ Waiting for WebSocket connection...")
-        try await withCheckedThrowingContinuation { continuation in
-            Task {
-                // Check connection state more frequently
-                for i in 0..<10 {
-                    try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-
-                    if let state = self.signalSocket?.state {
-                        logger.info("🔄 WebSocket state after \(Double(i + 1) * 0.5)s: \(state.rawValue)")
-                        if state == .running {
-                            logger.info("✅ WebSocket is running!")
-                            continuation.resume()
-                            return
-                        }
-                    }
-                }
-
-                logger.error("❌ WebSocket failed to connect after 5 seconds")
-                continuation.resume(throwing: WebRTCError.signalConnectionFailed)
-            }
-        }
-    }
-
-    private func receiveSignalMessages() async {
-        guard let socket = signalSocket else { return }
-
-        do {
-            while socket.state == .running {
-                let message = try await socket.receive()
-
-                switch message {
-                case .string(let text):
-                    logger.info("🌐 WebSocket received string message")
-                    logger.info("  📋 Message length: \(text.count) characters")
-                    await handleSignalMessage(text)
-                case .data(let data):
-                    logger.info("🌐 WebSocket received data message")
-                    logger.info("  📋 Data size: \(data.count) bytes")
-                    if let text = String(data: data, encoding: .utf8) {
-                        await handleSignalMessage(text)
-                    }
-                @unknown default:
-                    break
-                }
-            }
-        } catch {
-            logger.error("WebSocket receive error: \(error)")
-        }
-        
-        logger.info("❌ WebSocket closed with code: \(socket.closeCode?.rawValue ?? 0), reason: \(socket.closeReason?.data(using: .utf8).flatMap { String(data: $0, encoding: .utf8) } ?? "")")
-        
-        // Clear the socket reference
-        if signalSocket === socket {
-            signalSocket = nil
-            logger.info("⚠️ WebSocket disconnected, will attempt to reconnect")
-            
-            // Only reconnect if we haven't explicitly disconnected
-            if isConnected {
-                logger.info("⏳ Scheduling reconnection in 2 seconds...")
-                Task {
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    logger.info("🔄 Attempting to reconnect WebSocket...")
-                    try? await connectForAPIHandling()
-                }
-            }
-        }
-    }
-
-    private func handleSignalMessage(_ text: String) async {
-        logger.info("📥 Received WebSocket message: \(text.prefix(200))...")
-        
-        guard let data = text.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+    private func handleSocketMessage(_ data: Data) async {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = json["type"] as? String
         else {
-            logger.error("Invalid signal message format")
-            logger.error("  📋 Raw message: \(text.prefix(200))")
+            logger.error("Invalid socket message format")
             return
         }
+        
+        logger.info("📥 Received message type: \(type)")
+        await handleSignalMessage(json)
+    }
+    
+    private func handleSocketStateChange(_ state: NWConnection.State) {
+        switch state {
+        case .ready:
+            logger.info("✅ UNIX socket connected")
+        case .failed(let error):
+            logger.error("❌ UNIX socket failed: \(error)")
+            isConnected = false
+        case .cancelled:
+            logger.info("UNIX socket cancelled")
+            isConnected = false
+        default:
+            break
+        }
+    }
+    
+    // Old WebSocket methods removed - now using UNIX socket
 
-        logger.info("📥 Parsed message type: \(type)")
+    private func handleSignalMessage(_ json: [String: Any]) async {
+        guard let type = json["type"] as? String else {
+            logger.error("Invalid signal message - no type")
+            return
+        }
+        
+        logger.info("📥 Processing message type: \(type)")
 
         switch type {
         case "start-capture":
@@ -754,10 +721,11 @@ final class WebRTCManager: NSObject {
             ])
         } catch {
             logger.error("❌ API request failed: \(error)")
+            let screencapError = ScreencapError.from(error)
             await sendSignalMessage([
                 "type": "api-response",
                 "requestId": requestId,
-                "error": error.localizedDescription
+                "error": screencapError.toDictionary()
             ])
         }
     }
@@ -1001,35 +969,16 @@ final class WebRTCManager: NSObject {
     }
 
     private func sendSignalMessage(_ message: [String: Any]) async {
-        logger.info("📤 Attempting to send signal message...")
+        logger.info("📤 Sending signal message...")
         logger.info("  📋 Message type: \(message["type"] as? String ?? "unknown")")
-        logger.info("  📋 Socket exists: \(self.signalSocket != nil)")
-        logger.info("  📋 Socket state: \(self.signalSocket?.state.rawValue ?? -1)")
         
-        guard let socket = signalSocket else {
-            logger.error("❌ Cannot send message - WebSocket is nil")
+        guard let socket = unixSocket else {
+            logger.error("❌ Cannot send message - UNIX socket is nil")
             return
         }
-
-        guard socket.state == .running else {
-            logger.error("❌ Cannot send message - WebSocket state is \(socket.state.rawValue)")
-            return
-        }
-
-        guard let data = try? JSONSerialization.data(withJSONObject: message),
-              let text = String(data: data, encoding: .utf8)
-        else {
-            logger.error("❌ Failed to serialize signal message")
-            return
-        }
-
-        do {
-            logger.info("📤 Sending signal message: \(text.prefix(200))...")
-            try await socket.send(.string(text))
-            logger.info("✅ Signal message sent successfully")
-        } catch {
-            logger.error("❌ Failed to send message: \(error)")
-        }
+        
+        await socket.sendMessage(message)
+        logger.info("✅ Message sent via UNIX socket")
     }
 
     private func addBandwidthToSdp(_ sdp: String) -> String {
@@ -1088,14 +1037,15 @@ final class WebRTCManager: NSObject {
 
             // Add bandwidth constraint after video m-line
             if inVideoSection && line.starts(with: "m=video") {
-                // Use different bitrates for H.265 vs H.264
+                // Use adaptive bitrate, with different defaults for H.265 vs H.264
                 // H.265 is more efficient, so we can use lower bitrate for same quality
-                let bitrate = (h265Found || isH265HardwareEncodingAvailable()) ? 30_000 :
-                    50_000 // 30 Mbps for H.265, 50 Mbps for H.264
+                let isH265 = h265Found || isH265HardwareEncodingAvailable()
+                let defaultBitrate = isH265 ? 10_000 : 15_000 // 10 Mbps for H.265, 15 Mbps for H.264
+                let bitrate = currentBitrate / 1_000 // Convert to kbps for SDP
                 modifiedLines.append("b=AS:\(bitrate)")
                 logger
                     .info(
-                        "📈 Added bandwidth constraint to SDP: \(bitrate / 1_000) Mbps for 4K@60fps (\((h265Found || isH265HardwareEncodingAvailable()) ? "H.265" : "H.264"))"
+                        "📈 Added bandwidth constraint to SDP: \(bitrate / 1_000) Mbps (adaptive) for 4K@60fps (\(isH265 ? "H.265" : "H.264"))"
                     )
 
                 // With steipete/WebRTC, H.265 should be included natively
@@ -1209,73 +1159,147 @@ extension WebRTCManager: RTCPeerConnectionDelegate {
         Task { @MainActor in
             logger.info("Connection state: \(connectionState.rawValue)")
             self.connectionState = connectionState
+            
+            // Start adaptive bitrate monitoring when connected
+            if connectionState == .connected {
+                startStatsMonitoring()
+            } else if connectionState == .disconnected || connectionState == .failed {
+                stopStatsMonitoring()
+            }
         }
     }
 }
 
-// MARK: - URLSessionWebSocketDelegate
+// MARK: - Adaptive Bitrate Control
 
-extension WebRTCManager: URLSessionWebSocketDelegate {
-    nonisolated func urlSession(
-        _ session: URLSession,
-        webSocketTask: URLSessionWebSocketTask,
-        didOpenWithProtocol protocol: String?
-    ) {
-        Task { @MainActor in
-            logger.info("✅ WebSocket connected with protocol: \(`protocol` ?? "none")")
+extension WebRTCManager {
+    /// Start monitoring connection stats for adaptive bitrate
+    private func startStatsMonitoring() {
+        stopStatsMonitoring() // Ensure no duplicate timers
+        
+        statsTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.updateConnectionStats()
+            }
         }
+        
+        logger.info("📊 Started adaptive bitrate monitoring")
     }
-
-    nonisolated func urlSession(
-        _ session: URLSession,
-        webSocketTask: URLSessionWebSocketTask,
-        didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
-        reason: Data?
-    ) {
-        Task { @MainActor in
-            let reasonString = reason.flatMap { String(data: $0, encoding: .utf8) } ?? "unknown"
-            logger.error("❌ WebSocket closed with code: \(closeCode.rawValue), reason: \(reasonString)")
-
-            // Mark as disconnected
-            self.isConnected = false
-
-            // Notify screencap service about disconnection
-            if let screencapService = self.screencapService {
-                Task {
-                    await screencapService.handleWebSocketDisconnection()
+    
+    /// Stop monitoring connection stats
+    private func stopStatsMonitoring() {
+        statsTimer?.invalidate()
+        statsTimer = nil
+        logger.info("📊 Stopped adaptive bitrate monitoring")
+    }
+    
+    /// Update connection stats and adjust bitrate if needed
+    private func updateConnectionStats() async {
+        guard let peerConnection else { return }
+        
+        do {
+            let stats = try await peerConnection.statistics()
+            
+            // Process stats to find outbound RTP stats
+            var currentPacketLoss: Double = 0.0
+            var currentRtt: Double = 0.0
+            var bytesSent: Int64 = 0
+            
+            for stat in stats {
+                if let outboundRtp = stat as? RTCOutboundRtpStreamStats,
+                   outboundRtp.kind == "video" {
+                    // Calculate packet loss rate
+                    let packetsSent = Double(outboundRtp.packetsSent)
+                    let packetsLost = Double(outboundRtp.packetsLost ?? 0)
+                    if packetsSent > 0 {
+                        currentPacketLoss = packetsLost / packetsSent
+                    }
+                    bytesSent = outboundRtp.bytesSent
+                }
+                
+                if let candidatePair = stat as? RTCIceCandidatePairStats,
+                   candidatePair.state == "succeeded" {
+                    currentRtt = candidatePair.currentRoundTripTime ?? 0.0
                 }
             }
+            
+            // Adjust bitrate based on network conditions
+            adjustBitrate(packetLoss: currentPacketLoss, rtt: currentRtt)
+            
+            // Log stats periodically
+            if Int.random(in: 0..<5) == 0 { // Log every ~10 seconds
+                logger.info("""
+                    📊 Network stats:
+                    - Packet loss: \(String(format: "%.2f%%", currentPacketLoss * 100))
+                    - RTT: \(String(format: "%.0f ms", currentRtt * 1000))
+                    - Current bitrate: \(currentBitrate / 1_000_000) Mbps
+                    - Bytes sent: \(bytesSent / 1_024 / 1_024) MB
+                """)
+            }
+            
+            lastPacketLoss = currentPacketLoss
+            lastRtt = currentRtt
+            
+        } catch {
+            logger.error("Failed to get stats: \(error)")
         }
+    }
+    
+    /// Adjust bitrate based on network conditions
+    private func adjustBitrate(packetLoss: Double, rtt: Double) {
+        // Determine if we need to adjust bitrate
+        var adjustment: Double = 1.0
+        
+        // High packet loss (> 2%) - reduce bitrate
+        if packetLoss > 0.02 {
+            adjustment = 0.8 // Reduce by 20%
+            logger.warning("📉 High packet loss (\(String(format: "%.2f%%", packetLoss * 100))), reducing bitrate")
+        }
+        // Medium packet loss (1-2%) - slightly reduce
+        else if packetLoss > 0.01 {
+            adjustment = 0.95 // Reduce by 5%
+        }
+        // High RTT (> 150ms) - reduce bitrate
+        else if rtt > 0.15 {
+            adjustment = 0.9 // Reduce by 10%
+            logger.warning("📉 High RTT (\(String(format: "%.0f ms", rtt * 1000))), reducing bitrate")
+        }
+        // Good conditions - try to increase
+        else if packetLoss < 0.005 && rtt < 0.05 {
+            adjustment = 1.1 // Increase by 10%
+        }
+        
+        // Calculate new target bitrate
+        let newBitrate = Int(Double(currentBitrate) * adjustment)
+        targetBitrate = max(minBitrate, min(maxBitrate, newBitrate))
+        
+        // Apply bitrate change if significant (> 10% change)
+        if abs(targetBitrate - currentBitrate) > currentBitrate / 10 {
+            applyBitrateChange(targetBitrate)
+        }
+    }
+    
+    /// Apply bitrate change to the video encoder
+    private func applyBitrateChange(_ newBitrate: Int) {
+        guard let peerConnection,
+              let sender = peerConnection.transceivers.first(where: { $0.mediaType == .video })?.sender else {
+            return
+        }
+        
+        // Update encoder parameters
+        let parameters = sender.parameters
+        for encoding in parameters.encodings {
+            encoding.maxBitrateBps = NSNumber(value: newBitrate)
+        }
+        
+        sender.parameters = parameters
+        
+        currentBitrate = newBitrate
+        logger.info("🎯 Adjusted video bitrate to \(newBitrate / 1_000_000) Mbps")
     }
 }
 
-// MARK: - URLSessionDelegate
-
-extension WebRTCManager: URLSessionDelegate {
-    nonisolated func urlSession(
-        _ session: URLSession,
-        didReceive challenge: URLAuthenticationChallenge,
-        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
-    ) {
-        // Accept server trust for localhost connections
-        if challenge.protectionSpace.host == "localhost" || challenge.protectionSpace.host == "127.0.0.1" {
-            if let serverTrust = challenge.protectionSpace.serverTrust {
-                let credential = URLCredential(trust: serverTrust)
-                completionHandler(.useCredential, credential)
-                return
-            }
-        }
-        completionHandler(.performDefaultHandling, nil)
-    }
-
-    nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        if let error {
-            Task { @MainActor in
-                logger.error("❌ URLSession task failed: \(error.localizedDescription)")
-            }
-        }
-    }
-}
+// MARK: - Network Extension
 
 // MARK: - Supporting Types
 
