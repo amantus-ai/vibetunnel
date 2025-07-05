@@ -40,7 +40,6 @@ export class ScreencapView extends LitElement {
     .header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       padding: 0.75rem 1.5rem;
       background: linear-gradient(to right, #141414, #1f1f1f);
       border-bottom: 1px solid #2a2a2a;
@@ -217,6 +216,7 @@ export class ScreencapView extends LitElement {
       align-items: center;
       justify-content: center;
       transition: color 0.2s;
+      margin-right: 0.5rem;
     }
 
     .toggle-btn:hover {
@@ -575,6 +575,16 @@ export class ScreencapView extends LitElement {
   render() {
     return html`
       <div class="header">
+        <button 
+          class="toggle-btn ${this.sidebarCollapsed ? '' : 'active'}"
+          @click=${this.toggleSidebar}
+          title="Toggle sidebar"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+          </svg>
+        </button>
+        
         <h1>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20 3H4c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h4v2h8v-2h4c1.1 0 2-.9 2-2V5c0-1.11-.9-2-2-2zm0 14H4V5h16v12z"/>
@@ -584,15 +594,6 @@ export class ScreencapView extends LitElement {
         </h1>
 
         <div class="header-actions">
-          <button 
-            class="toggle-btn ${this.sidebarCollapsed ? '' : 'active'}"
-            @click=${this.toggleSidebar}
-            title="Toggle sidebar"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-            </svg>
-          </button>
 
           ${
             this.isCapturing

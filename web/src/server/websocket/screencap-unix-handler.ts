@@ -17,7 +17,8 @@ interface SignalMessage {
     | 'ready'
     | 'mac-ready'
     | 'api-request'
-    | 'api-response';
+    | 'api-response'
+    | 'bitrate-adjustment';
   mode?: 'desktop' | 'window' | 'api-only';
   windowId?: number;
   displayIndex?: number;
@@ -46,7 +47,7 @@ export class ScreencapUnixHandler {
     // Ensure directory exists
     try {
       fs.mkdirSync(socketDir, { recursive: true });
-    } catch (e) {
+    } catch (_e) {
       // Ignore if already exists
     }
 
@@ -292,6 +293,7 @@ export class ScreencapUnixHandler {
       case 'offer':
       case 'answer':
       case 'ice-candidate':
+      case 'bitrate-adjustment':
         // WebRTC signaling - forward to Mac
         if (this.macSocket) {
           logger.log(`Forwarding ${message.type} to Mac`);

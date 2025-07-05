@@ -165,7 +165,7 @@ export function logFromModule(level: string, module: string, args: unknown[]): v
 export function createLogger(moduleName: string) {
   // Add [SRV] prefix to server-originated logs unless it already has a prefix
   const prefixedModuleName = moduleName.startsWith('[') ? moduleName : `[SRV] ${moduleName}`;
-  
+
   return {
     log: (...args: unknown[]) => {
       const { console: consoleMsg, file: fileMsg } = formatMessage('LOG', prefixedModuleName, args);
@@ -173,18 +173,30 @@ export function createLogger(moduleName: string) {
       writeToFile(fileMsg);
     },
     warn: (...args: unknown[]) => {
-      const { console: consoleMsg, file: fileMsg } = formatMessage('WARN', prefixedModuleName, args);
+      const { console: consoleMsg, file: fileMsg } = formatMessage(
+        'WARN',
+        prefixedModuleName,
+        args
+      );
       console.warn(consoleMsg);
       writeToFile(fileMsg);
     },
     error: (...args: unknown[]) => {
-      const { console: consoleMsg, file: fileMsg } = formatMessage('ERROR', prefixedModuleName, args);
+      const { console: consoleMsg, file: fileMsg } = formatMessage(
+        'ERROR',
+        prefixedModuleName,
+        args
+      );
       console.error(consoleMsg);
       writeToFile(fileMsg);
     },
     debug: (...args: unknown[]) => {
       if (debugMode) {
-        const { console: consoleMsg, file: fileMsg } = formatMessage('DEBUG', prefixedModuleName, args);
+        const { console: consoleMsg, file: fileMsg } = formatMessage(
+          'DEBUG',
+          prefixedModuleName,
+          args
+        );
         console.log(consoleMsg);
         writeToFile(fileMsg);
       }

@@ -16,7 +16,7 @@ export function createWebRTCConfigRouter(): Router {
       const config = getWebRTCConfig();
 
       // Log the configuration for debugging
-      logger.log('Serving WebRTC configuration:\n' + formatWebRTCConfig(config));
+      logger.log(`Serving WebRTC configuration:\n${formatWebRTCConfig(config)}`);
 
       res.json({
         success: true,

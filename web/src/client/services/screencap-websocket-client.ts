@@ -12,7 +12,15 @@ interface ApiRequest {
 }
 
 interface SignalMessage {
-  type: 'start-capture' | 'offer' | 'answer' | 'ice-candidate' | 'error' | 'ready' | 'api-response' | 'bitrate-adjustment';
+  type:
+    | 'start-capture'
+    | 'offer'
+    | 'answer'
+    | 'ice-candidate'
+    | 'error'
+    | 'ready'
+    | 'api-response'
+    | 'bitrate-adjustment';
   data?: unknown;
   requestId?: string;
   result?: unknown;

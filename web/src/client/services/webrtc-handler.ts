@@ -140,7 +140,7 @@ export class WebRTCHandler {
 
     this.peerConnection.ontrack = (event) => {
       logger.log('Received remote track:', event.track.kind);
-      if (event.streams && event.streams[0]) {
+      if (event.streams?.[0]) {
         this.remoteStream = event.streams[0];
         this.onStreamReady?.(this.remoteStream);
 
@@ -160,60 +160,63 @@ export class WebRTCHandler {
     this.wsClient.onOffer = async (data) => {
       await this.handleSignalingMessage({ type: 'offer', data });
     };
-    
+
     this.wsClient.onAnswer = async (data) => {
       await this.handleSignalingMessage({ type: 'answer', data });
     };
-    
+
     this.wsClient.onIceCandidate = async (data) => {
       await this.handleSignalingMessage({ type: 'ice-candidate', data });
     };
-    
+
     this.wsClient.onError = (error) => {
       logger.error('WebRTC signaling error:', error);
       this.onError?.(new Error(error));
     };
 
-    // Create and send offer
-    await this.createAndSendOffer();
+    // Don't create offer - wait for Mac app to send offer after start-capture
+    // The Mac app will create the offer when it receives the start-capture signal
+    logger.log('Waiting for offer from Mac app...');
   }
 
-  private async createAndSendOffer(): Promise<void> {
-    if (!this.peerConnection) return;
-
-    try {
-      // Add transceiver for video
-      this.peerConnection.addTransceiver('video', {
-        direction: 'recvonly',
-        streams: [],
-      });
-
-      const offer = await this.peerConnection.createOffer({
-        offerToReceiveVideo: true,
-        offerToReceiveAudio: false,
-      });
-
-      await this.peerConnection.setLocalDescription(offer);
-
-      logger.log('Sending offer to Mac');
-      this.wsClient.sendSignal({
-        type: 'offer',
-        data: offer,
-      });
-    } catch (error) {
-      logger.error('Failed to create offer:', error);
-      this.onError?.(error as Error);
-    }
-  }
+  // Removed createAndSendOffer - Mac app creates the offer now
 
   private async handleSignalingMessage(message: { type: string; data?: unknown }): Promise<void> {
     if (!this.peerConnection) return;
 
     switch (message.type) {
+      case 'offer':
+        logger.log('Received offer from Mac');
+        try {
+          await this.peerConnection.setRemoteDescription(
+            new RTCSessionDescription(message.data as RTCSessionDescriptionInit)
+          );
+          logger.log('Remote description set successfully');
+
+          // Create and send answer
+          const answer = await this.peerConnection.createAnswer();
+          await this.peerConnection.setLocalDescription(answer);
+
+          logger.log('Sending answer to Mac');
+          this.wsClient.sendSignal({
+            type: 'answer',
+            data: answer,
+          });
+
+          // Configure bitrate after connection is established
+          await this.configureBitrateParameters();
+        } catch (error) {
+          logger.error('Failed to handle offer:', error);
+          this.onError?.(error as Error);
+        }
+        break;
+
       case 'answer':
         logger.log('Received answer from Mac');
         try {
-          await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.data as RTCSessionDescriptionInit));
+          await this.peerConnection.setRemoteDescription(
+            new RTCSessionDescription(message.data as RTCSessionDescriptionInit)
+          );
           logger.log('Remote description set successfully');
 
           // Configure bitrate after connection is established
@@ -228,7 +231,9 @@ export class WebRTCHandler {
         logger.log('Received ICE candidate from Mac');
         try {
           if (message.data) {
-            await this.peerConnection.addIceCandidate(new RTCIceCandidate(message.data as RTCIceCandidateInit));
+            await this.peerConnection.addIceCandidate(
+              new RTCIceCandidate(message.data as RTCIceCandidateInit)
+            );
           }
         } catch (error) {
           logger.error('Failed to add ICE candidate:', error);
@@ -270,7 +275,7 @@ export class WebRTCHandler {
     try {
       const stats = await this.peerConnection.getStats();
       let inboundVideoStats: RTCInboundRtpStreamStats | null = null;
-      let remoteOutboundStats: RTCOutboundRtpStreamStats | null = null;
+      let _remoteOutboundStats: RTCOutboundRtpStreamStats | null = null;
       let candidatePairStats: RTCIceCandidatePairStats | null = null;
       let codecStats: any | null = null;
 
@@ -278,7 +283,7 @@ export class WebRTCHandler {
         if (report.type === 'inbound-rtp' && (report as any).kind === 'video') {
           inboundVideoStats = report as RTCInboundRtpStreamStats;
         } else if (report.type === 'remote-outbound-rtp' && (report as any).kind === 'video') {
-          remoteOutboundStats = report as RTCOutboundRtpStreamStats;
+          _remoteOutboundStats = report as RTCOutboundRtpStreamStats;
         } else if (report.type === 'candidate-pair' && (report as any).state === 'succeeded') {
           candidatePairStats = report as RTCIceCandidatePairStats;
         } else if (report.type === 'codec' && (report as any).mimeType?.includes('video')) {

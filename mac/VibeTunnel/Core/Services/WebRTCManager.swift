@@ -598,6 +598,28 @@ final class WebRTCManager: NSObject {
             } else {
                 logger.warning("⚠️ No session ID provided in start-capture message!")
             }
+            
+            // Ensure video track and peer connection are created before sending offer
+            if localVideoTrack == nil {
+                logger.info("📹 Creating video track for start-capture")
+                createLocalVideoTrack()
+            }
+            
+            if peerConnection == nil {
+                logger.info("🔌 Creating peer connection for start-capture")
+                do {
+                    try createPeerConnection()
+                } catch {
+                    logger.error("❌ Failed to create peer connection: \(error)")
+                    // Send error back to browser
+                    await sendSignalMessage([
+                        "type": "error",
+                        "data": "Failed to create peer connection: \(error.localizedDescription)"
+                    ])
+                    return
+                }
+            }
+            
             await createAndSendOffer()
 
         case "answer":

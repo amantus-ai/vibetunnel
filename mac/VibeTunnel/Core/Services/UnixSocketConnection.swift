@@ -155,14 +155,23 @@ final class UnixSocketConnection {
         receiveTask?.cancel()
         receiveTask = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.receiveNextMessage()
+                // Check if we still have a valid connection
+                guard let self = self, self.connection != nil else {
+                    // Connection was lost, exit the loop
+                    break
+                }
+                await self.receiveNextMessage()
             }
         }
     }
     
     /// Receive next message from the connection
     private func receiveNextMessage() async {
-        guard let connection else { return }
+        guard let connection else { 
+            // Add a small delay to prevent busy loop if called without checking connection
+            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            return 
+        }
         
         do {
             let data = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data?, Error>) in

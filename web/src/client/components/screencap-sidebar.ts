@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { DisplayInfo, ProcessGroup, WindowInfo } from '../types/screencap.js';
 import { createLogger } from '../utils/logger.js';
 
-const logger = createLogger('screencap-sidebar');
+const _logger = createLogger('screencap-sidebar');
 
 @customElement('screencap-sidebar')
 export class ScreencapSidebar extends LitElement {

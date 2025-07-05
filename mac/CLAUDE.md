@@ -8,6 +8,36 @@
 * Use the most modern macOS APIs. Since there is no backward compatibility constraint, this app can target the latest macOS version with the newest APIs.
 * Use the most modern Swift language features and conventions. Target Swift 6 and use Swift concurrency (async/await, actors) and Swift macros where applicable.
 
+## Important Build Instructions
+
+### Xcode Build Process
+**CRITICAL**: When you build the Mac app with Xcode (using XcodeBuildMCP or manually), it automatically builds the web server as part of the build process. The Xcode build scripts handle:
+- Building the TypeScript/Node.js server
+- Bundling all web assets
+- Creating the native executable
+- Embedding everything into the Mac app bundle
+
+**DO NOT manually run `pnpm run build` in the web directory when building the Mac app** - this is redundant and wastes time.
+
+### Always Use Subtasks
+**IMPORTANT**: Always use the Task tool for operations, not just when hitting context limits:
+- For ANY command that might generate output (builds, logs, file reads)
+- For parallel operations (checking multiple files, running searches)
+- For exploratory work (finding implementations, debugging)
+- This keeps the main context clean and allows better organization
+
+Examples:
+```
+# Instead of: pnpm run build
+Task(description="Build web bundle", prompt="Run pnpm run build in the web directory and report if it succeeded or any errors")
+
+# Instead of: ./scripts/vtlog.sh -n 100
+Task(description="Check VibeTunnel logs", prompt="Run ./scripts/vtlog.sh -n 100 and summarize any errors or warnings")
+
+# Instead of: multiple file reads
+Task(description="Analyze WebRTC implementation", prompt="Read WebRTCManager.swift and webrtc-handler.ts, then explain the offer/answer flow")
+```
+
 ## VibeTunnel Architecture Overview
 
 VibeTunnel is a macOS application that provides terminal access through web browsers. It consists of three main components:

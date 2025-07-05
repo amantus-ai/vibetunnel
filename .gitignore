@@ -127,3 +127,4 @@ playwright-report/
 !src/**/*.png
 .claude/settings.local.json
 buildServer.json
+/temp
