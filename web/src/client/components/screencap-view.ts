@@ -554,6 +554,7 @@ export class ScreencapView extends LitElement {
     this.error = '';
     this.frameCounter = 0;
     this.statusLog = []; // Clear previous logs
+    this.showLog = false; // Hide log on new capture
 
     this.logStatus('info', 'Starting capture process...');
 
