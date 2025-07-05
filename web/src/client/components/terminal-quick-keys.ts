@@ -18,6 +18,7 @@ const TERMINAL_QUICK_KEYS = [
   { key: 'PageDown', label: 'PgDn', row: 1 },
   // Second row
   { key: 'Home', label: 'Home', row: 2 },
+  { key: 'Paste', label: 'Paste', row: 2 },
   { key: 'End', label: 'End', row: 2 },
   { key: 'Delete', label: 'Del', row: 2 },
   { key: '`', label: '`', row: 2 },

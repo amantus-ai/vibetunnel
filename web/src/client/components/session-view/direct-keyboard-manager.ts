@@ -415,7 +415,11 @@ export class DirectKeyboardManager {
     }
   }
 
-  handleQuickKeyPress = (key: string, isModifier?: boolean, isSpecial?: boolean): void => {
+  handleQuickKeyPress = async (
+    key: string,
+    isModifier?: boolean,
+    isSpecial?: boolean
+  ): Promise<void> => {
     if (!this.inputManager) {
       logger.error('No input manager found');
       return;
@@ -461,6 +465,16 @@ export class DirectKeyboardManager {
         }
       }
       return;
+    } else if (key === 'Paste') {
+      // Handle Paste key
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && this.inputManager) {
+          this.inputManager.sendInputText(text);
+        }
+      } catch (err) {
+        logger.error('Failed to read clipboard:', err);
+      }
     } else if (key === 'Ctrl+A') {
       // Send Ctrl+A (start of line)
       this.inputManager.sendControlSequence('\x01');
