@@ -823,6 +823,16 @@ export class ScreencapView extends LitElement {
         </h1>
 
         <div class="header-actions">
+          <button
+            class="toggle-btn ${this.showLog ? 'active' : ''}"
+            @click=${this.toggleLog}
+            title="Toggle Log"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+            </svg>
+          </button>
+
           <div class="switch" title="Toggle between WebRTC and JPEG stream">
             <span>JPEG</span>
             <input type="checkbox" .checked=${this.useWebRTC} @change=${this.handleWebRTCToggle}>
@@ -838,16 +848,6 @@ export class ScreencapView extends LitElement {
           ${
             this.isCapturing
               ? html`
-            <button 
-              class="toggle-btn ${this.showLog ? 'active' : ''}"
-              @click=${this.toggleLog}
-              title="Toggle Log"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
-              </svg>
-            </button>
-
             <button 
               class="toggle-btn ${this.showStats ? 'active' : ''}"
               @click=${this.toggleStats}
@@ -921,6 +921,75 @@ export class ScreencapView extends LitElement {
             ${this.renderCaptureContent()}
           </div>
         </div>
+      </div>
+    `;
+  }
+
+  private renderCaptureContent() {
+    // WebRTC mode - show video element
+    if (this.useWebRTC && this.isCapturing) {
+      return html`
+        <video 
+          class="capture-preview fit-${this.fitMode}"
+          autoplay
+          playsinline
+          muted
+        ></video>
+        ${
+          this.showStats
+            ? html`
+          <screencap-stats
+            .stats=${this.streamStats}
+            .frameCounter=${this.frameCounter}
+          ></screencap-stats>
+        `
+            : ''
+        }
+        ${this.showLog ? this.renderStatusLog() : ''}
+      `;
+    }
+
+    // JPEG mode - show image element
+    if (this.frameUrl && this.isCapturing && !this.useWebRTC) {
+      return html`
+        <img 
+          src="${this.frameUrl}" 
+          class="capture-preview fit-${this.fitMode}"
+          alt="Screen capture"
+        />
+        <div class="fps-indicator">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v8a1 1 0 01-1 1h-3v2h2a1 1 0 110 2H5a1 1 0 110-2h2v-2H4a1 1 0 01-1-1V4zm2 1v6h10V5H5z"/>
+          </svg>
+          ${this.fps} FPS
+        </div>
+        ${this.showLog ? this.renderStatusLog() : ''}
+      `;
+    }
+
+    // Show overlay when not capturing or waiting to start
+    return html`
+      <div class="capture-overlay">
+        <div class="status-message ${this.status}">
+          ${
+            this.status === 'loading'
+              ? 'Loading...'
+              : this.status === 'starting'
+                ? 'Starting capture...'
+                : this.status === 'error'
+                  ? this.error
+                  : this.status === 'ready'
+                    ? this.captureMode === 'desktop'
+                      ? this.selectedDisplay || this.allDisplaysSelected
+                        ? 'Click Start to begin screen capture'
+                        : 'Select a display to capture'
+                      : this.selectedWindow
+                        ? 'Click Start to begin window capture'
+                        : 'Select a window to capture'
+                    : 'Initializing...'
+          }
+        </div>
+        ${this.showLog || this.status !== 'capturing' ? this.renderStatusLog() : ''}
       </div>
     `;
   }
