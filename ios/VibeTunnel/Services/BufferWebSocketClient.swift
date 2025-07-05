@@ -61,7 +61,7 @@ class BufferWebSocketClient: NSObject {
     private var pingTask: Task<Void, Never>?
     private(set) var authenticationService: AuthenticationService?
 
-    /// Observable properties
+    // Observable properties
     private(set) var isConnected = false
     private(set) var connectionError: Error?
 

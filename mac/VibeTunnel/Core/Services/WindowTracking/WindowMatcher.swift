@@ -41,13 +41,16 @@ final class WindowMatcher {
                 let parentPIDWindows = filteredWindows.filter { window in
                     window.ownerPID == parentPID
                 }
-                
+
                 if parentPIDWindows.count == 1 {
                     logger.info("Found single window by parent process match: PID \(parentPID)")
                     return parentPIDWindows.first
                 } else if parentPIDWindows.count > 1 {
-                    logger.info("Found \(parentPIDWindows.count) windows for PID \(parentPID), checking session ID in titles")
-                    
+                    logger
+                        .info(
+                            "Found \(parentPIDWindows.count) windows for PID \(parentPID), checking session ID in titles"
+                        )
+
                     // Multiple windows - try to match by session ID in title
                     if let matchingWindow = parentPIDWindows.first(where: { window in
                         window.title?.contains("Session \(sessionID)") ?? false
@@ -55,7 +58,7 @@ final class WindowMatcher {
                         logger.info("Found window by session ID '\(sessionID)' in title")
                         return matchingWindow
                     }
-                    
+
                     // If no session ID match, return first window
                     logger.warning("No window with session ID in title, using first window")
                     return parentPIDWindows.first
@@ -71,7 +74,7 @@ final class WindowMatcher {
                         let ancestorPIDWindows = filteredWindows.filter { window in
                             window.ownerPID == grandParentPID
                         }
-                        
+
                         if ancestorPIDWindows.count == 1 {
                             logger
                                 .info(
@@ -83,7 +86,7 @@ final class WindowMatcher {
                                 .info(
                                     "Found \(ancestorPIDWindows.count) windows for ancestor PID \(grandParentPID), checking session ID"
                                 )
-                            
+
                             // Multiple windows - try to match by session ID in title
                             if let matchingWindow = ancestorPIDWindows.first(where: { window in
                                 window.title?.contains("Session \(sessionID)") ?? false
@@ -91,7 +94,7 @@ final class WindowMatcher {
                                 logger.info("Found window by session ID '\(sessionID)' in title")
                                 return matchingWindow
                             }
-                            
+
                             // If no session ID match, return first window
                             return ancestorPIDWindows.first
                         }

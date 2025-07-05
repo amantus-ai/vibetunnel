@@ -141,11 +141,11 @@ struct ServerListView: View {
         .sheet(isPresented: $showingDiscoverySheet) {
             DiscoveryDetailSheet(
                 discoveredServers: filteredDiscoveredServers
-            )                { _ in
-                    showingDiscoverySheet = false
-                    // Auto-fill add server form with discovered server
-                    showingAddServer = true
-                }
+            ) { _ in
+                showingDiscoverySheet = false
+                // Auto-fill add server form with discovered server
+                showingAddServer = true
+            }
         }
     }
 
@@ -353,9 +353,9 @@ struct ServerListView: View {
             ForEach(Array(filteredDiscoveredServers.prefix(3))) { server in
                 DiscoveredServerCard(
                     server: server
-                )                    {
-                        connectToDiscoveredServer(server)
-                    }
+                ) {
+                    connectToDiscoveredServer(server)
+                }
             }
 
             if filteredDiscoveredServers.count > 3 {

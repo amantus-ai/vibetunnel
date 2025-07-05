@@ -16,12 +16,12 @@ struct Session: Codable, Identifiable, Equatable, Hashable {
     let lastModified: String?
     let pid: Int?
 
-    /// Terminal dimensions
+    // Terminal dimensions
     let width: Int?
     let height: Int?
     let waiting: Bool?
 
-    /// Optional fields from HQ mode
+    // Optional fields from HQ mode
     let source: String?
     let remoteId: String?
     let remoteName: String?

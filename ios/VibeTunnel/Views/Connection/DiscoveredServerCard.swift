@@ -90,9 +90,9 @@ struct DiscoveryDetailSheet: View {
                     ForEach(discoveredServers) { server in
                         DiscoveredServerCard(
                             server: server
-                        )                            {
-                                onConnect(server)
-                            }
+                        ) {
+                            onConnect(server)
+                        }
                     }
                 }
                 .padding()

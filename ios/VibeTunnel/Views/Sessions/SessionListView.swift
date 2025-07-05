@@ -415,7 +415,7 @@ class SessionListViewModel: SessionListViewModelProtocol {
         networkMonitor.isConnected
     }
 
-    /// UI State
+    // UI State
     var showingCreateSession = false
     var selectedSession: Session?
     var showingFileBrowser = false

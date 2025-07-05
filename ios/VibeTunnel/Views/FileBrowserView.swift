@@ -108,17 +108,15 @@ struct FileBrowserView: View {
                     Text(viewModel.gitFilter == .changed ? "Git Changes" : "All Files")
                         .font(.custom("SF Mono", size: 12))
                 }
-                .foregroundColor(
-                    viewModel.gitFilter == .changed ? Theme.Colors.successAccent : Theme.Colors
-                        .terminalGray
+                .foregroundColor(viewModel.gitFilter == .changed ? Theme.Colors.successAccent : Theme.Colors
+                    .terminalGray
                 )
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(
-                            viewModel.gitFilter == .changed ? Theme.Colors.successAccent.opacity(0.2) : Theme.Colors
-                                .terminalGray.opacity(0.1)
+                        .fill(viewModel.gitFilter == .changed ? Theme.Colors.successAccent.opacity(0.2) : Theme.Colors
+                            .terminalGray.opacity(0.1)
                         )
                 )
             }
@@ -141,9 +139,8 @@ struct FileBrowserView: View {
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(
-                            viewModel.showHidden ? Theme.Colors.terminalAccent.opacity(0.2) : Theme.Colors
-                                .terminalGray.opacity(0.1)
+                        .fill(viewModel.showHidden ? Theme.Colors.terminalAccent.opacity(0.2) : Theme.Colors
+                            .terminalGray.opacity(0.1)
                         )
                 )
             }
@@ -567,9 +564,8 @@ struct FileBrowserRow: View {
                 // Name
                 Text(name)
                     .font(.custom("SF Mono", size: 14))
-                    .foregroundColor(
-                        isParent ? Theme.Colors
-                            .terminalAccent : (isDirectory ? Theme.Colors.terminalWhite : Theme.Colors.terminalGray)
+                    .foregroundColor(isParent ? Theme.Colors
+                        .terminalAccent : (isDirectory ? Theme.Colors.terminalWhite : Theme.Colors.terminalGray)
                     )
                     .lineLimit(1)
                     .truncationMode(.middle)

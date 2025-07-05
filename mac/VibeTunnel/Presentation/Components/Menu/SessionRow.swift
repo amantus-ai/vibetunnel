@@ -394,12 +394,12 @@ struct SessionRow: View {
         // Check if this is an AI assistant session by looking at the command
         let aiAssistants = ["claude", "gemini", "openhands", "aider", "codex"]
         let cmd = commandName.lowercased()
-        
+
         // Match exact executable names or at word boundaries
         return aiAssistants.contains { ai in
             cmd == ai ||
-            cmd.hasPrefix(ai + ".") || // e.g., claude.exe
-            cmd.hasPrefix(ai + "-wrapper") // e.g., claude-wrapper
+                cmd.hasPrefix(ai + ".") || // e.g., claude.exe
+                cmd.hasPrefix(ai + "-wrapper") // e.g., claude-wrapper
         }
     }
 
@@ -455,7 +455,7 @@ struct SessionRow: View {
                 // Send a prompt that encourages the AI assistant to use vt title
                 let prompt = "use vt title to update the terminal title with what you're currently working on"
                 try await sessionService.sendInput(to: session.key, text: prompt)
-                
+
                 // Send Enter key to submit the prompt
                 try await sessionService.sendKey(to: session.key, key: "enter")
             } catch {
@@ -536,7 +536,7 @@ struct SessionRow: View {
 /// Modifier that makes an element fully opaque on hover
 struct HoverOpacityModifier: ViewModifier {
     @State private var isHovering = false
-    
+
     func body(content: Content) -> some View {
         content
             .opacity(isHovering ? 1.0 : 0.5)

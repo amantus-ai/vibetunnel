@@ -127,7 +127,7 @@ final class SessionService {
             throw SessionServiceError.requestFailed(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
         }
     }
-    
+
     /// Send a key command to a session
     func sendKey(to sessionId: String, key: String) async throws {
         guard serverManager.isRunning else {

@@ -200,7 +200,7 @@ final class WindowTracker {
             unregisterWindow(for: sessionID)
             return false
         }
-        
+
         guard let windowInfo = findWindowForSession(sessionID, sessionInfo: sessionInfo) else {
             logger.warning("Could not find window for session \(sessionID) - it may have been closed already")
             // Clean up tracking since window is gone
@@ -338,7 +338,7 @@ final class WindowTracker {
                 sessionsOpenedByUs.remove(sessionID)
             }
         }
-        
+
         // Check for sessions that have exited and close their windows if we opened them
         for session in sessions where session.status == "exited" {
             // Only close windows that we opened (not external vt attachments)

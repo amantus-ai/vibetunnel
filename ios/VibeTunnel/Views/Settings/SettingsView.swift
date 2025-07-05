@@ -39,9 +39,8 @@ struct SettingsView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Theme.Spacing.medium)
-                            .foregroundColor(
-                                selectedTab == tab ? Theme.Colors.primaryAccent : Theme.Colors
-                                    .terminalForeground.opacity(0.5)
+                            .foregroundColor(selectedTab == tab ? Theme.Colors.primaryAccent : Theme.Colors
+                                .terminalForeground.opacity(0.5)
                             )
                             .background(
                                 selectedTab == tab ? Theme.Colors.primaryAccent.opacity(0.1) : Color.clear
@@ -339,10 +338,9 @@ struct AdvancedSettingsView: View {
                                 windowManager.setWindowStyle(style)
                             }
 
-                            Text(
-                                macWindowStyle == .inline ?
-                                    "Traffic light buttons appear inline with content" :
-                                    "Standard macOS title bar with traffic lights"
+                            Text(macWindowStyle == .inline ?
+                                "Traffic light buttons appear inline with content" :
+                                "Standard macOS title bar with traffic lights"
                             )
                             .font(Theme.Typography.terminalSystem(size: 12))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))

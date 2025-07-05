@@ -34,7 +34,7 @@ import SwiftUI
         private var windowDidBecomeKeyObserver: NSObjectProtocol?
         private let logger = Logger(category: "MacCatalystWindow")
 
-        /// Traffic light button configuration
+        // Traffic light button configuration
         private let trafficLightInset = CGPoint(x: 20, y: 20)
         private let trafficLightSpacing: CGFloat = 20
 

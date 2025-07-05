@@ -371,10 +371,10 @@ private struct WindowHighlightSettingsSection: View {
     private var highlightStyle = "default"
     @AppStorage("windowHighlightColor")
     private var highlightColorData = Data()
-    
+
     @State private var customColor = Color.blue
     @State private var highlightEffect: WindowHighlightEffect?
-    
+
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
@@ -385,7 +385,7 @@ private struct WindowHighlightSettingsSection: View {
                             previewHighlightEffect()
                         }
                     }
-                
+
                 if highlightEnabled {
                     // Style picker
                     Picker("Highlight style", selection: $highlightStyle) {
@@ -398,7 +398,7 @@ private struct WindowHighlightSettingsSection: View {
                     .onChange(of: highlightStyle) { _, _ in
                         previewHighlightEffect()
                     }
-                    
+
                     // Custom color picker (only shown when custom is selected)
                     if highlightStyle == "custom" {
                         HStack {
@@ -429,7 +429,7 @@ private struct WindowHighlightSettingsSection: View {
             highlightEffect = WindowHighlightEffect()
         }
     }
-    
+
     private func saveCustomColor(_ color: Color) {
         let nsColor = NSColor(color)
         do {
@@ -439,11 +439,14 @@ private struct WindowHighlightSettingsSection: View {
             Logger.advanced.error("Failed to save custom color: \(error)")
         }
     }
-    
+
     private func loadCustomColor() {
         if !highlightColorData.isEmpty {
             do {
-                if let nsColor = try NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: highlightColorData) {
+                if let nsColor = try NSKeyedUnarchiver.unarchivedObject(
+                    ofClass: NSColor.self,
+                    from: highlightColorData
+                ) {
                     customColor = Color(nsColor)
                 }
             } catch {
@@ -451,15 +454,15 @@ private struct WindowHighlightSettingsSection: View {
             }
         }
     }
-    
+
     private func previewHighlightEffect() {
         Task { @MainActor in
             // Get the current highlight configuration
             let config = loadCurrentHighlightConfig()
-            
+
             // Update the highlight effect with new config
             highlightEffect?.updateConfig(config)
-            
+
             // Find the settings window
             guard let settingsWindow = NSApp.windows.first(where: { window in
                 window.title.contains("Settings") || window.title.contains("Preferences")
@@ -467,33 +470,34 @@ private struct WindowHighlightSettingsSection: View {
                 Logger.advanced.debug("Could not find settings window for highlight preview")
                 return
             }
-            
+
             // Get the window's accessibility element
             let pid = ProcessInfo.processInfo.processIdentifier
             let axApp = AXElement.application(pid: pid)
-            
+
             guard let windows = axApp.windows, !windows.isEmpty else {
                 Logger.advanced.debug("Could not get accessibility windows for highlight preview")
                 return
             }
-            
+
             // Find the settings window by comparing bounds
             let settingsFrame = settingsWindow.frame
             var targetWindow: AXElement?
-            
+
             for axWindow in windows {
                 if let frame = axWindow.frame() {
                     // Check if this matches our settings window (with some tolerance for frame differences)
                     let tolerance: CGFloat = 5.0
                     if abs(frame.origin.x - settingsFrame.origin.x) < tolerance &&
-                       abs(frame.width - settingsFrame.width) < tolerance &&
-                       abs(frame.height - settingsFrame.height) < tolerance {
+                        abs(frame.width - settingsFrame.width) < tolerance &&
+                        abs(frame.height - settingsFrame.height) < tolerance
+                    {
                         targetWindow = axWindow
                         break
                     }
                 }
             }
-            
+
             // Apply highlight effect to the settings window
             if let window = targetWindow {
                 highlightEffect?.highlightWindow(window)
@@ -502,7 +506,7 @@ private struct WindowHighlightSettingsSection: View {
             }
         }
     }
-    
+
     private func loadCurrentHighlightConfig() -> WindowHighlightConfig {
         guard highlightEnabled else {
             return WindowHighlightConfig(
@@ -513,7 +517,7 @@ private struct WindowHighlightSettingsSection: View {
                 isEnabled: false
             )
         }
-        
+
         switch highlightStyle {
         case "subtle":
             return .subtle
@@ -523,7 +527,8 @@ private struct WindowHighlightSettingsSection: View {
             // Load custom color
             let colorData = highlightColorData
             if !colorData.isEmpty,
-               let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
+               let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData)
+            {
                 return WindowHighlightConfig(
                     color: nsColor,
                     duration: 0.8,

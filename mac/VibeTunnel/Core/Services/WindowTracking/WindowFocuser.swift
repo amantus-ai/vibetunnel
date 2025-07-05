@@ -12,12 +12,12 @@ final class WindowFocuser {
 
     private let windowMatcher = WindowMatcher()
     private let highlightEffect: WindowHighlightEffect
-    
+
     init() {
         // Load configuration from UserDefaults
         let config = Self.loadHighlightConfig()
         self.highlightEffect = WindowHighlightEffect(config: config)
-        
+
         // Observe UserDefaults changes
         NotificationCenter.default.addObserver(
             self,
@@ -26,17 +26,17 @@ final class WindowFocuser {
             object: nil
         )
     }
-    
+
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
-    
+
     /// Load highlight configuration from UserDefaults
     private static func loadHighlightConfig() -> WindowHighlightConfig {
         let defaults = UserDefaults.standard
         let isEnabled = defaults.object(forKey: "windowHighlightEnabled") as? Bool ?? true
         let style = defaults.string(forKey: "windowHighlightStyle") ?? "default"
-        
+
         guard isEnabled else {
             return WindowHighlightConfig(
                 color: .clear,
@@ -46,7 +46,7 @@ final class WindowFocuser {
                 isEnabled: false
             )
         }
-        
+
         switch style {
         case "subtle":
             return .subtle
@@ -56,7 +56,8 @@ final class WindowFocuser {
             // Load custom color
             let colorData = defaults.data(forKey: "windowHighlightColor") ?? Data()
             if !colorData.isEmpty,
-               let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
+               let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData)
+            {
                 return WindowHighlightConfig(
                     color: nsColor,
                     duration: 0.8,
@@ -70,7 +71,7 @@ final class WindowFocuser {
             return .default
         }
     }
-    
+
     /// Handle UserDefaults changes
     @objc private func userDefaultsDidChange(_ notification: Notification) {
         // Update highlight configuration when settings change
@@ -102,7 +103,7 @@ final class WindowFocuser {
             let escapedTabRef = tabRef.replacingOccurrences(of: "\"", with: "\\\"")
                 .replacingOccurrences(of: "\n", with: "\\n")
                 .replacingOccurrences(of: "\r", with: "\\r")
-            
+
             let script = """
             tell application "Terminal"
                 activate
@@ -151,7 +152,7 @@ final class WindowFocuser {
         let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
         let workingDir = sessionInfo?.workingDir ?? ""
         let dirName = (workingDir as NSString).lastPathComponent
-        
+
         // Escape all user-provided values to prevent injection
         let escapedSessionID = AppleScriptSecurity.escapeString(windowInfo.sessionID)
         let escapedDirName = AppleScriptSecurity.escapeString(dirName)
@@ -209,7 +210,7 @@ final class WindowFocuser {
         guard let children = window.children else {
             return nil
         }
-        
+
         // Find the first element with role kAXTabGroupRole
         return children.first { elem in
             elem.role == kAXTabGroupRole
@@ -270,7 +271,7 @@ final class WindowFocuser {
             logger.warning("Could not get tabs from group or index out of bounds")
             return false
         }
-        
+
         return tabs[index].press()
     }
 
@@ -280,7 +281,7 @@ final class WindowFocuser {
         let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
         // Create AXElement directly from the PID
         let axProcess = AXElement.application(pid: windowInfo.ownerPID)
-        
+
         // Get windows from this specific process
         guard let windows = axProcess.windows,
               !windows.isEmpty
@@ -288,58 +289,61 @@ final class WindowFocuser {
             logger.debug("PID-based lookup failed for PID \(windowInfo.ownerPID), no windows found")
             return false
         }
-        
+
         logger.info("Found \(windows.count) window(s) for PID \(windowInfo.ownerPID)")
-        
+
         // Single window case - simple!
         if windows.count == 1 {
             logger.info("Single window found for PID \(windowInfo.ownerPID), focusing it directly")
             let window = windows[0]
-            
+
             // Show highlight effect
             highlightEffect.highlightWindow(window, bounds: window.frame())
-            
+
             // Focus the window
             window.setMain(true)
             window.setFocused(true)
-            
+
             // Bring app to front
             if let app = NSRunningApplication(processIdentifier: windowInfo.ownerPID) {
                 app.activate()
             }
-            
+
             return true
         }
-        
+
         // Multiple windows - need to be smarter
         logger.info("Multiple windows found for PID \(windowInfo.ownerPID), using scoring system")
-        
+
         // Use our existing scoring logic but only on these PID-specific windows
         var bestMatch: (window: AXElement, score: Int)?
-        
+
         for (index, window) in windows.enumerated() {
             var matchScore = 0
-            
+
             // Check window title for session ID or working directory (most reliable)
             if let title = window.title {
                 logger.debug("Window \(index) title: '\(title)'")
-                
+
                 // Check for session ID in title
                 if title.contains(windowInfo.sessionID) || title.contains("TTY_SESSION_ID=\(windowInfo.sessionID)") {
                     matchScore += 200 // Highest score for session ID match
                     logger.debug("Window \(index) has session ID in title!")
                 }
-                
+
                 // Check for working directory in title
-                if let sessionInfo = sessionInfo {
+                if let sessionInfo {
                     let workingDir = sessionInfo.workingDir
                     let dirName = (workingDir as NSString).lastPathComponent
-                    
-                    if !dirName.isEmpty && (title.contains(dirName) || title.hasSuffix(dirName) || title.hasSuffix(" - \(dirName)")) {
+
+                    if !dirName
+                        .isEmpty &&
+                        (title.contains(dirName) || title.hasSuffix(dirName) || title.hasSuffix(" - \(dirName)"))
+                    {
                         matchScore += 100 // High score for directory match
                         logger.debug("Window \(index) has working directory in title: \(dirName)")
                     }
-                    
+
                     // Check for session name
                     if let sessionName = sessionInfo.name, !sessionName.isEmpty && title.contains(sessionName) {
                         matchScore += 150 // High score for session name match
@@ -347,7 +351,7 @@ final class WindowFocuser {
                     }
                 }
             }
-            
+
             // Check window ID (less reliable for terminals)
             if let axWindowID = window.windowID {
                 if axWindowID == windowInfo.windowID {
@@ -355,44 +359,45 @@ final class WindowFocuser {
                     logger.debug("Window \(index) has matching ID: \(axWindowID)")
                 }
             }
-            
+
             // Check bounds if available (least reliable as windows can move)
             if let bounds = windowInfo.bounds,
-               let windowFrame = window.frame() {
+               let windowFrame = window.frame()
+            {
                 let tolerance: CGFloat = 5.0
                 if abs(windowFrame.origin.x - bounds.origin.x) < tolerance &&
-                   abs(windowFrame.origin.y - bounds.origin.y) < tolerance &&
-                   abs(windowFrame.width - bounds.width) < tolerance &&
-                   abs(windowFrame.height - bounds.height) < tolerance
+                    abs(windowFrame.origin.y - bounds.origin.y) < tolerance &&
+                    abs(windowFrame.width - bounds.width) < tolerance &&
+                    abs(windowFrame.height - bounds.height) < tolerance
                 {
                     matchScore += 25 // Lowest score for bounds match
                     logger.debug("Window \(index) bounds match")
                 }
             }
-            
+
             if matchScore > 0 && (bestMatch == nil || matchScore > bestMatch!.score) {
                 bestMatch = (window, matchScore)
             }
         }
-        
+
         if let best = bestMatch {
             logger.info("Focusing best match window with score \(best.score) for PID \(windowInfo.ownerPID)")
-            
+
             // Show highlight effect
             highlightEffect.highlightWindow(best.window, bounds: best.window.frame())
-            
+
             // Focus the window
             best.window.setMain(true)
             best.window.setFocused(true)
-            
+
             // Bring app to front
             if let app = NSRunningApplication(processIdentifier: windowInfo.ownerPID) {
                 app.activate()
             }
-            
+
             return true
         }
-        
+
         logger.error("No matching window found for PID \(windowInfo.ownerPID)")
         return false
     }
@@ -404,10 +409,10 @@ final class WindowFocuser {
             logger.info("Successfully focused window using PID-based approach")
             return
         }
-        
+
         // Fallback to the original approach if PID-based fails
         logger.info("Falling back to terminal app-based window search")
-        
+
         // First bring the application to front
         if let app = NSRunningApplication(processIdentifier: windowInfo.ownerPID) {
             app.activate()
@@ -473,31 +478,33 @@ final class WindowFocuser {
             // Check window title for session information
             if let title = window.title {
                 logger.debug("Window \(index) title: '\(title)'")
-                
+
                 // Check for session ID in title (most reliable)
                 if title.contains(windowInfo.sessionID) || title.contains("TTY_SESSION_ID=\(windowInfo.sessionID)") {
                     matchScore += 200 // Highest score
                     logger.debug("Window \(index) has session ID in title!")
                 }
-                
+
                 // Check for session-specific information
-                if let sessionInfo = sessionInfo {
+                if let sessionInfo {
                     let workingDir = sessionInfo.workingDir
                     let dirName = (workingDir as NSString).lastPathComponent
-                    
+
                     if !dirName.isEmpty && (title.contains(dirName) || title.hasSuffix(dirName)) {
                         matchScore += 100
                         logger.debug("Window \(index) has working directory in title")
                     }
-                    
+
                     if let sessionName = sessionInfo.name, !sessionName.isEmpty && title.contains(sessionName) {
                         matchScore += 150
                         logger.debug("Window \(index) has session name in title")
                     }
                 }
-                
+
                 // Original title match logic as fallback
-                if !title.isEmpty && (windowInfo.title?.contains(title) ?? false || title.contains(windowInfo.title ?? "")) {
+                if !title
+                    .isEmpty && (windowInfo.title?.contains(title) ?? false || title.contains(windowInfo.title ?? ""))
+                {
                     matchScore += 25 // Low score for title match
                 }
             }

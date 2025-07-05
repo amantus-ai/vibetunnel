@@ -6,13 +6,13 @@ struct TerminalTheme: Identifiable, Equatable {
     let name: String
     let description: String
 
-    /// Basic colors
+    // Basic colors
     let background: Color
     let foreground: Color
     let selection: Color
     let cursor: Color
 
-    /// ANSI colors (0-7)
+    // ANSI colors (0-7)
     let black: Color
     let red: Color
     let green: Color
@@ -22,7 +22,7 @@ struct TerminalTheme: Identifiable, Equatable {
     let cyan: Color
     let white: Color
 
-    /// Bright ANSI colors (8-15)
+    // Bright ANSI colors (8-15)
     let brightBlack: Color
     let brightRed: Color
     let brightGreen: Color
