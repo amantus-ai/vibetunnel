@@ -1,63 +1,33 @@
 import Foundation
+import OSLog
 
-/// Log severity levels for filtering output.
-/// Higher raw values indicate more severe messages.
-enum LogLevel: Int {
-    case verbose = 0
-    case debug = 1
-    case info = 2
-    case warning = 3
-    case error = 4
-
-    var prefix: String {
-        switch self {
-        case .verbose: "🔍"
-        case .debug: "🐛"
-        case .info: "ℹ️"
-        case .warning: "⚠️"
-        case .error: "❌"
-        }
-    }
-}
-
-/// Simple logging utility for debugging and diagnostics.
-/// Provides category-based logging with configurable severity levels.
+/// Simple logging utility for debugging and diagnostics using the unified logging system.
+/// Provides category-based logging that integrates with Console.app and log stream.
 struct Logger {
-    private let category: String
-
-    // Global log level - only messages at this level or higher will be printed
-    #if DEBUG
-        nonisolated(unsafe) static var globalLevel: LogLevel = .info // Default to info level in debug builds
-    #else
-        nonisolated(unsafe) static var globalLevel: LogLevel = .warning // Only warnings and errors in release
-    #endif
+    private let osLogger: os.Logger
 
     init(category: String) {
-        self.category = category
+        // Use the same subsystem as the Mac app for consistency
+        self.osLogger = os.Logger(subsystem: "sh.vibetunnel.vibetunnel", category: category)
     }
 
     func verbose(_ message: String) {
-        log(message, level: .verbose)
+        osLogger.trace("\(message, privacy: .public)")
     }
 
     func debug(_ message: String) {
-        log(message, level: .debug)
+        osLogger.debug("\(message, privacy: .public)")
     }
 
     func info(_ message: String) {
-        log(message, level: .info)
+        osLogger.info("\(message, privacy: .public)")
     }
 
     func warning(_ message: String) {
-        log(message, level: .warning)
+        osLogger.warning("\(message, privacy: .public)")
     }
 
     func error(_ message: String) {
-        log(message, level: .error)
-    }
-
-    private func log(_ message: String, level: LogLevel) {
-        guard level.rawValue >= Self.globalLevel.rawValue else { return }
-        print("\(level.prefix) [\(category)] \(message)")
+        osLogger.error("\(message, privacy: .public)")
     }
 }

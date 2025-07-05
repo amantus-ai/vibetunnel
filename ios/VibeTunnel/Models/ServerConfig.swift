@@ -36,10 +36,11 @@ struct ServerConfig: Codable, Equatable {
             formattedHost = String(formattedHost.dropFirst().dropLast())
         }
 
-        // Check if this is an IPv6 address (contains colons but isn't already a full URL)
-        let isIPv6 = formattedHost.contains(":") &&
-            !formattedHost.contains("://") &&
-            !formattedHost.hasPrefix("[")
+        // Check if this is an IPv6 address
+        // IPv6 addresses have at least 2 colons and consist of hexadecimal segments
+        // Since host and port are separate fields, the host should never contain a port
+        let colonCount = formattedHost.filter { $0 == ":" }.count
+        let isIPv6 = colonCount >= 2
 
         // Add brackets for IPv6 addresses
         if isIPv6 {

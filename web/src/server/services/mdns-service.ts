@@ -31,7 +31,7 @@ export class MDNSService {
       }
       this.service = this.bonjour.publish({
         name,
-        type: 'vibetunnel',
+        type: '_vibetunnel._tcp',
         port,
         txt: {
           version: '1.0',

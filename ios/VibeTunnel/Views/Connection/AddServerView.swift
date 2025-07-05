@@ -7,6 +7,10 @@ struct AddServerView: View {
     @State private var networkMonitor = NetworkMonitor.shared
     @State private var viewModel: ConnectionViewModel
 
+    private let profileLogger = Logger(category: "AddServer.Profile")
+    private let authLogger = Logger(category: "AddServer.Authentication")
+    private let keychainLogger = Logger(category: "AddServer.Keychain")
+
     let onServerAdded: (ServerProfile) -> Void
 
     init(
@@ -148,29 +152,30 @@ struct AddServerView: View {
         // Save profile with password if provided
         Task {
             do {
-                print("💾 Saving server profile: \(profile.name) (id: \(profile.id))")
-                print("💾 requiresAuth: \(profile.requiresAuth), password empty: \(viewModel.password.isEmpty)")
-                print("💾 username: \(profile.username ?? "nil")")
+                profileLogger.info("💾 Saving server profile: \(profile.name) (id: \(profile.id))")
+                authLogger
+                    .debug("💾 requiresAuth: \(profile.requiresAuth), password empty: \(viewModel.password.isEmpty)")
+                authLogger.debug("💾 username: \(profile.username ?? "nil")")
 
                 if profile.requiresAuth && !viewModel.password.isEmpty {
-                    print("💾 Saving password to keychain for profile id: \(profile.id)")
+                    keychainLogger.info("💾 Saving password to keychain for profile id: \(profile.id)")
                     try KeychainService().savePassword(viewModel.password, for: profile.id)
-                    print("💾 Password saved successfully")
+                    keychainLogger.info("💾 Password saved successfully")
                 } else {
-                    print(
+                    authLogger.debug(
                         "💾 Skipping password save - requiresAuth: \(profile.requiresAuth), password empty: \(viewModel.password.isEmpty)"
                     )
                 }
 
                 // Save profile
                 ServerProfile.save(profile)
-                print("💾 Profile saved successfully")
+                profileLogger.info("💾 Profile saved successfully")
 
                 // Notify parent and dismiss
                 onServerAdded(profile)
                 dismiss()
             } catch {
-                print("💾 Failed to save server: \(error)")
+                profileLogger.error("💾 Failed to save server: \(error)")
                 viewModel.errorMessage = "Failed to save server: \(error.localizedDescription)"
             }
         }
