@@ -990,8 +990,7 @@ public final class ScreencapService: NSObject {
 
             streamConfig.width = Int(totalWidth)
             streamConfig.height = Int(totalHeight)
-
-            // IMPORTANT: Set destination rect to ensure proper scaling
+            streamConfig.sourceRect = CGRect(x: minX, y: minY, width: totalWidth, height: totalHeight)
             streamConfig.destinationRect = CGRect(x: 0, y: 0, width: totalWidth, height: totalHeight)
 
             // Don't set source rect - let it capture the entire display content
