@@ -665,6 +665,7 @@ export class ScreencapView extends LitElement {
       }
 
       this.logStatus('info', 'Sending screen capture request to Mac app...');
+      // @ts-ignore - use8k is not in types yet
       captureResponse = (await this.wsClient.startCapture({
         type: 'desktop',
         index: displayIndex,
@@ -689,6 +690,7 @@ export class ScreencapView extends LitElement {
       );
 
       this.logStatus('info', 'Sending window capture request to Mac app...');
+      // @ts-ignore - use8k is not in types yet
       captureResponse = (await this.wsClient.captureWindow({
         cgWindowID: this.selectedWindow.cgWindowID,
         webrtc: true,
@@ -921,75 +923,6 @@ export class ScreencapView extends LitElement {
             ${this.renderCaptureContent()}
           </div>
         </div>
-      </div>
-    `;
-  }
-
-  private renderCaptureContent() {
-    // WebRTC mode - show video element
-    if (this.useWebRTC && this.isCapturing) {
-      return html`
-        <video 
-          class="capture-preview fit-${this.fitMode}"
-          autoplay
-          playsinline
-          muted
-        ></video>
-        ${
-          this.showStats
-            ? html`
-          <screencap-stats
-            .stats=${this.streamStats}
-            .frameCounter=${this.frameCounter}
-          ></screencap-stats>
-        `
-            : ''
-        }
-        ${this.showLog ? this.renderStatusLog() : ''}
-      `;
-    }
-
-    // JPEG mode - show image element
-    if (this.frameUrl && this.isCapturing && !this.useWebRTC) {
-      return html`
-        <img 
-          src="${this.frameUrl}" 
-          class="capture-preview fit-${this.fitMode}"
-          alt="Screen capture"
-        />
-        <div class="fps-indicator">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v8a1 1 0 01-1 1h-3v2h2a1 1 0 110 2H5a1 1 0 110-2h2v-2H4a1 1 0 01-1-1V4zm2 1v6h10V5H5z"/>
-          </svg>
-          ${this.fps} FPS
-        </div>
-        ${this.showLog ? this.renderStatusLog() : ''}
-      `;
-    }
-
-    // Show overlay when not capturing or waiting to start
-    return html`
-      <div class="capture-overlay">
-        <div class="status-message ${this.status}">
-          ${
-            this.status === 'loading'
-              ? 'Loading...'
-              : this.status === 'starting'
-                ? 'Starting capture...'
-                : this.status === 'error'
-                  ? this.error
-                  : this.status === 'ready'
-                    ? this.captureMode === 'desktop'
-                      ? this.selectedDisplay || this.allDisplaysSelected
-                        ? 'Click Start to begin screen capture'
-                        : 'Select a display to capture'
-                      : this.selectedWindow
-                        ? 'Click Start to begin window capture'
-                        : 'Select a window to capture'
-                    : 'Initializing...'
-          }
-        </div>
-        ${this.showLog || this.status !== 'capturing' ? this.renderStatusLog() : ''}
       </div>
     `;
   }

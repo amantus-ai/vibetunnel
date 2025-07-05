@@ -2,6 +2,28 @@ import { getWebRTCConfig } from '../../shared/webrtc-config.js';
 import { createLogger } from '../utils/logger.js';
 import type { ScreencapWebSocketClient } from './screencap-websocket-client.js';
 
+// Type definitions for WebRTC stats that TypeScript doesn't have
+interface CodecStats extends RTCStats {
+  payloadType?: number;
+  mimeType?: string;
+  clockRate?: number;
+  channels?: number;
+  sdpFmtpLine?: string;
+  id?: string;
+}
+
+interface ExtendedRTCInboundRtpStreamStats extends RTCInboundRtpStreamStats {
+  bytesReceived?: number;
+  framesPerSecond?: number;
+  packetsLost?: number;
+  jitter?: number;
+  decoderImplementation?: string;
+}
+
+interface ExtendedRTCIceCandidatePairStats extends RTCIceCandidatePairStats {
+  currentRoundTripTime?: number;
+}
+
 const logger = createLogger('webrtc-handler');
 
 export interface StreamStats {
@@ -214,15 +236,15 @@ export class WebRTCHandler {
 
     // Set up WebRTC signaling callbacks
     this.wsClient.onOffer = async (data) => {
-      await this.handleSignalingMessage({ type: 'offer', data });
+      await this.handleOffer(data);
     };
 
     this.wsClient.onAnswer = async (data) => {
-      await this.handleSignalingMessage({ type: 'answer', data });
+      await this.handleAnswer(data);
     };
 
     this.wsClient.onIceCandidate = async (data) => {
-      await this.handleSignalingMessage({ type: 'ice-candidate', data });
+      await this.handleIceCandidate(data);
     };
 
     this.wsClient.onError = (error) => {
@@ -329,7 +351,11 @@ export class WebRTCHandler {
         const orderedCodecs = [...h264Codecs, ...vp8Codecs, ...otherCodecs];
 
         if (orderedCodecs.length > 0) {
-          (transceiver as any).setCodecPreferences(orderedCodecs);
+          // TypeScript doesn't have setCodecPreferences in its types yet
+          const transceiverWithCodecPref = transceiver as RTCRtpTransceiver & {
+            setCodecPreferences(codecs: RTCRtpCodec[]): void;
+          };
+          transceiverWithCodecPref.setCodecPreferences(orderedCodecs);
           logger.log(
             `Configured codec preferences - H.264: ${h264Codecs.length}, VP8: ${vp8Codecs.length}`
           );
@@ -338,82 +364,77 @@ export class WebRTCHandler {
     }
   }
 
-  private async handleSignalingMessage(message: { type: string; data?: unknown }): Promise<void> {
+  private async handleOffer(offer: RTCSessionDescriptionInit) {
     if (!this.peerConnection) return;
 
-    switch (message.type) {
-      case 'offer':
-        logger.log('Received offer from Mac');
-        this.onStatusUpdate?.('info', 'Received connection offer from Mac app');
-        try {
-          // Modify offer SDP to prefer H.264 and VP8
-          const offer = message.data as RTCSessionDescriptionInit;
-          const modifiedSdp = this.preferCodecsInSdp(offer.sdp || '');
-          const modifiedOffer = new RTCSessionDescription({
-            type: offer.type,
-            sdp: modifiedSdp,
-          });
+    logger.log('Received offer from Mac');
+    this.onStatusUpdate?.('info', 'Received connection offer from Mac app');
+    try {
+      // Modify offer SDP to prefer H.264 and VP8
+      const modifiedSdp = this.preferCodecsInSdp(offer.sdp || '');
+      const modifiedOffer = new RTCSessionDescription({
+        type: offer.type,
+        sdp: modifiedSdp,
+      });
 
-          await this.peerConnection.setRemoteDescription(modifiedOffer);
-          logger.log('Remote description set successfully');
+      await this.peerConnection.setRemoteDescription(modifiedOffer);
+      logger.log('Remote description set successfully');
 
-          // Create and send answer
-          this.onStatusUpdate?.('info', 'Negotiating connection parameters...');
-          const answer = await this.peerConnection.createAnswer();
+      // Create and send answer
+      this.onStatusUpdate?.('info', 'Negotiating connection parameters...');
+      const answer = await this.peerConnection.createAnswer();
 
-          // Modify answer SDP to prefer H.264 and VP8
-          const modifiedAnswerSdp = this.preferCodecsInSdp(answer.sdp || '');
-          const modifiedAnswer = new RTCSessionDescription({
-            type: answer.type,
-            sdp: modifiedAnswerSdp,
-          });
+      // Modify answer SDP to prefer H.264 and VP8
+      const modifiedAnswerSdp = this.preferCodecsInSdp(answer.sdp || '');
+      const modifiedAnswer = new RTCSessionDescription({
+        type: answer.type,
+        sdp: modifiedAnswerSdp,
+      });
 
-          await this.peerConnection.setLocalDescription(modifiedAnswer);
+      await this.peerConnection.setLocalDescription(modifiedAnswer);
 
-          logger.log('Sending answer to Mac');
-          this.onStatusUpdate?.('info', 'Sending connection response...');
-          this.wsClient.sendSignal({
-            type: 'answer',
-            data: modifiedAnswer,
-          });
+      logger.log('Sending answer to Mac');
+      this.onStatusUpdate?.('info', 'Sending connection response...');
+      this.wsClient.sendSignal({
+        type: 'answer',
+        data: modifiedAnswer,
+      });
 
-          // Configure bitrate after connection is established
-          await this.configureBitrateParameters();
-        } catch (error) {
-          logger.error('Failed to handle offer:', error);
-          this.onStatusUpdate?.('error', `Failed to establish connection: ${error}`);
-          this.onError?.(error as Error);
-        }
-        break;
+      // Configure bitrate after connection is established
+      await this.configureBitrateParameters();
+    } catch (error) {
+      logger.error('Failed to handle offer:', error);
+      this.onStatusUpdate?.('error', `Failed to establish connection: ${error}`);
+      this.onError?.(error as Error);
+    }
+  }
 
-      case 'answer':
-        logger.log('Received answer from Mac');
-        try {
-          await this.peerConnection.setRemoteDescription(
-            new RTCSessionDescription(message.data as RTCSessionDescriptionInit)
-          );
-          logger.log('Remote description set successfully');
+  private async handleAnswer(answer: RTCSessionDescriptionInit) {
+    if (!this.peerConnection) return;
 
-          // Configure bitrate after connection is established
-          await this.configureBitrateParameters();
-        } catch (error) {
-          logger.error('Failed to set remote description:', error);
-          this.onError?.(error as Error);
-        }
-        break;
+    logger.log('Received answer from Mac');
+    try {
+      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      logger.log('Remote description set successfully');
 
-      case 'ice-candidate':
-        logger.log('Received ICE candidate from Mac');
-        try {
-          if (message.data) {
-            await this.peerConnection.addIceCandidate(
-              new RTCIceCandidate(message.data as RTCIceCandidateInit)
-            );
-          }
-        } catch (error) {
-          logger.error('Failed to add ICE candidate:', error);
-        }
-        break;
+      // Configure bitrate after connection is established
+      await this.configureBitrateParameters();
+    } catch (error) {
+      logger.error('Failed to set remote description:', error);
+      this.onError?.(error as Error);
+    }
+  }
+
+  private async handleIceCandidate(candidate: RTCIceCandidateInit) {
+    if (!this.peerConnection) return;
+
+    logger.log('Received ICE candidate from Mac');
+    try {
+      if (candidate) {
+        await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+    } catch (error) {
+      logger.error('Failed to add ICE candidate:', error);
     }
   }
 
@@ -452,17 +473,33 @@ export class WebRTCHandler {
       let inboundVideoStats: RTCInboundRtpStreamStats | null = null;
       let _remoteOutboundStats: RTCOutboundRtpStreamStats | null = null;
       let candidatePairStats: RTCIceCandidatePairStats | null = null;
-      let codecStats: any | null = null;
+      let codecStats: CodecStats | null = null;
 
       stats.forEach((report) => {
-        if (report.type === 'inbound-rtp' && (report as any).kind === 'video') {
+        if (
+          report.type === 'inbound-rtp' &&
+          'kind' in report &&
+          (report as RTCInboundRtpStreamStats).kind === 'video'
+        ) {
           inboundVideoStats = report as RTCInboundRtpStreamStats;
-        } else if (report.type === 'remote-outbound-rtp' && (report as any).kind === 'video') {
+        } else if (
+          report.type === 'remote-outbound-rtp' &&
+          'kind' in report &&
+          (report as RTCOutboundRtpStreamStats).kind === 'video'
+        ) {
           _remoteOutboundStats = report as RTCOutboundRtpStreamStats;
-        } else if (report.type === 'candidate-pair' && (report as any).state === 'succeeded') {
+        } else if (
+          report.type === 'candidate-pair' &&
+          'state' in report &&
+          (report as RTCIceCandidatePairStats).state === 'succeeded'
+        ) {
           candidatePairStats = report as RTCIceCandidatePairStats;
-        } else if (report.type === 'codec' && (report as any).mimeType?.includes('video')) {
-          codecStats = report;
+        } else if (
+          report.type === 'codec' &&
+          'mimeType' in report &&
+          (report as CodecStats).mimeType?.includes('video')
+        ) {
+          codecStats = report as CodecStats;
         }
       });
 
@@ -473,7 +510,8 @@ export class WebRTCHandler {
         // Calculate bitrate
         const now = Date.now();
         const timeDiff = now - (this.lastStatsTime || now);
-        const bytesReceived = (inboundVideoStats as any).bytesReceived || 0;
+        const extendedStats = inboundVideoStats as ExtendedRTCInboundRtpStreamStats;
+        const bytesReceived = extendedStats.bytesReceived || 0;
         const bytesDiff = bytesReceived - (this.lastBytesReceived || 0);
         const bitrate = timeDiff > 0 ? (bytesDiff * 8 * 1000) / timeDiff : 0;
 
@@ -481,15 +519,18 @@ export class WebRTCHandler {
         this.lastBytesReceived = bytesReceived;
 
         // Calculate latency
-        const latency = (candidatePairStats as any)?.currentRoundTripTime
-          ? Math.round((candidatePairStats as any).currentRoundTripTime * 1000)
+        const extendedPairStats = candidatePairStats
+          ? (candidatePairStats as ExtendedRTCIceCandidatePairStats)
+          : null;
+        const latency = extendedPairStats?.currentRoundTripTime
+          ? Math.round(extendedPairStats.currentRoundTripTime * 1000)
           : 0;
 
         // Get codec info
-        const codecName = codecStats?.mimeType?.split('/')[1] || 'unknown';
-        
+        const codecName = codecStats ? codecStats.mimeType?.split('/')[1] || 'unknown' : 'unknown';
+
         // Check for hardware acceleration hint
-        let codecImplementation = (inboundVideoStats as any).decoderImplementation || 'Software';
+        let codecImplementation = extendedStats.decoderImplementation || 'Software';
         if (codecStats?.id?.toLowerCase().includes('videotoolbox')) {
           codecImplementation = 'Hardware (VideoToolbox)';
         }
@@ -498,12 +539,12 @@ export class WebRTCHandler {
           codec: codecName.toUpperCase(),
           codecImplementation: codecImplementation,
           resolution: `${settings?.width || 0}×${settings?.height || 0}`,
-          fps: Math.round((inboundVideoStats as any).framesPerSecond || 0),
+          fps: Math.round(extendedStats.framesPerSecond || 0),
           bitrate: Math.round(bitrate),
           latency: latency,
-          packetsLost: (inboundVideoStats as any).packetsLost || 0,
+          packetsLost: extendedStats.packetsLost || 0,
           packetLossRate: this.calculatePacketLossRate(inboundVideoStats),
-          jitter: Math.round(((inboundVideoStats as any).jitter || 0) * 1000),
+          jitter: Math.round((extendedStats.jitter || 0) * 1000),
           timestamp: now,
         };
 
@@ -523,8 +564,9 @@ export class WebRTCHandler {
   private lastPacketsLost?: number;
 
   private calculatePacketLossRate(stats: RTCInboundRtpStreamStats): number {
-    const packetsReceived = (stats as any).packetsReceived || 0;
-    const packetsLost = (stats as any).packetsLost || 0;
+    const extStats = stats as ExtendedRTCInboundRtpStreamStats;
+    const packetsReceived = extStats.packetsReceived || 0;
+    const packetsLost = extStats.packetsLost || 0;
 
     if (this.lastPacketsReceived !== undefined && this.lastPacketsLost !== undefined) {
       const receivedDiff = packetsReceived - this.lastPacketsReceived;

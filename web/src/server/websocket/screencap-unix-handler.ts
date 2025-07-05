@@ -171,10 +171,10 @@ export class ScreencapUnixHandler {
       logger.log(`Received from Mac: ${data.length} bytes, buffer size: ${buffer.length}`);
 
       // Process complete messages (separated by newlines)
-      let newlineIndex;
-      while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+      let newlineIndex = buffer.indexOf('\n');
+      while (newlineIndex !== -1) {
         const messageBuffer = buffer.subarray(0, newlineIndex);
-        
+
         // Remove the message and the newline from the main buffer
         buffer = buffer.subarray(newlineIndex + 1);
 
@@ -187,15 +187,19 @@ export class ScreencapUnixHandler {
             logger.error('Raw message buffer:', messageBuffer.toString('utf-8'));
           }
         }
+
+        // Find the next newline
+        newlineIndex = buffer.indexOf('\n');
       }
     });
 
     socket.on('error', (error) => {
       logger.error('Mac socket error:', error);
+      const errorObj = error as NodeJS.ErrnoException;
       logger.error('Error details:', {
-        code: (error as any).code,
-        syscall: (error as any).syscall,
-        errno: (error as any).errno,
+        code: errorObj.code,
+        syscall: errorObj.syscall,
+        errno: errorObj.errno,
       });
     });
 

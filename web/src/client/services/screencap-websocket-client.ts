@@ -149,10 +149,14 @@ export class ScreencapWebSocketClient {
               if (typeof message.error === 'string') {
                 errorMessage = message.error;
               } else if (typeof message.error === 'object' && message.error !== null) {
-                // Cast to any to handle the error object with unknown structure
-                const err = message.error as any;
+                // Cast to unknown then check for message property
+                const err = message.error as unknown as {
+                  message?: string;
+                  error?: string;
+                  code?: string;
+                };
                 // Extract message from error object
-                if ('message' in err) {
+                if (err.message) {
                   errorMessage = String(err.message);
                 } else if ('error' in err) {
                   errorMessage = String(err.error);

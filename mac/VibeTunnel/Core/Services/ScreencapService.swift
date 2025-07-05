@@ -993,8 +993,7 @@ public final class ScreencapService: NSObject {
             streamConfig.sourceRect = CGRect(x: minX, y: minY, width: totalWidth, height: totalHeight)
             streamConfig.destinationRect = CGRect(x: 0, y: 0, width: totalWidth, height: totalHeight)
 
-            // Don't set source rect - let it capture the entire display content
-            logger.info("📐 Stream config: destination rect = (0, 0, \(totalWidth), \(totalHeight))")
+            logger.info("📐 Stream config: sourceRect = (\(minX), \(minY), \(totalWidth), \(totalHeight)), destinationRect = (0, 0, \(totalWidth), \(totalHeight))")
         } else if case .window(let window) = captureMode {
             // For window capture, use the window's bounds
             // Note: The window frame might need to be scaled for Retina displays
@@ -1026,9 +1025,6 @@ public final class ScreencapService: NSObject {
                 streamConfig.width = Int(filter.contentRect.width)
                 streamConfig.height = Int(filter.contentRect.height)
             }
-        } else {
-            streamConfig.width = Int(filter.contentRect.width)
-            streamConfig.height = Int(filter.contentRect.height)
         }
 
         // Basic configuration
