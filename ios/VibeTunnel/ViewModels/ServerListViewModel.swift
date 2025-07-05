@@ -16,6 +16,7 @@ protocol ServerListViewModelProtocol: Observable {
     func updateProfile(_ profile: ServerProfile, password: String?) async throws
     func deleteProfile(_ profile: ServerProfile) async throws
     func initiateConnectionToProfile(_ profile: ServerProfile) async
+    func connectToServer(config: ServerConfig) async
     func handleLoginSuccess(username: String, password: String) async throws
     func getPassword(for profile: ServerProfile) -> String?
 }
@@ -258,6 +259,35 @@ class ServerListViewModel: ServerListViewModelProtocol {
         
         // Reload profiles to reflect changes
         loadProfiles()
+    }
+    
+    func connectToServer(config: ServerConfig) async {
+        guard networkMonitor.isConnected else {
+            errorMessage = "No internet connection available"
+            return
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        // Save connection temporarily
+        connectionManager.saveConnection(config)
+        
+        do {
+            // Try to get sessions to check if auth is required
+            _ = try await APIClient.shared.getSessions()
+            // Success - no auth required
+            connectionManager.isConnected = true
+        } catch {
+            if case APIError.serverError(401, _) = error {
+                // Authentication required
+                // Authentication service is already set by saveConnection
+                showLoginView = true
+            } else {
+                // Other error
+                errorMessage = "Failed to connect: \(error.localizedDescription)"
+            }
+        }
     }
 }
 

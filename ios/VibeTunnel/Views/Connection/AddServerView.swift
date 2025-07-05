@@ -5,9 +5,30 @@ struct AddServerView: View {
     @Environment(ConnectionManager.self) var connectionManager
     @Environment(\.dismiss) private var dismiss
     @State private var networkMonitor = NetworkMonitor.shared
-    @State private var viewModel = ConnectionViewModel()
+    @State private var viewModel: ConnectionViewModel
     
     let onServerAdded: (ServerProfile) -> Void
+    
+    init(
+        initialHost: String? = nil,
+        initialPort: String? = nil,
+        initialName: String? = nil,
+        onServerAdded: @escaping (ServerProfile) -> Void
+    ) {
+        // Initialize the view model with initial values
+        let vm = ConnectionViewModel()
+        if let host = initialHost {
+            vm.host = host
+        }
+        if let port = initialPort {
+            vm.port = port
+        }
+        if let name = initialName {
+            vm.name = name
+        }
+        _viewModel = State(initialValue: vm)
+        self.onServerAdded = onServerAdded
+    }
     
     var body: some View {
         NavigationStack {
@@ -83,12 +104,28 @@ struct AddServerView: View {
         }
         
         // Create profile from form data
-        let urlString = viewModel.port.isEmpty ? viewModel.host : "\(viewModel.host):\(viewModel.port)"
+        let hostWithPort = viewModel.port.isEmpty ? viewModel.host : "\(viewModel.host):\(viewModel.port)"
+        
+        // Add http:// scheme if not present
+        let urlString: String
+        if hostWithPort.hasPrefix("http://") || hostWithPort.hasPrefix("https://") {
+            urlString = hostWithPort
+        } else {
+            urlString = "http://\(hostWithPort)"
+        }
         
         // Basic URL validation
         guard !viewModel.host.isEmpty else {
             viewModel.errorMessage = "Please enter a server address"
             return
+        }
+        
+        // Validate port if provided
+        if !viewModel.port.isEmpty {
+            guard let portNumber = Int(viewModel.port), portNumber > 0 && portNumber <= 65535 else {
+                viewModel.errorMessage = "Invalid port number. Must be between 1 and 65535."
+                return
+            }
         }
         
         // Create a temporary profile to validate URL format
@@ -100,7 +137,7 @@ struct AddServerView: View {
         )
         
         guard tempProfile.toServerConfig() != nil else {
-            viewModel.errorMessage = "Invalid server URL format"
+            viewModel.errorMessage = "Invalid server URL format. Please check the address and port."
             return
         }
         

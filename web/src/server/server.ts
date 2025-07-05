@@ -25,6 +25,7 @@ import { BellEventHandler } from './services/bell-event-handler.js';
 import { BufferAggregator } from './services/buffer-aggregator.js';
 import { ControlDirWatcher } from './services/control-dir-watcher.js';
 import { HQClient } from './services/hq-client.js';
+import { mdnsService } from './services/mdns-service.js';
 import { PushNotificationService } from './services/push-notification-service.js';
 import { RemoteRegistry } from './services/remote-registry.js';
 import { StreamWatcher } from './services/stream-watcher.js';
@@ -79,6 +80,8 @@ interface Config {
   localAuthToken: string | null;
   // HQ auth bypass for testing
   noHqAuth: boolean;
+  // mDNS advertisement
+  enableMDNS: boolean;
 }
 
 // Show help message
@@ -105,6 +108,9 @@ Push Notification Options:
   --push-disabled       Disable push notifications
   --vapid-email <email> Contact email for VAPID (or PUSH_CONTACT_EMAIL env var)
   --generate-vapid-keys Generate new VAPID keys if none exist
+
+Network Discovery Options:
+  --no-mdns             Disable mDNS/Bonjour advertisement (enabled by default)
 
 HQ Mode Options:
   --hq                  Run as HQ (headquarters) server
@@ -167,6 +173,8 @@ function parseArgs(): Config {
     localAuthToken: null as string | null,
     // HQ auth bypass for testing
     noHqAuth: false,
+    // mDNS advertisement
+    enableMDNS: true, // Enable mDNS by default
   };
 
   // Check for help flag first
@@ -230,6 +238,8 @@ function parseArgs(): Config {
       i++; // Skip the token value in next iteration
     } else if (args[i] === '--no-hq-auth') {
       config.noHqAuth = true;
+    } else if (args[i] === '--no-mdns') {
+      config.enableMDNS = false;
     } else if (args[i].startsWith('--')) {
       // Unknown argument
       logger.error(`Unknown argument: ${args[i]}`);
@@ -884,6 +894,15 @@ export async function createApp(): Promise<AppInstance> {
       // Start activity monitor
       activityMonitor.start();
       logger.debug('Started activity monitor');
+
+      // Start mDNS advertisement if enabled
+      if (config.enableMDNS) {
+        mdnsService.startAdvertising(actualPort).catch((err) => {
+          logger.error('Failed to start mDNS advertisement:', err);
+        });
+      } else {
+        logger.debug('mDNS advertisement disabled');
+      }
     });
   };
 
@@ -990,6 +1009,12 @@ export async function startVibeTunnelServer() {
       // Stop activity monitor
       activityMonitor.stop();
       logger.debug('Stopped activity monitor');
+
+      // Stop mDNS advertisement if it was started
+      if (mdnsService.isActive()) {
+        await mdnsService.stopAdvertising();
+        logger.debug('Stopped mDNS advertisement');
+      }
 
       // Stop control directory watcher
       if (controlDirWatcher) {

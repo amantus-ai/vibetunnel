@@ -250,8 +250,10 @@ struct EnhancedConnectionView: View {
         }
 
         // Create profile from form data
-        let urlString = viewModel.port.isEmpty ? viewModel.host : "\(viewModel.host):\(viewModel.port)"
-        guard let profile = profilesViewModel.createProfileFromURL(urlString) else {
+        let hostWithPort = viewModel.port.isEmpty ? viewModel.host : "\(viewModel.host):\(viewModel.port)"
+        
+        // The createProfileFromURL method will add http:// if needed
+        guard let profile = profilesViewModel.createProfileFromURL(hostWithPort) else {
             viewModel.errorMessage = "Invalid server URL"
             return
         }

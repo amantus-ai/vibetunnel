@@ -17,6 +17,7 @@ struct ServerConfigForm: View {
 
     @FocusState private var focusedField: Field?
     @State private var recentServers: [ServerConfig] = []
+    @State private var showingDiscoverySheet = false
 
     enum Field {
         case host
@@ -35,15 +36,32 @@ struct ServerConfigForm: View {
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.primaryAccent)
 
-                    TextField("192.168.1.100 or localhost", text: $host)
-                        .textFieldStyle(TerminalTextFieldStyle())
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                        .focused($focusedField, equals: .host)
-                        .submitLabel(.next)
-                        .onSubmit {
-                            focusedField = .port
+                    HStack(spacing: Theme.Spacing.small) {
+                        TextField("192.168.1.100 or localhost", text: $host)
+                            .textFieldStyle(TerminalTextFieldStyle())
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                            .focused($focusedField, equals: .host)
+                            .submitLabel(.next)
+                            .onSubmit {
+                                focusedField = .port
+                            }
+                        
+                        Button {
+                            showingDiscoverySheet = true
+                            HapticFeedback.impact(.light)
+                        } label: {
+                            Image(systemName: "bonjour")
+                                .font(.system(size: 16))
+                                .foregroundColor(Theme.Colors.primaryAccent)
+                                .frame(width: 44, height: 44)
+                                .background(
+                                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                        .stroke(Theme.Colors.cardBorder, lineWidth: 1)
+                                )
                         }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
 
                 // Port Field
@@ -214,6 +232,16 @@ struct ServerConfigForm: View {
         .onAppear {
             focusedField = .host
             loadRecentServers()
+        }
+        .sheet(isPresented: $showingDiscoverySheet) {
+            ServerDiscoverySheet(
+                selectedHost: $host, 
+                selectedPort: $port, 
+                selectedName: Binding<String?>(
+                    get: { name.isEmpty ? nil : name },
+                    set: { name = $0 ?? "" }
+                )
+            )
         }
     }
 

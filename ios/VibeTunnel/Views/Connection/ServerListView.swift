@@ -8,6 +8,10 @@ struct ServerListView: View {
     @State private var showingAddServer = false
     @State private var selectedProfile: ServerProfile?
     @State private var showingProfileEditor = false
+    @State private var discoveryService = BonjourDiscoveryService.shared
+    @State private var showingDiscoverySheet = false
+    @State private var selectedDiscoveredServer: DiscoveredServer?
+    @State private var serverToAdd: DiscoveredServer?
     
     // Inject ViewModel directly - clean separation
     init(viewModel: ServerListViewModel = ServerListViewModel()) {
@@ -52,6 +56,12 @@ struct ServerListView: View {
                                 }
                         }
 
+                        // Discovered servers section
+                        if discoveryService.isDiscovering || !filteredDiscoveredServers.isEmpty {
+                            discoveredServersSection
+                                .padding(.top, Theme.Spacing.large)
+                        }
+                        
                         Spacer(minLength: 50)
                     }
                     .padding()
@@ -77,9 +87,26 @@ struct ServerListView: View {
                     }
                 )
             }
-            .sheet(isPresented: $showingAddServer) {
-                AddServerView { newProfile in
+            .sheet(isPresented: $showingAddServer, onDismiss: {
+                // Clear the selected discovered server when sheet is dismissed
+                selectedDiscoveredServer = nil
+            }) {
+                AddServerView(
+                    initialHost: selectedDiscoveredServer?.host,
+                    initialPort: selectedDiscoveredServer != nil ? String(selectedDiscoveredServer!.port) : nil,
+                    initialName: selectedDiscoveredServer?.displayName
+                ) { newProfile in
                     viewModel.loadProfiles()
+                }
+            }
+            .sheet(item: $serverToAdd) { server in
+                AddServerView(
+                    initialHost: server.host,
+                    initialPort: String(server.port),
+                    initialName: server.displayName
+                ) { newProfile in
+                    viewModel.loadProfiles()
+                    serverToAdd = nil
                 }
             }
             .sheet(isPresented: $viewModel.showLoginView) {
@@ -106,6 +133,20 @@ struct ServerListView: View {
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
             viewModel.loadProfiles()
+            discoveryService.startDiscovery()
+        }
+        .onDisappear {
+            discoveryService.stopDiscovery()
+        }
+        .sheet(isPresented: $showingDiscoverySheet) {
+            DiscoveryDetailSheet(
+                discoveredServers: filteredDiscoveredServers,
+                onConnect: { server in
+                    showingDiscoverySheet = false
+                    // Auto-fill add server form with discovered server
+                    showingAddServer = true
+                }
+            )
         }
     }
 
@@ -163,6 +204,7 @@ struct ServerListView: View {
                 Spacer()
 
                 Button(action: {
+                    selectedDiscoveredServer = nil  // Clear any discovered server
                     showingAddServer = true
                 }) {
                     Image(systemName: "plus.circle")
@@ -209,6 +251,7 @@ struct ServerListView: View {
             }
 
             Button(action: {
+                selectedDiscoveredServer = nil  // Clear any discovered server
                 showingAddServer = true
             }) {
                 HStack(spacing: Theme.Spacing.small) {
@@ -233,12 +276,121 @@ struct ServerListView: View {
         .padding(.horizontal)
     }
 
+    // MARK: - Discovered Servers Section
+    
+    private var filteredDiscoveredServers: [DiscoveredServer] {
+        let profiles = viewModel.profiles
+        let discovered = discoveryService.discoveredServers
+        
+        var filtered: [DiscoveredServer] = []
+        for server in discovered {
+            // Filter out servers that are already saved
+            var isAlreadySaved = false
+            for profile in profiles {
+                // Extract host and port from profile URL
+                if let urlComponents = URLComponents(string: profile.url),
+                   let profileHost = urlComponents.host {
+                    let defaultPort = urlComponents.scheme?.lowercased() == "https" ? 443 : 80
+                    let profilePort = urlComponents.port ?? defaultPort
+                    
+                    if profileHost == server.host && profilePort == server.port {
+                        isAlreadySaved = true
+                        break
+                    }
+                }
+            }
+            if !isAlreadySaved {
+                filtered.append(server)
+            }
+        }
+        return filtered
+    }
+    
+    @ViewBuilder
+    private var discoveredServersSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            // Header
+            discoveryHeader
+            
+            // Content
+            if filteredDiscoveredServers.isEmpty && discoveryService.isDiscovering {
+                searchingView
+            } else if !filteredDiscoveredServers.isEmpty {
+                discoveredServersList
+            }
+        }
+    }
+    
+    private var discoveryHeader: some View {
+        HStack {
+            Label("Discovered Servers", systemImage: "bonjour")
+                .font(Theme.Typography.terminalSystem(size: 18, weight: .semibold))
+                .foregroundColor(Theme.Colors.terminalForeground)
+            
+            Spacer()
+            
+            if discoveryService.isDiscovering {
+                ProgressView()
+                    .scaleEffect(0.7)
+            }
+        }
+    }
+    
+    private var searchingView: some View {
+        HStack {
+            Text("Searching for local servers...")
+                .font(Theme.Typography.terminalSystem(size: 14))
+                .foregroundColor(Theme.Colors.secondaryText)
+            Spacer()
+        }
+        .padding(Theme.Spacing.medium)
+        .background(Theme.Colors.cardBackground.opacity(0.5))
+        .cornerRadius(Theme.CornerRadius.small)
+    }
+    
+    private var discoveredServersList: some View {
+        VStack(spacing: Theme.Spacing.small) {
+            ForEach(Array(filteredDiscoveredServers.prefix(3))) { server in
+                DiscoveredServerCard(
+                    server: server,
+                    onTap: {
+                        connectToDiscoveredServer(server)
+                    }
+                )
+            }
+            
+            if filteredDiscoveredServers.count > 3 {
+                viewMoreButton
+            }
+        }
+    }
+    
+    private var viewMoreButton: some View {
+        Button {
+            showingDiscoverySheet = true
+        } label: {
+            HStack {
+                Text("View \(filteredDiscoveredServers.count - 3) more...")
+                    .font(Theme.Typography.terminalSystem(size: 14))
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12))
+            }
+            .foregroundColor(Theme.Colors.primaryAccent)
+        }
+        .padding(.top, Theme.Spacing.small)
+    }
+    
     // MARK: - Actions
 
     private func connectToProfile(_ profile: ServerProfile) {
         Task {
             await viewModel.initiateConnectionToProfile(profile)
         }
+    }
+    
+    private func connectToDiscoveredServer(_ server: DiscoveredServer) {
+        // Use item binding to ensure server data is available when sheet opens
+        serverToAdd = server
     }
 }
 
