@@ -130,16 +130,20 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
         discoveredServers = servers
         
         // Resolve each server to get host and port
-        for (index, server) in servers.enumerated() {
-            resolveService(server, at: index)
+        for server in servers {
+            resolveService(server)
         }
     }
     
-    private func resolveService(_ server: DiscoveredServer, at index: Int) {
+    private func resolveService(_ server: DiscoveredServer) {
+        // Capture the server ID to avoid race conditions
+        let serverId = server.id
+        let serverName = server.name
+        
         // Create a connection to resolve the service
         let parameters = NWParameters.tcp
         let endpoint = NWEndpoint.service(
-            name: server.name,
+            name: serverName,
             type: "_vibetunnel._tcp",
             domain: "local",
             interface: nil
@@ -153,7 +157,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                 // Extract resolved endpoint information
                 if case .hostPort(let host, let port) = connection.currentPath?.remoteEndpoint {
                     Task { @MainActor [weak self] in
-                        guard let self, index < self.discoveredServers.count else { return }
+                        guard let self else { return }
                         
                         let hostString: String
                         switch host {
@@ -170,23 +174,27 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                         // Remove network interface suffix (e.g., %en0) from IP addresses
                         let cleanHost = hostString.components(separatedBy: "%").first ?? hostString
                         
-                        // Update the server with resolved information
-                        var updatedServer = self.discoveredServers[index]
-                        updatedServer = DiscoveredServer(
-                            name: updatedServer.name,
-                            host: cleanHost,
-                            port: Int(port.rawValue),
-                            metadata: updatedServer.metadata
-                        )
-                        self.discoveredServers[index] = updatedServer
-                        
-                        logger.info("Resolved \(updatedServer.name) to \(cleanHost):\(port.rawValue)")
+                        // Find and update the server by ID to avoid race conditions
+                        if let index = self.discoveredServers.firstIndex(where: { $0.id == serverId }) {
+                            let originalServer = self.discoveredServers[index]
+                            let updatedServer = DiscoveredServer(
+                                name: originalServer.name,
+                                host: cleanHost,
+                                port: Int(port.rawValue),
+                                metadata: originalServer.metadata
+                            )
+                            self.discoveredServers[index] = updatedServer
+                            
+                            logger.info("Resolved \(serverName) to \(cleanHost):\(port.rawValue)")
+                        } else {
+                            logger.debug("Server \(serverName) no longer in discovered list")
+                        }
                     }
                 }
                 connection.cancel()
                 
             case .failed(let error):
-                logger.error("Failed to resolve service: \(error)")
+                logger.error("Failed to resolve service \(serverName): \(error)")
                 connection.cancel()
                 
             default:
