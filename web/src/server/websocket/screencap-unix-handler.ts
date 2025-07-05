@@ -290,6 +290,15 @@ export class ScreencapUnixHandler {
         this.sendToMac({ type: 'pong', timestamp: Date.now() / 1000 });
         break;
 
+      case 'state-change':
+        // Mac app state change notification
+        logger.log(`Mac state change: ${JSON.stringify(message.data)}`);
+        // Forward to browser if needed
+        if (this.browserSocket) {
+          this.sendToBrowser(message);
+        }
+        break;
+
       default:
         logger.warn(`Unknown message type from Mac: ${message.type}`);
     }
