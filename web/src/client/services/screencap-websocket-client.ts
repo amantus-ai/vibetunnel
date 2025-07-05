@@ -144,7 +144,30 @@ export class ScreencapWebSocketClient {
           if (pending) {
             this.pendingRequests.delete(message.requestId);
             if (message.error) {
-              pending.reject(new Error(message.error));
+              // Handle error objects properly
+              let errorMessage = 'Unknown error';
+              if (typeof message.error === 'string') {
+                errorMessage = message.error;
+              } else if (typeof message.error === 'object' && message.error !== null) {
+                // Cast to any to handle the error object with unknown structure
+                const err = message.error as any;
+                // Extract message from error object
+                if ('message' in err) {
+                  errorMessage = String(err.message);
+                } else if ('error' in err) {
+                  errorMessage = String(err.error);
+                } else if ('code' in err) {
+                  errorMessage = `Error code: ${err.code}`;
+                } else {
+                  // Try to stringify the error object for debugging
+                  try {
+                    errorMessage = JSON.stringify(err);
+                  } catch {
+                    errorMessage = 'Unknown error (could not serialize)';
+                  }
+                }
+              }
+              pending.reject(new Error(errorMessage));
             } else {
               pending.resolve(message.result);
             }
@@ -192,7 +215,7 @@ export class ScreencapWebSocketClient {
           this.pendingRequests.delete(requestId);
           reject(new Error(`Request timeout: ${method} ${endpoint}`));
         }
-      }, 30000); // 30 second timeout - allow time for loading process icons
+      }, 60000); // 60 second timeout - allow more time for loading process icons
     });
   }
 

@@ -1,13 +1,13 @@
 const WebSocket = require('ws');
 
-const ws = new WebSocket('ws://localhost:4020/ws/screencap-signal', {
-  headers: {
-    'X-VibeTunnel-Local': 'R5o9f1i92iic0ghtL-R8MwNr7_h7IS5RNJAogI4C-K8'
-  }
-});
+console.log('🔍 Testing VibeTunnel screencap WebSocket API...');
+console.log('📍 Connecting to ws://localhost:4020/ws/screencap-signal');
+
+// No auth header needed since authentication is disabled
+const ws = new WebSocket('ws://localhost:4020/ws/screencap-signal');
 
 ws.on('open', () => {
-  console.log('Connected to screencap WebSocket');
+  console.log('✅ Connected to screencap WebSocket');
   
   // Send a GET /processes request
   const request = {
@@ -16,8 +16,15 @@ ws.on('open', () => {
     path: '/processes'
   };
   
-  console.log('Sending request:', request);
+  console.log('📊 Sending GET /processes request...');
+  console.log('Request:', JSON.stringify(request));
   ws.send(JSON.stringify(request));
+  
+  // Set timeout to close after 5 seconds
+  setTimeout(() => {
+    console.log('⏱️ Closing connection after 5 seconds');
+    ws.close();
+  }, 5000);
 });
 
 ws.on('message', (data) => {

@@ -4,6 +4,7 @@ import CoreGraphics
 import Foundation
 import Observation
 import OSLog
+@preconcurrency import ScreenCaptureKit
 
 extension Notification.Name {
     static let permissionsUpdated = Notification.Name("sh.vibetunnel.permissionsUpdated")
@@ -198,7 +199,7 @@ final class SystemPermissionManager {
 
         // Check each permission type
         permissions[.appleScript] = await checkAppleScriptPermission()
-        permissions[.screenRecording] = checkScreenRecordingPermission()
+        permissions[.screenRecording] = await checkScreenRecordingPermission()
         permissions[.accessibility] = checkAccessibilityPermission()
 
         // Post notification if any permissions changed
@@ -245,29 +246,48 @@ final class SystemPermissionManager {
 
     // MARK: - Screen Recording Permission
 
-    private func checkScreenRecordingPermission() -> Bool {
-        // Try to get window information
-        let options: CGWindowListOption = [.excludeDesktopElements, .optionOnScreenOnly]
-
-        if let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] {
-            // If we get a non-empty list or truly no windows are open, we have permission
-            return !windowList.isEmpty || hasNoWindowsOpen()
-        }
-
-        return false
-    }
-
-    private func hasNoWindowsOpen() -> Bool {
-        // Check if any regular apps are running (they likely have windows)
-        NSWorkspace.shared.runningApplications.contains { app in
-            app.activationPolicy == .regular
+    private func checkScreenRecordingPermission() async -> Bool {
+        // Use ScreenCaptureKit to check permission status
+        // This is the modern API for macOS 14+
+        
+        do {
+            // Try to get shareable content - this will fail without permission
+            _ = try await SCShareableContent.current
+            logger.debug("Screen recording permission verified through ScreenCaptureKit")
+            return true
+        } catch {
+            logger.debug("Screen recording permission check failed: \(error)")
+            return false
         }
     }
 
     // MARK: - Accessibility Permission
 
     private func checkAccessibilityPermission() -> Bool {
-        AXIsProcessTrusted()
+        // First check the API
+        let apiResult = AXIsProcessTrusted()
+
+        // Then do a direct test - try to get the focused element
+        // This will fail if we don't actually have permission
+        let systemElement = AXUIElementCreateSystemWide()
+        var focusedElement: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(
+            systemElement,
+            kAXFocusedUIElementAttribute as CFString,
+            &focusedElement
+        )
+
+        // If we can get the focused element, we truly have permission
+        if result == .success {
+            logger.debug("Accessibility permission verified through direct test")
+            return true
+        } else if apiResult {
+            // API says yes but direct test failed - permission might be pending
+            logger.debug("Accessibility API reports true but direct test failed")
+            return false
+        }
+
+        return false
     }
 
     private func requestAccessibilityPermission() {

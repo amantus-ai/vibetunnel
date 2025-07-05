@@ -18,7 +18,9 @@ interface SignalMessage {
     | 'mac-ready'
     | 'api-request'
     | 'api-response'
-    | 'bitrate-adjustment';
+    | 'bitrate-adjustment'
+    | 'ping'
+    | 'pong';
   mode?: 'desktop' | 'window' | 'api-only';
   windowId?: number;
   displayIndex?: number;
@@ -30,6 +32,7 @@ interface SignalMessage {
   result?: unknown;
   error?: string;
   sessionId?: string;
+  timestamp?: number;
 }
 
 export class ScreencapUnixHandler {
@@ -141,11 +144,27 @@ export class ScreencapUnixHandler {
 
     this.macSocket = socket;
 
+    // Set socket options for better handling of large messages
+    socket.setNoDelay(true); // Disable Nagle's algorithm for lower latency
+
+    // Increase the buffer size for receiving large messages
+    // Note: The actual buffer size may be limited by system settings
+    const bufferSize = 1024 * 1024; // 1MB
+    try {
+      (socket as any)._readableState.highWaterMark = bufferSize;
+      logger.log(`Set socket receive buffer to ${bufferSize} bytes`);
+    } catch (error) {
+      logger.warn('Failed to set socket buffer size:', error);
+    }
+
     // Buffer for incomplete messages
     let buffer = '';
 
     socket.on('data', (data) => {
       buffer += data.toString();
+
+      // Log received data size
+      logger.log(`Received from Mac: ${data.length} bytes, buffer size: ${buffer.length}`);
 
       // Process complete messages (separated by newlines)
       const lines = buffer.split('\n');
@@ -166,10 +185,15 @@ export class ScreencapUnixHandler {
 
     socket.on('error', (error) => {
       logger.error('Mac socket error:', error);
+      logger.error('Error details:', {
+        code: (error as any).code,
+        syscall: (error as any).syscall,
+        errno: (error as any).errno,
+      });
     });
 
-    socket.on('close', () => {
-      logger.log('Mac disconnected');
+    socket.on('close', (hadError) => {
+      logger.log(`Mac disconnected (hadError: ${hadError})`);
       if (socket === this.macSocket) {
         this.macSocket = null;
         this.macMode = null;
@@ -179,6 +203,11 @@ export class ScreencapUnixHandler {
           this.sendToBrowser({ type: 'error', data: 'Mac disconnected' });
         }
       }
+    });
+
+    // Handle drain event for backpressure
+    socket.on('drain', () => {
+      logger.log('Mac socket drained - ready for more data');
     });
 
     // Send ready message to Mac
@@ -255,6 +284,12 @@ export class ScreencapUnixHandler {
         }
         break;
 
+      case 'ping':
+        // Respond to keep-alive ping
+        logger.debug('Received ping from Mac, sending pong');
+        this.sendToMac({ type: 'pong', timestamp: Date.now() / 1000 });
+        break;
+
       default:
         logger.warn(`Unknown message type from Mac: ${message.type}`);
     }
@@ -309,7 +344,27 @@ export class ScreencapUnixHandler {
   private sendToMac(message: SignalMessage): void {
     if (this.macSocket && !this.macSocket.destroyed) {
       const data = `${JSON.stringify(message)}\n`;
-      this.macSocket.write(data);
+
+      // Log message size for debugging
+      logger.log(`Sending to Mac: ${message.type}, size: ${data.length} bytes`);
+      if (data.length > 65536) {
+        logger.warn(`Large message to Mac: ${data.length} bytes`);
+      }
+
+      // Write with error handling
+      const result = this.macSocket.write(data, (error) => {
+        if (error) {
+          logger.error('Error writing to Mac socket:', error);
+          // Close the connection on write error
+          this.macSocket?.destroy();
+          this.macSocket = null;
+        }
+      });
+
+      // Check if write was buffered (backpressure)
+      if (!result) {
+        logger.warn('Socket write buffered - backpressure detected');
+      }
     }
   }
 

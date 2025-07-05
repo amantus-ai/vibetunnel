@@ -56,11 +56,8 @@
                 return;
             }
 
-            ws = new WebSocket('ws://localhost:4020/ws/screencap-signal', {
-                headers: {
-                    'X-VibeTunnel-Local': 'R5o9f1i92iic0ghtL-R8MwNr7_h7IS5RNJAogI4C-K8'
-                }
-            });
+            // No auth needed since authentication is disabled
+            ws = new WebSocket('ws://localhost:4020/ws/screencap-signal');
 
             ws.onopen = () => {
                 log('Connected to screencap WebSocket');
@@ -93,9 +90,11 @@
             }
 
             const request = {
-                id: String(++requestId),
+                type: 'api-request',
+                requestId: `req-${++requestId}`,
                 method: 'GET',
-                path: '/processes'
+                endpoint: '/processes',
+                sessionId: `test-${Date.now()}`
             };
             
             log('Sending: ' + JSON.stringify(request));
@@ -109,13 +108,16 @@
             }
 
             const request = {
-                id: String(++requestId),
+                type: 'api-request',
+                requestId: `req-${++requestId}`,
                 method: 'POST',
-                path: '/start-capture',
-                body: {
-                    sessionId: `test-${Date.now()}`,
-                    targetDisplay: 0
-                }
+                endpoint: '/capture',
+                params: {
+                    type: 'desktop',
+                    index: 1,
+                    webrtc: true
+                },
+                sessionId: `test-${Date.now()}`
             };
             
             log('Sending: ' + JSON.stringify(request));

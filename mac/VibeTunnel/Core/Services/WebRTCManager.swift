@@ -23,8 +23,11 @@ final class WebRTCManager: NSObject {
     private var videoSource: RTCVideoSource?
     private var videoCapturer: RTCVideoCapturer?
 
-    // UNIX socket for signaling
+    /// UNIX socket for signaling
     private var unixSocket: UnixSocketConnection?
+    
+    /// Message handler ID for cleanup
+    private var messageHandlerID: UUID?
 
     /// Server URL (kept for reference)
     private let serverURL: URL
@@ -35,7 +38,7 @@ final class WebRTCManager: NSObject {
     // Session management for security
     private var activeSessionId: String?
     private var sessionStartTime: Date?
-    
+
     // Adaptive bitrate control
     private var statsTimer: Timer?
     private var currentBitrate: Int = 10_000_000 // Start at 10 Mbps
@@ -79,6 +82,14 @@ final class WebRTCManager: NSObject {
         localVideoTrack = nil
         videoSource = nil
         peerConnection = nil
+        
+        // Remove message handler if still registered
+        if let handlerID = messageHandlerID {
+            Task { @MainActor in
+                SharedUnixSocketManager.shared.removeMessageHandler(handlerID)
+            }
+        }
+        
         RTCCleanupSSL()
     }
 
@@ -109,35 +120,35 @@ final class WebRTCManager: NSObject {
     /// Stop WebRTC capture
     func stopCapture() async {
         logger.info("🛑 Stopping WebRTC capture")
-        
+
         // Clear session information for the capture
         if let sessionId = activeSessionId {
             logger.info("🔒 [SECURITY] Capture session ended: \(sessionId)")
             activeSessionId = nil
             sessionStartTime = nil
         }
-        
+
         // Stop stats monitoring
         stopStatsMonitoring()
-        
+
         // Stop video track
         localVideoTrack?.isEnabled = false
-        
+
         // Close peer connection but keep WebSocket for API
         if let pc = peerConnection {
             // Remove all transceivers properly
-            pc.transceivers.forEach { transceiver in
+            for transceiver in pc.transceivers {
                 pc.removeTrack(transceiver.sender)
             }
             pc.close()
         }
         peerConnection = nil
-        
+
         // Clean up video tracks and sources
         localVideoTrack = nil
         videoSource = nil
         videoCapturer = nil
-        
+
         logger.info("✅ Stopped WebRTC capture (keeping WebSocket for API)")
     }
 
@@ -148,37 +159,40 @@ final class WebRTCManager: NSObject {
             logger.info("UNIX socket already connected")
             return
         }
-        
+
         logger.info("🔌 Connecting for API handling via UNIX socket")
         logger.info("  📋 Current active session: \(self.activeSessionId ?? "nil")")
 
-        // Create and connect UNIX socket
-        unixSocket = UnixSocketConnection()
-        
-        // Set up message handler
-        unixSocket?.onMessage = { [weak self] data in
+        // Get shared Unix socket connection
+        let sharedManager = SharedUnixSocketManager.shared
+        unixSocket = sharedManager.getConnection()
+
+        // Register our message handler
+        messageHandlerID = sharedManager.addMessageHandler { [weak self] data in
             Task { @MainActor [weak self] in
                 await self?.handleSocketMessage(data)
             }
         }
-        
-        // Set up state change handler
+
+        // Set up state change handler on the socket
         unixSocket?.onStateChange = { [weak self] state in
             Task { @MainActor [weak self] in
                 self?.handleSocketStateChange(state)
             }
         }
-        
-        // Connect
-        unixSocket?.connect()
-        
+
+        // Connect if not already connected
+        if unixSocket?.isConnected == false {
+            unixSocket?.connect()
+        }
+
         // Wait for connection to be ready
         var retries = 0
         while !isConnected && retries < 20 {
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
             retries += 1
         }
-        
+
         if isConnected {
             // Send mac-ready message for API handling
             logger.info("📤 Sending mac-ready message for API handling...")
@@ -199,7 +213,7 @@ final class WebRTCManager: NSObject {
         await cleanupResources()
         logger.info("Disconnected WebRTC and UNIX socket")
     }
-    
+
     /// Clean up all resources - called from deinit and disconnect
     private func cleanupResources() async {
         // Clear session information
@@ -211,20 +225,26 @@ final class WebRTCManager: NSObject {
 
         // Stop video track if active
         localVideoTrack?.isEnabled = false
-        
+
         // Close peer connection properly
         if let pc = peerConnection {
             // Remove all transceivers
-            pc.transceivers.forEach { transceiver in
+            for transceiver in pc.transceivers {
                 pc.removeTrack(transceiver.sender)
             }
             pc.close()
         }
         peerConnection = nil
 
-        // Disconnect UNIX socket
-        unixSocket?.disconnect()
+        // Remove our message handler from shared manager
+        if let handlerID = messageHandlerID {
+            SharedUnixSocketManager.shared.removeMessageHandler(handlerID)
+            messageHandlerID = nil
+        }
+
+        // Clear socket reference (but don't disconnect - it's shared)
         unixSocket = nil
+        isConnected = false
 
         // Clean up video resources
         localVideoTrack = nil
@@ -547,12 +567,12 @@ final class WebRTCManager: NSObject {
             }
             return
         }
-        
+
         logger.info("📥 Received message type: \(type)")
         await handleSignalMessage(json)
     }
-    
-    private func handleSocketStateChange(_ state: NWConnection.State) {
+
+    private func handleSocketStateChange(_ state: UnixSocketConnection.ConnectionState) {
         switch state {
         case .ready:
             logger.info("✅ UNIX socket connected")
@@ -563,11 +583,15 @@ final class WebRTCManager: NSObject {
         case .cancelled:
             logger.info("UNIX socket cancelled")
             isConnected = false
-        default:
-            break
+        case .setup:
+            logger.info("🔧 UNIX socket setting up")
+        case .preparing:
+            logger.info("🔄 UNIX socket preparing")
+        case .waiting(let error):
+            logger.warning("⏳ UNIX socket waiting: \(error)")
         }
     }
-    
+
     // Old WebSocket methods removed - now using UNIX socket
 
     private func handleSignalMessage(_ json: [String: Any]) async {
@@ -575,7 +599,7 @@ final class WebRTCManager: NSObject {
             logger.error("Invalid signal message - no type")
             return
         }
-        
+
         logger.info("📥 Processing message type: \(type)")
 
         switch type {
@@ -589,7 +613,9 @@ final class WebRTCManager: NSObject {
                     🔄 [SECURITY] Session update for start-capture
                       Previous session: \(previousSession ?? "nil")
                       New session: \(sessionId)
-                      Time since last session: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?.description ?? "N/A") seconds
+                      Time since last session: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?
+                        .description ?? "N/A"
+                      ) seconds
                     """)
                 }
                 activeSessionId = sessionId
@@ -598,13 +624,13 @@ final class WebRTCManager: NSObject {
             } else {
                 logger.warning("⚠️ No session ID provided in start-capture message!")
             }
-            
+
             // Ensure video track and peer connection are created before sending offer
             if localVideoTrack == nil {
                 logger.info("📹 Creating video track for start-capture")
                 createLocalVideoTrack()
             }
-            
+
             if peerConnection == nil {
                 logger.info("🔌 Creating peer connection for start-capture")
                 do {
@@ -619,7 +645,7 @@ final class WebRTCManager: NSObject {
                     return
                 }
             }
-            
+
             await createAndSendOffer()
 
         case "answer":
@@ -659,6 +685,11 @@ final class WebRTCManager: NSObject {
             // Server acknowledging connection - no action needed
             logger.debug("Server acknowledged connection")
 
+        case "bitrate-adjustment":
+            // Bitrate adjustment is handled by the data channel, not signaling
+            // This message is forwarded from the browser but can be safely ignored here
+            logger.debug("Received bitrate adjustment notification (handled via data channel)")
+
         default:
             logger.warning("Unknown signal type: \(type)")
         }
@@ -667,13 +698,16 @@ final class WebRTCManager: NSObject {
     private func handleApiRequest(_ json: [String: Any]) async {
         logger.info("🔍 Starting handleApiRequest...")
         logger.info("  📋 JSON data: \(json)")
-        
+
         guard let requestId = json["requestId"] as? String,
               let method = json["method"] as? String,
               let endpoint = json["endpoint"] as? String
         else {
             logger.error("Invalid API request format")
-            logger.error("  📋 Missing fields - requestId: \(json["requestId"] != nil), method: \(json["method"] != nil), endpoint: \(json["endpoint"] != nil)")
+            logger
+                .error(
+                    "  📋 Missing fields - requestId: \(json["requestId"] != nil), method: \(json["method"] != nil), endpoint: \(json["endpoint"] != nil)"
+                )
             return
         }
 
@@ -706,23 +740,26 @@ final class WebRTCManager: NSObject {
             logger.info("🔐 Validating session for control operation: \(method) \(endpoint)")
             logger.info("  📋 Request session ID: \(sessionId ?? "nil")")
             logger.info("  📋 Active session ID: \(self.activeSessionId ?? "nil")")
-            
+
             guard let sessionId,
                   let activeSessionId,
                   sessionId == activeSessionId
             else {
                 let errorDetails = """
-                🚫 [SECURITY] Unauthorized control attempt
+                  🚫 [SECURITY] Unauthorized control attempt
                   Method: \(method) \(endpoint)
                   Request ID: \(requestId)
                   Request session: \(sessionId ?? "nil")
                   Active session: \(self.activeSessionId ?? "nil")
                   Session match: \(sessionId == self.activeSessionId ? "YES" : "NO")
-                  Session age: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?.description ?? "N/A") seconds
-                """
+                  Session age: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?
+                    .description ?? "N/A"
+                  ) seconds
+                  """
                 logger.error("\(errorDetails)")
-                
-                let errorMessage = "Unauthorized: Invalid session (request: \(sessionId ?? "nil"), active: \(self.activeSessionId ?? "nil"))"
+
+                let errorMessage =
+                    "Unauthorized: Invalid session (request: \(sessionId ?? "nil"), active: \(self.activeSessionId ?? "nil"))"
                 await sendSignalMessage([
                     "type": "api-response",
                     "requestId": requestId,
@@ -730,7 +767,7 @@ final class WebRTCManager: NSObject {
                 ])
                 return
             }
-            
+
             logger.info("✅ Session validation passed for \(method) \(endpoint)")
         }
 
@@ -775,7 +812,7 @@ final class WebRTCManager: NSObject {
         return method == "POST" && controlEndpoints.contains(endpoint)
     }
 
-    nonisolated private func processApiRequest(
+    private nonisolated func processApiRequest(
         method: String,
         endpoint: String,
         params: Any?,
@@ -796,7 +833,7 @@ final class WebRTCManager: NSObject {
                 logger.info("📊 About to call getProcessGroups")
                 let processGroups = try await service.getProcessGroups()
                 logger.info("📊 Received process groups count: \(processGroups.count)")
-                
+
                 // Convert to dictionaries for JSON serialization
                 let processes = try processGroups.map { group in
                     let encoder = JSONEncoder()
@@ -811,14 +848,21 @@ final class WebRTCManager: NSObject {
             }
 
         case ("GET", "/displays"):
-            let displays = try await service.getDisplays()
-            // Convert to dictionaries for JSON serialization
-            let displayList = try displays.map { display in
-                let encoder = JSONEncoder()
-                let data = try encoder.encode(display)
-                return try JSONSerialization.jsonObject(with: data, options: [])
+            do {
+                let displays = try await service.getDisplays()
+                // Convert to dictionaries for JSON serialization
+                let displayList = try displays.map { display in
+                    let encoder = JSONEncoder()
+                    let data = try encoder.encode(display)
+                    return try JSONSerialization.jsonObject(with: data, options: [])
+                }
+                return ["displays": displayList]
+            } catch {
+                // Run diagnostic test when getDisplays fails
+                logger.error("❌ getDisplays failed, running diagnostic test...")
+                await service.testShareableContent()
+                throw error
             }
-            return ["displays": displayList]
 
         case ("POST", "/capture"):
             guard let params = params as? [String: Any],
@@ -1023,12 +1067,13 @@ final class WebRTCManager: NSObject {
     func sendSignalMessage(_ message: [String: Any]) async {
         logger.info("📤 Sending signal message...")
         logger.info("  📋 Message type: \(message["type"] as? String ?? "unknown")")
-        
+
         guard let socket = unixSocket else {
             logger.error("❌ Cannot send message - UNIX socket is nil")
             return
         }
-        
+
+        // IMPORTANT: Await the async sendMessage to ensure proper sequencing
         await socket.sendMessage(message)
         logger.info("✅ Message sent via UNIX socket")
     }
@@ -1210,7 +1255,7 @@ extension WebRTCManager: RTCPeerConnectionDelegate {
         Task { @MainActor in
             logger.info("Connection state: \(connectionState.rawValue)")
             self.connectionState = connectionState
-            
+
             // Start adaptive bitrate monitoring when connected
             if connectionState == .connected {
                 startStatsMonitoring()
@@ -1227,60 +1272,60 @@ extension WebRTCManager {
     /// Start monitoring connection stats for adaptive bitrate
     private func startStatsMonitoring() {
         stopStatsMonitoring() // Ensure no duplicate timers
-        
+
         statsTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 await self?.updateConnectionStats()
             }
         }
-        
+
         logger.info("📊 Started adaptive bitrate monitoring")
     }
-    
+
     /// Stop monitoring connection stats
     private func stopStatsMonitoring() {
         statsTimer?.invalidate()
         statsTimer = nil
         logger.info("📊 Stopped adaptive bitrate monitoring")
     }
-    
+
     /// Update connection stats and adjust bitrate if needed
     private func updateConnectionStats() async {
         guard let peerConnection else { return }
-        
+
         let stats = await peerConnection.statistics()
-            
-            // Process stats to find outbound RTP stats
-            let currentPacketLoss: Double = 0.0
-            let currentRtt: Double = 0.0
-            let bytesSent: Int64 = 0
-            
-            // Log stats for debugging - actual stats processing would need proper types
-            logger.debug("📊 WebRTC stats received: \(stats.statistics.count) entries")
-            
-            // Adjust bitrate based on network conditions
-            adjustBitrate(packetLoss: currentPacketLoss, rtt: currentRtt)
-            
-            // Log stats periodically
-            if Int.random(in: 0..<5) == 0 { // Log every ~10 seconds
-                logger.info("""
-                    📊 Network stats:
-                    - Packet loss: \(String(format: "%.2f%%", currentPacketLoss * 100))
-                    - RTT: \(String(format: "%.0f ms", currentRtt * 1000))
-                    - Current bitrate: \(self.currentBitrate / 1_000_000) Mbps
-                    - Bytes sent: \(bytesSent / 1_024 / 1_024) MB
-                """)
-            }
-            
-            lastPacketLoss = currentPacketLoss
-            lastRtt = currentRtt
+
+        // Process stats to find outbound RTP stats
+        let currentPacketLoss: Double = 0.0
+        let currentRtt: Double = 0.0
+        let bytesSent: Int64 = 0
+
+        // Log stats for debugging - actual stats processing would need proper types
+        logger.debug("📊 WebRTC stats received: \(stats.statistics.count) entries")
+
+        // Adjust bitrate based on network conditions
+        adjustBitrate(packetLoss: currentPacketLoss, rtt: currentRtt)
+
+        // Log stats periodically
+        if Int.random(in: 0..<5) == 0 { // Log every ~10 seconds
+            logger.info("""
+                📊 Network stats:
+                - Packet loss: \(String(format: "%.2f%%", currentPacketLoss * 100))
+                - RTT: \(String(format: "%.0f ms", currentRtt * 1_000))
+                - Current bitrate: \(self.currentBitrate / 1_000_000) Mbps
+                - Bytes sent: \(bytesSent / 1_024 / 1_024) MB
+            """)
+        }
+
+        lastPacketLoss = currentPacketLoss
+        lastRtt = currentRtt
     }
-    
+
     /// Adjust bitrate based on network conditions
     private func adjustBitrate(packetLoss: Double, rtt: Double) {
         // Determine if we need to adjust bitrate
         var adjustment: Double = 1.0
-        
+
         // High packet loss (> 2%) - reduce bitrate
         if packetLoss > 0.02 {
             adjustment = 0.8 // Reduce by 20%
@@ -1293,38 +1338,39 @@ extension WebRTCManager {
         // High RTT (> 150ms) - reduce bitrate
         else if rtt > 0.15 {
             adjustment = 0.9 // Reduce by 10%
-            logger.warning("📉 High RTT (\(String(format: "%.0f ms", rtt * 1000))), reducing bitrate")
+            logger.warning("📉 High RTT (\(String(format: "%.0f ms", rtt * 1_000))), reducing bitrate")
         }
         // Good conditions - try to increase
         else if packetLoss < 0.005 && rtt < 0.05 {
             adjustment = 1.1 // Increase by 10%
         }
-        
+
         // Calculate new target bitrate
         let newBitrate = Int(Double(currentBitrate) * adjustment)
         targetBitrate = max(minBitrate, min(maxBitrate, newBitrate))
-        
+
         // Apply bitrate change if significant (> 10% change)
         if abs(targetBitrate - currentBitrate) > currentBitrate / 10 {
             applyBitrateChange(targetBitrate)
         }
     }
-    
+
     /// Apply bitrate change to the video encoder
     private func applyBitrateChange(_ newBitrate: Int) {
         guard let peerConnection,
-              let sender = peerConnection.transceivers.first(where: { $0.mediaType == .video })?.sender else {
+              let sender = peerConnection.transceivers.first(where: { $0.mediaType == .video })?.sender
+        else {
             return
         }
-        
+
         // Update encoder parameters
         let parameters = sender.parameters
         for encoding in parameters.encodings {
             encoding.maxBitrateBps = NSNumber(value: newBitrate)
         }
-        
+
         sender.parameters = parameters
-        
+
         currentBitrate = newBitrate
         logger.info("🎯 Adjusted video bitrate to \(newBitrate / 1_000_000) Mbps")
     }

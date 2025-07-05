@@ -214,7 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Start the terminal spawn service
         TerminalSpawnService.shared.start()
-        
+
         // Initialize ScreencapService to enable screen sharing
         _ = ScreencapService.shared
         logger.info("Initialized ScreencapService for screen sharing")

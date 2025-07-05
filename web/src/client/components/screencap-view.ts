@@ -521,10 +521,10 @@ export class ScreencapView extends LitElement {
       this.logStatus('success', 'Capture started successfully');
     } catch (error) {
       logger.error('Failed to start capture:', error);
-      
+
       // Extract error message from various error types
       let errorMessage = 'Failed to start capture';
-      
+
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (typeof error === 'object' && error !== null) {
@@ -546,7 +546,7 @@ export class ScreencapView extends LitElement {
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
-      
+
       this.error = errorMessage;
       this.logStatus('error', `Failed to start capture: ${errorMessage}`);
       this.status = 'error';
@@ -604,7 +604,7 @@ export class ScreencapView extends LitElement {
       const displayIndex = this.allDisplaysSelected
         ? -1
         : this.selectedDisplay
-          ? Number.parseInt(this.selectedDisplay.id)
+          ? Number.parseInt(this.selectedDisplay.id.replace('NSScreen-', ''))
           : 0;
 
       if (this.allDisplaysSelected) {
@@ -668,7 +668,7 @@ export class ScreencapView extends LitElement {
       const displayIndex = this.allDisplaysSelected
         ? -1
         : this.selectedDisplay
-          ? Number.parseInt(this.selectedDisplay.id)
+          ? Number.parseInt(this.selectedDisplay.id.replace('NSScreen-', ''))
           : 0;
       response = (await this.wsClient.startCapture({
         type: 'desktop',
