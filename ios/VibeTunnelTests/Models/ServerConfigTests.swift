@@ -135,8 +135,61 @@ struct ServerConfigTests {
 
         let url = config.baseURL
         // IPv6 addresses need brackets in URLs
-        #expect(url.absoluteString == "http://[::1]:8888" || url.absoluteString == "http://::1:8888")
+        #expect(url.absoluteString == "http://[::1]:8888")
         #expect(url.port == 8_888)
+    }
+    
+    @Test("Handles various IPv6 address formats")
+    func iPv6AddressFormats() {
+        // Full IPv6
+        let fullIPv6 = ServerConfig(host: "2001:0db8:85a3:0000:0000:8a2e:0370:7334", port: 8080)
+        #expect(fullIPv6.baseURL.absoluteString == "http://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080")
+        
+        // Compressed IPv6
+        let compressedIPv6 = ServerConfig(host: "2001:db8::8a2e:370:7334", port: 8080)
+        #expect(compressedIPv6.baseURL.absoluteString == "http://[2001:db8::8a2e:370:7334]:8080")
+        
+        // IPv4-mapped IPv6
+        let mappedIPv6 = ServerConfig(host: "::ffff:192.0.2.1", port: 8080)
+        #expect(mappedIPv6.baseURL.absoluteString == "http://[::ffff:192.0.2.1]:8080")
+        
+        // Link-local with zone ID
+        let linkLocal = ServerConfig(host: "fe80::1%en0", port: 8080)
+        #expect(linkLocal.baseURL.absoluteString == "http://[fe80::1%en0]:8080")
+    }
+    
+    @Test("Does not wrap non-IPv6 hostnames with colons")
+    func nonIPv6WithColons() {
+        // Hostname with colons should NOT be wrapped in brackets
+        let weirdHostname = ServerConfig(host: "my:weird:hostname", port: 8080)
+        #expect(weirdHostname.baseURL.absoluteString == "http://my:weird:hostname:8080")
+        
+        // Another example with colons
+        let colonHost = ServerConfig(host: "host:with:colons:test", port: 3000)
+        #expect(colonHost.baseURL.absoluteString == "http://host:with:colons:test:3000")
+        
+        // Hostname with numbers and colons
+        let mixedHost = ServerConfig(host: "host1:host2:host3", port: 9999)
+        #expect(mixedHost.baseURL.absoluteString == "http://host1:host2:host3:9999")
+    }
+    
+    @Test("Handles edge cases correctly")
+    func edgeCases() {
+        // Already bracketed IPv6
+        let bracketedIPv6 = ServerConfig(host: "[::1]", port: 8080)
+        #expect(bracketedIPv6.baseURL.absoluteString == "http://[::1]:8080")
+        
+        // IPv4 address (should not be bracketed)
+        let ipv4 = ServerConfig(host: "192.168.1.1", port: 8080)
+        #expect(ipv4.baseURL.absoluteString == "http://192.168.1.1:8080")
+        
+        // Regular hostname
+        let hostname = ServerConfig(host: "example.com", port: 8080)
+        #expect(hostname.baseURL.absoluteString == "http://example.com:8080")
+        
+        // Localhost
+        let localhost = ServerConfig(host: "localhost", port: 8080)
+        #expect(localhost.baseURL.absoluteString == "http://localhost:8080")
     }
 
     @Test("Handles domain with subdomain")

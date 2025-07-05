@@ -37,10 +37,13 @@ struct ServerConfig: Codable, Equatable {
         }
 
         // Check if this is an IPv6 address
-        // IPv6 addresses have at least 2 colons and consist of hexadecimal segments
-        // Since host and port are separate fields, the host should never contain a port
+        // IPv6 addresses must:
+        // 1. Contain at least 2 colons
+        // 2. Only contain valid IPv6 characters (hex digits, colons, and optionally dots for IPv4-mapped addresses)
+        // 3. Not be a hostname with colons (which would contain other characters)
         let colonCount = formattedHost.filter { $0 == ":" }.count
-        let isIPv6 = colonCount >= 2
+        let validIPv6Chars = CharacterSet(charactersIn: "0123456789abcdefABCDEF:.%")
+        let isIPv6 = colonCount >= 2 && formattedHost.unicodeScalars.allSatisfy { validIPv6Chars.contains($0) }
 
         // Add brackets for IPv6 addresses
         if isIPv6 {
