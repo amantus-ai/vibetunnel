@@ -42,7 +42,7 @@ struct ControlAgentArmyPageView: View {
                     Text("Update titles from inside your terminal:")
                         .font(.callout)
                         .foregroundColor(.secondary)
-                    
+
                     HStack {
                         Text("vt title \"Current action - project context\"")
                             .font(.system(.body, design: .monospaced))
@@ -51,12 +51,14 @@ struct ControlAgentArmyPageView: View {
                             .background(Color(NSColor.controlBackgroundColor))
                             .cornerRadius(6)
                     }
-                    
-                    Text("Session titles appear in the menu bar and terminal windows.\nUse the dashboard to rename sessions manually, or use the magic wand with Claude/Gemini.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 420)
+
+                    Text(
+                        "Session titles appear in the menu bar and terminal windows.\nUse the dashboard to rename sessions manually, or use the magic wand with Claude/Gemini."
+                    )
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 420)
                 }
                 .padding(.vertical, 12)
             }
@@ -73,4 +75,3 @@ struct ControlAgentArmyPageView: View {
         .frame(width: 640, height: 480)
         .background(Color(NSColor.windowBackgroundColor))
 }
-

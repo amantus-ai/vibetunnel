@@ -2054,13 +2054,13 @@ extension ScreencapService: SCStreamOutput {
         // Convert to CGImage in the nonisolated context
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let context = CIContext()
-        
+
         // Check extent is valid
         guard !ciImage.extent.isEmpty else {
             // Skip frame with empty extent
             return
         }
-        
+
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
             // Failed to create CGImage
             return

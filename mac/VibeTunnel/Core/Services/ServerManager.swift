@@ -614,9 +614,3 @@ enum ServerManagerError: LocalizedError {
         }
     }
 }
-
-// MARK: - ServerManager Extension
-
-extension ServerManager {
-    // Check if we have screen recording permission
-}
