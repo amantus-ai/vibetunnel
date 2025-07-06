@@ -40,6 +40,7 @@ jobs:
 
     - name: Setup pnpm cache
       uses: useblacksmith/cache@v5
+      continue-on-error: true
       with:
         path: ${{ env.STORE_PATH }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
@@ -143,6 +144,7 @@ jobs:
 
     - name: Setup pnpm cache
       uses: useblacksmith/cache@v5
+      continue-on-error: true
       with:
         path: ${{ env.STORE_PATH }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
@@ -156,6 +158,7 @@ jobs:
 
     - name: Cache TypeScript build info
       uses: useblacksmith/cache@v5
+      continue-on-error: true
       with:
         path: |
           web/dist/tsconfig.server.tsbuildinfo
@@ -308,6 +311,7 @@ jobs:
 
     - name: Setup pnpm cache
       uses: useblacksmith/cache@v5
+      continue-on-error: true
       with:
         path: ${{ env.STORE_PATH }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}

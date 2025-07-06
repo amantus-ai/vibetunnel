@@ -45,6 +45,7 @@ jobs:
     
     - name: Cache Homebrew packages
       uses: useblacksmith/cache@v5
+      continue-on-error: true
       with:
         path: |
           ~/Library/Caches/Homebrew
@@ -57,6 +58,7 @@ jobs:
     
     - name: Cache Swift packages
       uses: useblacksmith/cache@v5
+      continue-on-error: true
       with:
         path: |
           ~/Library/Developer/Xcode/DerivedData
@@ -107,6 +109,7 @@ jobs:
     
     - name: Cache pnpm store
       uses: useblacksmith/cache@v5
+      continue-on-error: true
       with:
         path: ~/.local/share/pnpm/store
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
