@@ -495,6 +495,67 @@ export function getUserShell(): string {
 }
 
 /**
+ * Parse a shell command string into an array, respecting quotes and escaping
+ * @param commandLine The command line string to parse
+ * @returns Array of command parts
+ */
+function parseShellCommand(commandLine: string): string[] {
+  const args: string[] = [];
+  let current = '';
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let escaped = false;
+
+  for (let i = 0; i < commandLine.length; i++) {
+    const char = commandLine[i];
+
+    if (escaped) {
+      // Previous character was a backslash, add this character literally
+      current += char;
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\' && !inSingleQuote) {
+      // Escape next character (except in single quotes)
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"' && !inSingleQuote) {
+      // Toggle double quote mode
+      inDoubleQuote = !inDoubleQuote;
+      continue;
+    }
+
+    if (char === "'" && !inDoubleQuote) {
+      // Toggle single quote mode
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+
+    if (!inSingleQuote && !inDoubleQuote && /\s/.test(char)) {
+      // Unquoted whitespace - end current argument
+      if (current.length > 0) {
+        args.push(current);
+        current = '';
+      }
+      continue;
+    }
+
+    // Regular character, add to current argument
+    current += char;
+  }
+
+  // Add final argument if any
+  if (current.length > 0) {
+    args.push(current);
+  }
+
+  return args;
+}
+
+/**
  * Expand a command using fish shell features (aliases, abbreviations, functions)
  * @param command The command array to expand
  * @param shellPath The shell path (must be fish)
@@ -528,8 +589,8 @@ export async function expandFishCommand(
         logger.debug(`Fish expansion type: ${expansion.description}`);
       }
 
-      // Split the expanded command back into array
-      return expansion.expanded.split(/\s+/).filter((part) => part.length > 0);
+      // Split the expanded command back into array, preserving quoted arguments
+      return parseShellCommand(expansion.expanded);
     }
   } catch (error) {
     logger.warn(`Fish command expansion failed: ${error}`);
