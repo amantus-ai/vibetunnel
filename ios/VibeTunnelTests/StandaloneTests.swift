@@ -108,12 +108,12 @@ struct WebSocketProtocolTests {
         var offset = 1 // Skip magic byte
 
         let parsedCols = data.subdata(in: offset..<offset + 4).withUnsafeBytes { bytes in
-            Int32(littleEndian: bytes.bindMemory(to: Int32.self).baseAddress!.pointee)
+            bytes.loadUnaligned(as: Int32.self).littleEndian
         }
         offset += 4
 
         let parsedRows = data.subdata(in: offset..<offset + 4).withUnsafeBytes { bytes in
-            Int32(littleEndian: bytes.bindMemory(to: Int32.self).baseAddress!.pointee)
+            bytes.loadUnaligned(as: Int32.self).littleEndian
         }
 
         #expect(parsedCols == 80)
