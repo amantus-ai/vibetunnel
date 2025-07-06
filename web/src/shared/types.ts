@@ -22,6 +22,7 @@ export interface SessionInfo {
   pid?: number;
   initialCols?: number;
   initialRows?: number;
+  version?: string; // VibeTunnel version that created this session
 }
 
 /**

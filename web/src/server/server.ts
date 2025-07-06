@@ -396,6 +396,17 @@ export async function createApp(): Promise<AppInstance> {
   const ptyManager = new PtyManager(CONTROL_DIR);
   logger.debug('Initialized PTY manager');
 
+  // Clean up sessions from old VibeTunnel versions
+  const sessionManager = ptyManager.getSessionManager();
+  const cleanupResult = sessionManager.cleanupOldVersionSessions();
+  if (cleanupResult.versionChanged) {
+    logger.log(
+      chalk.yellow(
+        `Version change detected - cleaned up ${cleanupResult.cleanedCount} sessions from previous version`
+      )
+    );
+  }
+
   // Initialize Terminal Manager for server-side terminal state
   const terminalManager = new TerminalManager(CONTROL_DIR);
   logger.debug('Initialized terminal manager');
