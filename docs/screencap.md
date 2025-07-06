@@ -16,9 +16,9 @@ VibeTunnel's screen capture feature allows users to share their screen and contr
       ├───────────────────────────────────►│                                   │
       │  /ws/screencap-signal (auth)       │                                   │
       │                                    │                                   │
-      │                                    │  2. Connect WebSocket             │
+      │                                    │  2. Connect UNIX Socket           │
       │                                    │◄──────────────────────────────────┤
-      │                                    │  /ws/screencap-signal            │
+      │                                    │  ~/.vibetunnel/screencap.sock    │
       │                                    │                                   │
       │  3. Request window list            │                                   │
       ├───────────────────────────────────►│  4. Forward request               │
@@ -73,15 +73,17 @@ Key features:
 - **WebRTC Peer**: Receives video stream directly from Mac app
 - **Input Handler**: Captures and sends mouse/keyboard events
 
-### 2. Server (`web/src/server/websocket/screencap-signal-handler.ts`)
+### 2. Server (`web/src/server/websocket/screencap-unix-handler.ts`)
 
 The Node.js server acts as a signaling relay:
-- Authenticates WebSocket connections
+- Authenticates WebSocket connections from browser
+- Accepts UNIX socket connections from Mac app
 - Routes messages between browser and Mac app
 - Does NOT handle video data (WebRTC is peer-to-peer)
 
 Key responsibilities:
-- **Authentication**: Requires valid JWT token for WebSocket connections
+- **Authentication**: Requires valid JWT token for browser WebSocket connections
+- **UNIX Socket**: Mac app connects via `~/.vibetunnel/screencap.sock`
 - **Message Routing**: Forwards API requests/responses between peers
 - **Session Management**: Tracks connected Mac and browser peers
 
@@ -102,15 +104,15 @@ Key components:
 ### Authentication Flow
 
 1. **Browser → Server**: JWT token in WebSocket connection
-2. **Mac App → Server**: JWT token in WebSocket connection  
-3. **No Direct Access**: All communication goes through authenticated server
+2. **Mac App → Server**: Local UNIX socket connection (no auth needed - local only)
+3. **No Direct Access**: All communication goes through server relay
 
 ### Eliminated Vulnerabilities
 
 Previously, the Mac app ran an HTTP server on port 4010:
 ```
 ❌ OLD: Browser → HTTP (no auth) → Mac App:4010
-✅ NEW: Browser → WebSocket (auth) → Server → WebSocket → Mac App
+✅ NEW: Browser → WebSocket (auth) → Server → UNIX Socket → Mac App
 ```
 
 This eliminates:
@@ -257,7 +259,7 @@ Sends keyboard events:
 
 ### Testing
 
-- **Unit tests**: `web/src/server/websocket/screencap-signal-handler.test.ts`
+- **Unit tests**: `web/src/server/websocket/screencap-unix-handler.test.ts`
 - **Integration tests**: Test full flow with mock WebRTC
 - **Manual testing**: Use two browser tabs to test relay
 
@@ -267,8 +269,8 @@ Sends keyboard events:
 
 1. **"Mac peer not connected"**
    - Ensure Mac app is running
-   - Check WebSocket connection in Mac app logs
-   - Verify authentication tokens
+   - Check UNIX socket connection at `~/.vibetunnel/screencap.sock`
+   - Verify Mac app has permissions to create socket file
 
 2. **No video stream**
    - Check screen recording permissions
