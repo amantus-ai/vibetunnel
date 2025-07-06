@@ -243,26 +243,25 @@ class ServerManager {
 
             logger.info("Started server on port \(self.port)")
 
-            // Screencap is now handled via WebSocket API (no separate HTTP server)
-            // Always initialize the service if enabled, regardless of permission
-            // The service will handle permission checks internally
+            // IMPORTANT: ScreencapService initialization is deferred until first use
+            // to avoid triggering the screen recording permission prompt at startup.
+            //
+            // Previously, we initialized ScreencapService here which caused the
+            // permission dialog to appear immediately when the server started.
+            // This was a poor user experience as users hadn't even seen the
+            // welcome screen yet.
+            //
+            // Now ScreencapService uses lazy initialization and will only be
+            // created when:
+            // - User explicitly grants permission in welcome/settings
+            // - User attempts to use screen sharing features
+            // - API endpoints for screen capture are accessed
+            //
+            // The service handles permission checks internally and returns
+            // appropriate errors if permission is not granted.
             if AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) {
-                logger.info("📸 Screencap service enabled, initializing...")
-
-                // Initialize ScreencapService singleton and ensure WebSocket is connected
-                let screencapService = ScreencapService.shared
-
-                // Skip permission check at startup - it will be checked when actually needed
-                logger.info("📸 Deferring screen recording permission check until first use")
-
-                // Connect WebSocket regardless of permission status
-                // This allows the API to respond with appropriate errors
-                do {
-                    try await screencapService.ensureWebSocketConnected()
-                    logger.info("✅ ScreencapService WebSocket connected successfully")
-                } catch {
-                    logger.error("❌ Failed to connect ScreencapService WebSocket: \(error)")
-                }
+                logger.info("📸 Screencap service enabled, but initialization deferred until first use")
+                logger.info("📸 Screen recording permission will be requested when screen capture is first accessed")
             } else {
                 logger.info("Screencap service disabled by user preference")
             }

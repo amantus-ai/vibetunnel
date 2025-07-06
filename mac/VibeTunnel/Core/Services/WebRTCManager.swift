@@ -26,9 +26,6 @@ final class WebRTCManager: NSObject {
     /// UNIX socket for signaling
     private var unixSocket: UnixSocketConnection?
 
-    /// Message handler ID for cleanup
-    private var messageHandlerID: UUID?
-
     /// Server URL (kept for reference)
     private let serverURL: URL
 
@@ -84,11 +81,9 @@ final class WebRTCManager: NSObject {
         videoSource = nil
         peerConnection = nil
 
-        // Remove message handler if still registered
-        if let handlerID = messageHandlerID {
-            Task { @MainActor in
-                SharedUnixSocketManager.shared.removeMessageHandler(handlerID)
-            }
+        // Unregister control handler
+        Task { @MainActor in
+            SharedUnixSocketManager.shared.unregisterControlHandler(for: .screencap)
         }
 
         RTCCleanupSSL()
@@ -117,10 +112,12 @@ final class WebRTCManager: NSObject {
         }
 
         // Notify server we're ready as the Mac peer with video mode
-        await sendSignalMessage([
-            "type": "mac-ready",
-            "mode": mode
-        ])
+        let message = ControlProtocol.createEvent(
+            category: .screencap,
+            action: "mac-ready",
+            payload: ["mode": mode]
+        )
+        await sendControlMessage(message)
     }
 
     /// Stop WebRTC capture
@@ -173,11 +170,10 @@ final class WebRTCManager: NSObject {
         let sharedManager = SharedUnixSocketManager.shared
         unixSocket = sharedManager.getConnection()
 
-        // Register our message handler
-        messageHandlerID = sharedManager.addMessageHandler { [weak self] data in
-            Task { @MainActor [weak self] in
-                await self?.handleSocketMessage(data)
-            }
+        // Register as control handler for screencap category
+        sharedManager.registerControlHandler(for: .screencap) { [weak self] message in
+            guard let self else { return nil }
+            return await self.handleControlMessage(message)
         }
 
         // Set up state change handler on the socket
@@ -207,10 +203,12 @@ final class WebRTCManager: NSObject {
         if isConnected {
             // Send mac-ready message for API handling
             logger.info("📤 Sending mac-ready message for API handling...")
-            await sendSignalMessage([
-                "type": "mac-ready",
-                "mode": "api-only"
-            ])
+            let message = ControlProtocol.createEvent(
+                category: .screencap,
+                action: "mac-ready",
+                payload: ["mode": "api-only"]
+            )
+            await sendControlMessage(message)
             logger.info("✅ Connected for screencap API handling")
         } else {
             logger.error("❌ Failed to connect UNIX socket after 2 seconds")
@@ -247,11 +245,8 @@ final class WebRTCManager: NSObject {
         }
         peerConnection = nil
 
-        // Remove our message handler from shared manager
-        if let handlerID = messageHandlerID {
-            SharedUnixSocketManager.shared.removeMessageHandler(handlerID)
-            messageHandlerID = nil
-        }
+        // Unregister our control handler from shared manager
+        SharedUnixSocketManager.shared.unregisterControlHandler(for: .screencap)
 
         // Clear socket reference (but don't disconnect - it's shared)
         unixSocket = nil
@@ -651,20 +646,41 @@ final class WebRTCManager: NSObject {
         logger.info("  - Track enabled: \(videoTrack.isEnabled)")
     }
 
-    private func handleSocketMessage(_ data: Data) async {
-        // The data is a JSON string, parse it
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let type = json["type"] as? String
-        else {
-            logger.error("Invalid socket message format")
-            if let str = String(data: data, encoding: .utf8) {
-                logger.error("Raw message: \(str)")
+    private func handleControlMessage(_ message: ControlProtocol.ControlMessage) async -> ControlProtocol
+        .ControlMessage?
+    {
+        logger.info("📥 Received control message: \(message.category.rawValue):\(message.action)")
+
+        // Convert to old format for compatibility with existing handleSignalMessage
+        var json: [String: Any] = [
+            "type": message.action
+        ]
+
+        // Map payload based on action
+        if let payload = message.payload {
+            switch message.action {
+            case "api-request":
+                // API request has specific structure
+                json.merge(payload) { _, new in new }
+            default:
+                // Others wrap payload in "data"
+                if let data = payload["data"] {
+                    json["data"] = data
+                } else {
+                    json["data"] = payload
+                }
             }
-            return
         }
 
-        logger.info("📥 Received message type: \(type)")
+        // Add request ID if present
+        if message.type == .request {
+            json["requestId"] = message.id
+        }
+
         await handleSignalMessage(json)
+
+        // No synchronous response needed for most messages
+        return nil
     }
 
     private func handleSocketStateChange(_ state: UnixSocketConnection.ConnectionState) {
@@ -733,10 +749,12 @@ final class WebRTCManager: NSObject {
                 } catch {
                     logger.error("❌ Failed to create peer connection: \(error)")
                     // Send error back to browser
-                    await sendSignalMessage([
-                        "type": "error",
-                        "data": "Failed to create peer connection: \(error.localizedDescription)"
-                    ])
+                    let message = ControlProtocol.createEvent(
+                        category: .screencap,
+                        action: "error",
+                        payload: ["data": "Failed to create peer connection: \(error.localizedDescription)"]
+                    )
+                    await sendControlMessage(message)
                     return
                 }
             }
@@ -855,11 +873,16 @@ final class WebRTCManager: NSObject {
 
                 let errorMessage =
                     "Unauthorized: Invalid session (request: \(sessionId ?? "nil"), active: \(self.activeSessionId ?? "nil"))"
-                await sendSignalMessage([
-                    "type": "api-response",
-                    "requestId": requestId,
-                    "error": errorMessage
-                ])
+                let message = ControlProtocol.createResponse(
+                    to: ControlProtocol.ControlMessage(
+                        id: requestId,
+                        type: .request,
+                        category: .screencap,
+                        action: "api-response"
+                    ),
+                    error: errorMessage
+                )
+                await sendControlMessage(message)
                 return
             }
 
@@ -880,19 +903,29 @@ final class WebRTCManager: NSObject {
                     sessionId: sessionId
                 )
                 logger.info("📤 Sending API response for request \(requestId)")
-                await sendSignalMessage([
-                    "type": "api-response",
-                    "requestId": requestId,
-                    "result": result
-                ])
+                let message = ControlProtocol.createResponse(
+                    to: ControlProtocol.ControlMessage(
+                        id: requestId,
+                        type: .request,
+                        category: .screencap,
+                        action: "api-response"
+                    ),
+                    payload: ["result": result]
+                )
+                await sendControlMessage(message)
             } catch {
                 logger.error("❌ API request failed for \(requestId): \(error)")
                 let screencapError = ScreencapErrorResponse.from(error)
-                await sendSignalMessage([
-                    "type": "api-response",
-                    "requestId": requestId,
-                    "error": screencapError.toDictionary()
-                ])
+                let message = ControlProtocol.createResponse(
+                    to: ControlProtocol.ControlMessage(
+                        id: requestId,
+                        type: .request,
+                        category: .screencap,
+                        action: "api-response"
+                    ),
+                    payload: ["error": screencapError.toDictionary()]
+                )
+                await sendControlMessage(message)
             }
             logger.info("🔄 Task completed for API request: \(requestId)")
         }
@@ -1117,13 +1150,17 @@ final class WebRTCManager: NSObject {
             let offerSdp = modifiedOffer.sdp
 
             // Send offer through signaling
-            await sendSignalMessage([
-                "type": "offer",
-                "data": [
-                    "type": offerType,
-                    "sdp": offerSdp
+            let message = ControlProtocol.createEvent(
+                category: .screencap,
+                action: "offer",
+                payload: [
+                    "data": [
+                        "type": offerType,
+                        "sdp": offerSdp
+                    ]
                 ]
-            ])
+            )
+            await sendControlMessage(message)
 
             logger.info("📤 Sent offer")
         } catch {
@@ -1161,6 +1198,18 @@ final class WebRTCManager: NSObject {
         }
     }
 
+    /// Send control protocol message
+    func sendControlMessage(_ message: ControlProtocol.ControlMessage) async {
+        logger.info("📤 Sending control message...")
+        logger.info("  📋 Message: \(message.category.rawValue):\(message.action)")
+
+        // Use SharedUnixSocketManager to send the message
+        SharedUnixSocketManager.shared.sendControlMessage(message)
+        logger.info("✅ Control message sent via shared socket")
+    }
+
+    /// Deprecated - use sendControlMessage instead
+    @available(*, deprecated, message: "Use sendControlMessage with ControlProtocol instead")
     func sendSignalMessage(_ message: [String: Any]) async {
         logger.info("📤 Sending signal message...")
         logger.info("  📋 Message type: \(message["type"] as? String ?? "unknown")")
@@ -1318,14 +1367,18 @@ extension WebRTCManager: RTCPeerConnectionDelegate {
         Task { @MainActor in
             logger.info("🧊 Generated ICE candidate: \(candidateSdp)")
             // Send ICE candidate through signaling
-            await sendSignalMessage([
-                "type": "ice-candidate",
-                "data": [
-                    "candidate": candidateSdp,
-                    "sdpMid": sdpMid,
-                    "sdpMLineIndex": sdpMLineIndex
+            let message = ControlProtocol.createEvent(
+                category: .screencap,
+                action: "ice-candidate",
+                payload: [
+                    "data": [
+                        "candidate": candidateSdp,
+                        "sdpMid": sdpMid,
+                        "sdpMLineIndex": sdpMLineIndex
+                    ]
                 ]
-            ])
+            )
+            await sendControlMessage(message)
         }
     }
 

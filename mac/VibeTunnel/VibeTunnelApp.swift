@@ -212,12 +212,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
             object: nil
         )
 
-        // Start the terminal spawn service
-        TerminalSpawnService.shared.start()
+        // Start the terminal control handler (uses unified control socket)
+        TerminalControlHandler.shared.start()
 
-        // Initialize ScreencapService to enable screen sharing
-        _ = ScreencapService.shared
-        logger.info("Initialized ScreencapService for screen sharing")
+        // IMPORTANT: ScreencapService initialization is deferred until needed
+        // to avoid triggering screen recording permission prompt at startup.
+        //
+        // The macOS permission model triggers the screen recording dialog on ANY
+        // call to SCShareableContent APIs, even just checking available windows.
+        // By deferring initialization, users see the welcome screen first and
+        // understand what the app does before being prompted for permissions.
+        //
+        // ScreencapService.shared will be lazily initialized when:
+        // - User grants screen recording permission in welcome/settings
+        // - User starts screen sharing
+        // - Any feature requiring screen capture is accessed
 
         // Start Git monitoring early
         app?.gitRepositoryMonitor.startMonitoring()
@@ -403,8 +412,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
             return
         }
 
-        // Stop terminal spawn service
-        TerminalSpawnService.shared.stop()
+        // Terminal control is now handled via SharedUnixSocketManager
+        // No explicit stop needed as it's cleaned up with the socket manager
 
         // Stop HTTP server synchronously to ensure it completes before app exits
         if let serverManager = app?.serverManager {

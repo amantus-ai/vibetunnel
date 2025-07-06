@@ -35,7 +35,7 @@ import { TerminalManager } from './services/terminal-manager.js';
 import { closeLogger, createLogger, initLogger, setDebugMode } from './utils/logger.js';
 import { VapidManager } from './utils/vapid-manager.js';
 import { getVersionInfo, printVersionBanner } from './version.js';
-import { screencapUnixHandler } from './websocket/screencap-unix-handler.js';
+import { controlUnixHandler } from './websocket/control-unix-handler.js';
 
 // Extended WebSocket request with authentication and routing info
 interface WebSocketRequest extends http.IncomingMessage {
@@ -631,14 +631,14 @@ export async function createApp(): Promise<AppInstance> {
   });
 
   // Start UNIX socket server for Mac app communication
-  screencapUnixHandler
+  controlUnixHandler
     .start()
     .then(() => {
-      logger.log(chalk.green('Screen Capture UNIX socket: READY'));
+      logger.log(chalk.green('Control UNIX socket: READY'));
     })
     .catch((error) => {
       logger.error('Failed to start UNIX socket server:', error);
-      logger.warn('Screen capture Mac app communication will not work');
+      logger.warn('Mac app control communication will not work');
     });
 
   // Handle WebSocket upgrade with authentication
@@ -801,7 +801,7 @@ export async function createApp(): Promise<AppInstance> {
     } else if (pathname === '/ws/screencap-signal') {
       // Handle screencap WebRTC signaling from browser
       const _userId = wsReq.userId || 'unknown';
-      screencapUnixHandler.handleBrowserConnection(ws);
+      controlUnixHandler.handleBrowserConnection(ws);
     } else {
       logger.error(`Unknown WebSocket path: ${pathname}`);
       ws.close();
@@ -1085,8 +1085,8 @@ export async function startVibeTunnelServer() {
 
       // Stop UNIX socket server
       try {
-        const { screencapUnixHandler } = await import('./websocket/screencap-unix-handler.js');
-        screencapUnixHandler.stop();
+        const { controlUnixHandler } = await import('./websocket/control-unix-handler.js');
+        controlUnixHandler.stop();
         logger.debug('Stopped UNIX socket server');
       } catch (_error) {
         // Ignore if module not loaded

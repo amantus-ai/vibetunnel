@@ -136,21 +136,6 @@ struct AdvancedSettingsView: View {
                         }
                     }
 
-                    // Screen sharing service
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Enable screen sharing service", isOn: .init(
-                            get: { AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) },
-                            set: { UserDefaults.standard.set(
-                                $0,
-                                forKey: AppConstants.UserDefaultsKeys.enableScreencapService
-                            )
-                            }
-                        ))
-                        Text("Allow screen sharing feature in the web interface.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
                     // Debug mode toggle
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle("Debug mode", isOn: $debugMode)
@@ -423,7 +408,7 @@ private struct WindowHighlightSettingsSection: View {
                 }
             }
         } header: {
-            Text("Window Highlight")
+            Text("Terminal window highlight effect")
                 .font(.headline)
         } footer: {
             Text("Visual effect when focusing terminal windows to make selection more noticeable.")

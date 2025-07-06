@@ -8,6 +8,46 @@ import OSLog
 import VideoToolbox
 
 /// Service that provides screen capture functionality with HTTP API
+///
+/// # Screen Recording Permission Management
+///
+/// This service implements deferred screen recording permission checking to avoid
+/// prompting users immediately on app launch. The macOS permission model is aggressive:
+/// ANY call to SCShareableContent APIs (even just checking available windows) will
+/// immediately trigger the system permission dialog.
+///
+/// ## The Problem
+/// - Chrome discovered that SCShareableContent.current or .excludingDesktopWindows()
+///   triggers the permission dialog even when just querying available windows
+/// - Users get prompted for screen recording permission before they've even seen
+///   the app's welcome screen or understood what it does
+///
+/// ## Our Solution: Two-Stage Permission Deferral
+///
+/// ### Stage 1 - Permission Check Without Trigger
+/// - Use UserDefaults flag to check if permission was previously granted
+/// - Never call SCShareableContent APIs until explicitly needed
+/// - Welcome screen shows permission as "not granted" unless previously used
+///
+/// ### Stage 2 - Actual Usage
+/// - Only initialize ScreencapService when user requests screen sharing
+/// - First API call will trigger permission dialog if not already granted
+/// - Once granted, mark in UserDefaults for future reference
+///
+/// ## Implementation Details
+/// - Singleton uses lazy initialization with thread safety
+/// - WebSocket connection is deferred until first screen capture use
+/// - isScreenRecordingAllowed() checks UserDefaults first to avoid API calls
+/// - All SCShareableContent calls are guarded by permission checks
+///
+/// ## Chrome's Advanced Approach (for reference)
+/// Chrome uses private API method swizzling to intercept CGRequestScreenCaptureAccess()
+/// and return true for enumeration-only calls. This approach:
+/// - Uses private APIs that could break in future macOS versions
+/// - Wouldn't pass App Store review
+/// - Requires runtime method swizzling
+///
+/// Our approach is App Store compliant and follows Apple's intended permission model.
 @preconcurrency
 @MainActor
 public final class ScreencapService: NSObject {
@@ -15,7 +55,24 @@ public final class ScreencapService: NSObject {
 
     // MARK: - Singleton
 
-    static let shared = ScreencapService()
+    private static var _shared: ScreencapService?
+    private static let sharedQueue = DispatchQueue(label: "sh.vibetunnel.screencapservice.shared")
+
+    static var shared: ScreencapService {
+        sharedQueue.sync {
+            if _shared == nil {
+                _shared = ScreencapService()
+            }
+            return _shared!
+        }
+    }
+
+    /// Check if the service has been initialized
+    static var isInitialized: Bool {
+        sharedQueue.sync {
+            _shared != nil
+        }
+    }
 
     // MARK: - WebSocket Connection State
 
@@ -144,7 +201,7 @@ public final class ScreencapService: NSObject {
 
     override init() {
         super.init()
-        logger.info("🚀 ScreencapService initialized, setting up WebSocket connection...")
+        logger.info("🚀 ScreencapService initialized (deferred mode)")
 
         // Register for display configuration changes
         setupDisplayNotifications()
@@ -152,10 +209,9 @@ public final class ScreencapService: NSObject {
         // Set up state machine callbacks
         setupStateMachine()
 
-        // Connect to WebSocket for API handling when service is created
-        Task {
-            await setupWebSocketForAPIHandling()
-        }
+        // WebSocket connection is now deferred until first use
+        // This prevents screen recording permission prompt at startup
+        logger.info("📸 WebSocket connection deferred until screen capture is needed")
     }
 
     deinit {
@@ -446,6 +502,9 @@ public final class ScreencapService: NSObject {
     func getDisplays() async throws -> [DisplayInfo] {
         logger.info("🔍 getDisplays() called")
 
+        // Ensure WebSocket is connected first
+        try await ensureWebSocketConnected()
+
         // First check NSScreen to see what the system reports
         let nsScreens = NSScreen.screens
         logger.info("🖥️ NSScreen.screens count: \(nsScreens.count)")
@@ -582,9 +641,22 @@ public final class ScreencapService: NSObject {
     func getProcessGroups() async throws -> [ProcessGroup] {
         logger.info("🔍 getProcessGroups called")
 
+        // Ensure WebSocket is connected first
+        try await ensureWebSocketConnected()
+
         // First check screen recording permission
         let hasPermission = await isScreenRecordingAllowed()
         logger.info("🔍 Screen recording permission check: \(hasPermission)")
+
+        // If no permission, throw an error instead of continuing
+        guard hasPermission else {
+            logger.warning("❌ No screen recording permission for getProcessGroups")
+            throw ScreencapError.failedToGetContent(NSError(
+                domain: "ScreenCaptureKit",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Screen recording permission required"]
+            ))
+        }
 
         // Add timeout to detect if SCShareableContent is hanging
         let startTime = Date()
@@ -735,11 +807,23 @@ public final class ScreencapService: NSObject {
 
     /// Check if screen recording permission is granted
     private func isScreenRecordingAllowed() async -> Bool {
-        // Use ScreenCaptureKit to check permission instead of deprecated CGDisplayCreateImage
+        // Important: We need to check permission without triggering the prompt
+        // First check if we've successfully used screen capture before
+        if UserDefaults.standard.bool(forKey: "hasSuccessfullyUsedScreencap") {
+            logger.info("✅ Screen recording permission previously granted")
+            return true
+        }
+
+        // If not previously granted, we need to check with SCShareableContent
+        // This WILL trigger the permission prompt if not already granted
         do {
             // Try to get shareable content - this will fail if no permission
             _ = try await SCShareableContent.current
             logger.info("✅ Screen recording permission is granted")
+
+            // Mark that we've successfully used screen capture
+            UserDefaults.standard.set(true, forKey: "hasSuccessfullyUsedScreencap")
+
             return true
         } catch {
             logger.warning("❌ Screen recording permission check failed: \(error)")
@@ -1733,11 +1817,15 @@ public final class ScreencapService: NSObject {
             // Notify WebRTC manager of state changes
             if let webRTCManager = self.webRTCManager {
                 Task {
-                    await webRTCManager.sendSignalMessage([
-                        "type": "state-change",
-                        "state": newState.rawValue,
-                        "previousState": previousState?.rawValue as Any
-                    ])
+                    let message = ControlProtocol.createEvent(
+                        category: .screencap,
+                        action: "state-change",
+                        payload: [
+                            "state": newState.rawValue,
+                            "previousState": previousState?.rawValue as Any
+                        ]
+                    )
+                    await webRTCManager.sendControlMessage(message)
                 }
             }
         }
@@ -1850,20 +1938,24 @@ public final class ScreencapService: NSObject {
     /// Notify connected clients that display was disconnected
     private func notifyDisplayDisconnected() async {
         if let webRTCManager {
-            await webRTCManager.sendSignalMessage([
-                "type": "display-disconnected",
-                "message": "Display disconnected during capture"
-            ])
+            let message = ControlProtocol.createEvent(
+                category: .screencap,
+                action: "display-disconnected",
+                payload: ["message": "Display disconnected during capture"]
+            )
+            await webRTCManager.sendControlMessage(message)
         }
     }
 
     /// Notify connected clients that window was disconnected
     private func notifyWindowDisconnected() async {
         if let webRTCManager {
-            await webRTCManager.sendSignalMessage([
-                "type": "window-disconnected",
-                "message": "Window closed or became unavailable"
-            ])
+            let message = ControlProtocol.createEvent(
+                category: .screencap,
+                action: "window-disconnected",
+                payload: ["message": "Window closed or became unavailable"]
+            )
+            await webRTCManager.sendControlMessage(message)
         }
     }
 

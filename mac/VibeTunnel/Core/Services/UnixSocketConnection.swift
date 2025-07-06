@@ -65,7 +65,7 @@ final class UnixSocketConnection {
     init(socketPath: String? = nil) {
         // Use socket path in user's home directory to avoid /tmp issues
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        self.socketPath = socketPath ?? "\(home)/.vibetunnel/screencap.sock"
+        self.socketPath = socketPath ?? "\(home)/.vibetunnel/control.sock"
         logger.info("Unix socket initialized with path: \(self.socketPath)")
     }
 
@@ -786,40 +786,30 @@ final class UnixSocketConnection {
 
     /// Process received data with proper message framing
     private func processReceivedData(_ data: Data) {
-        // Append new data to buffer
         receiveBuffer.append(data)
 
-        // Log buffer state for debugging
-        logger.debug("📥 Buffer after append: \(self.receiveBuffer.count) bytes")
-        if let str = String(data: receiveBuffer.prefix(200), encoding: .utf8) {
-            logger.debug("📋 Buffer content preview: \(str)")
-        }
-
-        // Process complete messages (delimited by newlines)
-        while let newlineIndex = receiveBuffer.firstIndex(of: 0x0A) { // 0x0A is newline
-            // Calculate the offset from the start of the buffer
-            let newlineOffset = receiveBuffer.distance(from: receiveBuffer.startIndex, to: newlineIndex)
-
-            // Extract message up to the newline (not including it)
-            let messageData = receiveBuffer.prefix(newlineOffset)
-
-            // Calculate how much to remove (message + newline)
-            let bytesToRemove = newlineOffset + 1
-
-            logger
-                .debug(
-                    "🔍 Found newline at offset \(newlineOffset), message size: \(messageData.count), removing: \(bytesToRemove) bytes"
-                )
-
-            // Remove processed data from buffer (including newline)
-            receiveBuffer.removeFirst(bytesToRemove)
-            logger.debug("✅ Removed \(bytesToRemove) bytes, buffer now: \(self.receiveBuffer.count) bytes")
-
-            // Skip empty messages
-            if messageData.isEmpty {
-                logger.debug("⏭️ Skipping empty message")
-                continue
+        // Process as many messages as we can from the buffer
+        while true {
+            // A message needs at least 4 bytes for the length header
+            guard receiveBuffer.count >= 4 else {
+                break
             }
+
+            // Read the length of the message
+            let lengthData = receiveBuffer.prefix(4)
+            let messageLength = lengthData.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+
+            // Check if we have the full message in the buffer
+            guard receiveBuffer.count >= 4 + messageLength else {
+                // Not enough data yet, wait for more
+                break
+            }
+
+            // Extract the message data
+            let messageData = receiveBuffer.subdata(in: 4..<(4 + Int(messageLength)))
+
+            // Remove the message (header + body) from the buffer
+            receiveBuffer.removeFirst(4 + Int(messageLength))
 
             // Check for keep-alive pong
             if let msgDict = try? JSONSerialization.jsonObject(with: messageData) as? [String: Any],

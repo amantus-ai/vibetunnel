@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import { Router } from 'express';
 import * as fs from 'fs';
-import * as net from 'net';
 import * as os from 'os';
 import * as path from 'path';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
@@ -13,6 +12,8 @@ import type { StreamWatcher } from '../services/stream-watcher.js';
 import type { TerminalManager } from '../services/terminal-manager.js';
 import { createLogger } from '../utils/logger.js';
 import { generateSessionName } from '../utils/session-naming.js';
+import { createControlMessage } from '../websocket/control-protocol.js';
+import { controlUnixHandler } from '../websocket/control-unix-handler.js';
 
 const logger = createLogger('sessions');
 
@@ -191,9 +192,8 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         return;
       }
 
-      // If spawn_terminal is true and socket exists, use the spawn-terminal logic
-      const socketPath = '/tmp/vibetunnel-terminal.sock';
-      if (spawn_terminal && fs.existsSync(socketPath)) {
+      // If spawn_terminal is true, use the control socket for terminal spawning
+      if (spawn_terminal) {
         try {
           // Generate session ID
           const sessionId = generateSessionId();
@@ -230,8 +230,6 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           logger.error('error spawning terminal:', error);
           logger.debug('falling back to normal web session');
         }
-      } else if (spawn_terminal && !fs.existsSync(socketPath)) {
-        logger.debug('terminal spawn socket not available, falling back to normal spawn');
       }
 
       // Create local session
@@ -1193,7 +1191,7 @@ function generateSessionId(): string {
   ].join('-');
 }
 
-// Request terminal spawn from Mac app
+// Request terminal spawn from Mac app via control socket
 async function requestTerminalSpawn(params: {
   sessionId: string;
   sessionName: string;
@@ -1201,56 +1199,49 @@ async function requestTerminalSpawn(params: {
   workingDir: string;
   titleMode?: TitleMode;
 }): Promise<{ success: boolean; error?: string }> {
-  const socketPath = '/tmp/vibetunnel-terminal.sock';
+  try {
+    // Create control message for terminal spawn
+    const message = createControlMessage(
+      'terminal',
+      'spawn',
+      {
+        sessionId: params.sessionId,
+        workingDirectory: params.workingDir,
+        command: params.command.join(' '),
+        terminalPreference: null, // Let Mac app use default terminal
+      },
+      params.sessionId
+    );
 
-  // Check if socket exists
-  if (!fs.existsSync(socketPath)) {
+    logger.debug(`requesting terminal spawn via control socket for session ${params.sessionId}`);
+
+    // Send the message and wait for response
+    const response = await controlUnixHandler.sendControlMessage(message);
+
+    if (!response) {
+      return {
+        success: false,
+        error: 'No response from Mac app',
+      };
+    }
+
+    if (response.error) {
+      return {
+        success: false,
+        error: response.error,
+      };
+    }
+
+    const success = response.payload?.success === true;
+    return {
+      success,
+      error: success ? undefined : 'Terminal spawn failed',
+    };
+  } catch (error) {
+    logger.error('failed to spawn terminal:', error);
     return {
       success: false,
-      error: 'Terminal spawn service not available. Is the Mac app running?',
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
-
-  const spawnRequest = {
-    workingDir: params.workingDir,
-    sessionId: params.sessionId,
-    command: params.command.join(' '),
-    terminal: null, // Let Mac app use default terminal
-    titleMode: params.titleMode,
-  };
-
-  return new Promise((resolve) => {
-    const client = net.createConnection(socketPath, () => {
-      logger.debug(`connected to terminal spawn service for session ${params.sessionId}`);
-      client.write(JSON.stringify(spawnRequest));
-    });
-
-    client.on('data', (data) => {
-      try {
-        const response = JSON.parse(data.toString());
-        logger.debug('terminal spawn response:', response);
-        resolve({ success: response.success, error: response.error });
-      } catch (error) {
-        logger.error('failed to parse terminal spawn response:', error);
-        resolve({ success: false, error: 'Invalid response from terminal spawn service' });
-      }
-      client.end();
-    });
-
-    client.on('error', (error) => {
-      logger.error('failed to connect to terminal spawn service:', error);
-      resolve({
-        success: false,
-        error: `Connection failed: ${error.message}`,
-      });
-    });
-
-    client.on('timeout', () => {
-      client.destroy();
-      resolve({ success: false, error: 'Terminal spawn request timed out' });
-    });
-
-    client.setTimeout(10000); // 10 second timeout
-    logger.debug(`requesting terminal spawn from Mac app for session ${params.sessionId}`);
-  });
 }
