@@ -35,6 +35,12 @@ export class ScreencapView extends LitElement {
       background: #0a0a0a;
       color: #e4e4e4;
       font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+      
+      /* Honor safe areas on mobile devices */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
     }
 
     .header {
@@ -195,8 +201,8 @@ export class ScreencapView extends LitElement {
 
     .fps-indicator {
       position: absolute;
-      bottom: 1rem;
-      left: 1rem;
+      bottom: calc(1rem + env(safe-area-inset-bottom));
+      left: calc(1rem + env(safe-area-inset-left));
       background: rgba(15, 15, 15, 0.8);
       backdrop-filter: blur(10px);
       padding: 0.5rem 0.75rem;
@@ -232,9 +238,9 @@ export class ScreencapView extends LitElement {
 
     .status-log {
       position: absolute;
-      bottom: 3rem;
-      left: 1rem;
-      right: 1rem;
+      bottom: calc(3rem + env(safe-area-inset-bottom));
+      left: max(1rem, env(safe-area-inset-left));
+      right: max(1rem, env(safe-area-inset-right));
       max-width: 600px;
       max-height: 200px;
       overflow-y: auto;
@@ -309,7 +315,7 @@ export class ScreencapView extends LitElement {
 
     .control-hint {
       position: absolute;
-      bottom: 1rem;
+      bottom: calc(1rem + env(safe-area-inset-bottom));
       left: 50%;
       transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.8);
@@ -323,6 +329,44 @@ export class ScreencapView extends LitElement {
 
     :host(:focus) .control-hint {
       opacity: 0;
+    }
+
+    .keyboard-button {
+      position: fixed;
+      bottom: calc(20px + env(safe-area-inset-bottom));
+      right: calc(20px + env(safe-area-inset-right));
+      width: 60px;
+      height: 60px;
+      background: #10B981;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .keyboard-button:hover {
+      background: #0D9668;
+      transform: scale(1.1);
+    }
+
+    .keyboard-button svg {
+      width: 28px;
+      height: 28px;
+      color: white;
+    }
+
+    .mobile-keyboard-input {
+      position: fixed;
+      left: -9999px;
+      top: -9999px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
     }
   `;
 
@@ -347,6 +391,10 @@ export class ScreencapView extends LitElement {
   @state() private sidebarCollapsed = false;
   @state() private fitMode: 'contain' | 'cover' = 'contain';
   @state() private frameCounter = 0;
+  @state() private showMobileKeyboard = false;
+  @state() private isMobile = false;
+  @state() private isDragging = false;
+  @state() private dragStartCoords: { x: number; y: number } | null = null;
   @state() private statusLog: Array<{
     time: string;
     type: 'info' | 'success' | 'warning' | 'error';
@@ -371,6 +419,9 @@ export class ScreencapView extends LitElement {
     this.addEventListener('keydown', this.handleKeyDown.bind(this));
     // Make the component focusable
     this.tabIndex = 0;
+
+    // Detect if this is a touch device
+    this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }
 
   disconnectedCallback() {
@@ -994,6 +1045,9 @@ export class ScreencapView extends LitElement {
           @mousemove=${this.handleMouseMove}
           @click=${this.handleClick}
           @contextmenu=${this.handleContextMenu}
+          @touchstart=${this.handleTouchStart}
+          @touchmove=${this.handleTouchMove}
+          @touchend=${this.handleTouchEnd}
         ></video>
         ${
           this.showStats
@@ -1035,6 +1089,9 @@ export class ScreencapView extends LitElement {
           @mousemove=${this.handleMouseMove}
           @click=${this.handleClick}
           @contextmenu=${this.handleContextMenu}
+          @touchstart=${this.handleTouchStart}
+          @touchmove=${this.handleTouchMove}
+          @touchend=${this.handleTouchEnd}
         />
         <div class="fps-indicator">
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -1053,6 +1110,32 @@ export class ScreencapView extends LitElement {
             : ''
         }
         ${this.showLog ? this.renderStatusLog() : ''}
+        
+        <!-- Mobile Keyboard Button -->
+        ${
+          this.isMobile && this.isCapturing
+            ? html`
+              <div
+                class="keyboard-button"
+                @click=${this.handleKeyboardButtonClick}
+                title="Show keyboard"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
+                </svg>
+              </div>
+              
+              <!-- Hidden input for mobile keyboard -->
+              <input
+                type="text"
+                class="mobile-keyboard-input"
+                id="mobile-keyboard-input"
+                @input=${this.handleMobileKeyboardInput}
+                @keydown=${this.handleMobileKeyboardKeydown}
+              />
+            `
+            : ''
+        }
       `;
     }
 
@@ -1101,8 +1184,8 @@ export class ScreencapView extends LitElement {
   }
 
   // Mouse and keyboard event handling
-  private getNormalizedCoordinates(event: MouseEvent): { x: number; y: number } | null {
-    const element = event.target as HTMLElement;
+  private getNormalizedCoordinates(event: MouseEvent | Touch): { x: number; y: number } | null {
+    const element = (event instanceof Touch ? event.target : event.target) as HTMLElement;
     if (!element) return null;
 
     const rect = element.getBoundingClientRect();
@@ -1211,6 +1294,134 @@ export class ScreencapView extends LitElement {
   }
 
   private mouseMoveThrottleTimeout: number | null = null;
+
+  // Touch event handlers
+  private handleTouchStart(event: TouchEvent) {
+    event.preventDefault();
+    if (!this.wsClient || !this.isCapturing || event.touches.length !== 1) return;
+
+    const touch = event.touches[0];
+    const coords = this.getNormalizedCoordinates(touch);
+    if (!coords) return;
+
+    this.isDragging = true;
+    this.dragStartCoords = coords;
+
+    // Send mouse down event
+    this.wsClient.sendMouseDown(coords.x, coords.y).catch((error) => {
+      console.error('Failed to send touch start:', error);
+    });
+  }
+
+  private handleTouchMove(event: TouchEvent) {
+    event.preventDefault();
+    if (!this.wsClient || !this.isCapturing || !this.isDragging || event.touches.length !== 1)
+      return;
+
+    const touch = event.touches[0];
+    const coords = this.getNormalizedCoordinates(touch);
+    if (!coords) return;
+
+    // Send mouse move event
+    this.wsClient.sendMouseMove(coords.x, coords.y).catch((error) => {
+      console.error('Failed to send touch move:', error);
+    });
+  }
+
+  private handleTouchEnd(event: TouchEvent) {
+    event.preventDefault();
+    if (!this.wsClient || !this.isCapturing || !this.isDragging) return;
+
+    // Use the last touch position
+    if (event.changedTouches.length > 0) {
+      const touch = event.changedTouches[0];
+      const coords = this.getNormalizedCoordinates(touch);
+      if (coords) {
+        // Send mouse up event
+        this.wsClient.sendMouseUp(coords.x, coords.y).catch((error) => {
+          console.error('Failed to send touch end:', error);
+        });
+
+        // If it was a tap (not a drag), send a click
+        if (
+          this.dragStartCoords &&
+          Math.abs(coords.x - this.dragStartCoords.x) < 10 &&
+          Math.abs(coords.y - this.dragStartCoords.y) < 10
+        ) {
+          this.wsClient.sendClick(coords.x, coords.y).catch((error) => {
+            console.error('Failed to send tap:', error);
+          });
+        }
+      }
+    }
+
+    this.isDragging = false;
+    this.dragStartCoords = null;
+  }
+
+  // Mobile keyboard handlers
+  private handleKeyboardButtonClick() {
+    const input = this.shadowRoot?.getElementById('mobile-keyboard-input') as HTMLInputElement;
+    if (input) {
+      this.showMobileKeyboard = true;
+      input.style.pointerEvents = 'auto';
+      input.style.position = 'fixed';
+      input.style.left = '0';
+      input.style.top = '0';
+      input.style.width = '1px';
+      input.style.height = '1px';
+      input.style.opacity = '0';
+      input.focus();
+    }
+  }
+
+  private handleMobileKeyboardInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const value = input.value;
+
+    if (value && this.wsClient && this.isCapturing) {
+      // Send each character
+      const lastChar = value[value.length - 1];
+      this.wsClient
+        .sendKey({
+          key: lastChar,
+          metaKey: false,
+          ctrlKey: false,
+          altKey: false,
+          shiftKey: false,
+        })
+        .catch((error) => {
+          console.error('Failed to send key:', error);
+        });
+    }
+  }
+
+  private handleMobileKeyboardKeydown(event: KeyboardEvent) {
+    if (!this.wsClient || !this.isCapturing) return;
+
+    // Handle special keys
+    if (event.key === 'Enter' || event.key === 'Backspace' || event.key === 'Tab') {
+      event.preventDefault();
+
+      this.wsClient
+        .sendKey({
+          key: event.key,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          altKey: event.altKey,
+          shiftKey: event.shiftKey,
+        })
+        .catch((error) => {
+          console.error('Failed to send special key:', error);
+        });
+
+      // Clear input on Enter
+      if (event.key === 'Enter') {
+        const input = event.target as HTMLInputElement;
+        input.value = '';
+      }
+    }
+  }
 }
 
 declare global {
