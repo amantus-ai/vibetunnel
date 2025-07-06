@@ -269,12 +269,31 @@ export function resolveCommand(command: string[]): {
 
       // Check if this is an interactive shell command
       if (isInteractiveShellCommand(cmdName, cmdArgs)) {
-        logger.debug(`Command '${cmdName}' is an interactive shell, adding -i and -l flags`);
-        // Add both -i (interactive) and -l (login) flags for proper shell initialization
+        logger.log(chalk.cyan(`✓ Starting ${cmdName} as login shell to load configuration files`));
+        // Add both -i (interactive) and -l/--login flags for proper shell initialization
         // This ensures shell RC files are sourced and the environment is properly set up
+
+        // Don't add flags if they're already present
+        const hasInteractiveFlag = cmdArgs.some((arg) => arg === '-i' || arg === '--interactive');
+        const hasLoginFlag = cmdArgs.some((arg) => arg === '-l' || arg === '--login');
+
+        // Build args array
+        const finalArgs = [...cmdArgs];
+
+        // For fish shell, use --login and --interactive instead of -l and -i
+        const isFish = cmdName === 'fish' || cmdName.endsWith('/fish');
+
+        if (!hasInteractiveFlag) {
+          finalArgs.unshift(isFish ? '--interactive' : '-i');
+        }
+
+        if (!hasLoginFlag) {
+          finalArgs.unshift(isFish ? '--login' : '-l');
+        }
+
         return {
           command: cmdName,
-          args: ['-i', '-l', ...cmdArgs],
+          args: finalArgs,
           useShell: false,
           resolvedFrom: 'path',
           originalCommand: cmdName,
