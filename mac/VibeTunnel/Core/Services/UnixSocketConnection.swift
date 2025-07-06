@@ -84,12 +84,20 @@ final class UnixSocketConnection {
     func connect() {
         logger.info("🔌 Connecting to UNIX socket at \(self.socketPath)")
 
-        // Reset reconnection state
-        shouldReconnect = true
-        isReconnecting = false
+        guard !isConnecting else {
+            logger.debug("Connection attempt already in progress.")
+            return
+        }
 
-        // Notify state change
-        onStateChange?(.setup)
+        // Reset reconnection state if this is a new top-level call
+        if !isReconnecting {
+            shouldReconnect = true
+            reconnectDelay = initialReconnectDelay
+            consecutiveFailures = 0
+        }
+
+        isConnecting = true
+        onStateChange?(.preparing)
 
         // Connect on background queue
         queue.async { [weak self] in
@@ -99,9 +107,6 @@ final class UnixSocketConnection {
 
     /// Establish the actual connection using C socket API
     private nonisolated func establishConnection() {
-        Task { @MainActor in
-            self.onStateChange?(.preparing)
-        }
 
         // Close any existing socket
         if socketFD >= 0 {
@@ -280,12 +285,7 @@ final class UnixSocketConnection {
     func send(_ message: some Encodable) async throws {
         let encoder = JSONEncoder()
         let data = try encoder.encode(message)
-
-        // Add newline delimiter
-        var messageData = data
-        messageData.append("\n".data(using: .utf8)!)
-
-        try await sendData(messageData)
+        try await sendData(data)
     }
 
     /// Serial queue for message sending to prevent concurrent writes
@@ -295,23 +295,7 @@ final class UnixSocketConnection {
     func sendMessage(_ dict: [String: Any]) async {
         do {
             let data = try JSONSerialization.data(withJSONObject: dict, options: [])
-            var messageData = data
-            messageData.append("\n".data(using: .utf8)!)
-
-            // Log message size for debugging
-            logger.debug("📤 Sending message of size: \(messageData.count) bytes")
-            if messageData.count > 65_536 {
-                logger.warning("⚠️ Large message: \(messageData.count) bytes - may cause issues")
-            }
-
-            // Queue message if not connected
-            guard isConnected, socketFD >= 0 else {
-                logger.warning("Socket not ready, queuing message (pending: \(self.pendingMessages.count))")
-                queueMessage(messageData)
-                return
-            }
-
-            await sendDataWithErrorHandling(messageData)
+            await sendDataWithErrorHandling(data)
         } catch {
             logger.error("Failed to serialize message: \(error)")
         }
@@ -336,11 +320,19 @@ final class UnixSocketConnection {
                     return
                 }
 
+                // Create message with 4-byte length header
+                let lengthValue = UInt32(data.count)
+                var headerData = Data(count: 4)
+                headerData.withUnsafeMutableBytes { ptr in
+                    ptr.bindMemory(to: UInt32.self).baseAddress?.pointee = lengthValue.bigEndian
+                }
+                let fullData = headerData + data
+                
                 // Send data in chunks if needed
                 var totalSent = 0
-                var remainingData = data
+                var remainingData = fullData
 
-                while totalSent < data.count {
+                while totalSent < fullData.count {
                     let result = remainingData.withUnsafeBytes { ptr in
                         Darwin.send(self.socketFD, ptr.baseAddress, remainingData.count, 0)
                     }
@@ -416,11 +408,19 @@ final class UnixSocketConnection {
                     return
                 }
 
+                // Create message with 4-byte length header
+                let lengthValue = UInt32(data.count)
+                var headerData = Data(count: 4)
+                headerData.withUnsafeMutableBytes { ptr in
+                    ptr.bindMemory(to: UInt32.self).baseAddress?.pointee = lengthValue.bigEndian
+                }
+                let fullData = headerData + data
+                
                 // Send data in chunks if needed
                 var totalSent = 0
-                var remainingData = data
+                var remainingData = fullData
 
-                while totalSent < data.count {
+                while totalSent < fullData.count {
                     let result = remainingData.withUnsafeBytes { ptr in
                         Darwin.send(self.socketFD, ptr.baseAddress, remainingData.count, 0)
                     }
@@ -572,14 +572,10 @@ final class UnixSocketConnection {
 
                 logger.info("🔁 Attempting reconnection...")
                 self.isReconnecting = false
-
-                // Connect on background queue
-                self.queue.async {
-                    self.establishConnection()
-                }
+                self.connect()
 
                 // Increase delay for next attempt (exponential backoff)
-                self.reconnectDelay = min(self.reconnectDelay * 2, self.maxReconnectDelay)
+                self.reconnectDelay = min(self.reconnectDelay * 1.5, self.maxReconnectDelay)
             } catch {
                 self.isReconnecting = false
                 if !Task.isCancelled {
@@ -636,12 +632,17 @@ final class UnixSocketConnection {
                             return
                         }
 
+                        // Create message with 4-byte length header
+                        var lengthHeader = UInt32(data.count).bigEndian
+                        let headerData = Data(bytes: &lengthHeader, count: 4)
+                        let fullData = headerData + data
+                        
                         // Send data in chunks if needed
                         var totalSent = 0
-                        var remainingData = data
+                        var remainingData = fullData
                         var sendError: Error?
 
-                        while totalSent < data.count && sendError == nil {
+                        while totalSent < fullData.count && sendError == nil {
                             let result = remainingData.withUnsafeBytes { ptr in
                                 Darwin.send(self.socketFD, ptr.baseAddress, remainingData.count, 0)
                             }
@@ -717,9 +718,15 @@ final class UnixSocketConnection {
             return
         }
 
-        let pingMessage = ["type": "ping", "timestamp": Date().timeIntervalSince1970] as [String: Any]
-        await sendMessage(pingMessage)
-        logger.debug("🏓 Sent keep-alive ping")
+        let pingMessage = ControlProtocol.createRequest(category: .system, action: "ping")
+        Task {
+            do {
+                try await send(pingMessage)
+                logger.debug("🏓 Sent keep-alive ping")
+            } catch {
+                logger.error("Failed to send keep-alive ping: \(error)")
+            }
+        }
     }
 
     /// Start continuous receive loop
@@ -813,19 +820,23 @@ final class UnixSocketConnection {
 
             // Check for keep-alive pong
             if let msgDict = try? JSONSerialization.jsonObject(with: messageData) as? [String: Any],
-               msgDict["type"] as? String == "pong"
+               let type = msgDict["type"] as? String,
+               type == "response",
+               let category = msgDict["category"] as? String,
+               category == "system",
+               let action = msgDict["action"] as? String,
+               action == "ping"
             {
                 lastPongTime = Date()
                 logger.debug("🏓 Received keep-alive pong")
                 continue
             }
 
-            // Log the message being delivered
-            if let msgStr = String(data: messageData, encoding: .utf8) {
-                logger.debug("📤 Delivering message: \(msgStr)")
-            }
-
             // Deliver the complete message
+            logger.info("📨 Delivering message of size \(messageData.count) bytes")
+            if let str = String(data: messageData, encoding: .utf8) {
+                logger.info("📨 Message content: \(String(str.prefix(200)))")
+            }
             onMessage?(messageData)
         }
 

@@ -98,19 +98,23 @@ export class WebRTCHandler {
 
     // Send start-capture message to Mac app
     if (captureMode === 'desktop') {
-      await this.wsClient.sendSignal({
-        type: 'start-capture',
-        mode: 'desktop',
-        displayIndex: displayIndex ?? 0,
-        sessionId: this.wsClient.sessionId,
-      });
+      await this.wsClient.sendSignal(
+        JSON.stringify({
+          type: 'start-capture',
+          mode: 'desktop',
+          displayIndex: displayIndex ?? 0,
+          sessionId: this.wsClient.sessionId,
+        })
+      );
     } else if (captureMode === 'window' && windowId !== undefined) {
-      await this.wsClient.sendSignal({
-        type: 'start-capture',
-        mode: 'window',
-        windowId: windowId,
-        sessionId: this.wsClient.sessionId,
-      });
+      await this.wsClient.sendSignal(
+        JSON.stringify({
+          type: 'start-capture',
+          mode: 'window',
+          windowId: windowId,
+          sessionId: this.wsClient.sessionId,
+        })
+      );
     }
 
     await this.setupWebRTCSignaling();
@@ -170,10 +174,12 @@ export class WebRTCHandler {
       if (event.candidate) {
         logger.log('Sending ICE candidate to Mac');
         this.onStatusUpdate?.('info', 'Exchanging network connectivity information...');
-        this.wsClient.sendSignal({
-          type: 'ice-candidate',
-          data: event.candidate,
-        });
+        this.wsClient.sendSignal(
+          JSON.stringify({
+            type: 'ice-candidate',
+            data: event.candidate,
+          })
+        );
       }
     };
 
@@ -394,10 +400,12 @@ export class WebRTCHandler {
 
       logger.log('Sending answer to Mac');
       this.onStatusUpdate?.('info', 'Sending connection response...');
-      this.wsClient.sendSignal({
-        type: 'answer',
-        data: modifiedAnswer,
-      });
+      this.wsClient.sendSignal(
+        JSON.stringify({
+          type: 'answer',
+          data: modifiedAnswer,
+        })
+      );
 
       // Configure bitrate after connection is established
       await this.configureBitrateParameters();
@@ -609,13 +617,15 @@ export class WebRTCHandler {
       );
 
       // Send bitrate adjustment to Mac app
-      this.wsClient.sendSignal({
-        type: 'bitrate-adjustment',
-        data: {
-          targetBitrate: clampedBitrate,
-          reason: shouldReduceBitrate ? 'quality-degradation' : 'quality-improvement',
-        },
-      });
+      this.wsClient.sendSignal(
+        JSON.stringify({
+          type: 'bitrate-adjustment',
+          data: {
+            targetBitrate: clampedBitrate,
+            reason: shouldReduceBitrate ? 'quality-degradation' : 'quality-improvement',
+          },
+        })
+      );
     }
   }
 }

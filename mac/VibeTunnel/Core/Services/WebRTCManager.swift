@@ -63,16 +63,35 @@ final class WebRTCManager: NSObject {
         // Initialize WebRTC
         RTCInitializeSSL()
 
-        // Create peer connection factory with custom codec preferences
         let videoEncoderFactory = createVideoEncoderFactory()
         let videoDecoderFactory = RTCDefaultVideoDecoderFactory()
-
         peerConnectionFactory = RTCPeerConnectionFactory(
             encoderFactory: videoEncoderFactory,
             decoderFactory: videoDecoderFactory
         )
 
-        logger.info("✅ WebRTC Manager initialized with server URL: \(self.serverURL)")
+        // Get the shared socket and register our handler.
+        // The connection itself is managed by the AppDelegate and SharedUnixSocketManager.
+        let sharedManager = SharedUnixSocketManager.shared
+        self.unixSocket = sharedManager.getConnection()
+        sharedManager.registerControlHandler(for: .screencap) { [weak self] message in
+            guard let self else { return nil }
+            return await self.handleControlMessage(message)
+        }
+
+        // Set up a listener for state changes on the shared socket.
+        self.unixSocket?.onStateChange = { [weak self] state in
+            Task { @MainActor [weak self] in
+                self?.handleSocketStateChange(state)
+            }
+        }
+
+        // If the socket is already connected, sync our state.
+        if sharedManager.isConnected {
+            handleSocketStateChange(.ready)
+        }
+
+        logger.info("✅ WebRTC Manager initialized and handler registered.")
     }
 
     deinit {
@@ -108,7 +127,7 @@ final class WebRTCManager: NSObject {
 
         // Ensure we have a UNIX socket connection
         if unixSocket == nil || !isConnected {
-            try await connectForAPIHandling()
+            try await screencapService?.connectForApiHandling()
         }
 
         // Notify server we're ready as the Mac peer with video mode
@@ -155,66 +174,6 @@ final class WebRTCManager: NSObject {
         logger.info("✅ Stopped WebRTC capture (keeping WebSocket for API)")
     }
 
-    /// Connect to signaling server for API handling only (no video capture)
-    func connectForAPIHandling() async throws {
-        // Don't connect if already connected
-        if unixSocket != nil && isConnected {
-            logger.info("UNIX socket already connected")
-            return
-        }
-
-        logger.info("🔌 Connecting for API handling via UNIX socket")
-        logger.info("  📋 Current active session: \(self.activeSessionId ?? "nil")")
-
-        // Get shared Unix socket connection
-        let sharedManager = SharedUnixSocketManager.shared
-        unixSocket = sharedManager.getConnection()
-
-        // Register as control handler for screencap category
-        sharedManager.registerControlHandler(for: .screencap) { [weak self] message in
-            guard let self else { return nil }
-            return await self.handleControlMessage(message)
-        }
-
-        // Set up state change handler on the socket
-        unixSocket?.onStateChange = { [weak self] state in
-            Task { @MainActor [weak self] in
-                self?.handleSocketStateChange(state)
-            }
-        }
-
-        // Connect if not already connected
-        if unixSocket?.isConnected == false {
-            unixSocket?.connect()
-        } else if unixSocket?.isConnected == true {
-            // If the shared socket is already connected, we won't get a .ready
-            // state change. We need to manually sync our state.
-            logger.info("✅ Shared socket is already connected, syncing state.")
-            self.handleSocketStateChange(.ready)
-        }
-
-        // Wait for connection to be ready
-        var retries = 0
-        while !isConnected && retries < 20 {
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-            retries += 1
-        }
-
-        if isConnected {
-            // Send mac-ready message for API handling
-            logger.info("📤 Sending mac-ready message for API handling...")
-            let message = ControlProtocol.createEvent(
-                category: .screencap,
-                action: "mac-ready",
-                payload: ["mode": "api-only"]
-            )
-            await sendControlMessage(message)
-            logger.info("✅ Connected for screencap API handling")
-        } else {
-            logger.error("❌ Failed to connect UNIX socket after 2 seconds")
-            throw UnixSocketError.notConnected
-        }
-    }
 
     /// Disconnect from signaling server
     func disconnect() async {
@@ -688,6 +647,17 @@ final class WebRTCManager: NSObject {
         case .ready:
             logger.info("✅ UNIX socket connected")
             isConnected = true
+            
+            // Send mac-ready message to notify server we're ready for screencap
+            Task {
+                let message = ControlProtocol.createEvent(
+                    category: .screencap,
+                    action: "mac-ready",
+                    payload: ["message": "Mac peer connected"]
+                )
+                await sendControlMessage(message)
+                logger.info("📤 Sent mac-ready message to server")
+            }
         case .failed(let error):
             logger.error("❌ UNIX socket failed: \(error)")
             isConnected = false

@@ -332,9 +332,6 @@ export class ControlUnixHandler {
     // Set browser socket in screen capture handler
     this.screenCaptureHandler.setBrowserSocket(ws);
 
-    // Send initial ready message
-    ws.send(JSON.stringify(createControlEvent('screencap', 'ready')));
-
     ws.on('message', async (data) => {
       try {
         const rawMessage = data.toString();
@@ -349,7 +346,9 @@ export class ControlUnixHandler {
             this.sendToMac(message);
           } else {
             logger.warn('No Mac connected to handle screen capture request');
-            ws.send(JSON.stringify(createControlResponse(message, null, 'Mac not connected')));
+            if (message.type === 'request') {
+              ws.send(JSON.stringify(createControlResponse(message, null, 'Mac not connected')));
+            }
           }
         } else {
           logger.warn(`Browser sent message for unsupported category: ${message.category}`);
@@ -374,15 +373,28 @@ export class ControlUnixHandler {
     ws.on('error', (error) => {
       logger.error('Browser WebSocket error:', error);
     });
+
+    // Send initial ready event to browser
+    this.screenCaptureHandler.handleMessage(createControlEvent('screencap', 'mac-ready'));
   }
 
   private async handleMacMessage(message: ControlMessage) {
-    logger.log(`Mac message - category: ${message.category}, action: ${message.action}`);
+    logger.log(
+      `Mac message - category: ${message.category}, action: ${message.action}, id: ${message.id}`
+    );
+
+    // Handle ping keep-alive from Mac client
+    if (message.category === 'system' && message.action === 'ping') {
+      const pong = createControlResponse(message, { status: 'ok' });
+      this.sendToMac(pong);
+      return;
+    }
 
     // Check if this is a response to a pending request
     if (message.type === 'response' && this.pendingRequests.has(message.id)) {
       const resolver = this.pendingRequests.get(message.id);
       if (resolver) {
+        logger.debug(`Resolving pending request for id: ${message.id}`);
         this.pendingRequests.delete(message.id);
         resolver(message);
       }
@@ -392,12 +404,14 @@ export class ControlUnixHandler {
     const handler = this.handlers.get(message.category);
     if (!handler) {
       logger.warn(`No handler for category: ${message.category}`);
-      const response = createControlResponse(
-        message,
-        null,
-        `Unknown category: ${message.category}`
-      );
-      this.sendToMac(response);
+      if (message.type === 'request') {
+        const response = createControlResponse(
+          message,
+          null,
+          `Unknown category: ${message.category}`
+        );
+        this.sendToMac(response);
+      }
       return;
     }
 
@@ -408,12 +422,14 @@ export class ControlUnixHandler {
       }
     } catch (error) {
       logger.error(`Handler error for ${message.category}:${message.action}:`, error);
-      const response = createControlResponse(
-        message,
-        null,
-        error instanceof Error ? error.message : 'Handler error'
-      );
-      this.sendToMac(response);
+      if (message.type === 'request') {
+        const response = createControlResponse(
+          message,
+          null,
+          error instanceof Error ? error.message : 'Handler error'
+        );
+        this.sendToMac(response);
+      }
     }
   }
 
@@ -437,18 +453,27 @@ export class ControlUnixHandler {
 
   private sendToMac(message: ControlMessage): void {
     if (this.macSocket && !this.macSocket.destroyed) {
-      const data = `${JSON.stringify(message)}\n`;
+      // Convert message to JSON
+      const jsonStr = JSON.stringify(message);
+      const jsonData = Buffer.from(jsonStr, 'utf-8');
+      
+      // Create a buffer with 4-byte length header + JSON data
+      const lengthBuffer = Buffer.allocUnsafe(4);
+      lengthBuffer.writeUInt32BE(jsonData.length, 0);
+      
+      // Combine length header and data
+      const fullData = Buffer.concat([lengthBuffer, jsonData]);
 
       // Log message size for debugging
       logger.log(
-        `Sending to Mac: ${message.category}:${message.action}, size: ${data.length} bytes`
+        `Sending to Mac: ${message.category}:${message.action}, header: 4 bytes, payload: ${jsonData.length} bytes, total: ${fullData.length} bytes`
       );
-      if (data.length > 65536) {
-        logger.warn(`Large message to Mac: ${data.length} bytes`);
+      if (jsonData.length > 65536) {
+        logger.warn(`Large message to Mac: ${jsonData.length} bytes`);
       }
 
       // Write with error handling
-      const result = this.macSocket.write(data, (error) => {
+      const result = this.macSocket.write(fullData, (error) => {
         if (error) {
           logger.error('Error writing to Mac socket:', error);
           // Close the connection on write error

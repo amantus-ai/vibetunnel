@@ -201,7 +201,7 @@ public final class ScreencapService: NSObject {
 
     override init() {
         super.init()
-        logger.info("🚀 ScreencapService initialized (deferred mode)")
+        logger.info("🚀 ScreencapService initialized")
 
         // Register for display configuration changes
         setupDisplayNotifications()
@@ -209,9 +209,16 @@ public final class ScreencapService: NSObject {
         // Set up state machine callbacks
         setupStateMachine()
 
-        // WebSocket connection is now deferred until first use
-        // This prevents screen recording permission prompt at startup
-        logger.info("📸 WebSocket connection deferred until screen capture is needed")
+        // Initialize WebRTCManager, which will register itself as a handler
+        // for screencap messages on the shared socket.
+        let serverPort = UserDefaults.standard.string(forKey: "serverPort") ?? "4020"
+        let serverURLString = ProcessInfo.processInfo
+            .environment["VIBETUNNEL_SERVER_URL"] ?? "http://localhost:\(serverPort)"
+        if let serverURL = URL(string: serverURLString) {
+            webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self)
+        } else {
+            logger.error("Invalid server URL for WebRTCManager: \(serverURLString)")
+        }
     }
 
     deinit {
@@ -219,234 +226,26 @@ public final class ScreencapService: NSObject {
         NotificationCenter.default.removeObserver(self)
     }
 
-    /// Setup WebSocket connection for handling API requests
-    private func setupWebSocketForAPIHandling() async {
-        // Check if already connected or connecting
-        if isWebSocketConnected {
-            logger.debug("WebSocket already connected")
-            return
-        }
 
-        if isWebSocketConnecting {
-            logger.debug("WebSocket connection already in progress, waiting...")
-            // Wait for existing connection attempt
-            try? await withCheckedThrowingContinuation { continuation in
-                webSocketConnectionContinuations.append(continuation)
-            }
-            return
-        }
 
-        isWebSocketConnecting = true
-
-        // Transition to connecting state only if not already connected/capturing
-        switch stateMachine.currentState {
-        case .idle, .error:
-            stateMachine.processEvent(.connect)
-        case .capturing, .ready:
-            // Already connected, this is a reconnection
-            logger.info("🔄 Reconnecting WebSocket while in \(self.stateMachine.currentState) state")
-        default:
-            logger.warning("⚠️ Unexpected state when starting WebSocket connection: \(self.stateMachine.currentState)")
-        }
-
-        // Get server URL from environment or use default
-        let serverPort = UserDefaults.standard.string(forKey: "serverPort") ?? "4020"
-        let serverURLString = ProcessInfo.processInfo
-            .environment["VIBETUNNEL_SERVER_URL"] ?? "http://localhost:\(serverPort)"
-        logger.info("📍 Using server URL: \(serverURLString)")
-        guard let serverURL = URL(string: serverURLString) else {
-            logger.error("Invalid server URL: \(serverURLString)")
-            isWebSocketConnecting = false
-
-            // Transition to error state
-            stateMachine.processEvent(.connectionFailed(ScreencapError.invalidServerURL))
-
-            // Fail all waiting continuations
-            for continuation in webSocketConnectionContinuations {
-                continuation.resume(throwing: ScreencapError.invalidServerURL)
-            }
-            webSocketConnectionContinuations.removeAll()
-            return
-        }
-
-        // Create WebRTC manager which handles WebSocket API requests
-        if webRTCManager == nil {
-            // Check if authentication is disabled
-            let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
-            let isNoAuth = authMode == "none"
-
-            if isNoAuth {
-                // Authentication is disabled, create WebRTC manager without token
-                logger.info("🔓 Authentication disabled, creating WebRTC manager without token")
-                webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self, localAuthToken: nil)
-            } else {
-                // Get local auth token from ServerManager - this might be nil if server isn't started yet
-                let localAuthToken = ServerManager.shared.bunServer?.localToken
-                if localAuthToken == nil {
-                    logger.warning("⚠️ No local auth token available yet - server might not be started")
-                    logger.warning("⚠️ Will retry connection when auth token becomes available")
-                    // Schedule a retry
-                    scheduleReconnection()
-
-                    // Transition to error state temporarily
-                    stateMachine.processEvent(.connectionFailed(ScreencapError.webSocketNotConnected))
-                    isWebSocketConnecting = false
-
-                    // Fail waiting continuations
-                    for continuation in webSocketConnectionContinuations {
-                        continuation.resume(throwing: ScreencapError.webSocketNotConnected)
-                    }
-                    webSocketConnectionContinuations.removeAll()
-                    return
-                }
-                webRTCManager = WebRTCManager(
-                    serverURL: serverURL,
-                    screencapService: self,
-                    localAuthToken: localAuthToken
-                )
-            }
-        } else if webRTCManager?.localAuthToken == nil {
-            // Check if authentication is disabled
-            let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
-            let isNoAuth = authMode == "none"
-
-            if !isNoAuth {
-                // Update auth token if it wasn't available during initial creation
-                let localAuthToken = ServerManager.shared.bunServer?.localToken
-                if let localAuthToken {
-                    logger.info("🔑 Updating WebRTC manager with newly available auth token")
-                    // Recreate WebRTC manager with auth token
-                    webRTCManager = WebRTCManager(
-                        serverURL: serverURL,
-                        screencapService: self,
-                        localAuthToken: localAuthToken
-                    )
-                }
-            }
-        }
-
-        // Connect to signaling server for API handling
-        // This allows the browser to make API requests immediately
-        do {
-            // Ensure WebRTC manager exists
-            guard let webRTCManager = self.webRTCManager else {
-                logger.error("❌ WebRTC manager not available - cannot connect for API handling")
-                throw ScreencapError.webSocketNotConnected
-            }
-
-            try await webRTCManager.connectForAPIHandling()
-            logger.info("✅ Connected to WebSocket for screencap API handling")
-            isWebSocketConnected = true
-            isWebSocketConnecting = false
-
-            // Transition to ready state - check current state
-            switch stateMachine.currentState {
-            case .error:
-                stateMachine.processEvent(.errorRecovered)
-            case .connecting:
-                stateMachine.processEvent(.connectionEstablished)
-            case .capturing, .ready:
-                // Already in a good state, no transition needed
-                logger.info("🔄 WebSocket reconnected while in \(self.stateMachine.currentState) state")
-            default:
-                logger.warning("⚠️ Unexpected state during WebSocket connection: \(self.stateMachine.currentState)")
-            }
-
-            // Resume all waiting continuations
-            for continuation in webSocketConnectionContinuations {
-                continuation.resume()
-            }
-            webSocketConnectionContinuations.removeAll()
-
-            // Start monitoring connection
-            startConnectionMonitor()
-        } catch {
-            logger.error("Failed to connect WebSocket for API: \(error)")
-            isWebSocketConnecting = false
-            isWebSocketConnected = false
-
-            // Transition to error state
-            stateMachine.processEvent(.connectionFailed(error))
-
-            // Fail all waiting continuations
-            for continuation in webSocketConnectionContinuations {
-                continuation.resume(throwing: error)
-            }
-            webSocketConnectionContinuations.removeAll()
-
-            // Schedule reconnection
-            scheduleReconnection()
-        }
-    }
-
-    /// Start monitoring the WebSocket connection
-    private func startConnectionMonitor() {
-        // Cancel any existing monitor
-        reconnectTask?.cancel()
-
-        reconnectTask = Task { [weak self] in
-            guard let self else { return }
-
-            while !Task.isCancelled && shouldReconnect {
-                try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
-
-                // Check if still connected
-                if let webRTCManager = self.webRTCManager {
-                    let connected = webRTCManager.isConnected
-                    if !connected && self.isWebSocketConnected {
-                        logger.warning("⚠️ WebSocket disconnected, marking as disconnected")
-                        self.isWebSocketConnected = false
-                        self.scheduleReconnection()
-                    }
-                }
-            }
-        }
-    }
-
-    /// Schedule a reconnection attempt
-    private func scheduleReconnection() {
-        guard shouldReconnect else { return }
-
-        Task { [weak self] in
-            guard let self else { return }
-
-            // Wait before reconnecting (exponential backoff could be added here)
-            logger.info("⏳ Scheduling reconnection in 2 seconds...")
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-
-            if !self.isWebSocketConnected && self.shouldReconnect {
-                logger.info("🔄 Attempting to reconnect WebSocket...")
-                await self.setupWebSocketForAPIHandling()
-            }
-        }
-    }
 
     // MARK: - Public Methods
 
-    /// Handle WebSocket disconnection notification
-    public func handleWebSocketDisconnection() async {
-        logger.warning("⚠️ WebSocket disconnected, will attempt to reconnect")
-        isWebSocketConnected = false
-        scheduleReconnection()
-    }
 
-    /// Ensure WebSocket connection is established
-    public func ensureWebSocketConnected() async throws {
-        if !isWebSocketConnected && !isWebSocketConnecting {
-            await setupWebSocketForAPIHandling()
+    /// Ensure the service is ready for API handling.
+    public func connectForApiHandling() async throws {
+        // The connection is now managed by SharedUnixSocketManager. We just need to
+        // ensure that the WebRTCManager (and its handlers) has been initialized.
+        guard webRTCManager != nil else {
+            logger.error("WebRTCManager not initialized. ScreencapService is not ready.")
+            throw ScreencapError.serviceNotReady
         }
-
-        // Wait for connection to complete if still connecting
-        if isWebSocketConnecting && !isWebSocketConnected {
-            try await withCheckedThrowingContinuation { continuation in
-                webSocketConnectionContinuations.append(continuation)
-            }
-        }
-
-        // Verify we're actually connected now
-        guard isWebSocketConnected else {
+        // Also check if the underlying shared socket is connected.
+        guard SharedUnixSocketManager.shared.isConnected else {
+            logger.error("Shared socket is not connected. ScreencapService is not ready.")
             throw ScreencapError.webSocketNotConnected
         }
+        logger.info("ScreencapService is ready for API handling.")
     }
 
     /// Test method to debug SCShareableContent issues
@@ -501,9 +300,6 @@ public final class ScreencapService: NSObject {
     /// Get all available displays
     func getDisplays() async throws -> [DisplayInfo] {
         logger.info("🔍 getDisplays() called")
-
-        // Ensure WebSocket is connected first
-        try await ensureWebSocketConnected()
 
         // First check NSScreen to see what the system reports
         let nsScreens = NSScreen.screens
@@ -641,8 +437,6 @@ public final class ScreencapService: NSObject {
     func getProcessGroups() async throws -> [ProcessGroup] {
         logger.info("🔍 getProcessGroups called")
 
-        // Ensure WebSocket is connected first
-        try await ensureWebSocketConnected()
 
         // First check screen recording permission
         let hasPermission = await isScreenRecordingAllowed()
@@ -900,9 +694,6 @@ public final class ScreencapService: NSObject {
 
         // Stop any existing capture first to ensure clean state
         await stopCapture()
-
-        // Ensure WebSocket is connected first
-        try await ensureWebSocketConnected()
 
         // Check if we can start capture
         guard stateMachine.canPerformAction(.startCapture) else {

@@ -414,7 +414,6 @@ export class ScreencapView extends LitElement {
     this.loadSidebarState();
     this.localAuthToken = this.getAttribute('local-auth-token') || undefined;
     this.initializeWebSocketClient();
-    this.loadInitialData();
 
     // Add keyboard listener to the whole component
     this.boundHandleKeyDown = this.handleKeyDown.bind(this);
@@ -494,6 +493,7 @@ export class ScreencapView extends LitElement {
         this.logStatus('success', 'WebSocket connection established');
         this.logStatus('info', 'Ready to start capture');
         this.status = 'ready';
+        this.loadInitialData();
       };
 
       this.wsClient.onError = (error: string) => {

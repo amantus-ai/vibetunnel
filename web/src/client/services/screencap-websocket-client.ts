@@ -2,45 +2,16 @@ import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('screencap-websocket');
 
-interface ApiRequest {
-  type: 'api-request';
+// This interface should align with the backend's ControlMessage protocol
+interface ControlMessage {
+  id: string;
+  type: 'request' | 'response' | 'event';
   category: 'screencap';
-  requestId: string;
-  method: string;
-  endpoint: string;
-  params?: unknown;
+  action: string;
+  payload?: any;
   sessionId?: string;
-}
-
-interface SignalMessage {
-  type:
-    | 'start-capture'
-    | 'offer'
-    | 'answer'
-    | 'ice-candidate'
-    | 'error'
-    | 'ready'
-    | 'api-response'
-    | 'bitrate-adjustment';
-  category: 'screencap';
-  data?: unknown;
-  requestId?: string;
-  result?: unknown;
   error?: string;
-  sessionId?: string;
-  mode?: string;
-  windowId?: number;
-  displayIndex?: number;
-  browser?: string;
-  browserVersion?: number;
-  preferH265?: boolean;
-  codecSupport?: {
-    h265: boolean;
-    h264: boolean;
-  };
 }
-
-type WebSocketMessage = ApiRequest | SignalMessage;
 
 export class ScreencapWebSocketClient {
   private ws: WebSocket | null = null;
@@ -77,7 +48,7 @@ export class ScreencapWebSocketClient {
 
         this.ws.onmessage = (event) => {
           try {
-            const message = JSON.parse(event.data) as WebSocketMessage;
+            const message = JSON.parse(event.data) as ControlMessage;
             logger.log('📥 Received message:', message);
             this.handleMessage(message);
           } catch (error) {
@@ -109,42 +80,42 @@ export class ScreencapWebSocketClient {
     return this.connectionPromise;
   }
 
-  private handleMessage(message: WebSocketMessage) {
-    switch (message.type) {
+  private handleMessage(message: ControlMessage) {
+    switch (message.action) {
       case 'ready':
         logger.log('Server ready');
         if (this.onReady) this.onReady();
         break;
 
       case 'offer':
-        if (this.onOffer && message.data) {
-          this.onOffer(message.data as RTCSessionDescriptionInit);
+        if (this.onOffer && message.payload?.data) {
+          this.onOffer(message.payload.data as RTCSessionDescriptionInit);
         }
         break;
 
       case 'answer':
-        if (this.onAnswer && message.data) {
-          this.onAnswer(message.data as RTCSessionDescriptionInit);
+        if (this.onAnswer && message.payload?.data) {
+          this.onAnswer(message.payload.data as RTCSessionDescriptionInit);
         }
         break;
 
       case 'ice-candidate':
-        if (this.onIceCandidate && message.data) {
-          this.onIceCandidate(message.data as RTCIceCandidateInit);
+        if (this.onIceCandidate && message.payload?.data) {
+          this.onIceCandidate(message.payload.data as RTCIceCandidateInit);
         }
         break;
 
       case 'error':
-        if (this.onError && typeof message.data === 'string') {
-          this.onError(message.data);
+        if (this.onError && typeof message.payload?.data === 'string') {
+          this.onError(message.payload.data);
         }
         break;
 
       case 'api-response':
-        if (message.requestId) {
-          const pending = this.pendingRequests.get(message.requestId);
+        if (message.id) {
+          const pending = this.pendingRequests.get(message.id);
           if (pending) {
-            this.pendingRequests.delete(message.requestId);
+            this.pendingRequests.delete(message.id);
             if (message.error) {
               // Handle error objects properly
               let errorMessage = 'Unknown error';
@@ -175,7 +146,7 @@ export class ScreencapWebSocketClient {
               }
               pending.reject(new Error(errorMessage));
             } else {
-              pending.resolve(message.result);
+              pending.resolve(message.payload?.result);
             }
           }
         }
@@ -197,13 +168,17 @@ export class ScreencapWebSocketClient {
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    const request: ApiRequest = {
-      type: 'api-request',
+    const request: ControlMessage = {
+      id: requestId,
+      type: 'request',
       category: 'screencap',
-      requestId,
-      method,
-      endpoint,
-      params,
+      action: 'api-request',
+      payload: {
+        method,
+        endpoint,
+        params,
+        requestId, // Include original requestId in payload for mac-side compatibility
+      },
       sessionId: this.sessionId || undefined,
     };
 
@@ -226,26 +201,24 @@ export class ScreencapWebSocketClient {
     });
   }
 
-  async sendSignal(message: Partial<SignalMessage>) {
+  async sendSignal(action: string, data?: any) {
     await this.connect();
 
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket not connected');
     }
 
-    // Ensure category is set for all messages
-    const completeMessage = {
-      ...message,
-      category: 'screencap' as const,
+    const message: ControlMessage = {
+      id: crypto.randomUUID(),
+      type: 'event',
+      category: 'screencap',
+      action,
+      payload: { data },
+      sessionId: this.sessionId || undefined,
     };
 
-    // Add session ID to signaling messages if available
-    if (this.sessionId && !completeMessage.sessionId) {
-      completeMessage.sessionId = this.sessionId;
-    }
-
-    logger.log(`📤 Sending signal:`, completeMessage);
-    this.ws.send(JSON.stringify(completeMessage));
+    logger.log(`📤 Sending signal:`, message);
+    this.ws.send(JSON.stringify(message));
   }
 
   // Convenience methods for API requests

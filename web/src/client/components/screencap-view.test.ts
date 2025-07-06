@@ -129,6 +129,19 @@ class MockWebSocket {
 describe('ScreencapView', () => {
   let element: ScreencapView;
 
+  async function createReadyElement(): Promise<ScreencapView> {
+    const el = await fixture<ScreencapView>(html`<screencap-view></screencap-view>`);
+    await new Promise<void>((resolve) => {
+      const originalOnReady = el.wsClient.onReady;
+      el.wsClient.onReady = (event) => {
+        originalOnReady(event);
+        resolve();
+      };
+    });
+    await el.updateComplete;
+    return el;
+  }
+
   const mockWindows: WindowInfo[] = [
     {
       cgWindowID: 123,
@@ -233,8 +246,8 @@ describe('ScreencapView', () => {
   });
 
   beforeEach(async () => {
-    // Create component
-    element = await fixture<ScreencapView>(html`<screencap-view></screencap-view>`);
+    // Create component and wait for it to be ready
+    element = await createReadyElement();
     await element.updateComplete;
 
     // Disable WebRTC for tests to use JPEG mode
@@ -247,10 +260,6 @@ describe('ScreencapView', () => {
 
   describe('initialization', () => {
     it('should load windows and display info on connectedCallback', async () => {
-      // Wait for initial load to complete
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await element.updateComplete;
-
       // Check that data was loaded
       expect(element.processGroups).toHaveLength(2);
       expect(element.displays).toEqual(mockDisplays);
@@ -278,7 +287,6 @@ describe('ScreencapView', () => {
       vi.stubGlobal('WebSocket', ErrorMockWebSocket);
 
       element = await fixture<ScreencapView>(html`<screencap-view></screencap-view>`);
-      await new Promise((resolve) => setTimeout(resolve, 100));
       await element.updateComplete;
 
       expect(element.status).toBe('error');
@@ -290,22 +298,7 @@ describe('ScreencapView', () => {
   });
 
   describe('window selection', () => {
-    beforeEach(async () => {
-      // Wait for initial load
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await element.updateComplete;
-    });
-
     it('should display window list in sidebar', async () => {
-      // Wait for status to be ready
-      let retries = 0;
-      while (element.status !== 'ready' && retries < 10) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        await element.updateComplete;
-        retries++;
-      }
-      expect(element.status).toBe('ready');
-
       // Get sidebar element
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
       expect(sidebar).toBeTruthy();
@@ -385,10 +378,6 @@ describe('ScreencapView', () => {
     });
 
     it('should select desktop mode on display item click', async () => {
-      // Wait for component to be ready
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await element.updateComplete;
-
       // Get sidebar element
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
       expect(sidebar).toBeTruthy();
@@ -421,10 +410,6 @@ describe('ScreencapView', () => {
 
   describe('capture controls', () => {
     beforeEach(async () => {
-      // Wait for initial load and start capture
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await element.updateComplete;
-
       // Get sidebar and start desktop capture - find All Displays button
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
       const displayItems = sidebar?.shadowRoot?.querySelectorAll('.display-item');
@@ -510,10 +495,6 @@ describe('ScreencapView', () => {
 
   describe('input handling', () => {
     beforeEach(async () => {
-      // Wait for initial load and start capture
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await element.updateComplete;
-
       // Get sidebar and start desktop capture - find All Displays button
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
       const displayItems = sidebar?.shadowRoot?.querySelectorAll('.display-item');
@@ -620,9 +601,6 @@ describe('ScreencapView', () => {
 
       // Create new element
       element = await fixture<ScreencapView>(html`<screencap-view></screencap-view>`);
-
-      // Wait for initial load
-      await new Promise((resolve) => setTimeout(resolve, 100));
       await element.updateComplete;
 
       // Try to start capture - find All Displays button in sidebar
@@ -660,10 +638,6 @@ describe('ScreencapView', () => {
     });
 
     it('should show window count when loaded', async () => {
-      // Wait for load
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await element.updateComplete;
-
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
       const sectionTitles = sidebar?.shadowRoot?.querySelectorAll('.section-title');
       let windowsSection: Element | null = null;
@@ -680,10 +654,6 @@ describe('ScreencapView', () => {
     });
 
     it('should highlight selected window', async () => {
-      // Wait for load
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await element.updateComplete;
-
       // Get sidebar element
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
       expect(sidebar).toBeTruthy();

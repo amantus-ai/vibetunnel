@@ -243,31 +243,16 @@ class ServerManager {
 
             logger.info("Started server on port \(self.port)")
 
-            // IMPORTANT: ScreencapService initialization strategy:
-            // 1. The service singleton is created lazily when first accessed
-            // 2. WebSocket connection for API handling is established immediately if enabled
-            // 3. Screen recording permission is NOT triggered until actual capture
-            //
             // This allows the screencap API to be available for queries (like listing
             // windows/displays) without triggering the permission dialog. The permission
             // dialog only appears when the user actually starts screen capture.
             if AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) {
-                logger.info("📸 Screencap service enabled, initializing API connection...")
-                
-                // Initialize ScreencapService and connect WebSocket for API handling
-                // This does NOT trigger screen recording permission - that only happens
-                // when SCShareableContent APIs are called during actual capture
-                Task {
-                    do {
-                        let screencapService = ScreencapService.shared
-                        try await screencapService.ensureWebSocketConnected()
-                        logger.info("✅ ScreencapService API connection established")
-                    } catch {
-                        logger.error("❌ Failed to initialize ScreencapService API: \(error)")
-                    }
-                }
+                self.logger.info("Screencap service enabled, initializing...")
+                // Ensure the singleton is created and ready to receive messages.
+                // This will in turn initialize the WebRTCManager and register its handlers.
+                _ = ScreencapService.shared
             } else {
-                logger.info("Screencap service disabled by user preference")
+                self.logger.info("Screencap service disabled by user preference")
             }
 
             // Pass the local auth token to SessionMonitor

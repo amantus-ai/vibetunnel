@@ -53,9 +53,18 @@ final class SharedUnixSocketManager {
         unixSocket?.isConnected ?? false
     }
 
+    /// Connect the shared socket
+    func connect() {
+        // This will lazily create the connection if it doesn't exist
+        // and start the connection process with automatic reconnection.
+        let socket = getConnection()
+        socket.connect()
+        logger.info("🔌 Shared Unix socket connection process started.")
+    }
+
     /// Disconnect and clean up
     func disconnect() {
-        logger.info("🔌 Disconnecting shared Unix socket")
+        logger.info("🔌 Disconnecting shared unix socket.")
         unixSocket?.disconnect()
         unixSocket = nil
 
@@ -68,24 +77,38 @@ final class SharedUnixSocketManager {
 
     /// Process received messages as control protocol messages
     private func distributeMessage(_ data: Data) {
+        logger.debug("📨 Distributing message of size \(data.count) bytes")
+        
+        // Log raw message for debugging
+        if let str = String(data: data, encoding: .utf8) {
+            logger.debug("📨 Raw message: \(str)")
+        }
+        
         // Parse as control message
-        if let controlMessage = try? ControlProtocol.decode(data) {
-            logger.debug("📨 Control message: \(controlMessage.category.rawValue):\(controlMessage.action)")
+        do {
+            let controlMessage = try ControlProtocol.decode(data)
+            logger.info("📨 Control message received: \(controlMessage.category.rawValue):\(controlMessage.action)")
 
             // Handle control messages
             Task { @MainActor in
                 await handleControlMessage(controlMessage)
             }
-        } else {
-            logger.warning("📨 Received message that is not a valid control message")
+        } catch {
+            logger.error("📨 Failed to decode control message: \(error)")
             if let str = String(data: data, encoding: .utf8) {
-                logger.debug("Raw message: \(str)")
+                logger.error("📨 Failed message content: \(str)")
             }
         }
     }
 
     /// Handle control protocol messages
     private func handleControlMessage(_ message: ControlProtocol.ControlMessage) async {
+        // Special handling for system messages
+        if message.category == .system && message.action == "ready" {
+            logger.info("✅ Received system:ready from server - connection established")
+            return
+        }
+        
         guard let handler = controlHandlers[message.category] else {
             logger.warning("No handler for category: \(message.category.rawValue)")
 

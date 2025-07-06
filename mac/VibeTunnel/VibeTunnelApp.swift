@@ -212,6 +212,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
             object: nil
         )
 
+        // Start the shared unix socket manager
+        SharedUnixSocketManager.shared.connect()
+
         // Start the terminal control handler (uses unified control socket)
         TerminalControlHandler.shared.start()
 
