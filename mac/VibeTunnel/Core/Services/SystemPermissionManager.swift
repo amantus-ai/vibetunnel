@@ -58,24 +58,6 @@ enum SystemPermission {
 /// Monitors and manages macOS system permissions including Apple Script automation,
 /// screen recording, and accessibility access. Provides a centralized interface for
 /// checking permission status and guiding users through the granting process.
-///
-/// # Screen Recording Permission Deferral
-///
-/// This manager implements a two-stage approach for screen recording permissions to
-/// avoid prompting users immediately on app launch:
-///
-/// ## Stage 1: Non-Triggering Check
-/// - `checkScreenRecordingPermission()` checks UserDefaults for previous successful use
-/// - Never calls SCShareableContent APIs that would trigger the permission dialog
-/// - Returns false for unknown permission state (safe default)
-///
-/// ## Stage 2: Explicit Permission Request
-/// - `checkScreenRecordingPermissionWithPrompt()` triggers the actual permission check
-/// - Only called when user explicitly requests screen capture features
-/// - Updates UserDefaults on success for future non-triggering checks
-///
-/// This approach ensures users aren't prompted for screen recording permission until
-/// they actually need the feature, improving the onboarding experience.
 @MainActor
 @Observable
 final class SystemPermissionManager {
@@ -264,65 +246,13 @@ final class SystemPermissionManager {
 
     // MARK: - Screen Recording Permission
 
-    /// Check screen recording permission without triggering the system prompt.
-    ///
-    /// This method implements Stage 1 of our permission deferral strategy:
-    /// - Checks UserDefaults for evidence of previous successful screen capture use
-    /// - NEVER calls SCShareableContent APIs that would trigger the permission dialog
-    /// - Returns false for unknown state (user hasn't explicitly granted permission yet)
-    ///
-    /// This allows the welcome screen to show permission status without prompting users.
     private func checkScreenRecordingPermission() async -> Bool {
-        // Important: We cannot use SCShareableContent.current here as it triggers
-        // the permission prompt if not already granted. Instead, we check if
-        // the permission was previously granted by attempting a non-triggering
-        // operation or checking stored permission state.
-
-        // For now, we'll assume permission is not granted unless we have evidence
-        // it was previously granted. The actual permission check will happen when
-        // the user tries to use screen capture features.
-
-        // Check if ScreencapService has been successfully used before
-        let hasUsedScreencap = UserDefaults.standard.bool(forKey: "hasSuccessfullyUsedScreencap")
-
-        if hasUsedScreencap {
-            // User has successfully used screen capture before, so permission was granted
-            logger.debug("Screen recording permission assumed granted (previously used)")
-            return true
-        }
-
-        // Permission status unknown - will be checked when actually needed
-        logger.debug("Screen recording permission status unknown (deferred check)")
-        return false
-    }
-
-    /// Check screen recording permission with prompt if needed.
-    ///
-    /// This method implements Stage 2 of our permission deferral strategy:
-    /// - WILL trigger the system permission prompt if not already granted
-    /// - Updates UserDefaults on success for future non-triggering checks
-    /// - Should only be called when user explicitly requests screen capture features
-    ///
-    /// Call this when:
-    /// - User clicks "Grant Screen Recording Permission" in welcome screen
-    /// - User attempts to start screen sharing
-    /// - User accesses features that require screen capture
-    func checkScreenRecordingPermissionWithPrompt() async -> Bool {
         do {
             // This will trigger the permission prompt if needed
             _ = try await SCShareableContent.current
-
-            // If we get here, permission is granted
-            UserDefaults.standard.set(true, forKey: "hasSuccessfullyUsedScreencap")
-            logger.info("Screen recording permission verified and granted")
-
-            // Update our cached permission state
-            permissions[.screenRecording] = true
-            NotificationCenter.default.post(name: .permissionsUpdated, object: nil)
-
             return true
         } catch {
-            logger.info("Screen recording permission denied or not granted: \(error)")
+            logger.debug("Screen recording permission not granted: \(error)")
             return false
         }
     }
