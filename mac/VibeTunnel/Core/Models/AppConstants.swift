@@ -21,8 +21,8 @@ enum AppConstants {
     enum Defaults {
         /// Sleep prevention is enabled by default for better user experience
         static let preventSleepWhenRunning = true
-        /// Screencap service is enabled by default for screen sharing
-        static let enableScreencapService = true
+        /// Screencap service is disabled by default to avoid permission prompt at startup
+        static let enableScreencapService = false
     }
 
     /// Helper to get boolean value with proper default

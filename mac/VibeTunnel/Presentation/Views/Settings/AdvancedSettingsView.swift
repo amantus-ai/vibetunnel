@@ -146,7 +146,7 @@ struct AdvancedSettingsView: View {
                             )
                             }
                         ))
-                        Text("Allows screen sharing and remote control features. Runs on port 4010.")
+                        Text("Allow screen sharing feature in the web interface.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -393,39 +393,32 @@ private struct WindowHighlightSettingsSection: View {
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
-                // Enable/Disable toggle
-                Toggle("Show window highlight effect", isOn: $highlightEnabled)
-                    .onChange(of: highlightEnabled) { _, newValue in
-                        if newValue {
-                            previewHighlightEffect()
-                        }
-                    }
-
-                if highlightEnabled {
-                    // Style picker
-                    Picker("Highlight style", selection: $highlightStyle) {
+                // Window highlight style picker
+                HStack {
+                    Text("Window highlight")
+                    Spacer()
+                    Picker("", selection: highlightStyleBinding) {
+                        Text("None").tag("none")
                         Text("Default").tag("default")
                         Text("Subtle").tag("subtle")
                         Text("Neon").tag("neon")
                         Text("Custom").tag("custom")
                     }
-                    .pickerStyle(.segmented)
-                    .onChange(of: highlightStyle) { _, _ in
-                        previewHighlightEffect()
-                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
 
-                    // Custom color picker (only shown when custom is selected)
-                    if highlightStyle == "custom" {
-                        HStack {
-                            Text("Custom color")
-                            Spacer()
-                            ColorPicker("", selection: $customColor, supportsOpacity: false)
-                                .labelsHidden()
-                                .onChange(of: customColor) { _, newColor in
-                                    saveCustomColor(newColor)
-                                    previewHighlightEffect()
-                                }
-                        }
+                // Custom color picker (only shown when custom is selected)
+                if highlightStyle == "custom" && highlightEnabled {
+                    HStack {
+                        Text("Custom color")
+                        Spacer()
+                        ColorPicker("", selection: $customColor, supportsOpacity: false)
+                            .labelsHidden()
+                            .onChange(of: customColor) { _, newColor in
+                                saveCustomColor(newColor)
+                                previewHighlightEffect()
+                            }
                     }
                 }
             }
@@ -443,6 +436,24 @@ private struct WindowHighlightSettingsSection: View {
             // Create highlight effect instance for preview
             highlightEffect = WindowHighlightEffect()
         }
+    }
+
+    private var highlightStyleBinding: Binding<String> {
+        Binding(
+            get: {
+                highlightEnabled ? highlightStyle : "none"
+            },
+            set: { newValue in
+                if newValue == "none" {
+                    highlightEnabled = false
+                    highlightStyle = "default"  // Keep a default style for when re-enabled
+                } else {
+                    highlightEnabled = true
+                    highlightStyle = newValue
+                    previewHighlightEffect()
+                }
+            }
+        )
     }
 
     private func saveCustomColor(_ color: Color) {

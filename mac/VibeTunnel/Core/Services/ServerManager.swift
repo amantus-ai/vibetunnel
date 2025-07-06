@@ -252,17 +252,8 @@ class ServerManager {
                 // Initialize ScreencapService singleton and ensure WebSocket is connected
                 let screencapService = ScreencapService.shared
 
-                // Check permission status
-                let hasPermission = await checkScreenRecordingPermission()
-                if hasPermission {
-                    logger.info("✅ Screen recording permission granted")
-                } else {
-                    logger.warning("⚠️ Screen recording permission not granted - some features will be limited")
-                    logger
-                        .warning(
-                            "💡 Please grant screen recording permission in System Settings > Privacy & Security > Screen Recording"
-                        )
-                }
+                // Skip permission check at startup - it will be checked when actually needed
+                logger.info("📸 Deferring screen recording permission check until first use")
 
                 // Connect WebSocket regardless of permission status
                 // This allows the API to respond with appropriate errors
@@ -628,14 +619,4 @@ enum ServerManagerError: LocalizedError {
 
 extension ServerManager {
     /// Check if we have screen recording permission
-    private func checkScreenRecordingPermission() async -> Bool {
-        do {
-            // Try to get shareable content - this will fail if we don't have permission
-            _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-            return true
-        } catch {
-            logger.warning("Screen recording permission check failed: \(error)")
-            return false
-        }
-    }
 }
