@@ -44,7 +44,7 @@ struct ControlAgentArmyPageView: View {
                         .foregroundColor(.secondary)
 
                     HStack {
-                        Text("vt title \"Current action - project context\"")
+                        Text("vt title \"Current action in project context\"")
                             .font(.system(.body, design: .monospaced))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
