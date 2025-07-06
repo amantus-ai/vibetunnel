@@ -330,7 +330,7 @@ describe('PTY Session.json Watcher', () => {
     // Don't push to testSessionIds so afterEach doesn't try to kill it
 
     // Create session with a simple exit command
-    const result = await ptyManager.createSession(['exit'], {
+    const _result = await ptyManager.createSession(['exit'], {
       sessionId,
       name: 'test-cleanup',
       workingDir: process.cwd(),

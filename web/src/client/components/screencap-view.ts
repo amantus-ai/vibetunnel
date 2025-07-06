@@ -665,7 +665,6 @@ export class ScreencapView extends LitElement {
       }
 
       this.logStatus('info', 'Sending screen capture request to Mac app...');
-      // @ts-ignore - use8k is not in types yet
       captureResponse = (await this.wsClient.startCapture({
         type: 'desktop',
         index: displayIndex,
@@ -690,7 +689,6 @@ export class ScreencapView extends LitElement {
       );
 
       this.logStatus('info', 'Sending window capture request to Mac app...');
-      // @ts-ignore - use8k is not in types yet
       captureResponse = (await this.wsClient.captureWindow({
         cgWindowID: this.selectedWindow.cgWindowID,
         webrtc: true,
@@ -718,6 +716,8 @@ export class ScreencapView extends LitElement {
   private async startJPEGCapture() {
     if (!this.wsClient) return;
 
+    this.logStatus('info', 'Requesting capture in JPEG mode...');
+
     let response: CaptureResponse | undefined;
     if (this.captureMode === 'desktop') {
       const displayIndex = this.allDisplaysSelected
@@ -725,21 +725,38 @@ export class ScreencapView extends LitElement {
         : this.selectedDisplay
           ? Number.parseInt(this.selectedDisplay.id.replace('NSScreen-', ''))
           : 0;
+
+      if (this.allDisplaysSelected) {
+        this.logStatus('info', 'Requesting capture of all displays (JPEG mode)');
+      } else {
+        this.logStatus('info', `Requesting capture of display ${displayIndex} (JPEG mode)`);
+      }
+
       response = (await this.wsClient.startCapture({
         type: 'desktop',
         index: displayIndex,
-        webrtc: this.useWebRTC,
+        webrtc: false, // Explicitly set to false for JPEG
       })) as CaptureResponse;
     } else if (this.captureMode === 'window' && this.selectedWindow) {
+      this.logStatus(
+        'info',
+        `Requesting capture of window: ${this.selectedWindow.title || 'Untitled'} (JPEG mode)`
+      );
       response = (await this.wsClient.captureWindow({
         cgWindowID: this.selectedWindow.cgWindowID,
-        webrtc: this.useWebRTC,
+        webrtc: false, // Explicitly set to false for JPEG
       })) as CaptureResponse;
     }
 
     if (response?.sessionId) {
-      logger.log('Capture started with session:', response.sessionId);
+      this.logStatus(
+        'success',
+        `JPEG capture started with session: ${response.sessionId.substring(0, 8)}...`
+      );
       this.startFrameUpdates();
+    } else {
+      // This case might indicate an error from the backend
+      throw new Error('Failed to get a session ID for JPEG capture.');
     }
   }
 
@@ -953,6 +970,20 @@ export class ScreencapView extends LitElement {
 
     // JPEG mode - show image element
     if (this.frameUrl && this.isCapturing && !this.useWebRTC) {
+      // Create a mock stats object for JPEG mode
+      const jpegStats: StreamStats = {
+        codec: 'JPEG',
+        codecImplementation: 'N/A',
+        resolution: `${this.shadowRoot?.querySelector('img')?.naturalWidth || 0}x${this.shadowRoot?.querySelector('img')?.naturalHeight || 0}`,
+        fps: this.fps,
+        bitrate: 0, // Not applicable for JPEG polling
+        latency: 0, // Not applicable
+        packetsLost: 0,
+        packetLossRate: 0,
+        jitter: 0,
+        timestamp: Date.now(),
+      };
+
       return html`
         <img 
           src="${this.frameUrl}" 
@@ -965,6 +996,16 @@ export class ScreencapView extends LitElement {
           </svg>
           ${this.fps} FPS
         </div>
+        ${
+          this.showStats
+            ? html`
+          <screencap-stats
+            .stats=${jpegStats}
+            .frameCounter=${this.frameCounter}
+          ></screencap-stats>
+        `
+            : ''
+        }
         ${this.showLog ? this.renderStatusLog() : ''}
       `;
     }

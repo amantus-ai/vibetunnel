@@ -528,19 +528,19 @@ final class WebRTCManager: NSObject {
                 }
             }
 
-            // Reorder codecs: H.264 first, then VP8, then others
+            // Reorder codecs: VP8 first, then H.264, then others
             var orderedCodecs: [RTCRtpCodecParameters] = []
-            orderedCodecs.append(contentsOf: h264Codecs)
             orderedCodecs.append(contentsOf: vp8Codecs)
+            orderedCodecs.append(contentsOf: h264Codecs)
             orderedCodecs.append(contentsOf: otherCodecs)
 
             // Update parameters with reordered codecs
             params.codecs = orderedCodecs
             sender.parameters = params
 
-            logger.info("📝 Configured codec preferences: H.264 first, VP8 second")
-            logger.info("  - H.264 codecs: \(h264Codecs.count)")
+            logger.info("📝 Configured codec preferences: VP8 first, H.264 second")
             logger.info("  - VP8 codecs: \(vp8Codecs.count)")
+            logger.info("  - H.264 codecs: \(h264Codecs.count)")
             logger.info("  - Other codecs: \(otherCodecs.count)")
         }
     }
@@ -812,8 +812,8 @@ final class WebRTCManager: NSObject {
         logger.info("  📋 Request session ID: \(sessionId ?? "nil")")
         logger.info("  📋 Current active session: \(self.activeSessionId ?? "nil")")
 
-        // For capture operations, update the session ID first before validation
-        if (endpoint == "/capture" || endpoint == "/capture-window") && sessionId != nil {
+        // For capture operations, always update the session ID first before validation
+        if (endpoint == "/capture" || endpoint == "/capture-window" || endpoint == "/stop") && sessionId != nil {
             let previousSession = self.activeSessionId
             if previousSession != sessionId {
                 logger.info("""
@@ -904,7 +904,7 @@ final class WebRTCManager: NSObject {
         return method == "POST" && controlEndpoints.contains(endpoint)
     }
 
-    private nonisolated func processApiRequest(
+    private func processApiRequest(
         method: String,
         endpoint: String,
         params: Any?,
@@ -971,7 +971,7 @@ final class WebRTCManager: NSObject {
             }
 
             try await service.startCapture(type: type, index: index, useWebRTC: useWebRTC)
-            return ["status": "started", "type": type, "webrtc": useWebRTC]
+            return ["status": "started", "type": type, "webrtc": useWebRTC, "sessionId": sessionId ?? ""]
 
         case ("POST", "/capture-window"):
             guard let params = params as? [String: Any],
@@ -987,16 +987,12 @@ final class WebRTCManager: NSObject {
             }
 
             try await service.startCaptureWindow(cgWindowID: cgWindowID, useWebRTC: useWebRTC)
-            return ["status": "started", "cgWindowID": cgWindowID, "webrtc": useWebRTC]
+            return ["status": "started", "cgWindowID": cgWindowID, "webrtc": useWebRTC, "sessionId": sessionId ?? ""]
 
         case ("POST", "/stop"):
+            // The session validation is now handled in handleApiRequest.
+            // If we reach here, the session is valid.
             await service.stopCapture()
-            // Clear session on stop - need to do this on main actor
-            await MainActor.run {
-                activeSessionId = nil
-                sessionStartTime = nil
-            }
-            logger.info("🔐 [SECURITY] Session cleared after stop")
             return ["status": "stopped"]
 
         case ("POST", "/click"):
@@ -1057,6 +1053,12 @@ final class WebRTCManager: NSObject {
                 shiftKey: shiftKey
             )
             return ["status": "key sent"]
+
+        case ("GET", "/frame"):
+            guard let frameData = await service.getCurrentFrame() else {
+                return ["frame": ""]
+            }
+            return ["frame": frameData.base64EncodedString()]
 
         default:
             throw WebRTCError.invalidConfiguration

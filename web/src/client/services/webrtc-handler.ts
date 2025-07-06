@@ -9,7 +9,6 @@ interface CodecStats extends RTCStats {
   clockRate?: number;
   channels?: number;
   sdpFmtpLine?: string;
-  id?: string;
 }
 
 interface ExtendedRTCInboundRtpStreamStats extends RTCInboundRtpStreamStats {
@@ -494,12 +493,11 @@ export class WebRTCHandler {
           (report as RTCIceCandidatePairStats).state === 'succeeded'
         ) {
           candidatePairStats = report as RTCIceCandidatePairStats;
-        } else if (
-          report.type === 'codec' &&
-          'mimeType' in report &&
-          (report as CodecStats).mimeType?.includes('video')
-        ) {
-          codecStats = report as CodecStats;
+        } else if (report.type === 'codec' && 'mimeType' in report) {
+          const codec = report as CodecStats;
+          if (codec.mimeType?.includes('video')) {
+            codecStats = codec;
+          }
         }
       });
 
@@ -527,11 +525,13 @@ export class WebRTCHandler {
           : 0;
 
         // Get codec info
-        const codecName = codecStats ? codecStats.mimeType?.split('/')[1] || 'unknown' : 'unknown';
+        const codecName = codecStats
+          ? (codecStats as CodecStats).mimeType?.split('/')[1] || 'unknown'
+          : 'unknown';
 
         // Check for hardware acceleration hint
         let codecImplementation = extendedStats.decoderImplementation || 'Software';
-        if (codecStats?.id?.toLowerCase().includes('videotoolbox')) {
+        if ((codecStats as CodecStats | null)?.id?.toLowerCase().includes('videotoolbox')) {
           codecImplementation = 'Hardware (VideoToolbox)';
         }
 

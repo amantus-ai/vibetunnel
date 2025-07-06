@@ -1291,10 +1291,18 @@ public final class ScreencapService: NSObject {
 
     /// Get current captured frame as JPEG data
     func getCurrentFrame() -> Data? {
-        guard let frame = currentFrame else {
+        logger.info("🖼️ getCurrentFrame() called")
+        guard isCapturing else {
+            logger.warning("⚠️ Not capturing, cannot get frame")
             return nil
         }
 
+        guard let frame = currentFrame else {
+            logger.warning("⚠️ currentFrame is nil, no frame available to send")
+            return nil
+        }
+
+        logger.info("✅ Frame is available, preparing JPEG data...")
         let ciImage = CIImage(cgImage: frame)
         let context = CIContext()
 
@@ -1310,6 +1318,7 @@ public final class ScreencapService: NSObject {
             return nil
         }
 
+        logger.info("✅ JPEG data created successfully (\(jpegData.count) bytes)")
         return jpegData
     }
 

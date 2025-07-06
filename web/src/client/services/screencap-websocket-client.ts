@@ -248,7 +248,7 @@ export class ScreencapWebSocketClient {
     return this.request('GET', '/displays');
   }
 
-  async startCapture(params: { type: string; index: number; webrtc?: boolean }) {
+  async startCapture(params: { type: string; index: number; webrtc?: boolean; use8k?: boolean }) {
     // Generate a session ID for this capture session if not present
     if (!this.sessionId) {
       this.sessionId =
@@ -260,7 +260,7 @@ export class ScreencapWebSocketClient {
     return this.request('POST', '/capture', params);
   }
 
-  async captureWindow(params: { cgWindowID: number; webrtc?: boolean }) {
+  async captureWindow(params: { cgWindowID: number; webrtc?: boolean; use8k?: boolean }) {
     // Generate a session ID for this capture session if not present
     if (!this.sessionId) {
       this.sessionId =

@@ -718,7 +718,7 @@ export class PtyManager extends EventEmitter {
    * Setup file watcher for session.json changes
    */
   private setupSessionWatcher(session: PtySession): void {
-    const sessionJsonPath = path.join(session.controlDir, 'session.json');
+    const _sessionJsonPath = path.join(session.controlDir, 'session.json');
 
     try {
       // Use polling approach for better reliability on macOS
