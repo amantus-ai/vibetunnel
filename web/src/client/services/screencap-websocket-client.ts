@@ -199,6 +199,7 @@ export class ScreencapWebSocketClient {
 
     const request: ApiRequest = {
       type: 'api-request',
+      category: 'screencap',
       requestId,
       method,
       endpoint,
@@ -232,13 +233,19 @@ export class ScreencapWebSocketClient {
       throw new Error('WebSocket not connected');
     }
 
+    // Ensure category is set for all messages
+    const completeMessage = {
+      ...message,
+      category: 'screencap' as const,
+    };
+
     // Add session ID to signaling messages if available
-    if (this.sessionId && !message.sessionId) {
-      message.sessionId = this.sessionId;
+    if (this.sessionId && !completeMessage.sessionId) {
+      completeMessage.sessionId = this.sessionId;
     }
 
-    logger.log(`📤 Sending signal:`, message);
-    this.ws.send(JSON.stringify(message));
+    logger.log(`📤 Sending signal:`, completeMessage);
+    this.ws.send(JSON.stringify(completeMessage));
   }
 
   // Convenience methods for API requests
