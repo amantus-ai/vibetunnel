@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DirectKeyboardManager } from '../components/session-view/direct-keyboard-manager';
+import type { InputManager } from '../components/session-view/input-manager';
 
 describe('DirectKeyboardManager', () => {
   let manager: DirectKeyboardManager;
-  let mockInputManager: { sendInputText: ReturnType<typeof vi.fn> };
+  let mockInputManager: Pick<InputManager, 'sendInputText'>;
   let originalRequestAnimationFrame: typeof requestAnimationFrame;
 
   beforeEach(() => {
@@ -17,7 +18,7 @@ describe('DirectKeyboardManager', () => {
 
     manager = new DirectKeyboardManager('test');
     mockInputManager = { sendInputText: vi.fn() };
-    manager.setInputManager(mockInputManager as any);
+    manager.setInputManager(mockInputManager as InputManager);
 
     // Mock clipboard API using Object.defineProperty
     Object.defineProperty(navigator, 'clipboard', {

@@ -154,9 +154,7 @@ describe('screencap routes', () => {
     });
 
     it('should have all expected routes', () => {
-      const expectedRoutes = [
-        { path: '/screencap', method: 'get' },
-      ];
+      const expectedRoutes = [{ path: '/screencap', method: 'get' }];
 
       for (const expected of expectedRoutes) {
         expect(routes).toContainEqual(expect.objectContaining(expected));
