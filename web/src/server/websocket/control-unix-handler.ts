@@ -11,7 +11,11 @@ import type {
   TerminalSpawnRequest,
   TerminalSpawnResponse,
 } from './control-protocol.js';
-import { createControlEvent, createControlResponse } from './control-protocol.js';
+import {
+  createControlEvent,
+  createControlMessage,
+  createControlResponse,
+} from './control-protocol.js';
 
 const logger = createLogger('control-unix');
 
@@ -76,7 +80,6 @@ class TerminalHandler implements MessageHandler {
 
 class ScreenCaptureHandler implements MessageHandler {
   private browserSocket: WebSocket | null = null;
-  private pendingRequests = new Map<string, ControlMessage>();
 
   setBrowserSocket(ws: WebSocket | null) {
     this.browserSocket = ws;
@@ -90,6 +93,8 @@ class ScreenCaptureHandler implements MessageHandler {
         // Mac app connected and ready
         if (this.browserSocket) {
           this.sendToBrowser(createControlEvent('screencap', 'ready', 'Mac peer connected'));
+          // Request initial data
+          this.requestInitialData();
         }
         return null; // No response needed
 
@@ -137,6 +142,13 @@ class ScreenCaptureHandler implements MessageHandler {
     if (this.browserSocket && this.browserSocket.readyState === WS.OPEN) {
       this.browserSocket.send(JSON.stringify(message));
     }
+  }
+
+  private requestInitialData(): void {
+    logger.log('Requesting initial data from Mac...');
+    const request = createControlMessage('screencap', 'get-initial-data', {});
+    // TODO: Send request through UNIX socket
+    logger.warn('TODO: Implement sending request through UNIX socket');
   }
 }
 

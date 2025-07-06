@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "3E3B7C8E-7D3B-4E8C-9F2C-6A8B9C5D4E3F",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:VibeTunnel-Mac.xcodeproj",
+        "identifier" : "788687FF2DFF4FCB00B22C15",
+        "name" : "VibeTunnelTests"
+      }
+    }
+  ],
+  "version" : 1
+}
