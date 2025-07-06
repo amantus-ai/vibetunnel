@@ -405,6 +405,12 @@ export async function createApp(): Promise<AppInstance> {
         `Version change detected - cleaned up ${cleanupResult.cleanedCount} sessions from previous version`
       )
     );
+  } else if (cleanupResult.cleanedCount > 0) {
+    logger.log(
+      chalk.yellow(
+        `Cleaned up ${cleanupResult.cleanedCount} legacy sessions without version information`
+      )
+    );
   }
 
   // Initialize Terminal Manager for server-side terminal state

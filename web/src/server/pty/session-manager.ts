@@ -445,9 +445,21 @@ export class SessionManager {
 
     // If no version file exists, this is likely a fresh install or first time with version tracking
     if (!lastVersion) {
-      logger.debug('no previous version found, writing current version');
+      logger.debug('no previous version found, checking for legacy sessions');
+
+      // Clean up any sessions without version field
+      let cleanedCount = 0;
+      const sessions = this.listSessions();
+      for (const session of sessions) {
+        if (!session.version) {
+          logger.debug(`cleaning up legacy session ${session.id} (no version field)`);
+          this.cleanupSession(session.id);
+          cleanedCount++;
+        }
+      }
+
       this.writeCurrentVersion();
-      return { versionChanged: false, cleanedCount: 0 };
+      return { versionChanged: false, cleanedCount };
     }
 
     // If version hasn't changed, nothing to do
