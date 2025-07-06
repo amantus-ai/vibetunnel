@@ -946,8 +946,24 @@ export class TerminalManager {
     try {
       sessionTerminal.terminal.write(combinedData);
     } catch (error) {
-      // Log write errors but continue processing
-      logger.warn(`Terminal write error for session ${sessionId}:`, error);
+      // Use error deduplicator to prevent log spam
+      const contextKey = `${sessionId}:terminal-write`;
+
+      if (this.errorDeduplicator.shouldLog(error, contextKey)) {
+        const stats = this.errorDeduplicator.getErrorStats(error, contextKey);
+
+        if (stats && stats.count > 1) {
+          // Log summary for repeated errors
+          logger.warn(formatErrorSummary(error, stats, `terminal write for session ${sessionId}`));
+        } else {
+          // First occurrence - log with more detail
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.warn(`Terminal write error for session ${sessionId}: ${errorMessage}`);
+          if (error instanceof Error && error.stack) {
+            logger.debug(`Write error stack: ${error.stack}`);
+          }
+        }
+      }
     }
 
     // Schedule next batch processing
