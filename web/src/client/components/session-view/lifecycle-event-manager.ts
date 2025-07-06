@@ -8,6 +8,13 @@ import { createLogger } from '../../utils/logger.js';
 import type { Session } from '../session-list.js';
 import { type LifecycleEventManagerCallbacks, ManagerEventEmitter } from './interfaces.js';
 
+// Extend Window interface to include our custom property
+declare global {
+  interface Window {
+    __deviceType?: 'phone' | 'tablet' | 'desktop';
+  }
+}
+
 interface AppPreferences {
   useDirectKeyboard: boolean;
   showLogLink: boolean;
@@ -66,6 +73,38 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       // Cleanup direct keyboard manager when disabled
       directKeyboardManager.cleanup();
       this.callbacks.setShowQuickKeys(false);
+    }
+  };
+
+  handleWindowResize = (): void => {
+    if (!this.callbacks) return;
+
+    // Re-evaluate device type on resize (for orientation changes)
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+
+    // Update device type based on current window size
+    const isTablet = isMobile && window.innerWidth >= 768;
+    const isPhone = isMobile && window.innerWidth < 768;
+
+    // Update stored device type
+    window.__deviceType = isTablet ? 'tablet' : isPhone ? 'phone' : 'desktop';
+
+    // Only handle state changes if mobile status actually changed
+    const wasMobile = this.callbacks.getIsMobile();
+    if (wasMobile !== isMobile) {
+      this.callbacks.setIsMobile(isMobile);
+
+      // Handle transition from mobile to non-mobile
+      if (!isMobile) {
+        // Cleanup mobile features
+        const directKeyboardManager = this.callbacks.getDirectKeyboardManager();
+        if (directKeyboardManager) {
+          directKeyboardManager.cleanup();
+          this.callbacks.setShowQuickKeys(false);
+        }
+      }
     }
   };
 
@@ -189,17 +228,29 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       this.callbacks.startLoading();
     }
 
-    // Detect mobile device - only show onscreen keyboard on actual mobile devices
+    // Detect mobile devices (both phones and tablets)
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent
     );
+
+    // Detect device type for keyboard layout decisions
+    // Tablets are mobile devices with larger screens (>= 768px width)
+    const isTablet = isMobile && window.innerWidth >= 768;
+    const isPhone = isMobile && window.innerWidth < 768;
+
+    // Store device type for later use (we'll need to pass this to terminal-quick-keys)
+    (window as any).__deviceType = isTablet ? 'tablet' : isPhone ? 'phone' : 'desktop';
+
     this.callbacks.setIsMobile(isMobile);
 
     // Listen for preference changes
     window.addEventListener('app-preferences-changed', this.handlePreferencesChanged);
 
-    this.setupMobileFeatures(isMobile);
-    this.setupEventListeners(isMobile);
+    // Listen for window resize to handle orientation changes and viewport size changes
+    window.addEventListener('resize', this.handleWindowResize);
+
+    this.setupMobileFeatures(isPhone);
+    this.setupEventListeners(isPhone);
   }
 
   private setupMobileFeatures(isMobile: boolean): void {
@@ -353,6 +404,9 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     // Remove preference change listener
     window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
 
+    // Remove window resize listener
+    window.removeEventListener('resize', this.handleWindowResize);
+
     // Stop loading animation
     this.callbacks.stopLoading();
 
@@ -368,6 +422,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     // Clean up event listeners
     document.removeEventListener('click', this.handleClickOutside);
     window.removeEventListener('app-preferences-changed', this.handlePreferencesChanged);
+    window.removeEventListener('resize', this.handleWindowResize);
 
     // Remove global keyboard event listener
     if (!this.callbacks?.getIsMobile() && this.keyboardListenerAdded) {

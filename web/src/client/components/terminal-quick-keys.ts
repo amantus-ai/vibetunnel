@@ -76,6 +76,7 @@ export class TerminalQuickKeys extends LitElement {
   ) => void;
   @property({ type: Boolean }) visible = false;
   @property({ type: Number }) keyboardHeight = 0;
+  @property({ type: String }) deviceType: 'phone' | 'tablet' | 'desktop' = 'phone';
 
   @state() private showFunctionKeys = false;
   @state() private showCtrlKeys = false;
@@ -200,12 +201,387 @@ export class TerminalQuickKeys extends LitElement {
     }
   }
 
+  private renderTabletLayout(bottomPosition: string | null) {
+    // Compact layout for tablets - essential keys only
+    type TabletKey = {
+      key: string;
+      label: string;
+      modifier?: boolean;
+      arrow?: boolean;
+      special?: boolean;
+      row?: number;
+    };
+
+    const essentialKeys: TabletKey[] = this.isLandscape
+      ? [
+          // Single row in landscape
+          { key: 'Escape', label: 'Esc' },
+          { key: 'Tab', label: 'Tab' },
+          { key: 'Control', label: 'Ctrl', modifier: true },
+          { key: 'Option', label: '⌥', modifier: true },
+          { key: 'Command', label: '⌘', modifier: true },
+          { key: 'ArrowUp', label: '↑', arrow: true },
+          { key: 'ArrowDown', label: '↓', arrow: true },
+          { key: 'ArrowLeft', label: '←', arrow: true },
+          { key: 'ArrowRight', label: '→', arrow: true },
+          { key: '/', label: '/' },
+          { key: '|', label: '|' },
+          { key: '-', label: '-' },
+          { key: 'Paste', label: 'Paste' },
+          { key: 'Done', label: 'Done', special: true },
+        ]
+      : [
+          // Two rows in portrait
+          // Row 1
+          { key: 'Escape', label: 'Esc', row: 1 },
+          { key: 'Tab', label: 'Tab', row: 1 },
+          { key: 'Control', label: 'Ctrl', modifier: true, row: 1 },
+          { key: 'ArrowUp', label: '↑', arrow: true, row: 1 },
+          { key: 'ArrowDown', label: '↓', arrow: true, row: 1 },
+          { key: 'ArrowLeft', label: '←', arrow: true, row: 1 },
+          { key: 'ArrowRight', label: '→', arrow: true, row: 1 },
+          { key: 'Paste', label: 'Paste', row: 1 },
+          // Row 2
+          { key: 'Option', label: '⌥', modifier: true, row: 2 },
+          { key: 'Command', label: '⌘', modifier: true, row: 2 },
+          { key: '/', label: '/', row: 2 },
+          { key: '|', label: '|', row: 2 },
+          { key: '-', label: '-', row: 2 },
+          { key: '`', label: '`', row: 2 },
+          { key: 'Delete', label: 'Del', row: 2 },
+          { key: 'Done', label: 'Done', special: true, row: 2 },
+        ];
+
+    return html`
+      <div 
+        class="terminal-quick-keys-container tablet-layout"
+        style=${bottomPosition ? `bottom: ${bottomPosition}` : ''}
+        @mousedown=${(e: Event) => e.preventDefault()}
+        @touchstart=${(e: Event) => e.preventDefault()}
+      >
+        <div class="quick-keys-bar compact">
+          ${
+            this.isLandscape
+              ? html`
+                <!-- Single row for landscape tablets -->
+                <div class="flex gap-1 justify-center">
+                  ${essentialKeys.map(
+                    ({ key, label, modifier, arrow, special }) => html`
+                      <button
+                        type="button"
+                        tabindex="-1"
+                        class="quick-key-btn flex-1 min-w-0 px-1 py-1 bg-dark-bg-tertiary text-dark-text text-sm font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key compact' : ''} ${special ? 'special-key' : ''}"
+                        @mousedown=${(e: Event) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        @touchstart=${(e: Event) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (arrow) {
+                            this.startKeyRepeat(key, modifier || false, false);
+                          }
+                        }}
+                        @touchend=${(e: Event) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (arrow) {
+                            this.stopKeyRepeat();
+                          } else {
+                            this.handleKeyPress(key, modifier, special, false, e);
+                          }
+                        }}
+                        @touchcancel=${(_e: Event) => {
+                          if (arrow) {
+                            this.stopKeyRepeat();
+                          }
+                        }}
+                        @click=${(e: MouseEvent) => {
+                          if (e.detail !== 0 && !arrow) {
+                            this.handleKeyPress(key, modifier, special, false, e);
+                          }
+                        }}
+                      >
+                        ${label}
+                      </button>
+                    `
+                  )}
+                </div>
+              `
+              : html`
+                <!-- Two rows for portrait tablets -->
+                <div class="flex gap-1 justify-center mb-1">
+                  ${essentialKeys
+                    .filter((k) => k.row === 1)
+                    .map(
+                      ({ key, label, modifier, arrow, special }) => html`
+                        <button
+                          type="button"
+                          tabindex="-1"
+                          class="quick-key-btn flex-1 min-w-0 px-1 py-1.5 bg-dark-bg-tertiary text-dark-text text-sm font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key compact' : ''} ${special ? 'special-key' : ''}"
+                          @mousedown=${(e: Event) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          @touchstart=${(e: Event) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (arrow) {
+                              this.startKeyRepeat(key, modifier || false, false);
+                            }
+                          }}
+                          @touchend=${(e: Event) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (arrow) {
+                              this.stopKeyRepeat();
+                            } else {
+                              this.handleKeyPress(key, modifier, special, false, e);
+                            }
+                          }}
+                          @touchcancel=${(_e: Event) => {
+                            if (arrow) {
+                              this.stopKeyRepeat();
+                            }
+                          }}
+                          @click=${(e: MouseEvent) => {
+                            if (e.detail !== 0 && !arrow) {
+                              this.handleKeyPress(key, modifier, special, false, e);
+                            }
+                          }}
+                        >
+                          ${label}
+                        </button>
+                      `
+                    )}
+                </div>
+                <div class="flex gap-1 justify-center">
+                  ${essentialKeys
+                    .filter((k) => k.row === 2)
+                    .map(
+                      ({ key, label, modifier, special }) => html`
+                        <button
+                          type="button"
+                          tabindex="-1"
+                          class="quick-key-btn flex-1 min-w-0 px-1 py-1.5 bg-dark-bg-tertiary text-dark-text text-sm font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${special ? 'special-key' : ''}"
+                          @mousedown=${(e: Event) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          @touchstart=${(e: Event) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          @touchend=${(e: Event) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.handleKeyPress(key, modifier, special, false, e);
+                          }}
+                          @click=${(e: MouseEvent) => {
+                            if (e.detail !== 0) {
+                              this.handleKeyPress(key, modifier, special, false, e);
+                            }
+                          }}
+                        >
+                          ${label}
+                        </button>
+                      `
+                    )}
+                </div>
+              `
+          }
+        </div>
+      </div>
+      ${this.renderStyles()}
+    `;
+  }
+
+  private renderStyles() {
+    return html`
+      <style>
+        /* Hide scrollbar */
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+          overflow-x: auto !important;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        /* Quick keys container - positioned above keyboard */
+        .terminal-quick-keys-container {
+          position: fixed;
+          left: 0;
+          right: 0;
+          /* Chrome: Use env() if supported */
+          bottom: env(keyboard-inset-height, 0px);
+          /* Safari: Will be overridden by inline style */
+          z-index: 999999;
+          /* Ensure it stays on top */
+          isolation: isolate;
+          /* Smooth transition when keyboard appears/disappears */
+          transition: bottom 0.3s ease-out;
+        }
+        
+        /* The actual bar with buttons */
+        .quick-keys-bar {
+          background: #0a0a0a;
+          border-top: 1px solid #2a2a2a;
+          padding: 0.5rem 0.25rem;
+          /* Prevent iOS from adding its own styling */
+          -webkit-appearance: none;
+          appearance: none;
+          /* Add shadow for visibility */
+          box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Compact bar for tablets */
+        .quick-keys-bar.compact {
+          padding: 0.375rem 0.25rem;
+        }
+        
+        /* Quick key buttons */
+        .quick-key-btn {
+          outline: none !important;
+          -webkit-tap-highlight-color: transparent;
+          user-select: none;
+          -webkit-user-select: none;
+          /* Ensure buttons are clickable */
+          touch-action: manipulation;
+        }
+        
+        /* Modifier key styling */
+        .modifier-key {
+          background-color: #141414;
+          border-color: #444;
+        }
+        
+        .modifier-key:hover {
+          background-color: #1f1f1f;
+        }
+        
+        /* Arrow key styling */
+        .arrow-key {
+          font-size: 1rem;
+          padding: 0.375rem 0.5rem;
+        }
+        
+        .arrow-key.compact {
+          font-size: 0.875rem;
+          padding: 0.25rem 0.375rem;
+        }
+        
+        /* Combo key styling (like ^C, ^Z) */
+        .combo-key {
+          background-color: #141414;
+          border-color: #555;
+        }
+        
+        .combo-key:hover {
+          background-color: #1f1f1f;
+        }
+        
+        /* Special key styling (like ABC) */
+        .special-key {
+          background-color: rgb(16, 185, 129);
+          border-color: rgb(16, 185, 129);
+          color: white;
+        }
+        
+        .special-key:hover {
+          background-color: rgb(5, 150, 105);
+        }
+        
+        /* Function key styling */
+        .func-key-btn {
+          outline: none !important;
+          -webkit-tap-highlight-color: transparent;
+          user-select: none;
+          -webkit-user-select: none;
+          touch-action: manipulation;
+        }
+        
+        /* Toggle button styling */
+        .toggle-key {
+          background-color: #1f1f1f;
+          border-color: #666;
+        }
+        
+        .toggle-key:hover {
+          background-color: #2a2a2a;
+        }
+        
+        .toggle-key.active {
+          background-color: rgb(16, 185, 129);
+          border-color: rgb(16, 185, 129);
+          color: white;
+        }
+        
+        .toggle-key.active:hover {
+          background-color: rgb(5, 150, 105);
+        }
+        
+        /* Ctrl shortcut button styling */
+        .ctrl-shortcut-btn {
+          outline: none !important;
+          -webkit-tap-highlight-color: transparent;
+          user-select: none;
+          -webkit-user-select: none;
+          touch-action: manipulation;
+        }
+        
+        /* Landscape mode adjustments - reduce height/padding by 10% */
+        @media (orientation: landscape) and (max-width: 926px) {
+          .quick-keys-bar {
+            padding: 0.45rem 0.225rem; /* 10% less than 0.5rem 0.25rem */
+          }
+          
+          .quick-key-btn {
+            padding: 0.3375rem 0.45rem; /* 10% less than py-1.5 (0.375rem) px-0.5 (0.125rem) */
+          }
+          
+          .arrow-key {
+            padding: 0.3375rem 0.45rem; /* 10% less than 0.375rem 0.5rem */
+          }
+          
+          .ctrl-shortcut-btn, .func-key-btn {
+            padding: 0.3375rem 0.45rem; /* 10% less than py-1.5 px-0.5 */
+          }
+          
+          /* Row 3 buttons with py-1 become 10% less */
+          .quick-keys-bar .flex.gap-1.justify-center.text-xs button {
+            padding: 0.225rem 0.45rem; /* 10% less than py-1 (0.25rem) px-0.5 */
+          }
+        }
+        
+        /* Tablet-specific styles */
+        .tablet-layout .quick-keys-bar.compact {
+          max-width: 100%;
+        }
+        
+        /* Adjust tablet button sizes in landscape */
+        .tablet-layout.terminal-quick-keys-container .quick-key-btn {
+          font-size: 0.875rem; /* Slightly larger than text-xs */
+        }
+      </style>
+    `;
+  }
+
   render() {
     if (!this.visible) return '';
 
     // For Safari: use JavaScript-calculated position when keyboard is visible
     const bottomPosition = this.keyboardHeight > 0 ? `${this.keyboardHeight}px` : null;
 
+    // Render different layouts based on device type
+    if (this.deviceType === 'tablet') {
+      return this.renderTabletLayout(bottomPosition);
+    }
+
+    // Default phone layout
     return html`
       <div 
         class="terminal-quick-keys-container"
@@ -404,155 +780,7 @@ export class TerminalQuickKeys extends LitElement {
           </div>
         </div>
       </div>
-      <style>
-        /* Hide scrollbar */
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-          overflow-x: auto !important;
-          overflow-y: hidden;
-          -webkit-overflow-scrolling: touch;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        
-        /* Quick keys container - positioned above keyboard */
-        .terminal-quick-keys-container {
-          position: fixed;
-          left: 0;
-          right: 0;
-          /* Chrome: Use env() if supported */
-          bottom: env(keyboard-inset-height, 0px);
-          /* Safari: Will be overridden by inline style */
-          z-index: 999999;
-          /* Ensure it stays on top */
-          isolation: isolate;
-          /* Smooth transition when keyboard appears/disappears */
-          transition: bottom 0.3s ease-out;
-        }
-        
-        /* The actual bar with buttons */
-        .quick-keys-bar {
-          background: #0a0a0a;
-          border-top: 1px solid #2a2a2a;
-          padding: 0.5rem 0.25rem;
-          /* Prevent iOS from adding its own styling */
-          -webkit-appearance: none;
-          appearance: none;
-          /* Add shadow for visibility */
-          box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
-        }
-        
-        /* Quick key buttons */
-        .quick-key-btn {
-          outline: none !important;
-          -webkit-tap-highlight-color: transparent;
-          user-select: none;
-          -webkit-user-select: none;
-          /* Ensure buttons are clickable */
-          touch-action: manipulation;
-        }
-        
-        /* Modifier key styling */
-        .modifier-key {
-          background-color: #141414;
-          border-color: #444;
-        }
-        
-        .modifier-key:hover {
-          background-color: #1f1f1f;
-        }
-        
-        /* Arrow key styling */
-        .arrow-key {
-          font-size: 1rem;
-          padding: 0.375rem 0.5rem;
-        }
-        
-        /* Combo key styling (like ^C, ^Z) */
-        .combo-key {
-          background-color: #141414;
-          border-color: #555;
-        }
-        
-        .combo-key:hover {
-          background-color: #1f1f1f;
-        }
-        
-        /* Special key styling (like ABC) */
-        .special-key {
-          background-color: rgb(16, 185, 129);
-          border-color: rgb(16, 185, 129);
-          color: white;
-        }
-        
-        .special-key:hover {
-          background-color: rgb(5, 150, 105);
-        }
-        
-        /* Function key styling */
-        .func-key-btn {
-          outline: none !important;
-          -webkit-tap-highlight-color: transparent;
-          user-select: none;
-          -webkit-user-select: none;
-          touch-action: manipulation;
-        }
-        
-        /* Toggle button styling */
-        .toggle-key {
-          background-color: #1f1f1f;
-          border-color: #666;
-        }
-        
-        .toggle-key:hover {
-          background-color: #2a2a2a;
-        }
-        
-        .toggle-key.active {
-          background-color: rgb(16, 185, 129);
-          border-color: rgb(16, 185, 129);
-          color: white;
-        }
-        
-        .toggle-key.active:hover {
-          background-color: rgb(5, 150, 105);
-        }
-        
-        /* Ctrl shortcut button styling */
-        .ctrl-shortcut-btn {
-          outline: none !important;
-          -webkit-tap-highlight-color: transparent;
-          user-select: none;
-          -webkit-user-select: none;
-          touch-action: manipulation;
-        }
-        
-        /* Landscape mode adjustments - reduce height/padding by 10% */
-        @media (orientation: landscape) and (max-width: 926px) {
-          .quick-keys-bar {
-            padding: 0.45rem 0.225rem; /* 10% less than 0.5rem 0.25rem */
-          }
-          
-          .quick-key-btn {
-            padding: 0.3375rem 0.45rem; /* 10% less than py-1.5 (0.375rem) px-0.5 (0.125rem) */
-          }
-          
-          .arrow-key {
-            padding: 0.3375rem 0.45rem; /* 10% less than 0.375rem 0.5rem */
-          }
-          
-          .ctrl-shortcut-btn, .func-key-btn {
-            padding: 0.3375rem 0.45rem; /* 10% less than py-1.5 px-0.5 */
-          }
-          
-          /* Row 3 buttons with py-1 become 10% less */
-          .quick-keys-bar .flex.gap-1.justify-center.text-xs button {
-            padding: 0.225rem 0.45rem; /* 10% less than py-1 (0.25rem) px-0.5 */
-          }
-        }
-      </style>
+      ${this.renderStyles()}
     `;
   }
 }
