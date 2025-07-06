@@ -580,17 +580,19 @@ export async function expandFishCommand(
     // Initialize fish handler if needed
     await fishHandler.initialize();
 
-    const commandLine = command.join(' ');
-    const expansion = await fishHandler.expandCommand(commandLine, cwd);
+    // Only expand the first command (preserve original argument boundaries)
+    const firstCommand = command[0];
+    const expansion = await fishHandler.expandCommand(firstCommand, cwd);
 
     if (expansion.wasExpanded) {
-      logger.debug(`Fish expansion: "${commandLine}" → "${expansion.expanded}"`);
+      logger.debug(`Fish expansion: "${firstCommand}" → "${expansion.expanded}"`);
       if (expansion.description) {
         logger.debug(`Fish expansion type: ${expansion.description}`);
       }
 
-      // Split the expanded command back into array, preserving quoted arguments
-      return parseShellCommand(expansion.expanded);
+      // Replace first command with expanded version, keep original arguments
+      const expandedParts = parseShellCommand(expansion.expanded);
+      return [...expandedParts, ...command.slice(1)];
     }
   } catch (error) {
     logger.warn(`Fish command expansion failed: ${error}`);

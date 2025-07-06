@@ -33,6 +33,7 @@ import {
 } from '../utils/terminal-title.js';
 import { WriteQueue } from '../utils/write-queue.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
+import { FishHandler } from './fish-handler.js';
 import { expandFishCommand, ProcessUtils } from './process-utils.js';
 import { SessionManager } from './session-manager.js';
 import {
@@ -897,7 +898,7 @@ export class PtyManager extends EventEmitter {
       }
 
       const userShell = ProcessUtils.getUserShell();
-      if (!userShell.includes('fish')) {
+      if (!FishHandler.isFishShell(userShell)) {
         return [];
       }
 

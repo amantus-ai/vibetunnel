@@ -9,7 +9,7 @@
  * - Fish-specific syntax parsing
  */
 
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import os from 'os';
 import path from 'path';
@@ -92,16 +92,19 @@ export class FishHandler {
    */
   async getCompletions(partial: string, cwd: string = process.cwd()): Promise<string[]> {
     try {
-      // Use fish's built-in completion system
-      const fishCmd = `fish -c "complete -C '${partial.replace(/'/g, "\\'")}'}"`;
-      const result = execSync(fishCmd, {
+      // Use fish's built-in completion system with proper escaping
+      // Use spawnSync to avoid shell injection
+      const result = spawnSync('fish', ['-c', `complete -C ${JSON.stringify(partial)}`], {
         cwd,
         encoding: 'utf8',
         timeout: 2000,
-        stdio: ['ignore', 'pipe', 'ignore'],
       });
 
-      return result
+      if (result.status !== 0 || !result.stdout) {
+        return [];
+      }
+
+      return result.stdout
         .split('\n')
         .filter((line) => line.trim())
         .map((line) => line.split('\t')[0]) // Fish completions are tab-separated
@@ -154,8 +157,8 @@ export class FishHandler {
    */
   static getFishVersion(): string | null {
     try {
-      const result = execSync('fish --version', { encoding: 'utf8', timeout: 1000 });
-      return result.trim();
+      const result = spawnSync('fish', ['--version'], { encoding: 'utf8', timeout: 1000 });
+      return result.status === 0 && result.stdout ? result.stdout.trim() : null;
     } catch {
       return null;
     }

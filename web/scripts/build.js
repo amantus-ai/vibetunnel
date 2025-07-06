@@ -112,15 +112,28 @@ async function build() {
   // Build native executable
   console.log('Building native executable...');
 
-  // Check for --custom-node flag
-  const useCustomNode = process.argv.includes('--custom-node');
+  // Check if native binaries already exist (skip build for development)
+  const nativeDir = path.join(__dirname, '..', 'native');
+  const vibetunnelPath = path.join(nativeDir, 'vibetunnel');
+  const ptyNodePath = path.join(nativeDir, 'pty.node');
+  const spawnHelperPath = path.join(nativeDir, 'spawn-helper');
 
-  if (useCustomNode) {
-    console.log('Using custom Node.js for smaller binary size...');
-    execSync('node build-native.js --custom-node', { stdio: 'inherit' });
+  if (fs.existsSync(vibetunnelPath) && fs.existsSync(ptyNodePath) && fs.existsSync(spawnHelperPath)) {
+    console.log('✅ Native binaries already exist, skipping build...');
+    console.log('  - vibetunnel executable: ✓');
+    console.log('  - pty.node: ✓');
+    console.log('  - spawn-helper: ✓');
   } else {
-    console.log('Using system Node.js...');
-    execSync('node build-native.js', { stdio: 'inherit' });
+    // Check for --custom-node flag
+    const useCustomNode = process.argv.includes('--custom-node');
+
+    if (useCustomNode) {
+      console.log('Using custom Node.js for smaller binary size...');
+      execSync('node build-native.js --custom-node', { stdio: 'inherit' });
+    } else {
+      console.log('Using system Node.js...');
+      execSync('node build-native.js', { stdio: 'inherit' });
+    }
   }
 
   console.log('Build completed successfully!');
