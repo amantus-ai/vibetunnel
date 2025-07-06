@@ -55,12 +55,12 @@ describe('Terminal Title Utilities', () => {
       expect(result).toBe('\x1B]2;~ · git\x07');
     });
 
-    it('should include session name when provided', () => {
+    it('should use only session name when provided (non-auto-generated)', () => {
       const cwd = '/home/user/projects';
       const command = ['npm', 'run', 'dev'];
       const sessionName = 'Frontend Dev';
       const result = generateTitleSequence(cwd, command, sessionName);
-      expect(result).toBe('\x1B]2;~/projects · npm · Frontend Dev\x07');
+      expect(result).toBe('\x1B]2;Frontend Dev\x07');
     });
 
     it('should skip redundant session names like "claude · claude"', () => {
@@ -87,12 +87,12 @@ describe('Terminal Title Utilities', () => {
       expect(result).toBe('\x1B]2;~ · bash\x07');
     });
 
-    it('should include custom session names that are not redundant', () => {
+    it('should use only custom session names that are not redundant', () => {
       const cwd = '/home/user/projects';
       const command = ['claude'];
       const sessionName = 'Working on VibeTunnel';
       const result = generateTitleSequence(cwd, command, sessionName);
-      expect(result).toBe('\x1B]2;~/projects · claude · Working on VibeTunnel\x07');
+      expect(result).toBe('\x1B]2;Working on VibeTunnel\x07');
     });
 
     it('should handle empty session name', () => {
@@ -240,7 +240,7 @@ describe('Terminal Title Utilities', () => {
   });
 
   describe('generateDynamicTitle', () => {
-    it('should generate title with inactive state', () => {
+    it('should generate title with inactive state and custom session name', () => {
       const activity: ActivityState = {
         isActive: false,
         lastActivityTime: Date.now(),
@@ -253,7 +253,7 @@ describe('Terminal Title Utilities', () => {
         'Editor'
       );
 
-      expect(result).toBe('\x1B]2;~/projects · vim · Editor\x07');
+      expect(result).toBe('\x1B]2;Editor\x07');
     });
 
     it('should generate title with generic activity', () => {
@@ -267,7 +267,7 @@ describe('Terminal Title Utilities', () => {
       expect(result).toBe('\x1B]2;● ~/projects · npm\x07');
     });
 
-    it('should generate title with specific status', () => {
+    it('should generate title with specific status and custom session name', () => {
       const activity: ActivityState = {
         isActive: true,
         lastActivityTime: Date.now(),
@@ -284,9 +284,7 @@ describe('Terminal Title Utilities', () => {
         'AI Assistant'
       );
 
-      expect(result).toBe(
-        '\x1B]2;✻ Crafting (205s, ↑6.0k) · ~/projects · claude · AI Assistant\x07'
-      );
+      expect(result).toBe('\x1B]2;✻ Crafting (205s, ↑6.0k) · AI Assistant\x07');
     });
 
     it('should handle all parts missing', () => {
@@ -315,7 +313,7 @@ describe('Terminal Title Utilities', () => {
       expect(result).toBe('\x1B]2;📦 Installing (45%) · ~/app · npm\x07');
     });
 
-    it('should extract process name from full path', () => {
+    it('should extract process name from full path with custom session name', () => {
       const activity: ActivityState = {
         isActive: true,
         lastActivityTime: Date.now(),
@@ -333,8 +331,8 @@ describe('Terminal Title Utilities', () => {
         'Test Session'
       );
 
-      // Should extract just "claude" from the full path
-      expect(result).toBe('\x1B]2;⚡ Thinking · ~/Projects/vibetunnel · claude · Test Session\x07');
+      // Should use only the session name with status
+      expect(result).toBe('\x1B]2;⚡ Thinking · Test Session\x07');
     });
   });
 });

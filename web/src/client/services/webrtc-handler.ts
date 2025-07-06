@@ -98,23 +98,17 @@ export class WebRTCHandler {
 
     // Send start-capture message to Mac app
     if (captureMode === 'desktop') {
-      await this.wsClient.sendSignal(
-        JSON.stringify({
-          type: 'start-capture',
-          mode: 'desktop',
-          displayIndex: displayIndex ?? 0,
-          sessionId: this.wsClient.sessionId,
-        })
-      );
+      await this.wsClient.sendSignal('start-capture', {
+        mode: 'desktop',
+        displayIndex: displayIndex ?? 0,
+        sessionId: this.wsClient.sessionId,
+      });
     } else if (captureMode === 'window' && windowId !== undefined) {
-      await this.wsClient.sendSignal(
-        JSON.stringify({
-          type: 'start-capture',
-          mode: 'window',
-          windowId: windowId,
-          sessionId: this.wsClient.sessionId,
-        })
-      );
+      await this.wsClient.sendSignal('start-capture', {
+        mode: 'window',
+        windowId: windowId,
+        sessionId: this.wsClient.sessionId,
+      });
     }
 
     await this.setupWebRTCSignaling();
@@ -174,12 +168,7 @@ export class WebRTCHandler {
       if (event.candidate) {
         logger.log('Sending ICE candidate to Mac');
         this.onStatusUpdate?.('info', 'Exchanging network connectivity information...');
-        this.wsClient.sendSignal(
-          JSON.stringify({
-            type: 'ice-candidate',
-            data: event.candidate,
-          })
-        );
+        this.wsClient.sendSignal('ice-candidate', event.candidate);
       }
     };
 
@@ -400,12 +389,7 @@ export class WebRTCHandler {
 
       logger.log('Sending answer to Mac');
       this.onStatusUpdate?.('info', 'Sending connection response...');
-      this.wsClient.sendSignal(
-        JSON.stringify({
-          type: 'answer',
-          data: modifiedAnswer,
-        })
-      );
+      this.wsClient.sendSignal('answer', modifiedAnswer);
 
       // Configure bitrate after connection is established
       await this.configureBitrateParameters();

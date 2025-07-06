@@ -275,9 +275,29 @@ export class ControlUnixHandler {
         // Read the length of the message
         const messageLength = this.messageBuffer.readUInt32BE(0);
 
+        // Validate message length
+        if (messageLength <= 0) {
+          logger.error(`Invalid message length: ${messageLength}`);
+          // Clear the buffer to recover from this error
+          this.messageBuffer = Buffer.alloc(0);
+          break;
+        }
+
+        // Sanity check: messages shouldn't be larger than 10MB
+        const maxMessageSize = 10 * 1024 * 1024; // 10MB
+        if (messageLength > maxMessageSize) {
+          logger.error(`Message too large: ${messageLength} bytes (max: ${maxMessageSize})`);
+          // Clear the buffer to recover from this error
+          this.messageBuffer = Buffer.alloc(0);
+          break;
+        }
+
         // Check if we have the full message in the buffer
         if (this.messageBuffer.length < 4 + messageLength) {
           // Not enough data yet, wait for more
+          logger.debug(
+            `Waiting for more data: have ${this.messageBuffer.length}, need ${4 + messageLength}`
+          );
           break;
         }
 
@@ -292,6 +312,7 @@ export class ControlUnixHandler {
           this.handleMacMessage(message);
         } catch (error) {
           logger.error('Failed to parse Mac message:', error);
+          logger.error('Message length:', messageLength);
           logger.error('Raw message buffer:', messageData.toString('utf-8'));
         }
       }

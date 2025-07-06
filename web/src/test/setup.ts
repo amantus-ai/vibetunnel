@@ -14,21 +14,82 @@ if (!globalThis.crypto) {
 }
 
 // Mock the native pty module before any imports
-vi.mock('node-pty', () => ({
-  spawn: vi.fn(() => ({
-    pid: 12345,
-    cols: 80,
-    rows: 24,
-    process: 'mocked',
-    handleFlowControl: false,
-    on: vi.fn(),
-    resize: vi.fn(),
-    write: vi.fn(),
-    kill: vi.fn(),
-    onData: vi.fn(),
-    onExit: vi.fn(),
-  })),
-}));
+vi.mock('node-pty', () => {
+  // Create a more complete mock that simulates PTY behavior
+  const createMockPty = (command: string, args: string[]) => {
+    let dataCallback: ((data: string) => void) | null = null;
+    let exitCallback: ((exitInfo: { exitCode: number; signal?: number }) => void) | null = null;
+    let isKilled = false;
+    let cols = 80;
+    let rows = 24;
+
+    const mockPty = {
+      pid: Math.floor(Math.random() * 10000) + 1000,
+      cols,
+      rows,
+      process: command,
+      handleFlowControl: false,
+      on: vi.fn(),
+      resize: vi.fn((newCols: number, newRows: number) => {
+        cols = newCols;
+        rows = newRows;
+      }),
+      write: vi.fn((data: string) => {
+        // Simulate echo behavior for 'cat' command
+        if (command === 'sh' && args[0] === '-c' && args[1] === 'cat' && dataCallback) {
+          // Echo back the input
+          setTimeout(() => {
+            if (!isKilled && dataCallback) {
+              dataCallback(data);
+            }
+          }, 10);
+        }
+      }),
+      kill: vi.fn((signal?: string) => {
+        isKilled = true;
+        // Simulate process exit
+        if (exitCallback) {
+          setTimeout(() => {
+            exitCallback({ exitCode: signal === 'SIGTERM' ? 143 : 137, signal: 15 });
+          }, 50);
+        }
+      }),
+      onData: vi.fn((callback: (data: string) => void) => {
+        dataCallback = callback;
+        // For 'echo' command, immediately output but don't exit yet
+        if (command === 'echo' && args[0] === 'test') {
+          setTimeout(() => {
+            if (dataCallback) dataCallback('test\n');
+            // Don't exit immediately - let the test control when to exit
+          }, 10);
+        }
+      }),
+      onExit: vi.fn((callback: (exitInfo: { exitCode: number; signal?: number }) => void) => {
+        exitCallback = callback;
+        // For 'exit' command, exit immediately
+        if (command === 'exit') {
+          setTimeout(() => {
+            if (exitCallback) exitCallback({ exitCode: 0 });
+          }, 10);
+        }
+        // For 'echo' command, exit after a longer delay
+        if (command === 'echo') {
+          setTimeout(() => {
+            if (!isKilled && exitCallback) exitCallback({ exitCode: 0 });
+          }, 2000); // Wait 2 seconds before exiting
+        }
+      }),
+    };
+
+    return mockPty;
+  };
+
+  return {
+    spawn: vi.fn((command: string, args: string[], _options: unknown) => {
+      return createMockPty(command, args);
+    }),
+  };
+});
 
 // Mock global objects that might not exist in test environments
 global.ResizeObserver = class ResizeObserver {

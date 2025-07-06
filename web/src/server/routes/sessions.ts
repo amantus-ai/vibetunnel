@@ -1232,7 +1232,7 @@ async function requestTerminalSpawn(params: {
       };
     }
 
-    const success = response.payload?.success === true;
+    const success = (response.payload as { success?: boolean })?.success === true;
     return {
       success,
       error: success ? undefined : 'Terminal spawn failed',

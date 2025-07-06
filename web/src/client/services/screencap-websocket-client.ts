@@ -8,7 +8,7 @@ interface ControlMessage {
   type: 'request' | 'response' | 'event';
   category: 'screencap';
   action: string;
-  payload?: any;
+  payload?: unknown;
   sessionId?: string;
   error?: string;
 }
@@ -81,76 +81,53 @@ export class ScreencapWebSocketClient {
   }
 
   private handleMessage(message: ControlMessage) {
-    switch (message.action) {
-      case 'ready':
-        logger.log('Server ready');
-        if (this.onReady) this.onReady();
-        break;
+    // Handle event messages from server
+    if (message.type === 'event') {
+      switch (message.action) {
+        case 'ready':
+          logger.log('Server ready');
+          if (this.onReady) this.onReady();
+          break;
 
-      case 'offer':
-        if (this.onOffer && message.payload?.data) {
-          this.onOffer(message.payload.data as RTCSessionDescriptionInit);
-        }
-        break;
-
-      case 'answer':
-        if (this.onAnswer && message.payload?.data) {
-          this.onAnswer(message.payload.data as RTCSessionDescriptionInit);
-        }
-        break;
-
-      case 'ice-candidate':
-        if (this.onIceCandidate && message.payload?.data) {
-          this.onIceCandidate(message.payload.data as RTCIceCandidateInit);
-        }
-        break;
-
-      case 'error':
-        if (this.onError && typeof message.payload?.data === 'string') {
-          this.onError(message.payload.data);
-        }
-        break;
-
-      case 'api-response':
-        if (message.id) {
-          const pending = this.pendingRequests.get(message.id);
-          if (pending) {
-            this.pendingRequests.delete(message.id);
-            if (message.error) {
-              // Handle error objects properly
-              let errorMessage = 'Unknown error';
-              if (typeof message.error === 'string') {
-                errorMessage = message.error;
-              } else if (typeof message.error === 'object' && message.error !== null) {
-                // Cast to unknown then check for message property
-                const err = message.error as unknown as {
-                  message?: string;
-                  error?: string;
-                  code?: string;
-                };
-                // Extract message from error object
-                if (err.message) {
-                  errorMessage = String(err.message);
-                } else if ('error' in err) {
-                  errorMessage = String(err.error);
-                } else if ('code' in err) {
-                  errorMessage = `Error code: ${err.code}`;
-                } else {
-                  // Try to stringify the error object for debugging
-                  try {
-                    errorMessage = JSON.stringify(err);
-                  } catch {
-                    errorMessage = 'Unknown error (could not serialize)';
-                  }
-                }
-              }
-              pending.reject(new Error(errorMessage));
-            } else {
-              pending.resolve(message.payload?.result);
-            }
+        case 'offer':
+          if (this.onOffer && message.payload) {
+            this.onOffer(message.payload as RTCSessionDescriptionInit);
           }
+          break;
+
+        case 'answer':
+          if (this.onAnswer && message.payload) {
+            this.onAnswer(message.payload as RTCSessionDescriptionInit);
+          }
+          break;
+
+        case 'ice-candidate':
+          if (this.onIceCandidate && message.payload) {
+            this.onIceCandidate(message.payload as RTCIceCandidateInit);
+          }
+          break;
+
+        case 'error':
+          if (this.onError && message.payload) {
+            this.onError(String(message.payload));
+          }
+          break;
+      }
+    }
+
+    // Handle response messages
+    if (message.type === 'response' && message.id) {
+      const pending = this.pendingRequests.get(message.id);
+      if (pending) {
+        this.pendingRequests.delete(message.id);
+        if (message.error) {
+          // Handle error as a string
+          pending.reject(new Error(message.error));
+        } else {
+          // Return the entire payload for API responses
+          pending.resolve(message.payload);
         }
-        break;
+      }
     }
   }
 
@@ -201,7 +178,7 @@ export class ScreencapWebSocketClient {
     });
   }
 
-  async sendSignal(action: string, data?: any) {
+  async sendSignal(action: string, data?: unknown) {
     await this.connect();
 
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -213,7 +190,7 @@ export class ScreencapWebSocketClient {
       type: 'event',
       category: 'screencap',
       action,
-      payload: { data },
+      payload: data,
       sessionId: this.sessionId || undefined,
     };
 

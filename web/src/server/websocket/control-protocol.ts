@@ -10,7 +10,7 @@ export interface ControlMessage {
   type: ControlMessageType;
   category: ControlCategory;
   action: string;
-  payload?: any;
+  payload?: unknown;
   sessionId?: string;
   error?: string;
 }
@@ -33,19 +33,19 @@ export interface ScreenCaptureApiRequest {
   sessionId: string;
   method: string;
   endpoint: string;
-  data?: any;
+  data?: unknown;
 }
 
 export interface ScreenCaptureWebRTCSignal {
   sessionId: string;
-  data: any;
+  data: unknown;
 }
 
 // Helper to create control messages
 export function createControlMessage(
   category: ControlCategory,
   action: string,
-  payload?: any,
+  payload?: unknown,
   sessionId?: string
 ): ControlMessage {
   return {
@@ -60,7 +60,7 @@ export function createControlMessage(
 
 export function createControlResponse(
   request: ControlMessage,
-  payload?: any,
+  payload?: unknown,
   error?: string
 ): ControlMessage {
   return {
@@ -77,7 +77,7 @@ export function createControlResponse(
 export function createControlEvent(
   category: ControlCategory,
   action: string,
-  payload?: any,
+  payload?: unknown,
   sessionId?: string
 ): ControlMessage {
   return {

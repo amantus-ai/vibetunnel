@@ -321,10 +321,10 @@ final class UnixSocketConnection {
                 }
 
                 // Create message with 4-byte length header
-                let lengthValue = UInt32(data.count)
-                var headerData = Data(count: 4)
-                headerData.withUnsafeMutableBytes { ptr in
-                    ptr.bindMemory(to: UInt32.self).baseAddress?.pointee = lengthValue.bigEndian
+                let lengthValue = UInt32(data.count).bigEndian
+                var headerData = Data()
+                withUnsafeBytes(of: lengthValue) { bytes in
+                    headerData.append(contentsOf: bytes)
                 }
                 let fullData = headerData + data
                 
@@ -409,10 +409,10 @@ final class UnixSocketConnection {
                 }
 
                 // Create message with 4-byte length header
-                let lengthValue = UInt32(data.count)
-                var headerData = Data(count: 4)
-                headerData.withUnsafeMutableBytes { ptr in
-                    ptr.bindMemory(to: UInt32.self).baseAddress?.pointee = lengthValue.bigEndian
+                let lengthValue = UInt32(data.count).bigEndian
+                var headerData = Data()
+                withUnsafeBytes(of: lengthValue) { bytes in
+                    headerData.append(contentsOf: bytes)
                 }
                 let fullData = headerData + data
                 
@@ -804,7 +804,9 @@ final class UnixSocketConnection {
 
             // Read the length of the message
             let lengthData = receiveBuffer.prefix(4)
-            let messageLength = lengthData.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+            let messageLength = lengthData.withUnsafeBytes { ptr in
+                ptr.loadUnaligned(as: UInt32.self).bigEndian
+            }
 
             // Check if we have the full message in the buffer
             guard receiveBuffer.count >= 4 + messageLength else {

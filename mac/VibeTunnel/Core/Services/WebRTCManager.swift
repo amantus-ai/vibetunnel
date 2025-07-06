@@ -848,9 +848,10 @@ final class WebRTCManager: NSObject {
                         id: requestId,
                         type: .request,
                         category: .screencap,
-                        action: "api-response"
+                        action: action // Use original action for the request
                     ),
-                    error: errorMessage
+                    error: errorMessage,
+                    overrideAction: "api-response"
                 )
                 await sendControlMessage(message)
                 return
@@ -878,9 +879,10 @@ final class WebRTCManager: NSObject {
                         id: requestId,
                         type: .request,
                         category: .screencap,
-                        action: "api-response"
+                        action: action // Use original action for the request
                     ),
-                    payload: ["result": result]
+                    payload: ["result": result],
+                    overrideAction: "api-response"
                 )
                 await sendControlMessage(message)
             } catch {
@@ -891,9 +893,10 @@ final class WebRTCManager: NSObject {
                         id: requestId,
                         type: .request,
                         category: .screencap,
-                        action: "api-response"
+                        action: action // Use original action for the request
                     ),
-                    payload: ["error": screencapError.toDictionary()]
+                    payload: ["error": screencapError.toDictionary()],
+                    overrideAction: "api-response"
                 )
                 await sendControlMessage(message)
             }

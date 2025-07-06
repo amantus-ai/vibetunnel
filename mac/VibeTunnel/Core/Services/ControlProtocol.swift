@@ -115,7 +115,8 @@ enum ControlProtocol {
     static func createResponse(
         to request: ControlMessage,
         payload: [String: Any]? = nil,
-        error: String? = nil
+        error: String? = nil,
+        overrideAction: String? = nil
     )
         -> ControlMessage
     {
@@ -123,7 +124,7 @@ enum ControlProtocol {
             id: request.id,
             type: .response,
             category: request.category,
-            action: request.action,
+            action: overrideAction ?? request.action,
             payload: payload,
             sessionId: request.sessionId,
             error: error
