@@ -151,6 +151,11 @@ export class ScreencapView extends LitElement {
       user-select: none;
     }
 
+    :host(:focus) {
+      outline: 2px solid #60a5fa;
+      outline-offset: -2px;
+    }
+
     .capture-preview.fit-contain {
       object-fit: contain;
     }
@@ -301,6 +306,24 @@ export class ScreencapView extends LitElement {
     .switch input:checked::before {
       transform: translateX(16px);
     }
+
+    .control-hint {
+      position: absolute;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #a1a1aa;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    :host(:focus) .control-hint {
+      opacity: 0;
+    }
   `;
 
   @state() private processGroups: ProcessGroup[] = [];
@@ -343,6 +366,11 @@ export class ScreencapView extends LitElement {
     this.localAuthToken = this.getAttribute('local-auth-token') || undefined;
     this.initializeWebSocketClient();
     this.loadInitialData();
+
+    // Add keyboard listener to the whole component
+    this.addEventListener('keydown', this.handleKeyDown.bind(this));
+    // Make the component focusable
+    this.tabIndex = 0;
   }
 
   disconnectedCallback() {
@@ -350,6 +378,12 @@ export class ScreencapView extends LitElement {
     this.cleanupWebSocketClient();
     if (this.frameUpdateInterval) {
       clearInterval(this.frameUpdateInterval);
+    }
+
+    // Remove keyboard listener
+    this.removeEventListener('keydown', this.handleKeyDown.bind(this));
+    if (this.mouseMoveThrottleTimeout) {
+      clearTimeout(this.mouseMoveThrottleTimeout);
     }
   }
 
@@ -852,6 +886,7 @@ export class ScreencapView extends LitElement {
             </svg>
           </button>
 
+          <!-- Temporarily disabled until fully implemented
           <div class="switch" title="Toggle between WebRTC and JPEG stream">
             <span>JPEG</span>
             <input type="checkbox" .checked=${this.useWebRTC} @change=${this.handleWebRTCToggle}>
@@ -863,6 +898,7 @@ export class ScreencapView extends LitElement {
             <input type="checkbox" .checked=${this.use8k} @change=${this.handle8kToggle} ?disabled=${!this.useWebRTC}>
             <span>8K</span>
           </div>
+          -->
 
           ${
             this.isCapturing
@@ -953,6 +989,11 @@ export class ScreencapView extends LitElement {
           autoplay
           playsinline
           muted
+          @mousedown=${this.handleMouseDown}
+          @mouseup=${this.handleMouseUp}
+          @mousemove=${this.handleMouseMove}
+          @click=${this.handleClick}
+          @contextmenu=${this.handleContextMenu}
         ></video>
         ${
           this.showStats
@@ -989,6 +1030,11 @@ export class ScreencapView extends LitElement {
           src="${this.frameUrl}" 
           class="capture-preview fit-${this.fitMode}"
           alt="Screen capture"
+          @mousedown=${this.handleMouseDown}
+          @mouseup=${this.handleMouseUp}
+          @mousemove=${this.handleMouseMove}
+          @click=${this.handleClick}
+          @contextmenu=${this.handleContextMenu}
         />
         <div class="fps-indicator">
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -1053,6 +1099,118 @@ export class ScreencapView extends LitElement {
       </div>
     `;
   }
+
+  // Mouse and keyboard event handling
+  private getNormalizedCoordinates(event: MouseEvent): { x: number; y: number } | null {
+    const element = event.target as HTMLElement;
+    if (!element) return null;
+
+    const rect = element.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Normalize to 0-1000 range
+    const normalizedX = Math.round((x / rect.width) * 1000);
+    const normalizedY = Math.round((y / rect.height) * 1000);
+
+    // Clamp values to valid range
+    return {
+      x: Math.max(0, Math.min(1000, normalizedX)),
+      y: Math.max(0, Math.min(1000, normalizedY)),
+    };
+  }
+
+  private async handleClick(event: MouseEvent) {
+    event.preventDefault();
+    if (!this.wsClient || !this.isCapturing) return;
+
+    const coords = this.getNormalizedCoordinates(event);
+    if (!coords) return;
+
+    try {
+      await this.wsClient.sendClick(coords.x, coords.y);
+    } catch (error) {
+      console.error('Failed to send click:', error);
+    }
+  }
+
+  private async handleMouseDown(event: MouseEvent) {
+    event.preventDefault();
+    if (!this.wsClient || !this.isCapturing) return;
+
+    const coords = this.getNormalizedCoordinates(event);
+    if (!coords) return;
+
+    try {
+      await this.wsClient.sendMouseDown(coords.x, coords.y);
+    } catch (error) {
+      console.error('Failed to send mouse down:', error);
+    }
+  }
+
+  private async handleMouseUp(event: MouseEvent) {
+    event.preventDefault();
+    if (!this.wsClient || !this.isCapturing) return;
+
+    const coords = this.getNormalizedCoordinates(event);
+    if (!coords) return;
+
+    try {
+      await this.wsClient.sendMouseUp(coords.x, coords.y);
+    } catch (error) {
+      console.error('Failed to send mouse up:', error);
+    }
+  }
+
+  private async handleMouseMove(event: MouseEvent) {
+    event.preventDefault();
+    if (!this.wsClient || !this.isCapturing) return;
+
+    // Throttle mouse move events
+    if (this.mouseMoveThrottleTimeout) return;
+
+    this.mouseMoveThrottleTimeout = window.setTimeout(() => {
+      this.mouseMoveThrottleTimeout = null;
+    }, 16); // ~60fps
+
+    const coords = this.getNormalizedCoordinates(event);
+    if (!coords) return;
+
+    try {
+      await this.wsClient.sendMouseMove(coords.x, coords.y);
+    } catch (error) {
+      console.error('Failed to send mouse move:', error);
+    }
+  }
+
+  private handleContextMenu(event: MouseEvent) {
+    event.preventDefault(); // Prevent context menu from showing
+  }
+
+  private async handleKeyDown(event: KeyboardEvent) {
+    if (!this.wsClient || !this.isCapturing) return;
+
+    // Don't capture if user is typing in an input field
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
+    event.preventDefault();
+
+    try {
+      await this.wsClient.sendKey({
+        key: event.key,
+        metaKey: event.metaKey,
+        ctrlKey: event.ctrlKey,
+        altKey: event.altKey,
+        shiftKey: event.shiftKey,
+      });
+    } catch (error) {
+      console.error('Failed to send key:', error);
+    }
+  }
+
+  private mouseMoveThrottleTimeout: number | null = null;
 }
 
 declare global {
