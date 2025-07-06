@@ -2,7 +2,6 @@ import Foundation
 
 extension Process {
     /// Async version that starts the process and returns immediately
-    @available(macOS 14.0, *)
     func runAsync() async throws {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -23,7 +22,6 @@ extension Process {
     }
 
     /// Async version of runWithParentTermination
-    @available(macOS 14.0, *)
     func runWithParentTerminationAsync() async throws {
         try await runAsync()
     }

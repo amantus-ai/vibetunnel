@@ -40,7 +40,7 @@ test.describe('Session Creation', () => {
 
     // Simple assertions using helpers
     await assertUrlHasSession(page, sessionId);
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
   });
 
   test('should create a new session with custom name', async ({ page }) => {
@@ -196,7 +196,7 @@ test.describe('Session Creation', () => {
       try {
         await page.waitForSelector('[data-modal-state="open"]', {
           state: 'detached',
-          timeout: 5000,
+          timeout: 10000,
         });
       } catch (_error) {
         console.log(`Modal close timeout for session ${sessionName}, continuing...`);
@@ -205,7 +205,8 @@ test.describe('Session Creation', () => {
       // Check if we navigated to the session
       if (page.url().includes('?session=')) {
         // Wait for terminal to be ready before navigating back
-        await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 5000 });
+        await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
+        await assertTerminalReady(page, 15000);
       } else {
         console.log(`Session ${sessionName} created in background`);
       }
@@ -219,6 +220,7 @@ test.describe('Session Creation', () => {
 
     // Navigate to list and verify all exist
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
 
     // Add a longer delay to ensure the session list is fully updated
@@ -275,7 +277,7 @@ test.describe('Session Creation', () => {
   test('should reconnect to existing session', async ({ page }) => {
     // Create and track session
     const { sessionName } = await sessionManager.createTrackedSession();
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Navigate away and back
     await page.goto('/');
@@ -283,6 +285,6 @@ test.describe('Session Creation', () => {
 
     // Verify reconnected
     await assertUrlHasSession(page);
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
   });
 });

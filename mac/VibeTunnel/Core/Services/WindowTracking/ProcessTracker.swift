@@ -36,7 +36,10 @@ final class ProcessTracker {
         if result == 0 && size > 0 {
             let name = withUnsafeBytes(of: &info.kp_proc.p_comm) { bytes in
                 let commBytes = bytes.bindMemory(to: CChar.self)
-                return String(cString: commBytes.baseAddress!)
+                guard let baseAddress = commBytes.baseAddress else {
+                    return ""
+                }
+                return String(cString: baseAddress)
             }
             return (name: name, ppid: info.kp_eproc.e_ppid)
         }

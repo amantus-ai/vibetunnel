@@ -26,7 +26,7 @@ struct DiscoveredServer: Identifiable, Equatable {
         // Remove .local suffix if present
         name.hasSuffix(".local") ? String(name.dropLast(6)) : name
     }
-    
+
     /// Creates a new DiscoveredServer with a generated UUID
     init(name: String, host: String, port: Int, metadata: [String: String]) {
         self.id = UUID()
@@ -35,9 +35,9 @@ struct DiscoveredServer: Identifiable, Equatable {
         self.port = port
         self.metadata = metadata
     }
-    
+
     /// Creates a copy of a DiscoveredServer with updated values but same UUID
-    init(from server: DiscoveredServer, host: String? = nil, port: Int? = nil) {
+    init(from server: Self, host: String? = nil, port: Int? = nil) {
         self.id = server.id
         self.name = server.name
         self.host = host ?? server.host
@@ -114,7 +114,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
         browser?.cancel()
         browser = nil
         isDiscovering = false
-        
+
         // Cancel all active connections
         for (_, connection) in activeConnections {
             connection.cancel()
@@ -130,7 +130,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
         for server in discoveredServers {
             existingServersByName[server.name] = server
         }
-        
+
         // Track which servers are still present
         var currentServerNames = Set<String>()
         var newServers: [DiscoveredServer] = []
@@ -163,7 +163,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                         metadata: metadata
                     )
                     newServers.append(newServer)
-                    
+
                     // Start resolving the new server
                     resolveService(newServer)
                 }
@@ -171,7 +171,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                 break
             }
         }
-        
+
         // Cancel connections for servers that are no longer present
         for server in discoveredServers where !currentServerNames.contains(server.name) {
             if let connection = activeConnections[server.id] {
@@ -188,13 +188,13 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
         // Capture the server ID to avoid race conditions
         let serverId = server.id
         let serverName = server.name
-        
+
         // Don't resolve if already resolved
         if !server.host.isEmpty && server.port > 0 {
             logger.debug("Server \(serverName) already resolved")
             return
         }
-        
+
         // Check if we already have an active connection for this server
         if activeConnections[serverId] != nil {
             logger.debug("Already resolving server \(serverName)")
@@ -211,7 +211,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
         )
 
         let connection = NWConnection(to: endpoint, using: parameters)
-        
+
         // Store the connection to track it
         activeConnections[serverId] = connection
 
@@ -252,7 +252,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                         } else {
                             logger.debug("Server \(serverName) no longer in discovered list")
                         }
-                        
+
                         // Remove the connection from active connections
                         self.activeConnections.removeValue(forKey: serverId)
                     }
@@ -265,7 +265,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                     self?.activeConnections.removeValue(forKey: serverId)
                 }
                 connection.cancel()
-                
+
             case .cancelled:
                 Task { @MainActor [weak self] in
                     self?.activeConnections.removeValue(forKey: serverId)
@@ -288,7 +288,7 @@ struct ServerDiscoverySheet: View {
     @Binding var selectedHost: String
     @Binding var selectedPort: String
     @Binding var selectedName: String?
-    
+
     @Environment(\.dismiss) private var dismiss
     @State private var discoveryService = BonjourDiscoveryService.shared
 

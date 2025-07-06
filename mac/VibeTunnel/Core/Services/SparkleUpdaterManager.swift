@@ -9,7 +9,6 @@ import UserNotifications
 /// Manages application updates using the Sparkle framework. Handles automatic
 /// update checking, downloading, and installation while respecting user preferences
 /// and update channels. Integrates with macOS notifications for update announcements.
-@available(macOS 10.15, *)
 @MainActor
 public final class SparkleUpdaterManager: NSObject, SPUUpdaterDelegate {
     public static let shared = SparkleUpdaterManager()
@@ -173,7 +172,6 @@ extension SparkleUpdaterManager {
 // MARK: - SparkleViewModel
 
 @MainActor
-@available(macOS 10.15, *)
 @Observable
 public final class SparkleViewModel {
     public var canCheckForUpdates = false

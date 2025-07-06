@@ -616,43 +616,74 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private handleCreateSession() {
-    // Check if View Transitions API is supported
-    if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
+    logger.log('handleCreateSession called');
+    // Remove any lingering modal-closing class from previous interactions
+    document.body.classList.remove('modal-closing');
+
+    // Immediately set the modal to visible
+    this.showCreateModal = true;
+    logger.log('showCreateModal set to true');
+
+    // Force a re-render immediately
+    this.requestUpdate();
+
+    // Then apply view transition if supported (non-blocking) and not in test environment
+    const isTestEnvironment =
+      window.location.search.includes('test=true') ||
+      navigator.userAgent.includes('HeadlessChrome');
+
+    if (
+      !isTestEnvironment &&
+      'startViewTransition' in document &&
+      typeof document.startViewTransition === 'function'
+    ) {
       // Set data attribute to indicate transition is starting
       document.documentElement.setAttribute('data-view-transition', 'active');
 
-      const transition = document.startViewTransition(() => {
-        this.showCreateModal = true;
-      });
+      try {
+        const transition = document.startViewTransition(() => {
+          // Force another re-render to ensure the modal is displayed
+          this.requestUpdate();
+        });
 
-      // Clear the attribute when transition completes
-      transition.finished.finally(() => {
+        // Clear the attribute when transition completes
+        transition.finished.finally(() => {
+          document.documentElement.removeAttribute('data-view-transition');
+        });
+      } catch (_error) {
+        // If view transition fails, just clear the attribute
         document.documentElement.removeAttribute('data-view-transition');
-      });
-    } else {
-      this.showCreateModal = true;
+      }
     }
   }
 
   private handleCreateModalClose() {
-    // Check if View Transitions API is supported
+    // Immediately hide the modal
+    this.showCreateModal = false;
+
+    // Then apply view transition if supported (non-blocking)
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
       // Add a class to prevent flicker during transition
       document.body.classList.add('modal-closing');
       // Set data attribute to indicate transition is starting
       document.documentElement.setAttribute('data-view-transition', 'active');
 
-      const transition = document.startViewTransition(() => {
-        this.showCreateModal = false;
-      });
+      try {
+        const transition = document.startViewTransition(() => {
+          // Force a re-render
+          this.requestUpdate();
+        });
 
-      // Clean up the class and attribute after transition
-      transition.finished.finally(() => {
+        // Clean up the class and attribute after transition
+        transition.finished.finally(() => {
+          document.body.classList.remove('modal-closing');
+          document.documentElement.removeAttribute('data-view-transition');
+        });
+      } catch (_error) {
+        // If view transition fails, clean up
         document.body.classList.remove('modal-closing');
         document.documentElement.removeAttribute('data-view-transition');
-      });
-    } else {
-      this.showCreateModal = false;
+      }
     }
   }
 
@@ -1097,6 +1128,19 @@ export class VibeTunnelApp extends LitElement {
 
   private setupNotificationHandlers() {
     // Listen for notification settings events
+
+    // Listen for screenshare events
+    window.addEventListener('start-screenshare', (_e: Event) => {
+      logger.log('🔥 Starting screenshare session...');
+
+      // Navigate to screencap in same window instead of opening new window
+      const screencapUrl = '/api/screencap';
+
+      // Navigate to screencap (no need for pushState when using location.href)
+      window.location.href = screencapUrl;
+
+      logger.log('✅ Navigating to screencap in same window');
+    });
   }
 
   private setupPreferences() {

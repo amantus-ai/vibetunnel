@@ -542,6 +542,16 @@ export class SessionView extends LitElement {
     );
   }
 
+  private handleScreenshare() {
+    // Dispatch event to start screenshare
+    this.dispatchEvent(
+      new CustomEvent('start-screenshare', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   private handleSessionExit(e: Event) {
     const customEvent = e as CustomEvent;
     logger.log('session exit event received', customEvent.detail);
@@ -1161,6 +1171,7 @@ export class SessionView extends LitElement {
           .onMaxWidthToggle=${() => this.handleMaxWidthToggle()}
           .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
+          .onScreenshare=${() => this.handleScreenshare()}
           @close-width-selector=${() => {
             this.showWidthSelector = false;
             this.customWidth = '';

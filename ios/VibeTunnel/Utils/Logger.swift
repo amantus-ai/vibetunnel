@@ -8,19 +8,19 @@ enum LogLevel: Int, Comparable {
     case info = 2
     case warning = 3
     case error = 4
-    
+
     /// Emoji prefix for each log level
     var prefix: String {
         switch self {
-        case .verbose: return "🔍"
-        case .debug: return "🐛"
-        case .info: return "ℹ️"
-        case .warning: return "⚠️"
-        case .error: return "❌"
+        case .verbose: "🔍"
+        case .debug: "🐛"
+        case .info: "ℹ️"
+        case .warning: "⚠️"
+        case .error: "❌"
         }
     }
-    
-    static func < (lhs: LogLevel, rhs: LogLevel) -> Bool {
+
+    static func < (lhs: Self, rhs: Self) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
 }
@@ -30,13 +30,13 @@ enum LogLevel: Int, Comparable {
 struct Logger {
     private let osLogger: os.Logger
     private let category: String
-    
+
     /// Global log level threshold - only messages at this level or higher will be logged
     nonisolated(unsafe) static var globalLevel: LogLevel = {
         #if DEBUG
-        return .info
+            return .info
         #else
-        return .warning
+            return .warning
         #endif
     }()
 

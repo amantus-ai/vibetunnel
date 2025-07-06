@@ -45,7 +45,7 @@ export class SessionManager {
   private ensureControlDirectory(): void {
     if (!fs.existsSync(this.controlPath)) {
       fs.mkdirSync(this.controlPath, { recursive: true });
-      logger.log(chalk.green(`control directory created: ${this.controlPath}`));
+      logger.debug(chalk.green(`control directory created: ${this.controlPath}`));
     }
   }
 
@@ -73,7 +73,7 @@ export class SessionManager {
 
     // Create FIFO pipe for stdin (or regular file on systems without mkfifo)
     this.createStdinPipe(paths.stdinPath);
-    logger.log(chalk.green(`session directory created for ${sessionId}`));
+    logger.debug(chalk.green(`session directory created for ${sessionId}`));
     return paths;
   }
 
@@ -141,7 +141,9 @@ export class SessionManager {
       }
 
       fs.renameSync(tempPath, sessionJsonPath);
-      logger.log(`session.json file saved for session ${sessionId} with name: ${sessionInfo.name}`);
+      logger.debug(
+        `session.json file saved for session ${sessionId} with name: ${sessionInfo.name}`
+      );
     } catch (error) {
       if (error instanceof PtyError) {
         throw error;
@@ -189,7 +191,7 @@ export class SessionManager {
     }
 
     this.saveSessionInfo(sessionId, sessionInfo);
-    logger.log(
+    logger.debug(
       `session ${sessionId} status updated to ${status}${pid ? ` (pid: ${pid})` : ''}${exitCode !== undefined ? ` (exit code: ${exitCode})` : ''}`
     );
   }
@@ -240,7 +242,7 @@ export class SessionManager {
     const uniqueName = this.ensureUniqueName(name, sessionId);
 
     if (uniqueName !== name) {
-      logger.log(`[SessionManager] Name "${name}" already exists, using "${uniqueName}" instead`);
+      logger.debug(`[SessionManager] Name "${name}" already exists, using "${uniqueName}" instead`);
     }
 
     sessionInfo.name = uniqueName;
@@ -249,7 +251,7 @@ export class SessionManager {
     logger.debug(`[SessionManager] Calling saveSessionInfo`);
 
     this.saveSessionInfo(sessionId, sessionInfo);
-    logger.log(`[SessionManager] session ${sessionId} name updated to: ${uniqueName}`);
+    logger.debug(`[SessionManager] session ${sessionId} name updated to: ${uniqueName}`);
 
     return uniqueName;
   }
@@ -278,7 +280,7 @@ export class SessionManager {
             if (sessionInfo.status === 'running' && sessionInfo.pid) {
               // Update status if process is no longer alive
               if (!ProcessUtils.isProcessRunning(sessionInfo.pid)) {
-                logger.log(
+                logger.debug(
                   chalk.yellow(
                     `process ${sessionInfo.pid} no longer running for session ${sessionId}`
                   )
@@ -307,9 +309,11 @@ export class SessionManager {
         return bTime - aTime;
       });
 
-      logger.log(`listSessions found ${sessions.length} sessions`);
+      logger.debug(`listSessions found ${sessions.length} sessions`);
       sessions.forEach((session) => {
-        logger.log(`  - Session ${session.id}: name="${session.name}", status="${session.status}"`);
+        logger.debug(
+          `  - Session ${session.id}: name="${session.name}", status="${session.status}"`
+        );
       });
       return sessions;
     } catch (error) {
@@ -351,7 +355,7 @@ export class SessionManager {
 
         // Remove directory and all contents
         fs.rmSync(sessionDir, { recursive: true, force: true });
-        logger.log(chalk.green(`session ${sessionId} cleaned up`));
+        logger.debug(chalk.green(`session ${sessionId} cleaned up`));
       } else {
         logger.debug(`Session directory ${sessionDir} does not exist, nothing to clean up`);
       }
@@ -381,7 +385,7 @@ export class SessionManager {
       }
 
       if (cleanedSessions.length > 0) {
-        logger.log(chalk.green(`cleaned up ${cleanedSessions.length} exited sessions`));
+        logger.debug(chalk.green(`cleaned up ${cleanedSessions.length} exited sessions`));
       }
       return cleanedSessions;
     } catch (error) {
@@ -460,7 +464,7 @@ export class SessionManager {
             // Process is dead, update status
             const paths = this.getSessionPaths(session.id);
             if (paths) {
-              logger.log(
+              logger.debug(
                 chalk.yellow(
                   `marking zombie process ${session.pid} as exited for session ${session.id}`
                 )

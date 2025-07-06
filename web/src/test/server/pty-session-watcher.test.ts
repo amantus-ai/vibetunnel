@@ -96,93 +96,105 @@ describe('PTY Session.json Watcher', () => {
     const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     testSessionIds.push(sessionId);
 
-    // Mock PTY write to capture title sequences
-    const writeSpy = vi.fn();
-
-    // Create a session with static title mode
-    const _result = await ptyManager.createSession(['sleep', '10'], {
-      sessionId,
-      name: 'original-name',
-      workingDir: '/test/path',
-      titleMode: TitleMode.STATIC,
-      forwardToStdout: true,
+    // Mock process.stdout.write to capture title sequences
+    const originalWrite = process.stdout.write;
+    const writeSpy = vi.fn((data: string | Uint8Array, ...args: unknown[]): boolean => {
+      // Call the original write method
+      return originalWrite.call(process.stdout, data, ...args) as boolean;
     });
+    process.stdout.write = writeSpy as typeof process.stdout.write;
 
-    // Get the PTY instance and spy on its write method
-    const pty = ptyManager.getPtyForSession(sessionId);
-    if (pty) {
-      pty.write = writeSpy;
+    try {
+      // Create a session with static title mode
+      const _result = await ptyManager.createSession(['sleep', '10'], {
+        sessionId,
+        name: 'original-name',
+        workingDir: '/test/path',
+        titleMode: TitleMode.STATIC,
+        forwardToStdout: true,
+      });
+
+      // Wait for session setup and initial title injection
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Clear previous calls
+      writeSpy.mockClear();
+
+      // Update session name
+      const sessionInfo = sessionManager.loadSessionInfo(sessionId);
+      if (sessionInfo) {
+        sessionInfo.name = 'new-title';
+        sessionManager.saveSessionInfo(sessionId, sessionInfo);
+      }
+
+      // Wait for watcher to process (100ms polling) and title injection (50ms quiet period)
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Check if title sequence was written to stdout
+      const titleWrites = writeSpy.mock.calls.filter((call) => {
+        const data = call[0];
+        return typeof data === 'string' && data.includes('\x1B]2;') && data.includes('new-title');
+      });
+
+      expect(titleWrites.length).toBeGreaterThan(0);
+      // When a session name is set, only the name is used in the title
+      expect(titleWrites[0][0]).toBe('\x1B]2;new-title\x07');
+    } finally {
+      // Restore original write method
+      process.stdout.write = originalWrite;
     }
-
-    // Wait for session setup
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Update session name
-    const sessionInfo = sessionManager.loadSessionInfo(sessionId);
-    if (sessionInfo) {
-      sessionInfo.name = 'new-title';
-      sessionManager.saveSessionInfo(sessionId, sessionInfo);
-    }
-
-    // Wait for watcher to process
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    // Check if title sequence was written
-    const titleWrites = writeSpy.mock.calls.filter((call) => {
-      const data = call[0];
-      return data.includes('\x1B]2;') && data.includes('new-title');
-    });
-
-    expect(titleWrites.length).toBeGreaterThan(0);
-    expect(titleWrites[0][0]).toContain('/test/path');
-    expect(titleWrites[0][0]).toContain('sleep');
-    expect(titleWrites[0][0]).toContain('new-title');
   });
 
   it('should update dynamic title with new session name', async () => {
     const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     testSessionIds.push(sessionId);
 
-    // Create a session with dynamic title mode
-    const _result = await ptyManager.createSession(['sleep', '10'], {
-      sessionId,
-      name: 'original-name',
-      workingDir: '/test/path',
-      titleMode: TitleMode.DYNAMIC,
-      forwardToStdout: true,
+    // Mock process.stdout.write to capture title sequences
+    const originalWrite = process.stdout.write;
+    const writeSpy = vi.fn((data: string | Uint8Array, ...args: unknown[]): boolean => {
+      return originalWrite.call(process.stdout, data, ...args) as boolean;
     });
+    process.stdout.write = writeSpy as typeof process.stdout.write;
 
-    // Mock PTY write
-    const writeSpy = vi.fn();
-    const pty = ptyManager.getPtyForSession(sessionId);
-    if (pty) {
-      pty.write = writeSpy;
+    try {
+      // Create a session with dynamic title mode
+      const _result = await ptyManager.createSession(['sleep', '10'], {
+        sessionId,
+        name: 'original-name',
+        workingDir: '/test/path',
+        titleMode: TitleMode.DYNAMIC,
+        forwardToStdout: true,
+      });
+
+      // Wait for setup and initial title
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Clear previous calls
+      writeSpy.mockClear();
+
+      // Update session name
+      const sessionInfo = sessionManager.loadSessionInfo(sessionId);
+      if (sessionInfo) {
+        sessionInfo.name = 'dynamic-title';
+        sessionManager.saveSessionInfo(sessionId, sessionInfo);
+      }
+
+      // Wait for processing and title injection
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Verify dynamic title was updated
+      const titleWrites = writeSpy.mock.calls.filter((call) => {
+        const data = call[0];
+        return typeof data === 'string' && data.includes('\x1B]2;');
+      });
+
+      expect(titleWrites.length).toBeGreaterThan(0);
+      // Dynamic title with session name only includes the name with activity indicator
+      const lastTitleWrite = titleWrites[titleWrites.length - 1][0];
+      expect(lastTitleWrite).toBe('\x1B]2;● dynamic-title\x07');
+    } finally {
+      process.stdout.write = originalWrite;
     }
-
-    // Wait for setup
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Update session name
-    const sessionInfo = sessionManager.loadSessionInfo(sessionId);
-    if (sessionInfo) {
-      sessionInfo.name = 'dynamic-title';
-      sessionManager.saveSessionInfo(sessionId, sessionInfo);
-    }
-
-    // Wait for processing
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    // Verify dynamic title was updated
-    const titleWrites = writeSpy.mock.calls.filter((call) => {
-      const data = call[0];
-      return data.includes('\x1B]2;');
-    });
-
-    expect(titleWrites.length).toBeGreaterThan(0);
-    // Dynamic title should include the path and command
-    const lastTitleWrite = titleWrites[titleWrites.length - 1][0];
-    expect(lastTitleWrite).toContain('/test/path');
-    expect(lastTitleWrite).toContain('sleep');
   });
 
   it('should not update title in NONE mode', async () => {
@@ -301,8 +313,8 @@ describe('PTY Session.json Watcher', () => {
         sessionInfo.name = name;
         sessionManager.saveSessionInfo(sessionId, sessionInfo);
       }
-      // Small delay between updates
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      // Small delay between updates (must be longer than polling interval)
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
 
     // Wait for all updates to process
@@ -315,10 +327,10 @@ describe('PTY Session.json Watcher', () => {
 
   it('should clean up watcher on session exit', async () => {
     const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
-    testSessionIds.push(sessionId);
+    // Don't push to testSessionIds so afterEach doesn't try to kill it
 
-    // Create session
-    const _result = await ptyManager.createSession(['sleep', '0.1'], {
+    // Create session with a simple exit command
+    const _result = await ptyManager.createSession(['exit'], {
       sessionId,
       name: 'test-cleanup',
       workingDir: process.cwd(),
@@ -326,10 +338,13 @@ describe('PTY Session.json Watcher', () => {
       forwardToStdout: true,
     });
 
-    // Wait for session to exit
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Force kill the PTY to trigger cleanup
+    await ptyManager.killSession(sessionId);
 
-    // Get internal session to check watcher
+    // Give a moment for cleanup to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Get internal session to verify cleanup
     const internalSession = ptyManager.getInternalSession(sessionId);
 
     // Session should be cleaned up

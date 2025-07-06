@@ -38,6 +38,7 @@ export class SessionHeader extends LitElement {
   @property({ type: Function }) onMaxWidthToggle?: () => void;
   @property({ type: Function }) onWidthSelect?: (width: number) => void;
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
+  @property({ type: Function }) onScreenshare?: () => void;
 
   private getStatusText(): string {
     if (!this.session) return '';
@@ -174,6 +175,18 @@ export class SessionHeader extends LitElement {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" stroke-width="2"/>
               <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+          <button
+            class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+            @click=${() => this.onScreenshare?.()}
+            title="Start Screenshare"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+              <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
             </svg>
           </button>
           <button

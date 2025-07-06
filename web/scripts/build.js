@@ -41,6 +41,13 @@ async function build() {
       outfile: 'public/bundle/test.js',
     });
 
+    // Build screencap bundle
+    await esbuild.build({
+      ...prodOptions,
+      entryPoints: ['src/client/screencap-entry.ts'],
+      outfile: 'public/bundle/screencap.js',
+    });
+
     // Build service worker
     await esbuild.build({
       ...prodOptions,
@@ -100,6 +107,7 @@ async function build() {
     console.error('CLI bundling failed:', error);
     process.exit(1);
   }
+
 
   // Build native executable
   console.log('Building native executable...');

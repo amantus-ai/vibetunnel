@@ -177,6 +177,13 @@ export class ActivityMonitor {
       const activity = this.activities.get(sessionId);
       if (!activity) return;
 
+      // Check if file still exists before trying to stat it
+      if (!fs.existsSync(streamOutPath)) {
+        // Session has been cleaned up, stop monitoring
+        this.stopMonitoringSession(sessionId);
+        return;
+      }
+
       const stats = fs.statSync(streamOutPath);
 
       // Check if file size increased (new output)
@@ -195,7 +202,13 @@ export class ActivityMonitor {
         this.writeActivityStatus(sessionId, true);
       }
     } catch (error) {
-      logger.error(`failed to handle file change for session ${sessionId}:`, error);
+      // Check if error is ENOENT (file not found)
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Session has been cleaned up, stop monitoring
+        this.stopMonitoringSession(sessionId);
+      } else {
+        logger.error(`failed to handle file change for session ${sessionId}:`, error);
+      }
     }
   }
 

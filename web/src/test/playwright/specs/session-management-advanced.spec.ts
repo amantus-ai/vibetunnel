@@ -137,8 +137,9 @@ test.describe('Advanced Session Management', () => {
     await expect(page.locator('text=/\\d+×\\d+/').first()).toBeVisible({ timeout: 10000 });
 
     // Check status indicator - be more specific
+    // The status is displayed as lowercase 'running' in the span element with data-status attribute
     await expect(
-      page.locator('[data-status="running"]').or(page.locator('text=/RUNNING/i')).first()
+      page.locator('span[data-status="running"]').or(page.locator('text=/running/i')).first()
     ).toBeVisible({ timeout: 10000 });
   });
 });

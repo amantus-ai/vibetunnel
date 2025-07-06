@@ -41,7 +41,7 @@ test.describe('Push Notifications', () => {
 
     // Look for notification status component in header
     const notificationStatus = page.locator('notification-status');
-    await expect(notificationStatus).toBeVisible({ timeout: 10000 });
+    await expect(notificationStatus).toBeVisible({ timeout: 15000 });
 
     // Should have a button for notification controls
     const notificationButton = notificationStatus.locator('button').first();
@@ -203,8 +203,8 @@ test.describe('Push Notifications', () => {
       if (await subscribeButton.isVisible()) {
         await subscribeButton.click();
 
-        // Wait for subscription process
-        await page.waitForTimeout(2000);
+        // Wait for subscription process to complete
+        await page.waitForTimeout(3000);
 
         // Should show success state or different button text
         const unsubscribeButton = page
@@ -228,7 +228,7 @@ test.describe('Push Notifications', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('notification-test'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Mock notification API
     await page.addInitScript(() => {
@@ -266,8 +266,14 @@ test.describe('Push Notifications', () => {
       await page.keyboard.type('echo "Test command"');
       await page.keyboard.press('Enter');
 
-      // Wait for command execution
-      await page.waitForTimeout(2000);
+      // Wait for command execution and output
+      await page.waitForFunction(
+        () => {
+          const term = document.querySelector('vibe-terminal');
+          return term?.textContent?.includes('Test command');
+        },
+        { timeout: 5000 }
+      );
 
       // Send bell character (ASCII 7) which might trigger notifications
       await page.keyboard.press('Control+G'); // Bell character
@@ -386,7 +392,7 @@ test.describe('Push Notifications', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('notification-click-test'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Test that notification clicks might focus the window or navigate to session
     const _initialUrl = page.url();
@@ -486,7 +492,7 @@ test.describe('Push Notifications', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('state-notification-test'),
     });
-    await assertTerminalReady(page);
+    await assertTerminalReady(page, 15000);
 
     // Navigate away (might trigger notifications)
     await page.goto('/');

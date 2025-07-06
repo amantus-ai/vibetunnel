@@ -115,7 +115,7 @@ struct VibeTunnelApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
     // Needed for some gross menu item highlight hack
-    static weak var shared: AppDelegate?
+    weak static var shared: AppDelegate?
     override init() {
         super.init()
         Self.shared = self
@@ -214,6 +214,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Start the terminal spawn service
         TerminalSpawnService.shared.start()
+
+        // Initialize ScreencapService to enable screen sharing
+        _ = ScreencapService.shared
+        logger.info("Initialized ScreencapService for screen sharing")
 
         // Start Git monitoring early
         app?.gitRepositoryMonitor.startMonitoring()

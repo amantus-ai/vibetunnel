@@ -195,7 +195,7 @@ export async function startVibeTunnelForward(args: string[]) {
           const sent = socketClient.updateTitle(sanitizedTitle);
 
           if (sent) {
-            logger.debug(`Session title updated via IPC to: ${sanitizedTitle}`);
+            logger.log(`Session title updated to: ${sanitizedTitle}`);
             // IPC update succeeded, server will handle the file update
             socketClient.disconnect();
             closeLogger();
@@ -217,7 +217,7 @@ export async function startVibeTunnelForward(args: string[]) {
       sessionInfo.name = sanitizedTitle;
       sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
-      logger.log(`Session title persisted to file: ${sanitizedTitle}`);
+      logger.log(`Session title updated to: ${sanitizedTitle}`);
       closeLogger();
       process.exit(0);
     } catch (error) {

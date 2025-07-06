@@ -14,9 +14,9 @@ struct SessionDetailView: View {
     @State private var windowInfo: WindowEnumerator.WindowInfo?
     @State private var windowScreenshot: NSImage?
     @State private var isCapturingScreenshot = false
-    @State private var hasScreenCapturePermission = false
     @State private var isFindingWindow = false
     @State private var windowSearchAttempted = false
+    @Environment(SystemPermissionManager.self) private var permissionManager
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionDetailView")
 
@@ -146,7 +146,7 @@ struct SessionDetailView: View {
                                         .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                                 )
                         }
-                    } else if !hasScreenCapturePermission {
+                    } else if !permissionManager.hasPermission(.screenRecording) {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Screen Recording Permission Required")
                                 .font(.headline)
@@ -157,8 +157,8 @@ struct SessionDetailView: View {
                                 .foregroundColor(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
 
-                            Button("Open System Settings") {
-                                openScreenRecordingSettings()
+                            Button("Grant Permission") {
+                                permissionManager.requestPermission(.screenRecording)
                             }
                             .controlSize(.small)
                         }
@@ -202,6 +202,11 @@ struct SessionDetailView: View {
         .onAppear {
             updateWindowTitle()
             findWindow()
+
+            // Check permissions
+            Task {
+                await permissionManager.checkAllPermissions()
+            }
         }
         .background(WindowAccessor(title: $windowTitle))
     }
@@ -366,14 +371,13 @@ struct SessionDetailView: View {
             }
         }
 
-        // Check for screen recording permission
-        let hasPermission = await checkScreenCapturePermission()
-        await MainActor.run {
-            hasScreenCapturePermission = hasPermission
-        }
-
-        guard hasPermission else {
+        // Check for screen recording permission using SystemPermissionManager
+        guard permissionManager.hasPermission(.screenRecording) else {
             logger.warning("No screen capture permission")
+            // Prompt user to grant permission
+            await MainActor.run {
+                permissionManager.requestPermission(.screenRecording)
+            }
             return
         }
 
@@ -414,24 +418,6 @@ struct SessionDetailView: View {
             logger.info("Successfully captured window screenshot")
         } catch {
             logger.error("Failed to capture screenshot: \(error)")
-        }
-    }
-
-    private func checkScreenCapturePermission() async -> Bool {
-        // Check if we have screen recording permission
-        let hasPermission = CGPreflightScreenCaptureAccess()
-
-        if !hasPermission {
-            // Request permission
-            return CGRequestScreenCaptureAccess()
-        }
-
-        return true
-    }
-
-    private func openScreenRecordingSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-            NSWorkspace.shared.open(url)
         }
     }
 }

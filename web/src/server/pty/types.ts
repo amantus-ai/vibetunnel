@@ -4,6 +4,7 @@
  * These types match the tty-fwd format to ensure compatibility
  */
 
+import type * as fs from 'fs';
 import type * as net from 'net';
 import type { IPty } from 'node-pty';
 import type { SessionInfo, TitleMode } from '../../shared/types.js';
@@ -96,6 +97,19 @@ export interface PtySession {
   titleInjectionTimer?: NodeJS.Timeout;
   pendingTitleToInject?: string;
   titleInjectionInProgress?: boolean;
+  // File watcher for session.json changes
+  sessionJsonWatcher?: fs.FSWatcher;
+  // Interval for polling session.json changes
+  sessionJsonInterval?: NodeJS.Timeout;
+  // Activity status for external tracking
+  activityStatus?: {
+    specificStatus?: {
+      app: string;
+      status: string;
+    };
+  };
+  // Connected socket clients for broadcasting
+  connectedClients?: Set<net.Socket>;
 }
 
 export class PtyError extends Error {

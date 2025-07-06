@@ -17,7 +17,9 @@ import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
+import { createScreencapRoutes, initializeScreencap } from './routes/screencap.js';
 import { createSessionRoutes } from './routes/sessions.js';
+import { createWebRTCConfigRouter } from './routes/webrtc-config.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
 import { AuthService } from './services/auth-service.js';
@@ -33,6 +35,7 @@ import { TerminalManager } from './services/terminal-manager.js';
 import { closeLogger, createLogger, initLogger, setDebugMode } from './utils/logger.js';
 import { VapidManager } from './utils/vapid-manager.js';
 import { getVersionInfo, printVersionBanner } from './version.js';
+import { screencapUnixHandler } from './websocket/screencap-unix-handler.js';
 
 // Extended WebSocket request with authentication and routing info
 interface WebSocketRequest extends http.IncomingMessage {
@@ -373,8 +376,8 @@ export async function createApp(): Promise<AppInstance> {
   const server = createServer(app);
   const wss = new WebSocketServer({ noServer: true });
 
-  // Add JSON body parser middleware
-  app.use(express.json());
+  // Add JSON body parser middleware with size limit
+  app.use(express.json({ limit: '10mb' }));
   logger.debug('Configured express middleware');
 
   // Control directory for session data
@@ -596,13 +599,42 @@ export async function createApp(): Promise<AppInstance> {
     logger.debug('Mounted push notification routes');
   }
 
+  // Mount screencap routes
+  app.use('/api', createScreencapRoutes());
+  logger.debug('Mounted screencap routes');
+
+  // WebRTC configuration route
+  app.use('/api', createWebRTCConfigRouter());
+  logger.debug('Mounted WebRTC config routes');
+
+  // Initialize screencap service in background
+  initializeScreencap().catch((error) => {
+    logger.error('Failed to initialize screencap service:', error);
+    logger.warn('Continuing without screencap service');
+  });
+
+  // Start UNIX socket server for Mac app communication
+  screencapUnixHandler
+    .start()
+    .then(() => {
+      logger.log(chalk.green('Screen Capture UNIX socket: READY'));
+    })
+    .catch((error) => {
+      logger.error('Failed to start UNIX socket server:', error);
+      logger.warn('Screen capture Mac app communication will not work');
+    });
+
   // Handle WebSocket upgrade with authentication
   server.on('upgrade', async (request, socket, head) => {
     // Parse the URL to extract path and query parameters
     const parsedUrl = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
 
-    // Handle both /buffers and /ws/input paths
-    if (parsedUrl.pathname !== '/buffers' && parsedUrl.pathname !== '/ws/input') {
+    // Handle WebSocket paths
+    if (
+      parsedUrl.pathname !== '/buffers' &&
+      parsedUrl.pathname !== '/ws/input' &&
+      parsedUrl.pathname !== '/ws/screencap-signal'
+    ) {
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
       socket.destroy();
       return;
@@ -749,6 +781,10 @@ export async function createApp(): Promise<AppInstance> {
       const userId = wsReq.userId || 'unknown';
 
       websocketInputHandler.handleConnection(ws, sessionId, userId);
+    } else if (pathname === '/ws/screencap-signal') {
+      // Handle screencap WebRTC signaling from browser
+      const _userId = wsReq.userId || 'unknown';
+      screencapUnixHandler.handleBrowserConnection(ws);
     } else {
       logger.error(`Unknown WebSocket path: ${pathname}`);
       ws.close();
@@ -843,7 +879,15 @@ export async function createApp(): Promise<AppInstance> {
         config.remoteName &&
         (config.noHqAuth || (config.hqUsername && config.hqPassword))
       ) {
-        const remoteUrl = `http://localhost:${actualPort}`;
+        // Use the actual bind address for HQ registration
+        // If bind is 0.0.0.0, we need to determine the actual network interface IP
+        let remoteHost = bindAddress;
+        if (bindAddress === '0.0.0.0') {
+          // When binding to all interfaces, use the machine's hostname
+          // This allows HQ to connect from the network
+          remoteHost = os.hostname();
+        }
+        const remoteUrl = `http://${remoteHost}:${actualPort}`;
         hqClient = new HQClient(
           config.hqUrl,
           config.hqUsername || 'no-auth',
@@ -1020,6 +1064,15 @@ export async function startVibeTunnelServer() {
       if (controlDirWatcher) {
         controlDirWatcher.stop();
         logger.debug('Stopped control directory watcher');
+      }
+
+      // Stop UNIX socket server
+      try {
+        const { screencapUnixHandler } = await import('./websocket/screencap-unix-handler.js');
+        screencapUnixHandler.stop();
+        logger.debug('Stopped UNIX socket server');
+      } catch (_error) {
+        // Ignore if module not loaded
       }
 
       if (hqClient) {

@@ -231,7 +231,7 @@ export class PtyManager extends EventEmitter {
       }
 
       // Log the final command
-      logger.log(chalk.blue(`Creating PTY session with command: ${resolvedCommand.join(' ')}`));
+      logger.debug(chalk.blue(`Creating PTY session with command: ${resolvedCommand.join(' ')}`));
       logger.debug(`Working directory: ${workingDir}`);
 
       // Create initial session info with resolved command
@@ -378,7 +378,14 @@ export class PtyManager extends EventEmitter {
       sessionInfo.status = 'running';
       this.sessionManager.saveSessionInfo(sessionId, sessionInfo);
 
-      logger.log(chalk.green(`Session ${sessionId} created successfully (PID: ${ptyProcess.pid})`));
+      // Setup session.json watcher for external sessions
+      if (options.forwardToStdout) {
+        this.setupSessionWatcher(session);
+      }
+
+      logger.debug(
+        chalk.green(`Session ${sessionId} created successfully (PID: ${ptyProcess.pid})`)
+      );
       logger.log(chalk.gray(`Running: ${resolvedCommand.join(' ')} in ${workingDir}`));
 
       // Setup PTY event handlers
@@ -589,6 +596,9 @@ export class PtyManager extends EventEmitter {
         this.lastBellTime.delete(session.id);
         this.sessionExitTimes.delete(session.id);
 
+        // Emit session exited event
+        this.emit('sessionExited', session.id);
+
         // Call exit callback if provided (for fwd.ts)
         if (onExit) {
           onExit(exitCode || 0, signal);
@@ -648,10 +658,21 @@ export class PtyManager extends EventEmitter {
         // Socket doesn't exist, this is expected
       }
 
+      // Initialize connected clients set if not already present
+      if (!session.connectedClients) {
+        session.connectedClients = new Set<net.Socket>();
+      }
+
       // Create Unix domain socket server with framed message protocol
       const inputServer = net.createServer((client) => {
         const parser = new MessageParser();
         client.setNoDelay(true);
+
+        // Add client to connected clients set
+        session.connectedClients?.add(client);
+        logger.debug(
+          `Client connected to session ${session.id}, total clients: ${session.connectedClients?.size}`
+        );
 
         client.on('data', (chunk) => {
           parser.addData(chunk);
@@ -663,6 +684,14 @@ export class PtyManager extends EventEmitter {
 
         client.on('error', (err) => {
           logger.debug(`Client socket error for session ${session.id}:`, err);
+        });
+
+        client.on('close', () => {
+          // Remove client from connected clients set
+          session.connectedClients?.delete(client);
+          logger.debug(
+            `Client disconnected from session ${session.id}, remaining clients: ${session.connectedClients?.size}`
+          );
         });
       });
 
@@ -683,6 +712,53 @@ export class PtyManager extends EventEmitter {
     }
 
     // All IPC goes through this socket
+  }
+
+  /**
+   * Setup file watcher for session.json changes
+   */
+  private setupSessionWatcher(session: PtySession): void {
+    const _sessionJsonPath = path.join(session.controlDir, 'session.json');
+
+    try {
+      // Use polling approach for better reliability on macOS
+      // Check for changes every 100ms
+      const checkInterval = setInterval(() => {
+        try {
+          // Read the current session info from disk
+          const updatedInfo = this.sessionManager.loadSessionInfo(session.id);
+          if (updatedInfo && updatedInfo.name !== session.sessionInfo.name) {
+            // Name has changed, update our internal state
+            const oldName = session.sessionInfo.name;
+            session.sessionInfo.name = updatedInfo.name;
+
+            logger.debug(
+              `Session ${session.id} name changed from "${oldName}" to "${updatedInfo.name}"`
+            );
+
+            // Emit event for name change
+            this.trackAndEmit('sessionNameChanged', session.id, updatedInfo.name);
+
+            // Update title if needed for external terminals
+            if (
+              session.isExternalTerminal &&
+              (session.titleMode === TitleMode.STATIC || session.titleMode === TitleMode.DYNAMIC)
+            ) {
+              this.markTitleUpdateNeeded(session);
+            }
+          }
+        } catch (error) {
+          // Session file might be deleted, ignore
+          logger.debug(`Failed to read session file for ${session.id}:`, error);
+        }
+      }, 100);
+
+      // Store interval for cleanup
+      session.sessionJsonInterval = checkInterval;
+      logger.debug(`Session watcher setup for ${session.id}`);
+    } catch (error) {
+      logger.error(`Failed to setup session watcher for ${session.id}:`, error);
+    }
   }
 
   /**
@@ -711,6 +787,33 @@ export class PtyManager extends EventEmitter {
         case MessageType.CONTROL_CMD: {
           const cmd = data as ControlCommand;
           this.handleControlMessage(session, cmd);
+          break;
+        }
+
+        case MessageType.STATUS_UPDATE: {
+          const status = data as { app: string; status: string };
+          // Update activity status for the session
+          if (!session.activityStatus) {
+            session.activityStatus = {};
+          }
+          session.activityStatus.specificStatus = {
+            app: status.app,
+            status: status.status,
+          };
+          logger.debug(`Updated status for session ${session.id}:`, status);
+
+          // Broadcast status update to all connected clients
+          if (session.connectedClients && session.connectedClients.size > 0) {
+            const message = frameMessage(MessageType.STATUS_UPDATE, status);
+            for (const client of session.connectedClients) {
+              try {
+                client.write(message);
+              } catch (err) {
+                logger.debug(`Failed to broadcast status to client:`, err);
+              }
+            }
+            logger.debug(`Broadcasted status update to ${session.connectedClients.size} clients`);
+          }
           break;
         }
 
@@ -1080,7 +1183,7 @@ export class PtyManager extends EventEmitter {
     // Emit event for clients to refresh their session data
     this.trackAndEmit('sessionNameChanged', sessionId, uniqueName);
 
-    logger.log(`[PtyManager] Updated session ${sessionId} name to: ${uniqueName}`);
+    logger.debug(`[PtyManager] Updated session ${sessionId} name to: ${uniqueName}`);
 
     return uniqueName;
   }
@@ -1236,13 +1339,13 @@ export class PtyManager extends EventEmitter {
             await new Promise((resolve) => setTimeout(resolve, checkInterval));
 
             if (!ProcessUtils.isProcessRunning(diskSession.pid)) {
-              logger.log(chalk.green(`External session ${sessionId} terminated gracefully`));
+              logger.debug(chalk.green(`External session ${sessionId} terminated gracefully`));
               return;
             }
           }
 
           // Process didn't terminate gracefully, force kill
-          logger.log(chalk.yellow(`External session ${sessionId} requires SIGKILL`));
+          logger.debug(chalk.yellow(`External session ${sessionId} requires SIGKILL`));
           process.kill(diskSession.pid, 'SIGKILL');
 
           // Also force kill the entire process group if on Unix
@@ -1283,7 +1386,7 @@ export class PtyManager extends EventEmitter {
     }
 
     const pid = session.ptyProcess.pid;
-    logger.log(chalk.yellow(`Terminating session ${sessionId} (PID: ${pid})`));
+    logger.debug(chalk.yellow(`Terminating session ${sessionId} (PID: ${pid})`));
 
     try {
       // Send SIGTERM first
@@ -1313,7 +1416,7 @@ export class PtyManager extends EventEmitter {
         // Check if process is still alive
         if (!ProcessUtils.isProcessRunning(pid)) {
           // Process no longer exists - it terminated gracefully
-          logger.log(chalk.green(`Session ${sessionId} terminated gracefully`));
+          logger.debug(chalk.green(`Session ${sessionId} terminated gracefully`));
           this.sessions.delete(sessionId);
           return;
         }
@@ -1323,7 +1426,7 @@ export class PtyManager extends EventEmitter {
       }
 
       // Process didn't terminate gracefully within 3 seconds, force kill
-      logger.log(chalk.yellow(`Session ${sessionId} requires SIGKILL`));
+      logger.debug(chalk.yellow(`Session ${sessionId} requires SIGKILL`));
       try {
         session.ptyProcess.kill('SIGKILL');
 
@@ -1350,7 +1453,7 @@ export class PtyManager extends EventEmitter {
 
       // Remove from sessions regardless
       this.sessions.delete(sessionId);
-      logger.log(chalk.yellow(`Session ${sessionId} forcefully terminated`));
+      logger.debug(chalk.yellow(`Session ${sessionId} forcefully terminated`));
     } catch (error) {
       // Remove from sessions even if kill failed
       this.sessions.delete(sessionId);
@@ -1383,6 +1486,16 @@ export class PtyManager extends EventEmitter {
     return sessions.map((session) => {
       // First try to get activity from active session
       const activeSession = this.sessions.get(session.id);
+
+      // Check for socket-based status updates first
+      if (activeSession?.activityStatus) {
+        return {
+          ...session,
+          activityStatus: activeSession.activityStatus,
+        };
+      }
+
+      // Then check activity detector for dynamic mode
       if (activeSession?.activityDetector) {
         const activityState = activeSession.activityDetector.getActivityState();
         return {
@@ -1743,6 +1856,28 @@ export class PtyManager extends EventEmitter {
     if (session.titleFilter) {
       // No need to reset, just remove reference
       session.titleFilter = undefined;
+    }
+
+    // Clean up session.json watcher/interval
+    if (session.sessionJsonWatcher) {
+      session.sessionJsonWatcher.close();
+      session.sessionJsonWatcher = undefined;
+    }
+    if (session.sessionJsonInterval) {
+      clearInterval(session.sessionJsonInterval);
+      session.sessionJsonInterval = undefined;
+    }
+
+    // Clean up connected socket clients
+    if (session.connectedClients) {
+      for (const client of session.connectedClients) {
+        try {
+          client.destroy();
+        } catch (_e) {
+          // Client already destroyed
+        }
+      }
+      session.connectedClients.clear();
     }
 
     // Clean up input socket server

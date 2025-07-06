@@ -215,13 +215,14 @@ final class WindowHighlightEffect {
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
         // Create custom view for the effect
+        let viewBounds = window.contentView?.bounds ?? frame
         let effectView = BorderEffectView(
-            frame: window.contentView!.bounds,
+            frame: viewBounds,
             color: config.color,
             borderWidth: config.borderWidth,
             glowRadius: config.glowRadius
         )
-        effectView.autoresizingMask = [.width, .height]
+        effectView.autoresizingMask = [NSView.AutoresizingMask.width, NSView.AutoresizingMask.height]
         window.contentView = effectView
 
         return window

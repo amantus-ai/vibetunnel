@@ -33,8 +33,8 @@ export class TestSessionManager {
     }
 
     try {
-      // Create session - use bash by default for consistency
-      await sessionListPage.createNewSession(name, spawnWindow, command || 'bash');
+      // Create session - use zsh by default to match the form's default
+      await sessionListPage.createNewSession(name, spawnWindow, command || 'zsh');
 
       // Get session ID from URL for web sessions
       let sessionId = '';
@@ -140,7 +140,10 @@ export class TestSessionManager {
       // Remove from tracking
       this.sessions.delete(sessionName);
     } catch (error) {
-      console.log(`Failed to cleanup session ${sessionName}:`, error);
+      // Log the error but don't throw - cleanup should be best effort
+      console.log(`Failed to cleanup session ${sessionName}:`, (error as Error).message);
+      // Still remove from tracking even if cleanup failed
+      this.sessions.delete(sessionName);
     }
   }
 

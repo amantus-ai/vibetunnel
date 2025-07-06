@@ -132,6 +132,7 @@ final-test-results.json
 test-results-final.json
 test-results.json
 test-results-quick.json
+coverage-summary.json
 
 # Playwright traces and test data
 data/
