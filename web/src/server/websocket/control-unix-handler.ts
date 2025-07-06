@@ -456,11 +456,11 @@ export class ControlUnixHandler {
       // Convert message to JSON
       const jsonStr = JSON.stringify(message);
       const jsonData = Buffer.from(jsonStr, 'utf-8');
-      
+
       // Create a buffer with 4-byte length header + JSON data
       const lengthBuffer = Buffer.allocUnsafe(4);
       lengthBuffer.writeUInt32BE(jsonData.length, 0);
-      
+
       // Combine length header and data
       const fullData = Buffer.concat([lengthBuffer, jsonData]);
 
