@@ -243,25 +243,29 @@ class ServerManager {
 
             logger.info("Started server on port \(self.port)")
 
-            // IMPORTANT: ScreencapService initialization is deferred until first use
-            // to avoid triggering the screen recording permission prompt at startup.
+            // IMPORTANT: ScreencapService initialization strategy:
+            // 1. The service singleton is created lazily when first accessed
+            // 2. WebSocket connection for API handling is established immediately if enabled
+            // 3. Screen recording permission is NOT triggered until actual capture
             //
-            // Previously, we initialized ScreencapService here which caused the
-            // permission dialog to appear immediately when the server started.
-            // This was a poor user experience as users hadn't even seen the
-            // welcome screen yet.
-            //
-            // Now ScreencapService uses lazy initialization and will only be
-            // created when:
-            // - User explicitly grants permission in welcome/settings
-            // - User attempts to use screen sharing features
-            // - API endpoints for screen capture are accessed
-            //
-            // The service handles permission checks internally and returns
-            // appropriate errors if permission is not granted.
+            // This allows the screencap API to be available for queries (like listing
+            // windows/displays) without triggering the permission dialog. The permission
+            // dialog only appears when the user actually starts screen capture.
             if AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) {
-                logger.info("📸 Screencap service enabled, but initialization deferred until first use")
-                logger.info("📸 Screen recording permission will be requested when screen capture is first accessed")
+                logger.info("📸 Screencap service enabled, initializing API connection...")
+                
+                // Initialize ScreencapService and connect WebSocket for API handling
+                // This does NOT trigger screen recording permission - that only happens
+                // when SCShareableContent APIs are called during actual capture
+                Task {
+                    do {
+                        let screencapService = ScreencapService.shared
+                        try await screencapService.ensureWebSocketConnected()
+                        logger.info("✅ ScreencapService API connection established")
+                    } catch {
+                        logger.error("❌ Failed to initialize ScreencapService API: \(error)")
+                    }
+                }
             } else {
                 logger.info("Screencap service disabled by user preference")
             }
