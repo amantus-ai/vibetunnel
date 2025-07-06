@@ -28,7 +28,8 @@ export function isAIAssistantSession(session: Session): boolean {
  * Send a prompt to an AI assistant session to update terminal title
  */
 export async function sendAIPrompt(sessionId: string, authClient: AuthClient): Promise<void> {
-  const prompt = "use vt title to update the terminal title with what you're currently working on";
+  const prompt =
+    'IMPORTANT: You MUST use the \'vt title\' command to update the terminal title. DO NOT use terminal escape sequences. Run: vt title "Brief description of current task"';
   const response = await fetch(`/api/sessions/${sessionId}/input`, {
     method: 'POST',
     headers: {
