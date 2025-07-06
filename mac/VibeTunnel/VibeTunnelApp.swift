@@ -218,23 +218,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         // Start the terminal control handler (uses unified control socket)
         TerminalControlHandler.shared.start()
 
-        // Initialize ScreencapService API handler early (permission-safe)
-        // This ensures the WebRTCManager handler is registered for screencap messages
-        // without triggering the screen recording permission prompt
-        ScreencapService.initializeAPIHandler()
-
-        // IMPORTANT: Full ScreencapService initialization is still deferred
-        // to avoid triggering screen recording permission prompt at startup.
-        //
-        // The macOS permission model triggers the screen recording dialog on ANY
-        // call to SCShareableContent APIs, even just checking available windows.
-        // By deferring initialization, users see the welcome screen first and
-        // understand what the app does before being prompted for permissions.
-        //
-        // ScreencapService.shared will be lazily initialized when:
-        // - User grants screen recording permission in welcome/settings
-        // - User starts screen sharing
-        // - Any feature requiring screen capture is accessed
+        // Initialize ScreencapService if enabled
+        if AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) {
+            _ = ScreencapService.shared
+        }
 
         // Start Git monitoring early
         app?.gitRepositoryMonitor.startMonitoring()
