@@ -95,7 +95,7 @@ final class WebRTCManager: NSObject {
     }
 
     // MARK: - Public Methods
-    
+
     func setQuality(use8k: Bool) {
         self.use8k = use8k
         logger.info("📺 Quality set to \(use8k ? "8K" : "4K")")
@@ -614,9 +614,9 @@ final class WebRTCManager: NSObject {
         logger.info("🎥 Created video source")
 
         // Configure video source for 4K or 8K quality at 60 FPS
-        let width = use8k ? 7680 : 3840
-        let height = use8k ? 4320 : 2160
-        
+        let width = use8k ? 7_680 : 3_840
+        let height = use8k ? 4_320 : 2_160
+
         videoSource.adaptOutputFormat(
             toWidth: Int32(width),
             height: Int32(height),
@@ -640,7 +640,10 @@ final class WebRTCManager: NSObject {
 
         self.localVideoTrack = videoTrack
 
-        logger.info("✅ Created local video track with \(self.use8k ? "8K" : "4K") quality settings: \(width)x\(height)@60fps")
+        logger
+            .info(
+                "✅ Created local video track with \(self.use8k ? "8K" : "4K") quality settings: \(width)x\(height)@60fps"
+            )
         logger.info("📦 Video components created:")
         logger.info("  - Video source: \(self.videoSource != nil)")
         logger.info("  - Video capturer: \(self.videoCapturer != nil)")

@@ -940,7 +940,8 @@ public final class ScreencapService: NSObject {
 
             // Get all windows for this application
             let appWindows = content.windows.filter { window in
-                window.owningApplication?.processID == app.processID && window.isOnScreen && window.frame.width > 1 && window.frame.height > 1
+                window.owningApplication?.processID == app.processID && window.isOnScreen && window.frame
+                    .width > 1 && window.frame.height > 1
             }
 
             guard !appWindows.isEmpty else {
@@ -958,7 +959,10 @@ public final class ScreencapService: NSObject {
 
             // Create a filter that includes all windows of the application on the chosen display.
             captureFilter = SCContentFilter(display: display, including: appWindows)
-            logger.info("Capturing application \(app.applicationName) with \(appWindows.count) windows on display \(display.displayID)")
+            logger
+                .info(
+                    "Capturing application \(app.applicationName) with \(appWindows.count) windows on display \(display.displayID)"
+                )
 
         default:
             throw ScreencapError.invalidCaptureType
@@ -1002,7 +1006,10 @@ public final class ScreencapService: NSObject {
             streamConfig.sourceRect = CGRect(x: minX, y: minY, width: totalWidth, height: totalHeight)
             streamConfig.destinationRect = CGRect(x: 0, y: 0, width: totalWidth, height: totalHeight)
 
-            logger.info("📐 Stream config: sourceRect = (\(minX), \(minY), \(totalWidth), \(totalHeight)), destinationRect = (0, 0, \(totalWidth), \(totalHeight))")
+            logger
+                .info(
+                    "📐 Stream config: sourceRect = (\(minX), \(minY), \(totalWidth), \(totalHeight)), destinationRect = (0, 0, \(totalWidth), \(totalHeight))"
+                )
         } else if case .window(let window) = captureMode {
             // For window capture, use the window's bounds
             // Note: The window frame might need to be scaled for Retina displays
@@ -1036,18 +1043,22 @@ public final class ScreencapService: NSObject {
             }
         } else if case .application(let app) = captureMode {
             // For application capture, calculate the bounding box of all its windows.
-            let appWindows = content.windows.filter { $0.owningApplication?.processID == app.processID && $0.isOnScreen }
+            let appWindows = content.windows
+                .filter { $0.owningApplication?.processID == app.processID && $0.isOnScreen }
             if !appWindows.isEmpty {
                 var unionRect = CGRect.null
                 for window in appWindows {
                     unionRect = unionRect.union(window.frame)
                 }
-                
+
                 // Set the stream to capture the exact bounding box of the application's windows.
                 streamConfig.sourceRect = unionRect
                 streamConfig.width = Int(unionRect.width)
                 streamConfig.height = Int(unionRect.height)
-                logger.info("App capture rect: origin=(\(unionRect.origin.x), \(unionRect.origin.y)), size=(\(unionRect.width)x\(unionRect.height))")
+                logger
+                    .info(
+                        "App capture rect: origin=(\(unionRect.origin.x), \(unionRect.origin.y)), size=(\(unionRect.width)x\(unionRect.height))"
+                    )
             } else {
                 // Fallback if no windows are found, though we've checked this already.
                 streamConfig.width = 1
@@ -1226,7 +1237,7 @@ public final class ScreencapService: NSObject {
             throw ScreencapError.failedToStartCapture(error)
         }
     }
-    
+
     private func startWebRTCCapture(use8k: Bool) async {
         logger.info("🌐 startWebRTCCapture called")
         do {
@@ -1246,7 +1257,7 @@ public final class ScreencapService: NSObject {
             // Create WebRTC manager with appropriate auth token
             let localAuthToken = isNoAuth ? nil : ServerManager.shared.bunServer?.localToken
             webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self, localAuthToken: localAuthToken)
-            
+
             // Set quality before starting
             webRTCManager?.setQuality(use8k: use8k)
 

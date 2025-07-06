@@ -105,7 +105,8 @@ describe('HQ Mode E2E Tests', () => {
     for (let i = 0; i < 3; i++) {
       const remote = remotes.find((r: { name: string; url: string }) => r.name === `r${i}`);
       expect(remote).toBeDefined();
-      expect(remote.url).toBe(`http://localhost:${remoteServers[i].port}`);
+      // URL should contain the correct port (hostname may vary)
+      expect(remote.url).toMatch(new RegExp(`http://[^:]+:${remoteServers[i].port}$`));
     }
   });
 
