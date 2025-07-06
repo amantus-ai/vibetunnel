@@ -115,7 +115,10 @@ export class WebRTCHandler {
   }
 
   async stopCapture(): Promise<void> {
-    logger.log('Stopping WebRTC capture...');
+    // Only log if not in test environment to reduce noise
+    if (!import.meta.env?.VITEST) {
+      logger.log('Stopping WebRTC capture...');
+    }
 
     if (this.statsInterval) {
       clearInterval(this.statsInterval);

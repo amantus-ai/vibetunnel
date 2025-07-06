@@ -218,7 +218,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         // Start the terminal control handler (uses unified control socket)
         TerminalControlHandler.shared.start()
 
-        // IMPORTANT: ScreencapService initialization is deferred until needed
+        // Initialize ScreencapService API handler early (permission-safe)
+        // This ensures the WebRTCManager handler is registered for screencap messages
+        // without triggering the screen recording permission prompt
+        ScreencapService.initializeAPIHandler()
+
+        // IMPORTANT: Full ScreencapService initialization is still deferred
         // to avoid triggering screen recording permission prompt at startup.
         //
         // The macOS permission model triggers the screen recording dialog on ANY

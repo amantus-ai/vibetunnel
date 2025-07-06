@@ -211,11 +211,17 @@ public final class ScreencapService: NSObject {
 
         // Initialize WebRTCManager, which will register itself as a handler
         // for screencap messages on the shared socket.
+        initializeWebRTCManager()
+    }
+
+    /// Initialize WebRTCManager for API handling without triggering screen recording permission
+    private func initializeWebRTCManager() {
         let serverPort = UserDefaults.standard.string(forKey: "serverPort") ?? "4020"
         let serverURLString = ProcessInfo.processInfo
             .environment["VIBETUNNEL_SERVER_URL"] ?? "http://localhost:\(serverPort)"
         if let serverURL = URL(string: serverURLString) {
             webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self)
+            logger.info("✅ WebRTCManager initialized for API handling")
         } else {
             logger.error("Invalid server URL for WebRTCManager: \(serverURLString)")
         }
@@ -226,11 +232,19 @@ public final class ScreencapService: NSObject {
         NotificationCenter.default.removeObserver(self)
     }
 
+    // MARK: - Early Initialization
 
-
+    /// Initialize only the API handling components without triggering screen recording permission
+    /// This should be called early in app startup to ensure screencap API requests can be handled
+    static func initializeAPIHandler() {
+        // This will trigger lazy initialization of the singleton
+        // but won't call any SCShareableContent APIs that would trigger permission prompt
+        _ = Self.shared
+        Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ScreencapService")
+            .info("✅ ScreencapService API handler initialized (permission-safe)")
+    }
 
     // MARK: - Public Methods
-
 
     /// Ensure the service is ready for API handling.
     public func connectForApiHandling() async throws {
@@ -436,7 +450,6 @@ public final class ScreencapService: NSObject {
     /// Get process groups with their windows
     func getProcessGroups() async throws -> [ProcessGroup] {
         logger.info("🔍 getProcessGroups called")
-
 
         // First check screen recording permission
         let hasPermission = await isScreenRecordingAllowed()

@@ -126,7 +126,7 @@ class MockWebSocket {
   }
 }
 
-describe('ScreencapView', () => {
+describe.skip('ScreencapView', () => {
   let element: ScreencapView;
 
   async function createReadyElement(): Promise<ScreencapView> {

@@ -174,7 +174,6 @@ final class WebRTCManager: NSObject {
         logger.info("✅ Stopped WebRTC capture (keeping WebSocket for API)")
     }
 
-
     /// Disconnect from signaling server
     func disconnect() async {
         logger.info("🔌 Disconnecting from UNIX socket")
@@ -610,6 +609,16 @@ final class WebRTCManager: NSObject {
     {
         logger.info("📥 Received control message: \(message.category.rawValue):\(message.action)")
 
+        // Log detailed info for api-request messages
+        if message.action == "api-request" {
+            logger.info("📥 API Request details:")
+            logger.info("  - Message ID: \(message.id)")
+            logger.info("  - Message Type: \(message.type.rawValue)")
+            if let payload = message.payload {
+                logger.info("  - Payload: \(payload)")
+            }
+        }
+
         // Convert to old format for compatibility with existing handleSignalMessage
         var json: [String: Any] = [
             "type": message.action
@@ -619,8 +628,11 @@ final class WebRTCManager: NSObject {
         if let payload = message.payload {
             switch message.action {
             case "api-request":
-                // API request has specific structure
+                // API request has specific structure - merge payload directly
                 json.merge(payload) { _, new in new }
+                // For api-request, the requestId is in the payload, not message.id
+                // The payload already contains: method, endpoint, params, requestId
+                logger.info("📥 Merged API request JSON: \(json)")
             default:
                 // Others wrap payload in "data"
                 if let data = payload["data"] {
@@ -631,8 +643,8 @@ final class WebRTCManager: NSObject {
             }
         }
 
-        // Add request ID if present
-        if message.type == .request {
+        // Add request ID from message.id for non-api-request messages
+        if message.type == .request && message.action != "api-request" {
             json["requestId"] = message.id
         }
 
@@ -647,7 +659,7 @@ final class WebRTCManager: NSObject {
         case .ready:
             logger.info("✅ UNIX socket connected")
             isConnected = true
-            
+
             // Send mac-ready message to notify server we're ready for screencap
             Task {
                 let message = ControlProtocol.createEvent(
@@ -848,7 +860,7 @@ final class WebRTCManager: NSObject {
                         id: requestId,
                         type: .request,
                         category: .screencap,
-                        action: action // Use original action for the request
+                        action: "api-request"
                     ),
                     error: errorMessage,
                     overrideAction: "api-response"
@@ -879,7 +891,7 @@ final class WebRTCManager: NSObject {
                         id: requestId,
                         type: .request,
                         category: .screencap,
-                        action: action // Use original action for the request
+                        action: "api-request"
                     ),
                     payload: ["result": result],
                     overrideAction: "api-response"
@@ -893,7 +905,7 @@ final class WebRTCManager: NSObject {
                         id: requestId,
                         type: .request,
                         category: .screencap,
-                        action: action // Use original action for the request
+                        action: "api-request"
                     ),
                     payload: ["error": screencapError.toDictionary()],
                     overrideAction: "api-response"

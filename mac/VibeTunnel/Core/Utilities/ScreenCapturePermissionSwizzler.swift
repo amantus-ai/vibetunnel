@@ -1,16 +1,3 @@
-//
-//  ScreenCapturePermissionSwizzler.swift
-//  VibeTunnel
-//
-//  A Swift implementation for bypassing ScreenCaptureKit permission dialogs during development.
-//
-//  Based on Chromium's screen_capture_kit_swizzler.mm:
-//  https://chromium-review.googlesource.com/c/chromium/src/+/4727729/32/media/audio/mac/screen_capture_kit_swizzler.mm#24
-//
-//  This implementation provides the same functionality as the Chromium Objective-C++ version
-//  but uses pure Swift without any Google-style helpers or external dependencies.
-//
-
 import Foundation
 import ObjectiveC
 
@@ -24,17 +11,16 @@ import ObjectiveC
 ///
 /// Based on: https://chromium-review.googlesource.com/c/chromium/src/+/4727729/32/media/audio/mac/screen_capture_kit_swizzler.mm#24
 final class ScreenCapturePermissionSwizzler {
-    
     // MARK: - Private Properties
-    
+
     /// Thread-safe singleton initialization using Swift's lazy static properties.
     /// This replaces the `dispatch_once` pattern from the Objective-C++ implementation.
     private static let swizzleOnce: Void = {
         swizzleScreenCapturePermission()
     }()
-    
+
     // MARK: - Public Methods
-    
+
     /// Enables the permission bypass by swizzling the ScreenCaptureKit permission method.
     ///
     /// This method is thread-safe and will only perform the swizzling once, regardless
@@ -49,9 +35,9 @@ final class ScreenCapturePermissionSwizzler {
     static func enablePermissionBypass() {
         _ = swizzleOnce
     }
-    
+
     // MARK: - Private Methods
-    
+
     /// Performs the actual method swizzling on the SCStreamManager class.
     ///
     /// This method:
@@ -69,17 +55,19 @@ final class ScreenCapturePermissionSwizzler {
             print("[ScreenCapturePermissionSwizzler] Failed to find SCStreamManager class")
             return
         }
-        
+
         // Define selectors for the original and swizzled methods
         let originalSelector = NSSelectorFromString("requestUserPermissionForScreenCapture:")
         let swizzledSelector = #selector(swizzled_requestUserPermissionForScreenCapture(_:))
-        
+
         // Get the original method from the SCStreamManager class
         guard let originalMethod = class_getInstanceMethod(streamManagerClass, originalSelector) else {
-            print("[ScreenCapturePermissionSwizzler] Failed to find original requestUserPermissionForScreenCapture: method")
+            print(
+                "[ScreenCapturePermissionSwizzler] Failed to find original requestUserPermissionForScreenCapture: method"
+            )
             return
         }
-        
+
         // Get the implementation and type encoding for our swizzled method
         guard let swizzledIMP = class_getMethodImplementation(
             ScreenCapturePermissionSwizzler.self,
@@ -88,13 +76,13 @@ final class ScreenCapturePermissionSwizzler {
             print("[ScreenCapturePermissionSwizzler] Failed to get swizzled method implementation")
             return
         }
-        
+
         // Get the type encoding from the original method to ensure compatibility
         guard let encoding = method_getTypeEncoding(originalMethod) else {
             print("[ScreenCapturePermissionSwizzler] Failed to get method type encoding")
             return
         }
-        
+
         // First, try to add our swizzled method to the SCStreamManager class
         // This is necessary because our implementation is defined in ScreenCapturePermissionSwizzler
         let didAdd = class_addMethod(
@@ -103,7 +91,7 @@ final class ScreenCapturePermissionSwizzler {
             swizzledIMP,
             encoding
         )
-        
+
         if didAdd {
             // Method was successfully added, now we can exchange implementations
             if let swizzledMethod = class_getInstanceMethod(streamManagerClass, swizzledSelector) {
@@ -122,9 +110,9 @@ final class ScreenCapturePermissionSwizzler {
             }
         }
     }
-    
+
     // MARK: - Swizzled Implementation
-    
+
     /// The replacement implementation for `requestUserPermissionForScreenCapture:`.
     ///
     /// This method always calls the completion handler with `true`, effectively
@@ -135,7 +123,10 @@ final class ScreenCapturePermissionSwizzler {
     ///
     /// - Note: This matches the signature of the original SCStreamManager method:
     ///         `- (void)requestUserPermissionForScreenCapture:(void (^)(BOOL))completionHandler;`
-    @objc private dynamic func swizzled_requestUserPermissionForScreenCapture(_ completionHandler: @escaping @Sendable (Bool) -> Void) {
+    @objc private dynamic func swizzled_requestUserPermissionForScreenCapture(
+        _ completionHandler: @escaping @Sendable (Bool)
+            -> Void
+    ) {
         // Always grant permission by calling the completion handler with true
         // We dispatch to main queue to match the behavior of the system implementation
         DispatchQueue.main.async {
@@ -146,22 +137,20 @@ final class ScreenCapturePermissionSwizzler {
 
 // MARK: - Usage Notes
 
-/*
- Usage example:
- 
- ```swift
- // In your app initialization, only for debug builds:
- #if DEBUG
- ScreenCapturePermissionSwizzler.enablePermissionBypass()
- #endif
- ```
- 
- Important considerations:
- 1. This should ONLY be used in development/debug builds
- 2. The swizzling affects the entire process
- 3. This bypasses an important security feature of macOS
- 4. Make sure this code is never included in production builds
- 
- Original implementation reference:
- https://chromium-review.googlesource.com/c/chromium/src/+/4727729/32/media/audio/mac/screen_capture_kit_swizzler.mm#24
- */
+// Usage example:
+//
+// ```swift
+// // In your app initialization, only for debug builds:
+// #if DEBUG
+// ScreenCapturePermissionSwizzler.enablePermissionBypass()
+// #endif
+// ```
+//
+// Important considerations:
+// 1. This should ONLY be used in development/debug builds
+// 2. The swizzling affects the entire process
+// 3. This bypasses an important security feature of macOS
+// 4. Make sure this code is never included in production builds
+//
+// Original implementation reference:
+// https://chromium-review.googlesource.com/c/chromium/src/+/4727729/32/media/audio/mac/screen_capture_kit_swizzler.mm#24

@@ -107,7 +107,6 @@ final class UnixSocketConnection {
 
     /// Establish the actual connection using C socket API
     private nonisolated func establishConnection() {
-
         // Close any existing socket
         if socketFD >= 0 {
             close(socketFD)
@@ -327,7 +326,7 @@ final class UnixSocketConnection {
                     headerData.append(contentsOf: bytes)
                 }
                 let fullData = headerData + data
-                
+
                 // Send data in chunks if needed
                 var totalSent = 0
                 var remainingData = fullData
@@ -415,7 +414,7 @@ final class UnixSocketConnection {
                     headerData.append(contentsOf: bytes)
                 }
                 let fullData = headerData + data
-                
+
                 // Send data in chunks if needed
                 var totalSent = 0
                 var remainingData = fullData
@@ -636,7 +635,7 @@ final class UnixSocketConnection {
                         var lengthHeader = UInt32(data.count).bigEndian
                         let headerData = Data(bytes: &lengthHeader, count: 4)
                         let fullData = headerData + data
-                        
+
                         // Send data in chunks if needed
                         var totalSent = 0
                         var remainingData = fullData

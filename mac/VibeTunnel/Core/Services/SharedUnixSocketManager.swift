@@ -78,12 +78,12 @@ final class SharedUnixSocketManager {
     /// Process received messages as control protocol messages
     private func distributeMessage(_ data: Data) {
         logger.debug("📨 Distributing message of size \(data.count) bytes")
-        
+
         // Log raw message for debugging
         if let str = String(data: data, encoding: .utf8) {
             logger.debug("📨 Raw message: \(str)")
         }
-        
+
         // Parse as control message
         do {
             let controlMessage = try ControlProtocol.decode(data)
@@ -108,7 +108,11 @@ final class SharedUnixSocketManager {
             logger.info("✅ Received system:ready from server - connection established")
             return
         }
-        
+
+        // Log handler lookup for debugging
+        logger.info("🔍 Looking for handler for category: \(message.category.rawValue)")
+        logger.info("🔍 Available handlers: \(self.controlHandlers.keys.map(\.rawValue).joined(separator: ", "))")
+
         guard let handler = controlHandlers[message.category] else {
             logger.warning("No handler for category: \(message.category.rawValue)")
 
@@ -122,6 +126,8 @@ final class SharedUnixSocketManager {
             }
             return
         }
+
+        logger.info("✅ Found handler for category: \(message.category.rawValue), processing message...")
 
         // Process message with handler
         if let response = await handler(message) {
