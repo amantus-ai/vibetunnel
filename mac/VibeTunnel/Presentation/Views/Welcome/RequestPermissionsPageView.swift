@@ -53,14 +53,12 @@ struct RequestPermissionsPageView: View {
                     .font(.largeTitle)
                     .fontWeight(.semibold)
 
-                Text(
-                    "VibeTunnel needs these permissions:\n• Automation to start terminal sessions\n• Accessibility to send commands\n• Screen Recording for screen capture"
-                )
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 480)
-                .fixedSize(horizontal: false, vertical: true)
+                Text("VibeTunnel needs permissions for automation to start terminal sessions, accessibility to send commands, and screen recording for screen capture.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 // Permissions buttons
                 VStack(spacing: 16) {
