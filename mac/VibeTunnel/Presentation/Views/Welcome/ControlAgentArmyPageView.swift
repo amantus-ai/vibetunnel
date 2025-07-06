@@ -59,6 +59,7 @@ struct ControlAgentArmyPageView: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 420)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.vertical, 12)
             }
