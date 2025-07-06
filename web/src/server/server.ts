@@ -617,9 +617,7 @@ export async function createApp(): Promise<AppInstance> {
   screencapUnixHandler
     .start()
     .then(() => {
-      logger.log(
-        chalk.green('Screen Capture UNIX socket: LISTENING at /tmp/vibetunnel-screencap.sock')
-      );
+      logger.log(chalk.green('Screen Capture UNIX socket: READY'));
     })
     .catch((error) => {
       logger.error('Failed to start UNIX socket server:', error);

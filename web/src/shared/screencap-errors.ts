@@ -48,47 +48,49 @@ export interface ScreencapError {
   timestamp: string;
 }
 
-export class ScreencapErrorBuilder {
-  static create(code: ScreencapErrorCode, message: string, details?: unknown): ScreencapError {
-    return {
-      code,
-      message,
-      details,
-      timestamp: new Date().toISOString(),
-    };
-  }
+export function createScreencapError(
+  code: ScreencapErrorCode,
+  message: string,
+  details?: unknown
+): ScreencapError {
+  return {
+    code,
+    message,
+    details,
+    timestamp: new Date().toISOString(),
+  };
+}
 
-  static fromError(error: unknown): ScreencapError {
-    if (error && typeof error === 'object' && 'code' in error) {
-      const e = error as any;
-      if (Object.values(ScreencapErrorCode).includes(e.code)) {
-        return {
-          code: e.code,
-          message: e.message || 'Unknown error',
-          details: e.details,
-          timestamp: e.timestamp || new Date().toISOString(),
-        };
-      }
+export function screencapErrorFromError(error: unknown): ScreencapError {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const e = error as Record<string, unknown>;
+    if (Object.values(ScreencapErrorCode).includes(e.code as ScreencapErrorCode)) {
+      return {
+        code: e.code as ScreencapErrorCode,
+        message: (e.message as string) || 'Unknown error',
+        details: e.details,
+        timestamp: (e.timestamp as string) || new Date().toISOString(),
+      };
     }
-
-    // Convert unknown errors
-    const message = error instanceof Error ? error.message : String(error);
-    return {
-      code: ScreencapErrorCode.INTERNAL_ERROR,
-      message,
-      details: error,
-      timestamp: new Date().toISOString(),
-    };
   }
 
-  static isScreencapError(error: unknown): error is ScreencapError {
-    return (
-      error !== null &&
-      typeof error === 'object' &&
-      'code' in error &&
-      'message' in error &&
-      'timestamp' in error &&
-      Object.values(ScreencapErrorCode).includes((error as any).code)
-    );
-  }
+  // Convert unknown errors
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    code: ScreencapErrorCode.INTERNAL_ERROR,
+    message,
+    details: error,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function isScreencapError(error: unknown): error is ScreencapError {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'code' in error &&
+    'message' in error &&
+    'timestamp' in error &&
+    Object.values(ScreencapErrorCode).includes((error as ScreencapError).code)
+  );
 }

@@ -42,7 +42,10 @@ export function getWebRTCConfig(): WebRTCConfig {
   // Check for environment variables (browser environment)
   if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
     // In browser, we might get config from a meta tag or global variable
-    const customConfig = (globalThis as any).window.__WEBRTC_CONFIG__;
+    const browserGlobal = globalThis as typeof globalThis & {
+      window: { __WEBRTC_CONFIG__?: { iceServers?: IceServer[] } };
+    };
+    const customConfig = browserGlobal.window.__WEBRTC_CONFIG__;
     if (customConfig?.iceServers) {
       config.iceServers = customConfig.iceServers;
     }

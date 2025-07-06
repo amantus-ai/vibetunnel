@@ -155,8 +155,14 @@ export class ScreencapUnixHandler {
     // Note: The actual buffer size may be limited by system settings
     const bufferSize = 1024 * 1024; // 1MB
     try {
-      (socket as any)._readableState.highWaterMark = bufferSize;
-      logger.log(`Set socket receive buffer to ${bufferSize} bytes`);
+      // Node.js internal: _readableState is a known internal property
+      const socketWithState = socket as net.Socket & {
+        _readableState?: { highWaterMark: number };
+      };
+      if (socketWithState._readableState) {
+        socketWithState._readableState.highWaterMark = bufferSize;
+        logger.log(`Set socket receive buffer to ${bufferSize} bytes`);
+      }
     } catch (error) {
       logger.warn('Failed to set socket buffer size:', error);
     }
