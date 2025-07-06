@@ -109,7 +109,7 @@ jobs:
         echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
     - name: Setup pnpm cache
-      uses: ${{ startsWith(matrix.platform, 'blacksmith') && 'useblacksmith/cache@v5' || 'actions/cache@v3' }}
+      uses: ${{ startsWith(matrix.platform, 'blacksmith') && 'actions/cache@v4' || 'actions/cache@v3' }}
       with:
         path: ${{ env.STORE_PATH }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -130,7 +130,7 @@ jobs:
 
     - name: Cache tauri-cli
       id: cache-tauri
-      uses: ${{ startsWith(matrix.platform, 'blacksmith') && 'useblacksmith/cache@v5' || 'actions/cache@v3' }}
+      uses: ${{ startsWith(matrix.platform, 'blacksmith') && 'actions/cache@v4' || 'actions/cache@v3' }}
       with:
         path: ~/.cargo/bin/cargo-tauri
         key: ${{ runner.os }}-tauri-cli-2.0

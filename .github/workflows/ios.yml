@@ -44,7 +44,7 @@ jobs:
         run_install: false
     
     - name: Cache Homebrew packages
-      uses: useblacksmith/cache@v5
+      uses: actions/cache@v4
       continue-on-error: true
       with:
         path: |
@@ -57,7 +57,7 @@ jobs:
           ${{ runner.os }}-brew-
     
     - name: Cache Swift packages
-      uses: useblacksmith/cache@v5
+      uses: actions/cache@v4
       continue-on-error: true
       with:
         path: |
@@ -108,7 +108,7 @@ jobs:
         echo "PATH: $PATH"
     
     - name: Cache pnpm store
-      uses: useblacksmith/cache@v5
+      uses: actions/cache@v4
       continue-on-error: true
       with:
         path: ~/.local/share/pnpm/store
