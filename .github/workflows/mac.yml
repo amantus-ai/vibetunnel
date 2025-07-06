@@ -153,6 +153,10 @@ jobs:
         echo "Resolving Swift package dependencies..."
         # Workspace is at root level
         xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
+        
+        # Debug: List available schemes
+        echo "=== Available schemes ==="
+        xcodebuild -list -workspace VibeTunnel.xcworkspace | grep -A 20 "Schemes:" || true
     
     # BUILD PHASE
     - name: Build Debug (Native Architecture)
@@ -214,6 +218,15 @@ jobs:
       id: test-coverage
       timeout-minutes: 10
       run: |
+        # Debug: Check if web build artifacts were downloaded
+        echo "=== Checking web build artifacts ==="
+        if [ -d "web/dist" ]; then
+          echo "web/dist exists"
+          ls -la web/dist | head -10
+        else
+          echo "web/dist does not exist"
+        fi
+        
         # Use xcodebuild test for workspace testing with coverage enabled
         set -o pipefail && \
         xcodebuild test \
@@ -229,6 +242,9 @@ jobs:
           COMPILER_INDEX_STORE_ENABLE=NO || {
           echo "::error::Tests failed"
           echo "result=1" >> $GITHUB_OUTPUT
+          # Try to get more detailed error information
+          echo "=== Attempting to get test failure details ==="
+          xcrun xcresulttool get --path TestResults.xcresult --format json 2>/dev/null | jq '.issues._values[]? | select(.severity == "error")' 2>/dev/null || true
           exit 1
         }
         echo "result=0" >> $GITHUB_OUTPUT
