@@ -8,7 +8,7 @@ import Foundation
 enum AppConstants {
     /// Current version of the welcome dialog
     /// Increment this when significant changes require re-showing the welcome flow
-    static let currentWelcomeVersion = 3
+    static let currentWelcomeVersion = 4
 
     /// UserDefaults keys
     enum UserDefaultsKeys {

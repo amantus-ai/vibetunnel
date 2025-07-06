@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 import OSLog
-import ScreenCaptureKit
+@preconcurrency import ScreenCaptureKit
 import SwiftUI
 
 /// Errors that can occur during server operations
@@ -618,5 +618,5 @@ enum ServerManagerError: LocalizedError {
 // MARK: - ServerManager Extension
 
 extension ServerManager {
-    /// Check if we have screen recording permission
+    // Check if we have screen recording permission
 }

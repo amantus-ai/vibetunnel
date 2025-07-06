@@ -446,7 +446,7 @@ private struct WindowHighlightSettingsSection: View {
             set: { newValue in
                 if newValue == "none" {
                     highlightEnabled = false
-                    highlightStyle = "default"  // Keep a default style for when re-enabled
+                    highlightStyle = "default" // Keep a default style for when re-enabled
                 } else {
                     highlightEnabled = true
                     highlightStyle = newValue

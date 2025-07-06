@@ -41,7 +41,7 @@ struct ServerConfig: Codable, Equatable {
         // 1. Contain at least 2 colons
         // 2. Only contain valid IPv6 characters (hex digits, colons, and optionally dots for IPv4-mapped addresses)
         // 3. Not be a hostname with colons (which would contain other characters)
-        let colonCount = formattedHost.count(where: { $0 == ":" })
+        let colonCount = formattedHost.count { $0 == ":" }
         let validIPv6Chars = CharacterSet(charactersIn: "0123456789abcdefABCDEF:.%")
         let isIPv6 = colonCount >= 2 && formattedHost.unicodeScalars.allSatisfy { validIPv6Chars.contains($0) }
 
