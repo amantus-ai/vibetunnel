@@ -31,6 +31,21 @@ export interface SessionCreateData {
   titleMode?: TitleMode;
 }
 
+interface QuickStartOption {
+  name: string;
+  flag: string;
+  description: string;
+  default: boolean;
+}
+
+interface QuickStartCommand {
+  label: string;
+  command: string;
+  options?: QuickStartOption[];
+}
+
+type QuickStartCommandOrString = QuickStartCommand | string;
+
 @customElement('session-create-form')
 export class SessionCreateForm extends LitElement {
   // Disable shadow DOM to use Tailwind
@@ -50,10 +65,45 @@ export class SessionCreateForm extends LitElement {
   @state() private isCreating = false;
   @state() private showFileBrowser = false;
   @state() private selectedQuickStart = 'zsh';
+  @state() private selectedOptions: Record<string, boolean> = {};
 
-  quickStartCommands = [
-    { label: 'claude', command: 'claude' },
-    { label: 'gemini', command: 'gemini' },
+  quickStartCommands: QuickStartCommandOrString[] = [
+    {
+      label: 'claude',
+      command: 'claude',
+      options: [
+        {
+          name: 'dangerously-skip-permissions',
+          flag: '--dangerously-skip-permissions',
+          description: 'Skip permission checks',
+          default: false,
+        },
+        {
+          name: 'no-config',
+          flag: '--no-config',
+          description: 'Skip configuration files',
+          default: false,
+        },
+        {
+          name: 'verbose',
+          flag: '--verbose',
+          description: 'Enable verbose logging',
+          default: false,
+        },
+      ],
+    },
+    {
+      label: 'gemini',
+      command: 'gemini',
+      options: [
+        {
+          name: 'verbose',
+          flag: '--verbose',
+          description: 'Enable verbose logging',
+          default: false,
+        },
+      ],
+    },
     { label: 'zsh', command: 'zsh' },
     { label: 'python3', command: 'python3' },
     { label: 'node', command: 'node' },
@@ -403,14 +453,111 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
-  private handleQuickStart(command: string) {
-    this.command = command;
-    this.selectedQuickStart = command;
+  private handleQuickStart(commandData: QuickStartCommandOrString) {
+    const baseCommand = typeof commandData === 'string' ? commandData : commandData.command;
+
+    // Initialize options with defaults
+    if (typeof commandData !== 'string' && commandData.options) {
+      const optionsState: Record<string, boolean> = {};
+      commandData.options.forEach((option: QuickStartOption) => {
+        optionsState[option.name] = option.default;
+      });
+      this.selectedOptions = optionsState;
+    } else {
+      this.selectedOptions = {};
+    }
+
+    this.command = this.buildCommand(baseCommand);
+    this.selectedQuickStart = baseCommand;
 
     // Auto-select dynamic mode for Claude
-    if (command.toLowerCase().includes('claude')) {
+    if (baseCommand.toLowerCase().includes('claude')) {
       this.titleMode = TitleMode.DYNAMIC;
     }
+  }
+
+  private toggleOption(optionName: string) {
+    this.selectedOptions = {
+      ...this.selectedOptions,
+      [optionName]: !this.selectedOptions[optionName],
+    };
+
+    // Rebuild command with current options
+    const quickStartCommand = this.quickStartCommands.find(
+      (cmd) => (typeof cmd === 'string' ? cmd : cmd.command) === this.selectedQuickStart
+    );
+    if (quickStartCommand && typeof quickStartCommand !== 'string') {
+      this.command = this.buildCommand(quickStartCommand.command);
+    }
+  }
+
+  private buildCommand(baseCommand: string): string {
+    const quickStartCommand = this.quickStartCommands.find(
+      (cmd) => (typeof cmd === 'string' ? cmd : cmd.command) === baseCommand
+    );
+
+    if (!quickStartCommand || typeof quickStartCommand === 'string' || !quickStartCommand.options) {
+      return baseCommand;
+    }
+
+    const enabledOptions = quickStartCommand.options
+      .filter((option) => this.selectedOptions[option.name])
+      .map((option) => option.flag);
+
+    return enabledOptions.length > 0 ? `${baseCommand} ${enabledOptions.join(' ')}` : baseCommand;
+  }
+
+  private renderCommandOptions() {
+    const selectedCommand = this.quickStartCommands.find(
+      (cmd) => (typeof cmd === 'string' ? cmd : cmd.command) === this.selectedQuickStart
+    );
+
+    if (!selectedCommand || typeof selectedCommand === 'string' || !selectedCommand.options) {
+      return html``;
+    }
+
+    return html`
+      <div class="mt-3 sm:mt-4 lg:mt-5 bg-dark-bg-elevated border border-dark-border rounded-lg p-3 sm:p-4">
+        <h4 class="text-dark-text text-[10px] sm:text-xs lg:text-sm font-medium mb-2 sm:mb-3">
+          ${selectedCommand.label} Options
+        </h4>
+        <div class="space-y-2 sm:space-y-3">
+          ${selectedCommand.options.map(
+            (option) => html`
+              <div class="flex items-center justify-between">
+                <div class="flex-1 pr-2 sm:pr-3">
+                  <div class="flex items-center gap-2">
+                    <span class="text-dark-text text-[10px] sm:text-xs font-medium">
+                      ${option.flag}
+                    </span>
+                    <span class="text-dark-text-muted text-[9px] sm:text-[10px] lg:text-xs">
+                      ${option.description}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked="${this.selectedOptions[option.name] || false}"
+                  @click=${() => this.toggleOption(option.name)}
+                  class="relative inline-flex h-4 w-8 sm:h-5 sm:w-10 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-dark-bg ${
+                    this.selectedOptions[option.name] ? 'bg-primary' : 'bg-dark-border'
+                  }"
+                  ?disabled=${this.disabled || this.isCreating}
+                >
+                  <span
+                    class="inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform ${
+                      this.selectedOptions[option.name]
+                        ? 'translate-x-4 sm:translate-x-5'
+                        : 'translate-x-0.5'
+                    }"
+                  ></span>
+                </button>
+              </div>
+            `
+          )}
+        </div>
+      </div>
+    `;
   }
 
   render() {
@@ -583,24 +730,33 @@ export class SessionCreateForm extends LitElement {
                 >Quick Start</label
               >
               <div class="grid grid-cols-2 gap-2 sm:gap-2.5 lg:gap-3 mt-1.5 sm:mt-2">
-                ${this.quickStartCommands.map(
-                  ({ label, command }) => html`
+                ${this.quickStartCommands.map((commandData) => {
+                  const label = typeof commandData === 'string' ? commandData : commandData.label;
+                  const command =
+                    typeof commandData === 'string' ? commandData : commandData.command;
+                  const isActive = this.selectedQuickStart === command;
+
+                  return html`
                     <button
-                      @click=${() => this.handleQuickStart(command)}
+                      @click=${() => this.handleQuickStart(commandData)}
                       class="${
-                        this.command === command
+                        isActive
                           ? 'px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-3 rounded-lg border text-left transition-all bg-primary bg-opacity-10 border-primary text-primary hover:bg-opacity-20 font-medium text-[10px] sm:text-xs lg:text-sm'
                           : 'px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-3 rounded-lg border text-left transition-all bg-dark-bg-elevated border-dark-border text-dark-text hover:bg-dark-surface-hover hover:border-primary hover:text-primary text-[10px] sm:text-xs lg:text-sm'
                       }"
                       ?disabled=${this.disabled || this.isCreating}
                     >
-                      <span class="hidden sm:inline">${label === 'gemini' ? '✨ ' : ''}${label === 'claude' ? '✨ ' : ''}${
+                      <span class="hidden sm:inline">${label === 'gemini' ? '✨ ' : ''}${
+                        label === 'claude' ? '✨ ' : ''
+                      }${label === 'pnpm run dev' ? '▶️ ' : ''}</span><span class="sm:hidden">${
                         label === 'pnpm run dev' ? '▶️ ' : ''
-                      }</span><span class="sm:hidden">${label === 'pnpm run dev' ? '▶️ ' : ''}</span>${label}
+                      }</span>${label}
                     </button>
-                  `
-                )}
+                  `;
+                })}
               </div>
+
+              ${this.renderCommandOptions()}
             </div>
 
             <div class="flex gap-1.5 sm:gap-2 lg:gap-3 mt-2 sm:mt-3 lg:mt-4 xl:mt-6">
