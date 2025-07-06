@@ -330,15 +330,15 @@ final class SessionMonitorTests {
     func sessionCount() async {
         // Force a refresh to get current state
         await monitor.refresh()
-        
+
         // Session count should be non-negative
         #expect(monitor.sessionCount >= 0)
-        
+
         // If there are sessions, they should be in the sessions dictionary
         if monitor.sessionCount > 0 {
-            #expect(monitor.sessions.count > 0)
+            #expect(!monitor.sessions.isEmpty)
             // All counted sessions should be running
-            let runningCount = monitor.sessions.values.filter { $0.isRunning }.count
+            let runningCount = monitor.sessions.values.count(where: { $0.isRunning })
             #expect(monitor.sessionCount == runningCount)
         }
 

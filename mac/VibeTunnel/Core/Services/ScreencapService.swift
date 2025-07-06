@@ -239,7 +239,7 @@ public final class ScreencapService: NSObject {
     static func initializeAPIHandler() {
         // This will trigger lazy initialization of the singleton
         // but won't call any SCShareableContent APIs that would trigger permission prompt
-        _ = Self.shared
+        _ = shared
         Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ScreencapService")
             .info("✅ ScreencapService API handler initialized (permission-safe)")
     }

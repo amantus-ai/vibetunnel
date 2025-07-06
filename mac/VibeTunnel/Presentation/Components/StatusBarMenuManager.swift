@@ -8,8 +8,14 @@ extension NSStatusBarButton {
     override public func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)
         self.highlight(true)
+        // Keep the button highlighted while the menu is visible
+        // The highlight state is maintained based on whether any menu is visible
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) {
-            self.highlight(AppDelegate.shared?.statusBarController?.menuManager.customWindow?.isWindowVisible ?? false)
+            // Check if we should keep the highlight based on menu visibility
+            // Since we can't access the menu manager directly, we check our own state
+            if self.state == .on {
+                self.highlight(true)
+            }
         }
     }
 }
