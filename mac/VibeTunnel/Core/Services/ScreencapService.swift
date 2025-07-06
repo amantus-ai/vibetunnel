@@ -2051,38 +2051,33 @@ extension ScreencapService: SCStreamOutput {
             return
         }
 
+        // Convert to CGImage in the nonisolated context
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let context = CIContext()
+        
+        // Check extent is valid
+        guard !ciImage.extent.isEmpty else {
+            // Skip frame with empty extent
+            return
+        }
+        
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            // Failed to create CGImage
+            return
+        }
+
         Task { @MainActor [weak self] in
             guard let self else { return }
-            await self.processFrame(ciImage: ciImage)
+            await self.processFrameWithCGImage(cgImage)
         }
     }
 
     /// Separate async function to handle frame processing
     @MainActor
-    private func processFrame(ciImage: CIImage) async {
+    private func processFrameWithCGImage(_ cgImage: CGImage) async {
         // Check if we're still capturing before processing
         guard isCapturing else {
             logger.debug("Skipping frame processing - capture stopped")
-            return
-        }
-
-        let context = CIContext()
-
-        // Check extent is valid
-        guard !ciImage.extent.isEmpty else {
-            logger.error("CIImage has empty extent, skipping frame")
-            return
-        }
-
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-            logger.error("Failed to create CGImage from CIImage")
-            return
-        }
-
-        // Check again if we're still capturing before updating frame
-        guard isCapturing else {
-            logger.debug("Capture stopped during frame processing")
             return
         }
 

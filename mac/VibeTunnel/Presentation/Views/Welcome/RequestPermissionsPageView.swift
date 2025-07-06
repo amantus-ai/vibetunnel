@@ -109,7 +109,7 @@ struct RequestPermissionsPageView: View {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
-                            Text("Screen Recording permission granted")
+                            Text("Screen Recording granted")
                                 .foregroundColor(.secondary)
                         }
                         .font(.body)
