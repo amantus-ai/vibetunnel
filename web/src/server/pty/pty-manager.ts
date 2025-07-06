@@ -32,6 +32,7 @@ import {
   shouldInjectTitle,
 } from '../utils/terminal-title.js';
 import { WriteQueue } from '../utils/write-queue.js';
+import { VERSION } from '../version.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
 import { ProcessUtils } from './process-utils.js';
 import { SessionManager } from './session-manager.js';
@@ -244,6 +245,7 @@ export class PtyManager extends EventEmitter {
         startedAt: new Date().toISOString(),
         initialCols: cols,
         initialRows: rows,
+        version: VERSION,
       };
 
       // Save initial session info

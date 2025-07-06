@@ -12,6 +12,7 @@ import * as os from 'os';
 import * as path from 'path';
 import type { Session, SessionInfo } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
+import { VERSION } from '../version.js';
 import { ProcessUtils } from './process-utils.js';
 import { PtyError } from './types.js';
 
@@ -46,6 +47,44 @@ export class SessionManager {
     if (!fs.existsSync(this.controlPath)) {
       fs.mkdirSync(this.controlPath, { recursive: true });
       logger.debug(chalk.green(`control directory created: ${this.controlPath}`));
+    }
+  }
+
+  /**
+   * Get the path to the version tracking file
+   */
+  private getVersionFilePath(): string {
+    return path.join(this.controlPath, '.version');
+  }
+
+  /**
+   * Read the last known version from the version file
+   */
+  private readLastVersion(): string | null {
+    try {
+      const versionFile = this.getVersionFilePath();
+      if (fs.existsSync(versionFile)) {
+        const content = fs.readFileSync(versionFile, 'utf8').trim();
+        logger.debug(`read last version from file: ${content}`);
+        return content;
+      }
+      return null;
+    } catch (error) {
+      logger.warn(`failed to read version file: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * Write the current version to the version file
+   */
+  private writeCurrentVersion(): void {
+    try {
+      const versionFile = this.getVersionFilePath();
+      fs.writeFileSync(versionFile, VERSION, 'utf8');
+      logger.debug(`wrote current version to file: ${VERSION}`);
+    } catch (error) {
+      logger.warn(`failed to write version file: ${error}`);
     }
   }
 
@@ -393,6 +432,76 @@ export class SessionManager {
         `Failed to cleanup exited sessions: ${error instanceof Error ? error.message : String(error)}`,
         'CLEANUP_EXITED_FAILED'
       );
+    }
+  }
+
+  /**
+   * Cleanup sessions from old VibeTunnel versions
+   * This is called during server startup to clean sessions when version changes
+   */
+  cleanupOldVersionSessions(): { versionChanged: boolean; cleanedCount: number } {
+    const lastVersion = this.readLastVersion();
+    const currentVersion = VERSION;
+
+    // If no version file exists, this is likely a fresh install or first time with version tracking
+    if (!lastVersion) {
+      logger.debug('no previous version found, checking for legacy sessions');
+
+      // Clean up any sessions without version field
+      let cleanedCount = 0;
+      const sessions = this.listSessions();
+      for (const session of sessions) {
+        if (!session.version) {
+          logger.debug(`cleaning up legacy session ${session.id} (no version field)`);
+          this.cleanupSession(session.id);
+          cleanedCount++;
+        }
+      }
+
+      this.writeCurrentVersion();
+      return { versionChanged: false, cleanedCount };
+    }
+
+    // If version hasn't changed, nothing to do
+    if (lastVersion === currentVersion) {
+      logger.debug(`version unchanged (${currentVersion}), skipping cleanup`);
+      return { versionChanged: false, cleanedCount: 0 };
+    }
+
+    logger.log(chalk.yellow(`VibeTunnel version changed from ${lastVersion} to ${currentVersion}`));
+    logger.log(chalk.yellow('cleaning up old sessions...'));
+
+    let cleanedCount = 0;
+    try {
+      const sessions = this.listSessions();
+
+      for (const session of sessions) {
+        // Clean all sessions that don't match the current version
+        // Sessions without version field are considered old
+        if (!session.version || session.version !== currentVersion) {
+          logger.debug(
+            `cleaning up session ${session.id} (version: ${session.version || 'unknown'})`
+          );
+          this.cleanupSession(session.id);
+          cleanedCount++;
+        }
+      }
+
+      // Update the version file to current version
+      this.writeCurrentVersion();
+
+      if (cleanedCount > 0) {
+        logger.log(chalk.green(`cleaned up ${cleanedCount} sessions from previous version`));
+      } else {
+        logger.log(chalk.gray('no old sessions to clean up'));
+      }
+
+      return { versionChanged: true, cleanedCount };
+    } catch (error) {
+      logger.error(`failed to cleanup old version sessions: ${error}`);
+      // Still update version file to prevent repeated cleanup attempts
+      this.writeCurrentVersion();
+      return { versionChanged: true, cleanedCount };
     }
   }
 
