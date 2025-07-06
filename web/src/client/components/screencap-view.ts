@@ -407,6 +407,7 @@ export class ScreencapView extends LitElement {
   private webrtcHandler: WebRTCHandler | null = null;
   private frameUpdateInterval: number | null = null;
   private localAuthToken?: string;
+  private boundHandleKeyDown: ((event: KeyboardEvent) => void) | null = null;
 
   connectedCallback() {
     super.connectedCallback();
@@ -416,7 +417,8 @@ export class ScreencapView extends LitElement {
     this.loadInitialData();
 
     // Add keyboard listener to the whole component
-    this.addEventListener('keydown', this.handleKeyDown.bind(this));
+    this.boundHandleKeyDown = this.handleKeyDown.bind(this);
+    this.addEventListener('keydown', this.boundHandleKeyDown);
     // Make the component focusable
     this.tabIndex = 0;
 
@@ -432,7 +434,10 @@ export class ScreencapView extends LitElement {
     }
 
     // Remove keyboard listener
-    this.removeEventListener('keydown', this.handleKeyDown.bind(this));
+    if (this.boundHandleKeyDown) {
+      this.removeEventListener('keydown', this.boundHandleKeyDown);
+      this.boundHandleKeyDown = null;
+    }
     if (this.mouseMoveThrottleTimeout) {
       clearTimeout(this.mouseMoveThrottleTimeout);
     }
