@@ -913,7 +913,7 @@ final class WebRTCManager: NSObject {
         async throws -> Any
     {
         // Get reference to screencapService while on main actor
-        let service = await screencapService
+        let service = screencapService
         guard let service else {
             throw WebRTCError.invalidConfiguration
         }
@@ -1055,7 +1055,7 @@ final class WebRTCManager: NSObject {
             return ["status": "key sent"]
 
         case ("GET", "/frame"):
-            guard let frameData = await service.getCurrentFrame() else {
+            guard let frameData = service.getCurrentFrame() else {
                 return ["frame": ""]
             }
             return ["frame": frameData.base64EncodedString()]

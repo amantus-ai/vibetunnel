@@ -879,7 +879,15 @@ export async function createApp(): Promise<AppInstance> {
         config.remoteName &&
         (config.noHqAuth || (config.hqUsername && config.hqPassword))
       ) {
-        const remoteUrl = `http://localhost:${actualPort}`;
+        // Use the actual bind address for HQ registration
+        // If bind is 0.0.0.0, we need to determine the actual network interface IP
+        let remoteHost = bindAddress;
+        if (bindAddress === '0.0.0.0') {
+          // When binding to all interfaces, use the machine's hostname
+          // This allows HQ to connect from the network
+          remoteHost = os.hostname();
+        }
+        const remoteUrl = `http://${remoteHost}:${actualPort}`;
         hqClient = new HQClient(
           config.hqUrl,
           config.hqUsername || 'no-auth',

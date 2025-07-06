@@ -14,7 +14,7 @@ struct DashboardSettingsView: View {
     @AppStorage("ngrokTokenPresent")
     private var ngrokTokenPresent = false
     @AppStorage("dashboardAccessMode")
-    private var accessModeString = DashboardAccessMode.localhost.rawValue
+    private var accessModeString = DashboardAccessMode.network.rawValue
 
     @State private var authMode: SecuritySection.AuthenticationMode = .osAuth
 
