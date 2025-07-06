@@ -39,7 +39,7 @@ jobs:
         echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
     - name: Setup pnpm cache
-      uses: actions/cache@v4
+      uses: useblacksmith/cache@v5
       continue-on-error: true
       with:
         path: ${{ env.STORE_PATH }}
@@ -143,7 +143,7 @@ jobs:
         echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
     - name: Setup pnpm cache
-      uses: actions/cache@v4
+      uses: useblacksmith/cache@v5
       continue-on-error: true
       with:
         path: ${{ env.STORE_PATH }}
@@ -157,7 +157,7 @@ jobs:
         sudo apt-get install -y libpam0g-dev
 
     - name: Cache TypeScript build info
-      uses: actions/cache@v4
+      uses: useblacksmith/cache@v5
       continue-on-error: true
       with:
         path: |
@@ -310,7 +310,7 @@ jobs:
         echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
     - name: Setup pnpm cache
-      uses: actions/cache@v4
+      uses: useblacksmith/cache@v5
       continue-on-error: true
       with:
         path: ${{ env.STORE_PATH }}
