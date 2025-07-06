@@ -324,9 +324,8 @@ describe('ScreencapView', () => {
       expect(displayElements).toBeTruthy();
       expect(displayElements?.length).toBe(2); // 2 displays
 
-      // Find "All Displays" button (only shows when displays.length > 1)
-      const allDisplaysBtn = sidebar?.shadowRoot?.querySelector('.all-displays-btn');
-      expect(allDisplaysBtn).toBeTruthy();
+      // All Displays button is currently commented out in implementation
+      // Just verify display items exist
 
       // Expand processes to see windows
       const processHeaders = sidebar?.shadowRoot?.querySelectorAll('.process-header');
@@ -394,7 +393,7 @@ describe('ScreencapView', () => {
       expect(element.isCapturing).toBe(true);
     });
 
-    it('should select desktop mode on desktop button click', async () => {
+    it('should select desktop mode on display item click', async () => {
       // Wait for component to be ready
       await new Promise((resolve) => setTimeout(resolve, 100));
       await element.updateComplete;
@@ -403,15 +402,19 @@ describe('ScreencapView', () => {
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
       expect(sidebar).toBeTruthy();
 
-      // Find the "All Displays" button
-      const allDisplaysBtn = sidebar?.shadowRoot?.querySelector('.all-displays-btn') as HTMLElement;
-      expect(allDisplaysBtn).toBeTruthy();
-      allDisplaysBtn?.click();
+      // Find a display item (All Displays button is currently commented out)
+      const displayItems = sidebar?.shadowRoot?.querySelectorAll('.display-item');
+      expect(displayItems).toBeTruthy();
+      expect(displayItems?.length).toBeGreaterThan(0);
+
+      // Click first display item
+      (displayItems?.[0] as HTMLElement)?.click();
       await element.updateComplete;
 
       expect(element.captureMode).toBe('desktop');
       expect(element.selectedWindow).toBeNull();
-      expect(element.allDisplaysSelected).toBe(true);
+      expect(element.selectedDisplay).toBeTruthy();
+      expect(element.selectedDisplay?.id).toBe(mockDisplays[0].id);
 
       // Now click start button to begin capture
       const startBtn = element.shadowRoot?.querySelector('.btn.primary') as HTMLElement;
@@ -433,9 +436,10 @@ describe('ScreencapView', () => {
 
       // Get sidebar and start desktop capture - find All Displays button
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
-      const allDisplaysBtn = sidebar?.shadowRoot?.querySelector('.all-displays-btn') as HTMLElement;
-      expect(allDisplaysBtn).toBeTruthy();
-      allDisplaysBtn?.click();
+      const displayItems = sidebar?.shadowRoot?.querySelectorAll('.display-item');
+      expect(displayItems).toBeTruthy();
+      expect(displayItems?.length).toBeGreaterThan(0);
+      (displayItems?.[0] as HTMLElement)?.click();
       await element.updateComplete;
 
       // Now click start button to begin capture
@@ -450,14 +454,15 @@ describe('ScreencapView', () => {
     it('should restart capture when clicking same mode', async () => {
       // First verify capture started
       expect(element.isCapturing).toBe(true);
-      const initialState = element.allDisplaysSelected;
-      expect(initialState).toBe(true);
+      const initialDisplay = element.selectedDisplay;
+      expect(initialDisplay).toBeTruthy();
 
       // Click desktop button again - should restart capture
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
-      const allDisplaysBtn = sidebar?.shadowRoot?.querySelector('.all-displays-btn') as HTMLElement;
-      expect(allDisplaysBtn).toBeTruthy();
-      allDisplaysBtn?.click();
+      const displayItems = sidebar?.shadowRoot?.querySelectorAll('.display-item');
+      expect(displayItems).toBeTruthy();
+      expect(displayItems?.length).toBeGreaterThan(0);
+      (displayItems?.[0] as HTMLElement)?.click();
 
       // Wait for restart to complete
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -465,7 +470,7 @@ describe('ScreencapView', () => {
 
       // Should still be capturing after restart
       expect(element.isCapturing).toBe(true);
-      expect(element.allDisplaysSelected).toBe(true);
+      expect(element.selectedDisplay).toBeTruthy();
     });
 
     it('should update frame URL periodically', async () => {
@@ -520,9 +525,10 @@ describe('ScreencapView', () => {
 
       // Get sidebar and start desktop capture - find All Displays button
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
-      const allDisplaysBtn = sidebar?.shadowRoot?.querySelector('.all-displays-btn') as HTMLElement;
-      expect(allDisplaysBtn).toBeTruthy();
-      allDisplaysBtn?.click();
+      const displayItems = sidebar?.shadowRoot?.querySelectorAll('.display-item');
+      expect(displayItems).toBeTruthy();
+      expect(displayItems?.length).toBeGreaterThan(0);
+      (displayItems?.[0] as HTMLElement)?.click();
       await element.updateComplete;
 
       // Now click start button to begin capture
@@ -630,9 +636,10 @@ describe('ScreencapView', () => {
 
       // Try to start capture - find All Displays button in sidebar
       const sidebar = element.shadowRoot?.querySelector('screencap-sidebar');
-      const allDisplaysBtn = sidebar?.shadowRoot?.querySelector('.all-displays-btn') as HTMLElement;
-      expect(allDisplaysBtn).toBeTruthy();
-      allDisplaysBtn?.click();
+      const displayItems = sidebar?.shadowRoot?.querySelectorAll('.display-item');
+      expect(displayItems).toBeTruthy();
+      expect(displayItems?.length).toBeGreaterThan(0);
+      (displayItems?.[0] as HTMLElement)?.click();
       await element.updateComplete;
 
       // Now click start button

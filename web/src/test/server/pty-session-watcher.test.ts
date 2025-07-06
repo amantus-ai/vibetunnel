@@ -98,11 +98,11 @@ describe('PTY Session.json Watcher', () => {
 
     // Mock process.stdout.write to capture title sequences
     const originalWrite = process.stdout.write;
-    const writeSpy = vi.fn((data: string | Uint8Array, ...args: any[]) => {
+    const writeSpy = vi.fn((data: string | Uint8Array, ...args: unknown[]): boolean => {
       // Call the original write method
-      return originalWrite.call(process.stdout, data, ...args);
+      return originalWrite.call(process.stdout, data, ...args) as boolean;
     });
-    process.stdout.write = writeSpy as any;
+    process.stdout.write = writeSpy as typeof process.stdout.write;
 
     try {
       // Create a session with static title mode
@@ -151,10 +151,10 @@ describe('PTY Session.json Watcher', () => {
 
     // Mock process.stdout.write to capture title sequences
     const originalWrite = process.stdout.write;
-    const writeSpy = vi.fn((data: string | Uint8Array, ...args: any[]) => {
-      return originalWrite.call(process.stdout, data, ...args);
+    const writeSpy = vi.fn((data: string | Uint8Array, ...args: unknown[]): boolean => {
+      return originalWrite.call(process.stdout, data, ...args) as boolean;
     });
-    process.stdout.write = writeSpy as any;
+    process.stdout.write = writeSpy as typeof process.stdout.write;
 
     try {
       // Create a session with dynamic title mode
