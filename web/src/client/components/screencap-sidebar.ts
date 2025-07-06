@@ -417,6 +417,7 @@ export class ScreencapSidebar extends LitElement {
         </div>
         <div class="display-list">
           ${
+            /* Comment out All Displays button until fixed
             this.displays.length > 1
               ? html`
             <button 
@@ -431,6 +432,8 @@ export class ScreencapSidebar extends LitElement {
             </button>
           `
               : ''
+            */
+            ''
           }
           ${this.displays.map(
             (display, index) => html`
