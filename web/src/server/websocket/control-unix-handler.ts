@@ -146,7 +146,7 @@ class ScreenCaptureHandler implements MessageHandler {
 
   private requestInitialData(): void {
     logger.log('Requesting initial data from Mac...');
-    const request = createControlMessage('screencap', 'get-initial-data', {});
+    const _request = createControlMessage('screencap', 'get-initial-data', {});
     // TODO: Send request through UNIX socket
     logger.warn('TODO: Implement sending request through UNIX socket');
   }

@@ -7,9 +7,7 @@ const logger = createLogger('screencap-api');
 class ScreencapAPIHandler {
   async sendRequest(message: ControlMessage): Promise<ControlMessage | null> {
     logger.log(
-      `Sending API request to Mac: ${message.action}, payload: ${JSON.stringify(
-        message.payload
-      )}`
+      `Sending API request to Mac: ${message.action}, payload: ${JSON.stringify(message.payload)}`
     );
     return controlUnixHandler.sendControlMessage(message);
   }
