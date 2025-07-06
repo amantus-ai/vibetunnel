@@ -600,7 +600,7 @@ export async function createApp(): Promise<AppInstance> {
   }
 
   // Mount screencap routes
-  app.use('/api', createScreencapRoutes());
+  app.use('/', createScreencapRoutes());
   logger.debug('Mounted screencap routes');
 
   // WebRTC configuration route

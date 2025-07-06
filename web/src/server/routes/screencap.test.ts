@@ -156,7 +156,6 @@ describe('screencap routes', () => {
     it('should have all expected routes', () => {
       const expectedRoutes = [
         { path: '/screencap', method: 'get' },
-        { path: '/screencap/health', method: 'get' },
       ];
 
       for (const expected of expectedRoutes) {
@@ -190,37 +189,6 @@ describe('screencap routes', () => {
 
       expect(mockRes.send).toHaveBeenCalledWith(expect.stringContaining('<!DOCTYPE html>'));
       expect(mockRes.send).toHaveBeenCalledWith(expect.stringContaining('<screencap-view>'));
-    });
-  });
-
-  describe('screencap health endpoint', () => {
-    it('should return WebSocket API information', async () => {
-      setPlatform('darwin');
-      const router = createScreencapRoutes();
-
-      // Mock request/response
-      const mockReq = {} as Request;
-      const mockRes = {
-        json: vi.fn(),
-      } as unknown as Response;
-      const mockNext = vi.fn();
-
-      // Find the health route handler
-      const healthRoute = (
-        router as unknown as {
-          stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }>;
-        }
-      ).stack.find((layer) => layer.route?.path === '/screencap/health');
-      const handlers = healthRoute?.route?.stack || [];
-      const healthHandler = handlers[handlers.length - 1].handle;
-
-      // Call the handler
-      await healthHandler(mockReq, mockRes, mockNext);
-
-      expect(mockRes.json).toHaveBeenCalledWith({
-        status: 'ok',
-        message: 'Screencap API now available via WebSocket at /ws/screencap-signal',
-      });
     });
   });
 

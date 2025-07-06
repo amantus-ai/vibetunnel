@@ -220,15 +220,6 @@ describe('ScreencapView', () => {
               }),
           } as Response);
         }
-        if (url.includes('/api/screencap/frame')) {
-          // Return a mock image URL for frame requests
-          return Promise.resolve({
-            ok: true,
-            status: 200,
-            headers: new Headers({ 'content-type': 'image/jpeg' }),
-            blob: () => Promise.resolve(new Blob(['mock image data'], { type: 'image/jpeg' })),
-          } as Response);
-        }
         return Promise.resolve({
           ok: false,
           status: 404,

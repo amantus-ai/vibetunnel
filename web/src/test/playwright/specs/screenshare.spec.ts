@@ -59,10 +59,10 @@ test.describe('Screenshare Feature', () => {
     await screenshareButton.click();
 
     // Should navigate to screencap page
-    await page.waitForURL('**/api/screencap/', { timeout: 5000 });
+    await page.waitForURL('**/screencap/', { timeout: 5000 });
 
     // Verify we're on the screencap page
-    expect(page.url()).toContain('/api/screencap/');
+    expect(page.url()).toContain('/screencap/');
   });
 
   test('should show error on non-macOS platforms', async ({ page }) => {
@@ -73,7 +73,7 @@ test.describe('Screenshare Feature', () => {
     }
 
     // Navigate directly to screencap endpoint
-    const response = await page.goto('/api/screencap/');
+    const response = await page.goto('/screencap/');
 
     // Should get 503 error
     expect(response?.status()).toBe(503);
@@ -94,7 +94,7 @@ test.describe('Screenshare Feature', () => {
     }
 
     // Navigate directly to screencap page
-    await page.goto('/api/screencap/');
+    await page.goto('/screencap/');
 
     // Wait for screencap-view element
     await page.waitForSelector('screencap-view', { state: 'visible', timeout: 10000 });
@@ -146,7 +146,7 @@ test.describe('Screenshare Feature', () => {
     await screenshareButton.click();
 
     // Wait for navigation
-    await page.waitForURL('**/api/screencap/', { timeout: 5000 });
+    await page.waitForURL('**/screencap/', { timeout: 5000 });
 
     // Go back
     await page.goBack();
@@ -167,25 +167,8 @@ test.describe('Screenshare Feature', () => {
       return;
     }
 
-    // Mock API failure
-    await page.route('**/api/screencap/windows', (route) => {
-      route.fulfill({
-        status: 500,
-        contentType: 'application/json',
-        body: JSON.stringify({ error: 'Internal server error' }),
-      });
-    });
-
-    await page.route('**/api/screencap/display', (route) => {
-      route.fulfill({
-        status: 500,
-        contentType: 'application/json',
-        body: JSON.stringify({ error: 'Internal server error' }),
-      });
-    });
-
     // Navigate to screencap
-    await page.goto('/api/screencap/');
+    await page.goto('/screencap/');
     await page.waitForSelector('screencap-view', { state: 'visible' });
 
     // Should show error state

@@ -72,15 +72,5 @@ export function createScreencapRoutes(): Router {
     `);
   });
 
-  // API endpoints are now handled via WebSocket - these HTTP endpoints are deprecated
-  // Only keeping health check endpoint for compatibility
-
-  router.get('/screencap/health', requireMacOS, async (_req, res) => {
-    res.json({
-      status: 'ok',
-      message: 'Screencap API now available via WebSocket at /ws/screencap-signal',
-    });
-  });
-
   return router;
 }
