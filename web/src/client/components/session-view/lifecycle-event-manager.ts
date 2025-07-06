@@ -249,8 +249,8 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     // Listen for window resize to handle orientation changes and viewport size changes
     window.addEventListener('resize', this.handleWindowResize);
 
-    this.setupMobileFeatures(isPhone);
-    this.setupEventListeners(isPhone);
+    this.setupMobileFeatures(isMobile);
+    this.setupEventListeners(isMobile);
   }
 
   private setupMobileFeatures(isMobile: boolean): void {
