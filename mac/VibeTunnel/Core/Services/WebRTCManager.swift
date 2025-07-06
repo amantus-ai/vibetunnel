@@ -130,13 +130,8 @@ final class WebRTCManager: NSObject {
             try await screencapService?.connectForApiHandling()
         }
 
-        // Notify server we're ready as the Mac peer with video mode
-        let message = ControlProtocol.createEvent(
-            category: .screencap,
-            action: "mac-ready",
-            payload: ["mode": mode]
-        )
-        await sendControlMessage(message)
+        // The server will now determine when the Mac is ready based on the socket connection.
+        // No longer need to send an explicit mac-ready message here.
     }
 
     /// Stop WebRTC capture
@@ -632,6 +627,10 @@ final class WebRTCManager: NSObject {
                 json.merge(payload) { _, new in new }
                 // For api-request, the requestId is in the payload, not message.id
                 // The payload already contains: method, endpoint, params, requestId
+                // Add sessionId from the message itself (not from payload)
+                if let sessionId = message.sessionId {
+                    json["sessionId"] = sessionId
+                }
                 logger.info("📥 Merged API request JSON: \(json)")
             default:
                 // Others wrap payload in "data"
@@ -648,6 +647,11 @@ final class WebRTCManager: NSObject {
             json["requestId"] = message.id
         }
 
+        // Add sessionId for all message types (if present and not already added)
+        if let sessionId = message.sessionId, json["sessionId"] == nil {
+            json["sessionId"] = sessionId
+        }
+
         await handleSignalMessage(json)
 
         // No synchronous response needed for most messages
@@ -659,17 +663,8 @@ final class WebRTCManager: NSObject {
         case .ready:
             logger.info("✅ UNIX socket connected")
             isConnected = true
-
-            // Send mac-ready message to notify server we're ready for screencap
-            Task {
-                let message = ControlProtocol.createEvent(
-                    category: .screencap,
-                    action: "mac-ready",
-                    payload: ["message": "Mac peer connected"]
-                )
-                await sendControlMessage(message)
-                logger.info("📤 Sent mac-ready message to server")
-            }
+        // The server now knows we are connected and will manage the ready state.
+        // No longer need to send mac-ready from here.
         case .failed(let error):
             logger.error("❌ UNIX socket failed: \(error)")
             isConnected = false
@@ -886,6 +881,14 @@ final class WebRTCManager: NSObject {
                     sessionId: sessionId
                 )
                 logger.info("📤 Sending API response for request \(requestId)")
+                // Convert result to dictionary if needed
+                let payloadData: [String: Any] = if let dictResult = result as? [String: Any] {
+                    dictResult
+                } else {
+                    // For non-dictionary results, wrap in a simple structure
+                    ["data": result]
+                }
+
                 let message = ControlProtocol.createResponse(
                     to: ControlProtocol.ControlMessage(
                         id: requestId,
@@ -893,7 +896,7 @@ final class WebRTCManager: NSObject {
                         category: .screencap,
                         action: "api-request"
                     ),
-                    payload: ["result": result],
+                    payload: payloadData,
                     overrideAction: "api-response"
                 )
                 await sendControlMessage(message)
