@@ -52,7 +52,7 @@ struct ControlAgentArmyPageView: View {
                             .cornerRadius(6)
                     }
                     
-                    Text("Session titles appear in the menu bar and terminal windows. Use the dashboard to rename sessions manually, or use the magic wand with Claude/Gemini.")
+                    Text("Session titles appear in the menu bar and terminal windows.\nUse the dashboard to rename sessions manually, or use the magic wand with Claude/Gemini.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
