@@ -33,7 +33,7 @@ import {
 } from '../utils/terminal-title.js';
 import { WriteQueue } from '../utils/write-queue.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
-import { ProcessUtils } from './process-utils.js';
+import { expandFishCommand, ProcessUtils } from './process-utils.js';
 import { SessionManager } from './session-manager.js';
 import {
   type ControlCommand,
@@ -217,7 +217,11 @@ export class PtyManager extends EventEmitter {
       // Resolve the command using unified resolution logic
       const resolved = ProcessUtils.resolveCommand(command);
       const { command: finalCommand, args: finalArgs } = resolved;
-      const resolvedCommand = [finalCommand, ...finalArgs];
+      let resolvedCommand = [finalCommand, ...finalArgs];
+
+      // Apply fish shell expansion if applicable
+      const userShell = ProcessUtils.getUserShell();
+      resolvedCommand = await expandFishCommand(resolvedCommand, userShell, workingDir);
 
       // Log resolution details
       if (resolved.resolvedFrom === 'alias') {
@@ -879,6 +883,32 @@ export class PtyManager extends EventEmitter {
       logger.debug(`[IPC] Received title update for session ${session.id}: "${message.title}"`);
       logger.debug(`[IPC] Current session name before update: "${session.sessionInfo.name}"`);
       this.updateSessionName(session.id, message.title);
+    }
+  }
+
+  /**
+   * Get fish shell completions for a partial command
+   */
+  async getFishCompletions(sessionId: string, partial: string): Promise<string[]> {
+    try {
+      const session = this.sessions.get(sessionId);
+      if (!session) {
+        return [];
+      }
+
+      const userShell = ProcessUtils.getUserShell();
+      if (!userShell.includes('fish')) {
+        return [];
+      }
+
+      const { fishHandler } = await import('./fish-handler.js');
+      await fishHandler.initialize();
+
+      const cwd = session.currentWorkingDir || process.cwd();
+      return await fishHandler.getCompletions(partial, cwd);
+    } catch (error) {
+      logger.warn(`Fish completions failed: ${error}`);
+      return [];
     }
   }
 

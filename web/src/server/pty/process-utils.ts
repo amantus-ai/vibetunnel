@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { createLogger } from '../utils/logger.js';
+import { FishHandler, fishHandler } from './fish-handler.js';
 
 const logger = createLogger('process-utils');
 
@@ -493,6 +494,50 @@ export function getUserShell(): string {
   }
 }
 
+/**
+ * Expand a command using fish shell features (aliases, abbreviations, functions)
+ * @param command The command array to expand
+ * @param shellPath The shell path (must be fish)
+ * @param cwd Current working directory
+ * @returns Expanded command or original if not fish shell
+ */
+export async function expandFishCommand(
+  command: string[],
+  shellPath: string,
+  cwd: string = process.cwd()
+): Promise<string[]> {
+  // Only process if this is a fish shell
+  if (!FishHandler.isFishShell(shellPath)) {
+    return command;
+  }
+
+  if (command.length === 0) {
+    return command;
+  }
+
+  try {
+    // Initialize fish handler if needed
+    await fishHandler.initialize();
+
+    const commandLine = command.join(' ');
+    const expansion = await fishHandler.expandCommand(commandLine, cwd);
+
+    if (expansion.wasExpanded) {
+      logger.debug(`Fish expansion: "${commandLine}" → "${expansion.expanded}"`);
+      if (expansion.description) {
+        logger.debug(`Fish expansion type: ${expansion.description}`);
+      }
+
+      // Split the expanded command back into array
+      return expansion.expanded.split(/\s+/).filter((part) => part.length > 0);
+    }
+  } catch (error) {
+    logger.warn(`Fish command expansion failed: ${error}`);
+  }
+
+  return command;
+}
+
 // Re-export as object for backwards compatibility
 export const ProcessUtils = {
   isProcessRunning,
@@ -501,4 +546,5 @@ export const ProcessUtils = {
   waitForProcessExit,
   resolveCommand,
   getUserShell,
+  expandFishCommand,
 };
