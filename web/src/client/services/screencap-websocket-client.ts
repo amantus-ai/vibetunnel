@@ -4,6 +4,7 @@ const logger = createLogger('screencap-websocket');
 
 interface ApiRequest {
   type: 'api-request';
+  category: 'screencap';
   requestId: string;
   method: string;
   endpoint: string;
@@ -21,6 +22,7 @@ interface SignalMessage {
     | 'ready'
     | 'api-response'
     | 'bitrate-adjustment';
+  category: 'screencap';
   data?: unknown;
   requestId?: string;
   result?: unknown;
