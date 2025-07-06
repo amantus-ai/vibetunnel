@@ -795,32 +795,27 @@ final class UnixSocketConnection {
         receiveBuffer.append(data)
 
         // Process as many messages as we can from the buffer
-        while true {
-            // A message needs at least 4 bytes for the length header
-            guard receiveBuffer.count >= 4 else {
+        while receiveBuffer.count >= 4 {
+            // Read the message length header (4 bytes, big-endian UInt32)
+            let messageLength = receiveBuffer.prefix(4)
+                .withUnsafeBytes { $0.loadUnaligned(as: UInt32.self).bigEndian }
+            
+            // Check against reasonable upper bound to guard against corrupted headers
+            guard messageLength < 1_000_000 else { // 1MB max message size
+                logger.error("Corrupted message header: length=\(messageLength)")
+                receiveBuffer.removeAll() // Clear corrupted buffer
                 break
             }
-
-            // Read the length of the message
-            let lengthData = receiveBuffer.prefix(4)
-            let messageLength = lengthData.withUnsafeBytes { ptr in
-                ptr.loadUnaligned(as: UInt32.self).bigEndian
-            }
-
-            // Check if we have the full message in the buffer
-            guard receiveBuffer.count >= 4 + messageLength else {
-                // Not enough data yet, wait for more
-                break
-            }
-
-            // Extract the message data
-            let messageData = receiveBuffer.subdata(in: 4..<(4 + Int(messageLength)))
-
-            // Remove the message (header + body) from the buffer
-            receiveBuffer.removeFirst(4 + Int(messageLength))
-
+            
+            let needed = Int(messageLength) + 4
+            guard receiveBuffer.count >= needed else { break }
+            
+            // Extract the complete message body (skip the 4-byte header)
+            let body = Data(receiveBuffer.dropFirst(4).prefix(Int(messageLength)))
+            receiveBuffer.removeFirst(needed)
+            
             // Check for keep-alive pong
-            if let msgDict = try? JSONSerialization.jsonObject(with: messageData) as? [String: Any],
+            if let msgDict = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
                let type = msgDict["type"] as? String,
                type == "response",
                let category = msgDict["category"] as? String,
@@ -834,11 +829,11 @@ final class UnixSocketConnection {
             }
 
             // Deliver the complete message
-            logger.info("📨 Delivering message of size \(messageData.count) bytes")
-            if let str = String(data: messageData, encoding: .utf8) {
+            logger.info("📨 Delivering message of size \(body.count) bytes")
+            if let str = String(data: body, encoding: .utf8) {
                 logger.info("📨 Message content: \(String(str.prefix(200)))")
             }
-            onMessage?(messageData)
+            onMessage?(body)
         }
 
         // If buffer grows too large, clear it to prevent memory issues
