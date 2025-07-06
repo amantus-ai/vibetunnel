@@ -753,9 +753,8 @@ export class PtyManager extends EventEmitter {
         }
       }, 100);
 
-      // Store interval for cleanup (reuse the sessionJsonWatcher property)
-      // We'll store the interval ID as a number and handle it properly in cleanup
-      (session as any).sessionJsonInterval = checkInterval;
+      // Store interval for cleanup
+      session.sessionJsonInterval = checkInterval;
       logger.debug(`Session watcher setup for ${session.id}`);
     } catch (error) {
       logger.error(`Failed to setup session watcher for ${session.id}:`, error);
@@ -1864,9 +1863,9 @@ export class PtyManager extends EventEmitter {
       session.sessionJsonWatcher.close();
       session.sessionJsonWatcher = undefined;
     }
-    if ((session as any).sessionJsonInterval) {
-      clearInterval((session as any).sessionJsonInterval);
-      (session as any).sessionJsonInterval = undefined;
+    if (session.sessionJsonInterval) {
+      clearInterval(session.sessionJsonInterval);
+      session.sessionJsonInterval = undefined;
     }
 
     // Clean up connected socket clients

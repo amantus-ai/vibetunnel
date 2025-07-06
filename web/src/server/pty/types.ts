@@ -99,6 +99,8 @@ export interface PtySession {
   titleInjectionInProgress?: boolean;
   // File watcher for session.json changes
   sessionJsonWatcher?: fs.FSWatcher;
+  // Interval for polling session.json changes
+  sessionJsonInterval?: NodeJS.Timeout;
   // Activity status for external tracking
   activityStatus?: {
     specificStatus?: {
