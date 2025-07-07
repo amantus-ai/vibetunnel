@@ -5,12 +5,17 @@
  * Includes back button, sidebar toggle, session details, and terminal controls.
  */
 import { html, LitElement } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from '../session-list.js';
 import '../clickable-path.js';
 import './width-selector.js';
 import '../inline-edit.js';
 import '../notification-status.js';
+import { authClient } from '../../services/auth-client.js';
+import { isAIAssistantSession, sendAIPrompt } from '../../utils/ai-sessions.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('session-header');
 
 @customElement('session-header')
 export class SessionHeader extends LitElement {
@@ -41,6 +46,7 @@ export class SessionHeader extends LitElement {
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
   @property({ type: Function }) onScreenshare?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
+  @state() private isHovered = false;
 
   private getStatusText(): string {
     if (!this.session) return '';
@@ -133,20 +139,41 @@ export class SessionHeader extends LitElement {
           }
           <div class="text-dark-text min-w-0 flex-1 overflow-hidden max-w-[50vw] sm:max-w-none">
             <div class="text-dark-text-bright font-medium text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap">
-              <inline-edit
-                .value=${
-                  this.session.name ||
-                  (Array.isArray(this.session.command)
-                    ? this.session.command.join(' ')
-                    : this.session.command)
+              <div class="flex items-center gap-2" @mouseenter=${this.handleMouseEnter} @mouseleave=${this.handleMouseLeave}>
+                <inline-edit
+                  .value=${
+                    this.session.name ||
+                    (Array.isArray(this.session.command)
+                      ? this.session.command.join(' ')
+                      : this.session.command)
+                  }
+                  .placeholder=${
+                    Array.isArray(this.session.command)
+                      ? this.session.command.join(' ')
+                      : this.session.command
+                  }
+                  .onSave=${(newName: string) => this.handleRename(newName)}
+                ></inline-edit>
+                ${
+                  this.isHovered && isAIAssistantSession(this.session)
+                    ? html`
+                      <button
+                        class="bg-transparent border-0 p-0 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-200 text-accent-primary"
+                        @click=${(e: Event) => {
+                          e.stopPropagation();
+                          this.handleMagicButton();
+                        }}
+                        title="Send prompt to update terminal title"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                          <path d="M14.9 0.3a1 1 0 01-.2 1.4l-4 3a1 1 0 01-1.4-.2l-.3-.4a1 1 0 01.2-1.4l4-3a1 1 0 011.4.2l.3.4zM11.5 2.5l-1.5 1-1 1.5L3.5 10.5l-.3.3a2 2 0 00-.5.8l-.7 2.4a.5.5 0 00.6.6l2.4-.7a2 2 0 00.8-.5l.3-.3L11.5 7.5l1.5-1 1-1.5-2.5-2.5zM3 13l-.7.2.2-.7a1 1 0 01.2-.4l.3-.1v.5a.5.5 0 00.5.5h.5l-.1.3a1 1 0 01-.4.2L3 13z"/>
+                          <path d="M9 1a1 1 0 100 2 1 1 0 000-2zM5 0a1 1 0 100 2 1 1 0 000-2zM2 3a1 1 0 100 2 1 1 0 000-2zM14 6a1 1 0 100 2 1 1 0 000-2zM15 10a1 1 0 100 2 1 1 0 000-2zM12 13a1 1 0 100 2 1 1 0 000-2z" opacity="0.5"/>
+                        </svg>
+                      </button>
+                    `
+                    : ''
                 }
-                .placeholder=${
-                  Array.isArray(this.session.command)
-                    ? this.session.command.join(' ')
-                    : this.session.command
-                }
-                .onSave=${(newName: string) => this.handleRename(newName)}
-              ></inline-edit>
+              </div>
             </div>
             <div class="text-xs opacity-75 mt-0.5 overflow-hidden">
               <clickable-path 
@@ -250,4 +277,22 @@ export class SessionHeader extends LitElement {
       })
     );
   }
+
+  private handleMagicButton() {
+    if (!this.session) return;
+
+    logger.log('Magic button clicked for session', this.session.id);
+
+    sendAIPrompt(this.session.id, authClient).catch((error) => {
+      logger.error('Failed to send AI prompt', error);
+    });
+  }
+
+  private handleMouseEnter = () => {
+    this.isHovered = true;
+  };
+
+  private handleMouseLeave = () => {
+    this.isHovered = false;
+  };
 }
