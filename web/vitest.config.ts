@@ -5,8 +5,8 @@ import path from 'path';
 // Create separate configs that can be selected via CLI flags
 
 export default defineConfig(({ mode }) => {
-  const isClient = mode === 'client' || process.env.VITEST_MODE === 'client';
-  const isServer = mode === 'server' || process.env.VITEST_MODE === 'server';
+  const isClient = mode === 'client' || (typeof process !== 'undefined' && process.env?.VITEST_MODE === 'client');
+  const isServer = mode === 'server' || (typeof process !== 'undefined' && process.env?.VITEST_MODE === 'server');
   
   // Default to running all tests if no mode specified
   const testInclude = isClient 
