@@ -79,31 +79,14 @@ export class SessionCreateForm extends LitElement {
           default: false,
         },
         {
-          name: 'no-config',
-          flag: '--no-config',
-          description: 'Skip configuration files',
-          default: false,
-        },
-        {
-          name: 'verbose',
-          flag: '--verbose',
-          description: 'Enable verbose logging',
+          name: 'resume',
+          flag: '--resume',
+          description: 'Resume previous session',
           default: false,
         },
       ],
     },
-    {
-      label: 'gemini',
-      command: 'gemini',
-      options: [
-        {
-          name: 'verbose',
-          flag: '--verbose',
-          description: 'Enable verbose logging',
-          default: false,
-        },
-      ],
-    },
+    { label: 'gemini', command: 'gemini' },
     { label: 'zsh', command: 'zsh' },
     { label: 'python3', command: 'python3' },
     { label: 'node', command: 'node' },
@@ -114,6 +97,7 @@ export class SessionCreateForm extends LitElement {
   private readonly STORAGE_KEY_COMMAND = 'vibetunnel_last_command';
   private readonly STORAGE_KEY_SPAWN_WINDOW = 'vibetunnel_spawn_window';
   private readonly STORAGE_KEY_TITLE_MODE = 'vibetunnel_title_mode';
+  private readonly STORAGE_KEY_QUICKSTART_OPTIONS = 'vibetunnel_quickstart_options';
 
   connectedCallback() {
     super.connectedCallback();
@@ -159,9 +143,10 @@ export class SessionCreateForm extends LitElement {
       const savedCommand = localStorage.getItem(this.STORAGE_KEY_COMMAND);
       const savedSpawnWindow = localStorage.getItem(this.STORAGE_KEY_SPAWN_WINDOW);
       const savedTitleMode = localStorage.getItem(this.STORAGE_KEY_TITLE_MODE);
+      const savedQuickstartOptions = localStorage.getItem(this.STORAGE_KEY_QUICKSTART_OPTIONS);
 
       logger.debug(
-        `loading from localStorage: workingDir=${savedWorkingDir}, command=${savedCommand}, spawnWindow=${savedSpawnWindow}, titleMode=${savedTitleMode}`
+        `loading from localStorage: workingDir=${savedWorkingDir}, command=${savedCommand}, spawnWindow=${savedSpawnWindow}, titleMode=${savedTitleMode}, quickstartOptions=${savedQuickstartOptions}`
       );
 
       // Always set values, using saved values or defaults
@@ -187,6 +172,16 @@ export class SessionCreateForm extends LitElement {
         this.titleMode = TitleMode.DYNAMIC;
       }
 
+      // Load saved quickstart options
+      if (savedQuickstartOptions) {
+        try {
+          this.selectedOptions = JSON.parse(savedQuickstartOptions);
+        } catch (error) {
+          logger.warn('failed to parse saved quickstart options:', error);
+          this.selectedOptions = {};
+        }
+      }
+
       // Force re-render to update the input values
       this.requestUpdate();
     } catch (_error) {
@@ -200,7 +195,7 @@ export class SessionCreateForm extends LitElement {
       const command = this.command?.trim() || '';
 
       logger.debug(
-        `saving to localStorage: workingDir=${workingDir}, command=${command}, spawnWindow=${this.spawnWindow}, titleMode=${this.titleMode}`
+        `saving to localStorage: workingDir=${workingDir}, command=${command}, spawnWindow=${this.spawnWindow}, titleMode=${this.titleMode}, quickstartOptions=${JSON.stringify(this.selectedOptions)}`
       );
 
       // Only save non-empty values
@@ -212,6 +207,10 @@ export class SessionCreateForm extends LitElement {
       }
       localStorage.setItem(this.STORAGE_KEY_SPAWN_WINDOW, String(this.spawnWindow));
       localStorage.setItem(this.STORAGE_KEY_TITLE_MODE, this.titleMode);
+      localStorage.setItem(
+        this.STORAGE_KEY_QUICKSTART_OPTIONS,
+        JSON.stringify(this.selectedOptions)
+      );
     } catch (_error) {
       logger.warn('failed to save to localStorage');
     }
@@ -456,11 +455,12 @@ export class SessionCreateForm extends LitElement {
   private handleQuickStart(commandData: QuickStartCommandOrString) {
     const baseCommand = typeof commandData === 'string' ? commandData : commandData.command;
 
-    // Initialize options with defaults
+    // Initialize options with saved preferences or defaults
     if (typeof commandData !== 'string' && commandData.options) {
       const optionsState: Record<string, boolean> = {};
       commandData.options.forEach((option: QuickStartOption) => {
-        optionsState[option.name] = option.default;
+        // Use saved preference if available, otherwise use default
+        optionsState[option.name] = this.selectedOptions[option.name] ?? option.default;
       });
       this.selectedOptions = optionsState;
     } else {
@@ -481,6 +481,9 @@ export class SessionCreateForm extends LitElement {
       ...this.selectedOptions,
       [optionName]: !this.selectedOptions[optionName],
     };
+
+    // Save preferences to localStorage
+    this.saveToLocalStorage();
 
     // Rebuild command with current options
     const quickStartCommand = this.quickStartCommands.find(

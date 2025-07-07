@@ -1,0 +1,26 @@
+{
+  "name": "vibetunnel-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for VibeTunnel session management",
+  "main": "dist/index.js",
+  "bin": {
+    "vibetunnel-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "keywords": ["mcp", "vibetunnel", "terminal", "session-management"],
+  "author": "VibeTunnel",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "axios": "^1.7.7",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}
