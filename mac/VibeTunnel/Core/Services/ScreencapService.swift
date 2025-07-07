@@ -719,6 +719,13 @@ public final class ScreencapService: NSObject {
             logger.error("Failed to get shareable content: \(error)")
             throw ScreencapError.failedToGetContent(error)
         }
+        
+        // Create configuration builder with the shareable content
+        let configBuilder = CaptureConfigurationBuilder(shareableContent: content)
+            .setFrameRate(30)
+            .setShowsCursor(true)
+            .setCapturesAudio(false)
+            .setUse8K(use8k)
 
         // Determine capture mode
         switch type {
@@ -732,23 +739,10 @@ public final class ScreencapService: NSObject {
 
                 self.captureMode = .allDisplays
                 currentDisplayIndex = -1
-
+                configBuilder.setCaptureMode(.allDisplays)
                 logger.info("🖥️ Setting up all displays capture mode")
                 logger.info("  Primary display: size=\(primaryDisplay.width)x\(primaryDisplay.height)")
                 logger.info("  Total displays: \(content.displays.count)")
-
-                // For all displays, capture everything including menu bar
-                logger.info("🔍 Creating content filter for all displays including menu bar")
-
-                // Create filter that includes the entire display content.
-                // Use excludingApplications with empty array to include all apps and windows
-                captureFilter = SCContentFilter(
-                    display: primaryDisplay,
-                    excludingApplications: [],
-                    exceptingWindows: []
-                )
-
-                logger.info("✅ Created content filter for all displays capture including system UI")
             } else {
                 // Single display capture
                 let displayIndex = index < content.displays.count ? index : 0
@@ -758,19 +752,13 @@ public final class ScreencapService: NSObject {
                 let display = content.displays[displayIndex]
                 self.captureMode = .desktop(displayIndex: displayIndex)
                 currentDisplayIndex = displayIndex
+                configBuilder.setCaptureMode(.desktop(displayIndex: displayIndex))
 
                 // Log display selection for debugging
                 logger
                     .info(
                         "📺 Capturing display \(displayIndex) of \(content.displays.count) - size: \(display.width)x\(display.height)"
                     )
-
-                // Create filter to capture entire display including menu bar
-                // Use excludingApplications with empty array to include all apps and windows
-                captureFilter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
-                if #available(macOS 14.2, *) {
-                    captureFilter?.includeMenuBar = true
-                }
             }
 
         case "window":
@@ -780,25 +768,12 @@ public final class ScreencapService: NSObject {
             let window = content.windows[index]
             selectedWindow = window
             self.captureMode = .window(window)
+            configBuilder.setCaptureMode(.window(window))
 
             logger
                 .info(
                     "🪟 Capturing window: '\(window.title ?? "Untitled")' - size: \(window.frame.width)x\(window.frame.height)"
                 )
-
-            // For window capture, we need to find which display contains this window
-            let windowDisplay = content.displays.first { display in
-                // Check if window's frame intersects with display's frame
-                display.frame.intersects(window.frame)
-            } ?? content.displays.first
-
-            guard let display = windowDisplay else {
-                throw ScreencapError.noDisplay
-            }
-
-            // Create a filter that includes just the single window on its display.
-            // This is the most reliable way to capture a single window.
-            captureFilter = SCContentFilter(display: display, including: [window])
 
         case "application":
             guard index < content.applications.count else {
@@ -806,6 +781,7 @@ public final class ScreencapService: NSObject {
             }
             let app = content.applications[index]
             self.captureMode = .application(app)
+            configBuilder.setCaptureMode(.application(app))
 
             // Get all windows for this application
             let appWindows = content.windows.filter { window in
@@ -818,24 +794,17 @@ public final class ScreencapService: NSObject {
                 throw ScreencapError.windowNotFound(0)
             }
 
-            // Determine which display to use. Find the display that contains the largest window of the app.
-            let largestWindow = appWindows.max { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }
-            let displayForCapture = content.displays.first { $0.frame.intersects(largestWindow?.frame ?? .zero) }
-
-            guard let display = displayForCapture else {
-                throw ScreencapError.noDisplay
-            }
-
-            // Create a filter that includes all windows of the application on the chosen display.
-            captureFilter = SCContentFilter(display: display, including: appWindows)
             logger
                 .info(
-                    "Capturing application \(app.applicationName) with \(appWindows.count) windows on display \(display.displayID)"
+                    "Capturing application \(app.applicationName) with \(appWindows.count) windows"
                 )
 
         default:
             throw ScreencapError.invalidCaptureType
         }
+        
+        // Build filter using CaptureConfigurationBuilder
+        captureFilter = try configBuilder.buildFilter()
 
         // Configure stream
         guard let filter = captureFilter else {
@@ -843,194 +812,8 @@ public final class ScreencapService: NSObject {
             throw ScreencapError.invalidConfiguration
         }
 
-        let streamConfig = SCStreamConfiguration()
-
-        // For all displays mode, calculate the combined dimensions
-        if case .allDisplays = captureMode {
-            // Calculate the bounding rectangle that encompasses all displays
-            var minX = CGFloat.greatestFiniteMagnitude
-            var minY = CGFloat.greatestFiniteMagnitude
-            var maxX: CGFloat = -CGFloat.greatestFiniteMagnitude
-            var maxY: CGFloat = -CGFloat.greatestFiniteMagnitude
-
-            // Get the maximum scale factor among all displays
-            var maxScaleFactor: CGFloat = 1.0
-
-            logger.info("🖥️ Calculating bounds for \(content.displays.count) displays:")
-            for (index, display) in content.displays.enumerated() {
-                // Find corresponding NSScreen to get scale factor
-                let nsScreen = NSScreen.screens.first { screen in
-                    let xMatch = abs(screen.frame.origin.x - display.frame.origin.x) < 1.0
-                    let yMatch = abs(screen.frame.origin.y - display.frame.origin.y) < 1.0
-                    let widthMatch = abs(screen.frame.width - display.frame.width) < 1.0
-                    let heightMatch = abs(screen.frame.height - display.frame.height) < 1.0
-                    return xMatch && yMatch && widthMatch && heightMatch
-                }
-                let scaleFactor = nsScreen?.backingScaleFactor ?? 2.0
-                maxScaleFactor = max(maxScaleFactor, scaleFactor)
-
-                logger
-                    .info(
-                        "  Display \(index): origin=(\(display.frame.origin.x), \(display.frame.origin.y)), size=\(display.frame.width)x\(display.frame.height), scale=\(scaleFactor)"
-                    )
-                minX = min(minX, display.frame.origin.x)
-                minY = min(minY, display.frame.origin.y)
-                maxX = max(maxX, display.frame.origin.x + display.frame.width)
-                maxY = max(maxY, display.frame.origin.y + display.frame.height)
-            }
-
-            let totalWidth = maxX - minX
-            let totalHeight = maxY - minY
-
-            logger
-                .info(
-                    "📐 Combined display bounds: origin=(\(minX), \(minY)), size=\(totalWidth)x\(totalHeight), maxScale=\(maxScaleFactor)"
-                )
-
-            // IMPORTANT: Apply scale factor to get pixel dimensions for retina displays
-            streamConfig.width = Int(totalWidth * maxScaleFactor)
-            streamConfig.height = Int(totalHeight * maxScaleFactor)
-            // Configure multi-display capture
-            // Note: The actual capture area is determined by the content filter
-
-            logger
-                .info(
-                    "📐 Stream config: capturing all displays - total size: \(streamConfig.width)x\(streamConfig.height), bounds: (\(minX), \(minY), \(totalWidth), \(totalHeight))"
-                )
-        } else if case .window(let window) = captureMode {
-            // For window capture, use the window's bounds
-            // Note: The window frame might need to be scaled for Retina displays
-            // Find the screen that contains this window
-            let windowScreen = NSScreen.screens.first { screen in
-                screen.frame.intersects(window.frame)
-            }
-            let scaleFactor = windowScreen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
-            streamConfig.width = Int(window.frame.width * scaleFactor)
-            streamConfig.height = Int(window.frame.height * scaleFactor)
-
-            // Configure window capture dimensions
-            // Note: Window bounds are handled by the content filter
-
-            logger
-                .info(
-                    "🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor))"
-                )
-        } else if case .desktop(let displayIndex) = captureMode {
-            // For desktop capture, use the display dimensions and set proper rects
-            if displayIndex >= 0 && displayIndex < content.displays.count {
-                let display = content.displays[displayIndex]
-
-                // Find the corresponding NSScreen to get the backing scale factor
-                let nsScreen = NSScreen.screens.first { screen in
-                    // Match by frame - SCDisplay and NSScreen should have the same frame
-                    let xMatch = abs(screen.frame.origin.x - display.frame.origin.x) < 1.0
-                    let yMatch = abs(screen.frame.origin.y - display.frame.origin.y) < 1.0
-                    let widthMatch = abs(screen.frame.width - display.frame.width) < 1.0
-                    let heightMatch = abs(screen.frame.height - display.frame.height) < 1.0
-                    return xMatch && yMatch && widthMatch && heightMatch
-                }
-
-                // Get the scale factor (default to 2.0 for retina if NSScreen not found)
-                let scaleFactor = nsScreen?.backingScaleFactor ?? 2.0
-
-                // IMPORTANT: SCDisplay dimensions are in points, not pixels
-                // For retina displays, we need to multiply by the scale factor to get actual pixels
-                streamConfig.width = Int(CGFloat(display.width) * scaleFactor)
-                streamConfig.height = Int(CGFloat(display.height) * scaleFactor)
-
-                // Configure the stream to capture the entire display including menu bar
-                // Note: sourceRect and destinationRect are set via content filter, not stream config
-
-                logger
-                    .info(
-                        "🖥️ Desktop stream config - display: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor))"
-                    )
-            } else {
-                streamConfig.width = Int(filter.contentRect.width)
-                streamConfig.height = Int(filter.contentRect.height)
-            }
-        } else if case .application(let app) = captureMode {
-            // For application capture, calculate the bounding box of all its windows.
-            let appWindows = content.windows
-                .filter { $0.owningApplication?.processID == app.processID && $0.isOnScreen }
-            if !appWindows.isEmpty {
-                var unionRect = CGRect.null
-                for window in appWindows {
-                    unionRect = unionRect.union(window.frame)
-                }
-
-                // Find the screen that contains most of the app's windows to get scale factor
-                let appScreen = NSScreen.screens.first { screen in
-                    screen.frame.intersects(unionRect)
-                }
-                let scaleFactor = appScreen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
-
-                // Configure app capture dimensions - apply scale factor for retina displays
-                streamConfig.width = Int(unionRect.width * scaleFactor)
-                streamConfig.height = Int(unionRect.height * scaleFactor)
-                logger
-                    .info(
-                        "App capture rect: origin=(\(unionRect.origin.x), \(unionRect.origin.y)), size=(\(unionRect.width)x\(unionRect.height)), scale=\(scaleFactor), pixels=\(streamConfig.width)x\(streamConfig.height)"
-                    )
-            } else {
-                // Fallback if no windows are found, though we've checked this already.
-                streamConfig.width = 1
-                streamConfig.height = 1
-            }
-        }
-
-        // Basic configuration
-        streamConfig.minimumFrameInterval = CMTime(value: 1, timescale: 30) // 30 FPS
-        streamConfig.queueDepth = 5
-        streamConfig.showsCursor = true
-        streamConfig.capturesAudio = false
-
-        // CRITICAL: Set pixel format to get raw frames
-        streamConfig.pixelFormat = kCVPixelFormatType_32BGRA
-
-        // Configure scaling behavior
-        if case .allDisplays = captureMode {
-            // For all displays, we want to capture the full virtual desktop
-            streamConfig.scalesToFit = false  // CRITICAL: Don't scale to avoid letterboxing
-            streamConfig.preservesAspectRatio = true
-            logger.info("📐 All displays mode: scalesToFit=false (to avoid letterboxing), preservesAspectRatio=true")
-        } else {
-            // No scaling for single display/window
-            streamConfig.scalesToFit = false
-            streamConfig.preservesAspectRatio = true
-            logger.info("📐 Single capture mode: scalesToFit=false, preservesAspectRatio=true")
-        }
-
-        // Color space
-        streamConfig.colorSpaceName = CGColorSpace.sRGB
-
-        // Configure source and destination rectangles to ensure full content capture
-        if case .desktop(let displayIndex) = captureMode {
-            // For desktop capture, set source rect to capture the full display
-            if displayIndex >= 0 && displayIndex < content.displays.count {
-                let display = content.displays[displayIndex]
-                // Source rect should be the full display area
-                streamConfig.sourceRect = CGRect(x: 0, y: 0, width: CGFloat(display.width), height: CGFloat(display.height))
-                // Destination rect should fill the entire output buffer
-                streamConfig.destinationRect = CGRect(x: 0, y: 0, width: CGFloat(streamConfig.width), height: CGFloat(streamConfig.height))
-                logger.info("📐 Desktop capture rects - source: \(String(describing: streamConfig.sourceRect)), dest: \(String(describing: streamConfig.destinationRect))")
-            }
-        } else if case .window(let window) = captureMode {
-            // For window capture, capture the full window content
-            streamConfig.sourceRect = CGRect(x: 0, y: 0, width: window.frame.width, height: window.frame.height)
-            streamConfig.destinationRect = CGRect(x: 0, y: 0, width: CGFloat(streamConfig.width), height: CGFloat(streamConfig.height))
-            logger.info("📐 Window capture rects - source: \(String(describing: streamConfig.sourceRect)), dest: \(String(describing: streamConfig.destinationRect))")
-        } else if case .allDisplays = captureMode {
-            // For all displays, source rect should be the combined bounds
-            streamConfig.sourceRect = filter.contentRect
-            streamConfig.destinationRect = CGRect(x: 0, y: 0, width: CGFloat(streamConfig.width), height: CGFloat(streamConfig.height))
-            logger.info("📐 All displays capture rects - source: \(String(describing: streamConfig.sourceRect)), dest: \(String(describing: streamConfig.destinationRect))")
-        } else if case .application = captureMode {
-            // For application capture, use the content rect from the filter
-            streamConfig.sourceRect = filter.contentRect
-            streamConfig.destinationRect = CGRect(x: 0, y: 0, width: CGFloat(streamConfig.width), height: CGFloat(streamConfig.height))
-            logger.info("📐 Application capture rects - source: \(String(describing: streamConfig.sourceRect)), dest: \(String(describing: streamConfig.destinationRect))")
-        }
+        // Build configuration using CaptureConfigurationBuilder
+        let streamConfig = try configBuilder.buildConfiguration(for: filter)
 
         // Log final stream configuration for debugging
         logger.info("📊 Final stream configuration:")
@@ -1142,56 +925,23 @@ public final class ScreencapService: NSObject {
                 "🪟 Capturing window: '\(window.title ?? "Untitled")' - size: \(window.frame.width)x\(window.frame.height)"
             )
 
-        // Create filter for single window
-        logger.info("📱 Creating filter for window on display")
+        // Create configuration builder
+        let configBuilder = CaptureConfigurationBuilder(shareableContent: content)
+            .setFrameRate(30)
+            .setShowsCursor(true)
+            .setCapturesAudio(false)
+            .setUse8K(use8k)
+            .setCaptureMode(.window(window))
 
-        // Find which display contains this window for proper filtering
-        let windowDisplay = content.displays.first { display in
-            display.frame.intersects(window.frame)
-        } ?? content.displays.first
-
-        guard let display = windowDisplay else {
-            throw ScreencapError.noDisplay
-        }
-
-        // Create a filter that captures just this window on its display
-        captureFilter = SCContentFilter(display: display, including: [window])
-
-        // Configure stream
+        // Build filter and configuration
+        captureFilter = try configBuilder.buildFilter()
+        
         guard let filter = captureFilter else {
             logger.error("Capture filter is nil")
             throw ScreencapError.invalidConfiguration
         }
-
-        let streamConfig = SCStreamConfiguration()
-
-        // For window capture, use the window's bounds
-        // Note: The window frame might need to be scaled for Retina displays
-        // Find the screen that contains this window
-        let windowScreen = NSScreen.screens.first { screen in
-            screen.frame.intersects(window.frame)
-        }
-        let scaleFactor = windowScreen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
-        streamConfig.width = Int(window.frame.width * scaleFactor)
-        streamConfig.height = Int(window.frame.height * scaleFactor)
         
-        logger
-            .info("🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor))")
-
-        // Basic configuration
-        streamConfig.minimumFrameInterval = CMTime(value: 1, timescale: 30) // 30 FPS
-        streamConfig.queueDepth = 5
-        streamConfig.showsCursor = true
-        streamConfig.capturesAudio = false
-
-        // CRITICAL: Set pixel format to get raw frames
-        streamConfig.pixelFormat = kCVPixelFormatType_32BGRA
-
-        // No scaling for single window
-        streamConfig.scalesToFit = false
-
-        // Color space
-        streamConfig.colorSpaceName = CGColorSpace.sRGB
+        let streamConfig = try configBuilder.buildConfiguration(for: filter)
 
         // Log final stream configuration for debugging
         logger.info("📊 Final stream configuration:")
@@ -1665,7 +1415,7 @@ public final class ScreencapService: NSObject {
         let useWarpCursor = ProcessInfo.processInfo.environment["VIBETUNNEL_USE_WARP"] == "true"
         
         logger.info("🔍 [DEBUG] calculateClickLocation - Input: x=\(x), y=\(y)")
-        logger.info("🔍 [DEBUG] Capture mode: \(String(describing: captureMode))")
+        logger.info("🔍 [DEBUG] Capture mode: \(String(describing: self.captureMode))")
         logger.info("🔍 [DEBUG] Filter content rect: origin=(\(filter.contentRect.origin.x), \(filter.contentRect.origin.y)), size=(\(filter.contentRect.width)x\(filter.contentRect.height))")
         logger.info("🔍 [DEBUG] Configuration: shouldFlipY=\(shouldFlipY), useWarpCursor=\(useWarpCursor)")
 
@@ -1771,7 +1521,7 @@ public final class ScreencapService: NSObject {
                 if pixelX >= screenFrame.origin.x && pixelX <= screenFrame.origin.x + screenFrame.width &&
                    pixelY >= screenFrame.origin.y && pixelY <= screenFrame.origin.y + screenFrame.height {
                     targetScreen = screen
-                    logger.info("🔍 [DEBUG] Found target screen containing click point: frame=\(screenFrame)")
+                    logger.info("🔍 [DEBUG] Found target screen containing click point: frame=(\(screenFrame.origin.x), \(screenFrame.origin.y), \(screenFrame.width), \(screenFrame.height))")
                     break
                 }
             }
@@ -1811,7 +1561,7 @@ public final class ScreencapService: NSObject {
         if useWarpCursor {
             logger.info("🔍 [DEBUG] Testing CGWarpMouseCursorPosition with coordinates: x=\(String(format: "%.1f", finalX)), y=\(String(format: "%.1f", finalY))")
             let warpResult = CGWarpMouseCursorPosition(CGPoint(x: finalX, y: finalY))
-            logger.info("🔍 [DEBUG] CGWarpMouseCursorPosition result: \(warpResult == kCGErrorSuccess ? "SUCCESS" : "FAILED with error \(warpResult)")")
+            logger.info("🔍 [DEBUG] CGWarpMouseCursorPosition result: \(warpResult == CGError.success ? "SUCCESS" : "FAILED with error \(warpResult.rawValue)")")
         }
         
         return CGPoint(x: finalX, y: finalY)
@@ -2246,55 +1996,6 @@ extension ScreencapService: SCStreamOutput {
         // Log only every 300 frames (10 seconds at 30fps) to reduce noise
         if frameCount.isMultiple(of: 300) {
             logger.info("📹 Frame \(frameCount) received")
-        }
-    }
-}
-
-// MARK: - Error Types
-
-enum ScreencapError: LocalizedError {
-    case noDisplay
-    case invalidWindowIndex
-    case invalidApplicationIndex
-    case invalidCaptureType
-    case failedToCreateEvent
-    case notCapturing
-    case failedToGetContent(Error)
-    case invalidConfiguration
-    case failedToStartCapture(Error)
-    case invalidCoordinates(x: Double, y: Double)
-    case permissionDenied
-    case invalidKeyInput(String)
-    case serviceNotReady
-
-    var errorDescription: String? {
-        switch self {
-        case .noDisplay:
-            "No display available"
-        case .invalidWindowIndex:
-            "Invalid window index"
-        case .invalidApplicationIndex:
-            "Invalid application index"
-        case .invalidCaptureType:
-            "Invalid capture type"
-        case .failedToCreateEvent:
-            "Failed to create input event"
-        case .notCapturing:
-            "Not currently capturing"
-        case .failedToGetContent(let error):
-            "Failed to get screen content: \(error.localizedDescription)"
-        case .permissionDenied:
-            "Screen recording permission is required. Please grant permission in System Settings > Privacy & Security > Screen Recording > VibeTunnel"
-        case .invalidConfiguration:
-            "Invalid capture configuration"
-        case .failedToStartCapture(let error):
-            "Failed to start capture: \(error.localizedDescription)"
-        case .invalidCoordinates(let x, let y):
-            "Invalid coordinates (\(x), \(y)) - must be in range 0-1000"
-        case .invalidKeyInput(let key):
-            "Invalid key input: '\(key)' - must be non-empty and <= 20 characters"
-        case .serviceNotReady:
-            "Screen capture service is not ready. Connection may still be initializing."
         }
     }
 }
