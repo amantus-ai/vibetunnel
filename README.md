@@ -129,7 +129,7 @@ The server runs as a standalone Bun executable with embedded Node.js modules, pr
 - Built-in request inspection and replay
 - Custom domains available (paid plans)
 
-**Note**: Free ngrok URLs change each time you restart the tunnel. Consider a paid plan for persistent URLs.
+**Note**: Free ngrok URLs change each time you restart the tunnel. You can claim one free static domain per user, or upgrade to a paid plan for multiple domains.
 
 ### Option 3: Local Network
 1. Set a dashboard password in settings

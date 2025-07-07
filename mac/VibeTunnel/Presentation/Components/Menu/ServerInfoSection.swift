@@ -129,25 +129,22 @@ struct ServerAddressRow: View {
             .buttonStyle(.plain)
             .pointingHandCursor()
 
-            // Copy button that appears on hover
-            if isHovered {
-                Button(action: {
-                    copyToClipboard()
-                }) {
-                    Image(systemName: showCopiedFeedback ? "checkmark.circle.fill" : "doc.on.doc")
-                        .font(.system(size: 10))
-                        .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
-                }
-                .buttonStyle(.plain)
-                .pointingHandCursor()
-                .help(showCopiedFeedback ? "Copied!" : "Copy to clipboard")
-                .transition(.scale.combined(with: .opacity))
+            // Copy button - always present but opacity changes on hover
+            Button(action: {
+                copyToClipboard()
+            }) {
+                Image(systemName: showCopiedFeedback ? "checkmark.circle.fill" : "doc.on.doc")
+                    .font(.system(size: 10))
+                    .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
             }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+            .help(showCopiedFeedback ? "Copied!" : "Copy to clipboard")
+            .opacity(isHovered ? 1.0 : 0.0)
+            .animation(.easeInOut(duration: 0.15), value: isHovered)
         }
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovered = hovering
-            }
+            isHovered = hovering
         }
     }
 

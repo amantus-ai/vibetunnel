@@ -124,6 +124,25 @@ final class SystemPermissionManager {
             requestPermission(permission)
         }
     }
+    
+    /// Force a permission recheck (useful when user manually changes settings)
+    func forcePermissionRecheck() {
+        logger.info("Force permission recheck requested")
+        
+        // Clear any cached values
+        permissions[.accessibility] = false
+        permissions[.screenRecording] = false
+        permissions[.appleScript] = false
+        
+        // Immediate check
+        Task { @MainActor in
+            await checkAllPermissions()
+            
+            // Double-check after a delay to catch any async updates
+            try? await Task.sleep(for: .milliseconds(500))
+            await checkAllPermissions()
+        }
+    }
 
     /// Show alert explaining why a permission is needed
     func showPermissionAlert(for permission: SystemPermission) {
@@ -262,27 +281,46 @@ final class SystemPermissionManager {
     private func checkAccessibilityPermission() -> Bool {
         // First check the API
         let apiResult = AXIsProcessTrusted()
-
-        // Then do a direct test - try to get the focused element
-        // This will fail if we don't actually have permission
+        logger.debug("AXIsProcessTrusted returned: \(apiResult)")
+        
+        // More comprehensive test - try to get focused application and its windows
+        // This definitely requires accessibility permission
         let systemElement = AXUIElementCreateSystemWide()
-        var focusedElement: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(
+        var focusedApp: CFTypeRef?
+        let appResult = AXUIElementCopyAttributeValue(
             systemElement,
-            kAXFocusedUIElementAttribute as CFString,
-            &focusedElement
+            kAXFocusedApplicationAttribute as CFString,
+            &focusedApp
         )
-
-        // If we can get the focused element, we truly have permission
-        if result == .success {
-            logger.debug("Accessibility permission verified through direct test")
-            return true
-        } else if apiResult {
-            // API says yes but direct test failed - permission might be pending
-            logger.debug("Accessibility API reports true but direct test failed")
-            return false
+        
+        if appResult == .success, let app = focusedApp {
+            // Try to get windows from the app - this definitely needs accessibility
+            var windows: CFTypeRef?
+            let windowResult = AXUIElementCopyAttributeValue(
+                app as! AXUIElement,
+                kAXWindowsAttribute as CFString,
+                &windows
+            )
+            
+            let hasAccess = windowResult == .success
+            logger.debug("Comprehensive accessibility test result: \(hasAccess), can get windows: \(windows != nil)")
+            
+            if hasAccess {
+                logger.debug("Accessibility permission verified through comprehensive test")
+                return true
+            } else if apiResult {
+                // API says yes but comprehensive test failed - permission not actually working
+                logger.debug("Accessibility API reports true but comprehensive test failed")
+                return false
+            }
+        } else {
+            // Can't even get focused app
+            logger.debug("Cannot get focused application - accessibility permission not granted")
+            if apiResult {
+                logger.debug("API reports true but cannot access UI elements")
+            }
         }
-
+        
         return false
     }
 
