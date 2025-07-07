@@ -668,6 +668,16 @@ public final class ScreencapService: NSObject {
             try await connectForApiHandling()
         }
 
+        // Wait for state machine to settle if we just stopped
+        if stateMachine.currentState == .stopping {
+            logger.info("📊 Waiting for stop to complete...")
+            var attempts = 0
+            while stateMachine.currentState == .stopping && attempts < 20 {
+                try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                attempts += 1
+            }
+        }
+
         // Check if we can start capture
         guard stateMachine.canPerformAction(.startCapture) else {
             logger.error("Cannot start capture in state: \(self.stateMachine.currentState)")
@@ -1000,6 +1010,29 @@ public final class ScreencapService: NSObject {
         // Stop any existing capture
         await stopCapture()
 
+        // If we're still idle, try to connect first
+        if stateMachine.currentState == .idle {
+            logger.info("📊 Service in idle state, attempting to connect first")
+            try await connectForApiHandling()
+        }
+
+        // Wait for state machine to settle if we just stopped
+        if stateMachine.currentState == .stopping {
+            logger.info("📊 Waiting for stop to complete...")
+            var attempts = 0
+            while stateMachine.currentState == .stopping && attempts < 20 {
+                try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                attempts += 1
+            }
+        }
+
+        // Check if we can start capture
+        guard stateMachine.canPerformAction(.startCapture) else {
+            logger.error("Cannot start window capture in state: \(self.stateMachine.currentState)")
+            logger.error("📊 Current state description: \(self.stateMachine.stateDescription())")
+            throw ScreencapError.serviceNotReady
+        }
+
         logger.debug("Requesting shareable content...")
         let content: SCShareableContent
         do {
@@ -1021,6 +1054,9 @@ public final class ScreencapService: NSObject {
 
         selectedWindow = window
         self.captureMode = .window(window)
+
+        // Transition to starting state
+        stateMachine.processEvent(.startCapture(mode: .window(window), useWebRTC: useWebRTC))
 
         logger
             .info(
@@ -1085,6 +1121,9 @@ public final class ScreencapService: NSObject {
             isCapturing = true
             logger.info("✅ Successfully started window capture")
 
+            // Transition to capturing state
+            stateMachine.processEvent(.captureStarted)
+
             // Start WebRTC if enabled
             if useWebRTC {
                 logger.info("🌐 Starting WebRTC capture...")
@@ -1095,6 +1134,10 @@ public final class ScreencapService: NSObject {
         } catch {
             logger.error("Failed to start capture: \(error)")
             captureStream = nil
+            
+            // Transition to error state
+            stateMachine.processEvent(.captureFailure(error))
+            
             throw ScreencapError.failedToStartCapture(error)
         }
     }
@@ -1143,19 +1186,17 @@ public final class ScreencapService: NSObject {
 
         // Store references before clearing
         let stream = captureStream
-        let webRTC = webRTCManager
 
         // Clear references
         captureStream = nil
         currentFrame = nil
-        webRTCManager = nil
         frameCounter = 0
 
         // Wait a bit for any in-flight frames to complete
         try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Stop WebRTC if active
-        if let webRTC {
+        if let webRTC = webRTCManager {
             await webRTC.stopCapture()
         }
 
@@ -1171,6 +1212,9 @@ public final class ScreencapService: NSObject {
 
         // Transition to stopped state
         stateMachine.processEvent(.captureStopped)
+        
+        // Give the state machine time to complete the transition
+        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
     }
 
     /// Get current captured frame as JPEG data

@@ -396,6 +396,7 @@ export class ControlUnixHandler {
 
     // Set browser socket in screen capture handler
     this.screenCaptureHandler.setBrowserSocket(ws);
+    this.handlers.set('screencap', this.screenCaptureHandler);
     logger.log('✅ Browser socket set in screen capture handler');
 
     // If the Mac app is already connected, we can trigger the ready sequence
