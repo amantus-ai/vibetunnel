@@ -1642,3 +1642,17 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
     opacity: 1;
   }
 }
+
+/* Disable all button transitions in session view */
+.session-view button,
+.session-header button,
+.sidebar-header button {
+  transition: none !important;
+}
+
+/* Also disable transitions on interactive elements */
+.session-view .interactive,
+.session-view .interactive-fast,
+.session-view .interactive-slow {
+  transition: none !important;
+}

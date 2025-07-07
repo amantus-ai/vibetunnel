@@ -1232,7 +1232,7 @@ export class SessionView extends LitElement {
             this.session?.status === 'exited' ? 'session-exited opacity-90' : ''
           }"
           id="terminal-container"
-          style="${this.terminalContainerHeight !== '100%' ? `height: ${this.terminalContainerHeight}; flex: none; max-height: ${this.terminalContainerHeight};` : ''} transition: all 0.3s ease-out;"
+          style="${this.terminalContainerHeight !== '100%' ? `height: ${this.terminalContainerHeight}; flex: none; max-height: ${this.terminalContainerHeight};` : ''}"
         >
           ${
             this.loadingAnimationManager.isLoading()

@@ -44,6 +44,13 @@ export class InlineEdit extends LitElement {
       height: 1em;
     }
 
+    /* Always show on touch devices */
+    @media (hover: none) and (pointer: coarse) {
+      .edit-icon {
+        opacity: 0.5;
+      }
+    }
+
     :host(:hover) .edit-icon {
       opacity: 0.5;
     }

@@ -726,8 +726,9 @@ export class VibeTunnelApp extends LitElement {
       mediaStateIsMobile: this.mediaState.isMobile,
     });
 
-    // Check if View Transitions API is supported
-    if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
+    // Check if View Transitions API is supported - DISABLED for session navigation
+    // if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
+    if (false) {
       // Debug: Check what elements have view-transition-name before transition
       logger.debug('before transition - elements with view-transition-name:');
       document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => {
