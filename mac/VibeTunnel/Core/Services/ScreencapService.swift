@@ -889,12 +889,12 @@ public final class ScreencapService: NSObject {
             // IMPORTANT: Apply scale factor to get pixel dimensions for retina displays
             streamConfig.width = Int(totalWidth * maxScaleFactor)
             streamConfig.height = Int(totalHeight * maxScaleFactor)
-            streamConfig.sourceRect = CGRect(x: minX, y: minY, width: totalWidth, height: totalHeight)
-            streamConfig.destinationRect = CGRect(x: 0, y: 0, width: totalWidth, height: totalHeight)
+            // Configure multi-display capture
+            // Note: The actual capture area is determined by the content filter
 
             logger
                 .info(
-                    "📐 Stream config: sourceRect = (\(minX), \(minY), \(totalWidth), \(totalHeight)), destinationRect = (0, 0, \(totalWidth), \(totalHeight))"
+                    "📐 Stream config: capturing all displays - total size: \(streamConfig.width)x\(streamConfig.height), bounds: (\(minX), \(minY), \(totalWidth), \(totalHeight))"
                 )
         } else if case .window(let window) = captureMode {
             // For window capture, use the window's bounds
@@ -907,14 +907,12 @@ public final class ScreencapService: NSObject {
             streamConfig.width = Int(window.frame.width * scaleFactor)
             streamConfig.height = Int(window.frame.height * scaleFactor)
 
-            // Set source and destination rectangles to capture the full window
-            streamConfig.sourceRect = CGRect(x: 0, y: 0, width: window.frame.width, height: window.frame.height)
-            streamConfig.destinationRect = CGRect(x: 0, y: 0, width: window.frame.width, height: window.frame.height)
+            // Configure window capture dimensions
+            // Note: Window bounds are handled by the content filter
 
-            let sourceRectStr = String(describing: streamConfig.sourceRect)
             logger
                 .info(
-                    "🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor)), sourceRect: \(sourceRectStr)"
+                    "🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor))"
                 )
         } else if case .desktop(let displayIndex) = captureMode {
             // For desktop capture, use the display dimensions and set proper rects
@@ -936,20 +934,15 @@ public final class ScreencapService: NSObject {
 
                 // IMPORTANT: SCDisplay dimensions are in points, not pixels
                 // For retina displays, we need to multiply by the scale factor to get actual pixels
-                streamConfig.width = Int(display.width * scaleFactor)
-                streamConfig.height = Int(display.height * scaleFactor)
+                streamConfig.width = Int(CGFloat(display.width) * scaleFactor)
+                streamConfig.height = Int(CGFloat(display.height) * scaleFactor)
 
-                // Set source rect to capture the entire display including menu bar and dock
-                // For single display capture, normalize the source rect to start at (0,0)
-                // since we're capturing just this display, not its position in the multi-monitor setup
-                streamConfig.sourceRect = CGRect(x: 0, y: 0, width: display.width, height: display.height)
-                streamConfig.destinationRect = CGRect(x: 0, y: 0, width: display.width, height: display.height)
+                // Configure the stream to capture the entire display including menu bar
+                // Note: sourceRect and destinationRect are set via content filter, not stream config
 
-                let sourceRectStr = String(describing: streamConfig.sourceRect)
-                let destRectStr = String(describing: streamConfig.destinationRect)
                 logger
                     .info(
-                        "🖥️ Desktop stream config - display: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor)), sourceRect: \(sourceRectStr), destRect: \(destRectStr)"
+                        "🖥️ Desktop stream config - display: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor))"
                     )
             } else {
                 streamConfig.width = Int(filter.contentRect.width)
@@ -965,8 +958,7 @@ public final class ScreencapService: NSObject {
                     unionRect = unionRect.union(window.frame)
                 }
 
-                // Set the stream to capture the exact bounding box of the application's windows.
-                streamConfig.sourceRect = unionRect
+                // Configure app capture dimensions
                 streamConfig.width = Int(unionRect.width)
                 streamConfig.height = Int(unionRect.height)
                 logger
@@ -992,18 +984,26 @@ public final class ScreencapService: NSObject {
         // Configure scaling behavior
         if case .allDisplays = captureMode {
             // For all displays, we want to capture the full virtual desktop
-            streamConfig.scalesToFit = true
+            streamConfig.scalesToFit = false  // CRITICAL: Don't scale to avoid letterboxing
             streamConfig.preservesAspectRatio = true
-            logger.info("📐 All displays mode: scalesToFit=true, preservesAspectRatio=true")
+            logger.info("📐 All displays mode: scalesToFit=false (to avoid letterboxing), preservesAspectRatio=true")
         } else {
             // No scaling for single display/window
             streamConfig.scalesToFit = false
+            streamConfig.preservesAspectRatio = true
+            logger.info("📐 Single capture mode: scalesToFit=false, preservesAspectRatio=true")
         }
 
         // Color space
         streamConfig.colorSpaceName = CGColorSpace.sRGB
 
-        logger.info("Stream config - size: \(streamConfig.width)x\(streamConfig.height), fps: 30")
+        // Log final stream configuration for debugging
+        logger.info("📊 Final stream configuration:")
+        logger.info("  - Output size: \(streamConfig.width)x\(streamConfig.height) pixels")
+        // Source and destination rectangles are handled by the content filter
+        logger.info("  - Scales to fit: \(streamConfig.scalesToFit)")
+        logger.info("  - Shows cursor: \(streamConfig.showsCursor)")
+        logger.info("  - FPS: 30")
 
         // Create and start stream
         let stream = SCStream(filter: filter, configuration: streamConfig, delegate: self)
@@ -1106,13 +1106,20 @@ public final class ScreencapService: NSObject {
                 "🪟 Capturing window: '\(window.title ?? "Untitled")' - size: \(window.frame.width)x\(window.frame.height)"
             )
 
-        // Create filter for single window - use a simpler approach
+        // Create filter for single window
         logger.info("📱 Creating filter for window on display")
 
-        // Create a filter with just the single window
-        captureFilter = SCContentFilter(
-            desktopIndependentWindow: window
-        )
+        // Find which display contains this window for proper filtering
+        let windowDisplay = content.displays.first { display in
+            display.frame.intersects(window.frame)
+        } ?? content.displays.first
+
+        guard let display = windowDisplay else {
+            throw ScreencapError.noDisplay
+        }
+
+        // Create a filter that captures just this window on its display
+        captureFilter = SCContentFilter(display: display, including: [window])
 
         // Configure stream
         guard let filter = captureFilter else {
@@ -1131,6 +1138,7 @@ public final class ScreencapService: NSObject {
         let scaleFactor = windowScreen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
         streamConfig.width = Int(window.frame.width * scaleFactor)
         streamConfig.height = Int(window.frame.height * scaleFactor)
+        
         logger
             .info("🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor))")
 
@@ -1149,7 +1157,13 @@ public final class ScreencapService: NSObject {
         // Color space
         streamConfig.colorSpaceName = CGColorSpace.sRGB
 
-        logger.info("Stream config - size: \(streamConfig.width)x\(streamConfig.height), fps: 30")
+        // Log final stream configuration for debugging
+        logger.info("📊 Final stream configuration:")
+        logger.info("  - Output size: \(streamConfig.width)x\(streamConfig.height) pixels")
+        // Source and destination rectangles are handled by the content filter
+        logger.info("  - Scales to fit: \(streamConfig.scalesToFit)")
+        logger.info("  - Shows cursor: \(streamConfig.showsCursor)")
+        logger.info("  - FPS: 30")
 
         // Create and start stream
         let stream = SCStream(filter: filter, configuration: streamConfig, delegate: self)
