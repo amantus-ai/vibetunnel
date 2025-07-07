@@ -100,11 +100,7 @@ export class ScreencapApiClient {
       throw new Error('WebSocket not connected');
     }
 
-    // Use crypto.randomUUID if available, otherwise fallback
-    const requestId =
-      typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const requestId = crypto.randomUUID();
 
     const request: ApiRequest = {
       type: 'api-request',
@@ -177,10 +173,7 @@ export class ScreencapApiClient {
   async startCapture(params: { type: string; index: number; webrtc?: boolean }) {
     // Generate a session ID for this capture session
     if (!this.sessionId) {
-      this.sessionId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.sessionId = crypto.randomUUID();
       logger.log(`Generated session ID: ${this.sessionId}`);
     }
     return this.request('POST', '/capture', params);
@@ -189,10 +182,7 @@ export class ScreencapApiClient {
   async captureWindow(params: { cgWindowID: number; webrtc?: boolean }) {
     // Generate a session ID for this capture session
     if (!this.sessionId) {
-      this.sessionId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.sessionId = crypto.randomUUID();
       logger.log(`Generated session ID: ${this.sessionId}`);
     }
     return this.request('POST', '/capture-window', params);

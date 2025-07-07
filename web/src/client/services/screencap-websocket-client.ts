@@ -246,10 +246,7 @@ export class ScreencapWebSocketClient {
     logger.log(`✅ WebSocket is open and ready`);
 
     // Generate request ID
-    const requestId =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const requestId = crypto.randomUUID();
 
     const request: ControlMessage = {
       id: requestId,
@@ -292,9 +289,7 @@ export class ScreencapWebSocketClient {
     }
 
     const message: ControlMessage = {
-      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: crypto.randomUUID(),
       type: 'event',
       category: 'screencap',
       action,
@@ -318,10 +313,7 @@ export class ScreencapWebSocketClient {
   async startCapture(params: { type: string; index: number; webrtc?: boolean; use8k?: boolean }) {
     // Generate a session ID for this capture session if not present
     if (!this.sessionId) {
-      this.sessionId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.sessionId = crypto.randomUUID();
       logger.log(`Generated session ID: ${this.sessionId}`);
     }
     return this.request('POST', '/capture', params);
@@ -330,10 +322,7 @@ export class ScreencapWebSocketClient {
   async captureWindow(params: { cgWindowID: number; webrtc?: boolean; use8k?: boolean }) {
     // Generate a session ID for this capture session if not present
     if (!this.sessionId) {
-      this.sessionId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.sessionId = crypto.randomUUID();
       logger.log(`Generated session ID: ${this.sessionId}`);
     }
     return this.request('POST', '/capture-window', params);

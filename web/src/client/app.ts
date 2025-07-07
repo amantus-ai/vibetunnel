@@ -1,3 +1,6 @@
+// Install crypto polyfill first - must be before any code that uses crypto.randomUUID()
+import './utils/crypto-polyfill.js';
+
 // Suppress xterm.js errors globally - must be before any other imports
 import { suppressXtermErrors } from '../shared/suppress-xterm-errors.js';
 

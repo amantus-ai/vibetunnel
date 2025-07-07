@@ -85,10 +85,7 @@ export class WebRTCHandler {
 
     // Generate session ID if not already present
     if (!this.wsClient.sessionId) {
-      this.wsClient.sessionId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.wsClient.sessionId = crypto.randomUUID();
       logger.log(`Generated session ID: ${this.wsClient.sessionId}`);
       this.onStatusUpdate?.(
         'info',
