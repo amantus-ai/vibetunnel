@@ -15,7 +15,7 @@ import { MDNSService } from '../../server/services/mdns-service';
  * - Network access for mDNS multicast
  * - May need to be skipped in CI environments without multicast support
  */
-describe('Bonjour Discovery Integration', () => {
+describe.skip('Bonjour Discovery Integration - requires actual mDNS support', () => {
   let mdnsService: MDNSService;
   let testPort: number;
   let mockServer: net.Server;
