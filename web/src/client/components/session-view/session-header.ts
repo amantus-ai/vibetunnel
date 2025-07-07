@@ -10,6 +10,7 @@ import type { Session } from '../session-list.js';
 import '../clickable-path.js';
 import './width-selector.js';
 import '../inline-edit.js';
+import '../notification-status.js';
 
 @customElement('session-header')
 export class SessionHeader extends LitElement {
@@ -39,6 +40,7 @@ export class SessionHeader extends LitElement {
   @property({ type: Function }) onWidthSelect?: (width: number) => void;
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
   @property({ type: Function }) onScreenshare?: () => void;
+  @property({ type: Function }) onOpenSettings?: () => void;
 
   private getStatusText(): string {
     if (!this.session) return '';
@@ -167,16 +169,9 @@ export class SessionHeader extends LitElement {
               />
             </svg>
           </button>
-          <button
-            class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
-            @click=${() => this.onOpenImagePicker?.()}
-            title="Upload File"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" stroke-width="2"/>
-              <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </button>
+          <notification-status
+            @open-settings=${() => this.onOpenSettings?.()}
+          ></notification-status>
           <button
             class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
             @click=${() => this.onScreenshare?.()}

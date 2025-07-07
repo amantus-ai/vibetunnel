@@ -1505,15 +1505,17 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   }
 }
 
-/* Split view sidebar animations */
+/* Split view sidebar animations - DISABLED */
 .sidebar-transition {
-  transition: width var(--vt-transition-sidebar) cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* transition: width var(--vt-transition-sidebar) cubic-bezier(0.25, 0.46, 0.45, 0.94); */
+  transition: none !important;
 }
 
-/* Mobile sessions list slide animation */
+/* Mobile sessions list slide animation - DISABLED */
 @media (max-width: 768px) {
   .mobile-sessions-sidebar {
-    transition: transform var(--vt-transition-mobile-slide) cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    /* transition: transform var(--vt-transition-mobile-slide) cubic-bezier(0.25, 0.46, 0.45, 0.94); */
+    transition: none !important;
   }
 
   .mobile-sessions-sidebar.collapsed {
