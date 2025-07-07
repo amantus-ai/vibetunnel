@@ -1112,13 +1112,18 @@ export class VibeTunnelApp extends LitElement {
     const isTestEnvironment =
       window.location.search.includes('test=true') ||
       navigator.userAgent.includes('HeadlessChrome') ||
+      navigator.userAgent.includes('Headless') ||
       // Check if running in Playwright test context
       (window as unknown as { __playwright?: unknown }).__playwright !== undefined ||
       // Check for playwright-specific user agent
-      navigator.userAgent.includes('Playwright');
+      navigator.userAgent.includes('Playwright') ||
+      // Check for common headless indicators
+      navigator.webdriver === true ||
+      // Check if running on test port
+      window.location.port === '4022';
 
     if (isTestEnvironment) {
-      logger.debug('Hot reload disabled in test environment');
+      logger.log('Hot reload disabled in test environment');
       return;
     }
 
