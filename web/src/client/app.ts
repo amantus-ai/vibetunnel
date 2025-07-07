@@ -632,8 +632,12 @@ export class VibeTunnelApp extends LitElement {
       window.location.search.includes('test=true') ||
       navigator.userAgent.includes('HeadlessChrome');
 
+    // Skip animation if we're in session detail view
+    const isInSessionDetailView = this.currentView === 'session';
+
     if (
       !isTestEnvironment &&
+      !isInSessionDetailView &&
       'startViewTransition' in document &&
       typeof document.startViewTransition === 'function'
     ) {
@@ -661,8 +665,15 @@ export class VibeTunnelApp extends LitElement {
     // Immediately hide the modal
     this.showCreateModal = false;
 
+    // Skip animation if we're in session detail view
+    const isInSessionDetailView = this.currentView === 'session';
+
     // Then apply view transition if supported (non-blocking)
-    if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
+    if (
+      !isInSessionDetailView &&
+      'startViewTransition' in document &&
+      typeof document.startViewTransition === 'function'
+    ) {
       // Add a class to prevent flicker during transition
       document.body.classList.add('modal-closing');
       // Set data attribute to indicate transition is starting

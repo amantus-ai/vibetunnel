@@ -1,6 +1,6 @@
 // (c) Anthropic PBC. All rights reserved. Use is subject to Anthropic's Commercial Terms of Service (https://www.anthropic.com/legal/commercial-terms).
 
-// Version: 1.0.43
+// Version: 1.0.44
 
 // src/entrypoints/sdk.ts
 import { spawn } from "child_process";
@@ -29,7 +29,8 @@ async function* query({
     continue: continueConversation,
     resume,
     model,
-    fallbackModel
+    fallbackModel,
+    strictMcpConfig
   } = {}
 }) {
   if (!process.env.CLAUDE_CODE_ENTRYPOINT) {
@@ -58,6 +59,9 @@ async function* query({
   }
   if (mcpServers && Object.keys(mcpServers).length > 0) {
     args.push("--mcp-config", JSON.stringify({ mcpServers }));
+  }
+  if (strictMcpConfig) {
+    args.push("--strict-mcp-config");
   }
   if (permissionMode !== "default") {
     args.push("--permission-mode", permissionMode);
