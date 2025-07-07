@@ -102,11 +102,16 @@ final class ProcessKiller {
             
             // Get process path
             var pathBuffer = Array<CChar>(repeating: 0, count: Int(MAXPATHLEN))
-            var pathSize = UInt32(MAXPATHLEN)
+            let pathSize = UInt32(MAXPATHLEN)
             
             if proc_pidpath(pid, &pathBuffer, pathSize) > 0 {
-                let path = String(cString: pathBuffer)
-                processes.append((pid: pid, path: path))
+                // Convert CChar array to String safely
+                pathBuffer.withUnsafeBufferPointer { buffer in
+                    if let baseAddress = buffer.baseAddress,
+                       let path = String(validatingCString: baseAddress) {
+                        processes.append((pid: pid, path: path))
+                    }
+                }
             }
         }
         
@@ -135,7 +140,12 @@ final class ProcessKiller {
         }
         
         // Convert to string and check for debug indicators
-        let argsString = String(cString: procargs)
+        let argsString = procargs.withUnsafeBufferPointer { buffer in
+            if let baseAddress = buffer.baseAddress {
+                return String(validatingCString: baseAddress) ?? ""
+            }
+            return ""
+        }
         
         // Check for common Xcode debug arguments
         return argsString.contains("-NSDocumentRevisionsDebugMode") ||
