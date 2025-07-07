@@ -463,7 +463,6 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				OTHER_LDFLAGS = "-Xlinker -no_warn_duplicate_libraries";
 				MARKETING_VERSION = "$(inherited)";
 				PRODUCT_BUNDLE_IDENTIFIER = sh.vibetunnel.vibetunnel.debug;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -501,7 +500,6 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				OTHER_LDFLAGS = "-Xlinker -no_warn_duplicate_libraries";
 				MARKETING_VERSION = "$(inherited)";
 				PRODUCT_BUNDLE_IDENTIFIER = sh.vibetunnel.vibetunnel;
 				PRODUCT_NAME = "$(TARGET_NAME)";
