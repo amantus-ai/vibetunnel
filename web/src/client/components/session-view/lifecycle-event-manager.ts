@@ -18,6 +18,7 @@ declare global {
 interface AppPreferences {
   useDirectKeyboard: boolean;
   showLogLink: boolean;
+  touchKeyboardPreference?: 'auto' | 'always' | 'never';
 }
 
 const logger = createLogger('lifecycle-event-manager');
@@ -38,6 +39,14 @@ export class LifecycleEventManager extends ManagerEventEmitter {
   private visualViewportHandler: (() => void) | null = null;
   private clickHandler: (() => void) | null = null;
 
+  // Touch detection results cache
+  private touchCapabilityCache: {
+    hasTouch: boolean;
+    isCoarsePointer: boolean;
+    hasFinePointer: boolean;
+    hasHover: boolean;
+  } | null = null;
+
   constructor() {
     super();
     logger.log('LifecycleEventManager initialized');
@@ -55,12 +64,83 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     this.session = session;
   }
 
+  /**
+   * Detect touch capabilities using multiple signals
+   */
+  private detectTouchCapabilities() {
+    if (this.touchCapabilityCache) {
+      return this.touchCapabilityCache;
+    }
+
+    const hasTouch =
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      ((navigator as Navigator & { msMaxTouchPoints?: number }).msMaxTouchPoints ?? 0) > 0 ||
+      window.matchMedia?.('(any-pointer: coarse)').matches === true;
+
+    const isCoarsePointer = window.matchMedia('(any-pointer: coarse)').matches;
+    const hasFinePointer = window.matchMedia('(any-pointer: fine)').matches;
+    const hasHover = window.matchMedia('(any-hover: hover)').matches;
+
+    this.touchCapabilityCache = {
+      hasTouch,
+      isCoarsePointer,
+      hasFinePointer,
+      hasHover,
+    };
+
+    logger.log('Touch capabilities detected:', this.touchCapabilityCache);
+    return this.touchCapabilityCache;
+  }
+
+  /**
+   * Determine if touch keyboard should be enabled based on capabilities and preferences
+   */
+  private shouldEnableTouchKeyboard(): boolean {
+    // Get user preference from localStorage
+    const preference = localStorage.getItem('touchKeyboardPreference') || 'auto';
+
+    if (preference === 'always') {
+      return true;
+    }
+
+    if (preference === 'never') {
+      return false;
+    }
+
+    // Auto mode: use smart detection
+    const capabilities = this.detectTouchCapabilities();
+
+    // Touch-first devices: has touch + coarse pointer + no hover
+    const isTouchFirst =
+      capabilities.hasTouch && capabilities.isCoarsePointer && !capabilities.hasHover;
+
+    // Hybrid devices: has both touch and fine pointer (Surface, iPad with trackpad, etc)
+    const isHybrid = capabilities.hasTouch && capabilities.hasFinePointer;
+
+    // For hybrid devices, also check screen size
+    const screenSize = Math.min(window.innerWidth, window.innerHeight);
+    const isSmallScreen = screenSize < 1024;
+
+    // Enable for touch-first OR hybrid with small screen
+    return isTouchFirst || (isHybrid && isSmallScreen);
+  }
+
   handlePreferencesChanged = (e: Event): void => {
     if (!this.callbacks) return;
 
     const event = e as CustomEvent;
     const preferences = event.detail as AppPreferences;
     this.callbacks.setUseDirectKeyboard(preferences.useDirectKeyboard);
+
+    // Update touch keyboard preference if provided
+    if (preferences.touchKeyboardPreference) {
+      localStorage.setItem('touchKeyboardPreference', preferences.touchKeyboardPreference);
+      // Clear cache to force re-evaluation
+      this.touchCapabilityCache = null;
+      // Re-evaluate mobile status
+      this.updateMobileStatus();
+    }
 
     // Update hidden input based on preference
     const isMobile = this.callbacks.getIsMobile();
@@ -76,28 +156,28 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     }
   };
 
-  handleWindowResize = (): void => {
+  /**
+   * Update mobile status based on current detection
+   */
+  private updateMobileStatus(): void {
     if (!this.callbacks) return;
 
-    // Re-evaluate device type on resize (for orientation changes)
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
+    const shouldEnableTouchKeyboard = this.shouldEnableTouchKeyboard();
+    const capabilities = this.detectTouchCapabilities();
 
-    // Update device type based on current window size
-    const isTablet = isMobile && window.innerWidth >= 768;
-    const isPhone = isMobile && window.innerWidth < 768;
-
-    // Update stored device type
+    // Update device type based on screen size for layout purposes
+    const screenWidth = window.innerWidth;
+    const isTablet = capabilities.hasTouch && screenWidth >= 768;
+    const isPhone = capabilities.hasTouch && screenWidth < 768;
     window.__deviceType = isTablet ? 'tablet' : isPhone ? 'phone' : 'desktop';
 
-    // Only handle state changes if mobile status actually changed
+    // Update mobile status
     const wasMobile = this.callbacks.getIsMobile();
-    if (wasMobile !== isMobile) {
-      this.callbacks.setIsMobile(isMobile);
+    if (wasMobile !== shouldEnableTouchKeyboard) {
+      this.callbacks.setIsMobile(shouldEnableTouchKeyboard);
 
       // Handle transition from mobile to non-mobile
-      if (!isMobile) {
+      if (!shouldEnableTouchKeyboard) {
         // Cleanup mobile features
         const directKeyboardManager = this.callbacks.getDirectKeyboardManager();
         if (directKeyboardManager) {
@@ -106,6 +186,16 @@ export class LifecycleEventManager extends ManagerEventEmitter {
         }
       }
     }
+  }
+
+  handleWindowResize = (): void => {
+    if (!this.callbacks) return;
+
+    // Clear cache to re-evaluate capabilities (in case of device mode changes in dev tools)
+    this.touchCapabilityCache = null;
+
+    // Update mobile status
+    this.updateMobileStatus();
   };
 
   keyboardHandler = (e: KeyboardEvent): void => {
@@ -228,20 +318,20 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       this.callbacks.startLoading();
     }
 
-    // Detect mobile devices (both phones and tablets)
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
+    // Use new touch detection logic
+    const shouldEnableTouchKeyboard = this.shouldEnableTouchKeyboard();
+    const capabilities = this.detectTouchCapabilities();
 
-    // Detect device type for keyboard layout decisions
-    // Tablets are mobile devices with larger screens (>= 768px width)
-    const isTablet = isMobile && window.innerWidth >= 768;
-    const isPhone = isMobile && window.innerWidth < 768;
+    // Update device type based on screen size for layout purposes
+    const screenWidth = window.innerWidth;
+    const isTablet = capabilities.hasTouch && screenWidth >= 768;
+    const isPhone = capabilities.hasTouch && screenWidth < 768;
+    window.__deviceType = isTablet ? 'tablet' : isPhone ? 'phone' : 'desktop';
 
-    // Store device type for later use (we'll need to pass this to terminal-quick-keys)
-    (window as any).__deviceType = isTablet ? 'tablet' : isPhone ? 'phone' : 'desktop';
+    this.callbacks.setIsMobile(shouldEnableTouchKeyboard);
 
-    this.callbacks.setIsMobile(isMobile);
+    logger.log('Touch keyboard enabled:', shouldEnableTouchKeyboard);
+    logger.log('Device type:', window.__deviceType);
 
     // Listen for preference changes
     window.addEventListener('app-preferences-changed', this.handlePreferencesChanged);
@@ -249,8 +339,8 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     // Listen for window resize to handle orientation changes and viewport size changes
     window.addEventListener('resize', this.handleWindowResize);
 
-    this.setupMobileFeatures(isMobile);
-    this.setupEventListeners(isMobile);
+    this.setupMobileFeatures(shouldEnableTouchKeyboard);
+    this.setupEventListeners(shouldEnableTouchKeyboard);
   }
 
   private setupMobileFeatures(isMobile: boolean): void {

@@ -696,6 +696,35 @@ export class SessionView extends LitElement {
     }
   }
 
+  private toggleDirectKeyboard() {
+    this.useDirectKeyboard = !this.useDirectKeyboard;
+
+    // Save preference
+    try {
+      const stored = localStorage.getItem('vibetunnel_app_preferences');
+      const preferences = stored ? JSON.parse(stored) : {};
+      preferences.useDirectKeyboard = this.useDirectKeyboard;
+      localStorage.setItem('vibetunnel_app_preferences', JSON.stringify(preferences));
+
+      // Emit preference change event
+      window.dispatchEvent(
+        new CustomEvent('app-preferences-changed', {
+          detail: preferences,
+        })
+      );
+    } catch (error) {
+      logger.error('Failed to save direct keyboard preference', error);
+    }
+
+    // Update UI
+    this.requestUpdate();
+
+    // If enabling direct keyboard on mobile, ensure hidden input
+    if (this.isMobile && this.useDirectKeyboard) {
+      this.directKeyboardManager.ensureHiddenInputVisible();
+    }
+  }
+
   private handleKeyboardButtonClick() {
     // Show quick keys immediately for visual feedback
     this.showQuickKeys = true;
@@ -1307,6 +1336,13 @@ export class SessionView extends LitElement {
                     title="Upload file"
                   >
                     📷
+                  </button>
+                  <button
+                    class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                    @click=${this.toggleDirectKeyboard}
+                    title="Switch to direct keyboard mode"
+                  >
+                    ⌨️
                   </button>
                   <button
                     class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
