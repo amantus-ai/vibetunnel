@@ -42,6 +42,12 @@ public final class ScreencapService: NSObject {
     private let frameQueue = DispatchQueue(label: "sh.vibetunnel.screencap.frame", qos: .userInitiated)
     private let sampleHandlerQueue = DispatchQueue(label: "sh.vibetunnel.screencap.sampleHandler", qos: .userInitiated)
     private var frameCounter: Int = 0
+    
+    // Reusable CIContext for better performance
+    private let ciContext = CIContext(options: [
+        .useSoftwareRenderer: false,
+        .highQualityDownsample: true
+    ])
 
     /// Icon cache
     private var iconCache: [Int32: String?] = [:] // PID -> base64 icon
@@ -852,25 +858,11 @@ public final class ScreencapService: NSObject {
             var maxX: CGFloat = -CGFloat.greatestFiniteMagnitude
             var maxY: CGFloat = -CGFloat.greatestFiniteMagnitude
 
-            // Get the maximum scale factor among all displays
-            var maxScaleFactor: CGFloat = 1.0
-
             logger.info("🖥️ Calculating bounds for \(content.displays.count) displays:")
             for (index, display) in content.displays.enumerated() {
-                // Find corresponding NSScreen to get scale factor
-                let nsScreen = NSScreen.screens.first { screen in
-                    let xMatch = abs(screen.frame.origin.x - display.frame.origin.x) < 1.0
-                    let yMatch = abs(screen.frame.origin.y - display.frame.origin.y) < 1.0
-                    let widthMatch = abs(screen.frame.width - display.frame.width) < 1.0
-                    let heightMatch = abs(screen.frame.height - display.frame.height) < 1.0
-                    return xMatch && yMatch && widthMatch && heightMatch
-                }
-                let scaleFactor = nsScreen?.backingScaleFactor ?? 2.0
-                maxScaleFactor = max(maxScaleFactor, scaleFactor)
-
                 logger
                     .info(
-                        "  Display \(index): origin=(\(display.frame.origin.x), \(display.frame.origin.y)), size=\(display.frame.width)x\(display.frame.height), scale=\(scaleFactor)"
+                        "  Display \(index): origin=(\(display.frame.origin.x), \(display.frame.origin.y)), size=\(display.frame.width)x\(display.frame.height)"
                     )
                 minX = min(minX, display.frame.origin.x)
                 minY = min(minY, display.frame.origin.y)
@@ -883,12 +875,12 @@ public final class ScreencapService: NSObject {
 
             logger
                 .info(
-                    "📐 Combined display bounds: origin=(\(minX), \(minY)), size=\(totalWidth)x\(totalHeight), maxScale=\(maxScaleFactor)"
+                    "📐 Combined display bounds: origin=(\(minX), \(minY)), size=\(totalWidth)x\(totalHeight)"
                 )
 
-            // IMPORTANT: Apply scale factor to get pixel dimensions for retina displays
-            streamConfig.width = Int(totalWidth * maxScaleFactor)
-            streamConfig.height = Int(totalHeight * maxScaleFactor)
+            // SCDisplay dimensions are already in pixels, not points - no scaling needed
+            streamConfig.width = Int(totalWidth)
+            streamConfig.height = Int(totalHeight)
             streamConfig.sourceRect = CGRect(x: minX, y: minY, width: totalWidth, height: totalHeight)
             streamConfig.destinationRect = CGRect(x: 0, y: 0, width: totalWidth, height: totalHeight)
 
@@ -898,14 +890,9 @@ public final class ScreencapService: NSObject {
                 )
         } else if case .window(let window) = captureMode {
             // For window capture, use the window's bounds
-            // Note: The window frame might need to be scaled for Retina displays
-            // Find the screen that contains this window
-            let windowScreen = NSScreen.screens.first { screen in
-                screen.frame.intersects(window.frame)
-            }
-            let scaleFactor = windowScreen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
-            streamConfig.width = Int(window.frame.width * scaleFactor)
-            streamConfig.height = Int(window.frame.height * scaleFactor)
+            // SCWindow dimensions are already in pixels, not points - no scaling needed
+            streamConfig.width = Int(window.frame.width)
+            streamConfig.height = Int(window.frame.height)
 
             // Set source and destination rectangles to capture the full window
             streamConfig.sourceRect = CGRect(x: 0, y: 0, width: window.frame.width, height: window.frame.height)
@@ -914,42 +901,27 @@ public final class ScreencapService: NSObject {
             let sourceRectStr = String(describing: streamConfig.sourceRect)
             logger
                 .info(
-                    "🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor)), sourceRect: \(sourceRectStr)"
+                    "🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height), sourceRect: \(sourceRectStr)"
                 )
         } else if case .desktop(let displayIndex) = captureMode {
             // For desktop capture, use the display dimensions and set proper rects
             if displayIndex >= 0 && displayIndex < content.displays.count {
                 let display = content.displays[displayIndex]
 
-                // Find the corresponding NSScreen to get the backing scale factor
-                let nsScreen = NSScreen.screens.first { screen in
-                    // Match by frame - SCDisplay and NSScreen should have the same frame
-                    let xMatch = abs(screen.frame.origin.x - display.frame.origin.x) < 1.0
-                    let yMatch = abs(screen.frame.origin.y - display.frame.origin.y) < 1.0
-                    let widthMatch = abs(screen.frame.width - display.frame.width) < 1.0
-                    let heightMatch = abs(screen.frame.height - display.frame.height) < 1.0
-                    return xMatch && yMatch && widthMatch && heightMatch
-                }
+                // SCDisplay dimensions are already in pixels, not points - no scaling needed
+                streamConfig.width = Int(display.width)
+                streamConfig.height = Int(display.height)
 
-                // Get the scale factor (default to 2.0 for retina if NSScreen not found)
-                let scaleFactor = nsScreen?.backingScaleFactor ?? 2.0
-
-                // IMPORTANT: SCDisplay dimensions are in points, not pixels
-                // For retina displays, we need to multiply by the scale factor to get actual pixels
-                streamConfig.width = Int(display.width * scaleFactor)
-                streamConfig.height = Int(display.height * scaleFactor)
-
-                // Set source rect to capture the entire display including menu bar and dock
-                // For single display capture, normalize the source rect to start at (0,0)
-                // since we're capturing just this display, not its position in the multi-monitor setup
-                streamConfig.sourceRect = CGRect(x: 0, y: 0, width: display.width, height: display.height)
+                // Set source rect to the display's actual frame for proper capture
+                // This handles secondary monitors correctly
+                streamConfig.sourceRect = display.frame
                 streamConfig.destinationRect = CGRect(x: 0, y: 0, width: display.width, height: display.height)
 
                 let sourceRectStr = String(describing: streamConfig.sourceRect)
                 let destRectStr = String(describing: streamConfig.destinationRect)
                 logger
                     .info(
-                        "🖥️ Desktop stream config - display: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor)), sourceRect: \(sourceRectStr), destRect: \(destRectStr)"
+                        "🖥️ Desktop stream config - display: \(streamConfig.width)x\(streamConfig.height), sourceRect: \(sourceRectStr), destRect: \(destRectStr)"
                     )
             } else {
                 streamConfig.width = Int(filter.contentRect.width)
@@ -989,16 +961,10 @@ public final class ScreencapService: NSObject {
         // CRITICAL: Set pixel format to get raw frames
         streamConfig.pixelFormat = kCVPixelFormatType_32BGRA
 
-        // Configure scaling behavior
-        if case .allDisplays = captureMode {
-            // For all displays, we want to capture the full virtual desktop
-            streamConfig.scalesToFit = true
-            streamConfig.preservesAspectRatio = true
-            logger.info("📐 All displays mode: scalesToFit=true, preservesAspectRatio=true")
-        } else {
-            // No scaling for single display/window
-            streamConfig.scalesToFit = false
-        }
+        // Configure scaling behavior - never scale, always capture at native resolution
+        streamConfig.scalesToFit = false
+        streamConfig.preservesAspectRatio = true
+        logger.info("📐 Capture mode: scalesToFit=false, preservesAspectRatio=true")
 
         // Color space
         streamConfig.colorSpaceName = CGColorSpace.sRGB
@@ -1123,16 +1089,11 @@ public final class ScreencapService: NSObject {
         let streamConfig = SCStreamConfiguration()
 
         // For window capture, use the window's bounds
-        // Note: The window frame might need to be scaled for Retina displays
-        // Find the screen that contains this window
-        let windowScreen = NSScreen.screens.first { screen in
-            screen.frame.intersects(window.frame)
-        }
-        let scaleFactor = windowScreen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
-        streamConfig.width = Int(window.frame.width * scaleFactor)
-        streamConfig.height = Int(window.frame.height * scaleFactor)
+        // SCWindow dimensions are already in pixels, not points - no scaling needed
+        streamConfig.width = Int(window.frame.width)
+        streamConfig.height = Int(window.frame.height)
         logger
-            .info("🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor))")
+            .info("🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height)")
 
         // Basic configuration
         streamConfig.minimumFrameInterval = CMTime(value: 1, timescale: 30) // 30 FPS
@@ -1279,11 +1240,10 @@ public final class ScreencapService: NSObject {
 
         logger.info("✅ Frame is available, preparing JPEG data...")
         let ciImage = CIImage(cgImage: frame)
-        let context = CIContext()
 
-        // Convert to JPEG with good quality
+        // Convert to JPEG with good quality using reusable context
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
-              let jpegData = context.jpegRepresentation(
+              let jpegData = ciContext.jpegRepresentation(
                   of: ciImage,
                   colorSpace: colorSpace,
                   options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.8]
@@ -1997,7 +1957,6 @@ extension ScreencapService: SCStreamOutput {
 
         // Convert to CGImage in the nonisolated context
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext()
 
         // Check extent is valid
         guard !ciImage.extent.isEmpty else {
@@ -2005,6 +1964,12 @@ extension ScreencapService: SCStreamOutput {
             return
         }
 
+        // We need to create a temporary context here since we can't access the instance property from nonisolated context
+        let context = CIContext(options: [
+            .useSoftwareRenderer: false,
+            .highQualityDownsample: true
+        ])
+        
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
             // Failed to create CGImage
             return

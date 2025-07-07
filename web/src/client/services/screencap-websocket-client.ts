@@ -128,7 +128,12 @@ export class ScreencapWebSocketClient {
                 logger.error('Invalid offer payload structure after decoding:', decodedPayload);
               }
             } catch (e) {
-              logger.error('Failed to decode or parse offer payload:', e, 'Payload was:', message.payload);
+              logger.error(
+                'Failed to decode or parse offer payload:',
+                e,
+                'Payload was:',
+                message.payload
+              );
             }
           }
           break;
@@ -144,7 +149,12 @@ export class ScreencapWebSocketClient {
                 logger.error('Invalid answer payload structure after decoding:', decodedPayload);
               }
             } catch (e) {
-              logger.error('Failed to decode or parse answer payload:', e, 'Payload was:', message.payload);
+              logger.error(
+                'Failed to decode or parse answer payload:',
+                e,
+                'Payload was:',
+                message.payload
+              );
             }
           }
           break;
@@ -163,7 +173,12 @@ export class ScreencapWebSocketClient {
                 );
               }
             } catch (e) {
-              logger.error('Failed to decode or parse ICE candidate payload:', e, 'Payload was:', message.payload);
+              logger.error(
+                'Failed to decode or parse ICE candidate payload:',
+                e,
+                'Payload was:',
+                message.payload
+              );
             }
           }
           break;
