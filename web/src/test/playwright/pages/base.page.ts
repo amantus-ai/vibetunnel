@@ -10,7 +10,12 @@ export class BasePage {
   }
 
   async navigate(path = '/') {
-    await this.page.goto(path, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    // Add test query parameter to help identify test environment
+    const url = new URL(path, 'http://localhost');
+    url.searchParams.set('test', 'true');
+    const finalPath = url.pathname + url.search;
+
+    await this.page.goto(finalPath, { waitUntil: 'domcontentloaded', timeout: 10000 });
 
     // Wait for app to attach
     await this.page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });

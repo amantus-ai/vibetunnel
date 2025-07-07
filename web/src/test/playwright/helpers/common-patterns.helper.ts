@@ -133,8 +133,8 @@ export async function navigateToHome(page: Page): Promise<void> {
   } else if (await homeButton.isVisible({ timeout: 1000 })) {
     await homeButton.click();
   } else {
-    // Fallback to direct navigation
-    await page.goto('/');
+    // Fallback to direct navigation with test flag
+    await page.goto('/?test=true');
   }
 
   await page.waitForLoadState('domcontentloaded');
