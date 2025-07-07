@@ -541,6 +541,24 @@ body.in-session-view .space-y-2 > div {
   animation-delay: 0s !important;
 }
 
+/* Disable all transitions on buttons in session view */
+body.in-session-view button {
+  transition: none !important;
+}
+
+/* Disable transitions on all interactive elements in session view */
+body.in-session-view .transition-all,
+body.in-session-view .transition-colors,
+body.in-session-view .transition-opacity,
+body.in-session-view .transition-transform {
+  transition: none !important;
+}
+
+/* Disable modal backdrop animation in session view */
+body.in-session-view .modal-backdrop {
+  animation: none !important;
+}
+
 /* Stagger animation when showing exited sessions */
 body.sessions-showing .session-flex-responsive > session-card:nth-child(1) {
   animation-delay: 0s;
