@@ -562,6 +562,9 @@ export class ScreencapView extends LitElement {
         this.logStatus('success', 'WebSocket connection established');
         this.logStatus('info', 'Mac app connected - loading capture sources...');
         this.status = 'ready';
+        // Load data again after connection is established to ensure fresh state
+        // The first loadInitialData() call below triggers the WebSocket connection,
+        // this second call refreshes the data once we're properly connected
         this.loadInitialData();
       };
 
@@ -574,6 +577,13 @@ export class ScreencapView extends LitElement {
 
       // Initialize WebRTC handler
       this.webrtcHandler = new WebRTCHandler(this.wsClient);
+
+      // Trigger initial connection by loading data
+      // This first call to loadInitialData() is crucial - it triggers the WebSocket connection
+      // by making API requests (loadWindows/loadDisplays) that call wsClient.request(),
+      // which in turn calls connect(). Without this, the WebSocket would never connect.
+      logger.log('🔄 Triggering initial data load to establish WebSocket connection');
+      this.loadInitialData();
     }
   }
 

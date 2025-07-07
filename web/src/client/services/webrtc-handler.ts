@@ -51,6 +51,8 @@ export class WebRTCHandler {
     message: string
   ) => void;
   private customConfig?: RTCConfiguration;
+  private hasTriggeredVP8Upgrade = false;
+  private vp8UpgradeTimeout?: number;
 
   constructor(wsClient: ScreencapWebSocketClient) {
     this.wsClient = wsClient;
@@ -120,12 +122,18 @@ export class WebRTCHandler {
       this.statsInterval = null;
     }
 
+    if (this.vp8UpgradeTimeout) {
+      clearTimeout(this.vp8UpgradeTimeout);
+      this.vp8UpgradeTimeout = undefined;
+    }
+
     if (this.peerConnection) {
       this.peerConnection.close();
       this.peerConnection = null;
     }
 
     this.remoteStream = null;
+    this.hasTriggeredVP8Upgrade = false;
   }
 
   private async setupWebRTCSignaling(): Promise<void> {
@@ -156,7 +164,7 @@ export class WebRTCHandler {
     this.onStatusUpdate?.('info', 'Creating peer connection...');
     this.peerConnection = new RTCPeerConnection(configuration);
 
-    // Configure codec preferences for H.264 and VP8
+    // Configure codec preferences for VP8 (preferred) and H.264 (fallback)
     this.peerConnection.addEventListener('track', () => {
       this.configureCodecPreferences();
     });
@@ -187,6 +195,13 @@ export class WebRTCHandler {
           break;
         case 'connected':
           this.onStatusUpdate?.('success', 'Network connection established');
+          // Schedule VP8 upgrade after initial connection stabilizes
+          if (!this.hasTriggeredVP8Upgrade && !this.vp8UpgradeTimeout) {
+            logger.log('📅 Scheduling VP8 codec upgrade in 2 seconds...');
+            this.vp8UpgradeTimeout = window.setTimeout(() => {
+              this.triggerVP8UpgradeIfNeeded();
+            }, 2000);
+          }
           break;
         case 'completed':
           this.onStatusUpdate?.('success', 'Network connection optimized');
@@ -306,15 +321,15 @@ export class WebRTCHandler {
           const existingPayloadTypes = parts.slice(3);
           const reorderedPayloadTypes: string[] = [];
 
-          // Add H.264 first
-          for (const pt of h264PayloadTypes) {
+          // Add VP8 first for better quality
+          for (const pt of vp8PayloadTypes) {
             if (existingPayloadTypes.includes(pt)) {
               reorderedPayloadTypes.push(pt);
             }
           }
 
-          // Then VP8
-          for (const pt of vp8PayloadTypes) {
+          // Then H.264 as fallback
+          for (const pt of h264PayloadTypes) {
             if (existingPayloadTypes.includes(pt) && !reorderedPayloadTypes.includes(pt)) {
               reorderedPayloadTypes.push(pt);
             }
@@ -328,7 +343,7 @@ export class WebRTCHandler {
           }
 
           modifiedLine = `${parts.slice(0, 3).join(' ')} ${reorderedPayloadTypes.join(' ')}`;
-          logger.log('Reordered video codecs: H.264 first, VP8 second');
+          logger.log('Reordered video codecs: VP8 first (preferred), H.264 second (fallback)');
         }
       }
 
@@ -336,7 +351,7 @@ export class WebRTCHandler {
     }
 
     logger.log(
-      `SDP Codec Analysis - H.264: ${h264PayloadTypes.length}, VP8: ${vp8PayloadTypes.length}`
+      `SDP Codec Analysis - VP8: ${vp8PayloadTypes.length} (preferred), H.264: ${h264PayloadTypes.length}`
     );
     return modifiedLines.join('\r\n');
   }
@@ -350,16 +365,16 @@ export class WebRTCHandler {
         // Get available codecs
         const codecs = RTCRtpReceiver.getCapabilities?.('video')?.codecs || [];
 
-        // Sort codecs: H.264 first, then VP8, then others
-        const h264Codecs = codecs.filter((codec) => codec.mimeType.toLowerCase().includes('h264'));
+        // Sort codecs: VP8 first for better quality, then H.264, then others
         const vp8Codecs = codecs.filter((codec) => codec.mimeType.toLowerCase().includes('vp8'));
+        const h264Codecs = codecs.filter((codec) => codec.mimeType.toLowerCase().includes('h264'));
         const otherCodecs = codecs.filter(
           (codec) =>
             !codec.mimeType.toLowerCase().includes('h264') &&
             !codec.mimeType.toLowerCase().includes('vp8')
         );
 
-        const orderedCodecs = [...h264Codecs, ...vp8Codecs, ...otherCodecs];
+        const orderedCodecs = [...vp8Codecs, ...h264Codecs, ...otherCodecs];
 
         if (orderedCodecs.length > 0) {
           // TypeScript doesn't have setCodecPreferences in its types yet
@@ -368,7 +383,7 @@ export class WebRTCHandler {
           };
           transceiverWithCodecPref.setCodecPreferences(orderedCodecs);
           logger.log(
-            `Configured codec preferences - H.264: ${h264Codecs.length}, VP8: ${vp8Codecs.length}`
+            `Configured codec preferences - VP8: ${vp8Codecs.length} (preferred), H.264: ${h264Codecs.length}`
           );
         }
       }
@@ -382,7 +397,7 @@ export class WebRTCHandler {
     logger.log('Original offer SDP:', offer.sdp);
     this.onStatusUpdate?.('info', 'Received connection offer from Mac app');
     try {
-      // Modify offer SDP to prefer H.264 and VP8
+      // Modify offer SDP to prefer VP8 for better quality
       const modifiedSdp = this.preferCodecsInSdp(offer.sdp || '');
       logger.log('Modified offer SDP:', modifiedSdp);
       const modifiedOffer = new RTCSessionDescription({
@@ -397,7 +412,7 @@ export class WebRTCHandler {
       this.onStatusUpdate?.('info', 'Negotiating connection parameters...');
       const answer = await this.peerConnection.createAnswer();
 
-      // Modify answer SDP to prefer H.264 and VP8
+      // Modify answer SDP to prefer VP8 for better quality
       const modifiedAnswerSdp = this.preferCodecsInSdp(answer.sdp || '');
       const modifiedAnswer = new RTCSessionDescription({
         type: answer.type,
@@ -579,6 +594,92 @@ export class WebRTCHandler {
   private lastBytesReceived?: number;
   private lastPacketsReceived?: number;
   private lastPacketsLost?: number;
+
+  /**
+   * Check current codec and trigger VP8 upgrade if needed
+   */
+  private async triggerVP8UpgradeIfNeeded(): Promise<void> {
+    if (this.hasTriggeredVP8Upgrade) return;
+
+    try {
+      const stats = await this.peerConnection?.getStats();
+      if (!stats) return;
+
+      let currentCodec = 'unknown';
+      
+      // Find the current codec being used
+      stats.forEach((report) => {
+        if (report.type === 'inbound-rtp' && 'codecId' in report) {
+          const codecReport = stats.get(report.codecId as string);
+          if (codecReport && 'mimeType' in codecReport) {
+            const mimeType = (codecReport as any).mimeType;
+            if (mimeType?.includes('video')) {
+              currentCodec = mimeType.split('/')[1]?.toUpperCase() || 'unknown';
+            }
+          }
+        }
+      });
+
+      logger.log(`🎥 Current codec: ${currentCodec}`);
+
+      // If not using VP8, force renegotiation
+      if (currentCodec !== 'VP8' && currentCodec !== 'unknown') {
+        logger.log('📈 Upgrading to VP8 codec for better quality...');
+        this.hasTriggeredVP8Upgrade = true;
+        await this.forceVP8Renegotiation();
+      } else if (currentCodec === 'VP8') {
+        logger.log('✅ Already using VP8 codec');
+        this.hasTriggeredVP8Upgrade = true;
+      }
+    } catch (error) {
+      logger.error('Failed to check codec status:', error);
+    }
+  }
+
+  /**
+   * Force renegotiation to immediately switch to VP8 codec
+   * This can be called after initial connection to speed up codec upgrade
+   */
+  async forceVP8Renegotiation(): Promise<void> {
+    if (!this.peerConnection || this.peerConnection.connectionState !== 'connected') {
+      logger.warn('Cannot force renegotiation - peer connection not ready');
+      return;
+    }
+
+    logger.log('🔄 Forcing VP8 codec renegotiation...');
+    this.onStatusUpdate?.('info', 'Optimizing video quality with VP8 codec...');
+
+    try {
+      // Reconfigure codec preferences to strongly prefer VP8
+      this.configureCodecPreferences();
+
+      // Create a new offer to trigger renegotiation
+      const offer = await this.peerConnection.createOffer();
+      
+      // Modify SDP to ensure VP8 is strongly preferred
+      const modifiedSdp = this.preferCodecsInSdp(offer.sdp || '');
+      const modifiedOffer = new RTCSessionDescription({
+        type: offer.type,
+        sdp: modifiedSdp,
+      });
+
+      await this.peerConnection.setLocalDescription(modifiedOffer);
+
+      // Send the renegotiation offer to the Mac app
+      logger.log('📤 Sending renegotiation offer to Mac');
+      this.wsClient.sendSignal('renegotiate', {
+        data: {
+          type: modifiedOffer.type,
+          sdp: modifiedOffer.sdp,
+        },
+      });
+
+      this.onStatusUpdate?.('success', 'VP8 codec negotiation initiated');
+    } catch (error) {
+      logger.error('Failed to force VP8 renegotiation:', error);
+      this.onStatusUpdate?.('error', 'Failed to optimize codec');
+    }
+  }
 
   private calculatePacketLossRate(stats: RTCInboundRtpStreamStats): number {
     const extStats = stats as ExtendedRTCInboundRtpStreamStats;
