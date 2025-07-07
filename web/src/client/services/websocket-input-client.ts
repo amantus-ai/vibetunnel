@@ -28,7 +28,9 @@ export class WebSocketInputClient {
 
   constructor() {
     this.cleanup = this.cleanup.bind(this);
-    window.addEventListener('beforeunload', this.cleanup);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', this.cleanup);
+    }
   }
 
   /**
@@ -70,15 +72,16 @@ export class WebSocketInputClient {
 
     this.isConnecting = true;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
+    const protocol = (typeof window !== 'undefined' && window.location.protocol === 'https:') ? 'wss:' : 'ws:';
+    const host = typeof window !== 'undefined' ? window.location.host : 'localhost:4020';
     const sessionId = this.session.id;
 
     // Get auth token from localStorage or use a development token
-    const authToken =
-      localStorage.getItem('vibetunnel_auth_token') ||
-      localStorage.getItem('auth_token') ||
-      `dev-token-${Date.now()}`;
+    const authToken = typeof window !== 'undefined' 
+      ? (localStorage.getItem('vibetunnel_auth_token') ||
+         localStorage.getItem('auth_token') ||
+         `dev-token-${Date.now()}`)
+      : `dev-token-${Date.now()}`;
 
     const wsUrl = `${protocol}//${host}/ws/input?sessionId=${sessionId}&token=${encodeURIComponent(authToken)}`;
 
@@ -206,7 +209,9 @@ export class WebSocketInputClient {
 
   private cleanup(): void {
     this.disconnect();
-    window.removeEventListener('beforeunload', this.cleanup);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('beforeunload', this.cleanup);
+    }
   }
 }
 

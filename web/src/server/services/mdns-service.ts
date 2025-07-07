@@ -20,7 +20,7 @@ export class MDNSService {
     }
 
     try {
-      this.bonjour = Bonjour();
+      this.bonjour = new Bonjour();
 
       // Use hostname or custom name as the instance name
       const name = instanceName || os.hostname() || 'VibeTunnel Server';

@@ -23,7 +23,9 @@ const mockBonjour = {
 };
 
 vi.mock('bonjour-service', () => ({
-  default: vi.fn().mockImplementation(() => mockBonjour),
+  default: vi.fn().mockImplementation(function() {
+    return mockBonjour;
+  }),
 }));
 
 // Mock os

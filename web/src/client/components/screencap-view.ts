@@ -136,6 +136,7 @@ export class ScreencapView extends LitElement {
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      min-width: 0; /* Allow content to shrink below its minimum content size */
     }
 
     .capture-area {
@@ -146,22 +147,27 @@ export class ScreencapView extends LitElement {
       justify-content: center;
       background: #0a0a0a;
       overflow: hidden;
+      padding: 1rem;
     }
 
     .capture-preview {
       max-width: 100%;
       max-height: 100%;
-      width: 100%;
-      height: 100%;
+      width: auto;
+      height: auto;
       display: block;
       cursor: crosshair;
       user-select: none;
       image-rendering: -webkit-optimize-contrast;
       image-rendering: crisp-edges;
+      /* Let the natural aspect ratio determine dimensions */
+      object-fit: scale-down;
     }
     
-    /* For window capture, use contain to ensure the window is fully visible and scaled up */
+    /* For window capture, ensure the window fills available space while maintaining aspect ratio */
     .capture-preview.window-mode {
+      width: 100%;
+      height: 100%;
       object-fit: contain;
       background: #000;
     }
@@ -171,11 +177,16 @@ export class ScreencapView extends LitElement {
       outline-offset: -2px;
     }
 
+    /* Desktop capture modes */
     .capture-preview.fit-contain {
+      width: 100%;
+      height: 100%;
       object-fit: contain;
     }
 
     .capture-preview.fit-cover {
+      width: 100%;
+      height: 100%;
       object-fit: cover;
     }
     
