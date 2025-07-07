@@ -730,7 +730,8 @@ public final class ScreencapService: NSObject {
                 logger.info("🔍 Creating content filter for all displays including menu bar")
 
                 // Create filter that includes the entire display content.
-                captureFilter = SCContentFilter(display: primaryDisplay, excludingWindows: [])
+                // Use excludingApplications with empty array to include all apps and windows
+                captureFilter = SCContentFilter(display: primaryDisplay, excludingApplications: [], exceptingWindows: [])
 
                 logger.info("✅ Created content filter for all displays capture including system UI")
             } else {
@@ -750,7 +751,11 @@ public final class ScreencapService: NSObject {
                     )
 
                 // Create filter to capture entire display including menu bar
-                captureFilter = SCContentFilter(display: display, excludingWindows: [])
+                // Use excludingApplications with empty array to include all apps and windows
+                captureFilter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
+                if #available(macOS 14.2, *) {
+                    //captureFilter?.includeMenuBar = true
+                }
             }
 
         case "window":
@@ -861,13 +866,18 @@ public final class ScreencapService: NSObject {
                 )
         } else if case .window(let window) = captureMode {
             // For window capture, use the window's bounds
-            // Note: The window frame might need to be scaled for Retina displays
-            let scaleFactor = NSScreen.main?.backingScaleFactor ?? 2.0
-            streamConfig.width = Int(window.frame.width * scaleFactor)
-            streamConfig.height = Int(window.frame.height * scaleFactor)
+            // SCWindow dimensions are already in the correct pixel space, no scaling needed
+            streamConfig.width = Int(window.frame.width)
+            streamConfig.height = Int(window.frame.height)
+            
+            // Set source and destination rectangles to capture the full window
+            streamConfig.sourceRect = CGRect(x: 0, y: 0, width: window.frame.width, height: window.frame.height)
+            streamConfig.destinationRect = CGRect(x: 0, y: 0, width: window.frame.width, height: window.frame.height)
+            
+            let sourceRectStr = String(describing: streamConfig.sourceRect)
             logger
                 .info(
-                    "🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height) (scale: \(scaleFactor))"
+                    "🪟 Window stream config - size: \(streamConfig.width)x\(streamConfig.height), sourceRect: \(sourceRectStr)"
                 )
         } else if case .desktop(let displayIndex) = captureMode {
             // For desktop capture, use the display dimensions and set proper rects
@@ -877,6 +887,8 @@ public final class ScreencapService: NSObject {
                 streamConfig.height = Int(display.height)
 
                 // Set source rect to capture the entire display including menu bar and dock
+                // For single display capture, normalize the source rect to start at (0,0)
+                // since we're capturing just this display, not its position in the multi-monitor setup
                 streamConfig.sourceRect = CGRect(x: 0, y: 0, width: display.width, height: display.height)
                 streamConfig.destinationRect = CGRect(x: 0, y: 0, width: display.width, height: display.height)
 

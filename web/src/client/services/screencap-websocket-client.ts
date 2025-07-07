@@ -118,40 +118,52 @@ export class ScreencapWebSocketClient {
           break;
 
         case 'offer':
-          if (this.onOffer && message.payload) {
-            // Extract the actual offer data from the payload.data structure
-            const payloadWithData = message.payload as { data?: RTCSessionDescriptionInit };
-            const offerData = payloadWithData.data;
-            if (offerData?.type && offerData.sdp) {
-              this.onOffer(offerData);
-            } else {
-              logger.error('Invalid offer payload structure:', message.payload);
+          if (this.onOffer && typeof message.payload === 'string') {
+            try {
+              const decodedPayload = JSON.parse(atob(message.payload));
+              const offerData = decodedPayload.data as RTCSessionDescriptionInit;
+              if (offerData?.type && offerData.sdp) {
+                this.onOffer(offerData);
+              } else {
+                logger.error('Invalid offer payload structure after decoding:', decodedPayload);
+              }
+            } catch (e) {
+              logger.error('Failed to decode or parse offer payload:', e, 'Payload was:', message.payload);
             }
           }
           break;
 
         case 'answer':
-          if (this.onAnswer && message.payload) {
-            // Extract the actual answer data from the payload.data structure
-            const payloadWithData = message.payload as { data?: RTCSessionDescriptionInit };
-            const answerData = payloadWithData.data;
-            if (answerData?.type && answerData.sdp) {
-              this.onAnswer(answerData);
-            } else {
-              logger.error('Invalid answer payload structure:', message.payload);
+          if (this.onAnswer && typeof message.payload === 'string') {
+            try {
+              const decodedPayload = JSON.parse(atob(message.payload));
+              const answerData = decodedPayload.data as RTCSessionDescriptionInit;
+              if (answerData?.type && answerData.sdp) {
+                this.onAnswer(answerData);
+              } else {
+                logger.error('Invalid answer payload structure after decoding:', decodedPayload);
+              }
+            } catch (e) {
+              logger.error('Failed to decode or parse answer payload:', e, 'Payload was:', message.payload);
             }
           }
           break;
 
         case 'ice-candidate':
-          if (this.onIceCandidate && message.payload) {
-            // Extract the actual ICE candidate data from the payload.data structure
-            const payloadWithData = message.payload as { data?: RTCIceCandidateInit };
-            const candidateData = payloadWithData.data;
-            if (candidateData) {
-              this.onIceCandidate(candidateData);
-            } else {
-              logger.error('Invalid ICE candidate payload structure:', message.payload);
+          if (this.onIceCandidate && typeof message.payload === 'string') {
+            try {
+              const decodedPayload = JSON.parse(atob(message.payload));
+              const candidateData = decodedPayload.data as RTCIceCandidateInit;
+              if (candidateData) {
+                this.onIceCandidate(candidateData);
+              } else {
+                logger.error(
+                  'Invalid ICE candidate payload structure after decoding:',
+                  decodedPayload
+                );
+              }
+            } catch (e) {
+              logger.error('Failed to decode or parse ICE candidate payload:', e, 'Payload was:', message.payload);
             }
           }
           break;

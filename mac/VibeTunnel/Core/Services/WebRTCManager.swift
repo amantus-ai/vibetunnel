@@ -13,7 +13,7 @@ final class WebRTCManager: NSObject {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "WebRTCManager")
 
     /// Reference to screencap service for API operations
-    private weak var screencapService: ScreencapService?
+    private let screencapService: ScreencapService?
 
     // MARK: - Properties
 
@@ -527,14 +527,14 @@ final class WebRTCManager: NSObject {
             logger.info("  - Track enabled: \(localVideoTrack.isEnabled)")
             logger.info("  - Video source exists: \(self.videoSource != nil)")
 
-            // Configure codec preferences and bitrate BEFORE adding the track
-            // This ensures the sender is configured correctly from the start.
+            // Add the track to the peer connection. This will create a transceiver.
+            peerConnection.add(localVideoTrack, streamIds: ["screen-share"])
+            logger.info("✅ Video track added to peer connection")
+
+            // Now that the transceiver is created, we can configure it.
             setInitialBitrateParameters(for: peerConnection)
             configureCodecPreferences(for: peerConnection)
 
-            peerConnection.add(localVideoTrack, streamIds: ["screen-share"])
-
-            logger.info("✅ Video track added to peer connection")
             logger.info("📡 Transceivers count: \(peerConnection.transceivers.count)")
 
             // Log transceiver details
@@ -1040,42 +1040,42 @@ final class WebRTCManager: NSObject {
 
         case ("POST", "/click"):
             guard let params = params as? [String: Any],
-                  let x = params["x"] as? Double,
-                  let y = params["y"] as? Double
+                  let x = params["x"] as? NSNumber,
+                  let y = params["y"] as? NSNumber
             else {
                 throw WebRTCError.invalidConfiguration
             }
-            try await service.sendClick(x: x, y: y)
+            try await service.sendClick(x: x.doubleValue, y: y.doubleValue)
             return ["status": "clicked"]
 
         case ("POST", "/mousedown"):
             guard let params = params as? [String: Any],
-                  let x = params["x"] as? Double,
-                  let y = params["y"] as? Double
+                  let x = params["x"] as? NSNumber,
+                  let y = params["y"] as? NSNumber
             else {
                 throw WebRTCError.invalidConfiguration
             }
-            try await service.sendMouseDown(x: x, y: y)
+            try await service.sendMouseDown(x: x.doubleValue, y: y.doubleValue)
             return ["status": "mousedown"]
 
         case ("POST", "/mousemove"):
             guard let params = params as? [String: Any],
-                  let x = params["x"] as? Double,
-                  let y = params["y"] as? Double
+                  let x = params["x"] as? NSNumber,
+                  let y = params["y"] as? NSNumber
             else {
                 throw WebRTCError.invalidConfiguration
             }
-            try await service.sendMouseMove(x: x, y: y)
+            try await service.sendMouseMove(x: x.doubleValue, y: y.doubleValue)
             return ["status": "mousemove"]
 
         case ("POST", "/mouseup"):
             guard let params = params as? [String: Any],
-                  let x = params["x"] as? Double,
-                  let y = params["y"] as? Double
+                  let x = params["x"] as? NSNumber,
+                  let y = params["y"] as? NSNumber
             else {
                 throw WebRTCError.invalidConfiguration
             }
-            try await service.sendMouseUp(x: x, y: y)
+            try await service.sendMouseUp(x: x.doubleValue, y: y.doubleValue)
             return ["status": "mouseup"]
 
         case ("POST", "/key"):
@@ -1102,16 +1102,6 @@ final class WebRTCManager: NSObject {
                 return ["frame": ""]
             }
             return ["frame": frameData.base64EncodedString()]
-
-        case ("POST", "/mousemove"):
-            guard let params = params as? [String: Any],
-                  let x = params["x"] as? Double,
-                  let y = params["y"] as? Double
-            else {
-                throw WebRTCError.invalidConfiguration
-            }
-            try await service.sendMouseMove(x: x, y: y)
-            return ["status": "mousemove"]
 
         default:
             throw WebRTCError.invalidConfiguration

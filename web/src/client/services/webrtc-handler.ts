@@ -182,7 +182,7 @@ export class WebRTCHandler {
 
     this.peerConnection.oniceconnectionstatechange = () => {
       const state = this.peerConnection?.iceConnectionState;
-      logger.log('ICE connection state:', state);
+      logger.log(`ICE connection state changed to: ${state}`);
 
       switch (state) {
         case 'checking':
@@ -196,9 +196,16 @@ export class WebRTCHandler {
           break;
         case 'failed':
           this.onStatusUpdate?.('error', 'Network connection failed');
+          logger.error(
+            'ICE connection failed. This may be due to firewall restrictions or network configuration issues.'
+          );
           break;
         case 'disconnected':
           this.onStatusUpdate?.('warning', 'Network connection lost');
+          logger.warn('ICE connection disconnected. The connection may be temporarily lost.');
+          break;
+        case 'closed':
+          this.onStatusUpdate?.('info', 'Network connection closed.');
           break;
       }
     };
@@ -227,8 +234,16 @@ export class WebRTCHandler {
     };
 
     this.peerConnection.onconnectionstatechange = () => {
-      logger.log('Connection state:', this.peerConnection?.connectionState);
-      if (this.peerConnection?.connectionState === 'failed') {
+      const state = this.peerConnection?.connectionState;
+      logger.log(`Connection state changed to: ${state}`);
+      if (state === 'failed') {
+        logger.error('WebRTC connection failed. Gathering more details...');
+        this.peerConnection?.getStats().then((stats) => {
+          logger.error(
+            'WebRTC stats at time of failure:',
+            JSON.stringify(Object.fromEntries(stats.entries()), null, 2)
+          );
+        });
         this.onError?.(new Error('WebRTC connection failed'));
       }
     };
@@ -367,10 +382,12 @@ export class WebRTCHandler {
     if (!this.peerConnection) return;
 
     logger.log('Received offer from Mac');
+    logger.log('Original offer SDP:', offer.sdp);
     this.onStatusUpdate?.('info', 'Received connection offer from Mac app');
     try {
       // Modify offer SDP to prefer H.264 and VP8
       const modifiedSdp = this.preferCodecsInSdp(offer.sdp || '');
+      logger.log('Modified offer SDP:', modifiedSdp);
       const modifiedOffer = new RTCSessionDescription({
         type: offer.type,
         sdp: modifiedSdp,
