@@ -1416,7 +1416,6 @@ export class SessionView extends LitElement {
         <terminal-quick-keys
           .visible=${this.isMobile && this.useDirectKeyboard && this.showQuickKeys}
           .onKeyPress=${this.directKeyboardManager.handleQuickKeyPress}
-          .deviceType=${window.__deviceType || 'phone'}
         ></terminal-quick-keys>
 
         <!-- File Browser Modal -->

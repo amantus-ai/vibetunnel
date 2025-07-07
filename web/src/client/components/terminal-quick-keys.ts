@@ -76,7 +76,6 @@ export class TerminalQuickKeys extends LitElement {
   ) => void;
   @property({ type: Boolean }) visible = false;
   @property({ type: Number }) keyboardHeight = 0;
-  @property({ type: String }) deviceType: 'phone' | 'tablet' | 'desktop' = 'phone';
 
   @state() private showFunctionKeys = false;
   @state() private showCtrlKeys = false;
@@ -201,201 +200,6 @@ export class TerminalQuickKeys extends LitElement {
     }
   }
 
-  private renderTabletLayout(bottomPosition: string | null) {
-    // Compact layout for tablets - essential keys only
-    type TabletKey = {
-      key: string;
-      label: string;
-      modifier?: boolean;
-      arrow?: boolean;
-      special?: boolean;
-      row?: number;
-    };
-
-    const essentialKeys: TabletKey[] = this.isLandscape
-      ? [
-          // Single row in landscape
-          { key: 'Escape', label: 'Esc' },
-          { key: 'Tab', label: 'Tab' },
-          { key: 'Control', label: 'Ctrl', modifier: true },
-          { key: 'Option', label: '⌥', modifier: true },
-          { key: 'Command', label: '⌘', modifier: true },
-          { key: 'ArrowUp', label: '↑', arrow: true },
-          { key: 'ArrowDown', label: '↓', arrow: true },
-          { key: 'ArrowLeft', label: '←', arrow: true },
-          { key: 'ArrowRight', label: '→', arrow: true },
-          { key: '/', label: '/' },
-          { key: '|', label: '|' },
-          { key: '-', label: '-' },
-          { key: 'Paste', label: 'Paste' },
-          { key: 'Done', label: 'Done', special: true },
-        ]
-      : [
-          // Two rows in portrait
-          // Row 1
-          { key: 'Escape', label: 'Esc', row: 1 },
-          { key: 'Tab', label: 'Tab', row: 1 },
-          { key: 'Control', label: 'Ctrl', modifier: true, row: 1 },
-          { key: 'ArrowUp', label: '↑', arrow: true, row: 1 },
-          { key: 'ArrowDown', label: '↓', arrow: true, row: 1 },
-          { key: 'ArrowLeft', label: '←', arrow: true, row: 1 },
-          { key: 'ArrowRight', label: '→', arrow: true, row: 1 },
-          { key: 'Paste', label: 'Paste', row: 1 },
-          // Row 2
-          { key: 'Option', label: '⌥', modifier: true, row: 2 },
-          { key: 'Command', label: '⌘', modifier: true, row: 2 },
-          { key: '/', label: '/', row: 2 },
-          { key: '|', label: '|', row: 2 },
-          { key: '-', label: '-', row: 2 },
-          { key: '`', label: '`', row: 2 },
-          { key: 'Delete', label: 'Del', row: 2 },
-          { key: 'Done', label: 'Done', special: true, row: 2 },
-        ];
-
-    return html`
-      <div 
-        class="terminal-quick-keys-container tablet-layout"
-        style=${bottomPosition ? `bottom: ${bottomPosition}` : ''}
-        @mousedown=${(e: Event) => e.preventDefault()}
-        @touchstart=${(e: Event) => e.preventDefault()}
-      >
-        <div class="quick-keys-bar compact">
-          ${
-            this.isLandscape
-              ? html`
-                <!-- Single row for landscape tablets -->
-                <div class="flex gap-1 justify-center">
-                  ${essentialKeys.map(
-                    ({ key, label, modifier, arrow, special }) => html`
-                      <button
-                        type="button"
-                        tabindex="-1"
-                        class="quick-key-btn flex-1 min-w-0 px-1 py-1 bg-dark-bg-tertiary text-dark-text text-sm font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key compact' : ''} ${special ? 'special-key' : ''}"
-                        @mousedown=${(e: Event) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                        @touchstart=${(e: Event) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (arrow) {
-                            this.startKeyRepeat(key, modifier || false, false);
-                          }
-                        }}
-                        @touchend=${(e: Event) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (arrow) {
-                            this.stopKeyRepeat();
-                          } else {
-                            this.handleKeyPress(key, modifier, special, false, e);
-                          }
-                        }}
-                        @touchcancel=${(_e: Event) => {
-                          if (arrow) {
-                            this.stopKeyRepeat();
-                          }
-                        }}
-                        @click=${(e: MouseEvent) => {
-                          if (e.detail !== 0 && !arrow) {
-                            this.handleKeyPress(key, modifier, special, false, e);
-                          }
-                        }}
-                      >
-                        ${label}
-                      </button>
-                    `
-                  )}
-                </div>
-              `
-              : html`
-                <!-- Two rows for portrait tablets -->
-                <div class="flex gap-1 justify-center mb-1">
-                  ${essentialKeys
-                    .filter((k) => k.row === 1)
-                    .map(
-                      ({ key, label, modifier, arrow, special }) => html`
-                        <button
-                          type="button"
-                          tabindex="-1"
-                          class="quick-key-btn flex-1 min-w-0 px-1 py-1.5 bg-dark-bg-tertiary text-dark-text text-sm font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key compact' : ''} ${special ? 'special-key' : ''}"
-                          @mousedown=${(e: Event) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                          @touchstart=${(e: Event) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (arrow) {
-                              this.startKeyRepeat(key, modifier || false, false);
-                            }
-                          }}
-                          @touchend=${(e: Event) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (arrow) {
-                              this.stopKeyRepeat();
-                            } else {
-                              this.handleKeyPress(key, modifier, special, false, e);
-                            }
-                          }}
-                          @touchcancel=${(_e: Event) => {
-                            if (arrow) {
-                              this.stopKeyRepeat();
-                            }
-                          }}
-                          @click=${(e: MouseEvent) => {
-                            if (e.detail !== 0 && !arrow) {
-                              this.handleKeyPress(key, modifier, special, false, e);
-                            }
-                          }}
-                        >
-                          ${label}
-                        </button>
-                      `
-                    )}
-                </div>
-                <div class="flex gap-1 justify-center">
-                  ${essentialKeys
-                    .filter((k) => k.row === 2)
-                    .map(
-                      ({ key, label, modifier, special }) => html`
-                        <button
-                          type="button"
-                          tabindex="-1"
-                          class="quick-key-btn flex-1 min-w-0 px-1 py-1.5 bg-dark-bg-tertiary text-dark-text text-sm font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${special ? 'special-key' : ''}"
-                          @mousedown=${(e: Event) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                          @touchstart=${(e: Event) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                          @touchend=${(e: Event) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.handleKeyPress(key, modifier, special, false, e);
-                          }}
-                          @click=${(e: MouseEvent) => {
-                            if (e.detail !== 0) {
-                              this.handleKeyPress(key, modifier, special, false, e);
-                            }
-                          }}
-                        >
-                          ${label}
-                        </button>
-                      `
-                    )}
-                </div>
-              `
-          }
-        </div>
-      </div>
-      ${this.renderStyles()}
-    `;
-  }
-
   private renderStyles() {
     return html`
       <style>
@@ -438,11 +242,6 @@ export class TerminalQuickKeys extends LitElement {
           box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
         }
         
-        /* Compact bar for tablets */
-        .quick-keys-bar.compact {
-          padding: 0.375rem 0.25rem;
-        }
-        
         /* Quick key buttons */
         .quick-key-btn {
           outline: none !important;
@@ -467,11 +266,6 @@ export class TerminalQuickKeys extends LitElement {
         .arrow-key {
           font-size: 1rem;
           padding: 0.375rem 0.5rem;
-        }
-        
-        .arrow-key.compact {
-          font-size: 0.875rem;
-          padding: 0.25rem 0.375rem;
         }
         
         /* Combo key styling (like ^C, ^Z) */
@@ -556,16 +350,6 @@ export class TerminalQuickKeys extends LitElement {
             padding: 0.225rem 0.45rem; /* 10% less than py-1 (0.25rem) px-0.5 */
           }
         }
-        
-        /* Tablet-specific styles */
-        .tablet-layout .quick-keys-bar.compact {
-          max-width: 100%;
-        }
-        
-        /* Adjust tablet button sizes in landscape */
-        .tablet-layout.terminal-quick-keys-container .quick-key-btn {
-          font-size: 0.875rem; /* Slightly larger than text-xs */
-        }
       </style>
     `;
   }
@@ -576,12 +360,7 @@ export class TerminalQuickKeys extends LitElement {
     // For Safari: use JavaScript-calculated position when keyboard is visible
     const bottomPosition = this.keyboardHeight > 0 ? `${this.keyboardHeight}px` : null;
 
-    // Render different layouts based on device type
-    if (this.deviceType === 'tablet') {
-      return this.renderTabletLayout(bottomPosition);
-    }
-
-    // Default phone layout
+    // Use the same layout for all mobile devices (phones and tablets)
     return html`
       <div 
         class="terminal-quick-keys-container"
