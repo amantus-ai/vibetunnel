@@ -1,20 +1,17 @@
 #!/bin/bash
 
-# Prioritize Homebrew Node.js over NVM/fnm for build reliability
-export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$PATH"
-
 # Load fnm if available
 if command -v fnm >/dev/null 2>&1; then
     eval "$(fnm env --use-on-cd=false)" 2>/dev/null || true
 fi
 
-# Load NVM if available  
+# Load NVM if available
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
     export NVM_DIR="$HOME/.nvm"
-    source "$NVM_DIR/nvm.sh"
+    source "$NVM_DIR/nvm.sh" 2>/dev/null || true
 fi
 
-# Restore Homebrew priority after version managers modify PATH
+# Set final PATH with Homebrew priority
 export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$HOME/Library/pnpm:$HOME/.bun/bin:$PATH"
 
 # Verify Node.js is available
