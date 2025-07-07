@@ -86,7 +86,18 @@ export class SessionCreateForm extends LitElement {
         },
       ],
     },
-    { label: 'gemini', command: 'gemini' },
+    {
+      label: 'gemini',
+      command: 'gemini',
+      options: [
+        {
+          name: 'yolo',
+          flag: '--yolo',
+          description: 'Enable YOLO mode',
+          default: false,
+        },
+      ],
+    },
     { label: 'zsh', command: 'zsh' },
     { label: 'python3', command: 'python3' },
     { label: 'node', command: 'node' },
