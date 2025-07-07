@@ -1,13 +1,36 @@
-import { spawnSync } from 'child_process';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FishHandler } from '../../../server/pty/fish-handler.js';
 
 // Mock child_process
 vi.mock('child_process', () => ({
-  spawnSync: vi.fn(),
+  spawn: vi.fn(),
 }));
 
-const mockSpawnSync = vi.mocked(spawnSync);
+import { spawn } from 'child_process';
+
+const mockSpawn = vi.mocked(spawn);
+
+// Helper to create mock process
+const createMockProcess = (stdout: string, exitCode: number = 0, shouldError = false) => {
+  const mockProcess = {
+    stdout: {
+      on: vi.fn((event, callback) => {
+        if (event === 'data' && !shouldError) {
+          callback(Buffer.from(stdout));
+        }
+      }),
+    },
+    on: vi.fn((event, callback) => {
+      if (event === 'close') {
+        setTimeout(() => callback(exitCode), 0);
+      } else if (event === 'error' && shouldError) {
+        setTimeout(() => callback(new Error('Process error')), 0);
+      }
+    }),
+    kill: vi.fn(),
+  };
+  return mockProcess;
+};
 
 describe('FishHandler', () => {
   let fishHandler: FishHandler;
@@ -19,119 +42,80 @@ describe('FishHandler', () => {
 
   describe('getCompletions', () => {
     it('should return empty array when fish command fails', async () => {
-      mockSpawnSync.mockReturnValue({
-        status: 1,
-        stdout: '',
-        stderr: '',
-        signal: null,
-        pid: 123,
-        output: [],
-      });
+      const mockProcess = createMockProcess('', 1);
+      mockSpawn.mockReturnValue(mockProcess);
 
       const result = await fishHandler.getCompletions('ls');
       expect(result).toEqual([]);
     });
 
     it('should return empty array when fish has no stdout', async () => {
-      mockSpawnSync.mockReturnValue({
-        status: 0,
-        stdout: '',
-        stderr: '',
-        signal: null,
-        pid: 123,
-        output: [],
-      });
+      const mockProcess = createMockProcess('', 0);
+      mockSpawn.mockReturnValue(mockProcess);
 
       const result = await fishHandler.getCompletions('ls');
       expect(result).toEqual([]);
     });
 
     it('should parse fish completions correctly', async () => {
-      mockSpawnSync.mockReturnValue({
-        status: 0,
-        stdout: 'ls\t\nls-color\tColorized ls\nls-files\tList files only\n',
-        stderr: '',
-        signal: null,
-        pid: 123,
-        output: [],
-      });
+      const mockProcess = createMockProcess(
+        'ls\t\nls-color\tColorized ls\nls-files\tList files only\n',
+        0
+      );
+      mockSpawn.mockReturnValue(mockProcess);
 
       const result = await fishHandler.getCompletions('ls');
       expect(result).toEqual(['ls-color', 'ls-files']);
     });
 
     it('should filter out the original partial command', async () => {
-      mockSpawnSync.mockReturnValue({
-        status: 0,
-        stdout: 'git\t\ngit-add\tAdd files\ngit-commit\tCommit changes\n',
-        stderr: '',
-        signal: null,
-        pid: 123,
-        output: [],
-      });
+      const mockProcess = createMockProcess(
+        'git\t\ngit-add\tAdd files\ngit-commit\tCommit changes\n',
+        0
+      );
+      mockSpawn.mockReturnValue(mockProcess);
 
       const result = await fishHandler.getCompletions('git');
       expect(result).toEqual(['git-add', 'git-commit']);
     });
 
     it('should handle empty completions gracefully', async () => {
-      mockSpawnSync.mockReturnValue({
-        status: 0,
-        stdout: '\n\n\n',
-        stderr: '',
-        signal: null,
-        pid: 123,
-        output: [],
-      });
+      const mockProcess = createMockProcess('\n\n\n', 0);
+      mockSpawn.mockReturnValue(mockProcess);
 
       const result = await fishHandler.getCompletions('nonexistent');
       expect(result).toEqual([]);
     });
 
     it('should handle fish command timeout/errors', async () => {
-      mockSpawnSync.mockImplementation(() => {
-        throw new Error('Command timeout');
-      });
+      const mockProcess = createMockProcess('', 0, true);
+      mockSpawn.mockReturnValue(mockProcess);
 
       const result = await fishHandler.getCompletions('ls');
       expect(result).toEqual([]);
     });
 
     it('should call fish with correct parameters', async () => {
-      mockSpawnSync.mockReturnValue({
-        status: 0,
-        stdout: 'test\n',
-        stderr: '',
-        signal: null,
-        pid: 123,
-        output: [],
-      });
+      const mockProcess = createMockProcess('test\n', 0);
+      mockSpawn.mockReturnValue(mockProcess);
 
       await fishHandler.getCompletions('ls /tmp', '/home/user');
 
-      expect(mockSpawnSync).toHaveBeenCalledWith('fish', ['-c', 'complete -C "ls /tmp"'], {
+      expect(mockSpawn).toHaveBeenCalledWith('fish', ['-c', 'complete -C "ls /tmp"'], {
         cwd: '/home/user',
-        encoding: 'utf8',
-        timeout: 2000,
+        stdio: ['ignore', 'pipe', 'ignore'],
       });
     });
 
     it('should use current working directory as default', async () => {
-      mockSpawnSync.mockReturnValue({
-        status: 0,
-        stdout: 'test\n',
-        stderr: '',
-        signal: null,
-        pid: 123,
-        output: [],
-      });
+      const mockProcess = createMockProcess('test\n', 0);
+      mockSpawn.mockReturnValue(mockProcess);
 
       await fishHandler.getCompletions('ls');
 
-      expect(mockSpawnSync).toHaveBeenCalledWith('fish', ['-c', 'complete -C "ls"'], {
+      expect(mockSpawn).toHaveBeenCalledWith('fish', ['-c', 'complete -C "ls"'], {
         cwd: process.cwd(),
-        encoding: 'utf8',
-        timeout: 2000,
+        stdio: ['ignore', 'pipe', 'ignore'],
       });
     });
   });
@@ -141,50 +125,40 @@ describe('FishHandler', () => {
       expect(FishHandler.isFishShell('/usr/bin/fish')).toBe(true);
       expect(FishHandler.isFishShell('/opt/homebrew/bin/fish')).toBe(true);
       expect(FishHandler.isFishShell('fish')).toBe(true);
+      expect(FishHandler.isFishShell('/usr/bin/fish3')).toBe(true);
     });
 
     it('should return false for non-fish shells', () => {
       expect(FishHandler.isFishShell('/bin/bash')).toBe(false);
       expect(FishHandler.isFishShell('/bin/zsh')).toBe(false);
       expect(FishHandler.isFishShell('/bin/sh')).toBe(false);
+      expect(FishHandler.isFishShell('/usr/bin/catfish')).toBe(false);
+      expect(FishHandler.isFishShell('/usr/bin/fisherman')).toBe(false);
     });
   });
 
   describe('getFishVersion', () => {
-    it('should return version when fish is available', () => {
-      mockSpawnSync.mockReturnValue({
-        status: 0,
-        stdout: 'fish, version 3.6.1',
-        stderr: '',
-        signal: null,
-        pid: 123,
-        output: [],
-      });
+    it('should return version when fish is available', async () => {
+      const mockProcess = createMockProcess('fish, version 3.6.1', 0);
+      mockSpawn.mockReturnValue(mockProcess);
 
-      const version = FishHandler.getFishVersion();
+      const version = await FishHandler.getFishVersion();
       expect(version).toBe('fish, version 3.6.1');
     });
 
-    it('should return null when fish is not available', () => {
-      mockSpawnSync.mockReturnValue({
-        status: 1,
-        stdout: '',
-        stderr: 'command not found',
-        signal: null,
-        pid: 123,
-        output: [],
-      });
+    it('should return null when fish is not available', async () => {
+      const mockProcess = createMockProcess('', 1);
+      mockSpawn.mockReturnValue(mockProcess);
 
-      const version = FishHandler.getFishVersion();
+      const version = await FishHandler.getFishVersion();
       expect(version).toBeNull();
     });
 
-    it('should return null when fish command throws', () => {
-      mockSpawnSync.mockImplementation(() => {
-        throw new Error('Command not found');
-      });
+    it('should return null when fish command throws', async () => {
+      const mockProcess = createMockProcess('', 0, true);
+      mockSpawn.mockReturnValue(mockProcess);
 
-      const version = FishHandler.getFishVersion();
+      const version = await FishHandler.getFishVersion();
       expect(version).toBeNull();
     });
   });
