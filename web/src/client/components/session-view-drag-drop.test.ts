@@ -48,7 +48,7 @@ describe.skip('SessionView Drag & Drop and Paste - requires browser environment'
     if (typeof document === 'undefined') {
       throw new Error('This test requires a DOM environment. Run with: pnpm run test:client');
     }
-    
+
     container = document.createElement('div');
     document.body.appendChild(container);
     container.innerHTML = '<session-view></session-view>';

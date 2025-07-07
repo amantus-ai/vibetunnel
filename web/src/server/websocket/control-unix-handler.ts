@@ -629,7 +629,9 @@ export class ControlUnixHandler {
         if (error) {
           logger.error('❌ Error writing to Mac socket:', error);
           logger.error('Error details:', {
+            // biome-ignore lint/suspicious/noExplicitAny: error object has non-standard properties
             code: (error as any).code,
+            // biome-ignore lint/suspicious/noExplicitAny: error object has non-standard properties
             syscall: (error as any).syscall,
             message: error.message,
           });

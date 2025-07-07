@@ -122,13 +122,15 @@ export class ScreencapView extends LitElement {
 
     .sidebar {
       width: 320px;
-      transition: width 0.3s ease;
+      transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), margin-left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       overflow: hidden;
       flex-shrink: 0;
+      position: relative;
     }
 
     .sidebar.collapsed {
-      width: 0;
+      transform: translateX(-100%);
+      margin-left: -320px;
     }
 
     .content {
@@ -244,6 +246,23 @@ export class ScreencapView extends LitElement {
       gap: 0.5rem;
       color: #10B981;
       border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: #a3a3a3;
+      cursor: pointer;
+      padding: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+      margin-right: 0.5rem;
+    }
+
+    .back-btn:hover {
+      color: #10B981;
     }
 
     .toggle-btn {
@@ -1066,6 +1085,18 @@ export class ScreencapView extends LitElement {
   render() {
     return html`
       <div class="header">
+        <button 
+          class="back-btn"
+          @click=${() => {
+            window.location.href = '/';
+          }}
+          title="Back to sessions"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"/>
+          </svg>
+        </button>
+        
         <button 
           class="toggle-btn ${this.sidebarCollapsed ? '' : 'active'}"
           @click=${this.toggleSidebar}

@@ -787,6 +787,16 @@ final class WebRTCManager: NSObject {
             // This request asks for displays and processes data
             await handleGetInitialData(json)
 
+        case "initial-data":
+            logger.info("📥 Processing initial-data message")
+            // This is the response message that gets forwarded to the browser
+            // It's already been sent, so we can safely ignore it here
+
+        case "initial-data-error":
+            logger.info("📥 Processing initial-data-error message")
+            // This is an error response that gets forwarded to the browser
+            // It's already been sent, so we can safely ignore it here
+
         default:
             logger.warning("⚠️ Unknown signal type: \(type)")
             logger.warning("  Full message: \(json)")

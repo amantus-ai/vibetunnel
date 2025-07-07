@@ -87,8 +87,8 @@ describe('vt title Command Integration', () => {
     env.HOME = mockHome;
 
     // Run vibetunnel directly with --update-title flag (what vt script would call)
-    const { stdout, stderr } = await execAsync(
-      `${vibetunnelPath} fwd --update-title "Updated Title" --session-id "${sessionId}"`, 
+    const { stderr } = await execAsync(
+      `${vibetunnelPath} fwd --update-title "Updated Title" --session-id "${sessionId}"`,
       { env }
     );
 
@@ -155,7 +155,7 @@ describe('vt title Command Integration', () => {
     for (const title of specialTitles) {
       // Run vibetunnel directly
       const { stderr } = await execAsync(
-        `${vibetunnelPath} fwd --update-title "${title.replace(/"/g, '\\"')}" --session-id "${sessionId}"`, 
+        `${vibetunnelPath} fwd --update-title "${title.replace(/"/g, '\\"')}" --session-id "${sessionId}"`,
         { env }
       );
 
@@ -180,10 +180,9 @@ describe('vt title Command Integration', () => {
 
     // Run vibetunnel directly
     try {
-      await execAsync(
-        `${vibetunnelPath} fwd --update-title "Test" --session-id "${sessionId}"`, 
-        { env }
-      );
+      await execAsync(`${vibetunnelPath} fwd --update-title "Test" --session-id "${sessionId}"`, {
+        env,
+      });
       expect.fail('Should have failed');
     } catch (error) {
       const execError = error as { code?: number; stderr?: string };
@@ -226,7 +225,7 @@ describe('vt title Command Integration', () => {
 
     // Run vibetunnel directly (fwd doesn't use jq/sed, it updates directly)
     const { stderr } = await execAsync(
-      `${vibetunnelPath} fwd --update-title "Sed Fallback Test" --session-id "${sessionId}"`, 
+      `${vibetunnelPath} fwd --update-title "Sed Fallback Test" --session-id "${sessionId}"`,
       { env }
     );
 
@@ -271,7 +270,7 @@ describe('vt title Command Integration', () => {
     for (let i = 0; i < 10; i++) {
       promises.push(
         execAsync(
-          `${vibetunnelPath} fwd --update-title "Concurrent Update ${i}" --session-id "${sessionId}"`, 
+          `${vibetunnelPath} fwd --update-title "Concurrent Update ${i}" --session-id "${sessionId}"`,
           { env }
         )
       );
@@ -281,7 +280,7 @@ describe('vt title Command Integration', () => {
     const results = await Promise.allSettled(promises);
 
     // At least some should succeed
-    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
     expect(succeeded).toBeGreaterThan(0);
 
     // Final state should be one of the updates

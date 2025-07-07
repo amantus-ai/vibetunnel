@@ -1,11 +1,14 @@
 import os from 'node:os';
+
 const BonjourLib = require('bonjour-service');
+
 import type { Service } from 'bonjour-service';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('mdns-service');
 
 export class MDNSService {
+  // biome-ignore lint/suspicious/noExplicitAny: bonjour-service doesn't export proper types
   private bonjour: any = null;
   private service: Service | null = null;
   private isAdvertising = false;
