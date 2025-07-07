@@ -459,12 +459,9 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 VibeTunnel Team. All rights reserved.";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/../Frameworks",
-				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				OTHER_LDFLAGS = "-Wl,-no_warn_duplicate_libraries";
 				MARKETING_VERSION = "$(inherited)";
+				OTHER_LDFLAGS = "-Wl,-no_warn_duplicate_libraries";
 				PRODUCT_BUNDLE_IDENTIFIER = sh.vibetunnel.vibetunnel.debug;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -497,12 +494,9 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 VibeTunnel Team. All rights reserved.";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/../Frameworks",
-				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				OTHER_LDFLAGS = "-Wl,-no_warn_duplicate_libraries";
 				MARKETING_VERSION = "$(inherited)";
+				OTHER_LDFLAGS = "-Wl,-no_warn_duplicate_libraries";
 				PRODUCT_BUNDLE_IDENTIFIER = sh.vibetunnel.vibetunnel;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

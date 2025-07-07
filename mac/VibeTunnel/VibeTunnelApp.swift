@@ -146,6 +146,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                 processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil
         #endif
 
+        // Kill other VibeTunnel instances FIRST, before any other initialization
+        // This ensures only the newest instance survives and prevents Unix socket conflicts
+        if !isRunningInTests && !isRunningInPreview {
+            ProcessKiller.killOtherInstances()
+        }
+
         // Handle single instance check before doing anything else
         #if DEBUG
         // Skip single instance check in debug builds
