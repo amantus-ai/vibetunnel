@@ -129,6 +129,10 @@ filter_build_output() {
         # Build tool information messages
         'gyp info spawn args'
         '\.\.\.\/node_modules\/.*install:'
+        
+        # ESBuild bundle size warnings
+        'exceeds recommended size limit'
+        'This can impact web performance'
     )
     
     # Combine patterns with OR operator
