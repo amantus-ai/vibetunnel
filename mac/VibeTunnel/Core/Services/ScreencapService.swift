@@ -768,7 +768,7 @@ public final class ScreencapService: NSObject {
                 // Use excludingApplications with empty array to include all apps and windows
                 captureFilter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
                 if #available(macOS 14.2, *) {
-                    // captureFilter?.includeMenuBar = true
+                    captureFilter?.includeMenuBar = true
                 }
             }
 

@@ -26,6 +26,8 @@ const commonOptions = {
   plugins: [monacoPlugin],
   // Allow importing from node_modules without issues
   mainFields: ['module', 'main'],
+  // Suppress large bundle warnings
+  logLimit: 0,
   tsconfigRaw: {
     compilerOptions: {
       experimentalDecorators: true,
