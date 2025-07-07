@@ -818,6 +818,7 @@ public final class ScreencapService: NSObject {
         // Log final stream configuration for debugging
         logger.info("📊 Final stream configuration:")
         logger.info("  - Output size: \(streamConfig.width)x\(streamConfig.height) pixels")
+        logger.info("  - Pixel format: \(streamConfig.pixelFormat) (32BGRA = \(kCVPixelFormatType_32BGRA))")
         logger.info("  - Source rect: \(String(describing: streamConfig.sourceRect))")
         logger.info("  - Destination rect: \(String(describing: streamConfig.destinationRect))")
         logger.info("  - Scales to fit: \(streamConfig.scalesToFit)")
