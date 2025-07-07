@@ -810,7 +810,7 @@ final class UnixSocketConnection {
         while receiveBuffer.count >= 4 {
             // Read the message length header (4 bytes, big-endian UInt32)
             let messageLength = receiveBuffer.prefix(4)
-                .withUnsafeBytes { $0.loadUnaligned(as: UInt32.self).bigEndian }
+                .withUnsafeBytes { UInt32(bigEndian: $0.loadUnaligned(as: UInt32.self)) }
             
             logger.debug("📏 Next message length from header: \(messageLength) bytes")
 
