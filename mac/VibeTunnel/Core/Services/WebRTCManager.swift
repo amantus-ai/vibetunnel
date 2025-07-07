@@ -40,7 +40,7 @@ final class WebRTCManager: NSObject {
     private var statsTimer: Timer?
     private var currentBitrate: Int = 40_000_000 // Start at 40 Mbps
     private var targetBitrate: Int = 40_000_000
-    private let minBitrate: Int = 1_000_000 // 1 Mbps minimum
+    private let minBitrate: Int = 5_000_000 // 5 Mbps minimum for better quality
     private let maxBitrate: Int = 50_000_000 // 50 Mbps maximum
     private var lastPacketLoss: Double = 0.0
     private var lastRtt: Double = 0.0

@@ -270,7 +270,35 @@ public final class CaptureConfigurationBuilder {
             logger.info("  - Application dimensions: \(dimensions.width)x\(dimensions.height)")
         }
 
-        return dimensions
+        // Limit resolution to 4K to prevent web interface clipping on high-res displays
+        let limitedDimensions = limitTo4K(width: dimensions.width, height: dimensions.height)
+        if limitedDimensions.width != dimensions.width || limitedDimensions.height != dimensions.height {
+            logger.info("  - Limited to 4K: \(limitedDimensions.width)x\(limitedDimensions.height)")
+        }
+
+        return limitedDimensions
+    }
+    
+    private func limitTo4K(width: Int, height: Int) -> (width: Int, height: Int) {
+        let max4KWidth = 3840
+        let max4KHeight = 2160
+        
+        // If already within 4K bounds, return as is
+        if width <= max4KWidth && height <= max4KHeight {
+            return (width, height)
+        }
+        
+        // Calculate scale factor to fit within 4K bounds while maintaining aspect ratio
+        let widthScale = Double(max4KWidth) / Double(width)
+        let heightScale = Double(max4KHeight) / Double(height)
+        let scale = min(widthScale, heightScale)
+        
+        let scaledWidth = Int(Double(width) * scale)
+        let scaledHeight = Int(Double(height) * scale)
+        
+        logger.info("🔽 Scaling down from \(width)x\(height) to \(scaledWidth)x\(scaledHeight) (scale: \(String(format: "%.2f", scale)))")
+        
+        return (width: scaledWidth, height: scaledHeight)
     }
 
     private func calculateAllDisplaysDimensions(content: SCShareableContent) -> (width: Int, height: Int) {

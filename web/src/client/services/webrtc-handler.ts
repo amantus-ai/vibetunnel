@@ -291,6 +291,7 @@ export class WebRTCHandler {
     const h264PayloadTypes: string[] = [];
     const vp8PayloadTypes: string[] = [];
     const otherPayloadTypes: string[] = [];
+    let inVideoSection = false;
 
     // First pass: find codec payload types
     for (const line of lines) {
@@ -311,11 +312,15 @@ export class WebRTCHandler {
       }
     }
 
-    // Second pass: modify m=video line to reorder codecs
+    // Second pass: modify m=video line to reorder codecs and add bandwidth
     for (const line of lines) {
       let modifiedLine = line;
 
-      if (line.startsWith('m=video')) {
+      // Track video section
+      if (line.startsWith('m=audio')) {
+        inVideoSection = false;
+      } else if (line.startsWith('m=video')) {
+        inVideoSection = true;
         const parts = line.split(' ');
         if (parts.length > 3) {
           const existingPayloadTypes = parts.slice(3);
@@ -348,6 +353,14 @@ export class WebRTCHandler {
       }
 
       modifiedLines.push(modifiedLine);
+
+      // Add bandwidth constraint after video m-line to start with higher bitrate
+      if (inVideoSection && line.startsWith('m=video')) {
+        // Start with 5 Mbps instead of default 1 Mbps
+        const initialBitrate = 5000; // 5000 kbps = 5 Mbps
+        modifiedLines.push(`b=AS:${initialBitrate}`);
+        logger.log(`📈 Added initial bandwidth constraint: ${initialBitrate / 1000} Mbps`);
+      }
     }
 
     logger.log(
@@ -606,13 +619,13 @@ export class WebRTCHandler {
       if (!stats) return;
 
       let currentCodec = 'unknown';
-      
+
       // Find the current codec being used
       stats.forEach((report) => {
         if (report.type === 'inbound-rtp' && 'codecId' in report) {
           const codecReport = stats.get(report.codecId as string);
           if (codecReport && 'mimeType' in codecReport) {
-            const mimeType = (codecReport as any).mimeType;
+            const mimeType = (codecReport as CodecStats).mimeType;
             if (mimeType?.includes('video')) {
               currentCodec = mimeType.split('/')[1]?.toUpperCase() || 'unknown';
             }
@@ -655,7 +668,7 @@ export class WebRTCHandler {
 
       // Create a new offer to trigger renegotiation
       const offer = await this.peerConnection.createOffer();
-      
+
       // Modify SDP to ensure VP8 is strongly preferred
       const modifiedSdp = this.preferCodecsInSdp(offer.sdp || '');
       const modifiedOffer = new RTCSessionDescription({
@@ -719,8 +732,9 @@ export class WebRTCHandler {
       const adjustment = shouldReduceBitrate ? 0.8 : 1.2; // 20% adjustment
       const newBitrate = Math.round(stats.bitrate * adjustment);
 
-      // Ensure we have a reasonable bitrate range (1 Mbps to 50 Mbps)
-      const clampedBitrate = Math.max(1_000_000, Math.min(50_000_000, newBitrate));
+      // Ensure we have a reasonable bitrate range (5 Mbps to 50 Mbps)
+      // Increased minimum from 1 Mbps to 5 Mbps for better quality
+      const clampedBitrate = Math.max(5_000_000, Math.min(50_000_000, newBitrate));
 
       logger.log(
         `Adjusting bitrate: ${stats.bitrate} -> ${clampedBitrate} (${shouldReduceBitrate ? 'reduce' : 'increase'})`
