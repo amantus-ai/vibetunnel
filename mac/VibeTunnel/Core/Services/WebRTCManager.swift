@@ -782,8 +782,103 @@ final class WebRTCManager: NSObject {
             // This message is forwarded from the browser but can be safely ignored here
             logger.debug("Received bitrate adjustment notification (handled via data channel)")
 
+        case "get-initial-data":
+            logger.info("📥 Received get-initial-data request")
+            // This request asks for displays and processes data
+            await handleGetInitialData(json)
+
         default:
-            logger.warning("Unknown signal type: \(type)")
+            logger.warning("⚠️ Unknown signal type: \(type)")
+            logger.warning("  Full message: \(json)")
+            // Log the unhandled message details for debugging
+            if let jsonData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                logger.warning("  Unhandled message JSON:\n\(jsonString)")
+            }
+        }
+    }
+
+    private func handleGetInitialData(_ json: [String: Any]) async {
+        logger.info("🔍 Processing get-initial-data request")
+        
+        // Extract request ID if present
+        let requestId = json["requestId"] as? String
+        
+        guard let service = screencapService else {
+            logger.error("❌ No screencapService available for initial data")
+            return
+        }
+        
+        do {
+            logger.info("📊 Fetching displays and processes...")
+            
+            // Fetch displays
+            let displays = try await service.getDisplays()
+            let displayList = try displays.map { display in
+                let encoder = JSONEncoder()
+                let data = try encoder.encode(display)
+                return try JSONSerialization.jsonObject(with: data, options: [])
+            }
+            logger.info("✅ Got \(displays.count) displays")
+            
+            // Fetch processes
+            let processGroups = try await service.getProcessGroups()
+            let processes = try processGroups.map { group in
+                let encoder = JSONEncoder()
+                let data = try encoder.encode(group)
+                return try JSONSerialization.jsonObject(with: data, options: [])
+            }
+            logger.info("✅ Got \(processGroups.count) process groups")
+            
+            // Send response with both displays and processes
+            let responseData: [String: Any] = [
+                "displays": displayList,
+                "processes": processes
+            ]
+            
+            let message: ControlProtocol.ControlMessage
+            if let requestId = requestId {
+                // If there's a request ID, create a response
+                message = ControlProtocol.createResponse(
+                    to: ControlProtocol.ControlMessage(
+                        id: requestId,
+                        type: .request,
+                        category: .screencap,
+                        action: "get-initial-data"
+                    ),
+                    payload: responseData,
+                    overrideAction: "initial-data"
+                )
+            } else {
+                // Otherwise create an event
+                message = ControlProtocol.createEvent(
+                    category: .screencap,
+                    action: "initial-data",
+                    payload: responseData
+                )
+            }
+            
+            await sendControlMessage(message)
+            logger.info("📤 Sent initial data response")
+            
+        } catch {
+            logger.error("❌ Failed to get initial data: \(error)")
+            
+            // Send error response if we have a request ID
+            if let requestId = requestId {
+                let errorResponse = ScreencapErrorResponse.from(error)
+                let message = ControlProtocol.createResponse(
+                    to: ControlProtocol.ControlMessage(
+                        id: requestId,
+                        type: .request,
+                        category: .screencap,
+                        action: "get-initial-data"
+                    ),
+                    error: errorResponse.message,
+                    overrideAction: "initial-data-error"
+                )
+                await sendControlMessage(message)
+            }
         }
     }
 

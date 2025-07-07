@@ -282,8 +282,15 @@ final class UnixSocketConnection {
 
     /// Send a message with automatic retry on failure
     func send(_ message: some Encodable) async throws {
+        logger.info("📤 Sending control message...")
         let encoder = JSONEncoder()
         let data = try encoder.encode(message)
+        
+        // Log the message content for debugging
+        if let str = String(data: data, encoding: .utf8) {
+            logger.info("📤 Message content: \(String(str.prefix(500)))")
+        }
+        
         try await sendData(data)
     }
 
@@ -765,7 +772,10 @@ final class UnixSocketConnection {
                 } else if bytesRead == 0 {
                     // Connection closed
                     Task { @MainActor in
-                        self.logger.warning("Connection closed by peer")
+                        self.logger.warning("⚠️ Connection closed by peer (recv returned 0)")
+                        self.logger.warning("  Socket FD: \(self.socketFD)")
+                        self.logger.warning("  Was connected: \(self.isConnected)")
+                        self.logger.warning("  Receive buffer had \(self.receiveBuffer.count) bytes")
                         self.handleConnectionError(UnixSocketError.connectionClosed)
                     }
                 } else {
@@ -792,13 +802,17 @@ final class UnixSocketConnection {
 
     /// Process received data with proper message framing
     private func processReceivedData(_ data: Data) {
+        logger.debug("📥 Received \(data.count) bytes of data")
         receiveBuffer.append(data)
+        logger.debug("📦 Buffer now contains \(self.receiveBuffer.count) bytes")
 
         // Process as many messages as we can from the buffer
         while receiveBuffer.count >= 4 {
             // Read the message length header (4 bytes, big-endian UInt32)
             let messageLength = receiveBuffer.prefix(4)
                 .withUnsafeBytes { $0.loadUnaligned(as: UInt32.self).bigEndian }
+            
+            logger.debug("📏 Next message length from header: \(messageLength) bytes")
 
             // Check against reasonable upper bound to guard against corrupted headers
             guard messageLength < 1_000_000 else { // 1MB max message size
@@ -831,9 +845,14 @@ final class UnixSocketConnection {
             // Deliver the complete message
             logger.info("📨 Delivering message of size \(body.count) bytes")
             if let str = String(data: body, encoding: .utf8) {
-                logger.info("📨 Message content: \(String(str.prefix(200)))")
+                logger.info("📨 Message content: \(String(str.prefix(500)))")
             }
-            onMessage?(body)
+            
+            if let handler = onMessage {
+                handler(body)
+            } else {
+                logger.warning("⚠️ No message handler registered - message will be dropped!")
+            }
         }
 
         // If buffer grows too large, clear it to prevent memory issues

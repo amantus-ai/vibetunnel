@@ -99,8 +99,12 @@ class ScreenCaptureHandler implements MessageHandler {
         // Mac app connected and ready
         if (this.browserSocket) {
           this.sendToBrowser(createControlEvent('screencap', 'ready', 'Mac peer connected'));
-          // Request initial data
-          this.requestInitialData();
+          // Request initial data with a small delay to ensure Mac is ready
+          logger.log('⏱️ Scheduling initial data request with 100ms delay');
+          setTimeout(() => {
+            logger.log('⏰ Delay complete, now requesting initial data');
+            this.requestInitialData();
+          }, 100);
         }
         return null; // No response needed
 
@@ -161,9 +165,11 @@ class ScreenCaptureHandler implements MessageHandler {
   }
 
   private requestInitialData(): void {
-    logger.log('Requesting initial data from Mac...');
+    logger.log('📤 Requesting initial data from Mac...');
     const request = createControlMessage('screencap', 'get-initial-data', {});
+    logger.log(`📝 Initial data request: ${JSON.stringify(request)}`);
     this.controlUnixHandler.sendToMac(request);
+    logger.log('✅ Initial data request sent');
   }
 }
 
@@ -262,26 +268,27 @@ export class ControlUnixHandler {
   }
 
   private handleMacConnection(socket: net.Socket) {
-    logger.log('New Mac connection via UNIX socket');
+    logger.log('🔌 New Mac connection via UNIX socket');
+    logger.log(`🔍 Socket info: local=${socket.localAddress}, remote=${socket.remoteAddress}`);
 
     // Close any existing Mac connection
     if (this.macSocket) {
-      logger.log('Closing existing Mac connection');
+      logger.log('⚠️ Closing existing Mac connection');
       this.macSocket.destroy();
     }
 
     this.macSocket = socket;
+    logger.log('✅ Mac socket stored');
 
     // If a browser is already connected, we can now trigger the ready sequence
     if (this.screenCaptureHandler.isBrowserConnected()) {
-      logger.log('Browser is already connected, sending mac-ready event.');
+      logger.log('🌐 Browser is already connected, sending mac-ready event.');
       this.screenCaptureHandler.handleMessage(createControlEvent('screencap', 'mac-ready'));
     }
 
-    // ... (rest of the function is the same)
-
     // Set socket options for better handling of large messages
     socket.setNoDelay(true); // Disable Nagle's algorithm for lower latency
+    logger.log('✅ Socket options set: NoDelay=true');
 
     // Increase the buffer size for receiving large messages
     const bufferSize = 1024 * 1024; // 1MB
@@ -302,8 +309,14 @@ export class ControlUnixHandler {
       this.messageBuffer = Buffer.concat([this.messageBuffer, data]);
 
       logger.log(
-        `Received from Mac: ${data.length} bytes, buffer size: ${this.messageBuffer.length}`
+        `📥 Received from Mac: ${data.length} bytes, buffer size: ${this.messageBuffer.length}`
       );
+      
+      // Log first few bytes for debugging
+      if (data.length > 0) {
+        const preview = data.subarray(0, Math.min(data.length, 50));
+        logger.debug(`📋 Data preview (first ${preview.length} bytes):`, preview.toString('hex'));
+      }
 
       // Process as many messages as we can from the buffer
       while (true) {
@@ -348,10 +361,15 @@ export class ControlUnixHandler {
         this.messageBuffer = this.messageBuffer.subarray(4 + messageLength);
 
         try {
-          const message: ControlMessage = JSON.parse(messageData.toString('utf-8'));
+          const messageStr = messageData.toString('utf-8');
+          logger.debug(`📨 Parsing message (${messageLength} bytes): ${messageStr.substring(0, 100)}...`);
+          
+          const message: ControlMessage = JSON.parse(messageStr);
+          logger.log(`✅ Parsed Mac message: category=${message.category}, action=${message.action}, id=${message.id}`);
+          
           this.handleMacMessage(message);
         } catch (error) {
-          logger.error('Failed to parse Mac message:', error);
+          logger.error('❌ Failed to parse Mac message:', error);
           logger.error('Message length:', messageLength);
           logger.error('Raw message buffer:', messageData.toString('utf-8'));
         }
@@ -359,19 +377,28 @@ export class ControlUnixHandler {
     });
 
     socket.on('error', (error) => {
-      logger.error('Mac socket error:', error);
+      logger.error('❌ Mac socket error:', error);
       const errorObj = error as NodeJS.ErrnoException;
       logger.error('Error details:', {
         code: errorObj.code,
         syscall: errorObj.syscall,
         errno: errorObj.errno,
+        message: errorObj.message,
       });
+      
+      // Check if it's a write-related error
+      if (errorObj.code === 'EPIPE' || errorObj.code === 'ECONNRESET') {
+        logger.error('🔴 Connection broken - Mac app likely closed the connection');
+      }
     });
 
     socket.on('close', (hadError) => {
-      logger.log(`Mac disconnected (hadError: ${hadError})`);
+      logger.log(`🔌 Mac disconnected (hadError: ${hadError})`);
+      logger.log(`📊 Socket state: destroyed=${socket.destroyed}, readable=${socket.readable}, writable=${socket.writable}`);
+      
       if (socket === this.macSocket) {
         this.macSocket = null;
+        logger.log('🧹 Cleared Mac socket reference');
 
         // Notify browser if connected for screencap
         this.screenCaptureHandler.setBrowserSocket(null);
@@ -383,8 +410,15 @@ export class ControlUnixHandler {
       logger.log('Mac socket drained - ready for more data');
     });
 
+    // Add event for socket end (clean close)
+    socket.on('end', () => {
+      logger.log('📴 Mac socket received FIN packet (clean close)');
+    });
+
     // Send ready event to Mac
+    logger.log('📤 Sending initial system:ready event to Mac');
     this.sendToMac(createControlEvent('system', 'ready'));
+    logger.log('✅ system:ready event sent');
   }
 
   handleBrowserConnection(ws: WebSocket) {
@@ -543,7 +577,18 @@ export class ControlUnixHandler {
   }
 
   sendToMac(message: ControlMessage): void {
-    if (this.macSocket && !this.macSocket.destroyed) {
+    if (!this.macSocket) {
+      logger.warn('⚠️ Cannot send to Mac - no socket connection');
+      return;
+    }
+    
+    if (this.macSocket.destroyed) {
+      logger.warn('⚠️ Cannot send to Mac - socket is destroyed');
+      this.macSocket = null;
+      return;
+    }
+    
+    try {
       // Convert message to JSON
       const jsonStr = JSON.stringify(message);
       const jsonData = Buffer.from(jsonStr, 'utf-8');
@@ -555,28 +600,49 @@ export class ControlUnixHandler {
       // Combine length header and data
       const fullData = Buffer.concat([lengthBuffer, jsonData]);
 
-      // Log message size for debugging
+      // Log message details
       logger.log(
-        `Sending to Mac: ${message.category}:${message.action}, header: 4 bytes, payload: ${jsonData.length} bytes, total: ${fullData.length} bytes`
+        `📤 Sending to Mac: ${message.category}:${message.action}, header: 4 bytes, payload: ${jsonData.length} bytes, total: ${fullData.length} bytes`
       );
+      logger.debug(`📝 Message content: ${jsonStr.substring(0, 200)}...`);
+      
+      // Log the actual bytes for the first few messages
+      if (message.category === 'system' || message.action === 'get-initial-data') {
+        logger.debug(`🔍 Length header bytes: ${lengthBuffer.toString('hex')}`);
+        logger.debug(`🔍 First 50 bytes of full data: ${fullData.subarray(0, Math.min(50, fullData.length)).toString('hex')}`);
+      }
+      
       if (jsonData.length > 65536) {
-        logger.warn(`Large message to Mac: ${jsonData.length} bytes`);
+        logger.warn(`⚠️ Large message to Mac: ${jsonData.length} bytes`);
       }
 
       // Write with error handling
       const result = this.macSocket.write(fullData, (error) => {
         if (error) {
-          logger.error('Error writing to Mac socket:', error);
+          logger.error('❌ Error writing to Mac socket:', error);
+          logger.error('Error details:', {
+            code: (error as any).code,
+            syscall: (error as any).syscall,
+            message: error.message,
+          });
           // Close the connection on write error
           this.macSocket?.destroy();
           this.macSocket = null;
+        } else {
+          logger.debug('✅ Write to Mac socket completed successfully');
         }
       });
 
       // Check if write was buffered (backpressure)
       if (!result) {
-        logger.warn('Socket write buffered - backpressure detected');
+        logger.warn('⚠️ Socket write buffered - backpressure detected');
+      } else {
+        logger.debug('✅ Write immediate - no backpressure');
       }
+    } catch (error) {
+      logger.error('❌ Exception while sending to Mac:', error);
+      this.macSocket?.destroy();
+      this.macSocket = null;
     }
   }
 }
