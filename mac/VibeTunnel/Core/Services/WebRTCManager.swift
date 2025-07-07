@@ -878,7 +878,7 @@ final class WebRTCManager: NSObject {
             logger.info("📋 json keys: \(json.keys.sorted())")
             logger.info("📋 json[\"params\"] exists: \(json["params"] != nil)")
             logger.info("📋 json[\"params\"] type: \(type(of: json["params"]))")
-            
+
             do {
                 logger.info("🔄 About to call processApiRequest")
                 let result = try await processApiRequest(
@@ -990,15 +990,21 @@ final class WebRTCManager: NSObject {
         case ("POST", "/capture"):
             logger.info("📋 /capture params type: \(type(of: params))")
             logger.info("📋 /capture params value: \(String(describing: params))")
-            
+
             guard let params = params as? [String: Any],
                   let type = params["type"] as? String,
                   let index = params["index"] as? Int
             else {
                 logger.error("❌ Invalid capture params - params: \(String(describing: params))")
                 if let params = params as? [String: Any] {
-                    logger.error("  - type present: \(params["type"] != nil), value: \(String(describing: params["type"]))")
-                    logger.error("  - index present: \(params["index"] != nil), value: \(String(describing: params["index"]))")
+                    logger
+                        .error(
+                            "  - type present: \(params["type"] != nil), value: \(String(describing: params["type"]))"
+                        )
+                    logger
+                        .error(
+                            "  - index present: \(params["index"] != nil), value: \(String(describing: params["index"]))"
+                        )
                 }
                 throw WebRTCError.invalidConfiguration
             }

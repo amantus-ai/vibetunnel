@@ -111,7 +111,7 @@ final class SharedUnixSocketManager {
 
         // Log handler lookup for debugging
         logger.info("🔍 Looking for handler for category: \(message.category.rawValue)")
-        
+
         // Get handler - no locking needed since we're on MainActor
         let availableHandlers = controlHandlers.keys.map(\.rawValue).joined(separator: ", ")
         logger.info("🔍 Available handlers: \(availableHandlers)")
