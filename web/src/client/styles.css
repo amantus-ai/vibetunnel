@@ -219,8 +219,13 @@
     grid-auto-rows: 400px;
     gap: 1.25rem;
     padding: 0.5rem 0.75rem;
-    /* Enable smooth grid transitions */
+    /* Enable smooth grid transitions - disabled in session view */
     transition: grid-template-columns 0.3s ease-out;
+  }
+  
+  /* Disable grid transitions in session view */
+  body.in-session-view .session-flex-responsive {
+    transition: none !important;
   }
 
   .session-flex-responsive > * {
@@ -527,6 +532,13 @@ body {
 /* Session grid flow animations */
 body.sessions-showing .session-flex-responsive > session-card {
   animation: sessionFlow 0.2s ease-out backwards;
+}
+
+/* Disable ALL animations when in session view */
+body.in-session-view .session-flex-responsive > session-card,
+body.in-session-view .space-y-2 > div {
+  animation: none !important;
+  animation-delay: 0s !important;
 }
 
 /* Stagger animation when showing exited sessions */

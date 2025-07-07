@@ -124,6 +124,15 @@ export class VibeTunnelApp extends LitElement {
     if (changedProperties.has('sessions') || changedProperties.has('currentView')) {
       this.requestUpdate();
     }
+
+    // Add/remove body class based on current view to control animations
+    if (changedProperties.has('currentView')) {
+      if (this.currentView === 'session') {
+        document.body.classList.add('in-session-view');
+      } else {
+        document.body.classList.remove('in-session-view');
+      }
+    }
   }
 
   disconnectedCallback() {
@@ -554,7 +563,20 @@ export class VibeTunnelApp extends LitElement {
     logger.log('handleHideExitedChange', {
       currentHideExited: this.hideExited,
       newHideExited: e.detail,
+      currentView: this.currentView,
     });
+
+    // Skip animations entirely when in session detail view
+    const isInSessionDetailView = this.currentView === 'session';
+
+    if (isInSessionDetailView) {
+      // Just update state without any animations
+      this.hideExited = e.detail;
+      this.saveHideExitedState(this.hideExited);
+      await this.updateComplete;
+      logger.log('Skipped animations in session detail view');
+      return;
+    }
 
     // Don't use View Transitions for hide/show exited toggle
     // as it causes the entire UI to fade. Use CSS animations instead.
@@ -726,88 +748,33 @@ export class VibeTunnelApp extends LitElement {
       mediaStateIsMobile: this.mediaState.isMobile,
     });
 
-    // Check if View Transitions API is supported - DISABLED for session navigation
-    // if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
-    if (false) {
-      // Debug: Check what elements have view-transition-name before transition
-      logger.debug('before transition - elements with view-transition-name:');
-      document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => {
-        logger.debug('element:', el, 'style:', el.getAttribute('style'));
-      });
+    // View Transitions disabled for session navigation to prevent animations
+    // Direct state update for instant navigation
+    this.selectedSessionId = sessionId;
+    this.sessionLoadingState = 'idle'; // Reset loading state for new session
+    this.currentView = 'session';
+    this.updateUrl(sessionId);
 
-      // Use View Transitions API for smooth animation
-      const transition = document.startViewTransition(async () => {
-        // Update state which will trigger a re-render
-        this.selectedSessionId = sessionId;
-        this.sessionLoadingState = 'idle'; // Reset loading state for new session
-        this.currentView = 'session';
-        this.updateUrl(sessionId);
-
-        // Update page title with session name
-        const session = this.sessions.find((s) => s.id === sessionId);
-        if (session) {
-          const sessionName = session.name || session.command.join(' ');
-          console.log('[App] Setting title from view transition:', sessionName);
-          document.title = `${sessionName} - VibeTunnel`;
-        } else {
-          console.log('[App] No session found for view transition:', sessionId);
-        }
-
-        // Collapse sidebar on mobile after selecting a session
-        if (this.mediaState.isMobile) {
-          this.sidebarCollapsed = true;
-          this.saveSidebarState(true);
-        }
-
-        // Wait for LitElement to complete its update
-        await this.updateComplete;
-
-        // Trigger terminal resize after session switch to ensure proper dimensions
-        triggerTerminalResize(sessionId, this);
-
-        // Debug: Check what elements have view-transition-name after transition
-        logger.debug('after transition - elements with view-transition-name:');
-        document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => {
-          logger.debug('element:', el, 'style:', el.getAttribute('style'));
-        });
-      });
-
-      // Log if transition is ready
-      transition.ready
-        .then(() => {
-          logger.debug('view transition ready');
-        })
-        .catch((err) => {
-          logger.error('view transition failed:', err);
-        });
+    // Update page title with session name
+    const session = this.sessions.find((s) => s.id === sessionId);
+    if (session) {
+      const sessionName = session.name || session.command.join(' ');
+      console.log('[App] Setting title:', sessionName);
+      document.title = `${sessionName} - VibeTunnel`;
     } else {
-      // Fallback for browsers without View Transitions support
-      this.selectedSessionId = sessionId;
-      this.sessionLoadingState = 'idle'; // Reset loading state for new session
-      this.currentView = 'session';
-      this.updateUrl(sessionId);
-
-      // Update page title with session name
-      const session = this.sessions.find((s) => s.id === sessionId);
-      if (session) {
-        const sessionName = session.name || session.command.join(' ');
-        console.log('[App] Setting title from fallback:', sessionName);
-        document.title = `${sessionName} - VibeTunnel`;
-      } else {
-        console.log('[App] No session found for fallback:', sessionId);
-      }
-
-      // Collapse sidebar on mobile after selecting a session
-      if (this.mediaState.isMobile) {
-        this.sidebarCollapsed = true;
-        this.saveSidebarState(true);
-      }
-
-      // Trigger terminal resize after session switch to ensure proper dimensions
-      this.updateComplete.then(() => {
-        triggerTerminalResize(sessionId, this);
-      });
+      console.log('[App] No session found:', sessionId);
     }
+
+    // Collapse sidebar on mobile after selecting a session
+    if (this.mediaState.isMobile) {
+      this.sidebarCollapsed = true;
+      this.saveSidebarState(true);
+    }
+
+    // Trigger terminal resize after session switch to ensure proper dimensions
+    this.updateComplete.then(() => {
+      triggerTerminalResize(sessionId, this);
+    });
   }
 
   private handleNavigateToList(): void {
@@ -818,8 +785,16 @@ export class VibeTunnelApp extends LitElement {
     const sessionCount = this.sessions.length;
     document.title = `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`;
 
-    // Check if View Transitions API is supported
-    if ('startViewTransition' in document && typeof document.startViewTransition === 'function') {
+    // Disable View Transitions when navigating from session detail view
+    // to prevent animations when sidebar is involved
+    const skipViewTransition = this.currentView === 'session';
+
+    // Check if View Transitions API is supported and should be used
+    if (
+      !skipViewTransition &&
+      'startViewTransition' in document &&
+      typeof document.startViewTransition === 'function'
+    ) {
       // Use View Transitions API for smooth animation
       document.startViewTransition(() => {
         // Update state which will trigger a re-render
@@ -831,7 +806,7 @@ export class VibeTunnelApp extends LitElement {
         return this.updateComplete;
       });
     } else {
-      // Fallback for browsers without View Transitions support
+      // Fallback for browsers without View Transitions support or when skipping
       this.selectedSessionId = null;
       this.currentView = 'list';
       this.updateUrl();

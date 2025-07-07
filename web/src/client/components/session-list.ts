@@ -354,7 +354,7 @@ export class SessionList extends LitElement {
                         ? html`
                           <!-- Enhanced compact list item for sidebar -->
                           <div
-                            class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 animate-fade-in ${
+                            class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer ${
                               session.id === this.selectedSessionId
                                 ? 'bg-dark-bg-elevated border border-accent-primary shadow-card-hover'
                                 : 'bg-dark-bg-secondary border border-dark-border hover:bg-dark-bg-tertiary hover:border-dark-border-light hover:shadow-card'
@@ -558,7 +558,7 @@ export class SessionList extends LitElement {
                                 ? html`
                                   <!-- Enhanced compact list item for sidebar -->
                                   <div
-                                    class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 animate-fade-in ${
+                                    class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer ${
                                       session.id === this.selectedSessionId
                                         ? 'bg-dark-bg-elevated border border-accent-primary shadow-card-hover'
                                         : 'bg-dark-bg-secondary border border-dark-border hover:bg-dark-bg-tertiary hover:border-dark-border-light hover:shadow-card opacity-75'
