@@ -10,7 +10,6 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { createLogger } from '../utils/logger.js';
-import { FishHandler, fishHandler } from './fish-handler.js';
 
 const logger = createLogger('process-utils');
 
@@ -494,113 +493,6 @@ export function getUserShell(): string {
   }
 }
 
-/**
- * Parse a shell command string into an array, respecting quotes and escaping
- * @param commandLine The command line string to parse
- * @returns Array of command parts
- */
-function parseShellCommand(commandLine: string): string[] {
-  const args: string[] = [];
-  let current = '';
-  let inSingleQuote = false;
-  let inDoubleQuote = false;
-  let escaped = false;
-
-  for (let i = 0; i < commandLine.length; i++) {
-    const char = commandLine[i];
-
-    if (escaped) {
-      // Previous character was a backslash, add this character literally
-      current += char;
-      escaped = false;
-      continue;
-    }
-
-    if (char === '\\' && !inSingleQuote) {
-      // Escape next character (except in single quotes)
-      escaped = true;
-      continue;
-    }
-
-    if (char === '"' && !inSingleQuote) {
-      // Toggle double quote mode
-      inDoubleQuote = !inDoubleQuote;
-      continue;
-    }
-
-    if (char === "'" && !inDoubleQuote) {
-      // Toggle single quote mode
-      inSingleQuote = !inSingleQuote;
-      continue;
-    }
-
-    if (!inSingleQuote && !inDoubleQuote && /\s/.test(char)) {
-      // Unquoted whitespace - end current argument
-      if (current.length > 0) {
-        args.push(current);
-        current = '';
-      }
-      continue;
-    }
-
-    // Regular character, add to current argument
-    current += char;
-  }
-
-  // Add final argument if any
-  if (current.length > 0) {
-    args.push(current);
-  }
-
-  return args;
-}
-
-/**
- * Expand a command using fish shell features (aliases, abbreviations, functions)
- * @param command The command array to expand
- * @param shellPath The shell path (must be fish)
- * @param cwd Current working directory
- * @returns Expanded command or original if not fish shell
- */
-export async function expandFishCommand(
-  command: string[],
-  shellPath: string,
-  cwd: string = process.cwd()
-): Promise<string[]> {
-  // Only process if this is a fish shell
-  if (!FishHandler.isFishShell(shellPath)) {
-    return command;
-  }
-
-  if (command.length === 0) {
-    return command;
-  }
-
-  try {
-    // Initialize fish handler if needed
-    await fishHandler.initialize();
-
-    // Only expand the first command (preserve original argument boundaries)
-    const firstCommand = command[0];
-    const expansion = await fishHandler.expandCommand(firstCommand, cwd);
-
-    if (expansion.wasExpanded) {
-      logger.debug(`Fish expansion: "${firstCommand}" → "${expansion.expanded}"`);
-      if (expansion.description) {
-        logger.debug(`Fish expansion type: ${expansion.description}`);
-      }
-
-      // Replace first command with expanded version, keep original arguments
-      const expandedParts = parseShellCommand(expansion.expanded);
-      return [...expandedParts, ...command.slice(1)];
-    }
-  } catch (error) {
-    logger.warn(`Fish command expansion failed: ${error}`);
-  }
-
-  return command;
-}
-
 // Re-export as object for backwards compatibility
 export const ProcessUtils = {
   isProcessRunning,
@@ -609,5 +501,4 @@ export const ProcessUtils = {
   waitForProcessExit,
   resolveCommand,
   getUserShell,
-  expandFishCommand,
 };

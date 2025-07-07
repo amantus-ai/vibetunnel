@@ -34,7 +34,7 @@ import {
 import { WriteQueue } from '../utils/write-queue.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
 import { FishHandler } from './fish-handler.js';
-import { expandFishCommand, ProcessUtils } from './process-utils.js';
+import { ProcessUtils } from './process-utils.js';
 import { SessionManager } from './session-manager.js';
 import {
   type ControlCommand,
@@ -218,11 +218,10 @@ export class PtyManager extends EventEmitter {
       // Resolve the command using unified resolution logic
       const resolved = ProcessUtils.resolveCommand(command);
       const { command: finalCommand, args: finalArgs } = resolved;
-      let resolvedCommand = [finalCommand, ...finalArgs];
+      const resolvedCommand = [finalCommand, ...finalArgs];
 
-      // Apply fish shell expansion if applicable
-      const userShell = ProcessUtils.getUserShell();
-      resolvedCommand = await expandFishCommand(resolvedCommand, userShell, workingDir);
+      // Note: Fish shell expansion was removed for simplicity
+      // Only basic tab completion is supported via getFishCompletions()
 
       // Log resolution details
       if (resolved.resolvedFrom === 'alias') {
@@ -903,8 +902,6 @@ export class PtyManager extends EventEmitter {
       }
 
       const { fishHandler } = await import('./fish-handler.js');
-      await fishHandler.initialize();
-
       const cwd = session.currentWorkingDir || process.cwd();
       return await fishHandler.getCompletions(partial, cwd);
     } catch (error) {
