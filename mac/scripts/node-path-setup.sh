@@ -1,22 +1,22 @@
 #!/bin/bash
 
-# Add Node.js paths in priority order: Homebrew → Volta → fnm → NVM
+ORIGINAL_PATH="$PATH"
+
 export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$PATH"
 
-# Load fnm if available
 if command -v fnm >/dev/null 2>&1; then
-    eval "$(fnm env)" 2>/dev/null || true
+    eval "$(fnm env --use-on-cd=false)" 2>/dev/null || true
+    export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$PATH"
 fi
 
-# Load NVM if available (lowest priority)
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
-    source "$HOME/.nvm/nvm.sh"
+    export NVM_DIR="$HOME/.nvm"
+    source "$NVM_DIR/nvm.sh"
+    export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$PATH"
 fi
 
-# Add package managers
 export PATH="$HOME/Library/pnpm:$HOME/.bun/bin:$PATH"
 
-# Make sure we have a working Node.js
 if ! command -v node >/dev/null 2>&1; then
     echo "error: Node.js not found. Install via: brew install node" >&2
     exit 1
