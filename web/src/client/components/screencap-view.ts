@@ -156,6 +156,14 @@ export class ScreencapView extends LitElement {
       display: block;
       cursor: crosshair;
       user-select: none;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+    
+    /* For window capture, use contain to ensure the window is fully visible and scaled up */
+    .capture-preview.window-mode {
+      object-fit: contain;
+      background: #000;
     }
 
     :host(:focus) {
@@ -169,6 +177,11 @@ export class ScreencapView extends LitElement {
 
     .capture-preview.fit-cover {
       object-fit: cover;
+    }
+    
+    /* Override fit mode for window capture to always use contain */
+    .capture-preview.window-mode {
+      object-fit: contain !important;
     }
 
     video.capture-preview {
@@ -1170,7 +1183,7 @@ export class ScreencapView extends LitElement {
     if (this.useWebRTC && this.isCapturing) {
       return html`
         <video 
-          class="capture-preview fit-${this.fitMode}"
+          class="capture-preview fit-${this.fitMode} ${this.captureMode === 'window' ? 'window-mode' : ''}"
           autoplay
           playsinline
           muted
@@ -1216,7 +1229,7 @@ export class ScreencapView extends LitElement {
       return html`
         <img 
           src="${this.frameUrl}" 
-          class="capture-preview fit-${this.fitMode}"
+          class="capture-preview fit-${this.fitMode} ${this.captureMode === 'window' ? 'window-mode' : ''}"
           alt="Screen capture"
           @mousedown=${this.handleMouseDown}
           @mouseup=${this.handleMouseUp}

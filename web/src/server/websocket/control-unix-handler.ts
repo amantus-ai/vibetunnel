@@ -311,7 +311,7 @@ export class ControlUnixHandler {
       logger.log(
         `📥 Received from Mac: ${data.length} bytes, buffer size: ${this.messageBuffer.length}`
       );
-      
+
       // Log first few bytes for debugging
       if (data.length > 0) {
         const preview = data.subarray(0, Math.min(data.length, 50));
@@ -362,11 +362,15 @@ export class ControlUnixHandler {
 
         try {
           const messageStr = messageData.toString('utf-8');
-          logger.debug(`📨 Parsing message (${messageLength} bytes): ${messageStr.substring(0, 100)}...`);
-          
+          logger.debug(
+            `📨 Parsing message (${messageLength} bytes): ${messageStr.substring(0, 100)}...`
+          );
+
           const message: ControlMessage = JSON.parse(messageStr);
-          logger.log(`✅ Parsed Mac message: category=${message.category}, action=${message.action}, id=${message.id}`);
-          
+          logger.log(
+            `✅ Parsed Mac message: category=${message.category}, action=${message.action}, id=${message.id}`
+          );
+
           this.handleMacMessage(message);
         } catch (error) {
           logger.error('❌ Failed to parse Mac message:', error);
@@ -385,7 +389,7 @@ export class ControlUnixHandler {
         errno: errorObj.errno,
         message: errorObj.message,
       });
-      
+
       // Check if it's a write-related error
       if (errorObj.code === 'EPIPE' || errorObj.code === 'ECONNRESET') {
         logger.error('🔴 Connection broken - Mac app likely closed the connection');
@@ -394,8 +398,10 @@ export class ControlUnixHandler {
 
     socket.on('close', (hadError) => {
       logger.log(`🔌 Mac disconnected (hadError: ${hadError})`);
-      logger.log(`📊 Socket state: destroyed=${socket.destroyed}, readable=${socket.readable}, writable=${socket.writable}`);
-      
+      logger.log(
+        `📊 Socket state: destroyed=${socket.destroyed}, readable=${socket.readable}, writable=${socket.writable}`
+      );
+
       if (socket === this.macSocket) {
         this.macSocket = null;
         logger.log('🧹 Cleared Mac socket reference');
@@ -581,13 +587,13 @@ export class ControlUnixHandler {
       logger.warn('⚠️ Cannot send to Mac - no socket connection');
       return;
     }
-    
+
     if (this.macSocket.destroyed) {
       logger.warn('⚠️ Cannot send to Mac - socket is destroyed');
       this.macSocket = null;
       return;
     }
-    
+
     try {
       // Convert message to JSON
       const jsonStr = JSON.stringify(message);
@@ -605,13 +611,15 @@ export class ControlUnixHandler {
         `📤 Sending to Mac: ${message.category}:${message.action}, header: 4 bytes, payload: ${jsonData.length} bytes, total: ${fullData.length} bytes`
       );
       logger.debug(`📝 Message content: ${jsonStr.substring(0, 200)}...`);
-      
+
       // Log the actual bytes for the first few messages
       if (message.category === 'system' || message.action === 'get-initial-data') {
         logger.debug(`🔍 Length header bytes: ${lengthBuffer.toString('hex')}`);
-        logger.debug(`🔍 First 50 bytes of full data: ${fullData.subarray(0, Math.min(50, fullData.length)).toString('hex')}`);
+        logger.debug(
+          `🔍 First 50 bytes of full data: ${fullData.subarray(0, Math.min(50, fullData.length)).toString('hex')}`
+        );
       }
-      
+
       if (jsonData.length > 65536) {
         logger.warn(`⚠️ Large message to Mac: ${jsonData.length} bytes`);
       }
