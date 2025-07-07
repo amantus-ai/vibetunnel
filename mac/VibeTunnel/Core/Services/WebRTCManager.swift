@@ -802,7 +802,8 @@ final class WebRTCManager: NSObject {
             logger.warning("  Full message: \(json)")
             // Log the unhandled message details for debugging
             if let jsonData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
+               let jsonString = String(data: jsonData, encoding: .utf8)
+            {
                 logger.warning("  Unhandled message JSON:\n\(jsonString)")
             }
         }
@@ -810,18 +811,18 @@ final class WebRTCManager: NSObject {
 
     private func handleGetInitialData(_ json: [String: Any]) async {
         logger.info("🔍 Processing get-initial-data request")
-        
+
         // Extract request ID if present
         let requestId = json["requestId"] as? String
-        
+
         guard let service = screencapService else {
             logger.error("❌ No screencapService available for initial data")
             return
         }
-        
+
         do {
             logger.info("📊 Fetching displays and processes...")
-            
+
             // Fetch displays
             let displays = try await service.getDisplays()
             let displayList = try displays.map { display in
@@ -830,7 +831,7 @@ final class WebRTCManager: NSObject {
                 return try JSONSerialization.jsonObject(with: data, options: [])
             }
             logger.info("✅ Got \(displays.count) displays")
-            
+
             // Fetch processes
             let processGroups = try await service.getProcessGroups()
             let processes = try processGroups.map { group in
@@ -839,17 +840,16 @@ final class WebRTCManager: NSObject {
                 return try JSONSerialization.jsonObject(with: data, options: [])
             }
             logger.info("✅ Got \(processGroups.count) process groups")
-            
+
             // Send response with both displays and processes
             let responseData: [String: Any] = [
                 "displays": displayList,
                 "processes": processes
             ]
-            
-            let message: ControlProtocol.ControlMessage
-            if let requestId = requestId {
+
+            let message: ControlProtocol.ControlMessage = if let requestId {
                 // If there's a request ID, create a response
-                message = ControlProtocol.createResponse(
+                ControlProtocol.createResponse(
                     to: ControlProtocol.ControlMessage(
                         id: requestId,
                         type: .request,
@@ -861,21 +861,20 @@ final class WebRTCManager: NSObject {
                 )
             } else {
                 // Otherwise create an event
-                message = ControlProtocol.createEvent(
+                ControlProtocol.createEvent(
                     category: .screencap,
                     action: "initial-data",
                     payload: responseData
                 )
             }
-            
+
             await sendControlMessage(message)
             logger.info("📤 Sent initial data response")
-            
         } catch {
             logger.error("❌ Failed to get initial data: \(error)")
-            
+
             // Send error response if we have a request ID
-            if let requestId = requestId {
+            if let requestId {
                 let errorResponse = ScreencapErrorResponse.from(error)
                 let message = ControlProtocol.createResponse(
                     to: ControlProtocol.ControlMessage(

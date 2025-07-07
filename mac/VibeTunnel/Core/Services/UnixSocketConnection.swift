@@ -285,12 +285,12 @@ final class UnixSocketConnection {
         logger.info("📤 Sending control message...")
         let encoder = JSONEncoder()
         let data = try encoder.encode(message)
-        
+
         // Log the message content for debugging
         if let str = String(data: data, encoding: .utf8) {
             logger.info("📤 Message content: \(String(str.prefix(500)))")
         }
-        
+
         try await sendData(data)
     }
 
@@ -811,11 +811,11 @@ final class UnixSocketConnection {
             // Read the message length header (4 bytes, big-endian UInt32)
             let messageLength = receiveBuffer.prefix(4)
                 .withUnsafeBytes { UInt32(bigEndian: $0.loadUnaligned(as: UInt32.self)) }
-            
+
             logger.debug("📏 Next message length from header: \(messageLength) bytes")
 
             // Check against reasonable upper bound to guard against corrupted headers
-            guard messageLength < 1_000_000 else { // 1MB max message size
+            guard messageLength < 10_000_000 else { // 10MB max message size (matching Node.js peer)
                 logger.error("Corrupted message header: length=\(messageLength)")
                 receiveBuffer.removeAll() // Clear corrupted buffer
                 break
@@ -847,7 +847,7 @@ final class UnixSocketConnection {
             if let str = String(data: body, encoding: .utf8) {
                 logger.info("📨 Message content: \(String(str.prefix(500)))")
             }
-            
+
             if let handler = onMessage {
                 handler(body)
             } else {
@@ -856,8 +856,8 @@ final class UnixSocketConnection {
         }
 
         // If buffer grows too large, clear it to prevent memory issues
-        if receiveBuffer.count > 1_024 * 1_024 { // 1MB limit
-            logger.warning("Receive buffer exceeded 1MB, clearing to prevent memory issues")
+        if receiveBuffer.count > 10 * 1_024 * 1_024 { // 10MB limit (matching Node.js peer)
+            logger.warning("Receive buffer exceeded 10MB, clearing to prevent memory issues")
             receiveBuffer.removeAll()
         }
     }

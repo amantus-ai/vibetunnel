@@ -172,15 +172,15 @@ extension KeyedDecodingContainer {
     }
 
     func decode(_ type: [String: Any].Type) throws -> [String: Any] {
-        return try decodeWithDepth(type, depth: 0)
+        try decodeWithDepth(type, depth: 0)
     }
-    
+
     private func decodeWithDepth(_ type: [String: Any].Type, depth: Int) throws -> [String: Any] {
         guard depth < maxDecodingDepth else {
             // Return empty dictionary if we've hit the depth limit
             return [:]
         }
-        
+
         var dictionary = [String: Any]()
 
         for key in allKeys {
@@ -193,7 +193,8 @@ extension KeyedDecodingContainer {
             } else if let value = try? decode(Double.self, forKey: key) {
                 dictionary[key.stringValue] = value
             } else if depth < maxDecodingDepth - 1,
-                      let container = try? nestedContainer(keyedBy: JSONCodingKeys.self, forKey: key) {
+                      let container = try? nestedContainer(keyedBy: JSONCodingKeys.self, forKey: key)
+            {
                 dictionary[key.stringValue] = try container.decodeWithDepth(type, depth: depth + 1)
             }
         }

@@ -574,10 +574,6 @@ export class ScreencapView extends LitElement {
 
       // Initialize WebRTC handler
       this.webrtcHandler = new WebRTCHandler(this.wsClient);
-
-      // Trigger initial connection by loading data
-      logger.log('🔄 Triggering initial data load to establish WebSocket connection');
-      this.loadInitialData();
     }
   }
 

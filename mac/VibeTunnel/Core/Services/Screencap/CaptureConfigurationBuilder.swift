@@ -156,7 +156,7 @@ public final class CaptureConfigurationBuilder {
             filter.includeMenuBar = true
             logger.info("  - Include menu bar: true")
         }
-        
+
         logger.info("  - Filter content rect: \(String(describing: filter.contentRect))")
         logger.info("  - Filter point pixel scale: \(filter.pointPixelScale)")
 
@@ -173,7 +173,7 @@ public final class CaptureConfigurationBuilder {
         logger.info("  - Primary display size: \(primaryDisplay.width)x\(primaryDisplay.height) points")
         logger.info("  - Primary display frame: \(String(describing: primaryDisplay.frame))")
         logger.info("  - Total displays: \(content.displays.count)")
-        
+
         for (index, display) in content.displays.enumerated() {
             logger.info("  - Display \(index): ID=\(display.displayID), frame=\(String(describing: display.frame))")
         }
@@ -184,7 +184,7 @@ public final class CaptureConfigurationBuilder {
             excludingApplications: [],
             exceptingWindows: []
         )
-        
+
         logger.info("  - Filter content rect: \(String(describing: filter.contentRect))")
         logger.info("  - Filter point pixel scale: \(filter.pointPixelScale)")
 
@@ -202,10 +202,10 @@ public final class CaptureConfigurationBuilder {
         // Solution 1: Use Apple's desktopIndependentWindow method
         logger.info("  - Using desktopIndependentWindow filter (Apple's method)")
         let filter = SCContentFilter(desktopIndependentWindow: window)
-        
+
         logger.info("  - Filter content rect: \(String(describing: filter.contentRect))")
         logger.info("  - Filter point pixel scale: \(filter.pointPixelScale)")
-        
+
         return filter
     }
 
@@ -249,7 +249,7 @@ public final class CaptureConfigurationBuilder {
         }
 
         logger.info("💫 Calculating dimensions for capture mode")
-        
+
         let dimensions: (width: Int, height: Int)
         switch captureMode {
         case .allDisplays:
@@ -258,7 +258,8 @@ public final class CaptureConfigurationBuilder {
 
         case .window(let window):
             dimensions = calculateWindowDimensions(window: window)
-            logger.info("  - Window '\(window.title ?? "Untitled")' dimensions: \(dimensions.width)x\(dimensions.height)")
+            logger
+                .info("  - Window '\(window.title ?? "Untitled")' dimensions: \(dimensions.width)x\(dimensions.height)")
 
         case .desktop(let displayIndex):
             dimensions = calculateDesktopDimensions(displayIndex: displayIndex, content: content)
@@ -268,7 +269,7 @@ public final class CaptureConfigurationBuilder {
             dimensions = calculateApplicationDimensions(filter: filter, content: content)
             logger.info("  - Application dimensions: \(dimensions.width)x\(dimensions.height)")
         }
-        
+
         return dimensions
     }
 
@@ -372,7 +373,10 @@ public final class CaptureConfigurationBuilder {
             }
             let scaleFactor = appScreen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
 
-            logger.info("📱 App dimensions - rect: \(String(describing: unionRect.width))x\(String(describing: unionRect.height)), scale: \(scaleFactor)")
+            logger
+                .info(
+                    "📱 App dimensions - rect: \(String(describing: unionRect.width))x\(String(describing: unionRect.height)), scale: \(scaleFactor)"
+                )
 
             return (
                 width: Int(unionRect.width * scaleFactor),
@@ -405,7 +409,7 @@ public final class CaptureConfigurationBuilder {
         logger.info("📐 Using default rectangle configuration (Apple's approach)")
         logger.info("  - Not setting explicit source/destination rectangles")
         logger.info("  - Filter content rect: \(String(describing: filter.contentRect))")
-        
+
         // Only log what the capture mode is for debugging
         switch captureMode {
         case .desktop(let displayIndex):
@@ -433,7 +437,7 @@ public final class CaptureConfigurationBuilder {
 
         return nsScreen?.backingScaleFactor ?? 2.0
     }
-    
+
     private func fourCCToString(_ fourCC: FourCharCode) -> String {
         let chars = [
             Character(UnicodeScalar((fourCC >> 24) & 0xFF)!),

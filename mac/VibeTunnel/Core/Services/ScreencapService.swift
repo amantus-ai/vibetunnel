@@ -719,7 +719,7 @@ public final class ScreencapService: NSObject {
             logger.error("Failed to get shareable content: \(error)")
             throw ScreencapError.failedToGetContent(error)
         }
-        
+
         // Create configuration builder with the shareable content
         let configBuilder = CaptureConfigurationBuilder(shareableContent: content)
             .setFrameRate(30)
@@ -802,7 +802,7 @@ public final class ScreencapService: NSObject {
         default:
             throw ScreencapError.invalidCaptureType
         }
-        
+
         // Build filter using CaptureConfigurationBuilder
         captureFilter = try configBuilder.buildFilter()
 
@@ -936,12 +936,12 @@ public final class ScreencapService: NSObject {
 
         // Build filter and configuration
         captureFilter = try configBuilder.buildFilter()
-        
+
         guard let filter = captureFilter else {
             logger.error("Capture filter is nil")
             throw ScreencapError.invalidConfiguration
         }
-        
+
         let streamConfig = try configBuilder.buildConfiguration(for: filter)
 
         // Log final stream configuration for debugging
@@ -1115,13 +1115,15 @@ public final class ScreencapService: NSObject {
         // Check accessibility permission first
         let hasAccessibility = AXIsProcessTrusted()
         logger.info("🔐 [DEBUG] Accessibility permission status: \(hasAccessibility)")
-        
+
         if !hasAccessibility {
             logger.error("❌ Cannot send mouse click - Accessibility permission not granted")
-            logger.error("💡 Please grant Accessibility permission in System Settings > Privacy & Security > Accessibility")
+            logger
+                .error("💡 Please grant Accessibility permission in System Settings > Privacy & Security > Accessibility"
+                )
             throw ScreencapError.permissionDenied
         }
-        
+
         // Validate coordinate boundaries
         guard x >= 0 && x <= 1_000 && y >= 0 && y <= 1_000 else {
             logger.error("⚠️ Invalid click coordinates: (\(x), \(y)) - must be in range 0-1000")
@@ -1213,17 +1215,23 @@ public final class ScreencapService: NSObject {
 
         // CGEvent uses NSScreen coordinates (bottom-left origin)
         // But SCDisplay uses top-left origin, so we need to flip Y
-        let screenHeight = NSScreen.screens.first?.frame.height ?? 1080
+        let screenHeight = NSScreen.screens.first?.frame.height ?? 1_080
         let flippedY = screenHeight - pixelY
         let clickLocation = CGPoint(x: pixelX, y: flippedY)
-        
+
         // Log the current mouse position for debugging
         let currentMouseLocation = NSEvent.mouseLocation
-        logger.info("🖱️ Current mouse position: (\(String(format: "%.1f", currentMouseLocation.x)), \(String(format: "%.1f", currentMouseLocation.y)))")
-        
+        logger
+            .info(
+                "🖱️ Current mouse position: (\(String(format: "%.1f", currentMouseLocation.x)), \(String(format: "%.1f", currentMouseLocation.y)))"
+            )
+
         // Also log screen information for debugging
         if let mainScreen = NSScreen.main {
-            logger.info("🖥️ Main screen frame: origin=(\(mainScreen.frame.origin.x), \(mainScreen.frame.origin.y)), size=(\(mainScreen.frame.width)x\(mainScreen.frame.height)) (backing scale: \(mainScreen.backingScaleFactor))")
+            logger
+                .info(
+                    "🖥️ Main screen frame: origin=(\(mainScreen.frame.origin.x), \(mainScreen.frame.origin.y)), size=(\(mainScreen.frame.width)x\(mainScreen.frame.height)) (backing scale: \(mainScreen.backingScaleFactor))"
+                )
         }
 
         logger
@@ -1233,11 +1241,11 @@ public final class ScreencapService: NSObject {
 
         // Create an event source for better compatibility
         let eventSource = CGEventSource(stateID: .hidSystemState)
-        
+
         // IMPORTANT: First move the mouse cursor to the target position
         // This ensures the cursor is at the correct location before clicking
         logger.info("🖱️ [DEBUG] Moving mouse cursor to position before clicking...")
-        
+
         guard let mouseMove = CGEvent(
             mouseEventSource: eventSource,
             mouseType: .mouseMoved,
@@ -1246,17 +1254,20 @@ public final class ScreencapService: NSObject {
         ) else {
             throw ScreencapError.failedToCreateEvent
         }
-        
+
         // Post the mouse move event
         mouseMove.post(tap: .cghidEventTap)
-        
+
         // Small delay to ensure the move is processed
         try await Task.sleep(nanoseconds: 10_000_000) // 10ms delay
-        
+
         // Verify the mouse actually moved
         let newMouseLocation = NSEvent.mouseLocation
-        logger.info("🖱️ [DEBUG] Mouse position after move: (\(String(format: "%.1f", newMouseLocation.x)), \(String(format: "%.1f", newMouseLocation.y)))")
-        
+        logger
+            .info(
+                "🖱️ [DEBUG] Mouse position after move: (\(String(format: "%.1f", newMouseLocation.x)), \(String(format: "%.1f", newMouseLocation.y)))"
+            )
+
         // Create mouse down event
         guard let mouseDown = CGEvent(
             mouseEventSource: eventSource,
@@ -1280,7 +1291,7 @@ public final class ScreencapService: NSObject {
         // Set the click count to 1 for both events
         mouseDown.setIntegerValueField(.mouseEventClickState, value: 1)
         mouseUp.setIntegerValueField(.mouseEventClickState, value: 1)
-        
+
         // Post events
         mouseDown.post(tap: .cghidEventTap)
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms delay
@@ -1311,7 +1322,7 @@ public final class ScreencapService: NSObject {
 
         // Create an event source for better compatibility
         let eventSource = CGEventSource(stateID: .hidSystemState)
-        
+
         // Create mouse down event
         guard let mouseDown = CGEvent(
             mouseEventSource: eventSource,
@@ -1347,7 +1358,7 @@ public final class ScreencapService: NSObject {
 
         // Create an event source for better compatibility
         let eventSource = CGEventSource(stateID: .hidSystemState)
-        
+
         // Create mouse dragged event
         guard let mouseDrag = CGEvent(
             mouseEventSource: eventSource,
@@ -1384,7 +1395,7 @@ public final class ScreencapService: NSObject {
 
         // Create an event source for better compatibility
         let eventSource = CGEventSource(stateID: .hidSystemState)
-        
+
         // Create mouse up event
         guard let mouseUp = CGEvent(
             mouseEventSource: eventSource,
@@ -1414,17 +1425,23 @@ public final class ScreencapService: NSObject {
         // Check environment variable to control Y-coordinate flipping
         let shouldFlipY = ProcessInfo.processInfo.environment["VIBETUNNEL_FLIP_Y"] != "false"
         let useWarpCursor = ProcessInfo.processInfo.environment["VIBETUNNEL_USE_WARP"] == "true"
-        
+
         logger.info("🔍 [DEBUG] calculateClickLocation - Input: x=\(x), y=\(y)")
         logger.info("🔍 [DEBUG] Capture mode: \(String(describing: self.captureMode))")
-        logger.info("🔍 [DEBUG] Filter content rect: origin=(\(filter.contentRect.origin.x), \(filter.contentRect.origin.y)), size=(\(filter.contentRect.width)x\(filter.contentRect.height))")
+        logger
+            .info(
+                "🔍 [DEBUG] Filter content rect: origin=(\(filter.contentRect.origin.x), \(filter.contentRect.origin.y)), size=(\(filter.contentRect.width)x\(filter.contentRect.height))"
+            )
         logger.info("🔍 [DEBUG] Configuration: shouldFlipY=\(shouldFlipY), useWarpCursor=\(useWarpCursor)")
 
         // Convert from 0-1000 normalized coordinates to actual pixel coordinates
         let normalizedX = x / 1_000.0
         let normalizedY = y / 1_000.0
-        
-        logger.info("🔍 [DEBUG] Normalized coordinates: x=\(String(format: "%.4f", normalizedX)), y=\(String(format: "%.4f", normalizedY))")
+
+        logger
+            .info(
+                "🔍 [DEBUG] Normalized coordinates: x=\(String(format: "%.4f", normalizedX)), y=\(String(format: "%.4f", normalizedY))"
+            )
 
         var pixelX: Double
         var pixelY: Double
@@ -1434,18 +1451,27 @@ public final class ScreencapService: NSObject {
         case .desktop(let displayIndex):
             // Get SCShareableContent to ensure consistency
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-            
-            logger.info("🔍 [DEBUG] Desktop capture mode - Display index: \(displayIndex), Total displays: \(content.displays.count)")
+
+            logger
+                .info(
+                    "🔍 [DEBUG] Desktop capture mode - Display index: \(displayIndex), Total displays: \(content.displays.count)"
+                )
 
             if displayIndex >= 0 && displayIndex < content.displays.count {
                 let display = content.displays[displayIndex]
-                logger.info("🔍 [DEBUG] Display frame: origin=(\(display.frame.origin.x), \(display.frame.origin.y)), size=(\(display.frame.width)x\(display.frame.height))")
-                
+                logger
+                    .info(
+                        "🔍 [DEBUG] Display frame: origin=(\(display.frame.origin.x), \(display.frame.origin.y)), size=(\(display.frame.width)x\(display.frame.height))"
+                    )
+
                 // Convert normalized to pixel coordinates within the display
                 pixelX = display.frame.origin.x + (normalizedX * display.frame.width)
                 pixelY = display.frame.origin.y + (normalizedY * display.frame.height)
-                
-                logger.info("🔍 [DEBUG] Calculated pixel coords: x=\(String(format: "%.1f", pixelX)), y=\(String(format: "%.1f", pixelY))")
+
+                logger
+                    .info(
+                        "🔍 [DEBUG] Calculated pixel coords: x=\(String(format: "%.1f", pixelX)), y=\(String(format: "%.1f", pixelY))"
+                    )
             } else {
                 throw ScreencapError.noDisplay
             }
@@ -1453,7 +1479,7 @@ public final class ScreencapService: NSObject {
         case .allDisplays:
             // For all displays, we need to calculate based on the combined bounds
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-            
+
             logger.info("🔍 [DEBUG] All displays capture mode - Total displays: \(content.displays.count)")
 
             // Calculate the bounding rectangle
@@ -1463,7 +1489,10 @@ public final class ScreencapService: NSObject {
             var maxY: CGFloat = -CGFloat.greatestFiniteMagnitude
 
             for display in content.displays {
-                logger.info("🔍 [DEBUG] Display: origin=(\(display.frame.origin.x), \(display.frame.origin.y)), size=(\(display.frame.width)x\(display.frame.height))")
+                logger
+                    .info(
+                        "🔍 [DEBUG] Display: origin=(\(display.frame.origin.x), \(display.frame.origin.y)), size=(\(display.frame.width)x\(display.frame.height))"
+                    )
                 minX = min(minX, display.frame.origin.x)
                 minY = min(minY, display.frame.origin.y)
                 maxX = max(maxX, display.frame.origin.x + display.frame.width)
@@ -1472,32 +1501,50 @@ public final class ScreencapService: NSObject {
 
             let totalWidth = maxX - minX
             let totalHeight = maxY - minY
-            
-            logger.info("🔍 [DEBUG] Combined bounds: min=(\(minX), \(minY)), max=(\(maxX), \(maxY)), size=(\(totalWidth)x\(totalHeight))")
+
+            logger
+                .info(
+                    "🔍 [DEBUG] Combined bounds: min=(\(minX), \(minY)), max=(\(maxX), \(maxY)), size=(\(totalWidth)x\(totalHeight))"
+                )
 
             // Convert normalized to pixel coordinates within the combined bounds
             pixelX = minX + (normalizedX * totalWidth)
             pixelY = minY + (normalizedY * totalHeight)
-            
-            logger.info("🔍 [DEBUG] Calculated pixel coords: x=\(String(format: "%.1f", pixelX)), y=\(String(format: "%.1f", pixelY))")
+
+            logger
+                .info(
+                    "🔍 [DEBUG] Calculated pixel coords: x=\(String(format: "%.1f", pixelX)), y=\(String(format: "%.1f", pixelY))"
+                )
 
         case .window(let window):
             // For window capture, use the window's frame
-            logger.info("🔍 [DEBUG] Window capture mode - Window frame: origin=(\(window.frame.origin.x), \(window.frame.origin.y)), size=(\(window.frame.width)x\(window.frame.height))")
-            
+            logger
+                .info(
+                    "🔍 [DEBUG] Window capture mode - Window frame: origin=(\(window.frame.origin.x), \(window.frame.origin.y)), size=(\(window.frame.width)x\(window.frame.height))"
+                )
+
             pixelX = window.frame.origin.x + (normalizedX * window.frame.width)
             pixelY = window.frame.origin.y + (normalizedY * window.frame.height)
-            
-            logger.info("🔍 [DEBUG] Calculated pixel coords: x=\(String(format: "%.1f", pixelX)), y=\(String(format: "%.1f", pixelY))")
+
+            logger
+                .info(
+                    "🔍 [DEBUG] Calculated pixel coords: x=\(String(format: "%.1f", pixelX)), y=\(String(format: "%.1f", pixelY))"
+                )
 
         case .application:
             // For application capture, use the filter's content rect
-            logger.info("🔍 [DEBUG] Application capture mode - Filter content rect: origin=(\(filter.contentRect.origin.x), \(filter.contentRect.origin.y)), size=(\(filter.contentRect.width)x\(filter.contentRect.height))")
-            
+            logger
+                .info(
+                    "🔍 [DEBUG] Application capture mode - Filter content rect: origin=(\(filter.contentRect.origin.x), \(filter.contentRect.origin.y)), size=(\(filter.contentRect.width)x\(filter.contentRect.height))"
+                )
+
             pixelX = filter.contentRect.origin.x + (normalizedX * filter.contentRect.width)
             pixelY = filter.contentRect.origin.y + (normalizedY * filter.contentRect.height)
-            
-            logger.info("🔍 [DEBUG] Calculated pixel coords: x=\(String(format: "%.1f", pixelX)), y=\(String(format: "%.1f", pixelY))")
+
+            logger
+                .info(
+                    "🔍 [DEBUG] Calculated pixel coords: x=\(String(format: "%.1f", pixelX)), y=\(String(format: "%.1f", pixelY))"
+                )
         }
 
         // Log coordinate system information
@@ -1505,66 +1552,91 @@ public final class ScreencapService: NSObject {
         logger.info("🔍 [DEBUG] SCDisplay uses top-left origin, NSEvent/CGEvent uses bottom-left origin")
         logger.info("🔍 [DEBUG] shouldFlipY=\(shouldFlipY) (set VIBETUNNEL_FLIP_Y=false to disable)")
         logger.info("🔍 [DEBUG] useWarpCursor=\(useWarpCursor) (set VIBETUNNEL_USE_WARP=true to enable)")
-        
+
         // Log all screen information
         for (index, screen) in NSScreen.screens.enumerated() {
-            logger.info("🔍 [DEBUG] Screen \(index): frame=origin(\(screen.frame.origin.x), \(screen.frame.origin.y)), size=(\(screen.frame.width)x\(screen.frame.height)), backing scale=\(screen.backingScaleFactor)")
+            logger
+                .info(
+                    "🔍 [DEBUG] Screen \(index): frame=origin(\(screen.frame.origin.x), \(screen.frame.origin.y)), size=(\(screen.frame.width)x\(screen.frame.height)), backing scale=\(screen.backingScaleFactor)"
+                )
         }
-        
+
         var finalX = pixelX
         var finalY = pixelY
-        
+
         if shouldFlipY {
             // IMPORTANT: For multi-monitor setups, we need to find the screen that contains our click point
             var targetScreen: NSScreen?
             for screen in NSScreen.screens {
                 let screenFrame = screen.frame
                 if pixelX >= screenFrame.origin.x && pixelX <= screenFrame.origin.x + screenFrame.width &&
-                   pixelY >= screenFrame.origin.y && pixelY <= screenFrame.origin.y + screenFrame.height {
+                    pixelY >= screenFrame.origin.y && pixelY <= screenFrame.origin.y + screenFrame.height
+                {
                     targetScreen = screen
-                    logger.info("🔍 [DEBUG] Found target screen containing click point: frame=(\(screenFrame.origin.x), \(screenFrame.origin.y), \(screenFrame.width), \(screenFrame.height))")
+                    logger
+                        .info(
+                            "🔍 [DEBUG] Found target screen containing click point: frame=(\(screenFrame.origin.x), \(screenFrame.origin.y), \(screenFrame.width), \(screenFrame.height))"
+                        )
                     break
                 }
             }
-            
+
             // If no screen found, use the main screen
             if targetScreen == nil {
                 targetScreen = NSScreen.main ?? NSScreen.screens.first
                 logger.warning("⚠️ [DEBUG] No screen contains click point, using main screen")
             }
-            
+
             guard let screen = targetScreen else {
                 logger.error("❌ [DEBUG] No screen available")
                 throw ScreencapError.noDisplay
             }
-            
+
             // Calculate the correct Y coordinate flip relative to the target screen
             let screenHeight = screen.frame.height
             let screenOriginY = screen.frame.origin.y
-            
+
             // For NSScreen coordinates, we need to flip Y relative to the screen's coordinate system
             // SCDisplay uses top-left origin, NSEvent uses bottom-left origin
-            let relativeY = pixelY - screenOriginY  // Y position relative to the screen's top
-            let flippedY = screenOriginY + (screenHeight - relativeY)  // Flip Y within the screen
-            
+            let relativeY = pixelY - screenOriginY // Y position relative to the screen's top
+            let flippedY = screenOriginY + (screenHeight - relativeY) // Flip Y within the screen
+
             finalY = flippedY
-            
-            logger.info("🔍 [DEBUG] Y-flip calculation: screenHeight=\(screenHeight), screenOriginY=\(screenOriginY), relativeY=\(relativeY)")
-            logger.info("📐 [DEBUG] Y-coordinate flipping: pixel Y: \(String(format: "%.1f", pixelY)) → flipped Y: \(String(format: "%.1f", flippedY))")
+
+            logger
+                .info(
+                    "🔍 [DEBUG] Y-flip calculation: screenHeight=\(screenHeight), screenOriginY=\(screenOriginY), relativeY=\(relativeY)"
+                )
+            logger
+                .info(
+                    "📐 [DEBUG] Y-coordinate flipping: pixel Y: \(String(format: "%.1f", pixelY)) → flipped Y: \(String(format: "%.1f", flippedY))"
+                )
         } else {
             logger.info("🔍 [DEBUG] Y-coordinate flipping DISABLED - using pixel coordinates directly")
-            logger.info("🔍 [DEBUG] Direct pixel coordinates: x=\(String(format: "%.1f", pixelX)), y=\(String(format: "%.1f", pixelY))")
+            logger
+                .info(
+                    "🔍 [DEBUG] Direct pixel coordinates: x=\(String(format: "%.1f", pixelX)), y=\(String(format: "%.1f", pixelY))"
+                )
         }
-        
-        logger.info("🎯 [DEBUG] Final coordinates: x=\(String(format: "%.1f", finalX)), y=\(String(format: "%.1f", finalY))")
-        
+
+        logger
+            .info(
+                "🎯 [DEBUG] Final coordinates: x=\(String(format: "%.1f", finalX)), y=\(String(format: "%.1f", finalY))"
+            )
+
         // Test CGWarpMouseCursorPosition if enabled
         if useWarpCursor {
-            logger.info("🔍 [DEBUG] Testing CGWarpMouseCursorPosition with coordinates: x=\(String(format: "%.1f", finalX)), y=\(String(format: "%.1f", finalY))")
+            logger
+                .info(
+                    "🔍 [DEBUG] Testing CGWarpMouseCursorPosition with coordinates: x=\(String(format: "%.1f", finalX)), y=\(String(format: "%.1f", finalY))"
+                )
             let warpResult = CGWarpMouseCursorPosition(CGPoint(x: finalX, y: finalY))
-            logger.info("🔍 [DEBUG] CGWarpMouseCursorPosition result: \(warpResult == CGError.success ? "SUCCESS" : "FAILED with error \(warpResult.rawValue)")")
+            logger
+                .info(
+                    "🔍 [DEBUG] CGWarpMouseCursorPosition result: \(warpResult == CGError.success ? "SUCCESS" : "FAILED with error \(warpResult.rawValue)")"
+                )
         }
-        
+
         return CGPoint(x: finalX, y: finalY)
     }
 
