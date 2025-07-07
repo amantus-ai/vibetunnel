@@ -1110,6 +1110,8 @@ export class VibeTunnelApp extends LitElement {
   private setupHotReload(): void {
     // Skip hot reload in test environment
     const isTestEnvironment =
+      // Check for NODE_ENV=test (set by CI build)
+      (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
       window.location.search.includes('test=true') ||
       navigator.userAgent.includes('HeadlessChrome') ||
       navigator.userAgent.includes('Headless') ||
