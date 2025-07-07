@@ -164,12 +164,23 @@ enum ControlProtocol {
 // MARK: - JSON Extensions for Any type
 
 extension KeyedDecodingContainer {
+    private static let maxDecodingDepth = 10
+    
     func decode(_ type: [String: Any].Type, forKey key: K) throws -> [String: Any] {
         let container = try nestedContainer(keyedBy: JSONCodingKeys.self, forKey: key)
-        return try container.decode(type)
+        return try container.decodeWithDepth(type, depth: 0)
     }
 
     func decode(_ type: [String: Any].Type) throws -> [String: Any] {
+        return try decodeWithDepth(type, depth: 0)
+    }
+    
+    private func decodeWithDepth(_ type: [String: Any].Type, depth: Int) throws -> [String: Any] {
+        guard depth < Self.maxDecodingDepth else {
+            // Return empty dictionary if we've hit the depth limit
+            return [:]
+        }
+        
         var dictionary = [String: Any]()
 
         for key in allKeys {
@@ -181,8 +192,9 @@ extension KeyedDecodingContainer {
                 dictionary[key.stringValue] = value
             } else if let value = try? decode(Double.self, forKey: key) {
                 dictionary[key.stringValue] = value
-            } else if let value = try? decode([String: Any].self, forKey: key) {
-                dictionary[key.stringValue] = value
+            } else if depth < Self.maxDecodingDepth - 1,
+                      let container = try? nestedContainer(keyedBy: JSONCodingKeys.self, forKey: key) {
+                dictionary[key.stringValue] = try container.decodeWithDepth(type, depth: depth + 1)
             }
         }
         return dictionary
