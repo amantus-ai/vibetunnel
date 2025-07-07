@@ -292,7 +292,9 @@ export class ScreencapWebSocketClient {
     }
 
     const message: ControlMessage = {
-      id: crypto.randomUUID(),
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'event',
       category: 'screencap',
       action,
