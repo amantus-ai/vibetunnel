@@ -624,22 +624,17 @@ export async function createApp(): Promise<AppInstance> {
   app.use('/api', createWebRTCConfigRouter());
   logger.debug('Mounted WebRTC config routes');
 
-  // Initialize screencap service in background
-  initializeScreencap().catch((error) => {
-    logger.error('Failed to initialize screencap service:', error);
-    logger.warn('Continuing without screencap service');
-  });
-
-  // Start UNIX socket server for Mac app communication
-  controlUnixHandler
-    .start()
-    .then(() => {
-      logger.log(chalk.green('Control UNIX socket: READY'));
-    })
-    .catch((error) => {
-      logger.error('Failed to start UNIX socket server:', error);
-      logger.warn('Mac app control communication will not work');
-    });
+  // Initialize screencap service and control socket
+  try {
+    await initializeScreencap();
+    await controlUnixHandler.start();
+    logger.log(chalk.green('Control UNIX socket: READY'));
+  } catch (error) {
+    logger.error('Failed to initialize screencap or control socket:', error);
+    logger.warn('Screen capture and Mac control features will not be available.');
+    // Depending on the desired behavior, you might want to exit here
+    // For now, we'll let the server continue without these features.
+  }
 
   // Handle WebSocket upgrade with authentication
   server.on('upgrade', async (request, socket, head) => {
@@ -776,7 +771,12 @@ export async function createApp(): Promise<AppInstance> {
     const pathname = wsReq.pathname;
     const searchParams = wsReq.searchParams;
 
+    logger.log(`🔌 WebSocket connection to path: ${pathname}`);
+    logger.log(`👤 User ID: ${wsReq.userId || 'unknown'}`);
+    logger.log(`🔐 Auth method: ${wsReq.authMethod || 'unknown'}`);
+
     if (pathname === '/buffers') {
+      logger.log('📊 Handling buffer WebSocket connection');
       // Handle buffer updates WebSocket
       if (bufferAggregator) {
         bufferAggregator.handleClientConnection(ws);
@@ -785,6 +785,7 @@ export async function createApp(): Promise<AppInstance> {
         ws.close();
       }
     } else if (pathname === '/ws/input') {
+      logger.log('⌨️ Handling input WebSocket connection');
       // Handle input WebSocket
       const sessionId = searchParams?.get('sessionId');
 
@@ -799,11 +800,21 @@ export async function createApp(): Promise<AppInstance> {
 
       websocketInputHandler.handleConnection(ws, sessionId, userId);
     } else if (pathname === '/ws/screencap-signal') {
+      logger.log('🖥️ Handling screencap WebSocket connection');
       // Handle screencap WebRTC signaling from browser
-      const _userId = wsReq.userId || 'unknown';
+      const userId = wsReq.userId || 'unknown';
+      logger.log(`🖥️ Screencap WebSocket user: ${userId}`);
+
+      if (!controlUnixHandler) {
+        logger.error('❌ controlUnixHandler not initialized!');
+        ws.close();
+        return;
+      }
+
+      logger.log('✅ Passing connection to controlUnixHandler');
       controlUnixHandler.handleBrowserConnection(ws);
     } else {
-      logger.error(`Unknown WebSocket path: ${pathname}`);
+      logger.error(`❌ Unknown WebSocket path: ${pathname}`);
       ws.close();
     }
   });

@@ -17,7 +17,6 @@ final class SharedUnixSocketManager {
     private var controlHandlers: [ControlProtocol.Category: (ControlProtocol.ControlMessage) async -> ControlProtocol
         .ControlMessage?
     ] = [:]
-    private let handlersLock = NSLock()
 
     // MARK: - Initialization
 
@@ -68,9 +67,10 @@ final class SharedUnixSocketManager {
         unixSocket?.disconnect()
         unixSocket = nil
 
-        handlersLock.lock()
-        controlHandlers.removeAll()
-        handlersLock.unlock()
+        // Note: We intentionally do NOT clear controlHandlers here.
+        // Handlers should persist across reconnections so that registered
+        // services (like WebRTCManager) don't need to re-register.
+        // Handlers are only cleared when the app shuts down.
     }
 
     // MARK: - Private Methods
@@ -111,7 +111,10 @@ final class SharedUnixSocketManager {
 
         // Log handler lookup for debugging
         logger.info("🔍 Looking for handler for category: \(message.category.rawValue)")
-        logger.info("🔍 Available handlers: \(self.controlHandlers.keys.map(\.rawValue).joined(separator: ", "))")
+        
+        // Get handler - no locking needed since we're on MainActor
+        let availableHandlers = controlHandlers.keys.map(\.rawValue).joined(separator: ", ")
+        logger.info("🔍 Available handlers: \(availableHandlers)")
 
         guard let handler = controlHandlers[message.category] else {
             logger.warning("No handler for category: \(message.category.rawValue)")
@@ -156,17 +159,13 @@ final class SharedUnixSocketManager {
         for category: ControlProtocol.Category,
         handler: @escaping @Sendable (ControlProtocol.ControlMessage) async -> ControlProtocol.ControlMessage?
     ) {
-        handlersLock.lock()
         controlHandlers[category] = handler
-        handlersLock.unlock()
         logger.info("✅ Registered control handler for category: \(category.rawValue)")
     }
 
     /// Unregister a control handler
     func unregisterControlHandler(for category: ControlProtocol.Category) {
-        handlersLock.lock()
         controlHandlers.removeValue(forKey: category)
-        handlersLock.unlock()
         logger.info("❌ Unregistered control handler for category: \(category.rawValue)")
     }
 }

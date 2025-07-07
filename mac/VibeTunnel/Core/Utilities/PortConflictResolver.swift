@@ -580,6 +580,13 @@ final class PortConflictResolver {
             return .killOurInstance(pid: process.pid, processName: process.name)
         }
 
+        // Special handling for Chrome Helper processes
+        // Chrome sometimes leaves orphaned helper processes on our port
+        if process.name.contains("Chrome Helper") || process.name.contains("Google Chrome Helper") {
+            logger.info("Chrome Helper process detected on our port, marking for termination: \(process.name)")
+            return .killOurInstance(pid: process.pid, processName: process.name)
+        }
+
         // Otherwise, it's an external app
         logger.info("Process identified as external app: \(process.name)")
         return .reportExternalApp(name: process.name)

@@ -81,8 +81,14 @@ class TerminalHandler implements MessageHandler {
 class ScreenCaptureHandler implements MessageHandler {
   private browserSocket: WebSocket | null = null;
 
+  constructor(private controlUnixHandler: ControlUnixHandler) {}
+
   setBrowserSocket(ws: WebSocket | null) {
     this.browserSocket = ws;
+  }
+
+  isBrowserConnected(): boolean {
+    return this.browserSocket !== null && this.browserSocket.readyState === WS.OPEN;
   }
 
   async handleMessage(message: ControlMessage): Promise<ControlMessage | null> {
@@ -97,6 +103,11 @@ class ScreenCaptureHandler implements MessageHandler {
           this.requestInitialData();
         }
         return null; // No response needed
+
+      case 'api-request':
+        // Request from browser - forward to Mac
+        logger.log(`Forwarding API request from browser to Mac: ${message.id}`);
+        return null; // The request will be forwarded by the parent handler
 
       case 'api-response':
         // Response from Mac app - forward to browser
@@ -116,6 +127,11 @@ class ScreenCaptureHandler implements MessageHandler {
           this.sendToBrowser(message);
         }
         return null;
+
+      case 'start-capture':
+        // Forward start-capture from browser to Mac app
+        logger.log(`Forwarding start-capture request to Mac app`);
+        return null; // The request will be forwarded by the parent handler
 
       case 'ping':
         // Respond to keep-alive ping
@@ -146,9 +162,8 @@ class ScreenCaptureHandler implements MessageHandler {
 
   private requestInitialData(): void {
     logger.log('Requesting initial data from Mac...');
-    const _request = createControlMessage('screencap', 'get-initial-data', {});
-    // TODO: Send request through UNIX socket
-    logger.warn('TODO: Implement sending request through UNIX socket');
+    const request = createControlMessage('screencap', 'get-initial-data', {});
+    this.controlUnixHandler.sendToMac(request);
   }
 }
 
@@ -178,19 +193,24 @@ export class ControlUnixHandler {
 
     // Initialize handlers
     this.handlers.set('terminal', new TerminalHandler());
-    this.screenCaptureHandler = new ScreenCaptureHandler();
+    this.screenCaptureHandler = new ScreenCaptureHandler(this);
     this.handlers.set('screencap', this.screenCaptureHandler);
   }
 
   async start(): Promise<void> {
+    logger.log('🚀 Starting control Unix socket handler');
+    logger.log(`📂 Socket path: ${this.socketPath}`);
+
     // Clean up any existing socket file to prevent EADDRINUSE errors on restart.
     try {
       if (fs.existsSync(this.socketPath)) {
         fs.unlinkSync(this.socketPath);
-        logger.log('Removed existing stale socket file.');
+        logger.log('🧹 Removed existing stale socket file.');
+      } else {
+        logger.log('✅ No existing socket file found');
       }
     } catch (error) {
-      logger.warn('Failed to remove stale socket file:', error);
+      logger.warn('⚠️ Failed to remove stale socket file:', error);
     }
 
     // Create UNIX socket server
@@ -251,6 +271,14 @@ export class ControlUnixHandler {
     }
 
     this.macSocket = socket;
+
+    // If a browser is already connected, we can now trigger the ready sequence
+    if (this.screenCaptureHandler.isBrowserConnected()) {
+      logger.log('Browser is already connected, sending mac-ready event.');
+      this.screenCaptureHandler.handleMessage(createControlEvent('screencap', 'mac-ready'));
+    }
+
+    // ... (rest of the function is the same)
 
     // Set socket options for better handling of large messages
     socket.setNoDelay(true); // Disable Nagle's algorithm for lower latency
@@ -360,34 +388,66 @@ export class ControlUnixHandler {
   }
 
   handleBrowserConnection(ws: WebSocket) {
-    logger.log('New browser WebSocket connection for screen capture');
+    logger.log('🌐 New browser WebSocket connection for control messages');
+    logger.log(
+      `🔌 Mac socket status on browser connect: ${this.macSocket ? 'CONNECTED' : 'NOT CONNECTED'}`
+    );
+    logger.log(`🖥️ Screen capture handler exists: ${!!this.screenCaptureHandler}`);
 
     // Set browser socket in screen capture handler
     this.screenCaptureHandler.setBrowserSocket(ws);
+    logger.log('✅ Browser socket set in screen capture handler');
+
+    // If the Mac app is already connected, we can trigger the ready sequence
+    if (this.macSocket) {
+      logger.log('✅ Mac is already connected, sending mac-ready event to trigger initialization');
+      this.screenCaptureHandler
+        .handleMessage(createControlEvent('screencap', 'mac-ready'))
+        .catch((error) => {
+          logger.error('❌ Failed to handle mac-ready event:', error);
+        });
+    } else {
+      logger.log('⏳ Mac app not connected yet, waiting for Mac connection...');
+      logger.log('💡 Make sure the Mac app is running and the Unix socket is connected');
+    }
 
     ws.on('message', async (data) => {
       try {
         const rawMessage = data.toString();
-        logger.log(`Browser message: ${rawMessage.substring(0, 200)}...`);
+        logger.log(
+          `📨 Browser message received (${rawMessage.length} chars): ${rawMessage.substring(0, 200)}...`
+        );
         const message: ControlMessage = JSON.parse(rawMessage);
+        logger.log(
+          `📥 Parsed browser message - type: ${message.type}, category: ${message.category}, action: ${message.action}`
+        );
 
         // Handle browser -> Mac messages
         if (message.category === 'screencap') {
+          logger.log(`🖥️ Processing screencap message: ${message.action}`);
+
           // Forward screen capture messages to Mac
           if (this.macSocket) {
-            logger.log(`Forwarding ${message.action} to Mac`);
+            logger.log(`📤 Forwarding ${message.action} to Mac app via Unix socket`);
             this.sendToMac(message);
           } else {
-            logger.warn('No Mac connected to handle screen capture request');
+            logger.warn('❌ No Mac connected to handle screen capture request');
+            logger.warn('💡 The Mac app needs to be running and connected via Unix socket');
             if (message.type === 'request') {
-              ws.send(JSON.stringify(createControlResponse(message, null, 'Mac not connected')));
+              const errorResponse = createControlResponse(
+                message,
+                null,
+                'Mac app not connected - ensure VibeTunnel Mac app is running'
+              );
+              logger.log('📤 Sending error response to browser:', errorResponse);
+              ws.send(JSON.stringify(errorResponse));
             }
           }
         } else {
-          logger.warn(`Browser sent message for unsupported category: ${message.category}`);
+          logger.warn(`⚠️ Browser sent message for unsupported category: ${message.category}`);
         }
       } catch (error) {
-        logger.error('Failed to parse browser message:', error);
+        logger.error('❌ Failed to parse browser message:', error);
         ws.send(
           JSON.stringify(
             createControlEvent('system', 'error', {
@@ -406,9 +466,6 @@ export class ControlUnixHandler {
     ws.on('error', (error) => {
       logger.error('Browser WebSocket error:', error);
     });
-
-    // Send initial ready event to browser
-    this.screenCaptureHandler.handleMessage(createControlEvent('screencap', 'mac-ready'));
   }
 
   private async handleMacMessage(message: ControlMessage) {
@@ -484,7 +541,7 @@ export class ControlUnixHandler {
     });
   }
 
-  private sendToMac(message: ControlMessage): void {
+  sendToMac(message: ControlMessage): void {
     if (this.macSocket && !this.macSocket.destroyed) {
       // Convert message to JSON
       const jsonStr = JSON.stringify(message);

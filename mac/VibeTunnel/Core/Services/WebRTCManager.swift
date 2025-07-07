@@ -663,6 +663,8 @@ final class WebRTCManager: NSObject {
         case .ready:
             logger.info("✅ UNIX socket connected")
             isConnected = true
+            // Notify ScreencapService that connection is ready
+            screencapService?.notifyConnectionReady()
         // The server now knows we are connected and will manage the ready state.
         // No longer need to send mac-ready from here.
         case .failed(let error):
@@ -872,6 +874,11 @@ final class WebRTCManager: NSObject {
         // Process API request on background queue to avoid blocking main thread
         Task {
             logger.info("🔄 Starting Task for API request: \(requestId)")
+            logger.info("📋 About to extract params from json")
+            logger.info("📋 json keys: \(json.keys.sorted())")
+            logger.info("📋 json[\"params\"] exists: \(json["params"] != nil)")
+            logger.info("📋 json[\"params\"] type: \(type(of: json["params"]))")
+            
             do {
                 logger.info("🔄 About to call processApiRequest")
                 let result = try await processApiRequest(
@@ -981,20 +988,30 @@ final class WebRTCManager: NSObject {
             }
 
         case ("POST", "/capture"):
+            logger.info("📋 /capture params type: \(type(of: params))")
+            logger.info("📋 /capture params value: \(String(describing: params))")
+            
             guard let params = params as? [String: Any],
                   let type = params["type"] as? String,
                   let index = params["index"] as? Int
             else {
+                logger.error("❌ Invalid capture params - params: \(String(describing: params))")
+                if let params = params as? [String: Any] {
+                    logger.error("  - type present: \(params["type"] != nil), value: \(String(describing: params["type"]))")
+                    logger.error("  - index present: \(params["index"] != nil), value: \(String(describing: params["index"]))")
+                }
                 throw WebRTCError.invalidConfiguration
             }
             let useWebRTC = params["webrtc"] as? Bool ?? false
+            let use8k = params["use8k"] as? Bool ?? false
+            logger.info("📋 Extracted params - use8k: \(use8k), webrtc: \(useWebRTC)")
 
             // Session is already updated in handleApiRequest for capture operations
             if sessionId == nil {
                 logger.warning("⚠️ No session ID provided for /capture request!")
             }
 
-            try await service.startCapture(type: type, index: index, useWebRTC: useWebRTC)
+            try await service.startCapture(type: type, index: index, useWebRTC: useWebRTC, use8k: use8k)
             return ["status": "started", "type": type, "webrtc": useWebRTC, "sessionId": sessionId ?? ""]
 
         case ("POST", "/capture-window"):
@@ -1004,13 +1021,15 @@ final class WebRTCManager: NSObject {
                 throw WebRTCError.invalidConfiguration
             }
             let useWebRTC = params["webrtc"] as? Bool ?? false
+            let use8k = params["use8k"] as? Bool ?? false
+            logger.info("📋 Window capture params - use8k: \(use8k), webrtc: \(useWebRTC)")
 
             // Session is already updated in handleApiRequest for capture operations
             if sessionId == nil {
                 logger.warning("⚠️ No session ID provided for /capture-window request!")
             }
 
-            try await service.startCaptureWindow(cgWindowID: cgWindowID, useWebRTC: useWebRTC)
+            try await service.startCaptureWindow(cgWindowID: cgWindowID, useWebRTC: useWebRTC, use8k: use8k)
             return ["status": "started", "cgWindowID": cgWindowID, "webrtc": useWebRTC, "sessionId": sessionId ?? ""]
 
         case ("POST", "/stop"):
@@ -1083,6 +1102,16 @@ final class WebRTCManager: NSObject {
                 return ["frame": ""]
             }
             return ["frame": frameData.base64EncodedString()]
+
+        case ("POST", "/mousemove"):
+            guard let params = params as? [String: Any],
+                  let x = params["x"] as? Double,
+                  let y = params["y"] as? Double
+            else {
+                throw WebRTCError.invalidConfiguration
+            }
+            try await service.sendMouseMove(x: x, y: y)
+            return ["status": "mousemove"]
 
         default:
             throw WebRTCError.invalidConfiguration
@@ -1318,7 +1347,8 @@ extension WebRTCManager: RTCPeerConnectionDelegate {
 
     nonisolated func peerConnectionShouldNegotiate(_ peerConnection: RTCPeerConnection) {
         Task { @MainActor in
-            logger.info("Should negotiate")
+            logger.info("Should negotiate - creating and sending offer")
+            await createAndSendOffer()
         }
     }
 

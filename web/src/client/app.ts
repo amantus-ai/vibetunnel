@@ -1108,6 +1108,20 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private setupHotReload(): void {
+    // Skip hot reload in test environment
+    const isTestEnvironment =
+      window.location.search.includes('test=true') ||
+      navigator.userAgent.includes('HeadlessChrome') ||
+      // Check if running in Playwright test context
+      (window as unknown as { __playwright?: unknown }).__playwright !== undefined ||
+      // Check for playwright-specific user agent
+      navigator.userAgent.includes('Playwright');
+
+    if (isTestEnvironment) {
+      logger.debug('Hot reload disabled in test environment');
+      return;
+    }
+
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       try {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -1120,8 +1134,12 @@ export class VibeTunnelApp extends LitElement {
             window.location.reload();
           }
         };
+        this.hotReloadWs.onerror = () => {
+          // Silently ignore errors - hot reload is optional
+          logger.debug('Hot reload WebSocket connection failed (this is normal in production)');
+        };
       } catch (error) {
-        logger.log('error setting up hot reload:', error);
+        logger.debug('Hot reload setup failed (this is normal in production):', error);
       }
     }
   }

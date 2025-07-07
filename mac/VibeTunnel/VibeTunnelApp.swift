@@ -19,6 +19,7 @@ struct VibeTunnelApp: App {
     @State var permissionManager = SystemPermissionManager.shared
     @State var terminalLauncher = TerminalLauncher.shared
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
+    @State var screencapService: ScreencapService?
 
     init() {
         // Connect the app delegate to this app instance
@@ -212,16 +213,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
             object: nil
         )
 
-        // Start the shared unix socket manager
-        SharedUnixSocketManager.shared.connect()
+        // Initialize ScreencapService if enabled (must happen before socket connection)
+        let screencapEnabled = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService)
+        logger.info("🎥 Screencap service enabled: \(screencapEnabled)")
+        if screencapEnabled {
+            logger.info("🎥 Initializing ScreencapService...")
+            let service = ScreencapService.shared
+            app?.screencapService = service
+            logger.info("🎥 ScreencapService initialized and retained")
+        } else {
+            logger.warning("🎥 Screencap service is disabled in settings")
+        }
 
-        // Start the terminal control handler (uses unified control socket)
+        // Start the terminal control handler (registers its handler)
         TerminalControlHandler.shared.start()
 
-        // Initialize ScreencapService if enabled
-        if AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) {
-            _ = ScreencapService.shared
-        }
+        // Start the shared unix socket manager after all handlers are registered
+        SharedUnixSocketManager.shared.connect()
 
         // Start Git monitoring early
         app?.gitRepositoryMonitor.startMonitoring()

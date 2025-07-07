@@ -68,6 +68,7 @@ public final class ScreencapService: NSObject {
         case invalidCoordinates(x: Double, y: Double)
         case invalidKeyInput(String)
         case failedToGetContent(Error)
+        case permissionDenied
         case invalidWindowIndex
         case invalidApplicationIndex
         case invalidCaptureType
@@ -96,6 +97,8 @@ public final class ScreencapService: NSObject {
                 "Invalid key input: \(key)"
             case .failedToGetContent(let error):
                 "Failed to get shareable content: \(error.localizedDescription)"
+            case .permissionDenied:
+                "Screen recording permission is required. Please grant permission in System Settings > Privacy & Security > Screen Recording > VibeTunnel"
             case .invalidWindowIndex:
                 "Invalid window index"
             case .invalidApplicationIndex:
@@ -195,7 +198,29 @@ public final class ScreencapService: NSObject {
             logger.error("Shared socket is not connected. ScreencapService is not ready.")
             throw ScreencapError.webSocketNotConnected
         }
+
+        // Transition state machine to ready if we're still idle
+        if stateMachine.currentState == .idle {
+            stateMachine.processEvent(.connect)
+            // The socket is already connected, so immediately transition to ready
+            stateMachine.processEvent(.connectionEstablished)
+        }
+
         logger.info("ScreencapService is ready for API handling.")
+    }
+
+    /// Notify the service that the WebRTC connection is ready
+    func notifyConnectionReady() {
+        logger.info("🔌 WebRTC connection ready notification received")
+
+        // Transition to ready state if we're in connecting state
+        if stateMachine.currentState == .connecting {
+            stateMachine.processEvent(.connectionEstablished)
+        } else if stateMachine.currentState == .idle {
+            // If we're still idle, transition through connecting to ready
+            stateMachine.processEvent(.connect)
+            stateMachine.processEvent(.connectionEstablished)
+        }
     }
 
     /// Test method to debug SCShareableContent issues
@@ -250,6 +275,16 @@ public final class ScreencapService: NSObject {
     /// Get all available displays
     func getDisplays() async throws -> [DisplayInfo] {
         logger.info("🔍 getDisplays() called")
+
+        // First check screen recording permission
+        let hasPermission = await isScreenRecordingAllowed()
+        logger.info("🔍 Screen recording permission check: \(hasPermission)")
+
+        // If no permission, throw an error instead of continuing
+        guard hasPermission else {
+            logger.warning("❌ No screen recording permission for getDisplays")
+            throw ScreencapError.permissionDenied
+        }
 
         // First check NSScreen to see what the system reports
         let nsScreens = NSScreen.screens
@@ -394,11 +429,7 @@ public final class ScreencapService: NSObject {
         // If no permission, throw an error instead of continuing
         guard hasPermission else {
             logger.warning("❌ No screen recording permission for getProcessGroups")
-            throw ScreencapError.failedToGetContent(NSError(
-                domain: "ScreenCaptureKit",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Screen recording permission required"]
-            ))
+            throw ScreencapError.permissionDenied
         }
 
         // Add timeout to detect if SCShareableContent is hanging
@@ -631,9 +662,16 @@ public final class ScreencapService: NSObject {
         // Stop any existing capture first to ensure clean state
         await stopCapture()
 
+        // If we're still idle, try to connect first
+        if stateMachine.currentState == .idle {
+            logger.info("📊 Service in idle state, attempting to connect first")
+            try await connectForApiHandling()
+        }
+
         // Check if we can start capture
         guard stateMachine.canPerformAction(.startCapture) else {
             logger.error("Cannot start capture in state: \(self.stateMachine.currentState)")
+            logger.error("📊 Current state description: \(self.stateMachine.stateDescription())")
             throw ScreencapError.serviceNotReady
         }
 
@@ -1052,24 +1090,8 @@ public final class ScreencapService: NSObject {
     private func startWebRTCCapture(use8k: Bool) async {
         logger.info("🌐 startWebRTCCapture called")
         do {
-            // Get server URL from environment or use default
-            let serverPort = UserDefaults.standard.string(forKey: "serverPort") ?? "4020"
-            let serverURLString = ProcessInfo.processInfo
-                .environment["VIBETUNNEL_SERVER_URL"] ?? "http://localhost:\(serverPort)"
-            guard let serverURL = URL(string: serverURLString) else {
-                logger.error("Invalid server URL: \(serverURLString)")
-                return
-            }
-
-            // Check if authentication is disabled
-            let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
-            let isNoAuth = authMode == "none"
-
-            // Create WebRTC manager with appropriate auth token
-            let localAuthToken = isNoAuth ? nil : ServerManager.shared.bunServer?.localToken
-            webRTCManager = WebRTCManager(serverURL: serverURL, screencapService: self, localAuthToken: localAuthToken)
-
-            // Set quality before starting
+            // The WebRTC manager is already initialized.
+            // We just need to set the quality and start the capture.
             webRTCManager?.setQuality(use8k: use8k)
 
             // Start WebRTC capture
@@ -1925,6 +1947,7 @@ enum ScreencapError: LocalizedError {
     case invalidConfiguration
     case failedToStartCapture(Error)
     case invalidCoordinates(x: Double, y: Double)
+    case permissionDenied
     case invalidKeyInput(String)
     case serviceNotReady
 
@@ -1944,6 +1967,8 @@ enum ScreencapError: LocalizedError {
             "Not currently capturing"
         case .failedToGetContent(let error):
             "Failed to get screen content: \(error.localizedDescription)"
+        case .permissionDenied:
+            "Screen recording permission is required. Please grant permission in System Settings > Privacy & Security > Screen Recording > VibeTunnel"
         case .invalidConfiguration:
             "Invalid capture configuration"
         case .failedToStartCapture(let error):

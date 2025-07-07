@@ -799,21 +799,21 @@ final class UnixSocketConnection {
             // Read the message length header (4 bytes, big-endian UInt32)
             let messageLength = receiveBuffer.prefix(4)
                 .withUnsafeBytes { $0.loadUnaligned(as: UInt32.self).bigEndian }
-            
+
             // Check against reasonable upper bound to guard against corrupted headers
             guard messageLength < 1_000_000 else { // 1MB max message size
                 logger.error("Corrupted message header: length=\(messageLength)")
                 receiveBuffer.removeAll() // Clear corrupted buffer
                 break
             }
-            
+
             let needed = Int(messageLength) + 4
             guard receiveBuffer.count >= needed else { break }
-            
+
             // Extract the complete message body (skip the 4-byte header)
             let body = Data(receiveBuffer.dropFirst(4).prefix(Int(messageLength)))
             receiveBuffer.removeFirst(needed)
-            
+
             // Check for keep-alive pong
             if let msgDict = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
                let type = msgDict["type"] as? String,

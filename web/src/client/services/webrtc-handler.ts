@@ -169,7 +169,14 @@ export class WebRTCHandler {
       if (event.candidate) {
         logger.log('Sending ICE candidate to Mac');
         this.onStatusUpdate?.('info', 'Exchanging network connectivity information...');
-        this.wsClient.sendSignal('ice-candidate', event.candidate);
+        // Wrap the ICE candidate in a data object to match what the Mac app expects
+        this.wsClient.sendSignal('ice-candidate', {
+          data: {
+            candidate: event.candidate.candidate,
+            sdpMid: event.candidate.sdpMid,
+            sdpMLineIndex: event.candidate.sdpMLineIndex,
+          },
+        });
       }
     };
 
@@ -202,24 +209,21 @@ export class WebRTCHandler {
       logger.log('Event streams length:', event.streams?.length);
       this.onStatusUpdate?.('success', `Received ${event.track.kind} stream from Mac`);
 
-      if (event.streams?.[0]) {
+      if (event.streams && event.streams.length > 0) {
         this.remoteStream = event.streams[0];
-        logger.log('Setting remote stream, calling onStreamReady');
+        logger.log('Setting remote stream from event.streams[0], calling onStreamReady');
         this.onStreamReady?.(this.remoteStream);
-
-        // Start collecting statistics
-        this.startStatsCollection();
       } else {
-        logger.warn('No streams available in track event');
-        // Create a new MediaStream and add the track
-        const stream = new MediaStream([event.track]);
-        this.remoteStream = stream;
+        // Fallback for browsers that don't support event.streams
+        const newStream = new MediaStream();
+        newStream.addTrack(event.track);
+        this.remoteStream = newStream;
         logger.log('Created new MediaStream with track, calling onStreamReady');
-        this.onStreamReady?.(stream);
-
-        // Start collecting statistics
-        this.startStatsCollection();
+        this.onStreamReady?.(this.remoteStream);
       }
+
+      // Start collecting statistics
+      this.startStatsCollection();
     };
 
     this.peerConnection.onconnectionstatechange = () => {
@@ -390,7 +394,13 @@ export class WebRTCHandler {
 
       logger.log('Sending answer to Mac');
       this.onStatusUpdate?.('info', 'Sending connection response...');
-      this.wsClient.sendSignal('answer', modifiedAnswer);
+      // Wrap the answer in a data object to match what the Mac app expects
+      this.wsClient.sendSignal('answer', {
+        data: {
+          type: modifiedAnswer.type,
+          sdp: modifiedAnswer.sdp,
+        },
+      });
 
       // Configure bitrate after connection is established
       await this.configureBitrateParameters();
@@ -602,15 +612,12 @@ export class WebRTCHandler {
       );
 
       // Send bitrate adjustment to Mac app
-      this.wsClient.sendSignal(
-        JSON.stringify({
-          type: 'bitrate-adjustment',
-          data: {
-            targetBitrate: clampedBitrate,
-            reason: shouldReduceBitrate ? 'quality-degradation' : 'quality-improvement',
-          },
-        })
-      );
+      this.wsClient.sendSignal('bitrate-adjustment', {
+        data: {
+          targetBitrate: clampedBitrate,
+          reason: shouldReduceBitrate ? 'quality-degradation' : 'quality-improvement',
+        },
+      });
     }
   }
 }

@@ -105,6 +105,11 @@ struct ScreencapErrorResponse: Codable, LocalizedError {
                 code: .connectionFailed,
                 message: error.localizedDescription
             )
+        case ScreencapService.ScreencapError.permissionDenied:
+            return Self(
+                code: .permissionDenied,
+                message: error.localizedDescription
+            )
         case WebRTCError.failedToCreatePeerConnection:
             return Self(
                 code: .webrtcInitFailed,
