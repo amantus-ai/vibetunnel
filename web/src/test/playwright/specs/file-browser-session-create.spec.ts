@@ -35,7 +35,7 @@ test.describe('File Browser in Session Create Form', () => {
     const fileBrowserZIndex = await fileBrowser.evaluate(
       (el) => window.getComputedStyle(el.parentElement!).zIndex
     );
-    expect(parseInt(fileBrowserZIndex)).toBeGreaterThan(1000); // Modal backdrop is z-index: 1000
+    expect(Number.parseInt(fileBrowserZIndex)).toBeGreaterThan(1000); // Modal backdrop is z-index: 1000
 
     // Verify we can interact with file browser (not blocked by modal)
     const backButton = page.locator('button:has-text("Back")').first();
