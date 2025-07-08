@@ -87,22 +87,49 @@ describe('SessionView', () => {
       // Mock touch capabilities
       const originalMaxTouchPoints = navigator.maxTouchPoints;
       const originalMatchMedia = window.matchMedia;
-      
+
       Object.defineProperty(navigator, 'maxTouchPoints', {
         value: 1,
         configurable: true,
       });
-      
+
       // Mock matchMedia to simulate touch device
       window.matchMedia = (query: string) => {
         if (query === '(any-pointer: coarse)') {
-          return { matches: true, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => true } as MediaQueryList;
+          return {
+            matches: true,
+            media: query,
+            onchange: null,
+            addListener: () => {},
+            removeListener: () => {},
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => true,
+          } as MediaQueryList;
         }
         if (query === '(any-pointer: fine)') {
-          return { matches: false, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => true } as MediaQueryList;
+          return {
+            matches: false,
+            media: query,
+            onchange: null,
+            addListener: () => {},
+            removeListener: () => {},
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => true,
+          } as MediaQueryList;
         }
         if (query === '(any-hover: hover)') {
-          return { matches: false, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => true } as MediaQueryList;
+          return {
+            matches: false,
+            media: query,
+            onchange: null,
+            addListener: () => {},
+            removeListener: () => {},
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => true,
+          } as MediaQueryList;
         }
         return originalMatchMedia(query);
       };

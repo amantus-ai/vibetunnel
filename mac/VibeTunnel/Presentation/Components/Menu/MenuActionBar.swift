@@ -35,7 +35,7 @@ struct MenuActionBar: View {
                             .scaleEffect(isHoveringNewSession ? 1.05 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringNewSession)
                     )
-            }
+            })
             .buttonStyle(.plain)
             .foregroundColor(.primary)
             .onHover { hovering in
@@ -67,7 +67,7 @@ struct MenuActionBar: View {
                             .scaleEffect(isHoveringSettings ? 1.05 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringSettings)
                     )
-            }
+            })
             .buttonStyle(.plain)
             .foregroundColor(.secondary)
             .onHover { hovering in
@@ -101,7 +101,7 @@ struct MenuActionBar: View {
                             .scaleEffect(isHoveringQuit ? 1.05 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringQuit)
                     )
-            }
+            })
             .buttonStyle(.plain)
             .foregroundColor(.secondary)
             .onHover { hovering in
