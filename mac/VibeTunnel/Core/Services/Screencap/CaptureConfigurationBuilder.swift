@@ -477,8 +477,8 @@ public final class CaptureConfigurationBuilder {
             UInt8(fourCC & 0xFF)
         ]
 
-        let chars = bytes.compactMap { byte -> Character? in
-            guard let scalar = UnicodeScalar(byte) else { return nil }
+        let chars = bytes.map { byte -> Character in
+            let scalar = UnicodeScalar(byte)
             return Character(scalar)
         }
 
