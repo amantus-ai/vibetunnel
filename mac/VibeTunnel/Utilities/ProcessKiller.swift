@@ -4,7 +4,7 @@ import OSLog
 
 /// Utility to detect and terminate other VibeTunnel instances
 @MainActor
-final class ProcessKiller {
+enum ProcessKiller {
     private static let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ProcessKiller")
 
     /// Kill all other VibeTunnel instances except the current one
@@ -17,23 +17,21 @@ final class ProcessKiller {
 
         // Kill other instances
         var killedCount = 0
-        for process in vibeTunnelProcesses {
-            if process.pid != currentPID {
-                logger.info("🎯 Found other VibeTunnel instance: PID \(process.pid) at \(process.path)")
+        for process in vibeTunnelProcesses where process.pid != currentPID {
+            logger.info("🎯 Found other VibeTunnel instance: PID \(process.pid) at \(process.path)")
 
-                // Skip if this appears to be a debug session (has NSDocumentRevisionsDebugMode argument)
-                // This indicates it's being debugged by Xcode
-                if isDebugProcess(pid: process.pid) {
-                    logger.info("⏭️ Skipping debug instance PID \(process.pid)")
-                    continue
-                }
+            // Skip if this appears to be a debug session (has NSDocumentRevisionsDebugMode argument)
+            // This indicates it's being debugged by Xcode
+            if isDebugProcess(pid: process.pid) {
+                logger.info("⏭️ Skipping debug instance PID \(process.pid)")
+                continue
+            }
 
-                if killProcess(pid: process.pid) {
-                    killedCount += 1
-                    logger.info("✅ Successfully killed PID \(process.pid)")
-                } else {
-                    logger.warning("⚠️ Failed to kill PID \(process.pid)")
-                }
+            if killProcess(pid: process.pid) {
+                killedCount += 1
+                logger.info("✅ Successfully killed PID \(process.pid)")
+            } else {
+                logger.warning("⚠️ Failed to kill PID \(process.pid)")
             }
         }
 
@@ -55,12 +53,9 @@ final class ProcessKiller {
         let allProcesses = getAllProcesses()
         logger.debug("🔍 Found \(allProcesses.count) total processes")
 
-        for process in allProcesses {
-            // Check if this is a VibeTunnel app (not vibetunnel CLI or other related processes)
-            if process.path.contains("VibeTunnel.app/Contents/MacOS/VibeTunnel") {
-                logger.debug("🎯 Found VibeTunnel process: PID \(process.pid) at \(process.path)")
-                processes.append(process)
-            }
+        for process in allProcesses where process.path.contains("VibeTunnel.app/Contents/MacOS/VibeTunnel") {
+            logger.debug("🎯 Found VibeTunnel process: PID \(process.pid) at \(process.path)")
+            processes.append(process)
         }
 
         logger.info("📊 Found \(processes.count) VibeTunnel app processes")

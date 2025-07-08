@@ -3,14 +3,14 @@ import OSLog
 
 /// States for the capture lifecycle
 enum CaptureState: String, CustomStringConvertible {
-    case idle = "idle"
-    case connecting = "connecting"
-    case ready = "ready"
-    case starting = "starting"
-    case capturing = "capturing"
-    case stopping = "stopping"
-    case error = "error"
-    case reconnecting = "reconnecting"
+    case idle
+    case connecting
+    case ready
+    case starting
+    case capturing
+    case stopping
+    case error
+    case reconnecting
 
     var description: String { rawValue }
 }

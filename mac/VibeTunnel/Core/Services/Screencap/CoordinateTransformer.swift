@@ -261,10 +261,8 @@ public final class CoordinateTransformer {
 
     /// Finds the screen containing the given point
     private func findScreenContaining(point: CGPoint) -> NSScreen? {
-        for screen in NSScreen.screens {
-            if screen.frame.contains(point) {
-                return screen
-            }
+        for screen in NSScreen.screens where screen.frame.contains(point) {
+            return screen
         }
         return nil
     }

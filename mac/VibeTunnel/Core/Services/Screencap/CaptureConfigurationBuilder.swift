@@ -470,12 +470,18 @@ public final class CaptureConfigurationBuilder {
     }
 
     private func fourCCToString(_ fourCC: FourCharCode) -> String {
-        let chars = [
-            Character(UnicodeScalar((fourCC >> 24) & 0xFF)!),
-            Character(UnicodeScalar((fourCC >> 16) & 0xFF)!),
-            Character(UnicodeScalar((fourCC >> 8) & 0xFF)!),
-            Character(UnicodeScalar(fourCC & 0xFF)!)
+        let bytes = [
+            UInt8((fourCC >> 24) & 0xFF),
+            UInt8((fourCC >> 16) & 0xFF),
+            UInt8((fourCC >> 8) & 0xFF),
+            UInt8(fourCC & 0xFF)
         ]
+
+        let chars = bytes.compactMap { byte -> Character? in
+            guard let scalar = UnicodeScalar(byte) else { return nil }
+            return Character(scalar)
+        }
+
         return String(chars)
     }
 }

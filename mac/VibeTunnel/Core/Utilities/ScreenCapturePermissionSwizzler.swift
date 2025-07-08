@@ -1,15 +1,20 @@
 import Foundation
 import ObjectiveC
+import OSLog
 
-/// A class that swizzles ScreenCaptureKit's permission request methods to automatically grant permissions.
-///
-/// This is useful for development and testing scenarios where you want to bypass the system
-/// permission dialog. This should NEVER be used in production code.
-///
-/// The implementation swizzles the private `requestUserPermissionForScreenCapture:` method
-/// on the `SCStreamManager` class to always call its completion handler with `true`.
-///
-/// Based on: https://chromium-review.googlesource.com/c/chromium/src/+/4727729/32/media/audio/mac/screen_capture_kit_swizzler.mm#24
+// A class that swizzles ScreenCaptureKit's permission request methods to automatically grant permissions.
+//
+// This is useful for development and testing scenarios where you want to bypass the system
+// permission dialog. This should NEVER be used in production code.
+//
+// The implementation swizzles the private `requestUserPermissionForScreenCapture:` method
+// on the `SCStreamManager` class to always call its completion handler with `true`.
+//
+// Based on:
+// https://chromium-review.googlesource.com/c/chromium/src/+/4727729/32/media/audio/mac/screen_capture_kit_swizzler.mm#24
+
+private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ScreenCapturePermissionSwizzler")
+
 final class ScreenCapturePermissionSwizzler {
     // MARK: - Private Properties
 
@@ -52,7 +57,7 @@ final class ScreenCapturePermissionSwizzler {
         // Get the private SCStreamManager class using NSClassFromString
         // This is equivalent to objc_getClass("SCStreamManager") in the original
         guard let streamManagerClass = NSClassFromString("SCStreamManager") else {
-            print("[ScreenCapturePermissionSwizzler] Failed to find SCStreamManager class")
+            logger.error("Failed to find SCStreamManager class")
             return
         }
 
@@ -62,8 +67,8 @@ final class ScreenCapturePermissionSwizzler {
 
         // Get the original method from the SCStreamManager class
         guard let originalMethod = class_getInstanceMethod(streamManagerClass, originalSelector) else {
-            print(
-                "[ScreenCapturePermissionSwizzler] Failed to find original requestUserPermissionForScreenCapture: method"
+            logger.error(
+                "Failed to find original requestUserPermissionForScreenCapture: method"
             )
             return
         }
@@ -73,13 +78,13 @@ final class ScreenCapturePermissionSwizzler {
             ScreenCapturePermissionSwizzler.self,
             swizzledSelector
         ) else {
-            print("[ScreenCapturePermissionSwizzler] Failed to get swizzled method implementation")
+            logger.error("Failed to get swizzled method implementation")
             return
         }
 
         // Get the type encoding from the original method to ensure compatibility
         guard let encoding = method_getTypeEncoding(originalMethod) else {
-            print("[ScreenCapturePermissionSwizzler] Failed to get method type encoding")
+            logger.error("Failed to get method type encoding")
             return
         }
 
@@ -96,17 +101,17 @@ final class ScreenCapturePermissionSwizzler {
             // Method was successfully added, now we can exchange implementations
             if let swizzledMethod = class_getInstanceMethod(streamManagerClass, swizzledSelector) {
                 method_exchangeImplementations(originalMethod, swizzledMethod)
-                print("[ScreenCapturePermissionSwizzler] Successfully swizzled requestUserPermissionForScreenCapture:")
+                logger.info("Successfully swizzled requestUserPermissionForScreenCapture:")
             } else {
-                print("[ScreenCapturePermissionSwizzler] Failed to get swizzled method after adding")
+                logger.error("Failed to get swizzled method after adding")
             }
         } else {
             // Method already exists (unlikely), try to exchange anyway
             if let swizzledMethod = class_getInstanceMethod(streamManagerClass, swizzledSelector) {
                 method_exchangeImplementations(originalMethod, swizzledMethod)
-                print("[ScreenCapturePermissionSwizzler] Successfully swizzled existing method")
+                logger.info("Successfully swizzled existing method")
             } else {
-                print("[ScreenCapturePermissionSwizzler] Failed to get existing swizzled method")
+                logger.error("Failed to get existing swizzled method")
             }
         }
     }

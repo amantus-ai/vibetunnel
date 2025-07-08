@@ -459,7 +459,7 @@ public final class DisplayCoordinator: NSObject {
     public func stopMonitoring() {
         guard isMonitoring else { return }
 
-        NotificationCenter.default.removeObserver(self)
+        // Observer will be removed in deinit
         isMonitoring = false
         logger.info("📺 Display monitoring disabled")
     }

@@ -124,20 +124,20 @@ final class SystemPermissionManager {
             requestPermission(permission)
         }
     }
-    
+
     /// Force a permission recheck (useful when user manually changes settings)
     func forcePermissionRecheck() {
         logger.info("Force permission recheck requested")
-        
+
         // Clear any cached values
         permissions[.accessibility] = false
         permissions[.screenRecording] = false
         permissions[.appleScript] = false
-        
+
         // Immediate check
         Task { @MainActor in
             await checkAllPermissions()
-            
+
             // Double-check after a delay to catch any async updates
             try? await Task.sleep(for: .milliseconds(500))
             await checkAllPermissions()
@@ -282,7 +282,7 @@ final class SystemPermissionManager {
         // First check the API
         let apiResult = AXIsProcessTrusted()
         logger.debug("AXIsProcessTrusted returned: \(apiResult)")
-        
+
         // More comprehensive test - try to get focused application and its windows
         // This definitely requires accessibility permission
         let systemElement = AXUIElementCreateSystemWide()
@@ -292,7 +292,7 @@ final class SystemPermissionManager {
             kAXFocusedApplicationAttribute as CFString,
             &focusedApp
         )
-        
+
         if appResult == .success, let app = focusedApp {
             // Try to get windows from the app - this definitely needs accessibility
             var windows: CFTypeRef?
@@ -301,10 +301,10 @@ final class SystemPermissionManager {
                 kAXWindowsAttribute as CFString,
                 &windows
             )
-            
+
             let hasAccess = windowResult == .success
             logger.debug("Comprehensive accessibility test result: \(hasAccess), can get windows: \(windows != nil)")
-            
+
             if hasAccess {
                 logger.debug("Accessibility permission verified through comprehensive test")
                 return true
@@ -320,7 +320,7 @@ final class SystemPermissionManager {
                 logger.debug("API reports true but cannot access UI elements")
             }
         }
-        
+
         return false
     }
 
