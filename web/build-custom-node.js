@@ -148,7 +148,6 @@ async function buildCustomNode() {
   
   const tarPath = path.join(buildDir, `node-v${nodeSourceVersion}.tar.gz`);
   const originalCwd = process.cwd();
-  let originalPath = null;
   
   try {
     // Download Node.js source if not cached
@@ -179,7 +178,6 @@ async function buildCustomNode() {
       '--without-node-code-cache', // Disable code cache
       '--without-node-snapshot',  // Don't create/use startup snapshot
       '--shared-zlib',     // Use system zlib instead of building custom
-      '--without-ssl',     // Build without OpenSSL to avoid Homebrew deps
     ];
     
     // Check if ninja is available
@@ -191,11 +189,6 @@ async function buildCustomNode() {
       console.log('Ninja not found, using Make...');
     }
     
-    // Save original PATH and set a clean environment
-    originalPath = process.env.PATH;
-    // Use only system paths to avoid Homebrew contamination
-    process.env.PATH = '/usr/bin:/bin:/usr/sbin:/sbin';
-    console.log('Using clean PATH to avoid Homebrew dependencies...');
     
     // Enable ccache if available in system paths
     try {
@@ -210,13 +203,6 @@ async function buildCustomNode() {
     // Use -Os optimization which is proven to be safe
     process.env.CFLAGS = '-Os';
     process.env.CXXFLAGS = '-Os';
-    // Clear LDFLAGS to avoid any Homebrew library paths
-    delete process.env.LDFLAGS;
-    delete process.env.LIBRARY_PATH;
-    delete process.env.CPATH;
-    delete process.env.C_INCLUDE_PATH;
-    delete process.env.CPLUS_INCLUDE_PATH;
-    delete process.env.PKG_CONFIG_PATH;
     
     execSync(`./configure ${configureArgs.join(' ')}`, { stdio: 'inherit' });
     
@@ -291,8 +277,6 @@ Path: ${customNodePath}
 `;
     fs.writeFileSync(summaryPath, summary);
     
-    // Restore original PATH
-    process.env.PATH = originalPath;
     
     // Change back to original directory
     process.chdir(originalCwd);
@@ -314,10 +298,6 @@ Path: ${customNodePath}
     return customNodePath;
     
   } catch (error) {
-    // Restore original PATH if it was saved
-    if (originalPath) {
-      process.env.PATH = originalPath;
-    }
     process.chdir(originalCwd);
     console.error('Failed to build custom Node.js:', error.message || error);
     
