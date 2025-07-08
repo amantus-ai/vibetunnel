@@ -475,18 +475,9 @@ final class BunServer {
 
                 // Process accumulated data
                 if !buffer.isEmpty {
-                    if let output = String(data: buffer, encoding: .utf8) {
-                        Self.processOutputStatic(output, logHandler: logHandler, isError: false)
-                    } else {
-                        // If UTF-8 decoding fails, try to decode what we can
-                        // Create a lossy string by filtering out invalid UTF-8 sequences
-                        let validBytes = buffer.filter { byte in
-                            // Basic check for valid UTF-8 continuation bytes
-                            byte < 0x80 || (byte >= 0xC0 && byte <= 0xFD)
-                        }
-                        let output = String(bytes: validBytes, encoding: .utf8) ?? "[Invalid UTF-8 data]"
-                        Self.processOutputStatic(output, logHandler: logHandler, isError: false)
-                    }
+                    // Simply use the built-in lossy conversion instead of manual filtering
+                    let output = String(decoding: buffer, as: UTF8.self)
+                    Self.processOutputStatic(output, logHandler: logHandler, isError: false)
                 }
             }
 
@@ -563,18 +554,9 @@ final class BunServer {
 
                 // Process accumulated data
                 if !buffer.isEmpty {
-                    if let output = String(data: buffer, encoding: .utf8) {
-                        Self.processOutputStatic(output, logHandler: logHandler, isError: true)
-                    } else {
-                        // If UTF-8 decoding fails, try to decode what we can
-                        // Create a lossy string by filtering out invalid UTF-8 sequences
-                        let validBytes = buffer.filter { byte in
-                            // Basic check for valid UTF-8 continuation bytes
-                            byte < 0x80 || (byte >= 0xC0 && byte <= 0xFD)
-                        }
-                        let output = String(bytes: validBytes, encoding: .utf8) ?? "[Invalid UTF-8 data]"
-                        Self.processOutputStatic(output, logHandler: logHandler, isError: true)
-                    }
+                    // Simply use the built-in lossy conversion instead of manual filtering
+                    let output = String(decoding: buffer, as: UTF8.self)
+                    Self.processOutputStatic(output, logHandler: logHandler, isError: true)
                 }
             }
 

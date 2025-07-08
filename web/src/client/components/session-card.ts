@@ -24,6 +24,30 @@ import './copy-icon.js';
 import './clickable-path.js';
 import './inline-edit.js';
 
+// Magic wand icon constant
+const MAGIC_WAND_ICON = html`
+  <svg
+    class="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+    />
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="1.5"
+      d="M12 8l-2 2m4-2l-2 2m4 0l-2 2"
+      opacity="0.6"
+    />
+  </svg>
+`;
+
 @customElement('session-card')
 export class SessionCard extends LitElement {
   // Disable shadow DOM to use Tailwind
@@ -36,6 +60,8 @@ export class SessionCard extends LitElement {
   @state() private killing = false;
   @state() private killingFrame = 0;
   @state() private isActive = false;
+  @state() private isHovered = false;
+  @state() private isSendingPrompt = false;
 
   private killingInterval: number | null = null;
   private activityTimeout: number | null = null;
@@ -280,20 +306,37 @@ export class SessionCard extends LitElement {
     }
   }
 
-  private async handleSendAIPrompt() {
+  private async handleMagicButton() {
+    if (!this.session || this.isSendingPrompt) return;
+
+    this.isSendingPrompt = true;
+    logger.log('Magic button clicked for session', this.session.id);
+
     try {
       await sendAIPrompt(this.session.id, this.authClient);
     } catch (error) {
       logger.error('Failed to send AI prompt', error);
-      // Dispatch error event for user notification
       this.dispatchEvent(
-        new CustomEvent('error', {
-          detail: `Failed to send AI prompt: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        new CustomEvent('show-toast', {
+          detail: {
+            message: 'Failed to send prompt to AI assistant',
+            type: 'error',
+          },
           bubbles: true,
           composed: true,
         })
       );
+    } finally {
+      this.isSendingPrompt = false;
     }
+  }
+
+  private handleMouseEnter() {
+    this.isHovered = true;
+  }
+
+  private handleMouseLeave() {
+    this.isHovered = false;
   }
 
   render() {
@@ -323,6 +366,8 @@ export class SessionCard extends LitElement {
         data-session-status="${this.session.status}"
         data-is-killing="${this.killing}"
         @click=${this.handleCardClick}
+        @mouseenter=${this.handleMouseEnter}
+        @mouseleave=${this.handleMouseLeave}
       >
         <!-- Compact Header -->
         <div
@@ -347,33 +392,20 @@ export class SessionCard extends LitElement {
               this.session.status === 'running' && isAIAssistantSession(this.session)
                 ? html`
                   <button
-                    class="p-1 rounded-full transition-all duration-200 text-accent-primary hover:bg-accent-primary hover:bg-opacity-20"
-                    @click=${async (e: Event) => {
+                    class="bg-transparent border-0 p-0 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-200 text-accent-primary"
+                    @click=${(e: Event) => {
                       e.stopPropagation();
-                      await this.handleSendAIPrompt();
+                      this.handleMagicButton();
                     }}
                     title="Send prompt to update terminal title"
+                    aria-label="Send magic prompt to AI assistant"
+                    ?disabled=${this.isSendingPrompt}
                   >
-                    <svg
-                      class="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                      />
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="1.5"
-                        d="M12 8l-2 2m4-2l-2 2m4 0l-2 2"
-                        opacity="0.6"
-                      />
-                    </svg>
+                    ${
+                      this.isSendingPrompt
+                        ? html`<span class="block w-5 h-5 flex items-center justify-center animate-spin">⠋</span>`
+                        : MAGIC_WAND_ICON
+                    }
                   </button>
                 `
                 : ''
