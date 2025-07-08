@@ -55,6 +55,12 @@ if [ ! -f "$SPARKLE_PRIVATE_KEY_PATH" ]; then
     exit 1
 fi
 
+# CRITICAL: Verify we're using the correct private key
+print_warning "⚠️  IMPORTANT: This script uses the file-based private key at: $SPARKLE_PRIVATE_KEY_PATH"
+print_warning "⚠️  DO NOT use sign_update without the -f flag!"
+print_warning "⚠️  The keychain may contain a different key that produces incompatible signatures!"
+echo -e "${YELLOW}[WARNING]${NC} Expected public key in Info.plist: AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=" >&2
+
 # Function to print colored output
 print_info() {
     echo -e "${GREEN}[INFO]${NC} $1" >&2
@@ -124,12 +130,15 @@ generate_signature() {
         exit 1
     fi
     
-    # Sign using the private key file with account if specified
+    # CRITICAL: Always use the -f flag with the private key file
+    # DO NOT remove the -f flag or this will use the wrong key from keychain!
     local sign_cmd="$sign_update_bin \"$file_path\" -f \"$SPARKLE_PRIVATE_KEY_PATH\" -p"
     if [ -n "$SPARKLE_ACCOUNT" ]; then
         sign_cmd="$sign_cmd --account \"$SPARKLE_ACCOUNT\""
         echo "Using Sparkle account: $SPARKLE_ACCOUNT" >&2
     fi
+    
+    print_info "Signing with command: sign_update [file] -f $SPARKLE_PRIVATE_KEY_PATH -p"
     
     local signature=$(eval $sign_cmd 2>/dev/null)
     if [ -n "$signature" ] && [ "$signature" != "-----END PRIVATE KEY-----" ]; then

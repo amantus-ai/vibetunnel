@@ -34,8 +34,8 @@ gh release create "v1.0.0-beta.5" \
   build/VibeTunnel-*.dmg \
   build/VibeTunnel-*.zip
 
-# 3. Get Sparkle signature
-sign_update build/VibeTunnel-*.dmg --account VibeTunnel
+# 3. Get Sparkle signature (ALWAYS use -f flag!)
+sign_update -f private/sparkle_private_key build/VibeTunnel-*.dmg --account VibeTunnel
 
 # 4. Update appcast manually (add to appcast-prerelease.xml)
 # 5. Commit and push
@@ -111,6 +111,24 @@ For releasing 1.0.0-beta.2:
 ## 📋 Pre-Release Checklist
 
 Before running ANY release commands, verify these items:
+
+### ⚠️ CRITICAL: Sparkle Signature Verification
+- [ ] **Verify private key exists at `private/sparkle_private_key`**
+- [ ] **Confirm you will use the `-f` flag with ALL sign_update commands**
+- [ ] **Test sign a dummy file to ensure correct key:**
+  ```bash
+  echo "test" > test.txt
+  sign_update -f private/sparkle_private_key test.txt
+  # Should produce a signature starting with a valid EdDSA signature
+  rm test.txt
+  ```
+- [ ] **NEVER use sign_update without the `-f` flag!**
+- [ ] **The public key in Info.plist is: `AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=`**
+- [ ] **Run signature validation script:**
+  ```bash
+  ./scripts/validate-sparkle-signature.sh
+  # Should show all signatures are valid
+  ```
 
 ### Environment Setup
 - [ ] Ensure stable internet connection (notarization requires consistent connectivity)
@@ -277,12 +295,22 @@ The script will:
   ```bash
   # Download and verify the DMG signature
   curl -L -o test.dmg <github-dmg-url>
-  sign_update test.dmg --account VibeTunnel
+  sign_update -f private/sparkle_private_key test.dmg --account VibeTunnel
   # Compare with appcast sparkle:edSignature
   ```
 - Test updating from a previous version
 - **Important**: Verify that the Sparkle update dialog shows the formatted changelog, not HTML tags
-- Check that update installs without "improperly signed" errors
+- **CRITICAL**: Check that update installs without "improperly signed" errors
+  - If you get "improperly signed" error, the appcast has wrong signature
+  - Regenerate with: `sign_update -f private/sparkle_private_key [dmg-file]`
+  - Update appcast XML with correct signature
+  - Run `./scripts/validate-sparkle-signature.sh` to verify all signatures
+- Verify Stats.store is serving the updated appcast (1-minute cache):
+  ```bash
+  curl -H "User-Agent: VibeTunnel/X.X.X Sparkle/2.7.1" \
+       https://stats.store/api/v1/appcast/appcast-prerelease.xml | \
+       grep sparkle:edSignature
+  ```
 
 ### If Interrupted
 
@@ -328,7 +356,8 @@ rm -rf build DerivedData
 ### 5. Sign DMG for Sparkle
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-sign_update build/VibeTunnel-X.X.X.dmg
+# CRITICAL: Always use -f flag with private key file!
+sign_update -f private/sparkle_private_key build/VibeTunnel-X.X.X.dmg
 ```
 
 ### 6. Create GitHub Release
@@ -359,9 +388,9 @@ ls -la build/VibeTunnel-*.zip
 # Check GitHub release
 gh release view v1.0.0-beta.5
 
-# Verify Sparkle signature
+# Verify Sparkle signature (ALWAYS use -f flag!)
 curl -L -o test.dmg [github-dmg-url]
-sign_update test.dmg --account VibeTunnel
+sign_update -f private/sparkle_private_key test.dmg --account VibeTunnel
 
 # Check appcast
 grep "1.0.0-beta.5" ../appcast-prerelease.xml
@@ -405,6 +434,29 @@ YOUR_PRIVATE_KEY_CONTENT
 - Sparkle tools in `~/.local/bin/` (sign_update, generate_appcast)
 
 ## 🔐 Sparkle Configuration
+
+### ⚠️ CRITICAL: Sparkle Private Key Management
+
+**ALWAYS use the file-based private key for signing!**
+
+VibeTunnel uses EdDSA signatures for Sparkle updates. The correct private key is stored at:
+- `private/sparkle_private_key` (primary location)
+- `sparkle-private-ed-key.pem` (alternate location)
+
+**WARNING**: Your system may have multiple Sparkle private keys:
+1. **File-based key** (CORRECT) - Matches the public key in Info.plist
+2. **Keychain key** (WRONG) - May produce incompatible signatures
+
+**ALWAYS use the `-f` flag when signing:**
+```bash
+# ✅ CORRECT - Uses file-based key
+sign_update -f private/sparkle_private_key build/VibeTunnel-*.dmg
+
+# ❌ WRONG - May use keychain key
+sign_update build/VibeTunnel-*.dmg
+```
+
+The public key in Info.plist is: `AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=`
 
 ### Sparkle Requirements for Non-Sandboxed Apps
 

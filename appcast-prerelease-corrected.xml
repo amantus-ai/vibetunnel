@@ -32,7 +32,7 @@
                        sparkle:shortVersionString="1.0.0-beta.8" 
                        length="44748347" 
                        type="application/x-apple-diskimage" 
-                       sparkle:edSignature="/538z6L/qhhnHkfWU1hVoqeKvFdHubFRobfq6Vfmwz4UCpDVhJrqG+W28xW1wU4W9+xt41NMgei+DLJr1JV8Cg=="/>
+                       sparkle:edSignature="XcdsjTw01IMbHGVnRVAq1cZ4ii4bY69CE+xqRHO/XXHP+05xzqndwlQ3cv22Ju083zbU2eu8W1J5AoCa75jLBw=="/>
         </item>
         <item>
             <title>VibeTunnel 1.0.0-beta.7</title>
@@ -164,7 +164,7 @@
                        sparkle:shortVersionString="1.0.0-beta.7" 
                        length="33195103" 
                        type="application/x-apple-diskimage" 
-                       sparkle:edSignature="T8R0fG2cY7zyKDIOVAEGk02Su+mj7JKk//dyGBHmMC4o8QtUVCL24ASbKZiRa1fVey79+MCWdIVs79DG+sb7AQ=="/>
+                       sparkle:edSignature="vdcImChUp1qKY3V/8CTnyxq0TXkQjPXnEbEvks0xwWbzqvSP1xe3MBr/5kalilFpC9dH7wMxO9ohoNhHTjOvBQ=="/>
         </item>
         <item>
             <title>VibeTunnel 1.0.0-beta.6</title>
@@ -231,7 +231,7 @@
 </div>
             ]]></description>
             <pubDate>Wed, 03 Jul 2025 00:46:29 +0100</pubDate>
-            <enclosure url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.6/VibeTunnel-1.0.0-beta.6.dmg" sparkle:version="160" sparkle:shortVersionString="1.0.0-beta.6" type="application/octet-stream" sparkle:edSignature="kFaJj5tSahAMZ1Sj5p3q7YkQ3n7G6yCLXpUAvcqjjOLV9r9vW2k4ByPUXdKQkHujuDmGhElk2oMucv/jp0QPDg==" length="35747713"/>
+            <enclosure url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.6/VibeTunnel-1.0.0-beta.6.dmg" sparkle:version="160" sparkle:shortVersionString="1.0.0-beta.6" type="application/octet-stream" sparkle:edSignature="g84r8XLzvfeVHccjULfpjRGClf9Wll14PVLXCktUBkc+TRA312troC8dw1+bEn/ta5itW7nErwOCCIGD8U21DA==" length="35747713"/>
         </item>
         <item>
             <title>VibeTunnel 1.0.0-beta.5</title>
@@ -283,7 +283,7 @@
 </div>
             ]]></description>
             <pubDate>Sun, 30 Jun 2025 03:26:47 +0000</pubDate>
-            <enclosure url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.5/VibeTunnel-1.0.0-beta.5.dmg" sparkle:version="150" sparkle:shortVersionString="1.0.0-beta.5" length="35714742" type="application/x-apple-diskimage" sparkle:edSignature="Kn1lcwGww8okqRz83fX3RpaFKXVbk2x7fV0mnuVzHRKvqJEcQeD7vQDoI+Yd5WAWyueVK9E+LPZ3ycjr5ufICw=="/>
+            <enclosure url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.5/VibeTunnel-1.0.0-beta.5.dmg" sparkle:version="150" sparkle:shortVersionString="1.0.0-beta.5" length="35714742" type="application/x-apple-diskimage" sparkle:edSignature="wAhA+mtSpcXd4f62yyF4bzSt/IG9ynPPVIRmIwcMCBgCZh0mavixiEPUHxYMGlukVuC+TXLJfqXowiCwMH8tBQ=="/>
         </item>
         <item>
             <title>VibeTunnel 1.0.0-beta.4</title>
@@ -314,7 +314,7 @@
                 url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.4/VibeTunnel-1.0.0-beta.4.dmg"
                 length="35449335"
                 type="application/octet-stream"
-                sparkle:edSignature="dE/g2OqA2Gv/ZexRG43WudUWWhoKUi3XldlkZjR4kfgMaCIwvbtv4LyCVDRsJ094hqYZThomfGow6MgghsW6Dw=="
+                sparkle:edSignature="QXjzgcZXuF4zAy1AeYXAS2+WXLYWmMQYcm46isVO3WRp3I3IPHrXLOmWlVFixsFMM3JCKRmOnYsftEAyWjGbAA=="
             />
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
         </item>
@@ -356,7 +356,7 @@
                 url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.3/VibeTunnel-1.0.0-beta.3.dmg"
                 length="20156342"
                 type="application/octet-stream"
-                sparkle:edSignature="d4G5pUTLuoRUMVg+SSHHaupV2QycU3fEXJhzFjXNSB79htcVo3mGn+oaABL1suvCMJTBK7shJJQS3mf7yDFQDg=="
+                sparkle:edSignature="kY87vo1HXpFx6aKb9LDXbe/AmQND5iH+W7a3qpf2AejmEl+i7wKch/JY3zhBHrmWIuksiKOwFIIklT4sQFMjDw=="
             />
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
         </item>
@@ -389,7 +389,7 @@
                 url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0-beta.2/VibeTunnel-1.0.0-beta.2.dmg"
                 length="19720948"
                 type="application/octet-stream"
-                sparkle:edSignature="RozWTyloGPbgMZATl4QXzCmq5/dzSArV853syyn8JrGq+4lwgVoAXh7vBpDlJYKW3zJHvGNAjYZC4JVhoOyJAA=="
+                sparkle:edSignature="VcPuSbUbcqhwrqongx9+mLhVAuHWlCw+xzIvsvqYKEv6W8UWtUPlPkYCgvoLuNRrJMnEOFcX/eJJv5RQl9/qAQ=="
             />
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
         </item>
@@ -451,7 +451,7 @@ This is the first public beta release of VibeTunnel, ready for testing by early 
                 url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0-beta.1/VibeTunnel-1.0-beta.1.dmg"
                 length="17928597"
                 type="application/octet-stream"
-                sparkle:edSignature="9h7sCoJVawjj3PJePiyrIebQDNlMG3Kqp253QcMYdJEnXzWafTYBo5LUPNHosVisPW6dV3Gc0Il5bjGuizLXAw=="
+                sparkle:edSignature="lm3eCKxuykGYj1oRG3uRm3QB+3azo7EGGeuP2SzZHsobnKGBxq48H21rN9WDi2mry8NbGM9YwjdjfzS56h7GDA=="
             />
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
         </item>
