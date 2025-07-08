@@ -2,27 +2,13 @@
 
 ## [1.0.0-beta.8] - 2025-07-08
 
-### 🚀 Performance & Stability Improvements
-
 #### **Homebrew Library Dependencies**
 - **FIXED**: Release builds now correctly bundle all Homebrew library dependencies
 - **FIXED**: App launches reliably on systems without developer tools installed
 - Updated build scripts to handle dynamic library dependencies properly
 
 #### **File Browser Enhancements**
-- **FIXED**: File browser flashing/reloading unnecessarily when switching between sessions
 - **FIXED**: File browser going dark due to event bubbling issues with modal handling
-- **IMPROVED**: File browser now works without an active session - browse from home directory
-- **ENHANCED**: Better iOS support with fallback to home directory for invalid paths
-- Added file browser button to sidebar for consistent access across all views
-- Improved performance by preventing redundant directory loads
-
-### 📝 Developer Experience
-
-#### **Release Process Improvements**
-- Enhanced release documentation with lessons learned from beta 7
-- Fixed appcast generation script to correctly parse repository names
-- Improved release script robustness and error handling
 
 ## [1.0.0-beta.7] - 2025-07-08
 
