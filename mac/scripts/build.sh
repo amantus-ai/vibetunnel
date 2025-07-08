@@ -18,6 +18,9 @@
 # ENVIRONMENT VARIABLES:
 #   IS_PRERELEASE_BUILD=YES|NO      Sets pre-release flag in Info.plist
 #   MACOS_SIGNING_CERTIFICATE_P12_BASE64  CI certificate for signing
+#   USE_CUSTOM_DERIVED_DATA=YES     Force custom derived data (default: NO)
+#                                   When NO, uses Xcode's default to preserve
+#                                   Swift package resolution
 #
 # OUTPUTS:
 #   - Built app at: build/Build/Products/<Configuration>/VibeTunnel.app
@@ -89,6 +92,17 @@ fi
 
 # Build ARM64-only binary
 
+# Use Xcode's default derived data path to preserve Swift package resolution
+# Only use custom path if explicitly requested or in CI
+if [[ "${CI:-false}" == "true" ]] || [[ "${USE_CUSTOM_DERIVED_DATA:-false}" == "true" ]]; then
+    DERIVED_DATA_ARG="-derivedDataPath $BUILD_DIR"
+    echo "Using custom derived data path: $BUILD_DIR"
+else
+    # Use default derived data, but still put build products in our build dir
+    DERIVED_DATA_ARG=""
+    echo "Using Xcode's default derived data path (preserves Swift packages)"
+fi
+
 # Check if xcbeautify is available
 if command -v xcbeautify &> /dev/null; then
     echo "🔨 Building ARM64-only binary with xcbeautify..."
@@ -96,7 +110,7 @@ if command -v xcbeautify &> /dev/null; then
         -project VibeTunnel-Mac.xcodeproj \
         -scheme VibeTunnel-Mac \
         -configuration "$CONFIGURATION" \
-        -derivedDataPath "$BUILD_DIR" \
+        $DERIVED_DATA_ARG \
         -destination "platform=macOS,arch=arm64" \
         $XCCONFIG_ARG \
         ARCHS="arm64" \
@@ -108,7 +122,7 @@ else
         -project VibeTunnel-Mac.xcodeproj \
         -scheme VibeTunnel-Mac \
         -configuration "$CONFIGURATION" \
-        -derivedDataPath "$BUILD_DIR" \
+        $DERIVED_DATA_ARG \
         -destination "platform=macOS,arch=arm64" \
         $XCCONFIG_ARG \
         ARCHS="arm64" \
@@ -116,12 +130,31 @@ else
         build
 fi
 
-APP_PATH="$BUILD_DIR/Build/Products/$CONFIGURATION/VibeTunnel.app"
+# Find the app in the appropriate location
+if [[ "${CI:-false}" == "true" ]] || [[ "${USE_CUSTOM_DERIVED_DATA:-false}" == "true" ]]; then
+    APP_PATH="$BUILD_DIR/Build/Products/$CONFIGURATION/VibeTunnel.app"
+else
+    # When using default derived data, get the build product path from xcodebuild
+    DEFAULT_DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData"
+    # Find the most recent VibeTunnel build (exclude Index.noindex)
+    APP_PATH=$(find "$DEFAULT_DERIVED_DATA" -name "VibeTunnel.app" -path "*/Build/Products/$CONFIGURATION/*" ! -path "*/Index.noindex/*" 2>/dev/null | head -n 1)
+    
+    if [[ -z "$APP_PATH" ]]; then
+        # Fallback: try to get from xcode-select
+        BUILT_PRODUCTS_DIR=$(xcodebuild -project VibeTunnel-Mac.xcodeproj -scheme VibeTunnel-Mac -configuration "$CONFIGURATION" -showBuildSettings | grep "BUILT_PRODUCTS_DIR" | head -n 1 | awk '{print $3}')
+        if [[ -n "$BUILT_PRODUCTS_DIR" ]]; then
+            APP_PATH="$BUILT_PRODUCTS_DIR/VibeTunnel.app"
+        fi
+    fi
+fi
 
 if [[ ! -d "$APP_PATH" ]]; then
-    echo "Error: Build failed - app not found at $APP_PATH"
+    echo "Error: Build failed - app not found"
+    echo "Searched in: ${APP_PATH:-various locations}"
     exit 1
 fi
+
+echo "Found app at: $APP_PATH"
 
 # Sparkle sandbox fix is no longer needed - we use default XPC services
 # The fix-sparkle-sandbox.sh script now just verifies configuration

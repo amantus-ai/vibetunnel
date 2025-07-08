@@ -41,22 +41,37 @@ struct AdvancedSettingsView: View {
                                 // Actual content
                                 if cliInstaller.isInstalled {
                                     HStack(spacing: 8) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green)
-                                        Text("VT installed")
-                                            .foregroundColor(.secondary)
+                                        if cliInstaller.isOutdated {
+                                            Image(systemName: "exclamationmark.triangle.fill")
+                                                .foregroundColor(.orange)
+                                            Text("VT update available")
+                                                .foregroundColor(.secondary)
 
-                                        // Show reinstall button in debug mode
-                                        if debugMode {
-                                            Button(action: {
-                                                cliInstaller.installCLITool()
-                                            }, label: {
-                                                Image(systemName: "arrow.clockwise.circle")
-                                                    .font(.system(size: 14))
-                                            })
-                                            .buttonStyle(.plain)
-                                            .foregroundColor(.accentColor)
-                                            .help("Reinstall CLI tool")
+                                            Button("Update") {
+                                                Task {
+                                                    await cliInstaller.install()
+                                                }
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .disabled(cliInstaller.isInstalling)
+                                        } else {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(.green)
+                                            Text("VT installed")
+                                                .foregroundColor(.secondary)
+
+                                            // Show reinstall button in debug mode
+                                            if debugMode {
+                                                Button(action: {
+                                                    cliInstaller.installCLITool()
+                                                }, label: {
+                                                    Image(systemName: "arrow.clockwise.circle")
+                                                        .font(.system(size: 14))
+                                                })
+                                                .buttonStyle(.plain)
+                                                .foregroundColor(.accentColor)
+                                                .help("Reinstall CLI tool")
+                                            }
                                         }
                                     }
                                 } else {

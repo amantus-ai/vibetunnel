@@ -194,12 +194,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         // Initialize dock icon visibility through DockIconManager
         DockIconManager.shared.updateDockVisibility()
 
-        // Show welcome screen when version changes
+        // Check CLI installation status
+        let cliInstaller = CLIInstaller()
+        cliInstaller.checkInstallationStatus()
+
+        // Show welcome screen when version changes OR when vt script is outdated
         let storedWelcomeVersion = UserDefaults.standard.integer(forKey: AppConstants.UserDefaultsKeys.welcomeVersion)
 
-        // Show welcome if version is different from current
-        if storedWelcomeVersion < AppConstants.currentWelcomeVersion && !isRunningInTests && !isRunningInPreview {
-            showWelcomeScreen()
+        // Small delay to allow CLI check to complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            // Show welcome if version is different from current OR if vt script is outdated
+            if (storedWelcomeVersion < AppConstants.currentWelcomeVersion || cliInstaller.isOutdated)
+                && !isRunningInTests && !isRunningInPreview
+            {
+                self?.showWelcomeScreen()
+            }
         }
 
         // Skip all service initialization during tests

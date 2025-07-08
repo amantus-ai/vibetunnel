@@ -53,11 +53,28 @@ struct VTCommandPageView: View {
                 // Install VT Binary button
                 VStack(spacing: 12) {
                     if cliInstaller.isInstalled {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text("CLI tool is installed")
-                                .foregroundColor(.secondary)
+                        if cliInstaller.isOutdated {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                Text("CLI tool is outdated")
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Button("Update VT Command Line Tool") {
+                                Task {
+                                    await cliInstaller.install()
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(cliInstaller.isInstalling)
+                        } else {
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                Text("CLI tool is installed")
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     } else {
                         Button("Install VT Command Line Tool") {

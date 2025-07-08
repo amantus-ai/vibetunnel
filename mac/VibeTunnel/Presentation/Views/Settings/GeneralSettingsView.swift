@@ -204,6 +204,14 @@ private struct PermissionsSection: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 2)
                     .frame(height: 22) // Match small button height
+                    .contextMenu {
+                        Button("Refresh Status") {
+                            permissionManager.forcePermissionRecheck()
+                        }
+                        Button("Open System Settings...") {
+                            permissionManager.requestPermission(.appleScript)
+                        }
+                    }
                 } else {
                     Button("Grant Permission") {
                         permissionManager.requestPermission(.appleScript)
@@ -236,6 +244,14 @@ private struct PermissionsSection: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 2)
                     .frame(height: 22) // Match small button height
+                    .contextMenu {
+                        Button("Refresh Status") {
+                            permissionManager.forcePermissionRecheck()
+                        }
+                        Button("Open System Settings...") {
+                            permissionManager.requestPermission(.accessibility)
+                        }
+                    }
                 } else {
                     Button("Grant Permission") {
                         permissionManager.requestPermission(.accessibility)
@@ -268,6 +284,14 @@ private struct PermissionsSection: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 2)
                     .frame(height: 22) // Match small button height
+                    .contextMenu {
+                        Button("Refresh Status") {
+                            permissionManager.forcePermissionRecheck()
+                        }
+                        Button("Open System Settings...") {
+                            permissionManager.requestPermission(.screenRecording)
+                        }
+                    }
                 } else {
                     Button("Grant Permission") {
                         permissionManager.requestPermission(.screenRecording)

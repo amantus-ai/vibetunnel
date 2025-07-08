@@ -16,20 +16,8 @@ public final class CoordinateTransformer {
         /// SCDisplay uses top-left origin, NSEvent/CGEvent uses bottom-left origin
         public let shouldFlipY: Bool
 
-        /// Whether to use CGWarpMouseCursorPosition (false by default)
-        public let useWarpCursor: Bool
-
-        /// Creates a configuration from environment variables
-        public static func fromEnvironment() -> Self {
-            Self(
-                shouldFlipY: ProcessInfo.processInfo.environment["VIBETUNNEL_FLIP_Y"] != "false",
-                useWarpCursor: ProcessInfo.processInfo.environment["VIBETUNNEL_USE_WARP"] == "true"
-            )
-        }
-
-        public init(shouldFlipY: Bool = true, useWarpCursor: Bool = false) {
+        public init(shouldFlipY: Bool = true) {
             self.shouldFlipY = shouldFlipY
-            self.useWarpCursor = useWarpCursor
         }
     }
 
@@ -51,7 +39,7 @@ public final class CoordinateTransformer {
             captureMode: CaptureMode,
             captureFilter: SCContentFilter,
             actualContentRect: CGRect? = nil,
-            configuration: Configuration = .fromEnvironment()
+            configuration: Configuration = Configuration()
         ) {
             self.captureMode = captureMode
             self.captureFilter = captureFilter
@@ -96,11 +84,6 @@ public final class CoordinateTransformer {
 
         // Validate final coordinates are within screen bounds
         let validatedCoordinates = try validateAndClampCoordinates(finalCoordinates)
-
-        // Test warp cursor if enabled (for debugging)
-        if context.configuration.useWarpCursor {
-            testWarpCursor(at: validatedCoordinates)
-        }
 
         return validatedCoordinates
     }
@@ -302,15 +285,6 @@ public final class CoordinateTransformer {
         logger.warning("Coordinates clamped from (\(point.x), \(point.y)) to (\(clampedX), \(clampedY))")
 
         return CGPoint(x: clampedX, y: clampedY)
-    }
-
-    /// Tests CGWarpMouseCursorPosition (for debugging)
-    private func testWarpCursor(at point: CGPoint) {
-        let result = CGWarpMouseCursorPosition(point)
-        logger
-            .info(
-                "CGWarpMouseCursorPosition test at (\(point.x), \(point.y)): \(result == .success ? "SUCCESS" : "FAILED with error \(result.rawValue)")"
-            )
     }
 }
 

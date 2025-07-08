@@ -1561,7 +1561,7 @@ public final class ScreencapService: NSObject {
                 )
         }
 
-        var finalX = pixelX
+        let finalX = pixelX
         var finalY = pixelY
 
         if shouldFlipY {
