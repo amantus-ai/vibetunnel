@@ -25,7 +25,7 @@ export const test = base.extend<TestFixtures>({
     await context.route('**/gtag/**', (route) => route.abort());
 
     // Track responses for debugging in CI
-    if (process.env.CI) {
+    if (typeof process !== 'undefined' && process.env?.CI) {
       page.on('response', (response) => {
         if (response.url().includes('/api/sessions') && response.request().method() === 'POST') {
           response
