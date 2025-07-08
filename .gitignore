@@ -129,3 +129,4 @@ playwright-report/
 buildServer.json
 /temp
 /temp/webrtc-check
+/web/release-check/

@@ -64,6 +64,8 @@ echo "Building web frontend..."
 
 # Setup Node.js PATH (Homebrew, nvm, Volta, fnm)
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
+# Set environment variable to use clean build environment
+export VIBETUNNEL_BUILD_CLEAN_ENV=true
 source "${SCRIPT_DIR}/node-path-setup.sh"
 
 # Export CI to prevent interactive prompts

@@ -321,21 +321,40 @@ async function main() {
       const customVersion = execSync(`"${nodeExe}" --version`, { encoding: 'utf8' }).trim();
       console.log(`Custom Node.js version: ${customVersion}`);
       
+      // Save original PATH and use clean environment
+      const originalPath = process.env.PATH;
+      const cleanEnv = {
+        ...process.env,
+        // Use only system paths to avoid Homebrew contamination
+        PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+        npm_config_runtime: 'node',
+        npm_config_target: customVersion.substring(1), // Remove 'v' prefix
+        npm_config_arch: process.arch,
+        npm_config_target_arch: process.arch,
+        npm_config_disturl: 'https://nodejs.org/dist',
+        npm_config_build_from_source: 'true',
+        // Node.js 24 requires C++20
+        CXXFLAGS: '-std=c++20',
+        npm_config_cxxflags: '-std=c++20'
+      };
+      
+      // Remove any Homebrew-related environment variables
+      delete cleanEnv.LDFLAGS;
+      delete cleanEnv.LIBRARY_PATH;
+      delete cleanEnv.CPATH;
+      delete cleanEnv.C_INCLUDE_PATH;
+      delete cleanEnv.CPLUS_INCLUDE_PATH;
+      delete cleanEnv.PKG_CONFIG_PATH;
+      
+      console.log('Using clean PATH to avoid Homebrew dependencies during native module rebuild...');
+      
       execSync(`pnpm rebuild node-pty authenticate-pam`, {
         stdio: 'inherit',
-        env: {
-          ...process.env,
-          npm_config_runtime: 'node',
-          npm_config_target: customVersion.substring(1), // Remove 'v' prefix
-          npm_config_arch: process.arch,
-          npm_config_target_arch: process.arch,
-          npm_config_disturl: 'https://nodejs.org/dist',
-          npm_config_build_from_source: 'true',
-          // Node.js 24 requires C++20
-          CXXFLAGS: '-std=c++20',
-          npm_config_cxxflags: '-std=c++20'
-        }
+        env: cleanEnv
       });
+      
+      // Restore original PATH
+      process.env.PATH = originalPath;
     }
 
     // 2. Bundle TypeScript with esbuild

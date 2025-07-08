@@ -11,8 +11,16 @@ if [ -s "$HOME/.nvm/nvm.sh" ]; then
     source "$NVM_DIR/nvm.sh" 2>/dev/null || true
 fi
 
-# Set final PATH with Homebrew priority
-export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$HOME/Library/pnpm:$HOME/.bun/bin:$PATH"
+# Check if we're in a build context that needs to avoid Homebrew library contamination
+# This is set by build scripts that compile native code
+if [ "${VIBETUNNEL_BUILD_CLEAN_ENV}" = "true" ]; then
+    # For builds, add Homebrew at the END of PATH to avoid library contamination
+    # This ensures system libraries are preferred during compilation
+    export PATH="$HOME/.volta/bin:$HOME/Library/pnpm:$HOME/.bun/bin:$PATH:/opt/homebrew/bin:/usr/local/bin"
+else
+    # For normal usage, Homebrew can be at the beginning for convenience
+    export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$HOME/Library/pnpm:$HOME/.bun/bin:$PATH"
+fi
 
 # Verify Node.js is available
 if ! command -v node >/dev/null 2>&1; then
