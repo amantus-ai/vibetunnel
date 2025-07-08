@@ -441,7 +441,7 @@ test.describe('Push Notifications', () => {
 
   test('should handle notification settings persistence', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if notification preferences are stored
     const notificationPrefs = await page.evaluate(() => {
