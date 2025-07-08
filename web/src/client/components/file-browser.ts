@@ -497,15 +497,8 @@ export class FileBrowser extends LitElement {
     }
 
     return html`
-      <modal-wrapper
-        .visible=${this.visible}
-        modalClass="z-50"
-        contentClass="fixed inset-0 bg-dark-bg flex flex-col z-50"
-        ariaLabel="File Browser"
-        @close=${this.handleCancel}
-        .closeOnBackdrop=${true}
-        .closeOnEscape=${true}
-      >
+      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center" @click=${this.handleCancel}>
+        <div class="fixed inset-0 bg-dark-bg z-50 flex flex-col" @click=${(e: Event) => e.stopPropagation()}>
         ${
           this.isMobile && this.mobileView === 'preview'
             ? html`
@@ -523,7 +516,7 @@ export class FileBrowser extends LitElement {
             : ''
         }
         <div
-          class="w-full h-full bg-dark-bg flex flex-col overflow-hidden"
+          class="w-full h-full flex flex-col overflow-hidden"
           data-testid="file-browser"
         >
           <!-- Compact Header (like session-view) -->
@@ -851,7 +844,8 @@ export class FileBrowser extends LitElement {
               : ''
           }
         </div>
-      </modal-wrapper>
+        </div>
+      </div>
     `;
   }
 

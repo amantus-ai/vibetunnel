@@ -60,11 +60,10 @@ export class VibeTunnelApp extends LitElement {
   @state() private successMessage = '';
   @state() private sessions: Session[] = [];
   @state() private loading = false;
-  @state() private currentView: 'list' | 'session' | 'auth' = 'auth';
+  @state() private currentView: 'list' | 'session' | 'auth' | 'file-browser' = 'auth';
   @state() private selectedSessionId: string | null = null;
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
-  @state() private showFileBrowser = false;
   @state() private showSSHKeyManager = false;
   @state() private showSettings = false;
   @state() private isAuthenticated = false;
@@ -114,13 +113,11 @@ export class VibeTunnelApp extends LitElement {
   willUpdate(changedProperties: Map<string, unknown>) {
     // Update hasActiveOverlay whenever any overlay state changes
     if (
-      changedProperties.has('showFileBrowser') ||
       changedProperties.has('showCreateModal') ||
       changedProperties.has('showSSHKeyManager') ||
       changedProperties.has('showSettings')
     ) {
-      this.hasActiveOverlay =
-        this.showFileBrowser || this.showCreateModal || this.showSSHKeyManager || this.showSettings;
+      this.hasActiveOverlay = this.showCreateModal || this.showSSHKeyManager || this.showSettings;
     }
 
     // Force re-render when sessions change or view changes to update log button position
@@ -164,7 +161,7 @@ export class VibeTunnelApp extends LitElement {
     // Handle Cmd+O / Ctrl+O to open file browser
     if ((e.metaKey || e.ctrlKey) && e.key === 'o' && this.currentView === 'list') {
       e.preventDefault();
-      this.showFileBrowser = true;
+      this.handleNavigateToFileBrowser();
     }
 
     // Handle Cmd+B / Ctrl+B to toggle sidebar
@@ -176,8 +173,7 @@ export class VibeTunnelApp extends LitElement {
     // Handle Escape to close the session and return to list view
     if (
       e.key === 'Escape' &&
-      this.currentView === 'session' &&
-      !this.showFileBrowser &&
+      (this.currentView === 'session' || this.currentView === 'file-browser') &&
       !this.showCreateModal
     ) {
       e.preventDefault();
@@ -780,6 +776,18 @@ export class VibeTunnelApp extends LitElement {
     });
   }
 
+  private handleNavigateToFileBrowser(sessionId?: string): void {
+    // Store the session ID for context in file browser
+    this.selectedSessionId = sessionId || null;
+
+    // Update document title
+    document.title = 'VibeTunnel - File Browser';
+
+    // Navigate to file browser view
+    this.currentView = 'file-browser';
+    this.updateUrl();
+  }
+
   private handleNavigateToList(): void {
     // Clean up the session view before navigating away
     this.cleanupSessionViewStream();
@@ -1038,6 +1046,7 @@ export class VibeTunnelApp extends LitElement {
   private async parseUrlAndSetState() {
     const url = new URL(window.location.href);
     const sessionId = url.searchParams.get('session');
+    const view = url.searchParams.get('view');
 
     // Check authentication status first (unless no-auth is enabled)
     try {
@@ -1064,6 +1073,13 @@ export class VibeTunnelApp extends LitElement {
       }
     }
 
+    // Check for file-browser view
+    if (view === 'file-browser') {
+      this.selectedSessionId = sessionId;
+      this.currentView = 'file-browser';
+      return;
+    }
+
     if (sessionId) {
       // Always navigate to the session view if a session ID is provided
       // The session-view component will handle loading and error cases
@@ -1087,10 +1103,17 @@ export class VibeTunnelApp extends LitElement {
   private updateUrl(sessionId?: string) {
     const url = new URL(window.location.href);
 
-    if (sessionId) {
+    // Clear all params first
+    url.searchParams.delete('session');
+    url.searchParams.delete('view');
+
+    if (this.currentView === 'file-browser') {
+      url.searchParams.set('view', 'file-browser');
+      if (sessionId || this.selectedSessionId) {
+        url.searchParams.set('session', sessionId || this.selectedSessionId || '');
+      }
+    } else if (sessionId) {
       url.searchParams.set('session', sessionId);
-    } else {
-      url.searchParams.delete('session');
     }
 
     // Update browser URL without triggering page reload
@@ -1186,7 +1209,7 @@ export class VibeTunnelApp extends LitElement {
   };
 
   private handleOpenFileBrowser = () => {
-    this.showFileBrowser = true;
+    this.handleNavigateToFileBrowser();
   };
 
   private handleNotificationEnabled = (e: CustomEvent) => {
@@ -1396,7 +1419,18 @@ export class VibeTunnelApp extends LitElement {
               @open-settings=${this.handleOpenSettings}
             ></auth-login>
           `
-          : html`
+          : this.currentView === 'file-browser'
+            ? html`
+              <!-- Full page file browser view -->
+              <file-browser
+                .visible=${true}
+                .mode=${'browse'}
+                .session=${this.selectedSession}
+                @browser-cancel=${this.handleNavigateToList}
+                @insert-path=${this.handleNavigateToList}
+              ></file-browser>
+            `
+            : html`
       <!-- Main content with split view support -->
       <div class="${this.mainContainerClasses}">
         <!-- Mobile overlay when sidebar is open -->
@@ -1449,9 +1483,7 @@ export class VibeTunnelApp extends LitElement {
               @hide-exited-change=${this.handleHideExitedChange}
               @kill-all-sessions=${this.handleKillAll}
               @navigate-to-session=${this.handleNavigateToSession}
-              @open-file-browser=${() => {
-                this.showFileBrowser = true;
-              }}
+              @open-file-browser=${this.handleOpenFileBrowser}
             ></session-list>
           </div>
         </div>
@@ -1501,15 +1533,6 @@ export class VibeTunnelApp extends LitElement {
       `
       }
 
-      <!-- File Browser Modal -->
-      <file-browser
-        .visible=${this.showFileBrowser}
-        .mode=${'browse'}
-        .session=${null}
-        @browser-cancel=${() => {
-          this.showFileBrowser = false;
-        }}
-      ></file-browser>
 
       <!-- Unified Settings Modal -->
       <unified-settings
