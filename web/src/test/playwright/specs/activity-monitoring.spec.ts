@@ -10,67 +10,65 @@ test.describe('Activity Monitoring', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    sessionManager = new TestSessionManager(page, 'activity-test');
   });
 
   test.afterEach(async () => {
+    // Cleanup sessions after test completes
     await sessionManager.cleanupAllSessions();
   });
 
   test('should show session activity status in session list', async ({ page }) => {
-    // Create a tracked session
-    const { sessionName } = await sessionManager.createTrackedSession();
-
-    // Wait for session to be fully established before navigating away
-    await page.waitForTimeout(2000);
-
-    // Go to home page to see session list
+    // Navigate to session list first to see initial state
     await page.goto('/');
     await page.waitForLoadState('networkidle');
+    
+    // Create a tracked session with a unique name
+    const sessionName = sessionManager.generateSessionName('activity-status');
+    const { sessionId } = await sessionManager.createTrackedSession(sessionName);
+    
+    // Make sure session was created
+    expect(sessionId).toBeTruthy();
+
+    // Wait for session to be fully established
+    await page.waitForTimeout(1000);
+
+    // Go back to home page to see session list
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for session cards to appear
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Find our session card
-    const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-    await expect(sessionCard).toBeVisible();
+    // Find our specific session card by looking for our unique session name
+    const sessionCard = page.locator('session-card').filter({ hasText: sessionName });
+    
+    // Wait for our specific card to be visible
+    await expect(sessionCard).toBeVisible({ timeout: 10000 });
 
-    // Look for activity indicators
-    const activityIndicators = sessionCard
-      .locator('.activity, .status, .online, .active, .idle')
-      .first();
-    const statusBadge = sessionCard.locator('.bg-green, .bg-yellow, .bg-red, .bg-gray').filter({
-      hasText: /active|idle|inactive|online/i,
-    });
-    const activityDot = sessionCard.locator('.w-2.h-2, .w-3.h-3').filter({
-      hasClass: /bg-green|bg-yellow|bg-red|bg-gray/,
-    });
+    // Verify the session is running by checking the status text
+    const statusSpan = sessionCard.locator('span[data-status]').first();
+    await expect(statusSpan).toBeVisible();
+    const statusText = await statusSpan.textContent();
+    expect(statusText?.toLowerCase()).toContain('running');
 
-    // Should have some form of activity indication
-    const hasActivityIndicator =
-      (await activityIndicators.isVisible()) ||
-      (await statusBadge.isVisible()) ||
-      (await activityDot.isVisible());
+    // Look for the status dot which should be visible
+    // VibeTunnel shows a colored dot next to the status text
+    const statusDot = sessionCard.locator('.w-2.h-2.rounded-full').first();
+    await expect(statusDot).toBeVisible();
 
-    if (hasActivityIndicator) {
-      expect(hasActivityIndicator).toBeTruthy();
-    }
+    // Check if it has the expected color class for running sessions
+    const dotClasses = await statusDot.getAttribute('class');
+    expect(dotClasses).toContain('bg-status-success');
   });
 
   test('should update activity status when user interacts with terminal', async ({ page }) => {
     // Create session and navigate to it
+    const sessionName = sessionManager.generateSessionName('activity-interaction');
     await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('activity-interaction'),
+      name: sessionName,
     });
     await assertTerminalReady(page, 15000);
-
-    // Get initial activity status (if visible)
-    const activityStatus = page
-      .locator('.activity-status, .status-indicator, .session-status')
-      .first();
-    let initialStatus = '';
-
-    if (await activityStatus.isVisible()) {
-      initialStatus = (await activityStatus.textContent()) || '';
-    }
 
     // Interact with terminal to generate activity
     await page.keyboard.type('echo "Testing activity monitoring"');
@@ -90,52 +88,33 @@ test.describe('Activity Monitoring', () => {
     await page.keyboard.press('Enter');
 
     // Wait for ls command to complete
-    await page.waitForTimeout(2000);
-
-    // Check if activity status updated
-    if (await activityStatus.isVisible()) {
-      const newStatus = (await activityStatus.textContent()) || '';
-
-      // Status might have changed to reflect recent activity
-      if (initialStatus !== newStatus || newStatus.toLowerCase().includes('active')) {
-        expect(true).toBeTruthy(); // Activity tracking is working
-      }
-    }
+    await page.waitForTimeout(1000);
 
     // Go back to session list to check activity there
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Session should show recent activity
-    const sessionCard = page
-      .locator('session-card')
-      .filter({
-        hasText: 'activity-interaction',
-      })
-      .first();
+    // Find our session card
+    const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
+    await expect(sessionCard).toBeVisible();
 
-    if (await sessionCard.isVisible()) {
-      const recentActivity = sessionCard.locator('.text-green, .active, .bg-green').filter({
-        hasText: /active|recent|now|online/i,
-      });
+    // Check for the activity ring around the card (active sessions have a green ring)
+    const cardClasses = await sessionCard.getAttribute('class');
+    const hasActivityRing = cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
+    
+    // Also check if the status dot shows activity (pulsing animation)
+    const statusDot = sessionCard.locator('.animate-pulse').first();
+    const hasPulsingDot = await statusDot.isVisible().catch(() => false);
 
-      const activityTime = sessionCard.locator('.text-xs, .text-sm').filter({
-        hasText: /ago|now|active|second|minute/i,
-      });
-
-      const hasActivityUpdate =
-        (await recentActivity.isVisible()) || (await activityTime.isVisible());
-
-      if (hasActivityUpdate) {
-        expect(hasActivityUpdate).toBeTruthy();
-      }
-    }
+    // Either the card has an activity ring or a pulsing status dot
+    expect(hasActivityRing || hasPulsingDot).toBeTruthy();
   });
 
   test('should show idle status after period of inactivity', async ({ page }) => {
     // Create session
+    const sessionName = sessionManager.generateSessionName('activity-idle');
     await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('activity-idle'),
+      name: sessionName,
     });
     await assertTerminalReady(page, 15000);
 
@@ -144,41 +123,31 @@ test.describe('Activity Monitoring', () => {
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
 
-    // Wait for a period to simulate idle time (shorter wait for testing)
-    await page.waitForTimeout(5000);
-
-    // Check for idle indicators
-    const _idleIndicators = page.locator('.idle, .inactive, .bg-yellow, .bg-gray').filter({
-      hasText: /idle|inactive|no.*activity/i,
-    });
+    // Wait for activity state to clear (activity timeout is 500ms in the implementation)
+    await page.waitForTimeout(1000);
 
     // Go to session list to check idle status
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    const sessionCard = page
-      .locator('session-card')
-      .filter({
-        hasText: 'activity-idle',
-      })
-      .first();
+    const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
+    await expect(sessionCard).toBeVisible();
 
-    if (await sessionCard.isVisible()) {
-      // Look for idle status indicators
-      const idleStatus = sessionCard
-        .locator('.text-yellow, .text-gray, .bg-yellow, .bg-gray')
-        .filter({
-          hasText: /idle|inactive|minutes.*ago/i,
-        });
+    // Idle sessions should NOT have the activity ring or pulsing animation
+    const cardClasses = await sessionCard.getAttribute('class');
+    const hasActivityRing = cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
+    
+    // Should not have pulsing animation when idle
+    const pulsingElements = sessionCard.locator('.animate-pulse');
+    const hasPulsingAnimation = (await pulsingElements.count()) > 0;
 
-      const timeIndicator = sessionCard.locator('.text-xs, .text-sm').filter({
-        hasText: /minutes.*ago|second.*ago|idle/i,
-      });
+    // For idle sessions, we expect no activity indicators
+    expect(hasActivityRing).toBeFalsy();
+    expect(hasPulsingAnimation).toBeFalsy();
 
-      if ((await idleStatus.isVisible()) || (await timeIndicator.isVisible())) {
-        expect((await idleStatus.isVisible()) || (await timeIndicator.isVisible())).toBeTruthy();
-      }
-    }
+    // But the session should still show as running with a green dot
+    const statusDot = sessionCard.locator('.w-2.h-2.rounded-full.bg-status-success').first();
+    await expect(statusDot).toBeVisible();
   });
 
   test('should track activity across multiple sessions', async ({ page }) => {
@@ -194,160 +163,91 @@ test.describe('Activity Monitoring', () => {
     // Activity in first session
     await page.keyboard.type('echo "Session 1 activity"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Create second session
     await createAndNavigateToSession(page, { name: session2Name });
     await assertTerminalReady(page, 15000);
 
-    // Activity in second session
+    // Activity in second session - this should be the most recent
     await page.keyboard.type('echo "Session 2 activity"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Go to session list
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Both sessions should show activity status
+    // Both sessions should be visible
     const session1Card = page.locator('session-card').filter({ hasText: session1Name }).first();
     const session2Card = page.locator('session-card').filter({ hasText: session2Name }).first();
 
-    if ((await session1Card.isVisible()) && (await session2Card.isVisible())) {
-      // Both should have activity indicators
-      const session1Activity = session1Card
-        .locator('.activity, .status, .text-green, .bg-green, .text-xs')
-        .filter({
-          hasText: /active|ago|now/i,
-        });
+    await expect(session1Card).toBeVisible();
+    await expect(session2Card).toBeVisible();
 
-      const session2Activity = session2Card
-        .locator('.activity, .status, .text-green, .bg-green, .text-xs')
-        .filter({
-          hasText: /active|ago|now/i,
-        });
+    // The second session (most recent activity) should show activity indicators
+    const session2Classes = await session2Card.getAttribute('class');
+    const session2HasActivityRing = session2Classes?.includes('ring-2') && session2Classes?.includes('ring-primary');
+    
+    // Check for pulsing animation on session 2
+    const session2PulsingDot = session2Card.locator('.animate-pulse').first();
+    const session2HasPulsing = await session2PulsingDot.isVisible().catch(() => false);
 
-      const hasSession1Activity = await session1Activity.isVisible();
-      const hasSession2Activity = await session2Activity.isVisible();
+    // Session 2 should show recent activity
+    expect(session2HasActivityRing || session2HasPulsing).toBeTruthy();
 
-      // At least one should show activity (recent activity should be visible)
-      expect(hasSession1Activity || hasSession2Activity).toBeTruthy();
-    }
+    // Both sessions should have running status dots
+    const session1Dot = session1Card.locator('.w-2.h-2.rounded-full.bg-status-success').first();
+    const session2Dot = session2Card.locator('.w-2.h-2.rounded-full.bg-status-success').first();
+    
+    await expect(session1Dot).toBeVisible();
+    await expect(session2Dot).toBeVisible();
   });
 
   test('should handle activity monitoring for long-running commands', async ({ page }) => {
+    const sessionName = sessionManager.generateSessionName('long-running-activity');
     await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('long-running-activity'),
+      name: sessionName,
     });
     await assertTerminalReady(page, 15000);
 
     // Start a long-running command (sleep)
-    await page.keyboard.type('sleep 10 && echo "Long command completed"');
+    await page.keyboard.type('sleep 3 && echo "Long command completed"');
     await page.keyboard.press('Enter');
 
     // Wait a moment for command to start
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
 
-    // Check activity status while command is running
-    const activityStatus = page.locator('.activity-status, .status-indicator, .running').first();
-
-    if (await activityStatus.isVisible()) {
-      const statusText = await activityStatus.textContent();
-
-      // Should indicate active/running status
-      const isActive =
-        statusText?.toLowerCase().includes('active') ||
-        statusText?.toLowerCase().includes('running') ||
-        statusText?.toLowerCase().includes('busy');
-
-      if (isActive) {
-        expect(isActive).toBeTruthy();
-      }
-    }
-
-    // Go to session list to check status there
+    // Go to session list to check status while command is running
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    const sessionCard = page
-      .locator('session-card')
-      .filter({
-        hasText: 'long-running-activity',
-      })
-      .first();
+    const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
+    await expect(sessionCard).toBeVisible();
 
-    if (await sessionCard.isVisible()) {
-      // Should show active/running status
-      const runningIndicator = sessionCard
-        .locator('.text-green, .bg-green, .active, .running')
-        .first();
-      const recentActivity = sessionCard
-        .locator('.text-xs, .text-sm')
-        .filter({
-          hasText: /now|active|running|second.*ago/i,
-        })
-        .first();
+    // During a long-running command, the session should show as active
+    // Check for activity ring or pulsing animation
+    const cardClasses = await sessionCard.getAttribute('class');
+    const hasActivityRing = cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
+    
+    // Check for pulsing status dot
+    const pulsingDot = sessionCard.locator('.animate-pulse').first();
+    const hasPulsing = await pulsingDot.isVisible().catch(() => false);
 
-      const showsRunning =
-        (await runningIndicator.isVisible()) || (await recentActivity.isVisible());
+    // Should show activity during command execution
+    expect(hasActivityRing || hasPulsing).toBeTruthy();
 
-      if (showsRunning) {
-        expect(showsRunning).toBeTruthy();
-      }
-    }
+    // The session should still be running
+    const statusDot = sessionCard.locator('.w-2.h-2.rounded-full.bg-status-success').first();
+    await expect(statusDot).toBeVisible();
   });
 
   test('should show last activity time for inactive sessions', async ({ page }) => {
-    // Create session and make it inactive
-    await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('last-activity'),
-    });
-    await assertTerminalReady(page, 15000);
-
-    // Perform some activity
-    await page.keyboard.type('echo "Last activity test"');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
-
-    // Go to session list
-    await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
-
-    const sessionCard = page
-      .locator('session-card')
-      .filter({
-        hasText: 'last-activity',
-      })
-      .first();
-
-    if (await sessionCard.isVisible()) {
-      // Look for time-based activity indicators
-      const timeIndicators = sessionCard.locator('.text-xs, .text-sm, .text-gray').filter({
-        hasText: /ago|second|minute|hour|now|active/i,
-      });
-
-      const lastActivityTime = sessionCard.locator('.last-activity, .activity-time').first();
-
-      const hasTimeInfo =
-        (await timeIndicators.isVisible()) || (await lastActivityTime.isVisible());
-
-      if (hasTimeInfo) {
-        expect(hasTimeInfo).toBeTruthy();
-
-        // Check that the time format is reasonable
-        const timeText = await timeIndicators.first().textContent();
-        if (timeText) {
-          const hasReasonableTime =
-            timeText.includes('ago') ||
-            timeText.includes('now') ||
-            timeText.includes('active') ||
-            timeText.includes('second') ||
-            timeText.includes('minute');
-
-          expect(hasReasonableTime).toBeTruthy();
-        }
-      }
-    }
+    // Skip this test as VibeTunnel doesn't display activity timestamps
+    test.skip();
+    
+    // The current implementation doesn't show relative time displays
+    // Activity is shown through visual indicators only (colors, animations)
   });
 
   test('should handle activity monitoring when switching between sessions', async ({ page }) => {
@@ -356,58 +256,62 @@ test.describe('Activity Monitoring', () => {
     const session2Name = sessionManager.generateSessionName('switch-activity-2');
 
     // Create and use first session
-    await createAndNavigateToSession(page, { name: session1Name });
+    const { sessionId: session1Id } = await createAndNavigateToSession(page, { name: session1Name });
     await assertTerminalReady(page, 15000);
     await page.keyboard.type('echo "First session"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Create and switch to second session
-    await createAndNavigateToSession(page, { name: session2Name });
+    const { sessionId: session2Id } = await createAndNavigateToSession(page, { name: session2Name });
     await assertTerminalReady(page, 15000);
     await page.keyboard.type('echo "Second session"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
-    // Switch back to first session via URL or navigation
-    const firstSessionUrl = page.url().replace(session2Name, session1Name);
-    await page.goto(firstSessionUrl);
+    // Switch back to first session via URL
+    await page.goto(`/?session=${session1Id}`);
     await assertTerminalReady(page, 15000);
 
     // Activity in first session again
     await page.keyboard.type('echo "Back to first"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Check session list for activity tracking
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Both sessions should show their respective activity
+    // Both sessions should be visible
     const session1Card = page.locator('session-card').filter({ hasText: session1Name }).first();
     const session2Card = page.locator('session-card').filter({ hasText: session2Name }).first();
 
-    if ((await session1Card.isVisible()) && (await session2Card.isVisible())) {
-      // First session should show more recent activity
-      const session1Time = session1Card.locator('.text-xs, .text-sm').filter({
-        hasText: /ago|now|active|second|minute/i,
-      });
+    await expect(session1Card).toBeVisible();
+    await expect(session2Card).toBeVisible();
 
-      const session2Time = session2Card.locator('.text-xs, .text-sm').filter({
-        hasText: /ago|now|active|second|minute/i,
-      });
+    // First session should show more recent activity
+    const session1Classes = await session1Card.getAttribute('class');
+    const session1HasActivityRing = session1Classes?.includes('ring-2') && session1Classes?.includes('ring-primary');
+    
+    // Check for pulsing animation on session 1
+    const session1PulsingDot = session1Card.locator('.animate-pulse').first();
+    const session1HasPulsing = await session1PulsingDot.isVisible().catch(() => false);
 
-      const bothHaveTimeInfo = (await session1Time.isVisible()) && (await session2Time.isVisible());
+    // Session 1 should show recent activity since we just typed in it
+    expect(session1HasActivityRing || session1HasPulsing).toBeTruthy();
 
-      if (bothHaveTimeInfo) {
-        expect(bothHaveTimeInfo).toBeTruthy();
-      }
-    }
+    // Both sessions should still be running
+    const session1Dot = session1Card.locator('.w-2.h-2.rounded-full.bg-status-success').first();
+    const session2Dot = session2Card.locator('.w-2.h-2.rounded-full.bg-status-success').first();
+    
+    await expect(session1Dot).toBeVisible();
+    await expect(session2Dot).toBeVisible();
   });
 
   test('should handle activity monitoring with WebSocket reconnection', async ({ page }) => {
+    const sessionName = sessionManager.generateSessionName('websocket-activity');
     await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('websocket-activity'),
+      name: sessionName,
     });
     await assertTerminalReady(page, 15000);
 
@@ -416,98 +320,91 @@ test.describe('Activity Monitoring', () => {
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
 
-    // Simulate WebSocket disconnection and reconnection
+    // Simulate WebSocket disconnection by evaluating in page context
     await page.evaluate(() => {
-      // Close any existing WebSocket connections
-      (window as unknown as { closeWebSockets?: () => void }).closeWebSockets?.();
+      // Find and close WebSocket connections
+      const ws = (window as any).ws || (window as any).socket;
+      if (ws && ws.close) {
+        ws.close();
+      }
     });
 
-    // Wait for WebSocket reconnection to stabilize
-    await page.waitForTimeout(5000);
-
-    // Ensure terminal is ready after reconnection
-    await assertTerminalReady(page, 15000);
+    // Wait for reconnection
+    await page.waitForTimeout(2000);
 
     // Perform activity after reconnection
     await page.keyboard.type('echo "After reconnect"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    
+    // Wait for command to process
+    await page.waitForFunction(
+      () => {
+        const term = document.querySelector('vibe-terminal');
+        return term?.textContent?.includes('After reconnect');
+      },
+      { timeout: 5000 }
+    );
 
     // Activity monitoring should still work
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    const sessionCard = page
-      .locator('session-card')
-      .filter({
-        hasText: 'websocket-activity',
-      })
-      .first();
+    const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
+    await expect(sessionCard).toBeVisible();
 
-    if (await sessionCard.isVisible()) {
-      const activityIndicator = sessionCard.locator('.text-green, .active, .text-xs').filter({
-        hasText: /active|ago|now|second/i,
-      });
+    // Check for activity indicators after reconnection
+    const cardClasses = await sessionCard.getAttribute('class');
+    const hasActivityRing = cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
+    
+    // Check for pulsing animation
+    const pulsingDot = sessionCard.locator('.animate-pulse').first();
+    const hasPulsing = await pulsingDot.isVisible().catch(() => false);
 
-      if (await activityIndicator.isVisible()) {
-        expect(await activityIndicator.isVisible()).toBeTruthy();
-      }
-    }
+    // Should show activity after reconnection
+    expect(hasActivityRing || hasPulsing).toBeTruthy();
+
+    // Session should still be running
+    const statusDot = sessionCard.locator('.w-2.h-2.rounded-full.bg-status-success').first();
+    await expect(statusDot).toBeVisible();
   });
 
   test('should aggregate activity data correctly', async ({ page }) => {
+    const sessionName = sessionManager.generateSessionName('activity-aggregation');
     await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('activity-aggregation'),
+      name: sessionName,
     });
     await assertTerminalReady(page, 15000);
 
-    // Perform multiple activities in sequence
-    const activities = ['echo "Activity 1"', 'ls -la', 'pwd', 'whoami', 'date'];
+    // Perform multiple activities in rapid sequence
+    const activities = ['echo "Activity 1"', 'echo "Activity 2"', 'echo "Activity 3"', 'pwd', 'date'];
 
     for (const activity of activities) {
       await page.keyboard.type(activity);
       await page.keyboard.press('Enter');
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(200); // Small delay between commands
     }
 
-    // Wait for all activities to complete
-    await page.waitForTimeout(2000);
-
-    // Check aggregated activity status
+    // The session should remain active throughout
+    // Go to session list while still active
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    const sessionCard = page
-      .locator('session-card')
-      .filter({
-        hasText: 'activity-aggregation',
-      })
-      .first();
+    const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
+    await expect(sessionCard).toBeVisible();
 
-    if (await sessionCard.isVisible()) {
-      // Should show recent activity from all the commands
-      const recentActivity = sessionCard.locator('.text-green, .bg-green, .active').first();
-      const activityTime = sessionCard.locator('.text-xs').filter({
-        hasText: /now|second.*ago|active/i,
-      });
+    // Should show aggregated activity from all the commands
+    const cardClasses = await sessionCard.getAttribute('class');
+    const hasActivityRing = cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
+    
+    // Check for pulsing animation
+    const pulsingDot = sessionCard.locator('.animate-pulse').first();
+    const hasPulsing = await pulsingDot.isVisible().catch(() => false);
 
-      const showsAggregatedActivity =
-        (await recentActivity.isVisible()) || (await activityTime.isVisible());
+    // Should show activity from the rapid sequence of commands
+    expect(hasActivityRing || hasPulsing).toBeTruthy();
 
-      if (showsAggregatedActivity) {
-        expect(showsAggregatedActivity).toBeTruthy();
-      }
-
-      // Activity time should reflect the most recent activity
-      if (await activityTime.isVisible()) {
-        const timeText = await activityTime.textContent();
-        const isRecent =
-          timeText?.includes('now') || timeText?.includes('second') || timeText?.includes('active');
-
-        if (isRecent) {
-          expect(isRecent).toBeTruthy();
-        }
-      }
-    }
+    // Session should be running
+    const statusDot = sessionCard.locator('.w-2.h-2.rounded-full.bg-status-success').first();
+    await expect(statusDot).toBeVisible();
   });
 });
