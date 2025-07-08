@@ -1,8 +1,8 @@
 // VibeTunnel Version Configuration
 // This file contains the version and build number for the app
 
-MARKETING_VERSION = 1.0.0-beta.7
-CURRENT_PROJECT_VERSION = 170
+MARKETING_VERSION = 1.0.0-beta.8
+CURRENT_PROJECT_VERSION = 171
 
 // Domain and GitHub configuration
 APP_DOMAIN = vibetunnel.sh
