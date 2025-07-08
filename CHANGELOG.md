@@ -1,35 +1,95 @@
 # Changelog
 
-## [1.0.0-beta.7] - 2025-07-06
+## [1.0.0-beta.7] - 2025-07-08
 
 ### 🎯 Major Features
 
-#### 🖥️ **Remote Screen Sharing**
+#### 🖥️ **Remote Screen Sharing (Beta) **
 - Share your Mac screen remotely through any web browser - perfect for demonstrations, pair programming, or remote support
-- Ultra-low latency with WebRTC and automatic quality adjustment based on network conditions
-- Privacy-focused with explicit permissions and clear sharing indicators when active
+- Ultra-low latency using WebRTC technology with automatic quality adjustment based on network conditions
+- Privacy-focused with deferred permission requests (only asks for screen recording when you actually start sharing)
+- Automatic 4K resolution capping for 5K+ displays to prevent web interface clipping
+- Clear visual indicators when screen sharing is active
 
 #### 🪄 **Magic Wand for AI Sessions**
 - Instantly inject helpful context into Claude.ai sessions with a single click
-- Automatically detects Claude windows and adds project information
-- Includes git repository details, current branch, and recent changes
+- Automatically detects Claude browser windows and adds project information
+- Includes git repository details, current branch, and recent commit history
 - Configurable prompts to match your workflow
+- More forceful prompt injection to prevent AI from directly using the injected title
 
-### 🌐 Web Interface Improvements
+### 🚀 Performance & Stability Improvements
 
-#### **Performance & Stability**
+#### **Terminal Performance**
+- **FIXED**: Critical flow control issue that caused xterm.js buffer overflow and terminal freezing
 - **FIXED**: Infinite scroll loop in terminal output that could freeze the browser
-- **FIXED**: Modal backdrop pointer-events issues preventing interaction
-- Improved terminal rendering performance with large outputs
-- Better memory management for long-running sessions
+- **FIXED**: Race conditions in terminal output handling causing corrupted or out-of-order text
+- Improved memory management for long-running sessions
+- Better handling of high-volume terminal output
+
+#### **UI Performance**
+- Removed all UI animations that were causing 1-2 second delays when reopening sessions
+- Disabled View Transitions API for instant session navigation
+- Fixed modal backdrop pointer-events issues preventing interaction
+- Smoother menu bar UI without jumping when copy icon appears
+
+### 📱 Touch Device & Mobile Improvements
+
+#### **iPad/Tablet Support**
+- Unified keyboard layout for all mobile devices (removed separate iPad layout)
+- Universal touch device detection for better keyboard mode handling
+- Inline-edit pencil now always visible on touch devices
+- Reorganized touch device layout with better button placement
+- Fixed touch interaction issues with modals and overlays
+
+#### **Mobile Keyboard**
+- New compact keyboard layout optimized for tablets
+- Better handling of keyboard shortcuts on touch devices
+- Improved responsiveness for mobile web browsers
+
+### 🐚 Shell Support Enhancements
+
+#### **Fish Shell Integration**
+- Full support for Fish shell command expansion and completions
+- Proper handling of Fish-specific syntax and features
+- Fixed shell configuration files not being loaded correctly
+
+### 🔧 Developer Experience
+
+#### **Build System Improvements**
+- Preserve Swift package resolution in build.sh for faster builds
+- Better Node.js detection that handles fnm/homebrew conflicts
+
+#### **Version Management**
+- Implemented hash-based vt script version detection
+- Delete old sessions automatically when VibeTunnel version changes
+- Better handling of version mismatches between components
 
 ### 🐛 Bug Fixes
 
-- **FIXED**: Race conditions in terminal output handling causing corrupted text
-- **FIXED**: Session state synchronization issues between web and native clients
-- **FIXED**: Memory leaks in long-running sessions
-- **FIXED**: Various UI glitches and visual artifacts
-- **FIXED**: Connection timeout issues on slower networks
+#### **Session Management**
+- Fixed session state synchronization between web and native clients
+- Resolved memory leaks in long-running sessions
+- Fixed connection timeout issues on slower networks
+- Better cleanup of terminal processes and resources
+
+#### **UI/UX Fixes**
+- Fixed various UI glitches and visual artifacts
+- Resolved sidebar animation issues
+- Fixed file browser problems
+- Corrected ngrok documentation about free static domains
+
+### 🔍 Other Improvements
+
+#### **Control Protocol**
+- Unified control protocol for better terminal and screen sharing integration
+- Improved Unix socket handling with better error recovery
+- Enhanced WebRTC connection management
+
+#### **Documentation**
+- Updated ngrok docs to clarify one free static domain per user
+- Added comprehensive ScreenCaptureKit documentation
+- Removed outdated debug documentation
 
 ## [1.0.0-beta.6] - 2025-07-03
 
