@@ -2,6 +2,8 @@ import Foundation
 import Testing
 @testable import VibeTunnel
 
+// Tests for server configuration model
+
 @Suite("ServerConfig Tests", .tags(.models))
 struct ServerConfigTests {
     @Test("Creates valid HTTP URL")

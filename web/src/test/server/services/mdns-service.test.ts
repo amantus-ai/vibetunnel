@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+// Test for mDNS service functionality
 
 // Mock objects
 const mockService = {

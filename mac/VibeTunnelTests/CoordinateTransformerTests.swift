@@ -3,6 +3,8 @@ import ScreenCaptureKit
 import Testing
 @testable import VibeTunnel
 
+// Tests for coordinate transformation functionality
+
 @MainActor
 struct CoordinateTransformerTests {
     let transformer = CoordinateTransformer()
