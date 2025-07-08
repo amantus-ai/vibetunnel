@@ -191,20 +191,30 @@ test.describe('File Browser - Basic Functionality', () => {
     await fileBrowserButton.click();
     await page.waitForTimeout(1000);
 
+    // Wait for file browser modal to be visible
+    const fileBrowserModal = page.locator('.fixed.inset-0').first();
+    await expect(fileBrowserModal).toBeVisible({ timeout: 5000 });
+
     // Close file browser with escape key
     await page.keyboard.press('Escape');
     await page.waitForTimeout(1000);
 
+    // Wait for modal to disappear
+    await expect(fileBrowserModal).not.toBeVisible({ timeout: 5000 });
+
     // Click again to verify it still works
     await fileBrowserButton.click();
     await page.waitForTimeout(1000);
+
+    // Verify modal appears again
+    await expect(fileBrowserModal).toBeVisible({ timeout: 5000 });
 
     // Close again to ensure terminal is visible
     await page.keyboard.press('Escape');
     await page.waitForTimeout(1000);
 
     // Should not crash - page should still be responsive
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Terminal should still be accessible
     const terminal = page.locator('vibe-terminal, .terminal').first();

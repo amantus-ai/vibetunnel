@@ -46,20 +46,14 @@ test.describe('Activity Monitoring', () => {
     // Wait for our specific card to be visible
     await expect(sessionCard).toBeVisible({ timeout: 10000 });
 
-    // Verify the session is running by checking the status text
-    const statusSpan = sessionCard.locator('span[data-status]').first();
-    await expect(statusSpan).toBeVisible();
-    const statusText = await statusSpan.textContent();
-    expect(statusText?.toLowerCase()).toContain('running');
+    // Verify the session is running
+    const sessionStatus = await sessionCard.getAttribute('data-session-status');
+    expect(sessionStatus).toBe('running');
 
     // Look for the status dot which should be visible
-    // VibeTunnel shows a colored dot next to the status text
-    const statusDot = sessionCard.locator('.w-2.h-2.rounded-full').first();
+    // VibeTunnel shows a colored dot for running sessions
+    const statusDot = sessionCard.locator('.w-2.h-2.rounded-full.bg-status-success').first();
     await expect(statusDot).toBeVisible();
-
-    // Check if it has the expected color class for running sessions
-    const dotClasses = await statusDot.getAttribute('class');
-    expect(dotClasses).toContain('bg-status-success');
   });
 
   test('should update activity status when user interacts with terminal', async ({ page }) => {
