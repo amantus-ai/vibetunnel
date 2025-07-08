@@ -342,21 +342,23 @@ struct NewSessionForm: View {
         menuWindow.isFileSelectionInProgress = true
         // Use beginSheetModal to keep the window relationship
         panel.beginSheetModal(for: menuWindow) { response in
-            if response == .OK, let url = panel.url {
-                let path = url.path
-                let homeDir = NSHomeDirectory()
-                if path.hasPrefix(homeDir) {
-                    self.workingDirectory = "~" + path.dropFirst(homeDir.count)
-                } else {
-                    self.workingDirectory = path
+            Task { @MainActor in
+                if response == .OK, let url = panel.url {
+                    let path = url.path
+                    let homeDir = NSHomeDirectory()
+                    if path.hasPrefix(homeDir) {
+                        self.workingDirectory = "~" + path.dropFirst(homeDir.count)
+                    } else {
+                        self.workingDirectory = path
+                    }
                 }
+
+                // Clear the flag after selection completes
+                menuWindow.isFileSelectionInProgress = false
+
+                // Ensure the menu window regains focus
+                menuWindow.makeKeyAndOrderFront(nil)
             }
-
-            // Clear the flag after selection completes
-            menuWindow.isFileSelectionInProgress = false
-
-            // Ensure the menu window regains focus
-            menuWindow.makeKeyAndOrderFront(nil)
         }
     }
 
