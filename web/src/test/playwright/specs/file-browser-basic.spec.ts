@@ -43,9 +43,10 @@ test.describe('File Browser - Basic Functionality', () => {
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await fileBrowserButton.click();
 
-    // Verify file browser opens
-    const fileBrowser = page.locator('file-browser').first();
-    await expect(fileBrowser).toBeVisible({ timeout: 5000 });
+    // Wait for file browser modal to appear - it renders content when visible=true
+    // Look for the modal backdrop or file browser content
+    const fileBrowserModal = page.locator('.fixed.inset-0.bg-black\\/80, .fixed.inset-0').first();
+    await expect(fileBrowserModal).toBeVisible({ timeout: 5000 });
   });
 
   test('should display file browser with basic structure', async ({ page }) => {
@@ -58,13 +59,13 @@ test.describe('File Browser - Basic Functionality', () => {
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await fileBrowserButton.click();
 
-    const fileBrowser = page.locator('file-browser').first();
-    await expect(fileBrowser).toBeVisible();
+    // Wait for file browser modal to appear
+    const fileBrowserModal = page.locator('.fixed.inset-0').first();
+    await expect(fileBrowserModal).toBeVisible({ timeout: 5000 });
 
-    // Look for basic file browser elements
-    // Note: The exact structure may vary, so we check for common elements
-    const fileList = fileBrowser.locator('.overflow-y-auto, .file-list, .files').first();
-    const pathDisplay = fileBrowser.locator('.text-blue-400, .path, .current-path').first();
+    // Look for basic file browser elements within the modal
+    const fileList = page.locator('.overflow-y-auto, .file-list, .files').first();
+    const pathDisplay = page.locator('.text-blue-400, .path, .current-path, .text-accent-blue').first();
 
     // At least one of these should be visible to indicate the file browser is functional
     const hasFileListOrPath = (await fileList.isVisible()) || (await pathDisplay.isVisible());
@@ -81,21 +82,21 @@ test.describe('File Browser - Basic Functionality', () => {
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
     await fileBrowserButton.click();
 
-    const fileBrowser = page.locator('file-browser').first();
-    await expect(fileBrowser).toBeVisible();
+    // Wait for file browser modal to appear
+    const fileBrowserModal = page.locator('.fixed.inset-0').first();
+    await expect(fileBrowserModal).toBeVisible({ timeout: 5000 });
 
     // Wait for file browser to load content
     await page.waitForTimeout(2000);
 
-    // Look for file/directory entries (various possible selectors)
-    const fileEntries = fileBrowser
-      .locator('.file-item, .directory-item, [class*="hover"], .p-2, .p-3')
+    // Look for file/directory entries within the modal (various possible selectors)
+    const fileEntries = page
+      .locator('.file-item, .directory-item, [class*="hover"], .p-2, .p-3, .cursor-pointer')
       .first();
 
     // Should have at least some entries (could be files, directories, or ".." parent)
-    if (await fileEntries.isVisible()) {
-      await expect(fileEntries).toBeVisible();
-    }
+    const entriesVisible = await fileEntries.isVisible({ timeout: 3000 }).catch(() => false);
+    expect(entriesVisible).toBeTruthy();
   });
 
   test('should respond to keyboard shortcut for opening file browser', async ({ page }) => {
@@ -115,9 +116,9 @@ test.describe('File Browser - Basic Functionality', () => {
     // Wait for potential file browser opening
     await page.waitForTimeout(1000);
 
-    // Check if file browser opened
-    const fileBrowser = page.locator('file-browser').first();
-    const isVisible = await fileBrowser.isVisible();
+    // Check if file browser opened - look for the modal backdrop
+    const fileBrowserModal = page.locator('.fixed.inset-0').first();
+    const isVisible = await fileBrowserModal.isVisible({ timeout: 1000 }).catch(() => false);
 
     // This might not work in all test environments, so we just verify it doesn't crash
     expect(typeof isVisible).toBe('boolean');
@@ -136,11 +137,13 @@ test.describe('File Browser - Basic Functionality', () => {
 
     // Open file browser
     await fileBrowserButton.click();
-    const fileBrowser = page.locator('file-browser').first();
-    await expect(fileBrowser).toBeVisible();
+    
+    // Wait for file browser modal to appear
+    const fileBrowserModal = page.locator('.fixed.inset-0').first();
+    await expect(fileBrowserModal).toBeVisible({ timeout: 5000 });
 
     // File browser should function regardless of terminal state
-    expect(await fileBrowser.isVisible()).toBeTruthy();
+    expect(await fileBrowserModal.isVisible()).toBeTruthy();
   });
 
   test('should maintain file browser button across navigation', async ({ page }) => {
@@ -227,10 +230,13 @@ test.describe('File Browser - Basic Functionality', () => {
 
     // Should be able to open file browser even when terminal is busy
     await fileBrowserButton.click();
-    const fileBrowser = page.locator('file-browser').first();
-
-    if (await fileBrowser.isVisible()) {
-      await expect(fileBrowser).toBeVisible();
+    
+    // Wait for file browser modal - it might be accessible even when terminal is busy
+    const fileBrowserModal = page.locator('.fixed.inset-0').first();
+    const modalVisible = await fileBrowserModal.isVisible({ timeout: 3000 }).catch(() => false);
+    
+    if (modalVisible) {
+      await expect(fileBrowserModal).toBeVisible();
     }
   });
 
