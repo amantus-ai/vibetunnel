@@ -32,9 +32,11 @@ test.describe('File Browser in Session Create Form', () => {
     await expect(fileBrowser).toBeVisible({ timeout: 5000 });
 
     // Verify file browser is above session create modal by checking z-index
-    const fileBrowserZIndex = await fileBrowser.evaluate(
-      (el) => window.getComputedStyle(el.parentElement!).zIndex
-    );
+    const fileBrowserZIndex = await fileBrowser.evaluate((el) => {
+      const parent = el.parentElement;
+      if (!parent) return '0';
+      return window.getComputedStyle(parent).zIndex;
+    });
     expect(Number.parseInt(fileBrowserZIndex)).toBeGreaterThan(1000); // Modal backdrop is z-index: 1000
 
     // Verify we can interact with file browser (not blocked by modal)
