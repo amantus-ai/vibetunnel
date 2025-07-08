@@ -19,6 +19,7 @@ struct VibeTunnelApp: App {
     @State var permissionManager = SystemPermissionManager.shared
     @State var terminalLauncher = TerminalLauncher.shared
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
+    @State var repositoryDiscoveryService = RepositoryDiscoveryService()
     @State var screencapService: ScreencapService?
 
     init() {
@@ -47,6 +48,7 @@ struct VibeTunnelApp: App {
                     .environment(permissionManager)
                     .environment(terminalLauncher)
                     .environment(gitRepositoryMonitor)
+                    .environment(repositoryDiscoveryService)
             }
             .windowResizability(.contentSize)
             .defaultSize(width: 580, height: 480)
@@ -65,6 +67,7 @@ struct VibeTunnelApp: App {
                         .environment(permissionManager)
                         .environment(terminalLauncher)
                         .environment(gitRepositoryMonitor)
+                        .environment(repositoryDiscoveryService)
                 } else {
                     Text("Session not found")
                         .frame(width: 400, height: 300)
@@ -83,6 +86,7 @@ struct VibeTunnelApp: App {
                     .environment(permissionManager)
                     .environment(terminalLauncher)
                     .environment(gitRepositoryMonitor)
+                    .environment(repositoryDiscoveryService)
             }
             .commands {
                 CommandGroup(after: .appInfo) {
@@ -273,7 +277,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                let ngrokService = app?.ngrokService,
                let tailscaleService = app?.tailscaleService,
                let terminalLauncher = app?.terminalLauncher,
-               let gitRepositoryMonitor = app?.gitRepositoryMonitor
+               let gitRepositoryMonitor = app?.gitRepositoryMonitor,
+               let repositoryDiscoveryService = app?.repositoryDiscoveryService
             {
                 // Connect GitRepositoryMonitor to SessionMonitor for pre-caching
                 sessionMonitor.gitRepositoryMonitor = gitRepositoryMonitor
@@ -284,7 +289,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                     ngrokService: ngrokService,
                     tailscaleService: tailscaleService,
                     terminalLauncher: terminalLauncher,
-                    gitRepositoryMonitor: gitRepositoryMonitor
+                    gitRepositoryMonitor: gitRepositoryMonitor,
+                    repositoryDiscovery: repositoryDiscoveryService
                 )
             }
         }

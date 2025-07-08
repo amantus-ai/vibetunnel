@@ -43,6 +43,7 @@ final class StatusBarMenuManager: NSObject {
     private var tailscaleService: TailscaleService?
     private var terminalLauncher: TerminalLauncher?
     private var gitRepositoryMonitor: GitRepositoryMonitor?
+    private var repositoryDiscovery: RepositoryDiscoveryService?
 
     // Custom window management
     fileprivate var customWindow: CustomMenuWindow?
@@ -78,6 +79,7 @@ final class StatusBarMenuManager: NSObject {
         let tailscaleService: TailscaleService
         let terminalLauncher: TerminalLauncher
         let gitRepositoryMonitor: GitRepositoryMonitor
+        let repositoryDiscovery: RepositoryDiscoveryService
     }
 
     // MARK: - Setup
@@ -89,6 +91,7 @@ final class StatusBarMenuManager: NSObject {
         self.tailscaleService = configuration.tailscaleService
         self.terminalLauncher = configuration.terminalLauncher
         self.gitRepositoryMonitor = configuration.gitRepositoryMonitor
+        self.repositoryDiscovery = configuration.repositoryDiscovery
     }
 
     // MARK: - State Management
@@ -143,6 +146,7 @@ final class StatusBarMenuManager: NSObject {
         .environment(terminalLauncher)
         .environment(sessionService)
         .environment(gitRepositoryMonitor)
+        .environment(repositoryDiscovery)
 
         // Wrap in custom container for proper styling
         let containerView = CustomMenuContainer {
