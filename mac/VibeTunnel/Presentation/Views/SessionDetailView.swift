@@ -16,7 +16,8 @@ struct SessionDetailView: View {
     @State private var isCapturingScreenshot = false
     @State private var isFindingWindow = false
     @State private var windowSearchAttempted = false
-    @Environment(SystemPermissionManager.self) private var permissionManager
+    @Environment(SystemPermissionManager.self)
+    private var permissionManager
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionDetailView")
 

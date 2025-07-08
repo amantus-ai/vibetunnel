@@ -22,7 +22,7 @@ struct MenuActionBar: View {
         HStack(spacing: 8) {
             Button(action: {
                 showingNewSession = true
-            }) {
+            }, label: {
                 Label("New Session", systemImage: "plus.circle")
                     .font(.system(size: 12))
                     .padding(.horizontal, 10)
@@ -50,11 +50,11 @@ struct MenuActionBar: View {
                         lineWidth: 1
                     )
                     .animation(.easeInOut(duration: 0.15), value: focusedField)
-            )
+            })
 
             Button(action: {
                 SettingsOpener.openSettings()
-            }) {
+            }, label: {
                 Label("Settings", systemImage: "gearshape")
                     .font(.system(size: 12))
                     .padding(.horizontal, 10)
@@ -82,13 +82,13 @@ struct MenuActionBar: View {
                         lineWidth: 1
                     )
                     .animation(.easeInOut(duration: 0.15), value: focusedField)
-            )
+            })
 
             Spacer()
 
             Button(action: {
                 NSApplication.shared.terminate(nil)
-            }) {
+            }, label: {
                 Label("Quit", systemImage: "power")
                     .font(.system(size: 12))
                     .padding(.horizontal, 10)
@@ -116,7 +116,7 @@ struct MenuActionBar: View {
                         lineWidth: 1
                     )
                     .animation(.easeInOut(duration: 0.15), value: focusedField)
-            )
+            })
         }
         .padding(.horizontal)
         .padding(.vertical, 8)

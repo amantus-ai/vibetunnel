@@ -128,7 +128,8 @@ final class ScreenCapturePermissionSwizzler {
     ///
     /// - Note: This matches the signature of the original SCStreamManager method:
     ///         `- (void)requestUserPermissionForScreenCapture:(void (^)(BOOL))completionHandler;`
-    @objc private dynamic func swizzled_requestUserPermissionForScreenCapture(
+    @objc
+    private dynamic func swizzled_requestUserPermissionForScreenCapture(
         _ completionHandler: @escaping @Sendable (Bool)
             -> Void
     ) {

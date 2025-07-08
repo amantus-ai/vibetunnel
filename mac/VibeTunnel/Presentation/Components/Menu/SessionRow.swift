@@ -146,7 +146,7 @@ struct SessionRow: View {
                         // Folder icon and path - clickable as one unit
                         Button(action: {
                             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
-                        }) {
+                        }, label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "folder")
                                     .font(.system(size: 10))
@@ -166,7 +166,7 @@ struct SessionRow: View {
                                         .opacity(0.15) : Color.clear
                                     )
                             )
-                        }
+                        })
                         .buttonStyle(.plain)
                         .onHover { hovering in
                             isHoveringFolder = hovering

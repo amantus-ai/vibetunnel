@@ -523,11 +523,11 @@ private struct PortConfigurationView: View {
                                 pendingPort = String(port + 1)
                                 validateAndUpdatePort()
                             }
-                        }) {
+                        }, label: {
                             Image(systemName: "chevron.up")
                                 .font(.system(size: 10))
                                 .frame(width: 16, height: 11)
-                        }
+                        })
                         .buttonStyle(.borderless)
 
                         Button(action: {
@@ -535,11 +535,11 @@ private struct PortConfigurationView: View {
                                 pendingPort = String(port - 1)
                                 validateAndUpdatePort()
                             }
-                        }) {
+                        }, label: {
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 10))
                                 .frame(width: 16, height: 11)
-                        }
+                        })
                         .buttonStyle(.borderless)
                     }
                 }
@@ -842,25 +842,25 @@ private struct TailscaleIntegrationSection: View {
                     HStack(spacing: 12) {
                         Button(action: {
                             tailscaleService.openAppStore()
-                        }) {
+                        }, label: {
                             Text("App Store")
-                        }
+                        })
                         .buttonStyle(.link)
                         .controlSize(.small)
 
                         Button(action: {
                             tailscaleService.openDownloadPage()
-                        }) {
+                        }, label: {
                             Text("Direct Download")
-                        }
+                        })
                         .buttonStyle(.link)
                         .controlSize(.small)
 
                         Button(action: {
                             tailscaleService.openSetupGuide()
-                        }) {
+                        }, label: {
                             Text("Setup Guide")
-                        }
+                        })
                         .buttonStyle(.link)
                         .controlSize(.small)
                     }

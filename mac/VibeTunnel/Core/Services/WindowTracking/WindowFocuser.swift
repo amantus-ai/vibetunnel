@@ -73,7 +73,8 @@ final class WindowFocuser {
     }
 
     /// Handle UserDefaults changes
-    @objc private func userDefaultsDidChange(_ notification: Notification) {
+    @objc
+    private func userDefaultsDidChange(_ notification: Notification) {
         // Update highlight configuration when settings change
         let newConfig = Self.loadHighlightConfig()
         highlightEffect.updateConfig(newConfig)

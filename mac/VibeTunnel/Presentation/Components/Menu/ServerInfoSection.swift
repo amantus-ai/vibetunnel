@@ -120,23 +120,23 @@ struct ServerAddressRow: View {
                     // For other addresses (network IP, etc.), construct URL directly
                     NSWorkspace.shared.open(url)
                 }
-            }) {
+            }, label: {
                 Text(computedAddress)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
                     .underline()
-            }
+            })
             .buttonStyle(.plain)
             .pointingHandCursor()
 
             // Copy button - always present but opacity changes on hover
             Button(action: {
                 copyToClipboard()
-            }) {
+            }, label: {
                 Image(systemName: showCopiedFeedback ? "checkmark.circle.fill" : "doc.on.doc")
                     .font(.system(size: 10))
                     .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
-            }
+            })
             .buttonStyle(.plain)
             .pointingHandCursor()
             .help(showCopiedFeedback ? "Copied!" : "Copy to clipboard")
