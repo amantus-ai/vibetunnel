@@ -292,8 +292,10 @@ export async function assertTerminalReady(page: Page, timeout = 15000): Promise<
   await page.waitForTimeout(500);
 
   // Check for prompt - with more robust detection and debugging
+  const isCI = process.env.CI; // Capture outside the browser context
+  
   await page.waitForFunction(
-    () => {
+    (inCI) => {
       const term = document.querySelector('vibe-terminal');
       if (!term) {
         console.warn('[assertTerminalReady] Terminal element not found');
@@ -312,7 +314,7 @@ export async function assertTerminalReady(page: Page, timeout = 15000): Promise<
       }
 
       // Log content in CI for debugging (last 200 chars)
-      if (process.env.CI && content) {
+      if (inCI && content) {
         console.log(
           '[assertTerminalReady] Terminal content (last 200 chars):',
           content.slice(-200)
@@ -352,6 +354,7 @@ export async function assertTerminalReady(page: Page, timeout = 15000): Promise<
 
       return hasPrompt;
     },
+    isCI,
     { timeout }
   );
 }
