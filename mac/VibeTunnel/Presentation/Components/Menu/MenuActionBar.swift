@@ -50,7 +50,7 @@ struct MenuActionBar: View {
                         lineWidth: 1
                     )
                     .animation(.easeInOut(duration: 0.15), value: focusedField)
-            })
+            )
 
             Button(action: {
                 SettingsOpener.openSettings()
@@ -82,7 +82,7 @@ struct MenuActionBar: View {
                         lineWidth: 1
                     )
                     .animation(.easeInOut(duration: 0.15), value: focusedField)
-            })
+            )
 
             Spacer()
 
@@ -116,7 +116,7 @@ struct MenuActionBar: View {
                         lineWidth: 1
                     )
                     .animation(.easeInOut(duration: 0.15), value: focusedField)
-            })
+            )
         }
         .padding(.horizontal)
         .padding(.vertical, 8)

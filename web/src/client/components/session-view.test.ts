@@ -84,26 +84,42 @@ describe('SessionView', () => {
     });
 
     it('should detect mobile environment', async () => {
-      // Mock user agent for mobile detection
-      const originalUserAgent = navigator.userAgent;
-      Object.defineProperty(navigator, 'userAgent', {
-        value:
-          'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+      // Mock touch capabilities
+      const originalMaxTouchPoints = navigator.maxTouchPoints;
+      const originalMatchMedia = window.matchMedia;
+      
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        value: 1,
         configurable: true,
       });
+      
+      // Mock matchMedia to simulate touch device
+      window.matchMedia = (query: string) => {
+        if (query === '(any-pointer: coarse)') {
+          return { matches: true, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => true } as MediaQueryList;
+        }
+        if (query === '(any-pointer: fine)') {
+          return { matches: false, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => true } as MediaQueryList;
+        }
+        if (query === '(any-hover: hover)') {
+          return { matches: false, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => true } as MediaQueryList;
+        }
+        return originalMatchMedia(query);
+      };
 
       const mobileElement = await fixture<SessionView>(html` <session-view></session-view> `);
 
       await mobileElement.updateComplete;
 
-      // Component detects mobile based on user agent
+      // Component detects mobile based on touch capabilities
       expect((mobileElement as SessionViewTestInterface).isMobile).toBe(true);
 
-      // Restore original user agent
-      Object.defineProperty(navigator, 'userAgent', {
-        value: originalUserAgent,
+      // Restore original values
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        value: originalMaxTouchPoints,
         configurable: true,
       });
+      window.matchMedia = originalMatchMedia;
     });
   });
 
