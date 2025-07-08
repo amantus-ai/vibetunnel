@@ -101,9 +101,9 @@ struct GeneralSettingsView: View {
     private var colorSchemePreferenceRaw = "system"
 
     enum ColorSchemePreference: String, CaseIterable {
-        case system = "system"
-        case light = "light"
-        case dark = "dark"
+        case system
+        case light
+        case dark
 
         var displayName: String {
             switch self {
@@ -296,7 +296,7 @@ struct AdvancedSettingsView: View {
                     .cornerRadius(Theme.CornerRadius.card)
 
                     // View System Logs Button
-                    Button(action: { showingSystemLogs = true }) {
+                    Button(action: { showingSystemLogs = true }, label: {
                         HStack {
                             Image(systemName: "doc.text")
                                 .foregroundColor(Theme.Colors.primaryAccent)
@@ -310,7 +310,7 @@ struct AdvancedSettingsView: View {
                         .padding()
                         .background(Theme.Colors.cardBackground)
                         .cornerRadius(Theme.CornerRadius.card)
-                    }
+                    })
                     .buttonStyle(PlainButtonStyle())
                 }
             }
@@ -490,7 +490,7 @@ struct LinkRow: View {
             if let url {
                 UIApplication.shared.open(url)
             }
-        }) {
+        }, label: {
             HStack(spacing: Theme.Spacing.medium) {
                 Image(systemName: icon)
                     .font(.system(size: 20))
@@ -516,7 +516,7 @@ struct LinkRow: View {
             .padding()
             .background(Theme.Colors.cardBackground)
             .cornerRadius(Theme.CornerRadius.card)
-        }
+        })
         .buttonStyle(PlainButtonStyle())
     }
 }

@@ -289,7 +289,8 @@ struct ServerDiscoverySheet: View {
     @Binding var selectedPort: String
     @Binding var selectedName: String?
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss)
+    private var dismiss
     @State private var discoveryService = BonjourDiscoveryService.shared
 
     var body: some View {

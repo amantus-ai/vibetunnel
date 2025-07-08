@@ -377,8 +377,7 @@ struct TerminalView: View {
         }
     }
 
-    @ViewBuilder
-    private var terminalMenuItems: some View {
+    @ViewBuilder private var terminalMenuItems: some View {
         Button(action: { viewModel.clearTerminal() }, label: {
             Label("Clear", systemImage: "clear")
         })
@@ -459,8 +458,7 @@ struct TerminalView: View {
         debugMenuItems
     }
 
-    @ViewBuilder
-    private var recordingMenuItems: some View {
+    @ViewBuilder private var recordingMenuItems: some View {
         if viewModel.castRecorder.isRecording {
             Button(action: {
                 viewModel.stopRecording()
@@ -481,8 +479,7 @@ struct TerminalView: View {
         .disabled(viewModel.castRecorder.events.isEmpty)
     }
 
-    @ViewBuilder
-    private var debugMenuItems: some View {
+    @ViewBuilder private var debugMenuItems: some View {
         Menu {
             ForEach(TerminalRenderer.allCases, id: \.self) { renderer in
                 Button(action: {
@@ -503,8 +500,7 @@ struct TerminalView: View {
         }
     }
 
-    @ViewBuilder
-    private var terminalSizeIndicator: some View {
+    @ViewBuilder private var terminalSizeIndicator: some View {
         if viewModel.terminalCols > 0 && viewModel.terminalRows > 0 {
             Text("\(viewModel.terminalCols)×\(viewModel.terminalRows)")
                 .font(Theme.Typography.terminalSystem(size: 11))

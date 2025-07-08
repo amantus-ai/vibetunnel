@@ -666,8 +666,8 @@ class FileBrowserViewModel {
     var gitFilter: GitFilterOption = .all
 
     enum GitFilterOption: String {
-        case all = "all"
-        case changed = "changed"
+        case all
+        case changed
     }
 
     private let apiClient = APIClient.shared

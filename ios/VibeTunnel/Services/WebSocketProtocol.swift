@@ -39,7 +39,7 @@ protocol WebSocketDelegate: AnyObject {
 class URLSessionWebSocket: NSObject, WebSocketProtocol {
     weak var delegate: WebSocketDelegate?
     private var webSocketTask: URLSessionWebSocketTask?
-    private var session: URLSession!
+    private var session: URLSession?
     private var isReceiving = false
 
     override init() {
@@ -51,7 +51,7 @@ class URLSessionWebSocket: NSObject, WebSocketProtocol {
         var request = URLRequest(url: url)
         headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
 
-        webSocketTask = session.webSocketTask(with: request)
+        webSocketTask = session?.webSocketTask(with: request)
         webSocketTask?.resume()
 
         // Start receiving messages

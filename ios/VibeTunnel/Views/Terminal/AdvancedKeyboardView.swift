@@ -211,7 +211,7 @@ struct SpecialKeyButton: View {
         Button(action: {
             onPress(key)
             HapticFeedback.impact(.light)
-        }) {
+        }, label: {
             Text(label)
                 .font(Theme.Typography.terminalSystem(size: 14))
                 .foregroundColor(Theme.Colors.terminalForeground)
@@ -222,7 +222,7 @@ struct SpecialKeyButton: View {
                         .stroke(Theme.Colors.cardBorder, lineWidth: 1)
                 )
                 .cornerRadius(Theme.CornerRadius.small)
-        }
+        })
     }
 }
 
@@ -242,7 +242,7 @@ struct CtrlKeyButton: View {
                 let ctrlChar = Character(ctrlScalar)
                 onPress(String(ctrlChar))
             }
-        }) {
+        }, label: {
             Text("^" + char)
                 .font(Theme.Typography.terminalSystem(size: 12))
                 .foregroundColor(Theme.Colors.terminalForeground)
@@ -253,7 +253,7 @@ struct CtrlKeyButton: View {
                         .stroke(Theme.Colors.cardBorder, lineWidth: 1)
                 )
                 .cornerRadius(Theme.CornerRadius.small)
-        }
+        })
     }
 }
 
@@ -285,7 +285,7 @@ struct FunctionKeyButton: View {
     var body: some View {
         Button(action: {
             onPress(escapeSequence)
-        }) {
+        }, label: {
             Text("F\(number)")
                 .font(Theme.Typography.terminalSystem(size: 12))
                 .foregroundColor(Theme.Colors.terminalForeground)
@@ -296,7 +296,7 @@ struct FunctionKeyButton: View {
                         .stroke(Theme.Colors.cardBorder, lineWidth: 1)
                 )
                 .cornerRadius(Theme.CornerRadius.small)
-        }
+        })
     }
 }
 

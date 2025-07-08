@@ -9,7 +9,7 @@ private let logger = Logger(category: "SSEClient")
 /// provides decoded events to a delegate.
 final class SSEClient: NSObject, @unchecked Sendable {
     private var task: URLSessionDataTask?
-    private var session: URLSession!
+    private var session: URLSession?
     private let url: URL
     private var buffer = Data()
     weak var delegate: SSEClientDelegate?
@@ -53,7 +53,7 @@ final class SSEClient: NSObject, @unchecked Sendable {
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
 
-        task = session.dataTask(with: request)
+        task = session?.dataTask(with: request)
         task?.resume()
     }
 

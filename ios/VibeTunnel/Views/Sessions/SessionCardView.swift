@@ -17,7 +17,8 @@ struct SessionCardView: View {
     @State private var rotation: Double = 0
     @State private var brightness: Double = 0
 
-    @Environment(\.livePreviewSubscription) private var livePreview
+    @Environment(\.livePreviewSubscription)
+    private var livePreview
 
     private var displayWorkingDir: String {
         // Convert absolute paths back to ~ notation for display
@@ -235,8 +236,7 @@ struct SessionCardView: View {
 
     // MARK: - View Components
 
-    @ViewBuilder
-    private var commandInfoView: some View {
+    @ViewBuilder private var commandInfoView: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 Text("$")

@@ -161,7 +161,7 @@ struct LivePreviewModifier: ViewModifier {
                 }
             }
             .onDisappear {
-                if let _ = subscription {
+                if subscription != nil {
                     LivePreviewManager.shared.unsubscribe(from: sessionId)
                     subscription = nil
                 }
