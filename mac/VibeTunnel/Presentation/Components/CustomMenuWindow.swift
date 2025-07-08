@@ -25,7 +25,7 @@ final class CustomMenuWindow: NSPanel {
 
     /// Tracks whether the new session form is currently active
     var isNewSessionActive = false
-    
+
     /// Tracks whether file selection is in progress
     var isFileSelectionInProgress = false
 
