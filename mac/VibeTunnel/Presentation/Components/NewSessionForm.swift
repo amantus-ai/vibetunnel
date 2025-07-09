@@ -155,6 +155,8 @@ struct NewSessionForm: View {
                                     Image(systemName: "folder")
                                         .font(.system(size: 12))
                                         .foregroundColor(.secondary)
+                                        .frame(width: 20, height: 20)
+                                        .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Choose directory")
@@ -164,6 +166,8 @@ struct NewSessionForm: View {
                                         .font(.system(size: 12))
                                         .foregroundColor(.secondary)
                                         .animation(.easeInOut(duration: 0.2), value: showingRepositoryDropdown)
+                                        .frame(width: 20, height: 20)
+                                        .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Choose from repositories")
