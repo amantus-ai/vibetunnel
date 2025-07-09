@@ -1,50 +1,38 @@
-[package]
-name = "vibetunnel-pty"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = [
+  "crates/core",
+  "crates/napi-addon",
+  "crates/vt-pipe",
+]
+resolver = "2"
+default-members = ["crates/napi-addon"]
 
-[lib]
-name = "vibetunnel_pty"
-crate-type = ["cdylib"]
-
-[[bin]]
-name = "vt-pipe"
-path = "src/cli/main.rs"
-required-features = ["cli"]
-
-[features]
-default = ["napi"]
-napi = ["dep:napi", "dep:napi-derive"]
-cli = ["dep:tokio", "dep:clap", "dep:ctrlc", "dep:dirs", "dep:termios"]
-
-[dependencies]
-# Core dependencies (always included)
-portable-pty = "0.8"
-anyhow = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-uuid = { version = "1.0", features = ["v4"] }
+[workspace.dependencies]
+anyhow = "1"
+portable-pty = { version = "0.8", default-features = false }
+bytes = "1.5"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.10"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+log = "0.4"
+thiserror = "2"
 lazy_static = "1.4"
-bytes = "1.5"
 
-# NAPI dependencies (only with napi feature)
-napi = { version = "2", features = ["napi4"], optional = true }
-napi-derive = { version = "2", optional = true }
+# NAPI dependencies
+napi = { version = "2", features = ["napi4"] }
+napi-derive = "2"
 
-# CLI dependencies (only with cli feature)
-tokio = { version = "1.35", features = ["full"], optional = true }
-clap = { version = "4.4", features = ["derive"], optional = true }
-ctrlc = { version = "3.4", optional = true }
-dirs = { version = "5.0", optional = true }
-termios = { version = "0.3", optional = true }
+# CLI dependencies
+tokio = { version = "1.35", features = ["full"] }
+clap = { version = "4.4", features = ["derive"] }
+ctrlc = "3.4"
+dirs = "5.0"
+termios = "0.3"
 
-[target.'cfg(unix)'.dependencies]
+# Unix dependencies
 nix = { version = "0.27", features = ["signal"] }
-
-[build-dependencies]
-napi-build = "2"
 
 [profile.release]
 lto = true

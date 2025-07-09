@@ -1,0 +1,28 @@
+[package]
+name = "vibetunnel-pty-core"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+cli = ["tokio"]  # Only vt-pipe enables this
+napi = []        # Only addon enables this
+
+[dependencies]
+anyhow = { workspace = true }
+portable-pty = { workspace = true }
+bytes = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+regex = { workspace = true }
+uuid = { workspace = true }
+lazy_static = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }
+
+# Optional dependencies
+tokio = { workspace = true, optional = true }
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true }
