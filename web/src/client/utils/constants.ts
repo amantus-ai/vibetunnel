@@ -20,9 +20,25 @@ export const TRANSITIONS = {
 } as const;
 
 export const Z_INDEX = {
+  // Base UI elements
+  TERMINAL_OVERLAY: 10,
   MOBILE_OVERLAY: 20,
   SIDEBAR_MOBILE: 30,
+  WIDTH_SELECTOR_DROPDOWN: 50,
+
+  // Modal and overlays
+  MODAL_BACKDROP: 50,
+  FILE_PICKER: 50,
   SESSION_EXITED_OVERLAY: 100,
+
+  // File browser (needs to be above session create modal)
+  FILE_BROWSER: 1100,
+
+  // Other UI elements
+  LOG_BUTTON: 20,
+  CTRL_ALPHA_OVERLAY: 50,
+  MOBILE_INPUT_OVERLAY: 40,
+  SESSION_LIST_BOTTOM_BAR: 10,
 } as const;
 
 export const TERMINAL = {

@@ -3,6 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 import '../components/terminal.js';
 import type { Terminal } from '../components/terminal.js';
+import { Z_INDEX } from '../utils/constants.js';
 
 @customElement('terminal-test')
 export class TerminalTest extends LitElement {
@@ -165,7 +166,8 @@ export class TerminalTest extends LitElement {
 
         <div class="flex-1 relative overflow-hidden bg-black m-4 rounded-lg border border-gray-800">
           <div
-            class="absolute top-4 right-4 bg-black/80 border border-gray-800 rounded px-3 py-1.5 text-xs z-10"
+            class="absolute top-4 right-4 bg-black/80 border border-gray-800 rounded px-3 py-1.5 text-xs"
+            style="z-index: ${Z_INDEX.TERMINAL_OVERLAY};"
           >
             <div>Size: <code class="text-emerald-400">${this.cols}x${this.rows}</code></div>
           </div>
@@ -179,7 +181,7 @@ export class TerminalTest extends LitElement {
             style="width: 100%; height: 100%;"
           ></vibe-terminal>
 
-          <div class="absolute bottom-4 left-4 right-4 flex gap-2 z-10">
+          <div class="absolute bottom-4 left-4 right-4 flex gap-2" style="z-index: ${Z_INDEX.TERMINAL_OVERLAY};">
             <input
               type="text"
               placeholder="Type custom text to send..."

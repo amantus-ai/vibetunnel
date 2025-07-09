@@ -6,6 +6,7 @@
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { Z_INDEX } from '../../utils/constants.js';
 import { COMMON_TERMINAL_WIDTHS } from '../../utils/terminal-preferences.js';
 
 @customElement('width-selector')
@@ -51,7 +52,8 @@ export class WidthSelector extends LitElement {
 
     return html`
       <div
-        class="width-selector-container absolute top-full mt-2 right-0 bg-dark-bg-elevated border border-dark-border rounded-lg shadow-elevated z-50 min-w-[280px] animate-fade-in"
+        class="width-selector-container absolute top-full mt-2 right-0 bg-dark-bg-elevated border border-dark-border rounded-lg shadow-elevated min-w-[280px] animate-fade-in"
+        style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
       >
         <div class="p-4">
           <div class="text-sm font-semibold text-dark-text mb-3">Terminal Width</div>

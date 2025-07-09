@@ -70,3 +70,6 @@ Do NOT use three separate commands (add, commit, push) as this is slow.
 - We do not care about deprecation - remove old code completely
 - Always prefer clean refactoring over gradual migration
 - Delete unused functions and code paths immediately
+
+## Best Practices
+- ALWAYS use `Z_INDEX` constants in `src/client/utils/constants.ts` instead of setting z-index properties using primitives / magic numbers
