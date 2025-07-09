@@ -91,6 +91,13 @@ export class SessionView extends LitElement {
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
 
+  // Memoized width label calculations
+  private _cachedWidthLabel = '';
+  private _cachedWidthTooltip = '';
+  private _lastMaxCols = -1;
+  private _lastUserOverrideWidth: boolean | null = null;
+  private _lastInitialCols = -1;
+
   // Bound event handlers to ensure proper cleanup
   private boundHandleDragOver = this.handleDragOver.bind(this);
   private boundHandleDragLeave = this.handleDragLeave.bind(this);
@@ -789,42 +796,66 @@ export class SessionView extends LitElement {
 
   private getCurrentWidthLabel(): string {
     const terminal = this.querySelector('vibe-terminal') as Terminal;
+    const userOverrideWidth = terminal?.userOverrideWidth || false;
+    const initialCols = terminal?.initialCols || 0;
+
+    // Check if we need to recalculate
+    if (
+      this._lastMaxCols === this.terminalMaxCols &&
+      this._lastUserOverrideWidth === userOverrideWidth &&
+      this._lastInitialCols === initialCols &&
+      this._cachedWidthLabel !== ''
+    ) {
+      return this._cachedWidthLabel;
+    }
 
     // Only apply width restrictions to tunneled sessions (those with 'fwd_' prefix)
     const isTunneledSession = this.session?.id?.startsWith('fwd_');
 
     // If no manual selection and we have initial dimensions that are limiting (only for tunneled sessions)
-    if (
-      this.terminalMaxCols === 0 &&
-      terminal?.initialCols > 0 &&
-      !terminal.userOverrideWidth &&
-      isTunneledSession
-    ) {
-      return `≤${terminal.initialCols}`; // Shows "≤120" to indicate limited to session width
+    if (this.terminalMaxCols === 0 && initialCols > 0 && !userOverrideWidth && isTunneledSession) {
+      this._cachedWidthLabel = `≤${initialCols}`; // Shows "≤120" to indicate limited to session width
+    } else if (this.terminalMaxCols === 0) {
+      this._cachedWidthLabel = '∞';
+    } else {
+      const commonWidth = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
+      this._cachedWidthLabel = commonWidth ? commonWidth.label : this.terminalMaxCols.toString();
     }
 
-    if (this.terminalMaxCols === 0) return '∞';
-    const commonWidth = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
-    return commonWidth ? commonWidth.label : this.terminalMaxCols.toString();
+    // Update cache keys
+    this._lastMaxCols = this.terminalMaxCols;
+    this._lastUserOverrideWidth = userOverrideWidth;
+    this._lastInitialCols = initialCols;
+
+    return this._cachedWidthLabel;
   }
 
   private getWidthTooltip(): string {
     const terminal = this.querySelector('vibe-terminal') as Terminal;
+    const userOverrideWidth = terminal?.userOverrideWidth || false;
+    const initialCols = terminal?.initialCols || 0;
+
+    // Check if we need to recalculate (reuse same cache keys as width label)
+    if (
+      this._lastMaxCols === this.terminalMaxCols &&
+      this._lastUserOverrideWidth === userOverrideWidth &&
+      this._lastInitialCols === initialCols &&
+      this._cachedWidthTooltip !== ''
+    ) {
+      return this._cachedWidthTooltip;
+    }
 
     // Only apply width restrictions to tunneled sessions (those with 'fwd_' prefix)
     const isTunneledSession = this.session?.id?.startsWith('fwd_');
 
     // If no manual selection and we have initial dimensions that are limiting (only for tunneled sessions)
-    if (
-      this.terminalMaxCols === 0 &&
-      terminal?.initialCols > 0 &&
-      !terminal.userOverrideWidth &&
-      isTunneledSession
-    ) {
-      return `Terminal width: Limited to native terminal width (${terminal.initialCols} columns)`;
+    if (this.terminalMaxCols === 0 && initialCols > 0 && !userOverrideWidth && isTunneledSession) {
+      this._cachedWidthTooltip = `Terminal width: Limited to native terminal width (${initialCols} columns)`;
+    } else {
+      this._cachedWidthTooltip = `Terminal width: ${this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`}`;
     }
 
-    return `Terminal width: ${this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`}`;
+    return this._cachedWidthTooltip;
   }
 
   private handleFontSizeChange(newSize: number) {
@@ -1201,8 +1232,6 @@ export class SessionView extends LitElement {
           .showBackButton=${this.showBackButton}
           .showSidebarToggle=${this.showSidebarToggle}
           .sidebarCollapsed=${this.sidebarCollapsed}
-          .terminalCols=${this.terminalCols}
-          .terminalRows=${this.terminalRows}
           .terminalMaxCols=${this.terminalMaxCols}
           .terminalFontSize=${this.terminalFontSize}
           .customWidth=${this.customWidth}
@@ -1224,7 +1253,13 @@ export class SessionView extends LitElement {
             this.customWidth = '';
           }}
           @session-rename=${(e: CustomEvent) => this.handleRename(e)}
-        ></session-header>
+        >
+          <terminal-dimensions
+            slot="terminal-dimensions"
+            .cols=${this.terminalCols}
+            .rows=${this.terminalRows}
+          ></terminal-dimensions>
+        </session-header>
 
         <!-- Enhanced Terminal Container -->
         <div

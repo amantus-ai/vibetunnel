@@ -66,9 +66,9 @@ export class MobileMenu extends LitElement {
 
   render() {
     return html`
-      <div class="relative">
+      <div class="relative w-[44px] flex-shrink-0">
         <button
-          class="p-2 ${this.showMenu ? 'text-accent-green border-accent-green' : 'text-dark-text border-dark-border'} hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
+          class="p-2 ${this.showMenu ? 'text-accent-green border-accent-green' : 'text-dark-text border-dark-border'} hover:border-accent-green hover:text-accent-green rounded-lg"
           @click=${this.toggleMenu}
           title="More actions"
           aria-label="More actions menu"

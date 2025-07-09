@@ -15,6 +15,7 @@ import { authClient } from '../../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../../utils/ai-sessions.js';
 import { createLogger } from '../../utils/logger.js';
 import './mobile-menu.js';
+import './terminal-dimensions.js';
 
 const logger = createLogger('session-header');
 
@@ -29,8 +30,6 @@ export class SessionHeader extends LitElement {
   @property({ type: Boolean }) showBackButton = true;
   @property({ type: Boolean }) showSidebarToggle = false;
   @property({ type: Boolean }) sidebarCollapsed = false;
-  @property({ type: Number }) terminalCols = 0;
-  @property({ type: Number }) terminalRows = 0;
   @property({ type: Number }) terminalMaxCols = 0;
   @property({ type: Number }) terminalFontSize = 14;
   @property({ type: String }) customWidth = '';
@@ -270,18 +269,8 @@ export class SessionHeader extends LitElement {
               </div>
               ${this.getStatusText().toUpperCase()}
             </span>
-            ${
-              this.terminalCols > 0 && this.terminalRows > 0
-                ? html`
-                  <span
-                    class="text-dark-text-muted text-xs opacity-60"
-                    style="font-size: 10px; line-height: 1;"
-                  >
-                    ${this.terminalCols}×${this.terminalRows}
-                  </span>
-                `
-                : ''
-            }
+            <!-- Terminal dimensions slot -->
+            <slot name="terminal-dimensions"></slot>
           </div>
         </div>
       </div>

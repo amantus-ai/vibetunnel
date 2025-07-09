@@ -249,6 +249,7 @@ struct SessionRow: View {
                 )
         )
         .focusable()
+        .help(tooltipText)
         .contextMenu {
             if hasWindow {
                 Button("Focus Terminal Window") {
@@ -499,6 +500,84 @@ struct SessionRow: View {
 
     private var hoverBackgroundColor: Color {
         AppColors.Fallback.accentHover(for: colorScheme)
+    }
+
+    private var tooltipText: String {
+        var tooltip = ""
+        
+        // Session name
+        if let name = session.value.name, !name.isEmpty {
+            tooltip += "Session: \(name)\n"
+        }
+        
+        // Command
+        tooltip += "Command: \(session.value.command.joined(separator: " "))\n"
+        
+        // Project path
+        tooltip += "Path: \(session.value.workingDir)\n"
+        
+        // Git info
+        if let repo = gitRepository {
+            tooltip += "Git: \(repo.currentBranch ?? "detached")"
+            if repo.hasChanges {
+                tooltip += " (\(repo.statusText))"
+            }
+            tooltip += "\n"
+        }
+        
+        // Activity status
+        if let activityStatus = session.value.activityStatus?.specificStatus?.status {
+            tooltip += "Activity: \(activityStatus)\n"
+        } else {
+            tooltip += "Activity: \(isActive ? "Active" : "Idle")\n"
+        }
+        
+        // Duration
+        tooltip += "Duration: \(formattedDuration)"
+        
+        return tooltip
+    }
+    
+    private var formattedDuration: String {
+        // Parse ISO8601 date string with fractional seconds
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        guard let startDate = formatter.date(from: session.value.startedAt) else {
+            // Fallback: try without fractional seconds
+            formatter.formatOptions = [.withInternetDateTime]
+            guard let startDate = formatter.date(from: session.value.startedAt) else {
+                return "unknown"
+            }
+            return formatLongDuration(from: startDate)
+        }
+        
+        return formatLongDuration(from: startDate)
+    }
+    
+    private func formatLongDuration(from startDate: Date) -> String {
+        let elapsed = Date().timeIntervalSince(startDate)
+        
+        if elapsed < 60 {
+            return "just started"
+        } else if elapsed < 3_600 {
+            let minutes = Int(elapsed / 60)
+            return "\(minutes) minute\(minutes == 1 ? "" : "s")"
+        } else if elapsed < 86_400 {
+            let hours = Int(elapsed / 3_600)
+            let minutes = Int((elapsed.truncatingRemainder(dividingBy: 3_600)) / 60)
+            if minutes > 0 {
+                return "\(hours) hour\(hours == 1 ? "" : "s") \(minutes) minute\(minutes == 1 ? "" : "s")"
+            }
+            return "\(hours) hour\(hours == 1 ? "" : "s")"
+        } else {
+            let days = Int(elapsed / 86_400)
+            let hours = Int((elapsed.truncatingRemainder(dividingBy: 86_400)) / 3_600)
+            if hours > 0 {
+                return "\(days) day\(days == 1 ? "" : "s") \(hours) hour\(hours == 1 ? "" : "s")"
+            }
+            return "\(days) day\(days == 1 ? "" : "s")"
+        }
     }
 
     private var duration: String {
