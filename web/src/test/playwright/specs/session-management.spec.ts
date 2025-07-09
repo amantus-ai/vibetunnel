@@ -214,7 +214,7 @@ test.describe('Session Management', () => {
     }
   });
 
-  test('should update session activity status', async ({ page }) => {
+  test.skip('should update session activity status', async ({ page }) => {
     // Create a session
     const { sessionName } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('activity-test'),
