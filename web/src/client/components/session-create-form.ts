@@ -39,7 +39,7 @@ export class SessionCreateForm extends LitElement {
   }
 
   @property({ type: String }) workingDir = '~/';
-  @property({ type: String }) command = 'zsh';
+  @property({ type: String }) command = 'bash';
   @property({ type: String }) sessionName = '';
   @property({ type: Boolean }) disabled = false;
   @property({ type: Boolean }) visible = false;
@@ -49,11 +49,12 @@ export class SessionCreateForm extends LitElement {
 
   @state() private isCreating = false;
   @state() private showFileBrowser = false;
-  @state() private selectedQuickStart = 'zsh';
+  @state() private selectedQuickStart = 'bash';
 
   quickStartCommands = [
     { label: 'claude', command: 'claude' },
     { label: 'gemini', command: 'gemini' },
+    { label: 'bash', command: 'bash' },
     { label: 'zsh', command: 'zsh' },
     { label: 'python3', command: 'python3' },
     { label: 'node', command: 'node' },
@@ -116,7 +117,7 @@ export class SessionCreateForm extends LitElement {
 
       // Always set values, using saved values or defaults
       this.workingDir = savedWorkingDir || '~/';
-      this.command = savedCommand || 'zsh';
+      this.command = savedCommand || 'bash';
 
       // For spawn window, only use saved value if it exists and is valid
       // This ensures we respect the default (false) when nothing is saved
@@ -179,7 +180,7 @@ export class SessionCreateForm extends LitElement {
 
         // Reset to defaults first to ensure clean state
         this.workingDir = '~/';
-        this.command = 'zsh';
+        this.command = 'bash';
         this.sessionName = '';
         this.spawnWindow = false;
         this.titleMode = TitleMode.DYNAMIC;
@@ -490,7 +491,7 @@ export class SessionCreateForm extends LitElement {
                 class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm"
                 .value=${this.command}
                 @input=${this.handleCommandChange}
-                placeholder="zsh"
+                placeholder="bash"
                 ?disabled=${this.disabled || this.isCreating}
                 data-testid="command-input"
               />

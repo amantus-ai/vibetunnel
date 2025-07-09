@@ -172,7 +172,7 @@ test.describe('Session Creation', () => {
 
       // Fill session details
       await page.fill('input[placeholder="My Session"]', sessionName);
-      await page.fill('input[placeholder="zsh"]', 'bash');
+      await page.fill('input[placeholder="bash"]', 'bash');
 
       // Make sure spawn window is off
       const spawnToggle = page.locator('button[role="switch"]').first();

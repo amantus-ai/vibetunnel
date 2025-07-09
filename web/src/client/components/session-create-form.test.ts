@@ -66,7 +66,7 @@ describe('SessionCreateForm', () => {
     it('should create component with default state', () => {
       expect(element).toBeDefined();
       expect(element.workingDir).toBe('~/');
-      expect(element.command).toBe('zsh');
+      expect(element.command).toBe('bash');
       expect(element.sessionName).toBe('');
       expect(element.isCreating).toBe(false);
     });
@@ -155,7 +155,15 @@ describe('SessionCreateForm', () => {
 
       // The test environment may not render the buttons correctly due to lit-html issues
       // so we'll just verify the data structure exists
-      const expectedCommands = ['claude', 'gemini', 'zsh', 'python3', 'node', 'pnpm run dev'];
+      const expectedCommands = [
+        'claude',
+        'gemini',
+        'bash',
+        'zsh',
+        'python3',
+        'node',
+        'pnpm run dev',
+      ];
       const actualCommands = element.quickStartCommands.map((item) => item.command);
 
       expectedCommands.forEach((cmd) => {

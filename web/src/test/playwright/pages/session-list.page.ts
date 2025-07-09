@@ -205,7 +205,7 @@ export class SessionListPage extends BasePage {
         }
         // Fallback to placeholder selector
         try {
-          await this.page.fill('input[placeholder="zsh"]', command, { force: true });
+          await this.page.fill('input[placeholder="bash"]', command, { force: true });
         } catch (fallbackError) {
           console.error('Failed to fill command input:', fallbackError);
           throw fallbackError;

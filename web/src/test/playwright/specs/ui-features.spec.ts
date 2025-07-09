@@ -121,7 +121,7 @@ test.describe('UI Features', () => {
 
     // Look for quick start buttons
     const quickStartButtons = page.locator(
-      'button:has-text("zsh"), button:has-text("bash"), button:has-text("python3")'
+      'button:has-text("bash"), button:has-text("zsh"), button:has-text("python3")'
     );
     const buttonCount = await quickStartButtons.count();
     expect(buttonCount).toBeGreaterThan(0);
@@ -132,7 +132,7 @@ test.describe('UI Features', () => {
       await bashButton.click();
 
       // Command field should be populated
-      const commandInput = page.locator('input[placeholder="zsh"]');
+      const commandInput = page.locator('input[placeholder="bash"]');
       const value = await commandInput.inputValue();
       expect(value).toBe('bash');
     }
@@ -238,7 +238,7 @@ test.describe('UI Features', () => {
     const testDir = '/usr/local';
 
     await page.fill('input[placeholder="My Session"]', testName);
-    await page.fill('input[placeholder="zsh"]', testCommand);
+    await page.fill('input[placeholder="bash"]', testCommand);
     await page.fill('input[placeholder="~/"]', testDir);
 
     // Close dialog
@@ -251,7 +251,7 @@ test.describe('UI Features', () => {
 
     // Working directory and command might be preserved (depends on implementation)
     // Session name is typically cleared
-    const commandValue = await page.locator('input[placeholder="zsh"]').inputValue();
+    const commandValue = await page.locator('input[placeholder="bash"]').inputValue();
     const _dirValue = await page.locator('input[placeholder="~/"]').inputValue();
 
     // At minimum, the form should be functional

@@ -41,8 +41,8 @@ export async function createAndNavigateToSession(
 
   const sessionName = options.name || generateTestSessionName();
   const spawnWindow = options.spawnWindow ?? false;
-  // Use zsh as default for tests (matches the form's default)
-  const command = options.command || 'zsh';
+  // Use bash as default for tests (more compatible with CI environments)
+  const command = options.command || 'bash';
 
   // Navigate to list if not already there
   if (!page.url().endsWith('/')) {
