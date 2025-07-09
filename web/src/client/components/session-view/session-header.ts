@@ -146,7 +146,7 @@ export class SessionHeader extends LitElement {
               `
               : ''
           }
-          <div class="text-dark-text min-w-0 flex-1 overflow-hidden max-w-[50vw] sm:max-w-none">
+          <div class="text-dark-text min-w-0 flex-1 overflow-hidden">
             <div class="text-dark-text-bright font-medium text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap">
               <div class="flex items-center gap-2" @mouseenter=${this.handleMouseEnter} @mouseleave=${this.handleMouseLeave}>
                 <inline-edit
