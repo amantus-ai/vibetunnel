@@ -92,11 +92,21 @@ export class SessionHeader extends LitElement {
         style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
       >
         <div class="flex items-center gap-3 min-w-0 flex-1">
-          <!-- Sidebar Toggle and Create Session Buttons (shown when sidebar is collapsed) -->
+          <!-- Status dot - visible on mobile, on the left -->
+          <div class="sm:hidden relative">
+            <div class="w-2.5 h-2.5 rounded-full ${this.getStatusDotColor()}"></div>
+            ${
+              this.getStatusText() === 'running'
+                ? html`<div class="absolute inset-0 w-2.5 h-2.5 rounded-full bg-status-success animate-ping opacity-50"></div>`
+                : ''
+            }
+          </div>
+          
+          <!-- Sidebar Toggle and Create Session Buttons (desktop only when sidebar is collapsed) -->
           ${
             this.showSidebarToggle && this.sidebarCollapsed
               ? html`
-                <div class="flex items-center gap-2">
+                <div class="hidden sm:flex items-center gap-2">
                   <button
                     class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
                     @click=${() => this.onSidebarToggle?.()}
@@ -185,9 +195,12 @@ export class SessionHeader extends LitElement {
           </div>
         </div>
         <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2 relative">
-          <notification-status
-            @open-settings=${() => this.onOpenSettings?.()}
-          ></notification-status>
+          <!-- Notification status - desktop only -->
+          <div class="hidden sm:block">
+            <notification-status
+              @open-settings=${() => this.onOpenSettings?.()}
+            ></notification-status>
+          </div>
           
           <!-- Desktop buttons - hidden on mobile -->
           <div class="hidden sm:flex items-center gap-2">
@@ -254,7 +267,8 @@ export class SessionHeader extends LitElement {
             .onClose=${() => this.handleCloseWidthSelector()}
           ></width-selector>
           
-          <div class="flex flex-col items-end gap-0">
+          <!-- Status indicator - desktop only (mobile shows it on the left) -->
+          <div class="hidden sm:flex flex-col items-end gap-0">
             <span class="text-xs flex items-center gap-2 font-medium ${
               this.getStatusText() === 'running' ? 'text-status-success' : 'text-status-warning'
             }">
