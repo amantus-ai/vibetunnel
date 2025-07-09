@@ -185,6 +185,9 @@ test.describe('UI Features', () => {
     // Create a tracked session first
     const { sessionName } = await sessionManager.createTrackedSession();
 
+    // Wait a moment to ensure session is saved
+    await page.waitForTimeout(1000);
+
     // Go to home page to see the session list
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });

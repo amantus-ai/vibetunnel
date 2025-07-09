@@ -99,10 +99,11 @@ test.describe('Advanced Session Management', () => {
     const { sessionName } = await sessionManager.createTrackedSession();
 
     // Should see copy buttons for path and PID
-    await expect(page.locator('[title="Click to copy path"]')).toBeVisible();
+    const copyPathButton = page.locator('[title="Click to copy path"]').first();
+    await expect(copyPathButton).toBeVisible();
 
     // Click to copy path
-    await page.click('[title="Click to copy path"]');
+    await copyPathButton.click();
 
     // Visual feedback would normally appear (toast notification)
     // We can't test clipboard content directly in Playwright
@@ -130,16 +131,15 @@ test.describe('Advanced Session Management', () => {
     // we'll just check the default behavior
 
     // Check that the path is displayed
-    const pathElement = page.locator('[title="Click to copy path"]');
+    const pathElement = page.locator('[title="Click to copy path"]').first();
     await expect(pathElement).toBeVisible({ timeout: 10000 });
 
     // Check terminal size is displayed - look for the pattern in the page
     await expect(page.locator('text=/\\d+×\\d+/').first()).toBeVisible({ timeout: 10000 });
 
-    // Check status indicator - be more specific
-    // The status is displayed as lowercase 'running' in the span element with data-status attribute
-    await expect(
-      page.locator('span[data-status="running"]').or(page.locator('text=/running/i')).first()
-    ).toBeVisible({ timeout: 10000 });
+    // Check status indicator - look for session card with running status
+    const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
+    const sessionStatus = await sessionCard.getAttribute('data-session-status');
+    expect(sessionStatus).toBe('running');
   });
 });

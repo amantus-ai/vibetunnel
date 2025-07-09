@@ -37,16 +37,16 @@ export async function assertSessionInList(
   // If status is provided, look for sessions with that status first
   let sessionCard: Locator;
   if (status) {
-    // Look for session cards with the specific status using data-status attribute
+    // Look for session cards with the specific status using data-session-status attribute
     sessionCard = page
       .locator(
-        `session-card:has-text("${sessionName}"):has(span[data-status="${status.toLowerCase()}"])`
+        `session-card:has-text("${sessionName}")[data-session-status="${status.toLowerCase()}"]`
       )
       .first();
   } else {
     // Just find any session with the name, preferring running sessions
     const runningCard = page
-      .locator(`session-card:has-text("${sessionName}"):has(span[data-status="running"])`)
+      .locator(`session-card:has-text("${sessionName}")[data-session-status="running"]`)
       .first();
     const anyCard = page.locator(`session-card:has-text("${sessionName}")`).first();
 
@@ -65,30 +65,31 @@ export async function assertSessionInList(
     // The DOM shows lowercase status values, so we need to check for both cases
     const lowerStatus = status.toLowerCase();
 
-    // Look for the span with data-status attribute
-    const statusElement = sessionCard.locator('span[data-status]').first();
-
     try {
-      // Wait for the status element to be visible
-      await expect(statusElement).toBeVisible({ timeout: 2000 });
-
-      // Get the actual status from data attribute
-      const dataStatus = await statusElement.getAttribute('data-status');
-      const statusText = await statusElement.textContent();
-
+      // Get the status from the session card's data-session-status attribute
+      const cardStatus = await sessionCard.getAttribute('data-session-status');
+      
       // Check if the status matches (case-insensitive)
-      if (dataStatus?.toUpperCase() === status || statusText?.toUpperCase().includes(status)) {
+      if (cardStatus?.toLowerCase() === lowerStatus) {
         // Status matches
         return;
       }
 
       // If status is RUNNING but shows "waiting", that's also acceptable
-      if (status === 'running' && statusText?.toLowerCase().includes('waiting')) {
+      if (status === 'running' && cardStatus === 'waiting') {
         return;
       }
 
+      // Also check for the visual status indicator (green dot for running)
+      if (status === 'running') {
+        const statusDot = sessionCard.locator('.w-2.h-2.rounded-full.bg-status-success').first();
+        if (await statusDot.isVisible({ timeout: 1000 }).catch(() => false)) {
+          return;
+        }
+      }
+
       throw new Error(
-        `Expected status "${status}", but found data-status="${dataStatus}" and text="${statusText}"`
+        `Expected status "${status}", but found data-session-status="${cardStatus}"`
       );
     } catch {
       // If the span[data-status] approach fails, try other selectors
