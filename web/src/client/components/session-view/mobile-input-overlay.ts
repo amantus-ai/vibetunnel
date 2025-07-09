@@ -211,8 +211,8 @@ export class MobileInputOverlay extends LitElement {
     return html`
       <modal-wrapper
         .visible=${this.visible}
-        modalClass="z-40"
-        contentClass="fixed inset-0 flex flex-col z-40"
+        modalClass="z-40" /* z-40 ensures overlay appears above base UI elements */
+        contentClass="fixed inset-0 flex flex-col z-40" /* z-40 matches modal backdrop z-index */
         ariaLabel="Mobile input overlay"
         @close=${() => this.onCancel?.()}
         .closeOnBackdrop=${true}
