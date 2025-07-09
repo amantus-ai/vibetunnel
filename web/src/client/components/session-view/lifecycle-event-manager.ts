@@ -4,6 +4,8 @@
  * Manages the lifecycle events, keyboard/touch handlers, preferences, and
  * overall event coordination for the session view component.
  */
+
+import { consumeEvent } from '../../utils/event-utils.js';
 import { createLogger } from '../../utils/logger.js';
 import type { Session } from '../session-list.js';
 import { type LifecycleEventManagerCallbacks, ManagerEventEmitter } from './interfaces.js';
@@ -62,14 +64,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
   setSession(session: Session | null): void {
     this.session = session;
-  }
-
-  /**
-   * Helper method to prevent default and stop propagation for events
-   */
-  private preventAndStopEvent(e: Event): void {
-    e.preventDefault();
-    e.stopPropagation();
   }
 
   /**
@@ -217,7 +211,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     // Handle Cmd+O / Ctrl+O to open file browser
     if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
-      this.preventAndStopEvent(e);
+      consumeEvent(e);
       this.callbacks.setShowFileBrowser(true);
       return;
     }
@@ -247,7 +241,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     }
 
     // Only prevent default for keys we're actually going to handle
-    this.preventAndStopEvent(e);
+    consumeEvent(e);
 
     this.callbacks.handleKeyboardInput(e);
   };

@@ -7,6 +7,7 @@
 
 import { authClient } from '../../services/auth-client.js';
 import { websocketInputClient } from '../../services/websocket-input-client.js';
+import { consumeEvent } from '../../utils/event-utils.js';
 import { createLogger } from '../../utils/logger.js';
 import type { Session } from '../session-list.js';
 
@@ -46,14 +47,6 @@ export class InputManager {
     this.callbacks = callbacks;
   }
 
-  /**
-   * Helper method to prevent default and stop propagation for events
-   */
-  private preventAndStopEvent(e: Event): void {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
   async handleKeyboardInput(e: KeyboardEvent): Promise<void> {
     if (!this.session) return;
 
@@ -88,19 +81,19 @@ export class InputManager {
     if (altKey && !ctrlKey && !metaKey && !shiftKey) {
       // Alt+Left Arrow - Move to previous word
       if (key === 'ArrowLeft') {
-        this.preventAndStopEvent(e);
+        consumeEvent(e);
         await this.sendInput('\x1bb'); // ESC+b
         return;
       }
       // Alt+Right Arrow - Move to next word
       if (key === 'ArrowRight') {
-        this.preventAndStopEvent(e);
+        consumeEvent(e);
         await this.sendInput('\x1bf'); // ESC+f
         return;
       }
       // Alt+Backspace - Delete word backward
       if (key === 'Backspace') {
-        this.preventAndStopEvent(e);
+        consumeEvent(e);
         await this.sendInput('\x17'); // Ctrl+W
         return;
       }
