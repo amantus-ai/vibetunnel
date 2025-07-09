@@ -65,6 +65,14 @@ export class LifecycleEventManager extends ManagerEventEmitter {
   }
 
   /**
+   * Helper method to prevent default and stop propagation for events
+   */
+  private preventAndStopEvent(e: Event): void {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  /**
    * Detect touch capabilities using multiple signals
    */
   private detectTouchCapabilities() {
@@ -209,7 +217,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     // Handle Cmd+O / Ctrl+O to open file browser
     if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
-      e.preventDefault();
+      this.preventAndStopEvent(e);
       this.callbacks.setShowFileBrowser(true);
       return;
     }
@@ -239,8 +247,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     }
 
     // Only prevent default for keys we're actually going to handle
-    e.preventDefault();
-    e.stopPropagation();
+    this.preventAndStopEvent(e);
 
     this.callbacks.handleKeyboardInput(e);
   };

@@ -100,19 +100,39 @@ export class InputManager {
         inputText = 'arrow_down';
         break;
       case 'ArrowLeft':
-        inputText = 'arrow_left';
+        if (e.altKey || e.metaKey) {
+          // Alt/Option + Left: Move word left (Escape + b in terminal)
+          inputText = '\x1bb';
+        } else {
+          inputText = 'arrow_left';
+        }
         break;
       case 'ArrowRight':
-        inputText = 'arrow_right';
+        if (e.altKey || e.metaKey) {
+          // Alt/Option + Right: Move word right (Escape + f in terminal)
+          inputText = '\x1bf';
+        } else {
+          inputText = 'arrow_right';
+        }
         break;
       case 'Tab':
         inputText = e.shiftKey ? 'shift_tab' : 'tab';
         break;
       case 'Backspace':
-        inputText = 'backspace';
+        if (e.altKey || e.metaKey) {
+          // Alt/Option + Backspace: Delete word backward (Ctrl+W in terminal)
+          inputText = '\x17';
+        } else {
+          inputText = 'backspace';
+        }
         break;
       case 'Delete':
-        inputText = 'delete';
+        if (e.altKey || e.metaKey) {
+          // Alt/Option + Delete: Delete word forward (Escape + d in terminal)
+          inputText = '\x1bd';
+        } else {
+          inputText = 'delete';
+        }
         break;
       case ' ':
         inputText = ' ';
