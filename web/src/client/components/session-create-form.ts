@@ -110,10 +110,6 @@ export class SessionCreateForm extends LitElement {
       const savedSpawnWindow = localStorage.getItem(this.STORAGE_KEY_SPAWN_WINDOW);
       const savedTitleMode = localStorage.getItem(this.STORAGE_KEY_TITLE_MODE);
 
-      logger.debug(
-        `loading from localStorage: workingDir=${savedWorkingDir}, command=${savedCommand}, spawnWindow=${savedSpawnWindow}, titleMode=${savedTitleMode}`
-      );
-
       // Always set values, using saved values or defaults
       this.workingDir = savedWorkingDir || '~/';
       this.command = savedCommand || 'zsh';
@@ -149,10 +145,6 @@ export class SessionCreateForm extends LitElement {
       const workingDir = this.workingDir?.trim() || '';
       const command = this.command?.trim() || '';
 
-      logger.debug(
-        `saving to localStorage: workingDir=${workingDir}, command=${command}, spawnWindow=${this.spawnWindow}, titleMode=${this.titleMode}`
-      );
-
       // Only save non-empty values
       if (workingDir) {
         localStorage.setItem(this.STORAGE_KEY_WORKING_DIR, workingDir);
@@ -175,7 +167,6 @@ export class SessionCreateForm extends LitElement {
       if (this.visible) {
         // Remove any lingering modal-closing class that might make the modal invisible
         document.body.classList.remove('modal-closing');
-        logger.debug(`Modal visibility changed to true - removed modal-closing class`);
 
         // Reset to defaults first to ensure clean state
         this.workingDir = '~/';
@@ -414,7 +405,6 @@ export class SessionCreateForm extends LitElement {
   }
 
   render() {
-    logger.debug(`render() called, visible=${this.visible}`);
     if (!this.visible) {
       return html``;
     }
@@ -423,14 +413,9 @@ export class SessionCreateForm extends LitElement {
     if (this.visible) {
       // Remove immediately
       document.body.classList.remove('modal-closing');
-      logger.debug(`render() - modal visible, removed modal-closing class`);
       // Also check if element has data-testid
       requestAnimationFrame(() => {
         document.body.classList.remove('modal-closing');
-        const modalEl = this.shadowRoot?.querySelector('[data-testid="session-create-modal"]');
-        logger.debug(
-          `render() - modal element found: ${!!modalEl}, classes on body: ${document.body.className}`
-        );
       });
     }
 
@@ -514,6 +499,7 @@ export class SessionCreateForm extends LitElement {
                   @click=${this.handleBrowse}
                   ?disabled=${this.disabled || this.isCreating}
                   title="Browse directories"
+                  type="button"
                 >
                   <svg width="12" height="12" class="sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" viewBox="0 0 16 16" fill="currentColor">
                     <path

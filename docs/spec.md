@@ -4,24 +4,25 @@
 
 1. [Executive Summary](#executive-summary)
 2. [System Architecture](#system-architecture)
-3. [Core Components](#core-components)
-4. [Server Implementation](#server-implementation)
-5. [Web Frontend](#web-frontend)
-6. [iOS Application](#ios-application)
-7. [Security Model](#security-model)
-8. [Session Management](#session-management)
-9. [CLI Integration](#cli-integration)
-10. [API Specifications](#api-specifications)
-11. [Binary Buffer Protocol](#binary-buffer-protocol)
-12. [User Interface](#user-interface)
-13. [Configuration System](#configuration-system)
-14. [Build and Release](#build-and-release)
-15. [Testing Strategy](#testing-strategy)
-16. [Performance Requirements](#performance-requirements)
-17. [Error Handling](#error-handling)
-18. [Update System](#update-system)
-19. [Platform Integration](#platform-integration)
-20. [Data Formats](#data-formats)
+3. [Data Flows](#data-flows)
+4. [Core Components](#core-components)
+5. [Server Implementation](#server-implementation)
+6. [Web Frontend](#web-frontend)
+7. [iOS Application](#ios-application)
+8. [Security Model](#security-model)
+9. [Session Management](#session-management)
+10. [CLI Integration](#cli-integration)
+11. [API Specifications](#api-specifications)
+12. [Binary Buffer Protocol](#binary-buffer-protocol)
+13. [User Interface](#user-interface)
+14. [Configuration System](#configuration-system)
+15. [Build and Release](#build-and-release)
+16. [Testing Strategy](#testing-strategy)
+17. [Performance Requirements](#performance-requirements)
+18. [Error Handling](#error-handling)
+19. [Update System](#update-system)
+20. [Platform Integration](#platform-integration)
+21. [Data Formats](#data-formats)
 
 ## Executive Summary
 
@@ -106,6 +107,41 @@ VibeTunnel is a macOS application that provides browser-based access to Mac term
 - **Thread Safety**: Swift actors and Node.js event loop for concurrent safety
 - **Minimal Dependencies**: Only essential third-party libraries
 - **User Privacy**: No telemetry or user tracking
+
+## Data Flows
+
+### Terminal Session Lifecycle
+1. User launches the `vt` command or selects **New Session** from the UI.
+2. `ServerManager` verifies that the Bun server is running and starts it if needed.
+3. A `POST /api/sessions` request triggers `TerminalManager.createTerminal()` on the server.
+4. `PtyManager.spawn()` allocates a new PTY process and stores session metadata.
+5. The server responds with the session ID and WebSocket URL.
+6. Clients connect to `/api/sessions/:id/ws` and begin streaming using the binary buffer protocol.
+7. Terminal output and input are recorded in asciinema format when recording is enabled.
+8. On process exit, resources are cleaned up and the client is notified.
+
+### Terminal I/O Flow
+1. Keyboard input from the browser or iOS app is sent as JSON messages over the WebSocket.
+2. `BufferAggregator` forwards the input to the PTY process.
+3. PTY output is captured, aggregated and sent back as binary snapshots or text deltas.
+4. The client updates its terminal display accordingly.
+
+### Server Lifecycle Flow
+1. Starting the macOS app or running `vt` launches `ServerManager`.
+2. `BunServer` spawns the Bun-based HTTP/WebSocket server process.
+3. Health checks hit `/api/health` to verify the server is alive.
+4. On stop or crash, `ServerManager` gracefully shuts down or restarts the process.
+
+### Remote Access Flow
+1. When network mode is enabled, the server binds to `0.0.0.0` for remote access.
+2. `NgrokService` or Tailscale can expose a secure public URL.
+3. Remote clients reach the server through the tunnel and communicate over HTTPS.
+
+### Authentication Flow
+1. Clients request the dashboard or a session endpoint.
+2. Basic Auth middleware checks credentials stored via `DashboardKeychain`.
+3. Local bypass or token-based headers are honored if configured.
+4. Successful authentication allows API and WebSocket communication.
 
 ## Core Components
 
@@ -914,5 +950,4 @@ Sessions are ephemeral and exist only in server memory. Recordings are stored te
 VibeTunnel achieves its goal of simple, secure terminal access through a carefully architected system combining native macOS development with modern web technologies. The single Node.js/Bun server implementation provides excellent performance while maintaining simplicity.
 
 The binary buffer protocol ensures efficient terminal streaming, while the clean architectural boundaries enable independent evolution of components. With careful attention to macOS platform conventions and user expectations, VibeTunnel delivers a professional-grade solution for terminal access needs.
-
 This specification serves as the authoritative reference for understanding, maintaining, and extending the VibeTunnel project.

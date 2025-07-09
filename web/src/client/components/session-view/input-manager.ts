@@ -49,8 +49,10 @@ export class InputManager {
   async handleKeyboardInput(e: KeyboardEvent): Promise<void> {
     if (!this.session) return;
 
+    const { key, ctrlKey, altKey, metaKey, shiftKey } = e;
+
     // Handle Escape key specially for exited sessions
-    if (e.key === 'Escape' && this.session.status === 'exited') {
+    if (key === 'Escape' && this.session.status === 'exited') {
       return; // Let parent component handle back navigation
     }
 
@@ -63,30 +65,54 @@ export class InputManager {
     // Allow standard browser copy/paste shortcuts
     const isMacOS = navigator.platform.toLowerCase().includes('mac');
     const isStandardPaste =
-      (isMacOS && e.metaKey && e.key === 'v' && !e.ctrlKey && !e.shiftKey) ||
-      (!isMacOS && e.ctrlKey && e.key === 'v' && !e.shiftKey);
+      (isMacOS && metaKey && key === 'v' && !ctrlKey && !shiftKey) ||
+      (!isMacOS && ctrlKey && key === 'v' && !shiftKey);
     const isStandardCopy =
-      (isMacOS && e.metaKey && e.key === 'c' && !e.ctrlKey && !e.shiftKey) ||
-      (!isMacOS && e.ctrlKey && e.key === 'c' && !e.shiftKey);
+      (isMacOS && metaKey && key === 'c' && !ctrlKey && !shiftKey) ||
+      (!isMacOS && ctrlKey && key === 'c' && !shiftKey);
 
     if (isStandardPaste || isStandardCopy) {
       // Allow standard browser copy/paste to work
       return;
     }
 
+    // Handle Alt+ combinations
+    if (altKey && !ctrlKey && !metaKey && !shiftKey) {
+      // Alt+Left Arrow - Move to previous word
+      if (key === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        await this.sendInput('\x1bb'); // ESC+b
+        return;
+      }
+      // Alt+Right Arrow - Move to next word
+      if (key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        await this.sendInput('\x1bf'); // ESC+f
+        return;
+      }
+      // Alt+Backspace - Delete word backward
+      if (key === 'Backspace') {
+        e.preventDefault();
+        e.stopPropagation();
+        await this.sendInput('\x17'); // Ctrl+W
+        return;
+      }
+    }
+
     let inputText = '';
 
     // Handle special keys
-    switch (e.key) {
+    switch (key) {
       case 'Enter':
-        if (e.ctrlKey) {
+        if (ctrlKey) {
           // Ctrl+Enter - send to tty-fwd for proper handling
           inputText = 'ctrl_enter';
-        } else if (e.shiftKey) {
+        } else if (shiftKey) {
           // Shift+Enter - send to tty-fwd for proper handling
           inputText = 'shift_enter';
         } else {
-          // Regular Enter
           inputText = 'enter';
         }
         break;
@@ -106,7 +132,7 @@ export class InputManager {
         inputText = 'arrow_right';
         break;
       case 'Tab':
-        inputText = e.shiftKey ? 'shift_tab' : 'tab';
+        inputText = shiftKey ? 'shift_tab' : 'tab';
         break;
       case 'Backspace':
         inputText = 'backspace';
@@ -119,8 +145,8 @@ export class InputManager {
         break;
       default:
         // Handle regular printable characters
-        if (e.key.length === 1) {
-          inputText = e.key;
+        if (key.length === 1) {
+          inputText = key;
         } else {
           // Ignore other special keys
           return;
@@ -129,8 +155,8 @@ export class InputManager {
     }
 
     // Handle Ctrl combinations (but not if we already handled Ctrl+Enter above)
-    if (e.ctrlKey && e.key.length === 1 && e.key !== 'Enter') {
-      const charCode = e.key.toLowerCase().charCodeAt(0);
+    if (ctrlKey && key.length === 1 && key !== 'Enter') {
+      const charCode = key.toLowerCase().charCodeAt(0);
       if (charCode >= 97 && charCode <= 122) {
         // a-z
         inputText = String.fromCharCode(charCode - 96); // Ctrl+A = \x01, etc.
