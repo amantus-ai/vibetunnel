@@ -85,6 +85,10 @@ export class TerminalQuickKeys extends LitElement {
   private keyRepeatTimeout: number | null = null;
   private orientationHandler: (() => void) | null = null;
 
+  // Chord system state
+  private activeModifiers = new Set<string>();
+  private touchIdentifiers = new Map<string, number>(); // Track which touch is on which key
+
   connectedCallback() {
     super.connectedCallback();
     // Check orientation on mount
@@ -147,6 +151,42 @@ export class TerminalQuickKeys extends LitElement {
     // If we're showing Ctrl keys and a Ctrl shortcut is pressed (not CtrlFull), hide them
     if (this.showCtrlKeys && key.startsWith('Ctrl+')) {
       this.showCtrlKeys = false;
+    }
+
+    // Handle modifier keys for chord system
+    if (isModifier && key === 'Option') {
+      // If Option is already active, clear it
+      if (this.activeModifiers.has('Option')) {
+        this.activeModifiers.delete('Option');
+      } else {
+        // Add Option to active modifiers
+        this.activeModifiers.add('Option');
+      }
+      // Request update to reflect visual state change
+      this.requestUpdate();
+      return; // Don't send Option key immediately
+    }
+
+    // Check for Option+Arrow chord combinations
+    if (this.activeModifiers.has('Option') && key.startsWith('Arrow')) {
+      // Clear only the Option modifier after use
+      this.activeModifiers.delete('Option');
+      this.requestUpdate();
+
+      // Send the Option+Arrow combination
+      if (this.onKeyPress) {
+        // Send Option (ESC) first
+        this.onKeyPress('Option', true, false);
+        // Then send the arrow key
+        this.onKeyPress(key, false, false);
+      }
+      return;
+    }
+
+    // If any non-arrow key is pressed while Option is active, clear Option
+    if (this.activeModifiers.has('Option') && !key.startsWith('Arrow')) {
+      this.activeModifiers.clear();
+      this.requestUpdate();
     }
 
     if (this.onKeyPress) {
@@ -260,6 +300,17 @@ export class TerminalQuickKeys extends LitElement {
         
         .modifier-key:hover {
           background-color: #1f1f1f;
+        }
+        
+        /* Active modifier styling */
+        .modifier-key.active {
+          background-color: rgb(59, 130, 246);
+          border-color: rgb(59, 130, 246);
+          color: white;
+        }
+        
+        .modifier-key.active:hover {
+          background-color: rgb(37, 99, 235);
         }
         
         /* Arrow key styling */
@@ -376,7 +427,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-dark-bg-tertiary text-dark-text text-xs font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''}"
+                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-dark-bg-tertiary text-dark-text text-xs font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                   @mousedown=${(e: Event) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -532,7 +583,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-0.5' : 'py-1'} bg-dark-bg-tertiary text-dark-text text-xs font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
+                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-0.5' : 'py-1'} bg-dark-bg-tertiary text-dark-text text-xs font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                   @mousedown=${(e: Event) => {
                     e.preventDefault();
                     e.stopPropagation();

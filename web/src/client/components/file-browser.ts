@@ -131,10 +131,12 @@ export class FileBrowser extends LitElement {
     super.updated(changedProperties);
 
     // Only load directory when the component becomes visible or when session changes while visible
-    if (changedProperties.has('visible') && this.visible) {
-      // Component just became visible
-      this.currentPath = this.session?.workingDir || '.';
-      await this.loadDirectory(this.currentPath);
+    if (changedProperties.has('visible')) {
+      if (this.visible) {
+        // Component just became visible
+        this.currentPath = this.session?.workingDir || '.';
+        await this.loadDirectory(this.currentPath);
+      }
     } else if (changedProperties.has('session') && this.visible) {
       // Session changed while component is visible
       this.currentPath = this.session?.workingDir || '.';
@@ -497,8 +499,8 @@ export class FileBrowser extends LitElement {
     }
 
     return html`
-      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center" @click=${this.handleCancel}>
-        <div class="fixed inset-0 bg-dark-bg z-50 flex flex-col" @click=${(e: Event) => e.stopPropagation()}>
+      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center" @click=${this.handleCancel}>
+        <div class="fixed inset-0 bg-dark-bg z-[1100] flex flex-col" @click=${(e: Event) => e.stopPropagation()}>
         ${
           this.isMobile && this.mobileView === 'preview'
             ? html`
