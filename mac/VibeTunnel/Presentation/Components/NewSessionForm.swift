@@ -13,6 +13,8 @@ struct NewSessionForm: View {
     private var sessionMonitor
     @Environment(SessionService.self)
     private var sessionService
+    @Environment(RepositoryDiscoveryService.self)
+    private var repositoryDiscovery
 
     // Form fields
     @State private var command = "zsh"
@@ -26,6 +28,7 @@ struct NewSessionForm: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isHoveringCreate = false
+    @State private var showingRepositoryDropdown = false
     @FocusState private var focusedField: Field?
 
     enum Field: Hashable {
@@ -142,18 +145,45 @@ struct NewSessionForm: View {
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
 
-                        HStack(spacing: 8) {
-                            TextField("~/", text: $workingDirectory)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .directory)
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack(spacing: 8) {
+                                TextField("~/", text: $workingDirectory)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .directory)
 
-                            Button(action: selectDirectory) {
-                                Image(systemName: "folder")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
+                                Button(action: selectDirectory) {
+                                    Image(systemName: "folder")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                        .frame(width: 20, height: 20)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.borderless)
+                                .help("Choose directory")
+                                
+                                Button(action: { showingRepositoryDropdown.toggle() }) {
+                                    Image(systemName: "arrow.trianglehead.pull")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                        .animation(.easeInOut(duration: 0.2), value: showingRepositoryDropdown)
+                                        .frame(width: 20, height: 20)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.borderless)
+                                .help("Choose from repositories")
+                                .disabled(repositoryDiscovery.repositories.isEmpty || repositoryDiscovery.isDiscovering)
                             }
-                            .buttonStyle(.borderless)
-                            .help("Choose directory")
+                            
+                            // Repository dropdown
+                            if showingRepositoryDropdown && !repositoryDiscovery.repositories.isEmpty {
+                                RepositoryDropdownList(
+                                    repositories: repositoryDiscovery.repositories,
+                                    isDiscovering: repositoryDiscovery.isDiscovering,
+                                    selectedPath: $workingDirectory,
+                                    isShowing: $showingRepositoryDropdown
+                                )
+                                .padding(.top, 4)
+                            }
                         }
                     }
 
@@ -319,6 +349,11 @@ struct NewSessionForm: View {
         .onAppear {
             loadPreferences()
             focusedField = .name
+            
+        }
+        .task {
+            let repositoryBasePath = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.repositoryBasePath)
+            await repositoryDiscovery.discoverRepositories(in: repositoryBasePath)
         }
         .alert("Error", isPresented: $showError) {
             Button("OK") {}
@@ -442,9 +477,8 @@ struct NewSessionForm: View {
         if let savedCommand = UserDefaults.standard.string(forKey: "NewSession.command") {
             command = savedCommand
         }
-        if let savedDir = UserDefaults.standard.string(forKey: "NewSession.workingDirectory") {
-            workingDirectory = savedDir
-        }
+      
+        workingDirectory = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.repositoryBasePath)
 
         // Check if spawn window preference has been explicitly set
         if UserDefaults.standard.object(forKey: "NewSession.spawnWindow") != nil {
@@ -466,5 +500,75 @@ struct NewSessionForm: View {
         UserDefaults.standard.set(workingDirectory, forKey: "NewSession.workingDirectory")
         UserDefaults.standard.set(spawnWindow, forKey: "NewSession.spawnWindow")
         UserDefaults.standard.set(titleMode.rawValue, forKey: "NewSession.titleMode")
+    }
+}
+
+// MARK: - Repository Dropdown List
+
+private struct RepositoryDropdownList: View {
+    let repositories: [DiscoveredRepository]
+    let isDiscovering: Bool
+    @Binding var selectedPath: String
+    @Binding var isShowing: Bool
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(repositories) { repository in
+                        Button(action: {
+                            selectedPath = repository.path
+                            isShowing = false
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(repository.displayName)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.primary)
+                                    
+                                    Text(repository.relativePath)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Text(repository.formattedLastModified)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.clear)
+                            )
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .onHover { hovering in
+                            if hovering {
+                                // Add hover effect if needed
+                            }
+                        }
+                        
+                        if repository.id != repositories.last?.id {
+                            Divider()
+                                .padding(.horizontal, 8)
+                        }
+                    }
+                }
+            }
+            .frame(maxHeight: 200)
+        }
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(.regularMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+        )
     }
 }
