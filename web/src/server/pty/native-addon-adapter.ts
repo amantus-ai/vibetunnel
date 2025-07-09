@@ -4,15 +4,51 @@ import type { IPty, IPtyOptions } from './types.js';
 
 const logger = createLogger('native-addon-pty');
 
+// Type definitions for the native addon
+interface NativePtyConstructor {
+  new (
+    shell?: string | null,
+    args?: string[] | null,
+    env?: Record<string, string> | null,
+    cwd?: string | null,
+    cols?: number | null,
+    rows?: number | null
+  ): NativePtyInstance;
+}
+
+interface NativePtyInstance {
+  write(data: Buffer): void;
+  resize(cols: number, rows: number): void;
+  getPid(): number;
+  kill(signal?: string | null): void;
+  readOutput(timeoutMs?: number | null): Buffer | null;
+  checkExitStatus(): number | null;
+  destroy(): void;
+}
+
+interface ActivityDetectorConstructor {
+  new (): ActivityDetectorInstance;
+}
+
+interface ActivityDetectorInstance {
+  detect(data: Buffer): Activity | null;
+}
+
+interface Activity {
+  timestamp: number;
+  status: string;
+  details?: string;
+}
+
 // Lazy load the native addon
-let NativePty: any;
-let ActivityDetector: any;
-let initPtySystem: any;
+let NativePty: NativePtyConstructor;
+let ActivityDetector: ActivityDetectorConstructor;
+let initPtySystem: () => void;
 
 function loadNativeAddon() {
   if (!NativePty) {
     try {
-      const addon = require('../../../native-pty');
+      const addon = require('../../../vibetunnel-pty');
       NativePty = addon.NativePty;
       ActivityDetector = addon.ActivityDetector;
       initPtySystem = addon.initPtySystem;
@@ -20,15 +56,17 @@ function loadNativeAddon() {
       // Initialize once
       initPtySystem();
       logger.log('Native PTY addon loaded successfully');
-    } catch (err: any) {
-      throw new Error(`Failed to load native addon: ${err.message}`);
+    } catch (err) {
+      throw new Error(
+        `Failed to load native addon: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   }
 }
 
 class NativeAddonPty extends EventEmitter implements IPty {
-  private pty: any;
-  private activityDetector: any;
+  private pty: NativePtyInstance;
+  private activityDetector: ActivityDetectorInstance;
   private _pid: number;
   private _process: string;
   private closed = false;
@@ -90,10 +128,10 @@ class NativeAddonPty extends EventEmitter implements IPty {
 
   destroy(): void {
     if (this.closed) return;
-    
+
     this.stopPolling();
     this.closed = true;
-    
+
     try {
       this.pty.destroy();
     } catch (err) {
@@ -106,7 +144,7 @@ class NativeAddonPty extends EventEmitter implements IPty {
     if (this.closed && this.exitCode !== null) {
       return this.exitCode;
     }
-    
+
     // Wait for exit
     return new Promise((resolve) => {
       const checkInterval = setInterval(() => {
