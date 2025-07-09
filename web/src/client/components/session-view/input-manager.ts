@@ -267,23 +267,47 @@ export class InputManager {
       return true;
     }
 
-    // Allow Ctrl+A (select all), Ctrl+F (find), Ctrl+R (refresh), Ctrl+C/V (copy/paste), etc.
+    // Allow Ctrl+A (select all), Ctrl+F (find), Ctrl+R (refresh), Ctrl+C/V (copy/paste),
+    // Ctrl+[0-9] (tab switching), Ctrl+K (new terminal), etc.
     if (
       !isMacOS &&
       e.ctrlKey &&
       !e.shiftKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
+      ([
+        'a',
+        'f',
+        'r',
+        'l',
+        't',
+        'w',
+        'n',
+        'c',
+        'v',
+        'k',
+      ].includes(e.key.toLowerCase()) || /[0-9]/.test(e.key))
     ) {
       return true;
     }
 
-    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), etc. on macOS
+    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), Cmd+[0-9] (tab switching),
+    // Cmd+K (new terminal), etc. on macOS
     if (
       isMacOS &&
       e.metaKey &&
       !e.shiftKey &&
       !e.altKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
+      ([
+        'a',
+        'f',
+        'r',
+        'l',
+        't',
+        'w',
+        'n',
+        'c',
+        'v',
+        'k',
+      ].includes(e.key.toLowerCase()) || /[0-9]/.test(e.key))
     ) {
       return true;
     }
