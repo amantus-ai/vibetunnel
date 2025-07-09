@@ -19,6 +19,9 @@ export class SessionViewPage extends BasePage {
     await this.page.waitForSelector(this.selectors.terminal, { state: 'visible', timeout: 4000 });
 
     // Wait for terminal to be fully initialized (has content or structure)
+    // Determine timeout based on CI environment before passing to browser context
+    const timeout = process.env.CI ? 10000 : 5000;
+
     await this.page.waitForFunction(
       () => {
         const terminal = document.querySelector('vibe-terminal');
@@ -31,7 +34,7 @@ export class SessionViewPage extends BasePage {
 
         return hasContent || hasShadowRoot || hasXterm;
       },
-      { timeout: process.env.CI ? 10000 : 5000 }
+      { timeout }
     );
   }
 
