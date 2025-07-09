@@ -66,21 +66,25 @@ public final class RepositoryDiscoveryService {
         }
         
         Task.detached { [weak self] in
-            // Perform discovery in background
-            let discoveredRepos = await self?.performDiscovery(in: expandedPath)
-
-            guard let discoveredRepos else {
-                return
+            defer {
+                // Always reset isDiscovering flag, even if self is nil
+                Task { @MainActor in
+                    self?.isDiscovering = false
+                }
             }
+            
+            // Perform discovery in background
+            guard let self = self else { return }
+            let discoveredRepos = await self.performDiscovery(in: expandedPath)
     
             await MainActor.run { [weak self] in
+                guard let self = self else { return }
+                
                 // Cache and update results
-                self?.repositoryCache[expandedPath] = discoveredRepos
-                self?.repositories = discoveredRepos
+                self.repositoryCache[expandedPath] = discoveredRepos
+                self.repositories = discoveredRepos
                 
                 Logger.repositoryDiscovery.info("Discovered \(discoveredRepos.count) repositories in: \(expandedPath)")
-                
-                self?.isDiscovering = false
             }
         }
     }

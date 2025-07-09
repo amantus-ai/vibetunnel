@@ -474,21 +474,27 @@ struct NewSessionForm: View {
     // MARK: - Preferences
 
     private func loadPreferences() {
-        if let savedCommand = UserDefaults.standard.string(forKey: "NewSession.command") {
+        if let savedCommand = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.newSessionCommand) {
             command = savedCommand
         }
       
-        workingDirectory = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        // Restore last used working directory, not repository base path
+        if let savedDirectory = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.newSessionWorkingDirectory) {
+            workingDirectory = savedDirectory
+        } else {
+            // Default to home directory if never set
+            workingDirectory = "~/"
+        }
 
         // Check if spawn window preference has been explicitly set
-        if UserDefaults.standard.object(forKey: "NewSession.spawnWindow") != nil {
-            spawnWindow = UserDefaults.standard.bool(forKey: "NewSession.spawnWindow")
+        if UserDefaults.standard.object(forKey: AppConstants.UserDefaultsKeys.newSessionSpawnWindow) != nil {
+            spawnWindow = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.newSessionSpawnWindow)
         } else {
             // Default to true if never set
             spawnWindow = true
         }
 
-        if let savedMode = UserDefaults.standard.string(forKey: "NewSession.titleMode"),
+        if let savedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.newSessionTitleMode),
            let mode = TitleMode(rawValue: savedMode)
         {
             titleMode = mode
@@ -496,10 +502,10 @@ struct NewSessionForm: View {
     }
 
     private func savePreferences() {
-        UserDefaults.standard.set(command, forKey: "NewSession.command")
-        UserDefaults.standard.set(workingDirectory, forKey: "NewSession.workingDirectory")
-        UserDefaults.standard.set(spawnWindow, forKey: "NewSession.spawnWindow")
-        UserDefaults.standard.set(titleMode.rawValue, forKey: "NewSession.titleMode")
+        UserDefaults.standard.set(command, forKey: AppConstants.UserDefaultsKeys.newSessionCommand)
+        UserDefaults.standard.set(workingDirectory, forKey: AppConstants.UserDefaultsKeys.newSessionWorkingDirectory)
+        UserDefaults.standard.set(spawnWindow, forKey: AppConstants.UserDefaultsKeys.newSessionSpawnWindow)
+        UserDefaults.standard.set(titleMode.rawValue, forKey: AppConstants.UserDefaultsKeys.newSessionTitleMode)
     }
 }
 
