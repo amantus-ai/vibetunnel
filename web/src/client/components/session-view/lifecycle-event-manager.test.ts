@@ -1,32 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as eventUtils from '../../utils/event-utils.js';
 import { LifecycleEventManager } from './lifecycle-event-manager.js';
+
+// Mock the event utils module
+vi.mock('../../utils/event-utils.js');
 
 describe('LifecycleEventManager', () => {
   let manager: LifecycleEventManager;
 
   beforeEach(() => {
     manager = new LifecycleEventManager();
+    vi.clearAllMocks();
   });
 
-  describe('preventAndStopEvent helper', () => {
-    it('should call preventDefault and stopPropagation on events', () => {
-      const mockEvent = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      } as unknown as Event;
-
-      // Access private method through type assertion for testing
-      (manager as unknown as { preventAndStopEvent(e: Event): void }).preventAndStopEvent(
-        mockEvent
-      );
-
-      expect(mockEvent.preventDefault).toHaveBeenCalledOnce();
-      expect(mockEvent.stopPropagation).toHaveBeenCalledOnce();
-    });
-  });
-
-  describe('keyboard event handling', () => {
-    it('should use preventAndStopEvent helper for keyboard shortcuts', () => {
+  describe('consumeEvent usage', () => {
+    it('should call consumeEvent for keyboard shortcuts', () => {
       const mockCallbacks = {
         getDisableFocusManagement: vi.fn().mockReturnValue(false),
         setShowFileBrowser: vi.fn(),
@@ -45,11 +33,6 @@ describe('LifecycleEventManager', () => {
       manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
       manager.setSession(mockSession as Parameters<typeof manager.setSession>[0]);
 
-      const preventAndStopEventSpy = vi.spyOn(
-        manager as unknown as { preventAndStopEvent(e: Event): void },
-        'preventAndStopEvent'
-      );
-
       // Test Cmd+O shortcut
       const cmdOEvent = new KeyboardEvent('keydown', {
         key: 'o',
@@ -58,7 +41,7 @@ describe('LifecycleEventManager', () => {
 
       manager.keyboardHandler(cmdOEvent);
 
-      expect(preventAndStopEventSpy).toHaveBeenCalledWith(cmdOEvent);
+      expect(eventUtils.consumeEvent).toHaveBeenCalledWith(cmdOEvent);
       expect(mockCallbacks.setShowFileBrowser).toHaveBeenCalledWith(true);
 
       // Test regular key handling
@@ -68,11 +51,11 @@ describe('LifecycleEventManager', () => {
 
       manager.keyboardHandler(regularKeyEvent);
 
-      expect(preventAndStopEventSpy).toHaveBeenCalledWith(regularKeyEvent);
+      expect(eventUtils.consumeEvent).toHaveBeenCalledWith(regularKeyEvent);
       expect(mockCallbacks.handleKeyboardInput).toHaveBeenCalledWith(regularKeyEvent);
     });
 
-    it('should not prevent browser shortcuts', () => {
+    it('should not consume browser shortcuts', () => {
       const mockCallbacks = {
         getDisableFocusManagement: vi.fn().mockReturnValue(false),
         getInputManager: vi.fn().mockReturnValue({
@@ -83,11 +66,6 @@ describe('LifecycleEventManager', () => {
 
       manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
 
-      const preventAndStopEventSpy = vi.spyOn(
-        manager as unknown as { preventAndStopEvent(e: Event): void },
-        'preventAndStopEvent'
-      );
-
       // Test browser shortcut (e.g., Ctrl+C)
       const browserShortcut = new KeyboardEvent('keydown', {
         key: 'c',
@@ -96,8 +74,8 @@ describe('LifecycleEventManager', () => {
 
       manager.keyboardHandler(browserShortcut);
 
-      // Should not call preventAndStopEvent for browser shortcuts
-      expect(preventAndStopEventSpy).not.toHaveBeenCalled();
+      // Should not call consumeEvent for browser shortcuts
+      expect(eventUtils.consumeEvent).not.toHaveBeenCalled();
     });
   });
 });
