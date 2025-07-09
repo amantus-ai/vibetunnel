@@ -21,12 +21,6 @@ export function consumeEvent<T extends Event>(e: T): void {
 }
 
 /**
- * Alias for consumeEvent with a more descriptive name.
- * Some developers prefer this name for clarity.
- */
-export const preventAndStopEvent = consumeEvent;
-
-/**
  * Type guard to check if an event has preventDefault method.
  * Useful for handling events that might not support preventDefault.
  *

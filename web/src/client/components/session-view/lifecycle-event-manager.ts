@@ -211,6 +211,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     // Handle Cmd+O / Ctrl+O to open file browser
     if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+      // Stop propagation to prevent parent handlers from interfering with our file browser
       consumeEvent(e);
       this.callbacks.setShowFileBrowser(true);
       return;

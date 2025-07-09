@@ -169,8 +169,8 @@ export class TerminalQuickKeys extends LitElement {
 
     // Check for Option+Arrow chord combinations
     if (this.activeModifiers.has('Option') && key.startsWith('Arrow')) {
-      // Clear the Option modifier
-      this.activeModifiers.clear();
+      // Clear only the Option modifier after use
+      this.activeModifiers.delete('Option');
       this.requestUpdate();
 
       // Send the Option+Arrow combination
