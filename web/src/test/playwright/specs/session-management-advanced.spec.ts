@@ -130,15 +130,20 @@ test.describe('Advanced Session Management', () => {
     // Since we can't set a custom working directory without shell operators,
     // we'll just check the default behavior
 
-    // Check that the path is displayed
+    // Check that the path is displayed in the session view
     const pathElement = page.locator('[title="Click to copy path"]').first();
     await expect(pathElement).toBeVisible({ timeout: 10000 });
 
     // Check terminal size is displayed - look for the pattern in the page
     await expect(page.locator('text=/\\d+×\\d+/').first()).toBeVisible({ timeout: 10000 });
 
+    // Navigate back to list to check status
+    await page.goto('/');
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    
     // Check status indicator - look for session card with running status
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
+    await expect(sessionCard).toBeVisible({ timeout: 5000 });
     const sessionStatus = await sessionCard.getAttribute('data-session-status');
     expect(sessionStatus).toBe('running');
   });

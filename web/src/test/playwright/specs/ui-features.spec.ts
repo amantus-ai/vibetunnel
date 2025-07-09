@@ -51,13 +51,10 @@ test.describe('UI Features', () => {
     await page.keyboard.press('Escape');
 
     // Wait for file browser to be hidden
-    await page.waitForFunction(
-      () => {
-        const browser = document.querySelector('file-browser');
-        return !browser || (browser as FileBrowserElement).visible === false;
-      },
-      { timeout: 5000 }
-    );
+    // The file browser renders as a modal with .fixed.inset-0 classes
+    await page.waitForTimeout(1000);
+    const modalCount = await page.locator('.fixed.inset-0').count();
+    expect(modalCount).toBe(0);
   });
 
   test('should navigate directories in file browser', async ({ page }) => {
