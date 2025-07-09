@@ -22,11 +22,12 @@ export class InlineEdit extends LitElement {
     }
 
     .display-container {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 0.25rem;
       max-width: 100%;
       min-width: 0;
+      width: 100%;
     }
 
     .display-text {
@@ -34,6 +35,7 @@ export class InlineEdit extends LitElement {
       text-overflow: ellipsis;
       white-space: nowrap;
       min-width: 0;
+      flex: 1;
     }
 
     .edit-icon {
