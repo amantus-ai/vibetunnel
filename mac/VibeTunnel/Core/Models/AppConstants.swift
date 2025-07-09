@@ -15,6 +15,7 @@ enum AppConstants {
         static let welcomeVersion = "welcomeVersion"
         static let preventSleepWhenRunning = "preventSleepWhenRunning"
         static let enableScreencapService = "enableScreencapService"
+        static let repositoryBasePath = "repositoryBasePath"
     }
 
     /// Default values for UserDefaults
@@ -23,6 +24,8 @@ enum AppConstants {
         static let preventSleepWhenRunning = true
         /// Screencap service is enabled by default for screen sharing
         static let enableScreencapService = true
+        /// Default repository base path for auto-discovery
+        static let repositoryBasePath = "~/"
     }
 
     /// Helper to get boolean value with proper default
@@ -39,5 +42,25 @@ enum AppConstants {
             }
         }
         return UserDefaults.standard.bool(forKey: key)
+    }
+    
+    /// Helper to get string value with proper default
+    static func stringValue(for key: String) -> String {
+        // If the key doesn't exist in UserDefaults, return our default
+        if UserDefaults.standard.object(forKey: key) == nil {
+            switch key {
+            case UserDefaultsKeys.repositoryBasePath:
+                // return last used path if it's exists
+                if let value =  UserDefaults.standard.value(forKey: "NewSession.workingDirectory") as? String {
+                    return value
+                } else {
+                    return Defaults.repositoryBasePath
+                }
+                
+            default:
+                return ""
+            }
+        }
+        return UserDefaults.standard.string(forKey: key) ?? ""
     }
 }
