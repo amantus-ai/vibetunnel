@@ -255,16 +255,6 @@ export class SessionHeader extends LitElement {
             ></mobile-menu>
           </div>
           
-          <width-selector
-            .visible=${this.showWidthSelector}
-            .terminalMaxCols=${this.terminalMaxCols}
-            .terminalFontSize=${this.terminalFontSize}
-            .customWidth=${this.customWidth}
-            .onWidthSelect=${(width: number) => this.onWidthSelect?.(width)}
-            .onFontSizeChange=${(size: number) => this.onFontSizeChange?.(size)}
-            .onClose=${() => this.handleCloseWidthSelector()}
-          ></width-selector>
-          
           <!-- Status indicator - desktop only (mobile shows it on the left) -->
           <div class="hidden sm:flex flex-col items-end gap-0">
             <span class="text-xs flex items-center gap-2 font-medium ${

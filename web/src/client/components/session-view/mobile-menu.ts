@@ -29,7 +29,8 @@ export class MobileMenu extends LitElement {
 
   @state() private showMenu = false;
 
-  private toggleMenu() {
+  private toggleMenu(e: Event) {
+    e.stopPropagation();
     this.showMenu = !this.showMenu;
   }
 
@@ -63,7 +64,7 @@ export class MobileMenu extends LitElement {
     return html`
       <div class="relative">
         <button
-          class="p-2 text-dark-text border border-dark-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
+          class="p-2 ${this.showMenu ? 'text-accent-green border-accent-green' : 'text-dark-text border-dark-border'} hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
           @click=${this.toggleMenu}
           title="More actions"
           aria-label="More actions menu"

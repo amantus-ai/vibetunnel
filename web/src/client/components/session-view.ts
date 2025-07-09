@@ -1445,6 +1445,20 @@ export class SessionView extends LitElement {
           @file-error=${this.handleFileError}
           @file-cancel=${this.handleCloseFilePicker}
         ></file-picker>
+        
+        <!-- Width Selector Modal (moved here for proper positioning) -->
+        <width-selector
+          .visible=${this.showWidthSelector}
+          .terminalMaxCols=${this.terminalMaxCols}
+          .terminalFontSize=${this.terminalFontSize}
+          .customWidth=${this.customWidth}
+          .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
+          .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
+          .onClose=${() => {
+            this.showWidthSelector = false;
+            this.customWidth = '';
+          }}
+        ></width-selector>
 
         <!-- Drag & Drop Overlay -->
         ${

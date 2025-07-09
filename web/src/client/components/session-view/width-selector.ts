@@ -51,8 +51,15 @@ export class WidthSelector extends LitElement {
     if (!this.visible) return null;
 
     return html`
+      <!-- Backdrop to close on outside click -->
+      <div 
+        class="fixed inset-0 z-40" 
+        @click=${() => this.onClose?.()}
+      ></div>
+      
+      <!-- Width selector modal -->
       <div
-        class="width-selector-container absolute top-full mt-2 right-0 bg-dark-bg-elevated border border-dark-border rounded-lg shadow-elevated min-w-[280px] animate-fade-in"
+        class="width-selector-container fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-dark-bg-elevated border border-dark-border rounded-lg shadow-elevated min-w-[280px] max-w-[90vw] animate-fade-in"
         style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
       >
         <div class="p-4">
