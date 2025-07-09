@@ -1,0 +1,25 @@
+[package]
+name = "vibetunnel-pty"
+version = "0.1.0"
+edition = "2021"
+publish = false
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+vibetunnel-pty-core = { path = "../core", features = ["napi"] }
+napi = { workspace = true }
+napi-derive = { workspace = true }
+anyhow = { workspace = true }
+parking_lot = "0.12"
+uuid = { workspace = true }
+lazy_static = { workspace = true }
+chrono = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true }
+
+[build-dependencies]
+napi-build = "2"
