@@ -13,8 +13,8 @@ if (!globalThis.crypto) {
   });
 }
 
-// Mock the native pty module before any imports
-vi.mock('node-pty', () => {
+// Mock the native addon module before any imports
+vi.mock('../server/pty/native-addon-adapter.js', () => {
   // Create a more complete mock that simulates PTY behavior
   const createMockPty = (command: string, args: string[]) => {
     let dataCallback: ((data: string) => void) | null = null;

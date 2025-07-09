@@ -17,6 +17,7 @@ This document provides a comprehensive map of the VibeTunnel web application arc
 
 ### Session Management
 - **PTY Manager**: `src/server/pty/pty-manager.ts:57` - Session Map
+- **Native Addon**: `web/native-pty/` - Rust PTY implementation
 - **Session Manager**: `src/server/pty/session-manager.ts:40-141` - Session lifecycle
 - **Routes**: `src/server/routes/sessions.ts:134-1252` - Session API
 
@@ -75,7 +76,7 @@ The server provides a comprehensive API for terminal session management with sup
 
 **Session Lifecycle**:
 1. **Creation** (`src/server/routes/sessions.ts:134`):
-   - Spawns PTY process using node-pty
+   - Spawns PTY process using native Rust addon
    - Creates session directory in `~/.vibetunnel/control/`
    - Saves metadata to `session.json`
 
@@ -230,20 +231,32 @@ Uses asciinema cast v2 format:
 ["exit", exitCode, sessionId]       // Process exit
 ```
 
-## fwd.ts Application
+## Terminal Forwarding
 
-The `fwd.ts` tool (`src/server/fwd.ts`) wraps any command in a VibeTunnel session:
+### vt-pipe (Rust Implementation)
 
-**Usage**: `pnpm exec tsx src/fwd.ts [options] <command> [args...]`
+The `vt-pipe` binary (`web/vt-pipe/`) is a lightweight Rust replacement for the Node.js forwarder, providing 96% memory reduction.
 
-**Options**:
+**Usage**: `vt-pipe [options] <command> [args...]`
+
+**Architecture**:
+- Native Rust binary (~772KB, ~3MB RAM)
+- Direct PTY handling via portable-pty
+- Unix socket communication with server
+- Replaces the memory-heavy Node.js forwarder
+
+### fwd.ts (Legacy Node.js)
+
+The `fwd.ts` tool (`src/server/fwd.ts`) is the original Node.js implementation that wraps commands in VibeTunnel sessions. This is now only used internally by the server.
+
+**Options** (both implementations):
 - `--session-id <id>`: Use specific session ID
 - `--title-mode <mode>`: none|filter|static|dynamic
 - `--update-title <title>`: Update existing session title
 
 **Features**:
 - Auto-detects Claude AI and enables dynamic titles
-- Forwards stdin/stdout through PTY infrastructure
+- Forwards stdin/stdout through PTY
 - Creates sessions accessible via web interface
 - Activity detection for intelligent status updates
 
@@ -315,11 +328,28 @@ Message Types:
 - Requests native Terminal.app windows
 - Falls back to web terminal
 
+### Native PTY Implementation
+
+The Node.js PTY implementation has been replaced with a native Rust addon for improved performance:
+
+**Architecture**:
+- Native addon at `web/native-pty/` using napi-rs
+- Direct N-API calls eliminate HTTP overhead
+- Fixed portable-pty "one writer" limitation
+- Maintains full API compatibility with node-pty
+
+**Benefits**:
+- Zero additional dependencies
+- ~5ms latency reduction (no HTTP)
+- More reliable PTY handling
+- Better memory management
+
 ### Performance Optimizations
 - Binary buffer compression (empty row encoding)
 - Fire-and-forget input protocol
 - Debounced buffer notifications (50ms)
 - Efficient cell encoding with bit-packing
+- Native Rust PTY addon for minimal overhead
 
 ## Development Commands
 
