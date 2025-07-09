@@ -219,7 +219,7 @@ export class PtyManager extends EventEmitter {
   ): Promise<SessionCreationResult> {
     // Ensure PTY is initialized
     await ensurePtyInitialized();
-    
+
     const sessionId = options.sessionId || uuidv4();
     const sessionName = options.name || path.basename(command[0]);
     const workingDir = options.workingDir || process.cwd();
