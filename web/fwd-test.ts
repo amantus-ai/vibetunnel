@@ -1,12 +1,11 @@
 #!/usr/bin/env pnpm exec tsx --no-deprecation
 
 /**
- * Minimal test script for node-pty
+ * Minimal test script for native PTY addon
  * Tests PTY spawning, terminal raw mode, stdin/stdout forwarding
  */
 
-import * as pty from 'node-pty';
-import { which } from 'node-pty/lib/utils';
+import * as pty from './src/server/pty/native-addon-adapter.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -14,6 +13,22 @@ import * as os from 'os';
 // Terminal state restoration
 let originalStdinRawMode = false;
 let ptyProcess: pty.IPty | null = null;
+
+// Simple which implementation
+function which(command: string): string | undefined {
+  const paths = (process.env.PATH || '').split(path.delimiter);
+  for (const dir of paths) {
+    const fullPath = path.join(dir, command);
+    try {
+      if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+        return fullPath;
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+  return undefined;
+}
 
 /**
  * Clean up and restore terminal state

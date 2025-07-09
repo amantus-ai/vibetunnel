@@ -2,10 +2,10 @@
 # VibeTunnel CLI wrapper
 
 # First, find the VibeTunnel app location
-# Try standard locations first, but verify the binary exists
+# Try standard locations first, but verify the vt-pipe binary exists
 APP_PATH=""
 for TRY_PATH in "/Applications/VibeTunnel.app" "$HOME/Applications/VibeTunnel.app"; do
-    if [ -d "$TRY_PATH" ] && [ -f "$TRY_PATH/Contents/Resources/vibetunnel" ]; then
+    if [ -d "$TRY_PATH" ] && [ -f "$TRY_PATH/Contents/Resources/vt-pipe" ]; then
         APP_PATH="$TRY_PATH"
         break
     fi
@@ -15,7 +15,7 @@ done
 if [ -z "$APP_PATH" ]; then
     # First try DerivedData (for development)
     for CANDIDATE in $(find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null | grep -v "\.dSYM" | grep -v "Index\.noindex"); do
-        if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
+        if [ -f "$CANDIDATE/Contents/Resources/vt-pipe" ]; then
             APP_PATH="$CANDIDATE"
             break
         fi
@@ -24,7 +24,7 @@ if [ -z "$APP_PATH" ]; then
     # If still not found, use mdfind as last resort
     if [ -z "$APP_PATH" ]; then
         for CANDIDATE in $(mdfind -name "VibeTunnel.app" 2>/dev/null | grep -v "\.dSYM"); do
-            if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
+            if [ -f "$CANDIDATE/Contents/Resources/vt-pipe" ]; then
                 APP_PATH="$CANDIDATE"
                 break
             fi
@@ -32,15 +32,18 @@ if [ -z "$APP_PATH" ]; then
     fi
     
     if [ -z "$APP_PATH" ]; then
-        echo "Error: VibeTunnel.app with vibetunnel binary not found anywhere on the system" >&2
+        echo "Error: VibeTunnel.app with vt-pipe binary not found anywhere on the system" >&2
         exit 1
     fi
 fi
 
-# Execute vibetunnel from app bundle
-VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
-if [ ! -f "$VIBETUNNEL_BIN" ]; then
-    echo "Error: vibetunnel binary not found in app bundle at $VIBETUNNEL_BIN" >&2
+# Get vt-pipe binary path
+VT_PIPE_BIN="$APP_PATH/Contents/Resources/vt-pipe"
+
+# Check for vt-pipe binary
+if [ ! -f "$VT_PIPE_BIN" ]; then
+    echo "Error: vt-pipe binary not found in app bundle at $VT_PIPE_BIN" >&2
+    echo "Note: vt-pipe is required for terminal forwarding functionality" >&2
     exit 1
 fi
 
@@ -56,8 +59,8 @@ if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
         shift # Remove 'title' from arguments
         TITLE="$*" # Get all remaining arguments as the title
         
-        # Use the vibetunnel binary's new --update-title flag
-        exec "$VIBETUNNEL_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
+        # Use vt-pipe's update-title functionality
+        exec "$VT_PIPE_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
         # If exec fails, exit with error
         exit 1
     fi
@@ -83,9 +86,9 @@ USAGE:
 
 DESCRIPTION:
     This wrapper script allows VibeTunnel to see the output of commands by
-    forwarding TTY data through the vibetunnel utility. When you run commands
-    through 'vt', VibeTunnel can monitor and display the command's output
-    in real-time.
+    forwarding TTY data through the lightweight vt-pipe utility. When you run 
+    commands through 'vt', VibeTunnel can monitor and display the command's 
+    output in real-time with minimal memory overhead.
 
     By default, commands are executed through your shell to resolve aliases,
     functions, and builtins. Use --no-shell-wrap to execute commands directly.
@@ -115,29 +118,22 @@ TITLE MODES:
     dynamic    Show directory, command, and live activity status (default for web UI)
 
 NOTE:
-    This script automatically uses the vibetunnel executable bundled with
-    VibeTunnel from the app bundle.
+    This script automatically uses the vt-pipe executable bundled with
+    VibeTunnel from the app bundle for efficient terminal forwarding.
 EOF
     
     # Show path and version info
     echo
-    echo "VIBETUNNEL BINARY:"
-    echo "    Path: $VIBETUNNEL_BIN"
-    if [ -f "$VIBETUNNEL_BIN" ]; then
-        # Extract version from the vibetunnel output
-        VERSION_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^VibeTunnel Server" | head -n 1)
-        BUILD_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Built:" | head -n 1)
-        PLATFORM_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Platform:" | head -n 1)
+    echo "VT-PIPE BINARY:"
+    echo "    Path: $VT_PIPE_BIN"
+    if [ -f "$VT_PIPE_BIN" ]; then
+        # Extract version from vt-pipe output
+        VERSION_INFO=$("$VT_PIPE_BIN" --version 2>&1 | head -n 1)
         
         if [ -n "$VERSION_INFO" ]; then
-            echo "    Version: ${VERSION_INFO#VibeTunnel Server }"
+            echo "    Version: $VERSION_INFO"
         fi
-        if [ -n "$BUILD_INFO" ]; then
-            echo "    ${BUILD_INFO}"
-        fi
-        if [ -n "$PLATFORM_INFO" ]; then
-            echo "    ${PLATFORM_INFO}"
-        fi
+        echo "    Status: Available"
     else
         echo "    Status: Not found"
     fi
@@ -156,15 +152,15 @@ resolve_command() {
     case "$shell_name" in
         zsh)
             # For zsh, we need interactive mode to get aliases
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VT_PIPE_BIN" $TITLE_MODE_ARGS "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
             ;;
         bash)
             # For bash, expand aliases in non-interactive mode
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            exec "$VT_PIPE_BIN" $TITLE_MODE_ARGS "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
             ;;
         *)
             # Generic shell handling
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VT_PIPE_BIN" $TITLE_MODE_ARGS "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
             ;;
     esac
 }
@@ -207,12 +203,12 @@ fi
 if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     if [[ "$NO_SHELL_WRAP" == "true" ]]; then
         # Execute directly without shell wrapper
-        exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+        exec "$VT_PIPE_BIN" $TITLE_MODE_ARGS "$@"
     else
         # Check if the first argument is a real binary
         if which "$1" >/dev/null 2>&1; then
             # It's a real binary, execute directly
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+            exec "$VT_PIPE_BIN" $TITLE_MODE_ARGS "$@"
         else
             # Not a real binary, try alias resolution
             resolve_command "$@"
@@ -220,5 +216,5 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     fi
 else
     # Run with fwd command (original behavior for options)
-    exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+    exec "$VT_PIPE_BIN" $TITLE_MODE_ARGS "$@"
 fi

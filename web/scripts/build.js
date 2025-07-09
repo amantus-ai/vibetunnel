@@ -77,8 +77,11 @@ async function build() {
       format: 'cjs',
       outfile: 'dist/vibetunnel-cli',
       external: [
-        'node-pty',
         'authenticate-pam',
+        './native-pty/vibetunnel-native-pty.darwin-arm64.node',
+        './native-pty/vibetunnel-native-pty.darwin-x64.node',
+        './native-pty/vibetunnel-native-pty.linux-x64-gnu.node',
+        './native-pty/vibetunnel-native-pty.linux-arm64-gnu.node',
       ],
       minify: true,
       sourcemap: false,
@@ -107,6 +110,7 @@ async function build() {
     console.error('CLI bundling failed:', error);
     process.exit(1);
   }
+
 
 
   // Build native executable

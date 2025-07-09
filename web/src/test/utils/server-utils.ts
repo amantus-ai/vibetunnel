@@ -148,7 +148,7 @@ export async function startTestServer(config: ServerConfig = {}): Promise<Server
   } = config;
 
   // Build spawn command - always use source code with tsx for tests
-  // This avoids issues with SEA patches in node-pty
+  // This ensures proper native addon loading
   const useBuiltBinary = false; // Disabled - always use source for tests
   const command = useBuiltBinary ? BUILT_CLI_PATH : usePnpm ? 'pnpm' : 'tsx';
   const spawnArgs = useBuiltBinary
