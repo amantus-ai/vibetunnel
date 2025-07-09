@@ -19,7 +19,6 @@ export class InlineEdit extends LitElement {
       gap: 0.25rem;
       max-width: 100%;
       min-width: 0;
-      width: 100%;
     }
 
     .display-container {
