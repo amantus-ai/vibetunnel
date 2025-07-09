@@ -90,7 +90,7 @@ export class SessionHeader extends LitElement {
         class="flex items-center justify-between border-b border-dark-border text-sm min-w-0 bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary px-4 py-2 shadow-sm"
         style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
       >
-        <div class="flex items-center gap-3 min-w-0 flex-1">
+        <div class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
           <!-- Sidebar Toggle (when sidebar is collapsed) - visible on all screen sizes -->
           ${
             this.showSidebarToggle && this.sidebarCollapsed
@@ -145,7 +145,7 @@ export class SessionHeader extends LitElement {
               `
               : ''
           }
-          <div class="text-dark-text min-w-0 flex-1 overflow-hidden">
+          <div class="text-dark-text min-w-0 flex-1 overflow-hidden max-w-full">
             <div class="text-dark-text-bright font-medium text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap">
               <div class="flex items-center gap-2" @mouseenter=${this.handleMouseEnter} @mouseleave=${this.handleMouseLeave}>
                 <inline-edit
@@ -191,7 +191,7 @@ export class SessionHeader extends LitElement {
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2 relative">
+        <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2">
           <!-- Notification status - desktop only -->
           <div class="hidden sm:block">
             <notification-status
