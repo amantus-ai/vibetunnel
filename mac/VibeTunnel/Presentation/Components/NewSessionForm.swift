@@ -329,19 +329,35 @@ struct NewSessionForm: View {
     }
 
     private func selectDirectory() {
+        // Find the menu window first
+        guard let menuWindow = NSApp.windows.first(where: { $0 is CustomMenuWindow }) as? CustomMenuWindow else {
+            return
+        }
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.directoryURL = URL(fileURLWithPath: NSString(string: workingDirectory).expandingTildeInPath)
+        // Set flag on the window to prevent it from hiding
+        menuWindow.isFileSelectionInProgress = true
+        // Use beginSheetModal to keep the window relationship
+        panel.beginSheetModal(for: menuWindow) { response in
+            Task { @MainActor in
+                if response == .OK, let url = panel.url {
+                    let path = url.path
+                    let homeDir = NSHomeDirectory()
+                    if path.hasPrefix(homeDir) {
+                        self.workingDirectory = "~" + path.dropFirst(homeDir.count)
+                    } else {
+                        self.workingDirectory = path
+                    }
+                }
 
-        if panel.runModal() == .OK, let url = panel.url {
-            let path = url.path
-            let homeDir = NSHomeDirectory()
-            if path.hasPrefix(homeDir) {
-                workingDirectory = "~" + path.dropFirst(homeDir.count)
-            } else {
-                workingDirectory = path
+                // Clear the flag after selection completes
+                menuWindow.isFileSelectionInProgress = false
+
+                // Ensure the menu window regains focus
+                menuWindow.makeKeyAndOrderFront(nil)
             }
         }
     }
