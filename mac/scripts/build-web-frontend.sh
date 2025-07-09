@@ -299,20 +299,20 @@ mkdir -p "${DEST_DIR}"
 echo "Copying web files to app bundle..."
 cp -R "${PUBLIC_DIR}/"* "${DEST_DIR}/"
 
-# Build vt-pipe if cargo is available
-VT_PIPE_DIR="${WEB_DIR}/vt-pipe"
-VT_PIPE_TARGET="${VT_PIPE_DIR}/target/release/vt-pipe"
+# Build vt-pipe from unified codebase
+UNIFIED_PTY_DIR="${WEB_DIR}/vibetunnel-pty"
+VT_PIPE_TARGET="${UNIFIED_PTY_DIR}/target/release/vt-pipe"
 
-if command -v cargo &> /dev/null && [ -d "${VT_PIPE_DIR}" ]; then
-    echo "Building vt-pipe lightweight forwarder..."
-    cd "${VT_PIPE_DIR}"
+if command -v cargo &> /dev/null && [ -d "${UNIFIED_PTY_DIR}" ]; then
+    echo "Building vt-pipe from unified codebase..."
+    cd "${UNIFIED_PTY_DIR}"
     
-    # Build in release mode
+    # Build in release mode with CLI features only
     if [ "$BUILD_CONFIG" = "Release" ]; then
-        cargo build --release 2>&1 | filter_build_output
+        cargo build --release --no-default-features --features cli --bin vt-pipe 2>&1 | filter_build_output
     else
         # For debug builds, still use release mode for vt-pipe (it's always performance critical)
-        cargo build --release 2>&1 | filter_build_output
+        cargo build --release --no-default-features --features cli --bin vt-pipe 2>&1 | filter_build_output
     fi
     
     if [ -f "${VT_PIPE_TARGET}" ]; then
@@ -329,7 +329,7 @@ else
         echo "warning: Rust/cargo not found. vt-pipe will not be built."
         echo "To build vt-pipe, install Rust from https://rustup.rs/"
     else
-        echo "warning: vt-pipe directory not found at ${VT_PIPE_DIR}"
+        echo "warning: unified PTY directory not found at ${UNIFIED_PTY_DIR}"
     fi
 fi
 
