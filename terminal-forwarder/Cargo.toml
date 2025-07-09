@@ -1,0 +1,15 @@
+[package]
+name = "terminal-forwarder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.8", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+portable-pty = "0.9"
+uuid = { version = "1", features = ["v4", "serde"] }
+bytes = "1"
+futures = "0.3"
+hyper = "1"

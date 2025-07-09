@@ -112,6 +112,8 @@ linux/vibetunnel
 # Rust build artifacts
 tty-fwd/target/
 tty-fwd/Cargo.lock
+terminal-forwarder/target/
+terminal-forwarder/Cargo.lock
 
 # Bun prebuilt executables (should be built during build process)
 mac/Resources/BunPrebuilts/
