@@ -46,6 +46,14 @@ export class InputManager {
     this.callbacks = callbacks;
   }
 
+  /**
+   * Helper method to prevent default and stop propagation for events
+   */
+  private preventAndStopEvent(e: Event): void {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
   async handleKeyboardInput(e: KeyboardEvent): Promise<void> {
     if (!this.session) return;
 
@@ -80,22 +88,19 @@ export class InputManager {
     if (altKey && !ctrlKey && !metaKey && !shiftKey) {
       // Alt+Left Arrow - Move to previous word
       if (key === 'ArrowLeft') {
-        e.preventDefault();
-        e.stopPropagation();
+        this.preventAndStopEvent(e);
         await this.sendInput('\x1bb'); // ESC+b
         return;
       }
       // Alt+Right Arrow - Move to next word
       if (key === 'ArrowRight') {
-        e.preventDefault();
-        e.stopPropagation();
+        this.preventAndStopEvent(e);
         await this.sendInput('\x1bf'); // ESC+f
         return;
       }
       // Alt+Backspace - Delete word backward
       if (key === 'Backspace') {
-        e.preventDefault();
-        e.stopPropagation();
+        this.preventAndStopEvent(e);
         await this.sendInput('\x17'); // Ctrl+W
         return;
       }
