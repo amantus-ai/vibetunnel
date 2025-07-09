@@ -1,16 +1,14 @@
 /**
- * PtyManager - Core PTY management using node-pty
+ * PtyManager - Core PTY management using native Rust addon
  *
  * This class handles PTY creation, process management, and I/O operations
- * using the node-pty library while maintaining compatibility with tty-fwd.
+ * using the native Rust addon while maintaining compatibility with tty-fwd.
  */
 
 import chalk from 'chalk';
 import { EventEmitter, once } from 'events';
 import * as fs from 'fs';
 import * as net from 'net';
-import type { IPty } from 'node-pty';
-import * as pty from 'node-pty';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import type {
@@ -44,6 +42,7 @@ import {
   MessageType,
   parsePayload,
 } from './socket-protocol.js';
+import type { IPty } from './types.js';
 import {
   type KillControlMessage,
   PtyError,
@@ -54,6 +53,31 @@ import {
 } from './types.js';
 
 const logger = createLogger('pty-manager');
+
+// Use native Rust addon for PTY implementation
+let ptyImplementation: typeof import('./native-addon-adapter.js');
+
+// Load native addon implementation
+async function loadPtyImplementation() {
+  try {
+    ptyImplementation = await import('./native-addon-adapter.js');
+    logger.log(chalk.green('✓ Using native Rust PTY addon (maximum performance)'));
+  } catch (error) {
+    logger.error('Failed to load native PTY addon:', error);
+    throw new Error(
+      'Native PTY addon not available. Please run: cd native-pty && npm install && npm run build'
+    );
+  }
+}
+
+// Initialize PTY implementation
+let ptyInitialized = false;
+const ensurePtyInitialized = async () => {
+  if (!ptyInitialized) {
+    await loadPtyImplementation();
+    ptyInitialized = true;
+  }
+};
 
 // Title injection timing constants
 const TITLE_UPDATE_INTERVAL_MS = 1000; // How often to check if title needs updating
@@ -193,11 +217,14 @@ export class PtyManager extends EventEmitter {
       onExit?: (exitCode: number, signal?: number) => void;
     }
   ): Promise<SessionCreationResult> {
+    // Ensure PTY is initialized
+    await ensurePtyInitialized();
+    
     const sessionId = options.sessionId || uuidv4();
     const sessionName = options.name || path.basename(command[0]);
     const workingDir = options.workingDir || process.cwd();
     const term = this.defaultTerm;
-    // For external spawns without dimensions, let node-pty use the terminal's natural size
+    // For external spawns without dimensions, let the PTY use the terminal's natural size
     // For other cases, use reasonable defaults
     const cols = options.cols;
     const rows = options.rows;
@@ -290,14 +317,14 @@ export class PtyManager extends EventEmitter {
         });
 
         // Build spawn options - only include dimensions if provided
-        const spawnOptions: pty.IPtyForkOptions = {
+        const spawnOptions: import('./types.js').IPtyOptions = {
           name: term,
           cwd: workingDir,
           env: ptyEnv,
         };
 
         // Only add dimensions if they're explicitly provided
-        // This allows node-pty to use the terminal's natural size for external spawns
+        // This allows the PTY to use the terminal's natural size for external spawns
         if (cols !== undefined) {
           spawnOptions.cols = cols;
         }
@@ -305,7 +332,7 @@ export class PtyManager extends EventEmitter {
           spawnOptions.rows = rows;
         }
 
-        ptyProcess = pty.spawn(finalCommand, finalArgs, spawnOptions);
+        ptyProcess = ptyImplementation.spawn(finalCommand, finalArgs, spawnOptions);
       } catch (spawnError) {
         // Debug log the raw error first
         logger.debug('Raw spawn error:', {
@@ -508,7 +535,7 @@ export class PtyManager extends EventEmitter {
     }
 
     // Handle PTY data output
-    ptyProcess.onData((data: string) => {
+    ptyProcess.on('data', (data: string) => {
       let processedData = data;
 
       // If title mode is not NONE, filter out any title sequences the process might
@@ -559,7 +586,7 @@ export class PtyManager extends EventEmitter {
     });
 
     // Handle PTY exit
-    ptyProcess.onExit(async ({ exitCode, signal }: { exitCode: number; signal?: number }) => {
+    ptyProcess.on('exit', async (exitCode: number, signal?: number) => {
       try {
         // Mark session as exiting to prevent false bell notifications
         this.sessionExitTimes.set(session.id, Date.now());
