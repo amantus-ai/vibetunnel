@@ -90,7 +90,7 @@ export class SessionHeader extends LitElement {
         class="flex items-center justify-between border-b border-dark-border text-sm min-w-0 bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary px-4 py-2 shadow-sm"
         style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
       >
-        <div class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+        <div class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden" style="max-width: calc(100% - 60px)">
           <!-- Sidebar Toggle (when sidebar is collapsed) - visible on all screen sizes -->
           ${
             this.showSidebarToggle && this.sidebarCollapsed
