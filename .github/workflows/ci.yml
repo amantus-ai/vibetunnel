@@ -67,5 +67,5 @@ jobs:
       always() && 
       !contains(needs.*.result, 'failure') && 
       !contains(needs.*.result, 'cancelled') &&
-      (needs.changes.outputs.ios == 'true' || needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch')
+      (needs.changes.outputs.ios == 'true' || github.event_name == 'workflow_dispatch')
     uses: ./.github/workflows/ios.yml

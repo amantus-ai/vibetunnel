@@ -26,6 +26,9 @@ final class CustomMenuWindow: NSPanel {
     /// Tracks whether the new session form is currently active
     var isNewSessionActive = false
 
+    /// Tracks whether file selection is in progress
+    var isFileSelectionInProgress = false
+
     /// Closure to be called when window shows
     var onShow: (() -> Void)?
 
@@ -280,6 +283,7 @@ final class CustomMenuWindow: NSPanel {
         // Mark window as not visible
         _isWindowVisible = false
         isNewSessionActive = false // Always reset this state
+        isFileSelectionInProgress = false // Reset file selection state
 
         // Button state will be reset by StatusBarMenuManager via onHide callback
         orderOut(nil)
@@ -310,8 +314,8 @@ final class CustomMenuWindow: NSPanel {
 
             let mouseLocation = NSEvent.mouseLocation
 
-            // Don't dismiss if new session is active
-            if self.isNewSessionActive {
+            // Don't dismiss if new session is active or file selection is in progress
+            if self.isNewSessionActive || self.isFileSelectionInProgress {
                 // Check if clicking on status bar button to allow closing via menu icon
                 if let button = self.statusBarButton,
                    let buttonWindow = button.window
@@ -343,7 +347,10 @@ final class CustomMenuWindow: NSPanel {
 
     override func resignKey() {
         super.resignKey()
-        hide()
+        // Don't hide if new session form is active or file selection is in progress
+        if !isNewSessionActive && !isFileSelectionInProgress {
+            hide()
+        }
     }
 
     override var canBecomeKey: Bool {

@@ -36,10 +36,26 @@ export SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
 
 VibeTunnel uses EdDSA signatures for secure updates via Sparkle framework.
 
+#### ⚠️ CRITICAL: Multiple Keys Warning
+
+Your system may have multiple Sparkle private keys:
+1. **File-based key** at `private/sparkle_private_key` (CORRECT)
+2. **Keychain key** (WRONG - may produce incompatible signatures)
+
+**ALWAYS use the `-f` flag when signing:**
+```bash
+# ✅ CORRECT
+sign_update -f private/sparkle_private_key file.dmg
+
+# ❌ WRONG - may use keychain key
+sign_update file.dmg
+```
+
 #### Key Storage
 
 - **Private Key**: `private/sparkle_private_key` (NEVER commit this!)
-- **Public Key**: `VibeTunnel/sparkle-public-ed-key.txt` (committed to repo)
+- **Public Key**: In Info.plist as `SUPublicEDKey`
+- **Expected Public Key**: `AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=`
 
 #### Generating New Keys
 
@@ -91,6 +107,11 @@ Before starting a release, ensure:
    - [ ] GitHub CLI authenticated: `gh auth status`
    - [ ] Signing certificates valid: `security find-identity -v -p codesigning`
    - [ ] Notarization credentials set (environment variables)
+
+5. **Sparkle Signature Validation**
+   - [ ] Private key exists at `private/sparkle_private_key`
+   - [ ] Run validation script: `./scripts/validate-sparkle-signature.sh`
+   - [ ] Confirm NO keychain key conflicts (script will warn)
 
 ## Release Process
 

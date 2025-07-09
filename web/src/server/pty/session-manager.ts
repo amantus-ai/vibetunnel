@@ -447,14 +447,25 @@ export class SessionManager {
     if (!lastVersion) {
       logger.debug('no previous version found, checking for legacy sessions');
 
-      // Clean up any sessions without version field
+      // First update zombie sessions to mark dead processes
+      this.updateZombieSessions();
+
+      // Clean up any sessions without version field that are also not active
       let cleanedCount = 0;
       const sessions = this.listSessions();
       for (const session of sessions) {
         if (!session.version) {
-          logger.debug(`cleaning up legacy session ${session.id} (no version field)`);
-          this.cleanupSession(session.id);
-          cleanedCount++;
+          // Only clean if the session is not actively running
+          if (
+            session.status === 'exited' ||
+            (session.pid && !ProcessUtils.isProcessRunning(session.pid))
+          ) {
+            logger.debug(`cleaning up legacy zombie session ${session.id} (no version field)`);
+            this.cleanupSession(session.id);
+            cleanedCount++;
+          } else {
+            logger.debug(`preserving active legacy session ${session.id}`);
+          }
         }
       }
 
@@ -469,21 +480,33 @@ export class SessionManager {
     }
 
     logger.log(chalk.yellow(`VibeTunnel version changed from ${lastVersion} to ${currentVersion}`));
-    logger.log(chalk.yellow('cleaning up old sessions...'));
+    logger.log(chalk.yellow('cleaning up zombie sessions from old version...'));
+
+    // First update zombie sessions to mark dead processes
+    this.updateZombieSessions();
 
     let cleanedCount = 0;
     try {
       const sessions = this.listSessions();
 
       for (const session of sessions) {
-        // Clean all sessions that don't match the current version
-        // Sessions without version field are considered old
+        // Only clean sessions that don't match the current version AND are not active
         if (!session.version || session.version !== currentVersion) {
-          logger.debug(
-            `cleaning up session ${session.id} (version: ${session.version || 'unknown'})`
-          );
-          this.cleanupSession(session.id);
-          cleanedCount++;
+          // Check if session is actually dead/zombie
+          if (
+            session.status === 'exited' ||
+            (session.pid && !ProcessUtils.isProcessRunning(session.pid))
+          ) {
+            logger.debug(
+              `cleaning up zombie session ${session.id} (version: ${session.version || 'unknown'})`
+            );
+            this.cleanupSession(session.id);
+            cleanedCount++;
+          } else {
+            logger.debug(
+              `preserving active session ${session.id} (version: ${session.version || 'unknown'})`
+            );
+          }
         }
       }
 
@@ -491,9 +514,9 @@ export class SessionManager {
       this.writeCurrentVersion();
 
       if (cleanedCount > 0) {
-        logger.log(chalk.green(`cleaned up ${cleanedCount} sessions from previous version`));
+        logger.log(chalk.green(`cleaned up ${cleanedCount} zombie sessions from previous version`));
       } else {
-        logger.log(chalk.gray('no old sessions to clean up'));
+        logger.log(chalk.gray('no zombie sessions to clean up (active sessions preserved)'));
       }
 
       return { versionChanged: true, cleanedCount };
