@@ -299,6 +299,40 @@ mkdir -p "${DEST_DIR}"
 echo "Copying web files to app bundle..."
 cp -R "${PUBLIC_DIR}/"* "${DEST_DIR}/"
 
+# Build vt-pipe if cargo is available
+VT_PIPE_DIR="${WEB_DIR}/vt-pipe"
+VT_PIPE_TARGET="${VT_PIPE_DIR}/target/release/vt-pipe"
+
+if command -v cargo &> /dev/null && [ -d "${VT_PIPE_DIR}" ]; then
+    echo "Building vt-pipe lightweight forwarder..."
+    cd "${VT_PIPE_DIR}"
+    
+    # Build in release mode
+    if [ "$BUILD_CONFIG" = "Release" ]; then
+        cargo build --release 2>&1 | filter_build_output
+    else
+        # For debug builds, still use release mode for vt-pipe (it's always performance critical)
+        cargo build --release 2>&1 | filter_build_output
+    fi
+    
+    if [ -f "${VT_PIPE_TARGET}" ]; then
+        VT_PIPE_SIZE=$(ls -lh "${VT_PIPE_TARGET}" | awk '{print $5}')
+        echo "✓ vt-pipe built successfully (size: $VT_PIPE_SIZE)"
+    else
+        echo "error: vt-pipe build failed"
+        exit 1
+    fi
+    
+    cd "${WEB_DIR}"
+else
+    if ! command -v cargo &> /dev/null; then
+        echo "warning: Rust/cargo not found. vt-pipe will not be built."
+        echo "To build vt-pipe, install Rust from https://rustup.rs/"
+    else
+        echo "warning: vt-pipe directory not found at ${VT_PIPE_DIR}"
+    fi
+fi
+
 # Copy native executable and modules to app bundle
 NATIVE_DIR="${WEB_DIR}/native"
 
@@ -348,7 +382,17 @@ else
     exit 1
 fi
 
-echo "✓ Native executable, modules, and vt script copied successfully"
+# Copy vt-pipe if it was built
+if [ -f "${VT_PIPE_TARGET}" ]; then
+    echo "Copying vt-pipe to app bundle..."
+    cp "${VT_PIPE_TARGET}" "${APP_RESOURCES}/"
+    chmod +x "${APP_RESOURCES}/vt-pipe"
+    echo "✓ vt-pipe copied successfully"
+else
+    echo "warning: vt-pipe not found, vt command will not work"
+fi
+
+echo "✓ Native executable, modules, vt script, and vt-pipe copied successfully"
 
 # Sanity check: Verify all required binaries are present in the app bundle
 echo "Performing final sanity check..."
@@ -390,6 +434,12 @@ if [ -f "${APP_RESOURCES}/vt" ] && [ ! -x "${APP_RESOURCES}/vt" ]; then
     MISSING_FILES+=("vt script is not executable")
 fi
 
+# Check for vt-pipe (optional but recommended)
+if [ ! -f "${APP_RESOURCES}/vt-pipe" ]; then
+    echo "warning: vt-pipe not found in app bundle. The 'vt' command will not work."
+elif [ ! -x "${APP_RESOURCES}/vt-pipe" ]; then
+    MISSING_FILES+=("vt-pipe is not executable")
+fi
 # If any files are missing, fail the build
 if [ ${#MISSING_FILES[@]} -gt 0 ]; then
     echo "error: Build sanity check failed! Missing required files:"
@@ -399,7 +449,7 @@ if [ ${#MISSING_FILES[@]} -gt 0 ]; then
     echo "Build artifacts in ${NATIVE_DIR}:"
     ls -la "${NATIVE_DIR}" || echo "  Directory does not exist"
     echo "App resources in ${APP_RESOURCES}:"
-    ls -la "${APP_RESOURCES}/vibetunnel" "${APP_RESOURCES}/pty.node" "${APP_RESOURCES}/spawn-helper" "${APP_RESOURCES}/vt" 2>/dev/null || true
+    ls -la "${APP_RESOURCES}/vibetunnel" "${APP_RESOURCES}/pty.node" "${APP_RESOURCES}/spawn-helper" "${APP_RESOURCES}/vt" "${APP_RESOURCES}/vt-pipe" 2>/dev/null || true
     exit 1
 fi
 

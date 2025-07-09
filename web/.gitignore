@@ -120,6 +120,17 @@ lint_output.txt
 # Native build output
 native/
 
+# Native addon build artifacts
+native-pty/target/
+native-pty/*.node
+native-pty/node_modules/
+native-pty/package-lock.json
+native-pty/Cargo.lock
+
+# vt-pipe build artifacts
+vt-pipe/target/
+vt-pipe/Cargo.lock
+
 # Custom Node.js builds
 .node-builds/
 

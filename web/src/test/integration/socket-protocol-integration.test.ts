@@ -1,9 +1,9 @@
 /**
  * Integration tests for the socket protocol with PTY manager
  *
- * Note: Some tests in this file require real PTY support and will fail when node-pty
+ * Note: Some tests in this file require real PTY support and will fail when the native addon
  * is mocked (which happens in src/test/setup.ts). To run these tests with real PTY:
- * 1. Comment out the node-pty mock in src/test/setup.ts
+ * 1. Comment out the native addon mock in src/test/setup.ts
  * 2. Run the tests
  * 3. Restore the mock when done
  *
@@ -52,7 +52,7 @@ describe('Socket Protocol Integration', () => {
 
   describe('Session communication', () => {
     it('should handle stdin/stdout through socket', async () => {
-      // Note: This test requires real PTY support. It will fail if node-pty is mocked.
+      // Note: This test requires real PTY support. It will fail if the native addon is mocked.
       // Create a session that echoes input
       const { sessionId } = await sessionHelper.createTrackedSession(['sh', '-c', 'cat'], {
         name: 'echo-test',
@@ -163,8 +163,16 @@ describe('Socket Protocol Integration', () => {
     });
 
     it('should handle kill command through socket', async () => {
+<<<<<<< HEAD
       // Note: This test requires real PTY support. It will fail if node-pty is mocked.
       const { sessionId } = await sessionHelper.createTrackedSession(['sleep', '60'], {
+||||||| parent of 798f5c91 (Replace Node.js PTY with native Rust implementation)
+      // Note: This test requires real PTY support. It will fail if node-pty is mocked.
+      const { sessionId } = await ptyManager.createSession(['sleep', '60'], {
+=======
+      // Note: This test requires real PTY support. It will fail if the native addon is mocked.
+      const { sessionId } = await ptyManager.createSession(['sleep', '60'], {
+>>>>>>> 798f5c91 (Replace Node.js PTY with native Rust implementation)
         name: 'kill-test',
         workingDir: process.cwd(),
       });

@@ -1,0 +1,32 @@
+[package]
+name = "vibetunnel-native-pty"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2", features = ["async", "tokio_rt"] }
+napi-derive = "2"
+tokio = { version = "1", features = ["full"] }
+portable-pty = "0.9"
+bytes = "1"
+chrono = "0.4"
+regex = "1"
+anyhow = "1"
+crossbeam-channel = "0.5"
+parking_lot = "0.12"
+lazy_static = "1.4"
+uuid = { version = "1.10", features = ["v4"] }
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.29", features = ["process", "signal"] }
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true
+strip = true
+opt-level = 3

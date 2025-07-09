@@ -79,7 +79,10 @@ process.on('SIGTERM', () => {
   process.exit(1);
 });
 
-// No patching needed - SEA support is built into our vendored node-pty
+function applyMinimalPatches() {
+  console.log('Native PTY addon does not require SEA patches.');
+  // Native addon built with napi-rs handles SEA mode automatically
+}
 
 async function main() {
   try {
@@ -87,20 +90,15 @@ async function main() {
     console.log('Using vendored node-pty with built-in SEA support...');
     
     // Ensure native modules are built (in case postinstall didn't run)
-    const nativePtyDir = 'node_modules/node-pty/build/Release';
+    const nativePtyAddonDir = path.join(__dirname, 'native-pty');
     const nativeAuthDir = 'node_modules/authenticate-pam/build/Release';
     
-    if (!fs.existsSync(nativePtyDir)) {
-      console.log('Building node-pty native module...');
-      // Find the actual node-pty path (could be in .pnpm directory)
-      const nodePtyPath = require.resolve('node-pty/package.json');
-      const nodePtyDir = path.dirname(nodePtyPath);
-      console.log(`Found node-pty at: ${nodePtyDir}`);
-      
-      // Build node-pty using node-gyp directly to avoid TypeScript compilation
-      execSync(`cd "${nodePtyDir}" && npx node-gyp rebuild`, { 
+    // Build native PTY addon if needed
+    if (!fs.existsSync(path.join(nativePtyAddonDir, 'index.node'))) {
+      console.log('Building native PTY addon...');
+      execSync('npm run build', { 
         stdio: 'inherit',
-        shell: true
+        cwd: nativePtyAddonDir
       });
     }
     
@@ -212,7 +210,7 @@ async function main() {
       
       console.log('Using clean PATH to avoid Homebrew dependencies during native module rebuild...');
       
-      execSync(`pnpm rebuild node-pty authenticate-pam`, {
+      execSync(`pnpm rebuild authenticate-pam`, {
         stdio: 'inherit',
         env: cleanEnv
       });
@@ -364,40 +362,20 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
     // 9. Copy native modules
     console.log('\nCopying native modules...');
     
-    // Find the actual node-pty build directory (could be in .pnpm directory)
-    const nodePtyPath = require.resolve('node-pty/package.json');
-    const nodePtyBaseDir = path.dirname(nodePtyPath);
-    const nativeModulesDir = path.join(nodePtyBaseDir, 'build/Release');
-
-    // Check if native modules exist
-    if (!fs.existsSync(nativeModulesDir)) {
-      console.error(`Error: Native modules directory not found at ${nativeModulesDir}`);
-      console.error('This usually means the native module build failed.');
+    // Copy our native PTY addon
+    const nativePtyAddonPath = path.join(__dirname, 'native-pty/index.node');
+    if (!fs.existsSync(nativePtyAddonPath)) {
+      console.error('Error: Native PTY addon not found at native-pty/index.node');
+      console.error('Please build the native addon first: cd native-pty && npm run build');
       process.exit(1);
     }
 
-    // Copy pty.node
-    const ptyNodePath = path.join(nativeModulesDir, 'pty.node');
-    if (!fs.existsSync(ptyNodePath)) {
-      console.error('Error: pty.node not found. Native module build may have failed.');
-      process.exit(1);
-    }
-    fs.copyFileSync(ptyNodePath, 'native/pty.node');
-    console.log('  - Copied pty.node');
+    // Copy native PTY addon as pty.node for compatibility
+    fs.copyFileSync(nativePtyAddonPath, 'native/pty.node');
+    console.log('  - Copied native PTY addon as pty.node');
 
-    // Copy spawn-helper (macOS only)
-    // Note: spawn-helper is only built and required on macOS where it's used for pty_posix_spawn()
-    // On Linux, node-pty uses forkpty() directly and doesn't need spawn-helper
-    if (process.platform === 'darwin') {
-      const spawnHelperPath = path.join(nativeModulesDir, 'spawn-helper');
-      if (!fs.existsSync(spawnHelperPath)) {
-        console.error('Error: spawn-helper not found. Native module build may have failed.');
-        process.exit(1);
-      }
-      fs.copyFileSync(spawnHelperPath, 'native/spawn-helper');
-      fs.chmodSync('native/spawn-helper', 0o755);
-      console.log('  - Copied spawn-helper');
-    }
+    // Note: Our Rust-based PTY addon doesn't require spawn-helper
+    // It uses portable-pty which handles process spawning internally
 
     // Copy authenticate_pam.node
     const authPamPath = 'node_modules/authenticate-pam/build/Release/authenticate_pam.node';
