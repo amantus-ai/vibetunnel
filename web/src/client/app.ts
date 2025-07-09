@@ -1522,6 +1522,7 @@ export class VibeTunnelApp extends LitElement {
                       @toggle-sidebar=${this.handleToggleSidebar}
                       @create-session=${this.handleCreateSession}
                       @session-status-changed=${this.handleSessionStatusChanged}
+                      @open-settings=${this.handleOpenSettings}
                     ></session-view>
                   `
                 )}
