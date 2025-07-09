@@ -68,7 +68,7 @@ export async function assertSessionInList(
     try {
       // Get the status from the session card's data-session-status attribute
       const cardStatus = await sessionCard.getAttribute('data-session-status');
-      
+
       // Check if the status matches (case-insensitive)
       if (cardStatus?.toLowerCase() === lowerStatus) {
         // Status matches
@@ -88,9 +88,7 @@ export async function assertSessionInList(
         }
       }
 
-      throw new Error(
-        `Expected status "${status}", but found data-session-status="${cardStatus}"`
-      );
+      throw new Error(`Expected status "${status}", but found data-session-status="${cardStatus}"`);
     } catch {
       // If the span[data-status] approach fails, try other selectors
       const statusSelectors = [
@@ -294,7 +292,7 @@ export async function assertTerminalReady(page: Page, timeout = 15000): Promise<
 
   // Check for prompt - with more robust detection and debugging
   const isCI = process.env.CI; // Capture outside the browser context
-  
+
   await page.waitForFunction(
     (inCI) => {
       const term = document.querySelector('vibe-terminal');

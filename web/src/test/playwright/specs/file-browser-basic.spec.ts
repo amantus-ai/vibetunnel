@@ -70,7 +70,9 @@ test.describe('File Browser - Basic Functionality', () => {
 
     // Look for basic file browser elements within the modal
     const fileList = page.locator('.overflow-y-auto, .file-list, .files').first();
-    const pathDisplay = page.locator('.text-blue-400, .path, .current-path, .text-accent-blue').first();
+    const pathDisplay = page
+      .locator('.text-blue-400, .path, .current-path, .text-accent-blue')
+      .first();
 
     // At least one of these should be visible to indicate the file browser is functional
     const hasFileListOrPath = (await fileList.isVisible()) || (await pathDisplay.isVisible());
@@ -142,7 +144,7 @@ test.describe('File Browser - Basic Functionality', () => {
 
     // Open file browser
     await fileBrowserButton.click();
-    
+
     // Wait for file browser modal to appear
     const fileBrowserModal = page.locator('.fixed.inset-0').first();
     await expect(fileBrowserModal).toBeVisible({ timeout: 5000 });
@@ -184,7 +186,9 @@ test.describe('File Browser - Basic Functionality', () => {
     }
   });
 
-  test.skip('should not crash when file browser button is clicked multiple times', async ({ page }) => {
+  test.skip('should not crash when file browser button is clicked multiple times', async ({
+    page,
+  }) => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-multiple-clicks'),
     });
@@ -202,10 +206,10 @@ test.describe('File Browser - Basic Functionality', () => {
 
     // Close file browser with escape key
     await page.keyboard.press('Escape');
-    
+
     // Wait longer for modal to disappear - it might have animation
     await page.waitForTimeout(2000);
-    
+
     // Check if modal is gone by checking count instead of visibility
     const modalCount = await page.locator('.fixed.inset-0').count();
     expect(modalCount).toBe(0);
@@ -249,11 +253,11 @@ test.describe('File Browser - Basic Functionality', () => {
 
     // Should be able to open file browser even when terminal is busy
     await fileBrowserButton.click();
-    
+
     // Wait for file browser modal - it might be accessible even when terminal is busy
     const fileBrowserModal = page.locator('.fixed.inset-0').first();
     const modalVisible = await fileBrowserModal.isVisible({ timeout: 3000 }).catch(() => false);
-    
+
     if (modalVisible) {
       await expect(fileBrowserModal).toBeVisible();
     }

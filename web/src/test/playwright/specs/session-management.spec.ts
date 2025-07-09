@@ -166,10 +166,10 @@ test.describe('Session Management', () => {
   test.skip('should display session metadata correctly', async ({ page }) => {
     // Create a session and navigate back
     const { sessionName } = await createAndNavigateToSession(page);
-    
+
     // Wait a moment to ensure session is saved
     await page.waitForTimeout(1000);
-    
+
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 

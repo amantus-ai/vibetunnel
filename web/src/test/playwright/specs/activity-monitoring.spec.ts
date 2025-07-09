@@ -27,11 +27,11 @@ test.describe.skip('Activity Monitoring', () => {
     // Navigate to session list first to see initial state
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    
+
     // Create a tracked session with a unique name
     const sessionName = sessionManager.generateSessionName('activity-status');
     const { sessionId } = await sessionManager.createTrackedSession(sessionName);
-    
+
     // Make sure session was created
     expect(sessionId).toBeTruthy();
 
@@ -41,13 +41,13 @@ test.describe.skip('Activity Monitoring', () => {
     // Go back to home page to see session list
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    
+
     // Wait for session cards to appear
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Find our specific session card by looking for our unique session name
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName });
-    
+
     // Wait for our specific card to be visible
     await expect(sessionCard).toBeVisible({ timeout: 10000 });
 
@@ -99,8 +99,9 @@ test.describe.skip('Activity Monitoring', () => {
 
     // Check for the activity ring around the card (active sessions have a green ring)
     const cardClasses = await sessionCard.getAttribute('class');
-    const hasActivityRing = cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
-    
+    const hasActivityRing =
+      cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
+
     // Also check if the status dot shows activity (pulsing animation)
     const statusDot = sessionCard.locator('.animate-pulse').first();
     const hasPulsingDot = await statusDot.isVisible().catch(() => false);
@@ -134,8 +135,9 @@ test.describe.skip('Activity Monitoring', () => {
 
     // Idle sessions should NOT have the activity ring or pulsing animation
     const cardClasses = await sessionCard.getAttribute('class');
-    const hasActivityRing = cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
-    
+    const hasActivityRing =
+      cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
+
     // Should not have pulsing animation when idle
     const pulsingElements = sessionCard.locator('.animate-pulse');
     const hasPulsingAnimation = (await pulsingElements.count()) > 0;
@@ -186,8 +188,9 @@ test.describe.skip('Activity Monitoring', () => {
 
     // The second session (most recent activity) should show activity indicators
     const session2Classes = await session2Card.getAttribute('class');
-    const session2HasActivityRing = session2Classes?.includes('ring-2') && session2Classes?.includes('ring-primary');
-    
+    const session2HasActivityRing =
+      session2Classes?.includes('ring-2') && session2Classes?.includes('ring-primary');
+
     // Check for pulsing animation on session 2
     const session2PulsingDot = session2Card.locator('.animate-pulse').first();
     const session2HasPulsing = await session2PulsingDot.isVisible().catch(() => false);
@@ -198,7 +201,7 @@ test.describe.skip('Activity Monitoring', () => {
     // Both sessions should have running status dots
     const session1Dot = session1Card.locator('.w-2.h-2.rounded-full.bg-status-success').first();
     const session2Dot = session2Card.locator('.w-2.h-2.rounded-full.bg-status-success').first();
-    
+
     await expect(session1Dot).toBeVisible();
     await expect(session2Dot).toBeVisible();
   });
@@ -227,8 +230,9 @@ test.describe.skip('Activity Monitoring', () => {
     // During a long-running command, the session should show as active
     // Check for activity ring or pulsing animation
     const cardClasses = await sessionCard.getAttribute('class');
-    const hasActivityRing = cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
-    
+    const hasActivityRing =
+      cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
+
     // Check for pulsing status dot
     const pulsingDot = sessionCard.locator('.animate-pulse').first();
     const hasPulsing = await pulsingDot.isVisible().catch(() => false);
@@ -241,10 +245,10 @@ test.describe.skip('Activity Monitoring', () => {
     await expect(statusDot).toBeVisible();
   });
 
-  test('should show last activity time for inactive sessions', async ({ page }) => {
+  test('should show last activity time for inactive sessions', async () => {
     // Skip this test as VibeTunnel doesn't display activity timestamps
     test.skip();
-    
+
     // The current implementation doesn't show relative time displays
     // Activity is shown through visual indicators only (colors, animations)
   });
@@ -255,14 +259,18 @@ test.describe.skip('Activity Monitoring', () => {
     const session2Name = sessionManager.generateSessionName('switch-activity-2');
 
     // Create and use first session
-    const { sessionId: session1Id } = await createAndNavigateToSession(page, { name: session1Name });
+    const { sessionId: session1Id } = await createAndNavigateToSession(page, {
+      name: session1Name,
+    });
     await assertTerminalReady(page, 15000);
     await page.keyboard.type('echo "First session"');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(500);
 
     // Create and switch to second session
-    const { sessionId: session2Id } = await createAndNavigateToSession(page, { name: session2Name });
+    await createAndNavigateToSession(page, {
+      name: session2Name,
+    });
     await assertTerminalReady(page, 15000);
     await page.keyboard.type('echo "Second session"');
     await page.keyboard.press('Enter');
@@ -290,8 +298,9 @@ test.describe.skip('Activity Monitoring', () => {
 
     // First session should show more recent activity
     const session1Classes = await session1Card.getAttribute('class');
-    const session1HasActivityRing = session1Classes?.includes('ring-2') && session1Classes?.includes('ring-primary');
-    
+    const session1HasActivityRing =
+      session1Classes?.includes('ring-2') && session1Classes?.includes('ring-primary');
+
     // Check for pulsing animation on session 1
     const session1PulsingDot = session1Card.locator('.animate-pulse').first();
     const session1HasPulsing = await session1PulsingDot.isVisible().catch(() => false);
@@ -302,7 +311,7 @@ test.describe.skip('Activity Monitoring', () => {
     // Both sessions should still be running
     const session1Dot = session1Card.locator('.w-2.h-2.rounded-full.bg-status-success').first();
     const session2Dot = session2Card.locator('.w-2.h-2.rounded-full.bg-status-success').first();
-    
+
     await expect(session1Dot).toBeVisible();
     await expect(session2Dot).toBeVisible();
   });
@@ -322,8 +331,12 @@ test.describe.skip('Activity Monitoring', () => {
     // Simulate WebSocket disconnection by evaluating in page context
     await page.evaluate(() => {
       // Find and close WebSocket connections
-      const ws = (window as any).ws || (window as any).socket;
-      if (ws && ws.close) {
+      const ws =
+        (window as unknown as { ws?: { close?: () => void }; socket?: { close?: () => void } })
+          .ws ||
+        (window as unknown as { ws?: { close?: () => void }; socket?: { close?: () => void } })
+          .socket;
+      if (ws?.close) {
         ws.close();
       }
     });
@@ -334,7 +347,7 @@ test.describe.skip('Activity Monitoring', () => {
     // Perform activity after reconnection
     await page.keyboard.type('echo "After reconnect"');
     await page.keyboard.press('Enter');
-    
+
     // Wait for command to process
     await page.waitForFunction(
       () => {
@@ -353,8 +366,9 @@ test.describe.skip('Activity Monitoring', () => {
 
     // Check for activity indicators after reconnection
     const cardClasses = await sessionCard.getAttribute('class');
-    const hasActivityRing = cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
-    
+    const hasActivityRing =
+      cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
+
     // Check for pulsing animation
     const pulsingDot = sessionCard.locator('.animate-pulse').first();
     const hasPulsing = await pulsingDot.isVisible().catch(() => false);
@@ -375,7 +389,13 @@ test.describe.skip('Activity Monitoring', () => {
     await assertTerminalReady(page, 15000);
 
     // Perform multiple activities in rapid sequence
-    const activities = ['echo "Activity 1"', 'echo "Activity 2"', 'echo "Activity 3"', 'pwd', 'date'];
+    const activities = [
+      'echo "Activity 1"',
+      'echo "Activity 2"',
+      'echo "Activity 3"',
+      'pwd',
+      'date',
+    ];
 
     for (const activity of activities) {
       await page.keyboard.type(activity);
@@ -393,8 +413,9 @@ test.describe.skip('Activity Monitoring', () => {
 
     // Should show aggregated activity from all the commands
     const cardClasses = await sessionCard.getAttribute('class');
-    const hasActivityRing = cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
-    
+    const hasActivityRing =
+      cardClasses?.includes('ring-2') && cardClasses?.includes('ring-primary');
+
     // Check for pulsing animation
     const pulsingDot = sessionCard.locator('.animate-pulse').first();
     const hasPulsing = await pulsingDot.isVisible().catch(() => false);

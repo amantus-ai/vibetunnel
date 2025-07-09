@@ -144,7 +144,7 @@ test.describe('Advanced Session Management', () => {
     // Navigate back to list to check status
     await page.goto('/');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
-    
+
     // Check status indicator - look for session card with running status
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
     await expect(sessionCard).toBeVisible({ timeout: 5000 });
