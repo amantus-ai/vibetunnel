@@ -14,6 +14,7 @@ import '../notification-status.js';
 import { authClient } from '../../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../../utils/ai-sessions.js';
 import { createLogger } from '../../utils/logger.js';
+import './mobile-menu.js';
 
 const logger = createLogger('session-header');
 
@@ -187,40 +188,62 @@ export class SessionHeader extends LitElement {
           <notification-status
             @open-settings=${() => this.onOpenSettings?.()}
           ></notification-status>
-          <button
-            class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
-            @click=${(e: Event) => {
-              e.stopPropagation();
-              this.onOpenFileBrowser?.();
-            }}
-            title="Browse Files (⌘O)"
-            data-testid="file-browser-button"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path
-                d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"
-              />
-            </svg>
-          </button>
-          <button
-            class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
-            @click=${() => this.onScreenshare?.()}
-            title="Start Screenshare"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <line x1="8" y1="21" x2="16" y2="21"/>
-              <line x1="12" y1="17" x2="12" y2="21"/>
-              <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
-            </svg>
-          </button>
-          <button
-            class="bg-dark-bg-elevated border border-dark-border rounded-lg px-3 py-2 font-mono text-xs text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0 width-selector-button"
-            @click=${() => this.onMaxWidthToggle?.()}
-            title="${this.widthTooltip}"
-          >
-            ${this.widthLabel}
-          </button>
+          
+          <!-- Desktop buttons - hidden on mobile -->
+          <div class="hidden sm:flex items-center gap-2">
+            <button
+              class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+              @click=${(e: Event) => {
+                e.stopPropagation();
+                this.onOpenFileBrowser?.();
+              }}
+              title="Browse Files (⌘O)"
+              data-testid="file-browser-button"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path
+                  d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"
+                />
+              </svg>
+            </button>
+            <button
+              class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+              @click=${() => this.onScreenshare?.()}
+              title="Start Screenshare"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+                <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
+              </svg>
+            </button>
+            <button
+              class="bg-dark-bg-elevated border border-dark-border rounded-lg px-3 py-2 font-mono text-xs text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0 width-selector-button"
+              @click=${() => this.onMaxWidthToggle?.()}
+              title="${this.widthTooltip}"
+            >
+              ${this.widthLabel}
+            </button>
+          </div>
+          
+          <!-- Mobile menu - visible only on mobile -->
+          <div class="flex sm:hidden">
+            <mobile-menu
+              .session=${this.session}
+              .widthLabel=${this.widthLabel}
+              .widthTooltip=${this.widthTooltip}
+              .onOpenFileBrowser=${this.onOpenFileBrowser}
+              .onScreenshare=${this.onScreenshare}
+              .onMaxWidthToggle=${this.onMaxWidthToggle}
+              .onOpenSettings=${this.onOpenSettings}
+              .onCreateSession=${this.onCreateSession}
+              .onSidebarToggle=${this.onSidebarToggle}
+              .showSidebarToggle=${this.showSidebarToggle}
+              .sidebarCollapsed=${this.sidebarCollapsed}
+            ></mobile-menu>
+          </div>
+          
           <width-selector
             .visible=${this.showWidthSelector}
             .terminalMaxCols=${this.terminalMaxCols}
@@ -230,6 +253,7 @@ export class SessionHeader extends LitElement {
             .onFontSizeChange=${(size: number) => this.onFontSizeChange?.(size)}
             .onClose=${() => this.handleCloseWidthSelector()}
           ></width-selector>
+          
           <div class="flex flex-col items-end gap-0">
             <span class="text-xs flex items-center gap-2 font-medium ${
               this.getStatusText() === 'running' ? 'text-status-success' : 'text-status-warning'
