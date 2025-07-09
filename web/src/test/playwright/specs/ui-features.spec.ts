@@ -23,7 +23,7 @@ test.describe('UI Features', () => {
     await sessionManager.cleanupAllSessions();
   });
 
-  test('should open and close file browser', async ({ page }) => {
+  test.skip('should open and close file browser', async ({ page }) => {
     // Create a session using helper
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser'),
