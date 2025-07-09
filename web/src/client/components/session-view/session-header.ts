@@ -92,7 +92,40 @@ export class SessionHeader extends LitElement {
         style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
       >
         <div class="flex items-center gap-3 min-w-0 flex-1">
-          <!-- Status dot - visible on mobile, on the left -->
+          <!-- Sidebar Toggle (when sidebar is collapsed) - visible on all screen sizes -->
+          ${
+            this.showSidebarToggle && this.sidebarCollapsed
+              ? html`
+                <button
+                  class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+                  @click=${() => this.onSidebarToggle?.()}
+                  title="Show sidebar (⌘B)"
+                  aria-label="Show sidebar"
+                  aria-expanded="false"
+                  aria-controls="sidebar"
+                >
+                  <!-- Right chevron icon to expand sidebar -->
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
+                  </svg>
+                </button>
+                
+                <!-- Create Session button (desktop only) -->
+                <button
+                  class="hidden sm:flex bg-accent-primary bg-opacity-10 border border-accent-primary text-accent-primary rounded-lg p-2 font-mono transition-all duration-200 hover:bg-accent-primary hover:text-dark-bg hover:shadow-glow-primary-sm flex-shrink-0"
+                  @click=${() => this.onCreateSession?.()}
+                  title="Create New Session (⌘K)"
+                  data-testid="create-session-button"
+                >
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+                  </svg>
+                </button>
+              `
+              : ''
+          }
+          
+          <!-- Status dot - visible on mobile, after sidebar toggle -->
           <div class="sm:hidden relative">
             <div class="w-2.5 h-2.5 rounded-full ${this.getStatusDotColor()}"></div>
             ${
@@ -101,41 +134,6 @@ export class SessionHeader extends LitElement {
                 : ''
             }
           </div>
-          
-          <!-- Sidebar Toggle and Create Session Buttons (desktop only when sidebar is collapsed) -->
-          ${
-            this.showSidebarToggle && this.sidebarCollapsed
-              ? html`
-                <div class="hidden sm:flex items-center gap-2">
-                  <button
-                    class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
-                    @click=${() => this.onSidebarToggle?.()}
-                    title="Show sidebar (⌘B)"
-                    aria-label="Show sidebar"
-                    aria-expanded="false"
-                    aria-controls="sidebar"
-                  >
-                    <!-- Right chevron icon to expand sidebar -->
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                    </svg>
-                  </button>
-                  
-                  <!-- Create Session button with primary color -->
-                  <button
-                    class="bg-accent-primary bg-opacity-10 border border-accent-primary text-accent-primary rounded-lg p-2 font-mono transition-all duration-200 hover:bg-accent-primary hover:text-dark-bg hover:shadow-glow-primary-sm flex-shrink-0"
-                    @click=${() => this.onCreateSession?.()}
-                    title="Create New Session (⌘K)"
-                    data-testid="create-session-button"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
-                    </svg>
-                  </button>
-                </div>
-              `
-              : ''
-          }
           ${
             this.showBackButton
               ? html`
