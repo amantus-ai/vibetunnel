@@ -1493,6 +1493,7 @@ export class SessionView extends LitElement {
           .terminalMaxCols=${this.terminalMaxCols}
           .terminalFontSize=${this.terminalFontSize}
           .customWidth=${this.customWidth}
+          .isMobile=${this.isMobile}
           .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
           .onClose=${() => {

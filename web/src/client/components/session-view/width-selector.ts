@@ -23,6 +23,7 @@ export class WidthSelector extends LitElement {
   @property({ type: Function }) onWidthSelect?: (width: number) => void;
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
   @property({ type: Function }) onClose?: () => void;
+  @property({ type: Boolean }) isMobile = false;
 
   private handleCustomWidthInput(e: Event) {
     const input = e.target as HTMLInputElement;
@@ -63,7 +64,19 @@ export class WidthSelector extends LitElement {
         style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
       >
         <div class="p-4">
-          <div class="text-sm font-semibold text-dark-text mb-3">Terminal Width</div>
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-sm font-semibold text-dark-text">Terminal Width</div>
+            <!-- Close button for mobile -->
+            <button
+              class="sm:hidden p-1.5 rounded-md text-dark-text-muted hover:text-dark-text hover:bg-dark-surface-hover transition-all duration-200"
+              @click=${() => this.onClose?.()}
+              aria-label="Close width selector"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+          </div>
           ${COMMON_TERMINAL_WIDTHS.map(
             (width) => html`
               <button

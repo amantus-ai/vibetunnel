@@ -19,11 +19,11 @@ export class MobileMenu extends LitElement {
   @property({ type: Object }) session: Session | null = null;
   @property({ type: String }) widthLabel = '';
   @property({ type: String }) widthTooltip = '';
+  @property({ type: Function }) onCreateSession?: () => void;
   @property({ type: Function }) onOpenFileBrowser?: () => void;
   @property({ type: Function }) onScreenshare?: () => void;
   @property({ type: Function }) onMaxWidthToggle?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
-  @property({ type: Function }) onCreateSession?: () => void;
 
   @state() private showMenu = false;
   @state() private focusedIndex = -1;
@@ -119,10 +119,8 @@ export class MobileMenu extends LitElement {
   private getMenuItems(): HTMLButtonElement[] {
     if (!this.showMenu) return [];
 
-    // Find all menu buttons (excluding the divider)
-    const buttons = Array.from(
-      this.querySelectorAll('[data-testid]:not(.border-t)')
-    ) as HTMLButtonElement[];
+    // Find all menu buttons (excluding dividers)
+    const buttons = Array.from(this.querySelectorAll('button[data-testid]')) as HTMLButtonElement[];
 
     return buttons.filter((btn) => btn.tagName === 'BUTTON');
   }
@@ -163,9 +161,24 @@ export class MobileMenu extends LitElement {
         style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
       >
         
-        <!-- File Browser -->
+        <!-- New Session -->
         <button
           class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 0 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
+          @click=${() => this.handleAction(this.onCreateSession)}
+          data-testid="mobile-new-session"
+          tabindex="${this.showMenu ? '0' : '-1'}"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z" clip-rule="evenodd"/>
+          </svg>
+          New Session
+        </button>
+        
+        <div class="border-t border-dark-border my-1"></div>
+        
+        <!-- File Browser -->
+        <button
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 1 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenFileBrowser)}
           data-testid="mobile-file-browser"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -178,7 +191,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Screenshare -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 1 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 2 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
           @click=${() => this.handleAction(this.onScreenshare)}
           data-testid="mobile-screenshare"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -194,7 +207,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Width Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 2 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 3 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
           @click=${() => this.handleAction(this.onMaxWidthToggle)}
           data-testid="mobile-width-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -205,11 +218,9 @@ export class MobileMenu extends LitElement {
           Width: ${this.widthLabel}
         </button>
         
-        <div class="border-t border-dark-border my-1"></div>
-        
         <!-- Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 3 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 4 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenSettings)}
           data-testid="mobile-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"
