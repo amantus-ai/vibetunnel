@@ -91,13 +91,6 @@ export class SessionView extends LitElement {
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
 
-  // Memoized width label calculations
-  private _cachedWidthLabel = '';
-  private _cachedWidthTooltip = '';
-  private _lastMaxCols = -1;
-  private _lastUserOverrideWidth: boolean | null = null;
-  private _lastInitialCols = -1;
-
   // Bound event handlers to ensure proper cleanup
   private boundHandleDragOver = this.handleDragOver.bind(this);
   private boundHandleDragLeave = this.handleDragLeave.bind(this);
@@ -799,35 +792,18 @@ export class SessionView extends LitElement {
     const userOverrideWidth = terminal?.userOverrideWidth || false;
     const initialCols = terminal?.initialCols || 0;
 
-    // Check if we need to recalculate
-    if (
-      this._lastMaxCols === this.terminalMaxCols &&
-      this._lastUserOverrideWidth === userOverrideWidth &&
-      this._lastInitialCols === initialCols &&
-      this._cachedWidthLabel !== ''
-    ) {
-      return this._cachedWidthLabel;
-    }
-
     // Only apply width restrictions to tunneled sessions (those with 'fwd_' prefix)
     const isTunneledSession = this.session?.id?.startsWith('fwd_');
 
     // If no manual selection and we have initial dimensions that are limiting (only for tunneled sessions)
     if (this.terminalMaxCols === 0 && initialCols > 0 && !userOverrideWidth && isTunneledSession) {
-      this._cachedWidthLabel = `≤${initialCols}`; // Shows "≤120" to indicate limited to session width
+      return `≤${initialCols}`; // Shows "≤120" to indicate limited to session width
     } else if (this.terminalMaxCols === 0) {
-      this._cachedWidthLabel = '∞';
+      return '∞';
     } else {
       const commonWidth = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
-      this._cachedWidthLabel = commonWidth ? commonWidth.label : this.terminalMaxCols.toString();
+      return commonWidth ? commonWidth.label : this.terminalMaxCols.toString();
     }
-
-    // Update cache keys
-    this._lastMaxCols = this.terminalMaxCols;
-    this._lastUserOverrideWidth = userOverrideWidth;
-    this._lastInitialCols = initialCols;
-
-    return this._cachedWidthLabel;
   }
 
   getWidthTooltip(): string {
@@ -835,32 +811,15 @@ export class SessionView extends LitElement {
     const userOverrideWidth = terminal?.userOverrideWidth || false;
     const initialCols = terminal?.initialCols || 0;
 
-    // Check if we need to recalculate (reuse same cache keys as width label)
-    if (
-      this._lastMaxCols === this.terminalMaxCols &&
-      this._lastUserOverrideWidth === userOverrideWidth &&
-      this._lastInitialCols === initialCols &&
-      this._cachedWidthTooltip !== ''
-    ) {
-      return this._cachedWidthTooltip;
-    }
-
     // Only apply width restrictions to tunneled sessions (those with 'fwd_' prefix)
     const isTunneledSession = this.session?.id?.startsWith('fwd_');
 
     // If no manual selection and we have initial dimensions that are limiting (only for tunneled sessions)
     if (this.terminalMaxCols === 0 && initialCols > 0 && !userOverrideWidth && isTunneledSession) {
-      this._cachedWidthTooltip = `Terminal width: Limited to native terminal width (${initialCols} columns)`;
+      return `Terminal width: Limited to native terminal width (${initialCols} columns)`;
     } else {
-      this._cachedWidthTooltip = `Terminal width: ${this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`}`;
+      return `Terminal width: ${this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`}`;
     }
-
-    // Update cache keys to keep in sync with getCurrentWidthLabel
-    this._lastMaxCols = this.terminalMaxCols;
-    this._lastUserOverrideWidth = userOverrideWidth;
-    this._lastInitialCols = initialCols;
-
-    return this._cachedWidthTooltip;
   }
 
   private handleFontSizeChange(newSize: number) {
