@@ -7,7 +7,8 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::{
-  session::{Session, SessionInfo},
+  api_client::ApiClient,
+  session::Session,
   socket_client::SocketClient,
   terminal::Terminal,
   TitleMode,
@@ -62,7 +63,32 @@ impl Forwarder {
     // Get current terminal size
     let (cols, rows) = self.terminal.size()?;
 
-    // Create PTY
+    // Get working directory
+    let cwd = std::env::current_dir()?;
+    
+    // Create session via API
+    let api_client = ApiClient::new(4020)?;
+    let session_response = api_client.create_session(
+      command.clone(),
+      cwd.to_string_lossy().to_string(),
+      command.join(" "),
+      cols,
+      rows,
+      Some(format!("{:?}", self.title_mode).to_lowercase()),
+    ).context("Failed to create session via API")?;
+    
+    // Update our session ID to match the server-assigned one
+    self.session_id = session_response.session_id.clone();
+    
+    // Wait for the server to create the session files
+    api_client.wait_for_session(&self.session_id)
+      .context("Timeout waiting for server to create session")?;
+
+    // Load the session info created by the server
+    let session = Session::load(&self.session_id)
+      .context("Failed to load session created by server")?;
+
+    // Create PTY for local display
     let pty_system = portable_pty::native_pty_system();
     let pair = pty_system
       .openpty(PtySize {
@@ -85,8 +111,6 @@ impl Forwarder {
       std::env::var("TERM").unwrap_or_else(|_| "xterm-256color".to_string()),
     );
 
-    // Get working directory
-    let cwd = std::env::current_dir()?;
     cmd.cwd(&cwd);
 
     // Spawn process
@@ -94,26 +118,6 @@ impl Forwarder {
       .slave
       .spawn_command(cmd)
       .context("Failed to spawn command")?;
-
-    let pid = child.process_id().unwrap_or(0) as i32;
-
-    // Create session
-    let session_info = SessionInfo {
-      id: self.session_id.clone(),
-      name: command.join(" "),
-      command: command.clone(),
-      pid: Some(pid as u32),
-      created_at: chrono::Utc::now(),
-      status: "running".to_string(),
-      working_dir: cwd.to_string_lossy().to_string(),
-      cols,
-      rows,
-      exit_code: None,
-      title_mode: Some(format!("{:?}", self.title_mode).to_lowercase()),
-      is_external_terminal: true,
-    };
-
-    let session = Session::create(session_info)?;
 
     // Set environment variable for nested sessions
     std::env::set_var("VIBETUNNEL_SESSION_ID", &self.session_id);
@@ -150,8 +154,7 @@ impl Forwarder {
     // Restore terminal
     self.terminal.leave_raw_mode()?;
 
-    // Clean up session
-    session.cleanup()?;
+    // Note: No session cleanup needed - server manages all session state
 
     result
   }
