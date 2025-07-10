@@ -4,7 +4,8 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use parking_lot::Mutex;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 use std::io::Read;
@@ -153,7 +154,7 @@ impl NativePty {
 
     // Store in global manager
     {
-      let mut manager = PTY_MANAGER.lock().unwrap();
+      let mut manager = PTY_MANAGER.lock();
       manager.sessions.insert(
         session_id.clone(),
         PtySession {
@@ -179,7 +180,7 @@ impl NativePty {
   pub fn write(&self, data: Buffer) -> Result<()> {
     use std::io::Write;
 
-    let mut manager = PTY_MANAGER.lock().unwrap();
+    let mut manager = PTY_MANAGER.lock();
 
     if let Some(session) = manager.sessions.get_mut(&self.session_id) {
       // Use the stored writer - no need to take it
@@ -201,7 +202,7 @@ impl NativePty {
 
   #[napi]
   pub fn resize(&self, cols: u16, rows: u16) -> Result<()> {
-    let mut manager = PTY_MANAGER.lock().unwrap();
+    let mut manager = PTY_MANAGER.lock();
 
     if let Some(session) = manager.sessions.get_mut(&self.session_id) {
       session
@@ -227,7 +228,7 @@ impl NativePty {
 
   #[napi]
   pub fn kill(&self, signal: Option<String>) -> Result<()> {
-    let mut manager = PTY_MANAGER.lock().unwrap();
+    let mut manager = PTY_MANAGER.lock();
 
     if let Some(session) = manager.sessions.get_mut(&self.session_id) {
       #[cfg(unix)]
@@ -261,7 +262,7 @@ impl NativePty {
 
   #[napi]
   pub fn read_output(&self, timeout_ms: Option<u32>) -> Result<Option<Buffer>> {
-    let manager = PTY_MANAGER.lock().unwrap();
+    let manager = PTY_MANAGER.lock();
 
     if let Some(session) = manager.sessions.get(&self.session_id) {
       // Try to receive from the channel
@@ -293,7 +294,7 @@ impl NativePty {
 
   #[napi]
   pub fn read_all_output(&self) -> Result<Option<Buffer>> {
-    let manager = PTY_MANAGER.lock().unwrap();
+    let manager = PTY_MANAGER.lock();
 
     if let Some(session) = manager.sessions.get(&self.session_id) {
       let mut all_data = Vec::new();
@@ -315,7 +316,7 @@ impl NativePty {
 
   #[napi]
   pub fn check_exit_status(&self) -> Result<Option<i32>> {
-    let mut manager = PTY_MANAGER.lock().unwrap();
+    let mut manager = PTY_MANAGER.lock();
 
     if let Some(session) = manager.sessions.get_mut(&self.session_id) {
       // Try to get exit status without blocking
@@ -341,7 +342,7 @@ impl NativePty {
 
   #[napi]
   pub fn destroy(&self) -> Result<()> {
-    let mut manager = PTY_MANAGER.lock().unwrap();
+    let mut manager = PTY_MANAGER.lock();
 
     // Remove session from manager
     if let Some(mut session) = manager.sessions.remove(&self.session_id) {
