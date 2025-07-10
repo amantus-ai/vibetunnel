@@ -59,13 +59,8 @@ export class ResizeCoordinator {
     // This prevents keyboard show/hide from causing reflows
     if (isMobile && this.initialResizeComplete && this.lastDimensions) {
       const shouldResize = this.lastDimensions.cols !== cols;
-      // Always update lastDimensions to keep state current, even if not resizing
-      if (shouldResize) {
-        this.lastDimensions = { cols, rows };
-      } else {
-        // Update rows even when skipping resize to keep dimensions accurate
-        this.lastDimensions.rows = rows;
-      }
+      // Always update lastDimensions to keep state current
+      this.lastDimensions = { cols, rows };
       return shouldResize;
     }
 

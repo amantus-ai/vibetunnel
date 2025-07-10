@@ -794,7 +794,7 @@ export class SessionView extends LitElement {
     }
   }
 
-  private getCurrentWidthLabel(): string {
+  getCurrentWidthLabel(): string {
     const terminal = this.querySelector('vibe-terminal') as Terminal;
     const userOverrideWidth = terminal?.userOverrideWidth || false;
     const initialCols = terminal?.initialCols || 0;
@@ -830,7 +830,7 @@ export class SessionView extends LitElement {
     return this._cachedWidthLabel;
   }
 
-  private getWidthTooltip(): string {
+  getWidthTooltip(): string {
     const terminal = this.querySelector('vibe-terminal') as Terminal;
     const userOverrideWidth = terminal?.userOverrideWidth || false;
     const initialCols = terminal?.initialCols || 0;

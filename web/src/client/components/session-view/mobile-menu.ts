@@ -26,16 +26,21 @@ export class MobileMenu extends LitElement {
   @property({ type: Function }) onCreateSession?: () => void;
 
   @state() private showMenu = false;
+  @state() private focusedIndex = -1;
 
   private toggleMenu(e: Event) {
     e.stopPropagation();
     this.showMenu = !this.showMenu;
+    if (!this.showMenu) {
+      this.focusedIndex = -1;
+    }
   }
 
   private handleAction(callback?: () => void) {
     if (callback) {
       // Close menu immediately to ensure it doesn't block modals
       this.showMenu = false;
+      this.focusedIndex = -1;
       // Call the callback after a brief delay to ensure menu is closed
       setTimeout(() => {
         callback();
@@ -61,6 +66,7 @@ export class MobileMenu extends LitElement {
     const path = e.composedPath();
     if (!path.includes(this)) {
       this.showMenu = false;
+      this.focusedIndex = -1;
     }
   };
 
@@ -68,17 +74,66 @@ export class MobileMenu extends LitElement {
     // Only handle if menu is open
     if (!this.showMenu) return;
 
-    // Close on Escape
     if (e.key === 'Escape') {
       e.preventDefault();
       this.showMenu = false;
+      this.focusedIndex = -1;
       // Focus the menu button
       const button = this.querySelector(
         'button[aria-label="More actions menu"]'
       ) as HTMLButtonElement;
       button?.focus();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      // Add arrow key navigation logic
+      e.preventDefault();
+      this.navigateMenu(e.key === 'ArrowDown' ? 1 : -1);
+    } else if (e.key === 'Enter' && this.focusedIndex >= 0) {
+      e.preventDefault();
+      this.selectFocusedItem();
     }
   };
+
+  private navigateMenu(direction: number) {
+    const menuItems = this.getMenuItems();
+    if (menuItems.length === 0) return;
+
+    // Calculate new index
+    let newIndex = this.focusedIndex + direction;
+
+    // Handle wrapping
+    if (newIndex < 0) {
+      newIndex = menuItems.length - 1;
+    } else if (newIndex >= menuItems.length) {
+      newIndex = 0;
+    }
+
+    this.focusedIndex = newIndex;
+
+    // Focus the element
+    const focusedItem = menuItems[newIndex];
+    if (focusedItem) {
+      focusedItem.focus();
+    }
+  }
+
+  private getMenuItems(): HTMLButtonElement[] {
+    if (!this.showMenu) return [];
+
+    // Find all menu buttons (excluding the divider)
+    const buttons = Array.from(
+      this.querySelectorAll('[data-testid]:not(.border-t)')
+    ) as HTMLButtonElement[];
+
+    return buttons.filter((btn) => btn.tagName === 'BUTTON');
+  }
+
+  private selectFocusedItem() {
+    const menuItems = this.getMenuItems();
+    const focusedItem = menuItems[this.focusedIndex];
+    if (focusedItem) {
+      focusedItem.click();
+    }
+  }
 
   render() {
     return html`
@@ -86,6 +141,7 @@ export class MobileMenu extends LitElement {
         <button
           class="p-2 ${this.showMenu ? 'text-accent-primary border-accent-primary' : 'text-dark-text border-dark-border'} hover:border-accent-primary hover:text-accent-primary rounded-lg"
           @click=${this.toggleMenu}
+          @keydown=${this.handleMenuButtonKeyDown}
           title="More actions"
           aria-label="More actions menu"
           aria-expanded=${this.showMenu}
@@ -109,9 +165,10 @@ export class MobileMenu extends LitElement {
         
         <!-- File Browser -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 0 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenFileBrowser)}
           data-testid="mobile-file-browser"
+          tabindex="${this.showMenu ? '0' : '-1'}"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"/>
@@ -121,9 +178,10 @@ export class MobileMenu extends LitElement {
         
         <!-- Screenshare -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 1 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
           @click=${() => this.handleAction(this.onScreenshare)}
           data-testid="mobile-screenshare"
+          tabindex="${this.showMenu ? '0' : '-1'}"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="3" width="20" height="14" rx="2"/>
@@ -136,9 +194,10 @@ export class MobileMenu extends LitElement {
         
         <!-- Width Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 2 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
           @click=${() => this.handleAction(this.onMaxWidthToggle)}
           data-testid="mobile-width-settings"
+          tabindex="${this.showMenu ? '0' : '-1'}"
         >
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
             <path d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z"/>
@@ -150,9 +209,10 @@ export class MobileMenu extends LitElement {
         
         <!-- Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 3 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenSettings)}
           data-testid="mobile-settings"
+          tabindex="${this.showMenu ? '0' : '-1'}"
         >
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
@@ -162,4 +222,16 @@ export class MobileMenu extends LitElement {
       </div>
     `;
   }
+
+  private handleMenuButtonKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'ArrowDown' && this.showMenu) {
+      e.preventDefault();
+      // Focus first menu item when pressing down on the menu button
+      this.focusedIndex = 0;
+      const menuItems = this.getMenuItems();
+      if (menuItems[0]) {
+        menuItems[0].focus();
+      }
+    }
+  };
 }

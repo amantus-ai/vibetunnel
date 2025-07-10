@@ -35,6 +35,12 @@ interface SessionViewTestInterface extends SessionView {
   keyboardHeight: number;
   updateTerminalTransform: () => void;
   _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null;
+  // Cache-related properties for testing
+  _cachedWidthLabel: string;
+  _cachedWidthTooltip: string;
+  _lastMaxCols: number;
+  _lastUserOverrideWidth: boolean | null;
+  _lastInitialCols: number;
 }
 
 // Test interface for Terminal element
@@ -655,15 +661,28 @@ describe('SessionView', () => {
       mockSession.initialRows = 30;
 
       element.session = mockSession;
+      element.terminalMaxCols = 0; // No manual width selection
       await element.updateComplete;
 
       const terminal = element.querySelector('vibe-terminal') as Terminal;
-      if (terminal) {
-        terminal.initialCols = 120;
-        terminal.initialRows = 30;
-        // Simulate no user override
-        terminal.userOverrideWidth = false;
-      }
+      expect(terminal).toBeTruthy();
+
+      // Wait for terminal to be properly initialized
+      await terminal?.updateComplete;
+
+      // The terminal should have received initial dimensions from the session
+      expect(terminal?.initialCols).toBe(120);
+      expect(terminal?.initialRows).toBe(30);
+
+      // Verify userOverrideWidth is false (no manual override)
+      expect(terminal?.userOverrideWidth).toBe(false);
+
+      // Force cache invalidation by clearing cached values
+      (element as SessionViewTestInterface)._cachedWidthLabel = '';
+      (element as SessionViewTestInterface)._cachedWidthTooltip = '';
+      (element as SessionViewTestInterface)._lastMaxCols = -1;
+      (element as SessionViewTestInterface)._lastUserOverrideWidth = null;
+      (element as SessionViewTestInterface)._lastInitialCols = -1;
 
       // With no manual selection (terminalMaxCols = 0) and initial dimensions,
       // the label should show "≤120" for tunneled sessions
