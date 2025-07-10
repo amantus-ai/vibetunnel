@@ -5,4 +5,7 @@ export const config = {
 
   // How often to check cast file size (in milliseconds)
   CAST_SIZE_CHECK_INTERVAL: 60 * 1000, // 1 minute
+
+  // When truncating, what percentage of the max size to keep
+  CAST_TRUNCATION_TARGET_PERCENTAGE: 0.8, // 80%
 };
