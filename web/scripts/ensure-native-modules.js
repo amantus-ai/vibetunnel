@@ -11,11 +11,29 @@ const { execSync } = require('child_process');
 
 console.log('Ensuring native modules are built for tests...');
 
-// Check if vibetunnel-pty addon is built
-const vibetunnelPtyPath = path.join(__dirname, '../vibetunnel-pty/index.node');
+// Check if native-pty addon is built
+const nativePtyPath = path.join(__dirname, '../native-pty/index.node');
 
+if (!fs.existsSync(nativePtyPath)) {
+  console.log('Native PTY addon not found, building...');
+  
+  try {
+    // Build the native addon
+    execSync('cd native-pty && npm run build', {
+      stdio: 'inherit',
+      shell: true,
+      cwd: path.join(__dirname, '..')
+    });
+  } catch (e) {
+    console.error('Failed to build native PTY addon:', e.message);
+    process.exit(1);
+  }
+}
+
+// Also check the old vibetunnel-pty for compatibility
+const vibetunnelPtyPath = path.join(__dirname, '../vibetunnel-pty/index.node');
 if (!fs.existsSync(vibetunnelPtyPath)) {
-  console.log('VibeTunnel PTY addon not found, building...');
+  console.log('VibeTunnel PTY addon (legacy) not found, building...');
   
   try {
     // Build the native addon
@@ -25,8 +43,8 @@ if (!fs.existsSync(vibetunnelPtyPath)) {
       cwd: path.join(__dirname, '..')
     });
   } catch (e) {
-    console.error('Failed to build VibeTunnel PTY addon:', e.message);
-    process.exit(1);
+    console.error('Failed to build VibeTunnel PTY addon (legacy):', e.message);
+    // Don't exit, this is optional
   }
 }
 
