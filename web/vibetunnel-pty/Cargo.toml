@@ -7,6 +7,9 @@ members = [
 resolver = "2"
 default-members = ["crates/napi-addon"]
 
+[workspace.package]
+rust-version = "1.80.0"
+
 [workspace.dependencies]
 anyhow = "1"
 portable-pty = { version = "0.8", default-features = false }
