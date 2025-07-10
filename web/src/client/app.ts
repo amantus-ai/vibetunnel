@@ -159,6 +159,37 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
+    const isMacOS = navigator.platform.toLowerCase().includes('mac');
+
+    // Allow browser shortcuts to pass through - check these FIRST
+    // Cmd+Shift+A (Chrome tab search) on macOS
+    if (isMacOS && e.metaKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+      return;
+    }
+
+    // Cmd+1-9 (tab switching) on macOS
+    if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
+      return;
+    }
+
+    // Ctrl+1-9 (tab switching) on non-macOS
+    if (!isMacOS && e.ctrlKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
+      return;
+    }
+
+    // Alt+Arrow keys for browser navigation
+    if (e.altKey && !e.ctrlKey && !e.metaKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      return;
+    }
+
+    // Cmd+K on macOS or Ctrl+K on non-macOS
+    if (
+      (isMacOS && e.metaKey && e.key.toLowerCase() === 'k') ||
+      (!isMacOS && e.ctrlKey && e.key.toLowerCase() === 'k')
+    ) {
+      return;
+    }
+
     // Handle Cmd+O / Ctrl+O to open file browser
     if ((e.metaKey || e.ctrlKey) && e.key === 'o' && this.currentView === 'list') {
       e.preventDefault();

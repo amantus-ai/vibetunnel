@@ -39,17 +39,18 @@ describe('InputManager', () => {
   });
 
   describe('Option/Alt + Arrow key navigation', () => {
-    it('should send Escape+b for Alt+Left arrow', async () => {
+    it('should now pass through Alt+Arrow keys for browser navigation', async () => {
       const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
       vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
 
-      const event = new KeyboardEvent('keydown', {
+      const leftEvent = new KeyboardEvent('keydown', {
         key: 'ArrowLeft',
         altKey: true,
       });
 
-      await inputManager.handleKeyboardInput(event);
+      await inputManager.handleKeyboardInput(leftEvent);
 
+      // Alt+Arrow keys now send regular arrow keys (browser will handle Alt modifier)
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/sessions/test-session-id/input',
         expect.objectContaining({
@@ -57,21 +58,19 @@ describe('InputManager', () => {
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
-          body: JSON.stringify({ text: '\x1bb' }),
+          body: JSON.stringify({ key: 'arrow_left' }),
         })
       );
-    });
 
-    it('should send Escape+f for Alt+Right arrow', async () => {
-      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
+      vi.mocked(global.fetch).mockClear();
       vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
 
-      const event = new KeyboardEvent('keydown', {
+      const rightEvent = new KeyboardEvent('keydown', {
         key: 'ArrowRight',
         altKey: true,
       });
 
-      await inputManager.handleKeyboardInput(event);
+      await inputManager.handleKeyboardInput(rightEvent);
 
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/sessions/test-session-id/input',
@@ -80,7 +79,7 @@ describe('InputManager', () => {
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
-          body: JSON.stringify({ text: '\x1bf' }),
+          body: JSON.stringify({ key: 'arrow_right' }),
         })
       );
     });
@@ -214,6 +213,68 @@ describe('InputManager', () => {
 
       expect(mockSession.status).toBe('exited');
       expect(mockCallbacks.requestUpdate).toHaveBeenCalled();
+    });
+  });
+
+  describe('Browser shortcut detection', () => {
+    it('should detect Cmd+Shift+A as browser shortcut on macOS', () => {
+      Object.defineProperty(navigator, 'platform', {
+        writable: true,
+        value: 'MacIntel',
+      });
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'A',
+        metaKey: true,
+        shiftKey: true,
+      });
+
+      expect(inputManager.isKeyboardShortcut(event)).toBe(true);
+    });
+
+    it('should detect Alt+Arrow keys as browser shortcuts', () => {
+      const leftEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowLeft',
+        altKey: true,
+      });
+
+      const rightEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        altKey: true,
+      });
+
+      expect(inputManager.isKeyboardShortcut(leftEvent)).toBe(true);
+      expect(inputManager.isKeyboardShortcut(rightEvent)).toBe(true);
+    });
+
+    it('should detect Cmd+K as browser shortcut on macOS', () => {
+      Object.defineProperty(navigator, 'platform', {
+        writable: true,
+        value: 'MacIntel',
+      });
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'k',
+        metaKey: true,
+      });
+
+      expect(inputManager.isKeyboardShortcut(event)).toBe(true);
+    });
+
+    it('should detect Cmd+1-9 as browser shortcuts on macOS', () => {
+      Object.defineProperty(navigator, 'platform', {
+        writable: true,
+        value: 'MacIntel',
+      });
+
+      for (let i = 1; i <= 9; i++) {
+        const event = new KeyboardEvent('keydown', {
+          key: i.toString(),
+          metaKey: true,
+        });
+
+        expect(inputManager.isKeyboardShortcut(event)).toBe(true);
+      }
     });
   });
 });

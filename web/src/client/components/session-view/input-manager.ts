@@ -79,19 +79,8 @@ export class InputManager {
 
     // Handle Alt+ combinations
     if (altKey && !ctrlKey && !metaKey && !shiftKey) {
-      // Alt+Left Arrow - Move to previous word
-      if (key === 'ArrowLeft') {
-        consumeEvent(e);
-        await this.sendInput('\x1bb'); // ESC+b
-        return;
-      }
-      // Alt+Right Arrow - Move to next word
-      if (key === 'ArrowRight') {
-        consumeEvent(e);
-        await this.sendInput('\x1bf'); // ESC+f
-        return;
-      }
-      // Alt+Backspace - Delete word backward
+      // Note: Alt+Arrow keys are now allowed to pass through for browser navigation
+      // Only handle Alt+Backspace for word deletion
       if (key === 'Backspace') {
         consumeEvent(e);
         await this.sendInput('\x17'); // Ctrl+W
@@ -291,23 +280,43 @@ export class InputManager {
       return true;
     }
 
+    // Allow Cmd+Shift+A (Chrome tab search) on macOS - check lowercase too
+    if (isMacOS && e.metaKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+      return true;
+    }
+
+    // Allow Cmd+1-9 (tab switching) on macOS
+    if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
+      return true;
+    }
+
+    // Allow Ctrl+1-9 (tab switching) on non-macOS
+    if (!isMacOS && e.ctrlKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
+      return true;
+    }
+
+    // Allow Alt+Arrow keys for browser navigation
+    if (e.altKey && !e.ctrlKey && !e.metaKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      return true;
+    }
+
     // Allow Ctrl+A (select all), Ctrl+F (find), Ctrl+R (refresh), Ctrl+C/V (copy/paste), etc.
     if (
       !isMacOS &&
       e.ctrlKey &&
       !e.shiftKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
+      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v', 'k'].includes(e.key.toLowerCase())
     ) {
       return true;
     }
 
-    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), etc. on macOS
+    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), Cmd+K (new terminal), etc. on macOS
     if (
       isMacOS &&
       e.metaKey &&
       !e.shiftKey &&
       !e.altKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
+      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v', 'k'].includes(e.key.toLowerCase())
     ) {
       return true;
     }
