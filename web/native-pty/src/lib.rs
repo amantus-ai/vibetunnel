@@ -292,16 +292,36 @@ impl NativePty {
     }
   }
 
+  // TODO: This polling approach is fundamentally flawed for Node.js performance.
+  // The correct solution is to use NAPI ThreadsafeFunction to push data from
+  // the reader thread directly to JavaScript callbacks, eliminating polling entirely.
+  // This would require:
+  // 1. Store a ThreadsafeFunction callback in NativePty
+  // 2. Call it from the reader thread when data arrives
+  // 3. Remove the polling setInterval from native-addon-adapter.ts
+  // Current implementation minimizes blocking but doesn't eliminate the architectural issue.
   #[napi]
   pub fn read_all_output(&self) -> Result<Option<Buffer>> {
-    let manager = PTY_MANAGER.lock();
+    // Use try_lock to avoid blocking - if we can't get the lock immediately, return None
+    let manager = match PTY_MANAGER.try_lock() {
+      Some(guard) => guard,
+      None => return Ok(None), // Lock is held, return immediately to avoid blocking
+    };
 
     if let Some(session) = manager.sessions.get(&self.session_id) {
       let mut all_data = Vec::new();
+      let mut bytes_read = 0;
+      const MAX_BYTES_PER_CALL: usize = 65536; // 64KB limit per call
       
-      // Read all available data from the channel
-      while let Ok(data) = session.output_receiver.try_recv() {
-        all_data.extend_from_slice(&data);
+      // Read available data with a limit to prevent blocking too long
+      while bytes_read < MAX_BYTES_PER_CALL {
+        match session.output_receiver.try_recv() {
+          Ok(data) => {
+            bytes_read += data.len();
+            all_data.extend_from_slice(&data);
+          }
+          Err(_) => break, // No more data available
+        }
       }
 
       if all_data.is_empty() {

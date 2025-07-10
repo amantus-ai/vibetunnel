@@ -183,10 +183,17 @@ class NativeAddonPty extends EventEmitter implements IPty {
   }
 
   private startPolling(): void {
-    // Poll for output with much lower frequency since we have a dedicated reader thread
-    // and can get all buffered data at once.
-    // IMPORTANT: readAllOutput() is non-blocking - it uses try_recv() internally
-    // which returns immediately without blocking the event loop.
+    // WARNING: This polling approach is a critical performance flaw.
+    // Even though readAllOutput() attempts to minimize blocking with try_lock and
+    // data limits, it still executes synchronously on the Node.js main thread.
+    // This blocks the event loop during mutex acquisition, data copying, and buffer creation.
+    //
+    // TODO: Replace with proper async I/O using NAPI ThreadsafeFunction:
+    // 1. Rust reader thread should push data via ThreadsafeFunction callbacks
+    // 2. Eliminate this polling entirely
+    // 3. Use EventEmitter pattern triggered by Rust, not polling from JS
+    //
+    // Current mitigation: try_lock and 64KB read limit reduce but don't eliminate blocking
     this.pollInterval = setInterval(() => {
       if (this.closed) {
         this.stopPolling();
@@ -223,7 +230,7 @@ class NativeAddonPty extends EventEmitter implements IPty {
         this.emit('exit', 1, 0);
         this.stopPolling();
       }
-    }, 5); // Reduced to 5ms since we get all buffered data at once
+    }, 10); // 10ms - higher interval reduces event loop blocking frequency
   }
 
   private stopPolling(): void {
