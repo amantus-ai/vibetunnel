@@ -16,6 +16,7 @@ struct VibeTunnelApp: App {
     @State var serverManager = ServerManager.shared
     @State var ngrokService = NgrokService.shared
     @State var tailscaleService = TailscaleService.shared
+    @State var cloudflareService = CloudflareService.shared
     @State var permissionManager = SystemPermissionManager.shared
     @State var terminalLauncher = TerminalLauncher.shared
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
@@ -45,6 +46,7 @@ struct VibeTunnelApp: App {
                     .environment(serverManager)
                     .environment(ngrokService)
                     .environment(tailscaleService)
+                    .environment(cloudflareService)
                     .environment(permissionManager)
                     .environment(terminalLauncher)
                     .environment(gitRepositoryMonitor)
@@ -64,6 +66,7 @@ struct VibeTunnelApp: App {
                         .environment(serverManager)
                         .environment(ngrokService)
                         .environment(tailscaleService)
+                        .environment(cloudflareService)
                         .environment(permissionManager)
                         .environment(terminalLauncher)
                         .environment(gitRepositoryMonitor)
@@ -83,6 +86,7 @@ struct VibeTunnelApp: App {
                     .environment(serverManager)
                     .environment(ngrokService)
                     .environment(tailscaleService)
+                    .environment(cloudflareService)
                     .environment(permissionManager)
                     .environment(terminalLauncher)
                     .environment(gitRepositoryMonitor)
