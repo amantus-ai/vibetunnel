@@ -406,10 +406,20 @@ impl NativePty {
       // Send shutdown signal to reader thread
       let _ = session.shutdown_sender.send(());
 
-      // Kill the child process if still running
-      if let Err(e) = session.child.kill() {
-        // It's okay if the process is already dead
-        eprintln!("Failed to kill child process: {}", e);
+      // Check if process is still running before trying to kill
+      match session.child.try_wait() {
+        Ok(Some(_)) => {
+          // Process already exited, nothing to do
+        },
+        Ok(None) => {
+          // Process still running, kill it
+          if let Err(e) = session.child.kill() {
+            eprintln!("Failed to kill child process: {}", e);
+          }
+        },
+        Err(e) => {
+          eprintln!("Failed to check process status: {}", e);
+        }
       }
 
       // Wait for the child to fully exit
@@ -438,30 +448,56 @@ pub fn init_pty_system() -> Result<()> {
 #[napi]
 pub struct ActivityDetector {
   claude_pattern: regex::Regex,
+  ansi_pattern: regex::Regex,
 }
 
 #[napi]
 impl ActivityDetector {
   #[napi(constructor)]
   pub fn new() -> Result<Self> {
+    // Match Claude status lines:
+    // Format 1: ✻ Crafting… (205s · ↑ 6.0k tokens · <any text> to interrupt)
+    // Format 2: ✻ Measuring… (6s ·  100 tokens · esc to interrupt)
+    // Format 3: ⏺ Calculating… (0s) - simpler format without tokens/interrupt
+    // Format 4: ✳ Measuring… (120s · ⚒ 671 tokens · esc to interrupt) - with hammer symbol
+    // Note: We match ANY non-whitespace character as the indicator since Claude uses many symbols
     Ok(Self {
-      claude_pattern: regex::Regex::new(r"✻\s+([^(]+)\s*\(([^)]+)\)")
+      claude_pattern: regex::Regex::new(r"(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)")
         .map_err(|e| Error::from_reason(format!("Regex error: {}", e)))?,
+      ansi_pattern: regex::Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]")
+        .map_err(|e| Error::from_reason(format!("ANSI regex error: {}", e)))?,
     })
   }
 
   #[napi]
   pub fn detect(&self, data: Buffer) -> Option<Activity> {
     let text = String::from_utf8_lossy(&data);
+    
+    // Strip ANSI escape codes for cleaner matching (same as TypeScript version)
+    let clean_text = self.ansi_pattern.replace_all(&text, "");
 
-    if let Some(captures) = self.claude_pattern.captures(&text) {
-      let status = captures.get(1)?.as_str().to_string();
-      let details = captures.get(2)?.as_str().to_string();
+    if let Some(captures) = self.claude_pattern.captures(&clean_text) {
+      // Extract captures: indicator, action, duration, direction (optional), tokens (optional)
+      let indicator = captures.get(1)?.as_str();
+      let action = captures.get(2)?.as_str();
+      let duration = captures.get(3)?.as_str();
+      let direction = captures.get(4).map(|m| m.as_str());
+      let tokens = captures.get(5).map(|m| m.as_str());
+
+      // Format the status string similar to TypeScript version
+      let status = action.to_string();
+      
+      // Format details based on whether we have token information
+      let details = if let (Some(dir), Some(tok)) = (direction, tokens) {
+        Some(format!("{}s, {}{}k", duration, dir, tok))
+      } else {
+        Some(format!("{}s", duration))
+      };
 
       return Some(Activity {
         timestamp: chrono::Utc::now().timestamp_millis() as f64,
-        status,
-        details: Some(details),
+        status: format!("{} {}", indicator, status),
+        details,
       });
     }
 
@@ -474,5 +510,48 @@ pub struct Activity {
   pub timestamp: f64,
   pub status: String,
   pub details: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    
+    // Test only the pure Rust parts that don't require NAPI
+    #[test]
+    fn test_activity_detector_regex() {
+        // Test regex creation
+        let claude_pattern = regex::Regex::new(r"(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)").unwrap();
+        let ansi_pattern = regex::Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap();
+        
+        // Test pattern matching
+        let text = "✻ Crafting… (10s)";
+        assert!(claude_pattern.is_match(text));
+        
+        // Test ANSI stripping
+        let ansi_text = "\x1b[32mHello\x1b[0m";
+        let clean = ansi_pattern.replace_all(ansi_text, "");
+        assert_eq!(clean, "Hello");
+    }
+    
+    #[test]
+    fn test_activity_pattern_variations() {
+        let pattern = regex::Regex::new(r"(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)").unwrap();
+        
+        let test_cases = vec![
+            ("✻ Crafting… (10s)", true),
+            ("⏺ Calculating… (0s)", true),
+            ("✻ Processing… (42s · ↑ 2.5k tokens · esc to interrupt)", true),
+            ("Normal text", false),
+            ("✻ Missing ellipsis (10s)", false),
+        ];
+        
+        for (text, should_match) in test_cases {
+            assert_eq!(
+                pattern.is_match(text),
+                should_match,
+                "Pattern match failed for: {}",
+                text
+            );
+        }
+    }
 }
 

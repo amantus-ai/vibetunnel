@@ -6,7 +6,6 @@ import { suppressXtermErrors } from './shared/suppress-xterm-errors.js';
 
 suppressXtermErrors();
 
-import { startVibeTunnelForward } from './server/fwd.js';
 import { startVibeTunnelServer } from './server/server.js';
 import { closeLogger, createLogger, initLogger } from './server/utils/logger.js';
 import { VERSION } from './server/version.js';
@@ -55,11 +54,9 @@ if (!module.parent && (require.main === module || require.main === undefined)) {
     console.log(`VibeTunnel Server v${VERSION}`);
     process.exit(0);
   } else if (process.argv[2] === 'fwd') {
-    startVibeTunnelForward(process.argv.slice(3)).catch((error) => {
-      logger.error('Fatal error:', error);
-      closeLogger();
-      process.exit(1);
-    });
+    logger.error('The fwd command has been replaced by the vt-pipe Rust tool.');
+    logger.error('Please use: vt <command> [args...]');
+    process.exit(1);
   } else {
     logger.log('Starting VibeTunnel server...');
     startVibeTunnelServer();

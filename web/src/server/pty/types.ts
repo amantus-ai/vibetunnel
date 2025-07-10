@@ -8,7 +8,6 @@ import type { EventEmitter } from 'events';
 import type * as fs from 'fs';
 import type * as net from 'net';
 import type { SessionInfo, TitleMode } from '../../shared/types.js';
-import type { ActivityDetector } from '../utils/activity-detector.js';
 import type { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
 import type { WriteQueue } from '../utils/write-queue.js';
 import type { AsciinemaWriter } from './asciinema-writer.js';
@@ -101,8 +100,6 @@ export interface PtySession {
   currentWorkingDir?: string;
   // Track if initial title has been sent
   initialTitleSent?: boolean;
-  // Activity detector for dynamic title mode
-  activityDetector?: ActivityDetector;
   // Timer for periodic title updates in dynamic mode
   titleUpdateInterval?: NodeJS.Timeout;
   // Track if activity file has been written (for debug logging)
