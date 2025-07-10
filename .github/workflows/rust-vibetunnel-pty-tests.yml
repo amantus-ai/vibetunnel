@@ -60,7 +60,7 @@ jobs:
         run: cargo test -p vibetunnel-pty-core --all-features
       
       - name: Run tests - NAPI Addon
-        run: cargo test -p vibetunnel-pty-napi-addon --all-features
+        run: cargo test -p vibetunnel-pty
       
       - name: Run tests - VT-Pipe
         run: cargo test -p vt-pipe --all-features
@@ -133,5 +133,5 @@ jobs:
           cargo hack check -p vibetunnel-pty-core --feature-powerset --no-dev-deps
           
           # Check each crate builds with its features
-          cargo check -p vibetunnel-pty-napi-addon
+          cargo check -p vibetunnel-pty
           cargo check -p vt-pipe
