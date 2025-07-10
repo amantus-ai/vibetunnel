@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { AsciinemaWriter } from '../../server/pty/asciinema-writer.js';
-import { config } from '../../server/config.js';
 import { promisify } from 'util';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { config } from '../../server/config.js';
+import { AsciinemaWriter } from '../../server/pty/asciinema-writer.js';
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -27,7 +27,7 @@ describe('AsciinemaWriter', () => {
 
   afterEach(async () => {
     // Clean up
-    if (writer && writer.isOpen()) {
+    if (writer?.isOpen()) {
       await writer.close();
     }
 
@@ -79,7 +79,7 @@ describe('AsciinemaWriter', () => {
         writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
         // Write large amounts of data to exceed limit
-        const largeData = Buffer.from('A'.repeat(100) + '\n');
+        const largeData = Buffer.from(`${'A'.repeat(100)}\n`);
         for (let i = 0; i < 50; i++) {
           writer.writeOutput(largeData);
         }
@@ -155,7 +155,7 @@ describe('AsciinemaWriter', () => {
         writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
         // Write data to exceed limit
-        const largeData = Buffer.from('A'.repeat(100) + '\n');
+        const largeData = Buffer.from(`${'A'.repeat(100)}\n`);
         for (let i = 0; i < 20; i++) {
           writer.writeOutput(largeData);
         }
@@ -214,7 +214,7 @@ describe('AsciinemaWriter', () => {
         writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
         // Write initial data to approach limit
-        const data = Buffer.from('X'.repeat(50) + '\n');
+        const data = Buffer.from(`${'X'.repeat(50)}\n`);
         for (let i = 0; i < 30; i++) {
           writer.writeOutput(data);
         }
@@ -266,7 +266,7 @@ describe('AsciinemaWriter', () => {
         writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
         // Fill file beyond limit
-        const data = Buffer.from('Y'.repeat(100) + '\n');
+        const data = Buffer.from(`${'Y'.repeat(100)}\n`);
         for (let i = 0; i < 150; i++) {
           writer.writeOutput(data);
         }
@@ -320,7 +320,7 @@ describe('AsciinemaWriter', () => {
         writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
         // Write more data to trigger truncation
-        const data = Buffer.from('Z'.repeat(100) + '\n');
+        const data = Buffer.from(`${'Z'.repeat(100)}\n`);
         for (let i = 0; i < 20; i++) {
           writer.writeOutput(data);
         }
@@ -372,7 +372,10 @@ describe('AsciinemaWriter', () => {
 
       // Mock checkAndTruncateFile to close the writer
       const checkAndTruncate = vi
-        .spyOn(writer as any, 'checkAndTruncateFile')
+        .spyOn(
+          writer as unknown as { checkAndTruncateFile: () => Promise<void> },
+          'checkAndTruncateFile'
+        )
         .mockImplementation(async () => {
           await writer.close();
         });
