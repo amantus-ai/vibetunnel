@@ -88,6 +88,7 @@ export class SessionView extends LitElement {
   @state() private isDragOver = false;
   @state() private terminalFontSize = 14;
   @state() private terminalContainerHeight = '100%';
+  @state() private isLandscape = false;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
 
@@ -96,6 +97,7 @@ export class SessionView extends LitElement {
   private boundHandleDragLeave = this.handleDragLeave.bind(this);
   private boundHandleDrop = this.handleDrop.bind(this);
   private boundHandlePaste = this.handlePaste.bind(this);
+  private boundHandleOrientationChange?: () => void;
   private connectionManager!: ConnectionManager;
   private inputManager!: InputManager;
   private mobileInputManager!: MobileInputManager;
@@ -191,6 +193,16 @@ export class SessionView extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.connected = true;
+
+    // Check initial orientation
+    this.checkOrientation();
+
+    // Create bound orientation handler
+    this.boundHandleOrientationChange = () => this.handleOrientationChange();
+
+    // Listen for orientation changes
+    window.addEventListener('orientationchange', this.boundHandleOrientationChange);
+    window.addEventListener('resize', this.boundHandleOrientationChange);
 
     // Initialize connection manager
     this.connectionManager = new ConnectionManager(
@@ -393,6 +405,12 @@ export class SessionView extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
 
+    // Remove orientation listeners
+    if (this.boundHandleOrientationChange) {
+      window.removeEventListener('orientationchange', this.boundHandleOrientationChange);
+      window.removeEventListener('resize', this.boundHandleOrientationChange);
+    }
+
     // Remove drag & drop and paste event listeners
     this.removeEventListener('dragover', this.boundHandleDragOver);
     this.removeEventListener('dragleave', this.boundHandleDragLeave);
@@ -419,6 +437,18 @@ export class SessionView extends LitElement {
 
     // Clean up loading animation manager
     this.loadingAnimationManager.cleanup();
+  }
+
+  private checkOrientation() {
+    // Check if we're in landscape mode
+    const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+    this.isLandscape = isLandscape;
+  }
+
+  private handleOrientationChange() {
+    this.checkOrientation();
+    // Request update to re-render with new safe area classes
+    this.requestUpdate();
   }
 
   firstUpdated(changedProperties: PropertyValues) {
@@ -1230,6 +1260,9 @@ export class SessionView extends LitElement {
         <div
           class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-dark-bg overflow-hidden min-h-0 relative ${
             this.session?.status === 'exited' ? 'session-exited opacity-90' : ''
+          } ${
+            // Add safe area padding for landscape mode on mobile to handle notch
+            this.isMobile && this.isLandscape ? 'safe-area-left safe-area-right' : ''
           }"
           id="terminal-container"
           style="${this.terminalContainerHeight !== '100%' ? `height: ${this.terminalContainerHeight}; flex: none; max-height: ${this.terminalContainerHeight};` : ''}"

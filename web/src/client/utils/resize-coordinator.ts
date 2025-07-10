@@ -55,15 +55,10 @@ export class ResizeCoordinator {
   shouldResize(cols: number, rows: number): boolean {
     const isMobile = this.getIsMobile();
 
-    // On mobile, after initial resize, only allow resize if cols changed
-    // This prevents keyboard show/hide from causing reflows
-    if (isMobile && this.initialResizeComplete && this.lastDimensions) {
-      const shouldResize = this.lastDimensions.cols !== cols;
-      // Only update dimensions if we're actually resizing
-      if (shouldResize) {
-        this.lastDimensions = { cols, rows };
-      }
-      return shouldResize;
+    // On mobile, after initial resize, never resize again
+    // This prevents rotation and keyboard events from causing reflows
+    if (isMobile && this.initialResizeComplete) {
+      return false;
     }
 
     if (!this.lastDimensions) {

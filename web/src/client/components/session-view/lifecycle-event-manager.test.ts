@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as eventUtils from '../../utils/event-utils.js';
 import { LifecycleEventManager } from './lifecycle-event-manager.js';
