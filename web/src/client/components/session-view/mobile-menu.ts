@@ -36,12 +36,12 @@ export class MobileMenu extends LitElement {
 
   private handleAction(callback?: () => void) {
     if (callback) {
-      // Call the callback first
-      callback();
-      // Delay menu close slightly to allow state updates to propagate
+      // Close menu immediately to ensure it doesn't block modals
+      this.showMenu = false;
+      // Call the callback after a brief delay to ensure menu is closed
       setTimeout(() => {
-        this.showMenu = false;
-      }, 100);
+        callback();
+      }, 50);
     }
   }
 

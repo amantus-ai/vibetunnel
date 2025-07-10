@@ -164,10 +164,10 @@ export class SessionHeader extends LitElement {
                   .onSave=${(newName: string) => this.handleRename(newName)}
                 ></inline-edit>
                 ${
-                  this.isHovered && isAIAssistantSession(this.session)
+                  isAIAssistantSession(this.session)
                     ? html`
                       <button
-                        class="bg-transparent border-0 p-0 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-200 text-accent-primary"
+                        class="bg-transparent border-0 p-0 cursor-pointer transition-opacity duration-200 text-accent-primary magic-button flex-shrink-0 ${this.isHovered ? 'opacity-50 hover:opacity-100' : 'opacity-0'}"
                         @click=${(e: Event) => {
                           e.stopPropagation();
                           this.handleMagicButton();
@@ -179,6 +179,17 @@ export class SessionHeader extends LitElement {
                           <path d="M9 1a1 1 0 100 2 1 1 0 000-2zM5 0a1 1 0 100 2 1 1 0 000-2zM2 3a1 1 0 100 2 1 1 0 000-2zM14 6a1 1 0 100 2 1 1 0 000-2zM15 10a1 1 0 100 2 1 1 0 000-2zM12 13a1 1 0 100 2 1 1 0 000-2z" opacity="0.5"/>
                         </svg>
                       </button>
+                      <style>
+                        /* Always show magic button on touch devices */
+                        @media (hover: none) and (pointer: coarse) {
+                          .magic-button {
+                            opacity: 0.5 !important;
+                          }
+                          .magic-button:hover {
+                            opacity: 1 !important;
+                          }
+                        }
+                      </style>
                     `
                     : ''
                 }
