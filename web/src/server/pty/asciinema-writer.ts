@@ -462,6 +462,7 @@ export class AsciinemaWriter {
       StreamingAsciinemaTrancator.truncateFileSync(this.filePath, {
         targetSize,
         addTruncationMarker: true,
+        isStartup: true,
       });
       _logger.log(`Successfully truncated ${this.filePath} synchronously`);
     } catch (err) {

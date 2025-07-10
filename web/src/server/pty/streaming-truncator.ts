@@ -365,7 +365,8 @@ export class StreamingAsciinemaTrancator {
       if (options.addTruncationMarker && eventsRemoved > 0) {
         const truncationEvent = StreamingAsciinemaTrancator.createTruncationMarker(
           eventsRemoved,
-          header
+          header,
+          options.isStartup
         );
         if (truncationEvent) {
           const markerSize = Buffer.byteLength(`${truncationEvent}\n`, 'utf8');
