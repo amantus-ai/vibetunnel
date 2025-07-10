@@ -18,6 +18,13 @@ if (!fs.existsSync(nativePtyPath)) {
   console.log('Native PTY addon not found, building...');
   
   try {
+    // Install dependencies first
+    execSync('cd native-pty && npm install', {
+      stdio: 'inherit',
+      shell: true,
+      cwd: path.join(__dirname, '..')
+    });
+    
     // Build the native addon
     execSync('cd native-pty && npm run build', {
       stdio: 'inherit',
@@ -36,6 +43,13 @@ if (!fs.existsSync(vibetunnelPtyPath)) {
   console.log('VibeTunnel PTY addon (legacy) not found, building...');
   
   try {
+    // Install dependencies first
+    execSync('cd vibetunnel-pty && npm install', {
+      stdio: 'inherit',
+      shell: true,
+      cwd: path.join(__dirname, '..')
+    });
+    
     // Build the native addon
     execSync('cd vibetunnel-pty && npm run build', {
       stdio: 'inherit',
