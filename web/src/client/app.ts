@@ -177,16 +177,8 @@ export class VibeTunnelApp extends LitElement {
       return;
     }
 
-    // Alt+Arrow keys for browser navigation
-    if (e.altKey && !e.ctrlKey && !e.metaKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
-      return;
-    }
-
-    // Cmd+K on macOS or Ctrl+K on non-macOS
-    if (
-      (isMacOS && e.metaKey && e.key.toLowerCase() === 'k') ||
-      (!isMacOS && e.ctrlKey && e.key.toLowerCase() === 'k')
-    ) {
+    // Cmd+Option+Left/Right (word navigation) on macOS
+    if (isMacOS && e.metaKey && e.altKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
       return;
     }
 

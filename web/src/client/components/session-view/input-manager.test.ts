@@ -38,76 +38,6 @@ describe('InputManager', () => {
     vi.clearAllMocks();
   });
 
-  describe('Option/Alt + Arrow key navigation', () => {
-    it('should now pass through Alt+Arrow keys for browser navigation', async () => {
-      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
-      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
-
-      const leftEvent = new KeyboardEvent('keydown', {
-        key: 'ArrowLeft',
-        altKey: true,
-      });
-
-      await inputManager.handleKeyboardInput(leftEvent);
-
-      // Alt+Arrow keys now send regular arrow keys (browser will handle Alt modifier)
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/sessions/test-session-id/input',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-          body: JSON.stringify({ key: 'arrow_left' }),
-        })
-      );
-
-      vi.mocked(global.fetch).mockClear();
-      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
-
-      const rightEvent = new KeyboardEvent('keydown', {
-        key: 'ArrowRight',
-        altKey: true,
-      });
-
-      await inputManager.handleKeyboardInput(rightEvent);
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/sessions/test-session-id/input',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-          body: JSON.stringify({ key: 'arrow_right' }),
-        })
-      );
-    });
-
-    it('should send regular arrow keys without Alt modifier', async () => {
-      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
-      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
-
-      const event = new KeyboardEvent('keydown', {
-        key: 'ArrowLeft',
-        altKey: false,
-      });
-
-      await inputManager.handleKeyboardInput(event);
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/sessions/test-session-id/input',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-          body: JSON.stringify({ key: 'arrow_left' }),
-        })
-      );
-    });
-  });
-
   describe('Option/Alt + Backspace word deletion', () => {
     it('should send Ctrl+W for Alt+Backspace', async () => {
       const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
@@ -232,35 +162,6 @@ describe('InputManager', () => {
       expect(inputManager.isKeyboardShortcut(event)).toBe(true);
     });
 
-    it('should detect Alt+Arrow keys as browser shortcuts', () => {
-      const leftEvent = new KeyboardEvent('keydown', {
-        key: 'ArrowLeft',
-        altKey: true,
-      });
-
-      const rightEvent = new KeyboardEvent('keydown', {
-        key: 'ArrowRight',
-        altKey: true,
-      });
-
-      expect(inputManager.isKeyboardShortcut(leftEvent)).toBe(true);
-      expect(inputManager.isKeyboardShortcut(rightEvent)).toBe(true);
-    });
-
-    it('should detect Cmd+K as browser shortcut on macOS', () => {
-      Object.defineProperty(navigator, 'platform', {
-        writable: true,
-        value: 'MacIntel',
-      });
-
-      const event = new KeyboardEvent('keydown', {
-        key: 'k',
-        metaKey: true,
-      });
-
-      expect(inputManager.isKeyboardShortcut(event)).toBe(true);
-    });
-
     it('should detect Cmd+1-9 as browser shortcuts on macOS', () => {
       Object.defineProperty(navigator, 'platform', {
         writable: true,
@@ -275,6 +176,28 @@ describe('InputManager', () => {
 
         expect(inputManager.isKeyboardShortcut(event)).toBe(true);
       }
+    });
+
+    it('should detect Cmd+Option+Left/Right as browser shortcuts on macOS', () => {
+      Object.defineProperty(navigator, 'platform', {
+        writable: true,
+        value: 'MacIntel',
+      });
+
+      const leftEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowLeft',
+        metaKey: true,
+        altKey: true,
+      });
+
+      const rightEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        metaKey: true,
+        altKey: true,
+      });
+
+      expect(inputManager.isKeyboardShortcut(leftEvent)).toBe(true);
+      expect(inputManager.isKeyboardShortcut(rightEvent)).toBe(true);
     });
   });
 });

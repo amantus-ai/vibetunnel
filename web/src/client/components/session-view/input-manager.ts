@@ -79,8 +79,7 @@ export class InputManager {
 
     // Handle Alt+ combinations
     if (altKey && !ctrlKey && !metaKey && !shiftKey) {
-      // Note: Alt+Arrow keys are now allowed to pass through for browser navigation
-      // Only handle Alt+Backspace for word deletion
+      // Handle Alt+Backspace for word deletion
       if (key === 'Backspace') {
         consumeEvent(e);
         await this.sendInput('\x17'); // Ctrl+W
@@ -295,8 +294,8 @@ export class InputManager {
       return true;
     }
 
-    // Allow Alt+Arrow keys for browser navigation
-    if (e.altKey && !e.ctrlKey && !e.metaKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    // Allow Cmd+Option+Left/Right (word navigation) on macOS
+    if (isMacOS && e.metaKey && e.altKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
       return true;
     }
 
@@ -305,18 +304,18 @@ export class InputManager {
       !isMacOS &&
       e.ctrlKey &&
       !e.shiftKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v', 'k'].includes(e.key.toLowerCase())
+      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
     ) {
       return true;
     }
 
-    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), Cmd+K (new terminal), etc. on macOS
+    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), etc. on macOS (but NOT Cmd+K)
     if (
       isMacOS &&
       e.metaKey &&
       !e.shiftKey &&
       !e.altKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v', 'k'].includes(e.key.toLowerCase())
+      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
     ) {
       return true;
     }

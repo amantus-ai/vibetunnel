@@ -125,52 +125,6 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Mock localStorage for tests
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
-  return {
-    getItem: vi.fn((key: string) => store[key] || null),
-    setItem: vi.fn((key: string, value: string) => {
-      store[key] = value.toString();
-    }),
-    removeItem: vi.fn((key: string) => {
-      delete store[key];
-    }),
-    clear: vi.fn(() => {
-      store = {};
-    }),
-    get length() {
-      return Object.keys(store).length;
-    },
-    key: vi.fn((index: number) => {
-      const keys = Object.keys(store);
-      return keys[index] || null;
-    }),
-  };
-})();
-
-Object.defineProperty(global, 'localStorage', {
-  value: localStorageMock,
-  writable: true,
-});
-
-// Mock window.location for tests that need it
-if (typeof window === 'undefined') {
-  global.window = {
-    location: {
-      search: '',
-      href: 'http://localhost:3000',
-      origin: 'http://localhost:3000',
-      protocol: 'http:',
-      host: 'localhost:3000',
-      hostname: 'localhost',
-      port: '3000',
-      pathname: '/',
-      hash: '',
-    },
-  } as any;
-}
-
 // Mock WebSocket for tests that need it
 global.WebSocket = class WebSocket extends EventTarget {
   static CONNECTING = 0;
