@@ -40,6 +40,9 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -47,6 +50,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build vibetunnel-pty
+        run: cd vibetunnel-pty && pnpm run build
 
       - name: Run linting
         run: pnpm run lint
@@ -76,6 +82,9 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -83,6 +92,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build vibetunnel-pty
+        run: cd vibetunnel-pty && pnpm run build
 
       - name: Build project
         run: pnpm run build
@@ -115,6 +127,9 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -122,6 +137,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build vibetunnel-pty
+        run: cd vibetunnel-pty && pnpm run build
 
       - name: Run client tests
         run: pnpm run test:client:coverage

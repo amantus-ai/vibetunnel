@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "VibeTunnel - Cross-platform terminal session manager"
 authors = ["VibeTunnel Team"]
 edition = "2021"
+rust-version = "1.80.0"
 
 [package.metadata.bundle]
 identifier = "com.vibetunnel.app"
