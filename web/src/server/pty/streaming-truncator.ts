@@ -20,6 +20,7 @@ const logger = createLogger('streaming-truncator');
 interface TruncationOptions {
   targetSize: number;
   addTruncationMarker?: boolean;
+  isStartup?: boolean;
 }
 
 interface EventEntry {
@@ -196,7 +197,8 @@ export class StreamingAsciinemaTrancator {
           if (options.addTruncationMarker && eventsRemoved > 0) {
             const truncationEvent = StreamingAsciinemaTrancator.createTruncationMarker(
               eventsRemoved,
-              header
+              header,
+              options.isStartup
             );
             if (truncationEvent) {
               await StreamingAsciinemaTrancator.writeLineAsync(writeStream, truncationEvent);
@@ -257,7 +259,8 @@ export class StreamingAsciinemaTrancator {
    */
   private static createTruncationMarker(
     eventsRemoved: number,
-    header: string | null
+    header: string | null,
+    isStartup?: boolean
   ): string | null {
     if (!header) return null;
 
@@ -268,10 +271,14 @@ export class StreamingAsciinemaTrancator {
       const elapsedTime = currentTime - (headerData.timestamp || currentTime);
 
       // Create a marker event
+      const markerText = isStartup
+        ? `\n[Truncated ${eventsRemoved} events on startup to limit file size]\n`
+        : `\n[Truncated ${eventsRemoved} events to limit file size]\n`;
+      
       const markerEvent = JSON.stringify([
         Math.max(0, elapsedTime),
         'o',
-        `\n[Truncated ${eventsRemoved} events to limit file size]\n`,
+        markerText,
       ]);
 
       return markerEvent;

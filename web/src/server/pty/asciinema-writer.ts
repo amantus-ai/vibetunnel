@@ -408,6 +408,12 @@ export class AsciinemaWriter {
         fileExists = true; // File still exists after truncation
       } catch (err) {
         _logger.error(`Failed to truncate file on startup: ${this.filePath}`, err);
+        // IMPORTANT: Setting fileExists = false here will cause data loss
+        // as the file will be opened in 'w' mode instead of 'a' mode.
+        // This is an acceptable tradeoff for extremely large files (>1GB)
+        // that fail truncation, as they're likely corrupted or too large
+        // to be useful anyway. The alternative would be to let the file
+        // grow unbounded, potentially filling the disk.
         fileExists = false; // Treat as new file if truncation failed
       }
     }
