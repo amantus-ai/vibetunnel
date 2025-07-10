@@ -6,6 +6,26 @@ import { LifecycleEventManager } from './lifecycle-event-manager.js';
 // Mock the event utils module
 vi.mock('../../utils/event-utils.js');
 
+// Simple KeyboardEvent polyfill for test environment
+if (typeof KeyboardEvent === 'undefined') {
+  (global as any).KeyboardEvent = class KeyboardEvent extends Event {
+    key: string;
+    metaKey: boolean;
+    ctrlKey: boolean;
+    altKey: boolean;
+    shiftKey: boolean;
+
+    constructor(type: string, init?: KeyboardEventInit) {
+      super(type, init);
+      this.key = init?.key || '';
+      this.metaKey = init?.metaKey || false;
+      this.ctrlKey = init?.ctrlKey || false;
+      this.altKey = init?.altKey || false;
+      this.shiftKey = init?.shiftKey || false;
+    }
+  };
+}
+
 describe('LifecycleEventManager', () => {
   let manager: LifecycleEventManager;
 

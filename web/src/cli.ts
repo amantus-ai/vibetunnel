@@ -6,7 +6,6 @@ import { suppressXtermErrors } from './shared/suppress-xterm-errors.js';
 
 suppressXtermErrors();
 
-import { startVibeTunnelForward } from './server/fwd.js';
 import { startVibeTunnelServer } from './server/server.js';
 import { closeLogger, createLogger, initLogger, VerbosityLevel } from './server/utils/logger.js';
 import { parseVerbosityFromEnv } from './server/utils/verbosity-parser.js';
@@ -68,11 +67,9 @@ if (isMainModule) {
     console.log(`VibeTunnel Server v${VERSION}`);
     process.exit(0);
   } else if (process.argv[2] === 'fwd') {
-    startVibeTunnelForward(process.argv.slice(3)).catch((error) => {
-      logger.error('Fatal error:', error);
-      closeLogger();
-      process.exit(1);
-    });
+    logger.error('The fwd command has been replaced by the vt-pipe Rust tool.');
+    logger.error('Please use: vt <command> [args...]');
+    process.exit(1);
   } else {
     // Show startup message at INFO level or when debug is enabled
     if (verbosityLevel !== undefined && verbosityLevel >= VerbosityLevel.INFO) {

@@ -1,0 +1,145 @@
+name: Rust Native PTY Tests
+
+on:
+  push:
+    paths:
+      - 'web/native-pty/**'
+      - '.github/workflows/rust-native-pty-tests.yml'
+  pull_request:
+    paths:
+      - 'web/native-pty/**'
+      - '.github/workflows/rust-native-pty-tests.yml'
+
+defaults:
+  run:
+    working-directory: web/native-pty
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [18, 20]
+        rust: [stable]
+        include:
+          # Test on older Rust version for MSRV
+          - os: ubuntu-latest
+            node: 20
+            rust: "1.70.0"
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-node-${{ matrix.node }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ matrix.node }}-
+      
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+      
+      - name: Rust format check
+        run: cargo fmt -- --check
+      
+      - name: Rust linting
+        run: cargo clippy -- -D warnings
+      
+      - name: Run Rust unit tests
+        run: cargo test --lib
+      
+      - name: Build native addon
+        run: pnpm run build
+      
+      - name: Run Node.js integration tests
+        run: node test.js
+      
+      - name: Run benchmarks (no regression check)
+        if: matrix.os == 'ubuntu-latest' && matrix.rust == 'stable'
+        run: cargo bench --no-run
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      
+      - name: Install dependencies
+        working-directory: web/native-pty
+        run: pnpm install --frozen-lockfile
+      
+      - name: Generate code coverage
+        working-directory: web/native-pty
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      
+      - name: Upload to codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: web/native-pty/lcov.info
+          flags: rust-native-pty
+          name: rust-native-pty
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run cargo audit
+        working-directory: web/native-pty
+        run: |
+          cargo install cargo-audit
+          cargo audit

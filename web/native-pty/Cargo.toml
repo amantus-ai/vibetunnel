@@ -26,7 +26,16 @@ nix = { version = "0.29", features = ["process", "signal"] }
 [build-dependencies]
 napi-build = "2"
 
+[dev-dependencies]
+pretty_assertions = "1"
+test-case = "3"
+criterion = "0.5"
+
 [profile.release]
 lto = true
 strip = true
 opt-level = 3
+
+[[bench]]
+name = "activity_detector"
+harness = false
