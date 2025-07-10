@@ -179,21 +179,31 @@ final class BunServer {
             logger.info("Local authentication bypass enabled for Mac app")
         }
 
-        // Create wrapper to run vibetunnel with parent death monitoring
+        // Create wrapper to run vibetunnel with parent death monitoring AND crash detection
         let parentPid = ProcessInfo.processInfo.processIdentifier
         let vibetunnelCommand = """
         # Start vibetunnel in background
         \(binaryPath) \(vibetunnelArgs.joined(separator: " ")) &
         VIBETUNNEL_PID=$!
 
-        # Monitor parent process
-        while kill -0 \(parentPid) 2>/dev/null; do
+        # Monitor both parent process AND vibetunnel process
+        while kill -0 \(parentPid) 2>/dev/null && kill -0 $VIBETUNNEL_PID 2>/dev/null; do
             sleep 1
         done
 
-        # Parent died, kill vibetunnel
-        kill -TERM $VIBETUNNEL_PID 2>/dev/null
-        wait $VIBETUNNEL_PID
+        # Check why we exited the loop
+        if ! kill -0 $VIBETUNNEL_PID 2>/dev/null; then
+            # Vibetunnel died - wait to get its exit code
+            wait $VIBETUNNEL_PID
+            EXIT_CODE=$?
+            echo "VibeTunnel server process died with exit code: $EXIT_CODE" >&2
+            exit $EXIT_CODE
+        else
+            # Parent died - kill vibetunnel
+            kill -TERM $VIBETUNNEL_PID 2>/dev/null
+            wait $VIBETUNNEL_PID
+            exit 0
+        fi
         """
         process.arguments = ["-l", "-c", vibetunnelCommand]
 
