@@ -18,7 +18,7 @@ const _logger = createLogger('AsciinemaWriter');
 const fsync = promisify(fs.fsync);
 
 export class AsciinemaWriter {
-  private writeStream: fs.WriteStream;
+  private writeStream!: fs.WriteStream; // Initialized in initializeFile()
   private startTime: Date;
   private utf8Buffer: Buffer = Buffer.alloc(0);
   private headerWritten = false;
@@ -39,26 +39,10 @@ export class AsciinemaWriter {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    // Create write stream with no buffering for real-time performance
-    this.writeStream = fs.createWriteStream(filePath, {
-      flags: 'w',
-      encoding: 'utf8',
-      highWaterMark: 0, // Disable internal buffering
-    });
+    // Initialize the file and write stream
+    this.initializeFile();
 
-    // Get file descriptor for fsync
-    this.writeStream.on('open', (fd) => {
-      this.fd = fd;
-    });
-
-    this.writeHeader();
-
-    // Check size immediately if file already exists
-    this.checkAndTruncateFile().catch((err) => {
-      _logger.error(`Error during initial size check for ${this.filePath}:`, err);
-    });
-
-    // Start periodic size checks
+    // Start periodic size checking
     this.startSizeChecking();
   }
 
@@ -392,6 +376,138 @@ export class AsciinemaWriter {
    */
   private getElapsedTime(): number {
     return (Date.now() - this.startTime.getTime()) / 1000;
+  }
+
+  /**
+   * Initialize the file and write stream, handling existing large files
+   */
+  private initializeFile(): void {
+    let fileExists = false;
+    let needsTruncation = false;
+
+    // Check if file exists and needs truncation
+    try {
+      const stats = fs.statSync(this.filePath);
+      fileExists = true;
+
+      if (stats.size > config.MAX_CAST_SIZE) {
+        needsTruncation = true;
+        _logger.log(
+          `Existing cast file ${this.filePath} is ${stats.size} bytes (exceeds ${config.MAX_CAST_SIZE}), will truncate before opening`
+        );
+      }
+    } catch {
+      // File doesn't exist, we'll create it
+    }
+
+    // If file needs truncation, do it synchronously before opening the stream
+    if (needsTruncation) {
+      try {
+        this.truncateFileSync();
+        fileExists = true; // File still exists after truncation
+      } catch (err) {
+        _logger.error(`Failed to truncate file on startup: ${this.filePath}`, err);
+        fileExists = false; // Treat as new file if truncation failed
+      }
+    }
+
+    // Decide whether to append or create new based on file existence and content
+    let shouldAppend = false;
+    if (fileExists) {
+      try {
+        // Check if file has valid content
+        const content = fs.readFileSync(this.filePath, 'utf8');
+        const lines = content.trim().split('\n');
+        if (lines.length > 0 && lines[0].includes('"version"')) {
+          // File has a valid header, append to it
+          shouldAppend = true;
+          this.headerWritten = true;
+        }
+      } catch {
+        // Error reading file, create new
+      }
+    }
+
+    // Create write stream
+    this.writeStream = fs.createWriteStream(this.filePath, {
+      flags: shouldAppend ? 'a' : 'w',
+      encoding: 'utf8',
+      highWaterMark: 0, // Disable internal buffering
+    });
+
+    // Get file descriptor for fsync
+    this.writeStream.on('open', (fd) => {
+      this.fd = fd;
+    });
+
+    // Write header if needed
+    if (!this.headerWritten) {
+      this.writeHeader();
+    }
+  }
+
+  /**
+   * Synchronously truncate the file to keep only recent events
+   */
+  private truncateFileSync(): void {
+    const content = fs.readFileSync(this.filePath, 'utf8');
+    const lines = content.trim().split('\n');
+
+    if (lines.length < 2) {
+      return; // Nothing to truncate
+    }
+
+    // First line is the header
+    const header = lines[0];
+    const events = lines.slice(1);
+
+    // Calculate approximate size per event to determine how many to keep
+    const targetSize = config.MAX_CAST_SIZE * config.CAST_TRUNCATION_TARGET_PERCENTAGE;
+    const headerSize = Buffer.byteLength(`${header}\n`);
+    const availableSize = targetSize - headerSize;
+
+    // Keep events from the end that fit within the size limit
+    const keptEvents: string[] = [];
+    let currentSize = 0;
+
+    for (let i = events.length - 1; i >= 0; i--) {
+      const eventSize = Buffer.byteLength(`${events[i]}\n`);
+      if (currentSize + eventSize > availableSize) {
+        break;
+      }
+      keptEvents.unshift(events[i]);
+      currentSize += eventSize;
+    }
+
+    // Add truncation marker if we removed events
+    if (keptEvents.length < events.length) {
+      const removedCount = events.length - keptEvents.length;
+      const truncationEvent = JSON.stringify([
+        0, // Time 0 for startup truncation
+        'm',
+        `[Truncated ${removedCount} events on startup to limit file size]`,
+      ]);
+
+      // Ensure truncation marker doesn't push us over the limit
+      const markerSize = Buffer.byteLength(`${truncationEvent}\n`);
+      if (currentSize + markerSize > availableSize && keptEvents.length > 0) {
+        // Remove oldest kept event to make room for marker
+        const removedEvent = keptEvents.shift();
+        if (removedEvent) {
+          currentSize -= Buffer.byteLength(`${removedEvent}\n`);
+        }
+      }
+
+      keptEvents.unshift(truncationEvent);
+    }
+
+    // Write the truncated content back
+    const newContent = `${header}\n${keptEvents.join('\n')}\n`;
+    fs.writeFileSync(this.filePath, newContent);
+
+    _logger.log(
+      `Successfully truncated ${this.filePath} on startup, removed ${events.length - keptEvents.length} events`
+    );
   }
 
   /**

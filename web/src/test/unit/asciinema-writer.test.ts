@@ -43,6 +43,111 @@ describe('AsciinemaWriter', () => {
     vi.useRealTimers();
   });
 
+  describe('Startup File Handling', () => {
+    it('should truncate large existing files on startup', async () => {
+      const originalMaxSize = config.MAX_CAST_SIZE;
+      config.MAX_CAST_SIZE = 1024; // 1KB for testing
+
+      try {
+        // Create a large file first
+        const header = JSON.stringify({
+          version: 2,
+          width: 80,
+          height: 24,
+          timestamp: Math.floor(Date.now() / 1000),
+        });
+
+        let content = header + '\n';
+        // Add many events to exceed size limit
+        for (let i = 0; i < 100; i++) {
+          const event = JSON.stringify([i * 0.1, 'o', `Line ${i}: ${'X'.repeat(50)}\n`]);
+          content += event + '\n';
+        }
+
+        await writeFile(testFile, content);
+
+        // Verify file is large
+        const statsBefore = await stat(testFile);
+        expect(statsBefore.size).toBeGreaterThan(config.MAX_CAST_SIZE);
+
+        // Create writer - should truncate on startup
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+
+        // Give it a moment to complete initialization
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        await writer.close();
+
+        // Check file was truncated
+        const statsAfter = await stat(testFile);
+        expect(statsAfter.size).toBeLessThan(config.MAX_CAST_SIZE);
+
+        // Verify truncation marker was added
+        const newContent = await readFile(testFile, 'utf8');
+        expect(newContent).toContain('[Truncated');
+        expect(newContent).toContain('on startup');
+
+        // Verify it kept recent events
+        const lines = newContent.trim().split('\n');
+        const lastEvent = lines[lines.length - 1];
+        expect(lastEvent).toContain('Line 99'); // Should keep the most recent event
+      } finally {
+        config.MAX_CAST_SIZE = originalMaxSize;
+      }
+    });
+
+    it('should append to existing small files', async () => {
+      // Create a small valid cast file
+      const header = JSON.stringify({
+        version: 2,
+        width: 80,
+        height: 24,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+
+      const existingEvents = [
+        JSON.stringify([0.1, 'o', 'Existing line 1\n']),
+        JSON.stringify([0.2, 'o', 'Existing line 2\n']),
+      ];
+
+      const content = header + '\n' + existingEvents.join('\n') + '\n';
+      await writeFile(testFile, content);
+
+      // Create writer - should append to existing file
+      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+
+      // Write new data
+      writer.writeOutput(Buffer.from('New line\n'));
+
+      await writer.close();
+
+      // Verify file contains both old and new content
+      const finalContent = await readFile(testFile, 'utf8');
+      expect(finalContent).toContain('Existing line 1');
+      expect(finalContent).toContain('Existing line 2');
+      expect(finalContent).toContain('New line');
+
+      // Verify only one header
+      const headerCount = (finalContent.match(/"version"/g) || []).length;
+      expect(headerCount).toBe(1);
+    });
+
+    it('should create new file if existing file has invalid format', async () => {
+      // Create an invalid file
+      await writeFile(testFile, 'Not a valid asciinema file\n');
+
+      // Create writer - should create new file
+      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+
+      await writer.close();
+
+      // Verify file has valid header
+      const content = await readFile(testFile, 'utf8');
+      const lines = content.trim().split('\n');
+      expect(lines[0]).toContain('"version":2');
+    });
+  });
+
   describe('File Size Limiting', () => {
     it('should not truncate files under the size limit', async () => {
       writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
