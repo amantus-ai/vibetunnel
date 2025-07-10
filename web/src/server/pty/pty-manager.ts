@@ -1116,6 +1116,39 @@ export class PtyManager extends EventEmitter {
           break;
         }
 
+        case MessageType.STDOUT_DATA: {
+          // Handle stdout data from vt-pipe (external terminal)
+          const text = data as string;
+          
+          // For external terminals, we need to handle output similar to managed PTY sessions
+          // Apply title filtering if needed
+          let processedData = text;
+          if (session.titleMode !== undefined && session.titleMode !== TitleMode.NONE) {
+            processedData = session.titleFilter ? session.titleFilter.filter(text) : text;
+          }
+          
+          // Handle activity detection for dynamic mode
+          if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
+            const { filteredData, activity } = session.activityDetector.processOutput(processedData);
+            processedData = filteredData;
+            
+            // Check if activity status changed
+            if (activity.specificStatus?.status !== session.lastActivityStatus) {
+              session.lastActivityStatus = activity.specificStatus?.status;
+              this.markTitleUpdateNeeded(session);
+            }
+          }
+          
+          // Record output for asciinema
+          session.asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
+          
+          // For external terminals, stdout is already displayed locally by vt-pipe
+          // We just need to ensure it's available for web clients through SSE/WebSocket
+          
+          logger.debug(`Received ${text.length} bytes of stdout data from vt-pipe for session ${session.id}`);
+          break;
+        }
+
         case MessageType.HEARTBEAT:
           // Heartbeat received - no action needed for now
           break;
