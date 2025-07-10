@@ -209,6 +209,13 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       return;
     }
 
+    // Check if this is a browser shortcut we should allow FIRST before any other processing
+    const inputManager = this.callbacks.getInputManager();
+    if (inputManager?.isKeyboardShortcut(e)) {
+      // Let the browser handle this shortcut - don't call any preventDefault or stopPropagation
+      return;
+    }
+
     // Handle Cmd+O / Ctrl+O to open file browser
     if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
       // Stop propagation to prevent parent handlers from interfering with our file browser
@@ -219,7 +226,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     if (!this.session) return;
 
-    // Check if we're in an inline-edit component FIRST
+    // Check if we're in an inline-edit component
     // Since inline-edit uses Shadow DOM, we need to check the composed path
     const composedPath = e.composedPath();
     for (const element of composedPath) {
@@ -227,12 +234,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
         // Allow the event to pass through to the inline-edit component
         return;
       }
-    }
-
-    // Check if this is a browser shortcut we should allow
-    const inputManager = this.callbacks.getInputManager();
-    if (inputManager?.isKeyboardShortcut(e)) {
-      return;
     }
 
     // Handle Escape key specially for exited sessions
@@ -422,6 +423,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
   private setupEventListeners(isMobile: boolean): void {
     // Only add listeners if not already added
     if (!isMobile && !this.keyboardListenerAdded) {
+      // Don't use capture phase - let browser handle shortcuts naturally
       document.addEventListener('keydown', this.keyboardHandler);
       this.keyboardListenerAdded = true;
     } else if (isMobile && !this.touchListenersAdded) {
