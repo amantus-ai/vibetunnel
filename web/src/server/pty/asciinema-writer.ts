@@ -12,6 +12,7 @@ import { promisify } from 'util';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 import { WriteQueue } from '../utils/write-queue.js';
+import { StreamingAsciinemaTrancator } from './streaming-truncator.js';
 import { type AsciinemaEvent, type AsciinemaHeader, PtyError } from './types.js';
 
 const _logger = createLogger('AsciinemaWriter');
@@ -450,64 +451,19 @@ export class AsciinemaWriter {
    * Synchronously truncate the file to keep only recent events
    */
   private truncateFileSync(): void {
-    const content = fs.readFileSync(this.filePath, 'utf8');
-    const lines = content.trim().split('\n');
-
-    if (lines.length < 2) {
-      return; // Nothing to truncate
+    try {
+      const targetSize = config.MAX_CAST_SIZE * config.CAST_TRUNCATION_TARGET_PERCENTAGE;
+      StreamingAsciinemaTrancator.truncateFileSync(this.filePath, {
+        targetSize,
+        addTruncationMarker: true,
+      });
+      _logger.log(`Successfully truncated ${this.filePath} synchronously`);
+    } catch (err) {
+      // If sync truncation fails (e.g., file too large), log and throw
+      // This will be caught by the caller and handled appropriately
+      _logger.error(`Synchronous truncation failed for ${this.filePath}:`, err);
+      throw err;
     }
-
-    // First line is the header
-    const header = lines[0];
-    const events = lines.slice(1);
-
-    // Calculate approximate size per event to determine how many to keep
-    const targetSize = config.MAX_CAST_SIZE * config.CAST_TRUNCATION_TARGET_PERCENTAGE;
-    const headerSize = Buffer.byteLength(`${header}\n`);
-    const availableSize = targetSize - headerSize;
-
-    // Keep events from the end that fit within the size limit
-    const keptEvents: string[] = [];
-    let currentSize = 0;
-
-    for (let i = events.length - 1; i >= 0; i--) {
-      const eventSize = Buffer.byteLength(`${events[i]}\n`);
-      if (currentSize + eventSize > availableSize) {
-        break;
-      }
-      keptEvents.unshift(events[i]);
-      currentSize += eventSize;
-    }
-
-    // Add truncation marker if we removed events
-    if (keptEvents.length < events.length) {
-      const removedCount = events.length - keptEvents.length;
-      const truncationEvent = JSON.stringify([
-        0, // Time 0 for startup truncation
-        'm',
-        `[Truncated ${removedCount} events on startup to limit file size]`,
-      ]);
-
-      // Ensure truncation marker doesn't push us over the limit
-      const markerSize = Buffer.byteLength(`${truncationEvent}\n`);
-      if (currentSize + markerSize > availableSize && keptEvents.length > 0) {
-        // Remove oldest kept event to make room for marker
-        const removedEvent = keptEvents.shift();
-        if (removedEvent) {
-          currentSize -= Buffer.byteLength(`${removedEvent}\n`);
-        }
-      }
-
-      keptEvents.unshift(truncationEvent);
-    }
-
-    // Write the truncated content back
-    const newContent = `${header}\n${keptEvents.join('\n')}\n`;
-    fs.writeFileSync(this.filePath, newContent);
-
-    _logger.log(
-      `Successfully truncated ${this.filePath} on startup, removed ${events.length - keptEvents.length} events`
-    );
   }
 
   /**
@@ -575,7 +531,7 @@ export class AsciinemaWriter {
   }
 
   /**
-   * Truncate the file to keep only recent events
+   * Truncate the file to keep only recent events using streaming
    */
   private async truncateFile(): Promise<void> {
     this.isTruncating = true;
@@ -584,70 +540,23 @@ export class AsciinemaWriter {
     await this.writeQueue.drain();
 
     try {
-      // Read the entire file
-      const content = await fs.promises.readFile(this.filePath, 'utf8');
-      const lines = content.trim().split('\n');
-
-      if (lines.length < 2) {
-        return; // Nothing to truncate
-      }
-
-      // First line is the header
-      const header = lines[0];
-      const events = lines.slice(1);
-
-      // Calculate approximate size per event to determine how many to keep
-      const targetSize = config.MAX_CAST_SIZE * config.CAST_TRUNCATION_TARGET_PERCENTAGE;
-      const headerSize = Buffer.byteLength(`${header}\n`);
-      const availableSize = targetSize - headerSize;
-
-      // Keep events from the end that fit within the size limit
-      const keptEvents: string[] = [];
-      let currentSize = 0;
-
-      for (let i = events.length - 1; i >= 0; i--) {
-        const eventSize = Buffer.byteLength(`${events[i]}\n`);
-        if (currentSize + eventSize > availableSize) {
-          break;
-        }
-        keptEvents.unshift(events[i]);
-        currentSize += eventSize;
-      }
-
-      // Add truncation marker if we removed events
-      if (keptEvents.length < events.length) {
-        const removedCount = events.length - keptEvents.length;
-        const truncationEvent = JSON.stringify([
-          this.getElapsedTime(),
-          'm',
-          `[Truncated ${removedCount} events to limit file size]`,
-        ]);
-
-        // Ensure truncation marker doesn't push us over the limit
-        const markerSize = Buffer.byteLength(`${truncationEvent}\n`);
-        if (currentSize + markerSize > availableSize && keptEvents.length > 0) {
-          // Remove oldest kept event to make room for marker
-          const removedEvent = keptEvents.shift();
-          if (removedEvent) {
-            currentSize -= Buffer.byteLength(`${removedEvent}\n`);
-          }
-        }
-
-        keptEvents.unshift(truncationEvent);
-      }
-
-      // Write the truncated content back
-      const newContent = `${header}\n${keptEvents.join('\n')}\n`;
-
-      // Close current stream before writing
+      // Close current stream before truncation
       await new Promise<void>((resolve) => this.writeStream.end(resolve));
 
-      // Write truncated content
-      await fs.promises.writeFile(this.filePath, newContent);
+      // Use streaming truncator for memory-safe operation
+      const targetSize = config.MAX_CAST_SIZE * config.CAST_TRUNCATION_TARGET_PERCENTAGE;
+      const result = await StreamingAsciinemaTrancator.truncateFile(this.filePath, {
+        targetSize,
+        addTruncationMarker: true,
+      });
 
-      _logger.log(
-        `Successfully truncated ${this.filePath}, removed ${events.length - keptEvents.length} events`
-      );
+      if (result.success) {
+        _logger.log(
+          `Successfully truncated ${this.filePath}, removed ${result.eventsRemoved} events`
+        );
+      } else {
+        throw result.error || new Error('Truncation failed');
+      }
     } catch (err) {
       _logger.error(`Error truncating file ${this.filePath}:`, err);
     } finally {
