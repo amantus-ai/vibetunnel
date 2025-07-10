@@ -57,11 +57,11 @@ describe('AsciinemaWriter', () => {
           timestamp: Math.floor(Date.now() / 1000),
         });
 
-        let content = header + '\n';
+        let content = `${header}\n`;
         // Add many events to exceed size limit
         for (let i = 0; i < 100; i++) {
           const event = JSON.stringify([i * 0.1, 'o', `Line ${i}: ${'X'.repeat(50)}\n`]);
-          content += event + '\n';
+          content += `${event}\n`;
         }
 
         await writeFile(testFile, content);
@@ -115,7 +115,7 @@ describe('AsciinemaWriter', () => {
           JSON.stringify([0.2, 'o', 'Existing line 2\n']),
         ];
 
-        const content = header + '\n' + existingEvents.join('\n') + '\n';
+        const content = `${header}\n${existingEvents.join('\n')}\n`;
         await writeFile(testFile, content);
 
         // Create writer - should append to existing file
