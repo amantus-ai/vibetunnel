@@ -21,6 +21,7 @@ import type {
   SpecialKey,
 } from '../../shared/types.js';
 import { TitleMode } from '../../shared/types.js';
+import { config } from '../config.js';
 import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
 import { ActivityDetector, type ActivityState } from '../utils/activity-detector.js';
 import { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
@@ -82,6 +83,11 @@ export class PtyManager extends EventEmitter {
     super();
     this.sessionManager = new SessionManager(controlPath);
     this.setupTerminalResizeDetection();
+
+    // Recover existing sessions on startup
+    this.recoverExistingSessions().catch((error) => {
+      logger.error('Failed to recover existing sessions:', error);
+    });
   }
 
   /**
@@ -123,6 +129,82 @@ export class PtyManager extends EventEmitter {
     this.resizeEventListeners.push(() => {
       process.removeListener('SIGWINCH', handleSigwinch);
     });
+  }
+
+  /**
+   * Recover existing sessions on startup by creating AsciinemaWriter instances
+   * This will trigger truncation for any files exceeding MAX_CAST_SIZE
+   */
+  private async recoverExistingSessions(): Promise<void> {
+    try {
+      const sessions = this.sessionManager.listSessions();
+      let recoveredCount = 0;
+      let truncatedCount = 0;
+
+      for (const sessionInfo of sessions) {
+        // Only recover running sessions (forwarder sessions that might reconnect)
+        if (sessionInfo.status === 'running' && !this.sessions.has(sessionInfo.id)) {
+          const paths = this.sessionManager.getSessionPaths(sessionInfo.id);
+          if (!paths) {
+            continue;
+          }
+
+          // Check if stdout file exists and its size
+          try {
+            const stats = await fs.promises.stat(paths.stdoutPath);
+            const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+            // Create AsciinemaWriter which will automatically truncate if needed
+            const asciinemaWriter = AsciinemaWriter.create(
+              paths.stdoutPath,
+              sessionInfo.initialCols,
+              sessionInfo.initialRows,
+              sessionInfo.command.join(' '),
+              sessionInfo.name,
+              this.createEnvVars('xterm-256color')
+            );
+
+            // Store minimal session info for recovery
+            const recoveredSession: Partial<PtySession> = {
+              id: sessionInfo.id,
+              sessionInfo,
+              asciinemaWriter,
+              controlDir: paths.controlDir,
+              stdoutPath: paths.stdoutPath,
+              stdinPath: paths.stdinPath,
+              sessionJsonPath: paths.sessionJsonPath,
+              startTime: new Date(sessionInfo.startedAt),
+            };
+
+            // Store the partial session (without ptyProcess since it's dead)
+            this.sessions.set(sessionInfo.id, recoveredSession as PtySession);
+
+            logger.log(
+              chalk.green(
+                `Recovered session ${sessionInfo.id} (${sizeMB}MB) - AsciinemaWriter will handle truncation if needed`
+              )
+            );
+            recoveredCount++;
+
+            if (stats.size > config.MAX_CAST_SIZE) {
+              truncatedCount++;
+            }
+          } catch (error) {
+            logger.warn(`Failed to recover session ${sessionInfo.id}:`, error);
+          }
+        }
+      }
+
+      if (recoveredCount > 0) {
+        logger.log(
+          chalk.blue(
+            `Session recovery complete: ${recoveredCount} sessions recovered, ${truncatedCount} will be truncated`
+          )
+        );
+      }
+    } catch (error) {
+      logger.error('Error during session recovery:', error);
+    }
   }
 
   /**
