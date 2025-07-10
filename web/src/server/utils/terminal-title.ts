@@ -8,8 +8,17 @@
 import * as os from 'os';
 import * as path from 'path';
 import { getBaseRepoName } from '../../shared/utils/git.js';
-import type { ActivityState } from './activity-detector.js';
 import { PromptDetector } from './prompt-patterns.js';
+
+// Simplified ActivityState interface for title generation
+export interface ActivityState {
+  isActive: boolean;
+  lastActivityTime: number;
+  specificStatus?: {
+    app: string;
+    status: string;
+  };
+}
 
 // Pre-compiled regex patterns for performance
 // Match cd command with optional arguments, handling newlines

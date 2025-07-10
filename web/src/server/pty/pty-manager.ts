@@ -6,24 +6,10 @@
  */
 
 import chalk from 'chalk';
-import { exec } from 'child_process';
 import { EventEmitter, once } from 'events';
 import * as fs from 'fs';
 import * as net from 'net';
-<<<<<<< HEAD
-import type { IPty, IPtyForkOptions } from 'node-pty';
-||||||| parent of 798f5c91 (Replace Node.js PTY with native Rust implementation)
-import type { IPty } from 'node-pty';
-import * as pty from 'node-pty';
-=======
->>>>>>> 798f5c91 (Replace Node.js PTY with native Rust implementation)
 import * as path from 'path';
-
-// Import node-pty with fallback support
-let pty: typeof import('node-pty');
-
-// Dynamic import will be done in initialization
-import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   Session,
@@ -35,7 +21,6 @@ import type {
 import { TitleMode } from '../../shared/types.js';
 import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
 import type { SessionMonitor } from '../services/session-monitor.js';
-import { ActivityDetector, type ActivityState } from '../utils/activity-detector.js';
 import { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
 import { createLogger } from '../utils/logger.js';
 import {
@@ -46,7 +31,6 @@ import {
 } from '../utils/terminal-title.js';
 import { WriteQueue } from '../utils/write-queue.js';
 import { VERSION } from '../version.js';
-import { controlUnixHandler } from '../websocket/control-unix-handler.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
 import { FishHandler } from './fish-handler.js';
 import { ProcessUtils } from './process-utils.js';
@@ -100,62 +84,10 @@ const TITLE_UPDATE_INTERVAL_MS = 1000; // How often to check if title needs upda
 const TITLE_INJECTION_QUIET_PERIOD_MS = 50; // Minimum quiet period before injecting title
 const TITLE_INJECTION_CHECK_INTERVAL_MS = 10; // How often to check for quiet period
 
-// Foreground process tracking constants
-const PROCESS_POLL_INTERVAL_MS = 500; // How often to check foreground process
-const MIN_COMMAND_DURATION_MS = 3000; // Minimum duration for command completion notifications (3 seconds)
-const SHELL_COMMANDS = new Set(['cd', 'ls', 'pwd', 'echo', 'export', 'alias', 'unset']); // Built-in commands to ignore
-
-/**
- * PtyManager handles the lifecycle and I/O operations of pseudo-terminal (PTY) sessions.
- *
- * This class provides comprehensive terminal session management including:
- * - Creating and managing PTY processes using node-pty
- * - Handling terminal input/output with proper buffering and queuing
- * - Managing terminal resizing from both browser and host terminal
- * - Recording sessions in asciinema format for playback
- * - Communicating with external sessions via Unix domain sockets
- * - Dynamic terminal title management with activity detection
- * - Session persistence and recovery across server restarts
- *
- * The PtyManager supports both in-memory sessions (where the PTY is managed directly)
- * and external sessions (where communication happens via IPC sockets).
- *
- * @extends EventEmitter
- *
- * @fires PtyManager#sessionExited - When a session terminates
- * @fires PtyManager#sessionNameChanged - When a session name is updated
- * @fires PtyManager#bell - When a bell character is detected in terminal output
- *
- * @example
- * ```typescript
- * // Create a PTY manager instance
- * const ptyManager = new PtyManager('/path/to/control/dir');
- *
- * // Create a new session
- * const { sessionId, sessionInfo } = await ptyManager.createSession(
- *   ['bash', '-l'],
- *   {
- *     name: 'My Terminal',
- *     workingDir: '/home/user',
- *     cols: 80,
- *     rows: 24,
- *     titleMode: TitleMode.DYNAMIC
- *   }
- * );
- *
- * // Send input to the session
- * ptyManager.sendInput(sessionId, { text: 'ls -la\n' });
- *
- * // Resize the terminal
- * ptyManager.resizeSession(sessionId, 100, 30);
- *
- * // Kill the session gracefully
- * await ptyManager.killSession(sessionId);
- * ```
- */
 export class PtyManager extends EventEmitter {
   private sessions = new Map<string, PtySession>();
   private sessionManager: SessionManager;
+  private sessionMonitor?: SessionMonitor;
   private defaultTerm = 'xterm-256color';
   private inputSocketClients = new Map<string, net.Socket>(); // Cache socket connections
   private lastTerminalSize: { cols: number; rows: number } | null = null;
@@ -164,60 +96,18 @@ export class PtyManager extends EventEmitter {
     string,
     { cols: number; rows: number; source: 'browser' | 'terminal'; timestamp: number }
   >();
-  private static initialized = false;
   private sessionEventListeners = new Map<string, Set<(...args: unknown[]) => void>>();
+  private lastBellTime = new Map<string, number>(); // Track last bell time per session
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
   private activityFileWarningsLogged = new Set<string>(); // Track which sessions we've logged warnings for
-  private lastWrittenActivityState = new Map<string, string>(); // Track last written activity state to avoid unnecessary writes
-  private sessionMonitor: SessionMonitor | null = null; // Reference to SessionMonitor for notification tracking
-
-  // Command tracking for notifications
-  private commandTracking = new Map<
-    string,
-    {
-      command: string;
-      startTime: number;
-      pid?: number;
-    }
-  >();
 
   constructor(controlPath?: string) {
     super();
     this.sessionManager = new SessionManager(controlPath);
-    this.processTreeAnalyzer = new ProcessTreeAnalyzer();
     this.setupTerminalResizeDetection();
-
-    // Initialize node-pty if not already done
-    if (!PtyManager.initialized) {
-      throw new Error('PtyManager not initialized. Call PtyManager.initialize() first.');
-    }
   }
 
-  /**
-   * Initialize PtyManager with fallback support for node-pty
-   */
-  public static async initialize(): Promise<void> {
-    if (PtyManager.initialized) {
-      return;
-    }
-
-    try {
-      logger.log('Initializing PtyManager...');
-      pty = await import('node-pty');
-      PtyManager.initialized = true;
-      logger.log('✅ PtyManager initialized successfully');
-    } catch (error) {
-      logger.error('Failed to initialize PtyManager:', error);
-      throw new Error(
-        `Cannot load node-pty: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
-
-  /**
-   * Set the SessionMonitor instance for activity tracking
-   */
   public setSessionMonitor(monitor: SessionMonitor): void {
     this.sessionMonitor = monitor;
   }
@@ -336,9 +226,7 @@ export class PtyManager extends EventEmitter {
 
     const sessionId = options.sessionId || uuidv4();
     const sessionName = options.name || path.basename(command[0]);
-    // Correctly determine the web directory path
-    const webDir = path.resolve(__dirname, '..', '..');
-    const workingDir = options.workingDir || webDir;
+    const workingDir = options.workingDir || process.cwd();
     const term = this.defaultTerm;
     // For external spawns without dimensions, let the PTY use the terminal's natural size
     // For other cases, use reasonable defaults
@@ -379,9 +267,6 @@ export class PtyManager extends EventEmitter {
       logger.debug(chalk.blue(`Creating PTY session with command: ${resolvedCommand.join(' ')}`));
       logger.debug(`Working directory: ${workingDir}`);
 
-      // Check if this session is being spawned from within VibeTunnel
-      const attachedViaVT = !!process.env.VIBETUNNEL_SESSION_ID;
-
       // Create initial session info with resolved command
       const sessionInfo: SessionInfo = {
         id: sessionId,
@@ -394,14 +279,6 @@ export class PtyManager extends EventEmitter {
         initialRows: rows,
         lastClearOffset: 0,
         version: VERSION,
-        gitRepoPath: options.gitRepoPath,
-        gitBranch: options.gitBranch,
-        gitAheadCount: options.gitAheadCount,
-        gitBehindCount: options.gitBehindCount,
-        gitHasChanges: options.gitHasChanges,
-        gitIsWorktree: options.gitIsWorktree,
-        gitMainRepoPath: options.gitMainRepoPath,
-        attachedViaVT,
       };
 
       // Save initial session info
@@ -417,20 +294,6 @@ export class PtyManager extends EventEmitter {
         sessionName,
         this.createEnvVars(term)
       );
-
-      // Set up pruning detection callback for precise offset tracking
-      asciinemaWriter.onPruningSequence(async ({ sequence, position }) => {
-        const sessionInfo = this.sessionManager.loadSessionInfo(sessionId);
-        if (sessionInfo) {
-          sessionInfo.lastClearOffset = position;
-          await this.sessionManager.saveSessionInfo(sessionId, sessionInfo);
-
-          logger.debug(
-            `Updated lastClearOffset for session ${sessionId} to exact position ${position} ` +
-              `after detecting pruning sequence '${sequence.split('\x1b').join('\\x1b')}'`
-          );
-        }
-      });
 
       // Create PTY process
       let ptyProcess: IPty;
@@ -458,13 +321,7 @@ export class PtyManager extends EventEmitter {
         });
 
         // Build spawn options - only include dimensions if provided
-<<<<<<< HEAD
-        const spawnOptions: IPtyForkOptions = {
-||||||| parent of 798f5c91 (Replace Node.js PTY with native Rust implementation)
-        const spawnOptions: pty.IPtyForkOptions = {
-=======
         const spawnOptions: import('./types.js').IPtyOptions = {
->>>>>>> 798f5c91 (Replace Node.js PTY with native Rust implementation)
           name: term,
           cwd: workingDir,
           env: ptyEnv,
@@ -479,38 +336,7 @@ export class PtyManager extends EventEmitter {
           spawnOptions.rows = rows;
         }
 
-<<<<<<< HEAD
-        ptyProcess = pty.spawn(finalCommand, finalArgs, spawnOptions);
-
-        // Add immediate exit handler to catch CI issues
-        const exitHandler = (event: { exitCode: number; signal?: number }) => {
-          const timeSinceStart = Date.now() - Date.parse(sessionInfo.startedAt);
-          if (timeSinceStart < 1000) {
-            logger.error(
-              `PTY process exited quickly after spawn! Exit code: ${event.exitCode}, signal: ${event.signal}, time: ${timeSinceStart}ms`
-            );
-            logger.error(
-              'This often happens in CI when PTY allocation fails or shell is misconfigured'
-            );
-            logger.error('Debug info:', {
-              SHELL: process.env.SHELL,
-              TERM: process.env.TERM,
-              CI: process.env.CI,
-              NODE_ENV: process.env.NODE_ENV,
-              command: finalCommand,
-              args: finalArgs,
-              cwd: workingDir,
-              cwdExists: fs.existsSync(workingDir),
-              commandExists: fs.existsSync(finalCommand),
-            });
-          }
-        };
-        ptyProcess.onExit(exitHandler);
-||||||| parent of 798f5c91 (Replace Node.js PTY with native Rust implementation)
-        ptyProcess = pty.spawn(finalCommand, finalArgs, spawnOptions);
-=======
         ptyProcess = ptyImplementation.spawn(finalCommand, finalArgs, spawnOptions);
->>>>>>> 798f5c91 (Replace Node.js PTY with native Rust implementation)
       } catch (spawnError) {
         // Debug log the raw error first
         logger.debug('Raw spawn error:', {
@@ -609,29 +435,10 @@ export class PtyManager extends EventEmitter {
       // Setup PTY event handlers
       this.setupPtyHandlers(session, options.forwardToStdout || false, options.onExit);
 
-      // Start foreground process tracking
-      this.startForegroundProcessTracking(session);
-
       // Note: stdin forwarding is now handled via IPC socket
 
       // Initial title will be set when the first output is received
       // Do not write title sequence to PTY input as it would be sent to the shell
-
-      // Emit session started event
-      this.emit('sessionStarted', sessionId, sessionInfo.name || sessionInfo.command.join(' '));
-
-      // Send notification to Mac app
-      if (controlUnixHandler.isMacAppConnected()) {
-        controlUnixHandler.sendNotification(
-          'Session Started',
-          sessionInfo.name || sessionInfo.command.join(' '),
-          {
-            type: 'session-start',
-            sessionId: sessionId,
-            sessionName: sessionInfo.name || sessionInfo.command.join(' '),
-          }
-        );
-      }
 
       return {
         sessionId,
@@ -686,124 +493,49 @@ export class PtyManager extends EventEmitter {
     const inputQueue = new WriteQueue();
     session.inputQueue = inputQueue;
 
-    // Setup activity detector for dynamic mode
-    if (session.titleMode === TitleMode.DYNAMIC) {
-      session.activityDetector = new ActivityDetector(session.sessionInfo.command, session.id);
-
-      // Set up Claude turn notification callback
-      session.activityDetector.setOnClaudeTurn((sessionId) => {
-        logger.info(`🔔 NOTIFICATION DEBUG: Claude turn detected for session ${sessionId}`);
-        this.emit(
-          'claudeTurn',
-          sessionId,
-          session.sessionInfo.name || session.sessionInfo.command.join(' ')
-        );
-      });
-    }
-
     // Setup periodic title updates for both static and dynamic modes
     if (
       session.titleMode !== TitleMode.NONE &&
       session.titleMode !== TitleMode.FILTER &&
       forwardToStdout
     ) {
-      // Track last known activity state for change detection
-      let lastKnownActivityState: {
-        isActive: boolean;
-        specificStatus?: string;
-      } | null = null;
-
       session.titleUpdateInterval = setInterval(() => {
-        // For dynamic mode, check for activity state changes
-        if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
-          const activityState = session.activityDetector.getActivityState();
-
-          // Check if activity state has changed
-          const activityChanged =
-            lastKnownActivityState === null ||
-            activityState.isActive !== lastKnownActivityState.isActive ||
-            activityState.specificStatus?.status !== lastKnownActivityState.specificStatus;
-
-          if (activityChanged) {
-            // Update last known state
-            lastKnownActivityState = {
-              isActive: activityState.isActive,
-              specificStatus: activityState.specificStatus?.status,
-            };
-
-            // Mark title for update
-            this.markTitleUpdateNeeded(session);
-
-            logger.debug(
-              `Activity state changed for session ${session.id}: ` +
-                `active=${activityState.isActive}, ` +
-                `status=${activityState.specificStatus?.status || 'none'}`
-            );
-
-            // Send notification when activity becomes inactive (Claude's turn)
-            if (!activityState.isActive && activityState.specificStatus?.status === 'waiting') {
-              logger.info(`🔔 NOTIFICATION DEBUG: Claude turn detected for session ${session.id}`);
-              this.emit(
-                'claudeTurn',
-                session.id,
-                session.sessionInfo.name || session.sessionInfo.command.join(' ')
-              );
-
-              // Send notification to Mac app directly
-              if (controlUnixHandler.isMacAppConnected()) {
-                controlUnixHandler.sendNotification('Your Turn', 'Claude has finished responding', {
-                  type: 'your-turn',
-                  sessionId: session.id,
-                  sessionName: session.sessionInfo.name || session.sessionInfo.command.join(' '),
-                });
-              }
-            }
-          }
-
-          // Always write activity state for external tools
-          this.writeActivityState(session, activityState);
-        }
-
         // Check and update title if needed
         this.checkAndUpdateTitle(session);
       }, TITLE_UPDATE_INTERVAL_MS);
+    }
+
+    // Handle activity detection for dynamic mode
+    if (session.titleMode === TitleMode.DYNAMIC) {
+      ptyProcess.on(
+        'activity',
+        (activity: { timestamp: number; status: string; details?: string }) => {
+          // Update session activity status
+          session.activityStatus = {
+            specificStatus: {
+              app: 'claude',
+              status: `${activity.status}${activity.details ? ` (${activity.details})` : ''}`,
+            },
+          };
+
+          // Mark title for update
+          this.markTitleUpdateNeeded(session);
+
+          logger.debug(
+            `Activity detected for session ${session.id}: ${activity.status} ${activity.details || ''}`
+          );
+        }
+      );
     }
 
     // Handle PTY data output
     ptyProcess.on('data', (data: string) => {
       let processedData = data;
 
-      // Track PTY output in SessionMonitor for activity and bell detection
-      if (this.sessionMonitor) {
-        this.sessionMonitor.trackPtyOutput(session.id, data);
-      }
-
       // If title mode is not NONE, filter out any title sequences the process might
       // have written to the stream.
       if (session.titleMode !== undefined && session.titleMode !== TitleMode.NONE) {
         processedData = session.titleFilter ? session.titleFilter.filter(data) : data;
-      }
-
-      // Handle activity detection for dynamic mode
-      if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
-        const { filteredData, activity } = session.activityDetector.processOutput(processedData);
-        processedData = filteredData;
-
-        // Check if activity status changed
-        if (activity.specificStatus?.status !== session.lastActivityStatus) {
-          session.lastActivityStatus = activity.specificStatus?.status;
-          this.markTitleUpdateNeeded(session);
-
-          // Update SessionMonitor with activity change
-          if (this.sessionMonitor) {
-            const isActive = activity.specificStatus?.status === 'working';
-            this.sessionMonitor.updateSessionActivity(
-              session.id,
-              isActive,
-              activity.specificStatus?.app
-            );
-          }
-        }
       }
 
       // Check for title update triggers
@@ -818,7 +550,6 @@ export class PtyManager extends EventEmitter {
       }
 
       // Write to asciinema file (it has its own internal queue)
-      // The AsciinemaWriter now handles pruning detection internally with precise byte tracking
       asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
 
       // Forward to stdout if requested (using queue for ordering)
@@ -874,31 +605,14 @@ export class PtyManager extends EventEmitter {
         // Remove from active sessions
         this.sessions.delete(session.id);
 
-        // Clean up command tracking
-        this.commandTracking.delete(session.id);
+        // Clean up bell tracking
+        this.lastBellTime.delete(session.id);
+        this.sessionExitTimes.delete(session.id);
 
         // Emit session exited event
-        this.emit(
-          'sessionExited',
-          session.id,
-          session.sessionInfo.name || session.sessionInfo.command.join(' '),
-          exitCode
-        );
+        this.emit('sessionExited', session.id);
 
-        // Send notification to Mac app
-        if (controlUnixHandler.isMacAppConnected()) {
-          controlUnixHandler.sendNotification(
-            'Session Ended',
-            session.sessionInfo.name || session.sessionInfo.command.join(' '),
-            {
-              type: 'session-exit',
-              sessionId: session.id,
-              sessionName: session.sessionInfo.name || session.sessionInfo.command.join(' '),
-            }
-          );
-        }
-
-        // Call exit callback if provided (for fwd.ts)
+        // Call exit callback if provided
         if (onExit) {
           onExit(exitCode || 0, signal);
         }
@@ -1119,33 +833,23 @@ export class PtyManager extends EventEmitter {
         case MessageType.STDOUT_DATA: {
           // Handle stdout data from vt-pipe (external terminal)
           const text = data as string;
-          
+
           // For external terminals, we need to handle output similar to managed PTY sessions
           // Apply title filtering if needed
           let processedData = text;
           if (session.titleMode !== undefined && session.titleMode !== TitleMode.NONE) {
             processedData = session.titleFilter ? session.titleFilter.filter(text) : text;
           }
-          
-          // Handle activity detection for dynamic mode
-          if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
-            const { filteredData, activity } = session.activityDetector.processOutput(processedData);
-            processedData = filteredData;
-            
-            // Check if activity status changed
-            if (activity.specificStatus?.status !== session.lastActivityStatus) {
-              session.lastActivityStatus = activity.specificStatus?.status;
-              this.markTitleUpdateNeeded(session);
-            }
-          }
-          
+
           // Record output for asciinema
           session.asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
-          
+
           // For external terminals, stdout is already displayed locally by vt-pipe
           // We just need to ensure it's available for web clients through SSE/WebSocket
-          
-          logger.debug(`Received ${text.length} bytes of stdout data from vt-pipe for session ${session.id}`);
+
+          logger.debug(
+            `Received ${text.length} bytes of stdout data from vt-pipe for session ${session.id}`
+          );
           break;
         }
 
@@ -1157,9 +861,7 @@ export class PtyManager extends EventEmitter {
           logger.debug(`Unknown message type ${type} for session ${session.id}`);
       }
     } catch (error) {
-      // Don't log the full error object as it might contain buffers or circular references
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(`Failed to handle socket message for session ${session.id}: ${errorMessage}`);
+      logger.error(`Failed to handle socket message for session ${session.id}:`, error);
     }
   }
 
@@ -1449,18 +1151,6 @@ export class PtyManager extends EventEmitter {
     const memorySession = this.sessions.get(sessionId);
     const currentTime = Date.now();
 
-    // Check for rapid resizes (potential feedback loop)
-    const lastResize = this.sessionResizeSources.get(sessionId);
-    if (lastResize) {
-      const timeSinceLastResize = currentTime - lastResize.timestamp;
-      if (timeSinceLastResize < 100) {
-        // Less than 100ms since last resize - this might indicate a loop
-        logger.warn(
-          `Rapid resize detected for session ${sessionId}: ${timeSinceLastResize}ms since last resize (${lastResize.cols}x${lastResize.rows} -> ${cols}x${rows})`
-        );
-      }
-    }
-
     try {
       // If we have an in-memory session with active PTY, resize it
       if (memorySession?.ptyProcess) {
@@ -1475,7 +1165,7 @@ export class PtyManager extends EventEmitter {
           timestamp: currentTime,
         });
 
-        logger.debug(`Resized session ${sessionId} to ${cols}x${rows}`);
+        logger.debug(`Resized session ${sessionId} to ${cols}x${rows} from browser`);
       } else {
         // For external sessions, try to send resize via control pipe
         const resizeMessage: ResizeControlMessage = {
@@ -1671,10 +1361,21 @@ export class PtyManager extends EventEmitter {
       if (memorySession?.ptyProcess) {
         // If signal is already SIGKILL, send it immediately and wait briefly
         if (signal === 'SIGKILL' || signal === 9) {
+          const pid = memorySession.ptyProcess.pid;
           memorySession.ptyProcess.kill('SIGKILL');
 
-          // Note: We no longer kill the process group to avoid affecting other sessions
-          // that might share the same process group (e.g., multiple fwd.ts instances)
+          // Also kill the entire process group if on Unix
+          if (process.platform !== 'win32' && pid) {
+            try {
+              process.kill(-pid, 'SIGKILL');
+              logger.debug(`Sent SIGKILL to process group -${pid} for session ${sessionId}`);
+            } catch (groupKillError) {
+              logger.debug(
+                `Failed to SIGKILL process group for session ${sessionId}:`,
+                groupKillError
+              );
+            }
+          }
 
           this.sessions.delete(sessionId);
           // Wait a bit for SIGKILL to take effect
@@ -1711,8 +1412,20 @@ export class PtyManager extends EventEmitter {
           if (signal === 'SIGKILL' || signal === 9) {
             process.kill(diskSession.pid, 'SIGKILL');
 
-            // Note: We no longer kill the process group to avoid affecting other sessions
-            // that might share the same process group (e.g., multiple fwd.ts instances)
+            // Also kill the entire process group if on Unix
+            if (process.platform !== 'win32') {
+              try {
+                process.kill(-diskSession.pid, 'SIGKILL');
+                logger.debug(
+                  `Sent SIGKILL to process group -${diskSession.pid} for external session ${sessionId}`
+                );
+              } catch (groupKillError) {
+                logger.debug(
+                  `Failed to SIGKILL process group for external session ${sessionId}:`,
+                  groupKillError
+                );
+              }
+            }
 
             await new Promise((resolve) => setTimeout(resolve, 100));
             return;
@@ -1721,8 +1434,22 @@ export class PtyManager extends EventEmitter {
           // Send SIGTERM first
           process.kill(diskSession.pid, 'SIGTERM');
 
-          // Note: We no longer kill the process group to avoid affecting other sessions
-          // that might share the same process group (e.g., multiple fwd.ts instances)
+          // Also try to kill the entire process group if on Unix
+          if (process.platform !== 'win32') {
+            try {
+              // Kill the process group by using negative PID
+              process.kill(-diskSession.pid, 'SIGTERM');
+              logger.debug(
+                `Sent SIGTERM to process group -${diskSession.pid} for external session ${sessionId}`
+              );
+            } catch (groupKillError) {
+              // Process group might not exist or we might not have permission
+              logger.debug(
+                `Failed to kill process group for external session ${sessionId}:`,
+                groupKillError
+              );
+            }
+          }
 
           // Wait up to 3 seconds for graceful termination
           const maxWaitTime = 3000;
@@ -1742,8 +1469,21 @@ export class PtyManager extends EventEmitter {
           logger.debug(chalk.yellow(`External session ${sessionId} requires SIGKILL`));
           process.kill(diskSession.pid, 'SIGKILL');
 
-          // Note: We no longer kill the process group to avoid affecting other sessions
-          // that might share the same process group (e.g., multiple fwd.ts instances)
+          // Also force kill the entire process group if on Unix
+          if (process.platform !== 'win32') {
+            try {
+              // Kill the process group with SIGKILL
+              process.kill(-diskSession.pid, 'SIGKILL');
+              logger.debug(
+                `Sent SIGKILL to process group -${diskSession.pid} for external session ${sessionId}`
+              );
+            } catch (groupKillError) {
+              logger.debug(
+                `Failed to SIGKILL process group for external session ${sessionId}:`,
+                groupKillError
+              );
+            }
+          }
 
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
@@ -1773,8 +1513,17 @@ export class PtyManager extends EventEmitter {
       // Send SIGTERM first
       session.ptyProcess.kill('SIGTERM');
 
-      // Note: We no longer kill the process group to avoid affecting other sessions
-      // that might share the same process group (e.g., multiple fwd.ts instances)
+      // Also try to kill the entire process group if on Unix
+      if (process.platform !== 'win32' && pid) {
+        try {
+          // Kill the process group by using negative PID
+          process.kill(-pid, 'SIGTERM');
+          logger.debug(`Sent SIGTERM to process group -${pid} for session ${sessionId}`);
+        } catch (groupKillError) {
+          // Process group might not exist or we might not have permission
+          logger.debug(`Failed to kill process group for session ${sessionId}:`, groupKillError);
+        }
+      }
 
       // Wait up to 3 seconds for graceful termination (check every 500ms)
       const maxWaitTime = 3000;
@@ -1803,8 +1552,18 @@ export class PtyManager extends EventEmitter {
         session.ptyProcess.kill('SIGKILL');
 
         // Also force kill the entire process group if on Unix
-        // Note: We no longer kill the process group to avoid affecting other sessions
-        // that might share the same process group (e.g., multiple fwd.ts instances)
+        if (process.platform !== 'win32' && pid) {
+          try {
+            // Kill the process group with SIGKILL
+            process.kill(-pid, 'SIGKILL');
+            logger.debug(`Sent SIGKILL to process group -${pid} for session ${sessionId}`);
+          } catch (groupKillError) {
+            logger.debug(
+              `Failed to SIGKILL process group for session ${sessionId}:`,
+              groupKillError
+            );
+          }
+        }
 
         // Wait a bit more for SIGKILL to take effect
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1854,18 +1613,6 @@ export class PtyManager extends EventEmitter {
         return {
           ...session,
           activityStatus: activeSession.activityStatus,
-        };
-      }
-
-      // Then check activity detector for dynamic mode
-      if (activeSession?.activityDetector) {
-        const activityState = activeSession.activityDetector.getActivityState();
-        return {
-          ...session,
-          activityStatus: {
-            isActive: activityState.isActive,
-            specificStatus: activityState.specificStatus,
-          },
         };
       }
 
@@ -2022,18 +1769,75 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
+   * Capture process information for bell source identification
+   */
+  private async captureProcessInfoForBell(session: PtySession, bellCount: number): Promise<void> {
+    try {
+      const sessionPid = session.ptyProcess?.pid;
+      if (!sessionPid) {
+        logger.warn(`Cannot capture process info for session ${session.id}: no PID available`);
+        // Emit basic bell event without process info
+        this.emit('bell', {
+          sessionInfo: session.sessionInfo,
+          timestamp: new Date(),
+          bellCount,
+        });
+        return;
+      }
+
+      logger.log(
+        `Capturing process snapshot for bell in session ${session.id} (PID: ${sessionPid})`
+      );
+
+      // Capture process information asynchronously
+      const processSnapshot = await this.processTreeAnalyzer.captureProcessSnapshot(sessionPid);
+
+      // Emit enhanced bell event with process information
+      this.emit('bell', {
+        sessionInfo: session.sessionInfo,
+        timestamp: new Date(),
+        bellCount,
+        processSnapshot,
+        suspectedSource: processSnapshot.suspectedBellSource,
+      });
+
+      logger.log(
+        `Bell event emitted for session ${session.id} with suspected source: ${
+          processSnapshot.suspectedBellSource?.command || 'unknown'
+        } (PID: ${processSnapshot.suspectedBellSource?.pid || 'unknown'})`
+      );
+    } catch (error) {
+      logger.warn(`Failed to capture process info for bell in session ${session.id}:`, error);
+
+      // Fallback: emit basic bell event without process info
+      this.emit('bell', {
+        sessionInfo: session.sessionInfo,
+        timestamp: new Date(),
+        bellCount,
+      });
+    }
+  }
+
+  /**
    * Shutdown all active sessions and clean up resources
    */
   async shutdown(): Promise<void> {
     for (const [sessionId, session] of Array.from(this.sessions.entries())) {
       try {
         if (session.ptyProcess) {
+          const pid = session.ptyProcess.pid;
           session.ptyProcess.kill();
 
-          // Note: We no longer kill the process group to avoid affecting other sessions
-          // that might share the same process group (e.g., multiple fwd.ts instances)
-          // The shutdown() method is only called during server shutdown where we DO want
-          // to clean up all sessions, but we still avoid process group kills to be safe
+          // Also kill the entire process group if on Unix
+          if (process.platform !== 'win32' && pid) {
+            try {
+              process.kill(-pid, 'SIGTERM');
+              logger.debug(`Sent SIGTERM to process group -${pid} during shutdown`);
+            } catch (groupKillError) {
+              // Process group might not exist
+              logger.debug(`Failed to kill process group during shutdown:`, groupKillError);
+            }
+          }
         }
         if (session.asciinemaWriter?.isOpen()) {
           await session.asciinemaWriter.close();
@@ -2076,36 +1880,17 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Write activity state only if it has changed
+   * Setup stdin forwarding for fwd mode
    */
-  private writeActivityState(session: PtySession, activityState: ActivityState): void {
-    const activityPath = path.join(session.controlDir, 'claude-activity.json');
-    const activityData = {
-      isActive: activityState.isActive,
-      specificStatus: activityState.specificStatus,
-      timestamp: new Date().toISOString(),
-    };
+  private setupStdinForwarding(session: PtySession): void {
+    if (!session.ptyProcess) return;
 
-    const stateJson = JSON.stringify(activityData);
-    const lastState = this.lastWrittenActivityState.get(session.id);
-
-    if (lastState !== stateJson) {
-      try {
-        fs.writeFileSync(activityPath, JSON.stringify(activityData, null, 2));
-        this.lastWrittenActivityState.set(session.id, stateJson);
-
-        // Debug log first write
-        if (!session.activityFileWritten) {
-          session.activityFileWritten = true;
-          logger.debug(`Writing activity state to ${activityPath} for session ${session.id}`, {
-            activityState,
-            timestamp: activityData.timestamp,
-          });
-        }
-      } catch (error) {
-        logger.error(`Failed to write activity state for session ${session.id}:`, error);
-      }
-    }
+    // IMPORTANT: stdin forwarding is now handled via IPC socket
+    // This method is kept for backward compatibility but should not be used
+    // as it would cause stdin duplication if multiple sessions are created
+    logger.warn(
+      `setupStdinForwarding called for session ${session.id} - stdin should be handled via IPC socket`
+    );
   }
 
   /**
@@ -2135,12 +1920,6 @@ export class PtyManager extends EventEmitter {
     if (session.titleUpdateInterval) {
       clearInterval(session.titleUpdateInterval);
       session.titleUpdateInterval = undefined;
-    }
-
-    // Clean up activity detector
-    if (session.activityDetector) {
-      session.activityDetector.clearStatus();
-      session.activityDetector = undefined;
     }
 
     // Clean up title filter
@@ -2196,9 +1975,6 @@ export class PtyManager extends EventEmitter {
       });
       this.sessionEventListeners.delete(session.id);
     }
-
-    // Clean up activity state tracking
-    this.lastWrittenActivityState.delete(session.id);
 
     // Clean up title injection timer
     if (session.titleInjectionTimer) {
@@ -2412,7 +2188,7 @@ export class PtyManager extends EventEmitter {
       sessionInfoObjectId: session.sessionInfo,
       currentDir,
       command: session.sessionInfo.command,
-      activityDetectorExists: !!session.activityDetector,
+      activityStatus: session.activityStatus,
     });
 
     if (session.titleMode === TitleMode.STATIC) {
@@ -2421,8 +2197,13 @@ export class PtyManager extends EventEmitter {
         session.sessionInfo.command,
         session.sessionInfo.name
       );
-    } else if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
-      const activity = session.activityDetector.getActivityState();
+    } else if (session.titleMode === TitleMode.DYNAMIC) {
+      // Create ActivityState-compatible object from activityStatus
+      const activity = {
+        isActive: !!session.activityStatus?.specificStatus,
+        lastActivityTime: Date.now(), // Not used in generateDynamicTitle
+        specificStatus: session.activityStatus?.specificStatus,
+      };
       logger.debug(`[generateTerminalTitle] Calling generateDynamicTitle with:`, {
         currentDir,
         command: session.sessionInfo.command,
@@ -2433,363 +2214,10 @@ export class PtyManager extends EventEmitter {
         currentDir,
         session.sessionInfo.command,
         activity,
-        session.sessionInfo.name,
-        session.sessionInfo.gitRepoPath,
-        undefined // Git branch will be fetched dynamically when needed
+        session.sessionInfo.name
       );
     }
 
     return null;
   }
-
-  /**
-   * Start tracking foreground process for command completion notifications
-   */
-  private startForegroundProcessTracking(session: PtySession): void {
-    if (!session.ptyProcess) return;
-
-    logger.debug(`Starting foreground process tracking for session ${session.id}`);
-    const ptyPid = session.ptyProcess.pid;
-
-    // Get the shell's process group ID (pgid)
-    this.getProcessPgid(ptyPid)
-      .then((shellPgid) => {
-        if (shellPgid) {
-          session.shellPgid = shellPgid;
-          session.currentForegroundPgid = shellPgid;
-          logger.info(
-            `🔔 NOTIFICATION DEBUG: Starting command tracking for session ${session.id} - shellPgid: ${shellPgid}, polling every ${PROCESS_POLL_INTERVAL_MS}ms`
-          );
-          logger.debug(`Session ${session.id}: Shell PGID is ${shellPgid}, starting polling`);
-
-          // Start polling for foreground process changes
-          session.processPollingInterval = setInterval(() => {
-            this.checkForegroundProcess(session);
-          }, PROCESS_POLL_INTERVAL_MS);
-        } else {
-          logger.warn(`Session ${session.id}: Could not get shell PGID`);
-        }
-      })
-      .catch((err) => {
-        logger.warn(`Failed to get shell PGID for session ${session.id}:`, err);
-      });
-  }
-
-  /**
-   * Get process group ID for a process
-   */
-  private async getProcessPgid(pid: number): Promise<number | null> {
-    try {
-      const { stdout } = await this.execAsync(`ps -o pgid= -p ${pid}`, { timeout: 1000 });
-      const pgid = Number.parseInt(stdout.trim(), 10);
-      return Number.isNaN(pgid) ? null : pgid;
-    } catch (_error) {
-      return null;
-    }
-  }
-
-  /**
-   * Get the foreground process group of a terminal
-   */
-  private async getTerminalForegroundPgid(session: PtySession): Promise<number | null> {
-    if (!session.ptyProcess) return null;
-
-    try {
-      // On Unix-like systems, we can check the terminal's foreground process group
-      // biome-ignore lint/suspicious/noExplicitAny: Accessing internal node-pty property
-      const ttyName = (session.ptyProcess as any)._pty; // Internal PTY name
-      if (!ttyName) {
-        logger.debug(`Session ${session.id}: No TTY name found, falling back to process tree`);
-        return this.getForegroundFromProcessTree(session);
-      }
-
-      // Use ps to find processes associated with this terminal
-      const psCommand = `ps -t ${ttyName} -o pgid,pid,ppid,command | grep -v PGID | head -1`;
-      const { stdout } = await this.execAsync(psCommand, { timeout: 1000 });
-
-      const lines = stdout.trim().split('\n');
-      if (lines.length > 0 && lines[0].trim()) {
-        const parts = lines[0].trim().split(/\s+/);
-        const pgid = Number.parseInt(parts[0], 10);
-
-        // Log the raw ps output for debugging
-        logger.debug(`Session ${session.id}: ps output for TTY ${ttyName}: "${lines[0].trim()}"`);
-
-        if (!Number.isNaN(pgid)) {
-          return pgid;
-        }
-      }
-
-      logger.debug(`Session ${session.id}: Could not parse PGID from ps output, falling back`);
-    } catch (error) {
-      logger.debug(`Session ${session.id}: Error getting terminal PGID: ${error}, falling back`);
-      // Fallback: try to get foreground process from process tree
-      return this.getForegroundFromProcessTree(session);
-    }
-
-    return null;
-  }
-
-  /**
-   * Get foreground process from process tree analysis
-   */
-  private async getForegroundFromProcessTree(session: PtySession): Promise<number | null> {
-    if (!session.ptyProcess) return null;
-
-    try {
-      const processTree = await this.processTreeAnalyzer.getProcessTree(session.ptyProcess.pid);
-
-      // Find the most recent non-shell process
-      for (const proc of processTree) {
-        if (proc.pgid !== session.shellPgid && proc.command && !this.isShellProcess(proc.command)) {
-          return proc.pgid;
-        }
-      }
-    } catch (error) {
-      logger.debug(`Failed to analyze process tree for session ${session.id}:`, error);
-    }
-
-    return session.shellPgid || null;
-  }
-
-  /**
-   * Check if a command is a shell process
-   */
-  private isShellProcess(command: string): boolean {
-    const shellNames = ['bash', 'zsh', 'fish', 'sh', 'dash', 'tcsh', 'csh'];
-    const cmdLower = command.toLowerCase();
-    return shellNames.some((shell) => cmdLower.includes(shell));
-  }
-
-  /**
-   * Check current foreground process and detect changes
-   */
-  private async checkForegroundProcess(session: PtySession): Promise<void> {
-    if (!session.ptyProcess || !session.shellPgid) return;
-
-    try {
-      const currentPgid = await this.getTerminalForegroundPgid(session);
-
-      // Enhanced debug logging
-      const timestamp = new Date().toISOString();
-      logger.debug(
-        chalk.gray(
-          `[${timestamp}] Session ${session.id} PGID check: current=${currentPgid}, previous=${session.currentForegroundPgid}, shell=${session.shellPgid}`
-        )
-      );
-
-      // Add debug logging
-      if (currentPgid !== session.currentForegroundPgid) {
-        logger.info(
-          `🔔 NOTIFICATION DEBUG: PGID change detected - sessionId: ${session.id}, from ${session.currentForegroundPgid} to ${currentPgid}, shellPgid: ${session.shellPgid}`
-        );
-        logger.debug(
-          chalk.yellow(
-            `Session ${session.id}: Foreground PGID changed from ${session.currentForegroundPgid} to ${currentPgid}`
-          )
-        );
-      }
-
-      if (currentPgid && currentPgid !== session.currentForegroundPgid) {
-        // Foreground process changed
-        const previousPgid = session.currentForegroundPgid;
-        session.currentForegroundPgid = currentPgid;
-
-        if (currentPgid === session.shellPgid && previousPgid !== session.shellPgid) {
-          // A command just finished (returned to shell)
-          logger.debug(
-            chalk.green(
-              `Session ${session.id}: Command finished, returning to shell (PGID ${previousPgid} → ${currentPgid})`
-            )
-          );
-          await this.handleCommandFinished(session, previousPgid);
-        } else if (currentPgid !== session.shellPgid) {
-          // A new command started
-          logger.debug(
-            chalk.blue(`Session ${session.id}: New command started (PGID ${currentPgid})`)
-          );
-          await this.handleCommandStarted(session, currentPgid);
-        }
-      }
-    } catch (error) {
-      logger.debug(`Error checking foreground process for session ${session.id}:`, error);
-    }
-  }
-
-  /**
-   * Handle when a new command starts
-   */
-  private async handleCommandStarted(session: PtySession, pgid: number): Promise<void> {
-    try {
-      // Get command info from process tree
-      if (!session.ptyProcess) return;
-      const processTree = await this.processTreeAnalyzer.getProcessTree(session.ptyProcess.pid);
-      const commandProc = processTree.find((p) => p.pgid === pgid);
-
-      if (commandProc) {
-        session.currentCommand = commandProc.command;
-        session.commandStartTime = Date.now();
-
-        // Update SessionMonitor with new command
-        if (this.sessionMonitor) {
-          this.sessionMonitor.updateCommand(session.id, commandProc.command);
-        }
-
-        // Special logging for Claude commands
-        const isClaudeCommand = commandProc.command.toLowerCase().includes('claude');
-        if (isClaudeCommand) {
-          logger.log(
-            chalk.cyan(
-              `🤖 Session ${session.id}: Claude command started: "${commandProc.command}" (PGID: ${pgid})`
-            )
-          );
-        } else {
-          logger.debug(
-            `Session ${session.id}: Command started: "${commandProc.command}" (PGID: ${pgid})`
-          );
-        }
-
-        // Log process tree for debugging
-        logger.debug(
-          `Process tree for session ${session.id}:`,
-          processTree.map((p) => `  PID: ${p.pid}, PGID: ${p.pgid}, CMD: ${p.command}`).join('\n')
-        );
-      } else {
-        logger.warn(
-          chalk.yellow(`Session ${session.id}: Could not find process info for PGID ${pgid}`)
-        );
-      }
-    } catch (error) {
-      logger.debug(`Failed to get command info for session ${session.id}:`, error);
-    }
-  }
-
-  /**
-   * Handle when a command finishes
-   */
-  private async handleCommandFinished(
-    session: PtySession,
-    pgid: number | undefined
-  ): Promise<void> {
-    if (!pgid || !session.commandStartTime || !session.currentCommand) {
-      logger.debug(
-        chalk.red(
-          `Session ${session.id}: Cannot handle command finished - missing data: pgid=${pgid}, startTime=${session.commandStartTime}, command="${session.currentCommand}"`
-        )
-      );
-      return;
-    }
-
-    const duration = Date.now() - session.commandStartTime;
-    const command = session.currentCommand;
-    const isClaudeCommand = command.toLowerCase().includes('claude');
-
-    // Reset tracking
-    session.currentCommand = undefined;
-    session.commandStartTime = undefined;
-
-    // Log command completion for Claude
-    if (isClaudeCommand) {
-      logger.log(
-        chalk.cyan(
-          `🤖 Session ${session.id}: Claude command completed: "${command}" (duration: ${duration}ms)`
-        )
-      );
-    }
-
-    // Check if we should notify - bypass duration check for Claude commands
-    if (!isClaudeCommand && duration < MIN_COMMAND_DURATION_MS) {
-      logger.debug(
-        `Session ${session.id}: Command "${command}" too short (${duration}ms < ${MIN_COMMAND_DURATION_MS}ms), not notifying`
-      );
-      return;
-    }
-
-    // Log duration for Claude commands even if bypassing the check
-    if (isClaudeCommand && duration < MIN_COMMAND_DURATION_MS) {
-      logger.log(
-        chalk.yellow(
-          `⚡ Session ${session.id}: Claude command completed quickly (${duration}ms) - still notifying`
-        )
-      );
-    }
-
-    // Check if it's a built-in shell command
-    const baseCommand = command.split(/\s+/)[0];
-    if (SHELL_COMMANDS.has(baseCommand)) {
-      logger.debug(`Session ${session.id}: Ignoring built-in command: ${baseCommand}`);
-      return;
-    }
-
-    // Try to get exit code (this is tricky and might not always work)
-    const exitCode = 0;
-    try {
-      // Check if we can find the exit status in shell history or process info
-      // This is platform-specific and might not be reliable
-      const { stdout } = await this.execAsync(
-        `ps -o pid,stat -p ${pgid} 2>/dev/null || echo "NOTFOUND"`,
-        { timeout: 500 }
-      );
-      if (stdout.includes('NOTFOUND') || stdout.includes('Z')) {
-        // Process is zombie or not found, likely exited
-        // We can't reliably get exit code this way
-        logger.debug(
-          `Session ${session.id}: Process ${pgid} not found or zombie, assuming exit code 0`
-        );
-      }
-    } catch (_error) {
-      // Ignore errors in exit code detection
-      logger.debug(`Session ${session.id}: Could not detect exit code for process ${pgid}`);
-    }
-
-    // Emit the event
-    const eventData = {
-      sessionId: session.id,
-      command,
-      exitCode,
-      duration,
-      timestamp: new Date().toISOString(),
-    };
-
-    logger.info(
-      `🔔 NOTIFICATION DEBUG: Emitting commandFinished event - sessionId: ${session.id}, command: "${command}", duration: ${duration}ms, exitCode: ${exitCode}`
-    );
-    this.emit('commandFinished', eventData);
-
-    // Send notification to Mac app
-    if (controlUnixHandler.isMacAppConnected()) {
-      const notifTitle = isClaudeCommand ? 'Claude Task Finished' : 'Command Finished';
-      const notifBody = `"${command}" completed in ${Math.round(duration / 1000)}s.`;
-      logger.info(
-        `🔔 NOTIFICATION DEBUG: Sending command notification to Mac - title: "${notifTitle}", body: "${notifBody}"`
-      );
-      controlUnixHandler.sendNotification('Your Turn', notifBody, {
-        type: 'your-turn',
-        sessionId: session.id,
-        sessionName: session.sessionInfo.name || session.sessionInfo.command.join(' '),
-      });
-    } else {
-      logger.warn(
-        '🔔 NOTIFICATION DEBUG: Cannot send command notification - Mac app not connected'
-      );
-    }
-
-    // Enhanced logging for events
-    if (isClaudeCommand) {
-      logger.log(
-        chalk.green(
-          `✅ Session ${session.id}: Claude command notification event emitted: "${command}" (duration: ${duration}ms, exit: ${exitCode})`
-        )
-      );
-    } else {
-      logger.log(`Session ${session.id}: Command finished: "${command}" (duration: ${duration}ms)`);
-    }
-
-    logger.debug(`Session ${session.id}: commandFinished event data:`, eventData);
-  }
-
-  /**
-   * Import necessary exec function
-   */
-  private execAsync = promisify(exec);
 }

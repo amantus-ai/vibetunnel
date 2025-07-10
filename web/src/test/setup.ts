@@ -13,6 +13,58 @@ if (!globalThis.crypto) {
   });
 }
 
+// Mock localStorage for client-side tests
+if (typeof localStorage === 'undefined') {
+  const storage: Record<string, string> = {};
+  (global as any).localStorage = {
+    getItem: vi.fn((key: string) => storage[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      storage[key] = value;
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete storage[key];
+    }),
+    clear: vi.fn(() => {
+      for (const key in storage) {
+        delete storage[key];
+      }
+    }),
+    get length() {
+      return Object.keys(storage).length;
+    },
+    key: vi.fn((index: number) => {
+      return Object.keys(storage)[index] || null;
+    }),
+  };
+}
+
+// Mock window for client-side tests
+if (typeof window === 'undefined') {
+  (global as any).window = {
+    location: {
+      search: '',
+      href: 'http://localhost:3000',
+      origin: 'http://localhost:3000',
+    },
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  };
+}
+
+// Mock fetch for integration tests if not available
+if (typeof fetch === 'undefined') {
+  // Use dynamic import to avoid module resolution issues
+  import('node-fetch').then((module) => {
+    const nodeFetch = module.default;
+    (global as any).fetch = nodeFetch;
+    (global as any).Headers = module.Headers;
+    (global as any).Request = module.Request;
+    (global as any).Response = module.Response;
+    (global as any).FormData = module.FormData;
+    (global as any).Blob = module.Blob;
+  });
+}
+
 // Mock the native addon module before any imports
 vi.mock('../server/pty/native-addon-adapter.js', () => {
   // Create a more complete mock that simulates PTY behavior
@@ -230,8 +282,8 @@ global.EventSource = class EventSource extends EventTarget {
   }
 } as unknown as typeof EventSource;
 
-// Set up fetch mock (only for non-e2e tests)
-if (typeof window !== 'undefined') {
+// For client-side tests, override with a mock
+if (typeof window !== 'undefined' && !window.location.href.includes('localhost')) {
   global.fetch = vi.fn();
 }
 

@@ -192,9 +192,10 @@ describe('PTY Session.json Watcher', () => {
       });
 
       expect(titleWrites.length).toBeGreaterThan(0);
-      // Dynamic title with session name - check that it contains the dynamic title
+      // Dynamic title with session name only includes the name
+      // Note: Activity indicator requires activity detection which is now handled by Rust addon
       const lastTitleWrite = titleWrites[titleWrites.length - 1][0];
-      expect(lastTitleWrite).toContain('dynamic-title');
+      expect(lastTitleWrite).toBe('\x1B]2;dynamic-title\x07');
     } finally {
       process.stdout.write = originalWrite;
     }
