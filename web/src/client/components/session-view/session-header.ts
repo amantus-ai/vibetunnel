@@ -260,9 +260,6 @@ export class SessionHeader extends LitElement {
               .onMaxWidthToggle=${this.onMaxWidthToggle}
               .onOpenSettings=${this.onOpenSettings}
               .onCreateSession=${this.onCreateSession}
-              .onSidebarToggle=${this.onSidebarToggle}
-              .showSidebarToggle=${this.showSidebarToggle}
-              .sidebarCollapsed=${this.sidebarCollapsed}
             ></mobile-menu>
           </div>
           

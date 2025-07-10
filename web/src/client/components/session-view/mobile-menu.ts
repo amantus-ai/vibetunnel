@@ -4,8 +4,9 @@
  * Consolidates session header actions into a single dropdown menu for mobile devices.
  * Includes file browser, screenshare, width settings, and other controls.
  */
-import { html, LitElement } from 'lit';
+import { html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { Z_INDEX } from '../../utils/constants.js';
 import type { Session } from '../session-list.js';
 
 @customElement('mobile-menu')
@@ -23,9 +24,6 @@ export class MobileMenu extends LitElement {
   @property({ type: Function }) onMaxWidthToggle?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
   @property({ type: Function }) onCreateSession?: () => void;
-  @property({ type: Function }) onSidebarToggle?: () => void;
-  @property({ type: Boolean }) showSidebarToggle = false;
-  @property({ type: Boolean }) sidebarCollapsed = false;
 
   @state() private showMenu = false;
 
@@ -48,27 +46,45 @@ export class MobileMenu extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     // Close menu when clicking outside
-    this.handleOutsideClick = this.handleOutsideClick.bind(this);
     document.addEventListener('click', this.handleOutsideClick);
+    // Add keyboard support
+    document.addEventListener('keydown', this.handleKeyDown);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('click', this.handleOutsideClick);
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
-  private handleOutsideClick(e: MouseEvent) {
+  private handleOutsideClick = (e: MouseEvent) => {
     const path = e.composedPath();
     if (!path.includes(this)) {
       this.showMenu = false;
     }
-  }
+  };
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    // Only handle if menu is open
+    if (!this.showMenu) return;
+
+    // Close on Escape
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      this.showMenu = false;
+      // Focus the menu button
+      const button = this.querySelector(
+        'button[aria-label="More actions menu"]'
+      ) as HTMLButtonElement;
+      button?.focus();
+    }
+  };
 
   render() {
     return html`
       <div class="relative w-[44px] flex-shrink-0">
         <button
-          class="p-2 ${this.showMenu ? 'text-accent-green border-accent-green' : 'text-dark-text border-dark-border'} hover:border-accent-green hover:text-accent-green rounded-lg"
+          class="p-2 ${this.showMenu ? 'text-accent-primary border-accent-primary' : 'text-dark-text border-dark-border'} hover:border-accent-primary hover:text-accent-primary rounded-lg"
           @click=${this.toggleMenu}
           title="More actions"
           aria-label="More actions menu"
@@ -79,36 +95,21 @@ export class MobileMenu extends LitElement {
           </svg>
         </button>
         
-        ${this.showMenu ? this.renderDropdown() : ''}
+        ${this.showMenu ? this.renderDropdown() : nothing}
       </div>
     `;
   }
 
   private renderDropdown() {
     return html`
-      <div class="absolute right-0 top-full mt-2 bg-dark-surface border border-dark-border rounded-lg shadow-xl py-1 z-50 min-w-[200px]">
-        <!-- Create Session (when sidebar is collapsed) -->
-        ${
-          this.showSidebarToggle && this.sidebarCollapsed
-            ? html`
-          <button
-            class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-green flex items-center gap-3"
-            @click=${() => this.handleAction(this.onCreateSession)}
-            data-testid="mobile-create-session"
-          >
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" class="text-accent-green">
-              <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
-            </svg>
-            New Session
-          </button>
-          <div class="border-t border-dark-border my-1"></div>
-        `
-            : ''
-        }
+      <div 
+        class="absolute right-0 top-full mt-2 bg-dark-surface border border-dark-border rounded-lg shadow-xl py-1 min-w-[200px]"
+        style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
+      >
         
         <!-- File Browser -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-green flex items-center gap-3"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3"
           @click=${() => this.handleAction(this.onOpenFileBrowser)}
           data-testid="mobile-file-browser"
         >
@@ -120,7 +121,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Screenshare -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-green flex items-center gap-3"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3"
           @click=${() => this.handleAction(this.onScreenshare)}
           data-testid="mobile-screenshare"
         >
@@ -135,7 +136,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Width Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-green flex items-center gap-3"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3"
           @click=${() => this.handleAction(this.onMaxWidthToggle)}
           data-testid="mobile-width-settings"
         >
@@ -149,7 +150,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-green flex items-center gap-3"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3"
           @click=${() => this.handleAction(this.onOpenSettings)}
           data-testid="mobile-settings"
         >

@@ -14,14 +14,8 @@ export class ResizeCoordinator {
   private pendingResize: number | null = null;
   private lastDimensions: ResizeDimensions | null = null;
   private resizeCallback: ((source: string) => void) | null = null;
-  private isMobile: boolean;
   private initialResizeComplete = false;
   private resizeSources = new Set<string>();
-
-  constructor() {
-    // Detect mobile based on viewport width and touch capability
-    this.isMobile = window.innerWidth < 768 && 'ontouchstart' in window;
-  }
 
   /**
    * Set the callback function to be called when resize should happen
@@ -59,10 +53,20 @@ export class ResizeCoordinator {
    * Check if dimensions have actually changed
    */
   shouldResize(cols: number, rows: number): boolean {
+    const isMobile = this.getIsMobile();
+
     // On mobile, after initial resize, only allow resize if cols changed
     // This prevents keyboard show/hide from causing reflows
-    if (this.isMobile && this.initialResizeComplete && this.lastDimensions) {
-      return this.lastDimensions.cols !== cols;
+    if (isMobile && this.initialResizeComplete && this.lastDimensions) {
+      const shouldResize = this.lastDimensions.cols !== cols;
+      // Always update lastDimensions to keep state current, even if not resizing
+      if (shouldResize) {
+        this.lastDimensions = { cols, rows };
+      } else {
+        // Update rows even when skipping resize to keep dimensions accurate
+        this.lastDimensions.rows = rows;
+      }
+      return shouldResize;
     }
 
     if (!this.lastDimensions) {
@@ -102,10 +106,12 @@ export class ResizeCoordinator {
   }
 
   /**
-   * Check if running on mobile
+   * Check if running on mobile (dynamically checks on each call)
    */
   getIsMobile(): boolean {
-    return this.isMobile;
+    // Check viewport width and touch capability dynamically
+    // This handles orientation changes and window resizing
+    return window.innerWidth < 768 && 'ontouchstart' in window;
   }
 
   /**

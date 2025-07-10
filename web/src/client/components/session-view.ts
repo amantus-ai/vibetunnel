@@ -855,6 +855,11 @@ export class SessionView extends LitElement {
       this._cachedWidthTooltip = `Terminal width: ${this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`}`;
     }
 
+    // Update cache keys to keep in sync with getCurrentWidthLabel
+    this._lastMaxCols = this.terminalMaxCols;
+    this._lastUserOverrideWidth = userOverrideWidth;
+    this._lastInitialCols = initialCols;
+
     return this._cachedWidthTooltip;
   }
 
