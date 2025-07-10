@@ -20,9 +20,6 @@ describe('AsciinemaWriter', () => {
   beforeEach(async () => {
     // Create test directory
     await mkdir(testDir, { recursive: true });
-
-    // Mock timers for controlled testing
-    vi.useFakeTimers();
   });
 
   afterEach(async () => {
@@ -39,14 +36,17 @@ describe('AsciinemaWriter', () => {
       // Ignore cleanup errors
     }
 
-    // Restore timers
+    // Restore timers if they were mocked
     vi.useRealTimers();
+    vi.clearAllTimers();
   });
 
   describe('Startup File Handling', () => {
     it('should truncate large existing files on startup', async () => {
       const originalMaxSize = config.MAX_CAST_SIZE;
+      const originalCheckInterval = config.CAST_SIZE_CHECK_INTERVAL;
       config.MAX_CAST_SIZE = 1024; // 1KB for testing
+      config.CAST_SIZE_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour to prevent timer issues
 
       try {
         // Create a large file first
@@ -93,63 +93,81 @@ describe('AsciinemaWriter', () => {
         expect(lastEvent).toContain('Line 99'); // Should keep the most recent event
       } finally {
         config.MAX_CAST_SIZE = originalMaxSize;
+        config.CAST_SIZE_CHECK_INTERVAL = originalCheckInterval;
       }
     });
 
     it('should append to existing small files', async () => {
-      // Create a small valid cast file
-      const header = JSON.stringify({
-        version: 2,
-        width: 80,
-        height: 24,
-        timestamp: Math.floor(Date.now() / 1000),
-      });
+      const originalCheckInterval = config.CAST_SIZE_CHECK_INTERVAL;
+      config.CAST_SIZE_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour to prevent timer issues
+      
+      try {
+        // Create a small valid cast file
+        const header = JSON.stringify({
+          version: 2,
+          width: 80,
+          height: 24,
+          timestamp: Math.floor(Date.now() / 1000),
+        });
 
-      const existingEvents = [
-        JSON.stringify([0.1, 'o', 'Existing line 1\n']),
-        JSON.stringify([0.2, 'o', 'Existing line 2\n']),
-      ];
+        const existingEvents = [
+          JSON.stringify([0.1, 'o', 'Existing line 1\n']),
+          JSON.stringify([0.2, 'o', 'Existing line 2\n']),
+        ];
 
-      const content = header + '\n' + existingEvents.join('\n') + '\n';
-      await writeFile(testFile, content);
+        const content = header + '\n' + existingEvents.join('\n') + '\n';
+        await writeFile(testFile, content);
 
-      // Create writer - should append to existing file
-      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        // Create writer - should append to existing file
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
-      // Write new data
-      writer.writeOutput(Buffer.from('New line\n'));
+        // Write new data
+        writer.writeOutput(Buffer.from('New line\n'));
 
-      await writer.close();
+        await writer.close();
 
-      // Verify file contains both old and new content
-      const finalContent = await readFile(testFile, 'utf8');
-      expect(finalContent).toContain('Existing line 1');
-      expect(finalContent).toContain('Existing line 2');
-      expect(finalContent).toContain('New line');
+        // Verify file contains both old and new content
+        const finalContent = await readFile(testFile, 'utf8');
+        expect(finalContent).toContain('Existing line 1');
+        expect(finalContent).toContain('Existing line 2');
+        expect(finalContent).toContain('New line');
 
-      // Verify only one header
-      const headerCount = (finalContent.match(/"version"/g) || []).length;
-      expect(headerCount).toBe(1);
+        // Verify only one header
+        const headerCount = (finalContent.match(/"version"/g) || []).length;
+        expect(headerCount).toBe(1);
+      } finally {
+        config.CAST_SIZE_CHECK_INTERVAL = originalCheckInterval;
+      }
     });
 
     it('should create new file if existing file has invalid format', async () => {
-      // Create an invalid file
-      await writeFile(testFile, 'Not a valid asciinema file\n');
+      const originalCheckInterval = config.CAST_SIZE_CHECK_INTERVAL;
+      config.CAST_SIZE_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour to prevent timer issues
+      
+      try {
+        // Create an invalid file
+        await writeFile(testFile, 'Not a valid asciinema file\n');
 
-      // Create writer - should create new file
-      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        // Create writer - should create new file
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
-      await writer.close();
+        await writer.close();
 
-      // Verify file has valid header
-      const content = await readFile(testFile, 'utf8');
-      const lines = content.trim().split('\n');
-      expect(lines[0]).toContain('"version":2');
+        // Verify file has valid header
+        const content = await readFile(testFile, 'utf8');
+        const lines = content.trim().split('\n');
+        expect(lines[0]).toContain('"version":2');
+      } finally {
+        config.CAST_SIZE_CHECK_INTERVAL = originalCheckInterval;
+      }
     });
   });
 
   describe('File Size Limiting', () => {
     it('should not truncate files under the size limit', async () => {
+      // Use fake timers for this test
+      vi.useFakeTimers();
+      
       writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
       // Write some data (but not enough to exceed limit)
@@ -178,31 +196,55 @@ describe('AsciinemaWriter', () => {
     it('should truncate files exceeding the size limit', async () => {
       // Temporarily reduce the max size for testing
       const originalMaxSize = config.MAX_CAST_SIZE;
+      const originalCheckInterval = config.CAST_SIZE_CHECK_INTERVAL;
       config.MAX_CAST_SIZE = 1024; // 1KB for testing
+      config.CAST_SIZE_CHECK_INTERVAL = 100; // Short interval for testing
 
       try {
         writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
-        // Write large amounts of data to exceed limit
+        // Write some initial data
+        for (let i = 0; i < 5; i++) {
+          writer.writeOutput(Buffer.from(`Line ${i}\n`));
+        }
+
+        // Wait for writes to complete
+        await (writer as any).writeQueue.drain();
+
+        // Now write large amounts of data to exceed limit
         const largeData = Buffer.from(`${'A'.repeat(100)}\n`);
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 20; i++) {
           writer.writeOutput(largeData);
         }
 
-        // Advance time to trigger size check
-        vi.advanceTimersByTime(config.CAST_SIZE_CHECK_INTERVAL);
+        // Wait for the write queue to drain
+        await (writer as any).writeQueue.drain();
 
-        // Wait for async operations
-        await vi.runAllTimersAsync();
+        // Check size before truncation
+        const statsBefore = await stat(testFile);
+        expect(statsBefore.size).toBeGreaterThan(config.MAX_CAST_SIZE);
 
-        // Give truncation time to complete
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // Manually trigger size check by calling the private method
+        const checkMethod = (writer as any).checkAndTruncateFile.bind(writer);
+        await checkMethod();
 
+        // Wait a bit for truncation to complete (it's async)
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Wait for any pending operations after truncation
+        await (writer as any).writeQueue.drain();
+
+        // Check size after truncation but before closing
+        const statsAfterTruncate = await stat(testFile);
+        
         await writer.close();
 
         // Verify file was truncated
         const stats = await stat(testFile);
-        expect(stats.size).toBeLessThan(config.MAX_CAST_SIZE);
+        
+        // The file should be truncated
+        expect(statsAfterTruncate.size).toBeLessThan(config.MAX_CAST_SIZE);
+        expect(stats.size).toBeLessThan(config.MAX_CAST_SIZE * 1.1); // Allow 10% margin for close operations
 
         // Verify truncation marker exists
         const content = await readFile(testFile, 'utf8');
@@ -210,29 +252,35 @@ describe('AsciinemaWriter', () => {
         expect(content).toContain('events to limit file size');
       } finally {
         config.MAX_CAST_SIZE = originalMaxSize;
+        config.CAST_SIZE_CHECK_INTERVAL = originalCheckInterval;
       }
     });
 
     it('should keep most recent events when truncating', async () => {
       const originalMaxSize = config.MAX_CAST_SIZE;
+      const originalCheckInterval = config.CAST_SIZE_CHECK_INTERVAL;
       config.MAX_CAST_SIZE = 1024; // 1KB for testing
+      config.CAST_SIZE_CHECK_INTERVAL = 100; // Short interval
 
       try {
         writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
         // Write numbered events to track which ones are kept
-        for (let i = 0; i < 30; i++) {
-          writer.writeOutput(Buffer.from(`Event ${i}\n`));
+        for (let i = 0; i < 100; i++) {
+          writer.writeOutput(Buffer.from(`Event ${i}: ${'X'.repeat(20)}\n`));
         }
 
-        // Advance time to trigger size check
-        vi.advanceTimersByTime(config.CAST_SIZE_CHECK_INTERVAL);
+        // Wait for the write queue to drain
+        await (writer as any).writeQueue.drain();
 
-        // Wait for async operations
-        await vi.runAllTimersAsync();
 
-        // Give truncation time to complete
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // Manually trigger truncation
+        const checkMethod = (writer as any).checkAndTruncateFile.bind(writer);
+        await checkMethod();
+
+        // Wait for truncation to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await (writer as any).writeQueue.drain();
 
         await writer.close();
 
@@ -242,17 +290,21 @@ describe('AsciinemaWriter', () => {
 
         // Verify we have recent events (higher numbers)
         const lastEvent = events[events.length - 1];
-        expect(lastEvent).toContain('Event 29'); // Most recent event
+        expect(lastEvent).toContain('Event 99'); // Most recent event
 
         // Verify older events were removed
         const allContent = events.join('\n');
         expect(allContent).not.toContain('Event 0'); // Oldest event should be gone
       } finally {
         config.MAX_CAST_SIZE = originalMaxSize;
+        config.CAST_SIZE_CHECK_INTERVAL = originalCheckInterval;
       }
     });
 
     it('should handle truncation errors gracefully', async () => {
+      // Use fake timers for this test
+      vi.useFakeTimers();
+      
       const originalMaxSize = config.MAX_CAST_SIZE;
       config.MAX_CAST_SIZE = 1024; // 1KB for testing
 
@@ -276,7 +328,7 @@ describe('AsciinemaWriter', () => {
         await vi.runAllTimersAsync();
 
         // Give error handling time to complete
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await vi.runAllTimersAsync();
 
         // Restore original function
         fs.promises.readFile = originalReadFile;
@@ -298,6 +350,9 @@ describe('AsciinemaWriter', () => {
     });
 
     it('should stop size checking when writer is closed', async () => {
+      // Use fake timers for this test
+      vi.useFakeTimers();
+      
       writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
       // Close the writer
@@ -312,6 +367,9 @@ describe('AsciinemaWriter', () => {
     });
 
     it('should handle concurrent writes during truncation', async () => {
+      // Use fake timers for this test
+      vi.useFakeTimers();
+      
       const originalMaxSize = config.MAX_CAST_SIZE;
       config.MAX_CAST_SIZE = 2048; // 2KB for testing
 
@@ -343,7 +401,7 @@ describe('AsciinemaWriter', () => {
         await vi.runAllTimersAsync();
 
         // Give truncation time to complete
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await vi.runAllTimersAsync();
 
         await writer.close();
 
@@ -365,7 +423,9 @@ describe('AsciinemaWriter', () => {
 
     it('should respect the truncation target percentage', async () => {
       const originalMaxSize = config.MAX_CAST_SIZE;
+      const originalCheckInterval = config.CAST_SIZE_CHECK_INTERVAL;
       config.MAX_CAST_SIZE = 10240; // 10KB for testing
+      config.CAST_SIZE_CHECK_INTERVAL = 100; // Short interval
 
       try {
         writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
@@ -376,12 +436,16 @@ describe('AsciinemaWriter', () => {
           writer.writeOutput(data);
         }
 
-        // Trigger truncation
-        vi.advanceTimersByTime(config.CAST_SIZE_CHECK_INTERVAL);
-        await vi.runAllTimersAsync();
+        // Wait for the write queue to drain
+        await (writer as any).writeQueue.drain();
 
-        // Give truncation time to complete
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // Manually trigger truncation
+        const checkMethod = (writer as any).checkAndTruncateFile.bind(writer);
+        await checkMethod();
+
+        // Wait for truncation to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await (writer as any).writeQueue.drain();
 
         await writer.close();
 
@@ -394,10 +458,14 @@ describe('AsciinemaWriter', () => {
         expect(stats.size).toBeLessThan(targetSize * 1.2); // Within 20% of target
       } finally {
         config.MAX_CAST_SIZE = originalMaxSize;
+        config.CAST_SIZE_CHECK_INTERVAL = originalCheckInterval;
       }
     });
 
     it('should handle empty files gracefully', async () => {
+      // Use fake timers for this test
+      vi.useFakeTimers();
+      
       writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
       // Don't write any data, just trigger size check
@@ -414,6 +482,9 @@ describe('AsciinemaWriter', () => {
     });
 
     it('should handle malformed files during truncation', async () => {
+      // Use fake timers for this test
+      vi.useFakeTimers();
+      
       const originalMaxSize = config.MAX_CAST_SIZE;
       config.MAX_CAST_SIZE = 1024; // 1KB for testing
 
@@ -435,7 +506,7 @@ describe('AsciinemaWriter', () => {
         await vi.runAllTimersAsync();
 
         // Give truncation time to complete
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await vi.runAllTimersAsync();
 
         // Writer should still be functional
         expect(writer.isOpen()).toBe(true);
@@ -453,6 +524,9 @@ describe('AsciinemaWriter', () => {
 
   describe('Timer Management', () => {
     it('should reschedule timer after each check', async () => {
+      // Use fake timers for this test
+      vi.useFakeTimers();
+      
       writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
       // First check
@@ -473,6 +547,9 @@ describe('AsciinemaWriter', () => {
     });
 
     it('should not reschedule timer if writer is closed during check', async () => {
+      // Use fake timers for this test
+      vi.useFakeTimers();
+      
       writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
 
       // Mock checkAndTruncateFile to close the writer
