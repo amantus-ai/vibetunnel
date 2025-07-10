@@ -38,6 +38,77 @@ describe('InputManager', () => {
     vi.clearAllMocks();
   });
 
+  describe('Option/Alt + Arrow key navigation', () => {
+    it('should send Escape+b for Alt+Left arrow', async () => {
+      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
+      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowLeft',
+        altKey: true,
+      });
+
+      await inputManager.handleKeyboardInput(event);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/sessions/test-session-id/input',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ text: '\x1bb' }),
+        })
+      );
+    });
+
+    it('should send Escape+f for Alt+Right arrow', async () => {
+      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
+      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        altKey: true,
+      });
+
+      await inputManager.handleKeyboardInput(event);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/sessions/test-session-id/input',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ text: '\x1bf' }),
+        })
+      );
+    });
+
+    it('should send regular arrow keys without Alt modifier', async () => {
+      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
+      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowLeft',
+        altKey: false,
+      });
+
+      await inputManager.handleKeyboardInput(event);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/sessions/test-session-id/input',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ key: 'arrow_left' }),
+        })
+      );
+    });
+  });
+
   describe('Option/Alt + Backspace word deletion', () => {
     it('should send Ctrl+W for Alt+Backspace', async () => {
       const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
