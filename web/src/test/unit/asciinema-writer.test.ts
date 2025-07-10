@@ -85,7 +85,7 @@ describe('AsciinemaWriter', () => {
         // Verify truncation marker was added
         const newContent = await readFile(testFile, 'utf8');
         expect(newContent).toContain('[Truncated');
-        expect(newContent).toContain('on startup');
+        expect(newContent).toContain('events to limit file size');
 
         // Verify it kept recent events
         const lines = newContent.trim().split('\n');
