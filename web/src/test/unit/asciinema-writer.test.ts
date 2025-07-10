@@ -45,7 +45,7 @@ describe('AsciinemaWriter', () => {
     it('should truncate large existing files on startup', async () => {
       const originalMaxSize = config.MAX_CAST_SIZE;
       const originalCheckInterval = config.CAST_SIZE_CHECK_INTERVAL;
-      config.MAX_CAST_SIZE = 1024; // 1KB for testing
+      config.MAX_CAST_SIZE = 4096; // 4KB for testing - large enough to hold some events
       config.CAST_SIZE_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour to prevent timer issues
 
       try {
@@ -71,7 +71,11 @@ describe('AsciinemaWriter', () => {
         expect(statsBefore.size).toBeGreaterThan(config.MAX_CAST_SIZE);
 
         // Create writer - should truncate on startup
-        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+          maxCastSize: config.MAX_CAST_SIZE,
+          castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+          castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+        });
 
         // Give it a moment to complete initialization
         await new Promise((resolve) => setTimeout(resolve, 50));
@@ -119,7 +123,11 @@ describe('AsciinemaWriter', () => {
         await writeFile(testFile, content);
 
         // Create writer - should append to existing file
-        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+          maxCastSize: config.MAX_CAST_SIZE,
+          castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+          castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+        });
 
         // Write new data
         writer.writeOutput(Buffer.from('New line\n'));
@@ -149,7 +157,11 @@ describe('AsciinemaWriter', () => {
         await writeFile(testFile, 'Not a valid asciinema file\n');
 
         // Create writer - should create new file
-        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+          maxCastSize: config.MAX_CAST_SIZE,
+          castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+          castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+        });
 
         await writer.close();
 
@@ -168,7 +180,11 @@ describe('AsciinemaWriter', () => {
       // Use fake timers for this test
       vi.useFakeTimers();
 
-      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
       // Write some data (but not enough to exceed limit)
       const smallData = Buffer.from('Hello, World!\n');
@@ -201,7 +217,11 @@ describe('AsciinemaWriter', () => {
       config.CAST_SIZE_CHECK_INTERVAL = 100; // Short interval for testing
 
       try {
-        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
         // Write some initial data
         for (let i = 0; i < 5; i++) {
@@ -263,7 +283,11 @@ describe('AsciinemaWriter', () => {
       config.CAST_SIZE_CHECK_INTERVAL = 100; // Short interval
 
       try {
-        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
         // Write numbered events to track which ones are kept
         for (let i = 0; i < 100; i++) {
@@ -308,7 +332,11 @@ describe('AsciinemaWriter', () => {
       config.MAX_CAST_SIZE = 1024; // 1KB for testing
 
       try {
-        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
         // Write data to exceed limit
         const largeData = Buffer.from(`${'A'.repeat(100)}\n`);
@@ -352,7 +380,11 @@ describe('AsciinemaWriter', () => {
       // Use fake timers for this test
       vi.useFakeTimers();
 
-      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
       // Close the writer
       await writer.close();
@@ -373,7 +405,11 @@ describe('AsciinemaWriter', () => {
       config.MAX_CAST_SIZE = 2048; // 2KB for testing
 
       try {
-        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
         // Write initial data to approach limit
         const data = Buffer.from(`${'X'.repeat(50)}\n`);
@@ -427,7 +463,11 @@ describe('AsciinemaWriter', () => {
       config.CAST_SIZE_CHECK_INTERVAL = 100; // Short interval
 
       try {
-        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
         // Fill file beyond limit
         const data = Buffer.from(`${'Y'.repeat(100)}\n`);
@@ -465,7 +505,11 @@ describe('AsciinemaWriter', () => {
       // Use fake timers for this test
       vi.useFakeTimers();
 
-      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
       // Don't write any data, just trigger size check
       vi.advanceTimersByTime(config.CAST_SIZE_CHECK_INTERVAL);
@@ -492,7 +536,11 @@ describe('AsciinemaWriter', () => {
         const malformedContent = '{"version":2}\nNOT_VALID_JSON\n[1,"o","valid"]\n';
         await writeFile(testFile, malformedContent);
 
-        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+        writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
         // Write more data to trigger truncation
         const data = Buffer.from(`${'Z'.repeat(100)}\n`);
@@ -526,7 +574,11 @@ describe('AsciinemaWriter', () => {
       // Use fake timers for this test
       vi.useFakeTimers();
 
-      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
       // First check
       vi.advanceTimersByTime(config.CAST_SIZE_CHECK_INTERVAL);
@@ -549,7 +601,11 @@ describe('AsciinemaWriter', () => {
       // Use fake timers for this test
       vi.useFakeTimers();
 
-      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd');
+      writer = AsciinemaWriter.create(testFile, 80, 24, 'test-cmd', undefined, undefined, {
+        maxCastSize: config.MAX_CAST_SIZE,
+        castSizeCheckInterval: config.CAST_SIZE_CHECK_INTERVAL,
+        castTruncationTargetPercentage: config.CAST_TRUNCATION_TARGET_PERCENTAGE
+      });
 
       // Mock checkAndTruncateFile to close the writer
       const checkAndTruncate = vi
