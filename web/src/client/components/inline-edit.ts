@@ -14,11 +14,10 @@ import { customElement, property, state } from 'lit/decorators.js';
 export class InlineEdit extends LitElement {
   static override styles = css`
     :host {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
+      display: block;
       max-width: 100%;
       min-width: 0;
+      overflow: hidden;
     }
 
     .display-container {
