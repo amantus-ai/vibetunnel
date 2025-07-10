@@ -9,6 +9,7 @@ import { once } from 'events';
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
+import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 import { WriteQueue } from '../utils/write-queue.js';
 import { type AsciinemaEvent, type AsciinemaHeader, PtyError } from './types.js';
@@ -23,6 +24,8 @@ export class AsciinemaWriter {
   private headerWritten = false;
   private fd: number | null = null;
   private writeQueue = new WriteQueue();
+  private sizeCheckTimer: NodeJS.Timeout | null = null;
+  private lastSizeCheck = Date.now();
 
   constructor(
     private filePath: string,
@@ -49,6 +52,9 @@ export class AsciinemaWriter {
     });
 
     this.writeHeader();
+
+    // Start periodic size checks
+    this.startSizeChecking();
   }
 
   /**
@@ -384,6 +390,124 @@ export class AsciinemaWriter {
   }
 
   /**
+   * Start periodic size checking
+   */
+  private startSizeChecking(): void {
+    this.sizeCheckTimer = setInterval(() => {
+      this.checkAndTruncateFile().catch((err) => {
+        _logger.error(`Error checking file size for ${this.filePath}:`, err);
+      });
+    }, config.CAST_SIZE_CHECK_INTERVAL);
+  }
+
+  /**
+   * Check file size and truncate if necessary
+   */
+  private async checkAndTruncateFile(): Promise<void> {
+    try {
+      const stats = await fs.promises.stat(this.filePath);
+      if (stats.size > config.MAX_CAST_SIZE) {
+        _logger.log(
+          `Cast file ${this.filePath} exceeds limit (${stats.size} bytes), truncating to ${config.MAX_CAST_SIZE} bytes`
+        );
+        await this.truncateFile();
+      }
+    } catch (err: unknown) {
+      // File might not exist yet or be inaccessible
+      if (err && typeof err === 'object' && 'code' in err && err.code !== 'ENOENT') {
+        _logger.error(`Error checking file size for ${this.filePath}:`, err);
+      }
+    }
+  }
+
+  /**
+   * Truncate the file to keep only recent events
+   */
+  private async truncateFile(): Promise<void> {
+    // Wait for current writes to complete
+    await this.writeQueue.drain();
+
+    try {
+      // Read the entire file
+      const content = await fs.promises.readFile(this.filePath, 'utf8');
+      const lines = content.trim().split('\n');
+
+      if (lines.length < 2) {
+        return; // Nothing to truncate
+      }
+
+      // First line is the header
+      const header = lines[0];
+      const events = lines.slice(1);
+
+      // Calculate approximate size per event to determine how many to keep
+      const targetSize = config.MAX_CAST_SIZE * 0.8; // Keep 80% to avoid frequent truncation
+      const headerSize = Buffer.byteLength(`${header}\n`);
+      const availableSize = targetSize - headerSize;
+
+      // Keep events from the end that fit within the size limit
+      const keptEvents: string[] = [];
+      let currentSize = 0;
+
+      for (let i = events.length - 1; i >= 0; i--) {
+        const eventSize = Buffer.byteLength(`${events[i]}\n`);
+        if (currentSize + eventSize > availableSize) {
+          break;
+        }
+        keptEvents.unshift(events[i]);
+        currentSize += eventSize;
+      }
+
+      // Add truncation marker if we removed events
+      if (keptEvents.length < events.length) {
+        const removedCount = events.length - keptEvents.length;
+        const truncationEvent = JSON.stringify([
+          this.getElapsedTime(),
+          'm',
+          `[Truncated ${removedCount} events to limit file size to ${config.MAX_CAST_SIZE} bytes]`,
+        ]);
+        keptEvents.unshift(truncationEvent);
+      }
+
+      // Write the truncated content back
+      const newContent = `${header}\n${keptEvents.join('\n')}\n`;
+
+      // Close current stream
+      this.writeStream.end();
+
+      // Write truncated content
+      await fs.promises.writeFile(this.filePath, newContent);
+
+      // Reopen stream for appending
+      this.writeStream = fs.createWriteStream(this.filePath, {
+        flags: 'a',
+        encoding: 'utf8',
+        highWaterMark: 0,
+      });
+
+      // Re-establish file descriptor
+      this.writeStream.on('open', (fd) => {
+        this.fd = fd;
+      });
+
+      _logger.log(
+        `Successfully truncated ${this.filePath}, removed ${events.length - keptEvents.length} events`
+      );
+    } catch (err) {
+      _logger.error(`Error truncating file ${this.filePath}:`, err);
+      // Re-open stream in append mode even if truncation failed
+      this.writeStream = fs.createWriteStream(this.filePath, {
+        flags: 'a',
+        encoding: 'utf8',
+        highWaterMark: 0,
+      });
+      this.writeStream.on('open', (fd) => {
+        this.fd = fd;
+      });
+    }
+  }
+
+  /**
    * Close the writer and finalize the file
    */
   async close(): Promise<void> {
@@ -401,6 +525,12 @@ export class AsciinemaWriter {
         await this.writeEvent(event);
       });
       this.utf8Buffer = Buffer.alloc(0);
+    }
+
+    // Stop size checking
+    if (this.sizeCheckTimer) {
+      clearInterval(this.sizeCheckTimer);
+      this.sizeCheckTimer = null;
     }
 
     // Wait for all queued writes to complete
