@@ -22,6 +22,7 @@ interface NativePtyInstance {
   getPid(): number;
   kill(signal?: string | null): void;
   readOutput(timeoutMs?: number | null): Buffer | null;
+  readAllOutput(): Buffer | null;
   checkExitStatus(): number | null;
   destroy(): void;
 }
@@ -169,7 +170,8 @@ class NativeAddonPty extends EventEmitter implements IPty {
   }
 
   private startPolling(): void {
-    // Poll for output every 10ms
+    // Poll for output with much lower frequency since we have a dedicated reader thread
+    // and can get all buffered data at once
     this.pollInterval = setInterval(() => {
       if (this.closed) {
         this.stopPolling();
@@ -188,8 +190,8 @@ class NativeAddonPty extends EventEmitter implements IPty {
           return;
         }
 
-        // Read output
-        const output = this.pty.readOutput(0); // Non-blocking read
+        // Read all available output at once
+        const output = this.pty.readAllOutput();
         if (output) {
           // Check for activity
           const activity = this.activityDetector.detect(output);
@@ -206,7 +208,7 @@ class NativeAddonPty extends EventEmitter implements IPty {
         this.emit('exit', 1, 0);
         this.stopPolling();
       }
-    }, 10);
+    }, 5); // Reduced to 5ms since we get all buffered data at once
   }
 
   private stopPolling(): void {

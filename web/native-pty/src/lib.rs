@@ -5,6 +5,10 @@ use napi_derive::napi;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use crossbeam_channel::{bounded, Receiver, Sender};
+use std::thread::{self, JoinHandle};
+use std::io::Read;
+use std::time::Duration;
 
 #[napi]
 pub struct NativePty {
@@ -28,10 +32,10 @@ struct PtyManager {
 struct PtySession {
   master: Box<dyn portable_pty::MasterPty + Send>,
   writer: Box<dyn std::io::Write + Send>,
-  #[allow(dead_code)]
   child: Box<dyn portable_pty::Child + Send>,
-  #[allow(dead_code)]
-  reader_thread: Option<std::thread::JoinHandle<()>>,
+  reader_thread: Option<JoinHandle<()>>,
+  output_receiver: Receiver<Vec<u8>>,
+  shutdown_sender: Sender<()>,
 }
 
 impl PtyManager {
@@ -105,6 +109,48 @@ impl NativePty {
       .take_writer()
       .map_err(|e| Error::from_reason(format!("Failed to take writer: {}", e)))?;
 
+    // Create channels for output and shutdown
+    let (output_sender, output_receiver) = bounded::<Vec<u8>>(100); // Bounded channel for backpressure
+    let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
+
+    // Clone reader for the thread
+    let mut reader = pty_pair
+      .master
+      .try_clone_reader()
+      .map_err(|e| Error::from_reason(format!("Failed to clone reader: {}", e)))?;
+
+    // Spawn reader thread
+    let reader_thread = thread::spawn(move || {
+      let mut buffer = vec![0u8; 4096];
+      loop {
+        // Check for shutdown signal
+        if shutdown_receiver.try_recv().is_ok() {
+          break;
+        }
+
+        match reader.read(&mut buffer) {
+          Ok(0) => break, // EOF
+          Ok(n) => {
+            let data = buffer[..n].to_vec();
+            // Try to send, but don't block if channel is full (backpressure)
+            match output_sender.try_send(data) {
+              Ok(_) => {},
+              Err(crossbeam_channel::TrySendError::Full(_)) => {
+                // Channel is full, skip this data to prevent blocking
+                eprintln!("PTY output buffer full, dropping data");
+              },
+              Err(crossbeam_channel::TrySendError::Disconnected(_)) => break,
+            }
+          }
+          Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+            // No data available, sleep briefly
+            thread::sleep(Duration::from_millis(1));
+          }
+          Err(_) => break,
+        }
+      }
+    });
+
     // Store in global manager
     {
       let mut manager = PTY_MANAGER.lock().unwrap();
@@ -114,7 +160,9 @@ impl NativePty {
           master: pty_pair.master,
           writer,
           child,
-          reader_thread: None,
+          reader_thread: Some(reader_thread),
+          output_receiver,
+          shutdown_sender,
         },
       );
     }
@@ -212,25 +260,53 @@ impl NativePty {
   }
 
   #[napi]
-  pub fn read_output(&self, _timeout_ms: Option<u32>) -> Result<Option<Buffer>> {
+  pub fn read_output(&self, timeout_ms: Option<u32>) -> Result<Option<Buffer>> {
     let manager = PTY_MANAGER.lock().unwrap();
 
     if let Some(session) = manager.sessions.get(&self.session_id) {
-      let mut reader = session
-        .master
-        .try_clone_reader()
-        .map_err(|e| Error::from_reason(format!("Failed to clone reader: {}", e)))?;
+      // Try to receive from the channel
+      let result = if let Some(timeout) = timeout_ms {
+        // With timeout
+        session.output_receiver.recv_timeout(Duration::from_millis(timeout as u64))
+      } else {
+        // Non-blocking
+        match session.output_receiver.try_recv() {
+          Ok(data) => Ok(data),
+          Err(crossbeam_channel::TryRecvError::Empty) => return Ok(None),
+          Err(crossbeam_channel::TryRecvError::Disconnected) => {
+            return Err(Error::from_reason("Reader thread disconnected"))
+          }
+        }
+      };
 
-      drop(manager); // Release lock before blocking read
+      match result {
+        Ok(data) => Ok(Some(Buffer::from(data))),
+        Err(crossbeam_channel::RecvTimeoutError::Timeout) => Ok(None),
+        Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
+          Err(Error::from_reason("Reader thread disconnected"))
+        }
+      }
+    } else {
+      Err(Error::from_reason("Session not found"))
+    }
+  }
 
-      let mut buffer = vec![0u8; 4096];
+  #[napi]
+  pub fn read_all_output(&self) -> Result<Option<Buffer>> {
+    let manager = PTY_MANAGER.lock().unwrap();
 
-      // Simple blocking read for now
-      match reader.read(&mut buffer) {
-        Ok(0) => Ok(None), // EOF
-        Ok(n) => Ok(Some(Buffer::from(&buffer[..n]))),
-        Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(None),
-        Err(e) => Err(Error::from_reason(format!("Read failed: {}", e))),
+    if let Some(session) = manager.sessions.get(&self.session_id) {
+      let mut all_data = Vec::new();
+      
+      // Read all available data from the channel
+      while let Ok(data) = session.output_receiver.try_recv() {
+        all_data.extend_from_slice(&data);
+      }
+
+      if all_data.is_empty() {
+        Ok(None)
+      } else {
+        Ok(Some(Buffer::from(all_data)))
       }
     } else {
       Err(Error::from_reason("Session not found"))
@@ -269,6 +345,9 @@ impl NativePty {
 
     // Remove session from manager
     if let Some(mut session) = manager.sessions.remove(&self.session_id) {
+      // Send shutdown signal to reader thread
+      let _ = session.shutdown_sender.send(());
+
       // Kill the child process if still running
       if let Err(e) = session.child.kill() {
         // It's okay if the process is already dead
@@ -278,7 +357,11 @@ impl NativePty {
       // Wait for the child to fully exit
       let _ = session.child.wait();
 
-      // Note: reader_thread will naturally exit when PTY is closed
+      // Wait for reader thread to finish
+      if let Some(thread) = session.reader_thread {
+        let _ = thread.join();
+      }
+
       // The session will be dropped here, cleaning up all resources
     }
 

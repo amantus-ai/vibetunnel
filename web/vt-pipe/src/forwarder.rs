@@ -19,19 +19,21 @@ async fn connect_with_retry(
   max_retries: u32,
   delay_ms: u64,
 ) -> Result<SocketClient> {
+  let mut last_error = None;
+  
   for attempt in 0..max_retries {
     match SocketClient::connect(socket_path).await {
       Ok(client) => return Ok(client),
       Err(e) => {
+        last_error = Some(e);
         if attempt < max_retries - 1 {
           tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
-        } else {
-          return Err(e);
         }
       },
     }
   }
-  unreachable!()
+  
+  Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Failed to connect after {} attempts", max_retries)))
 }
 
 pub struct Forwarder {
@@ -119,13 +121,13 @@ impl Forwarder {
     // Connect to Unix socket with retry logic
     let socket_path = session.socket_path();
 
-    let socket_client = match connect_with_retry(&socket_path, 10, 100).await {
-      Ok(client) => Some(client),
-      Err(e) => {
-        eprintln!("Warning: Failed to connect to socket after retries: {}", e);
-        None
-      },
-    };
+    let socket_client = connect_with_retry(&socket_path, 10, 100)
+      .await
+      .context(format!(
+        "Failed to connect to VibeTunnel server socket at {:?}. \
+         Is VibeTunnel running? Try launching it first.",
+        socket_path
+      ))?;
 
     // Enter raw mode
     self.terminal.enter_raw_mode()?;
@@ -142,7 +144,7 @@ impl Forwarder {
 
     // Forward I/O
     let result = self
-      .forward_io(writer, reader, pair.master, socket_client, shutdown, child)
+      .forward_io(writer, reader, pair.master, Some(socket_client), shutdown, child)
       .await;
 
     // Restore terminal
