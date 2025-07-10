@@ -385,6 +385,7 @@ export class AsciinemaWriter {
   private initializeFile(): void {
     let fileExists = false;
     let needsTruncation = false;
+    const startTime = Date.now();
 
     // Check if file exists and needs truncation
     try {
@@ -394,33 +395,42 @@ export class AsciinemaWriter {
       if (stats.size > config.MAX_CAST_SIZE) {
         needsTruncation = true;
         _logger.log(
-          `Existing cast file ${this.filePath} is ${stats.size} bytes (exceeds ${config.MAX_CAST_SIZE}), will truncate before opening`
+          `[TRUNCATION] Existing cast file ${this.filePath} is ${(stats.size / 1024 / 1024).toFixed(2)}MB (exceeds ${(config.MAX_CAST_SIZE / 1024 / 1024).toFixed(2)}MB), will truncate before opening`
         );
       }
     } catch {
       // File doesn't exist, we'll create it
+      _logger.debug(`[TRUNCATION] File ${this.filePath} does not exist, will create new`);
     }
 
     // If file needs truncation, do it synchronously before opening the stream
     if (needsTruncation) {
+      const truncateStartTime = Date.now();
+      _logger.log(`[TRUNCATION] Starting synchronous truncation of ${this.filePath}`);
+
       try {
         this.truncateFileSync();
-        fileExists = true; // File still exists after truncation
+        const truncateDuration = Date.now() - truncateStartTime;
+        _logger.log(
+          `[TRUNCATION] Successfully truncated ${this.filePath} in ${truncateDuration}ms`
+        );
       } catch (err) {
-        _logger.error(`Failed to truncate file on startup: ${this.filePath}`, err);
-        // IMPORTANT: Setting fileExists = false here will cause data loss
-        // as the file will be opened in 'w' mode instead of 'a' mode.
-        // This is an acceptable tradeoff for extremely large files (>1GB)
-        // that fail truncation, as they're likely corrupted or too large
-        // to be useful anyway. The alternative would be to let the file
-        // grow unbounded, potentially filling the disk.
-        fileExists = false; // Treat as new file if truncation failed
+        const truncateDuration = Date.now() - truncateStartTime;
+        _logger.error(
+          `[TRUNCATION] Failed to truncate file on startup: ${this.filePath} after ${truncateDuration}ms`,
+          err
+        );
+        // Re-throw the error - we don't want to lose data by creating a new file
+        // The streaming truncation should handle any file size, so if it fails,
+        // there's likely a more serious issue (permissions, disk space, etc.)
+        throw err;
       }
     }
 
     // Decide whether to append or create new based on file existence and content
     let shouldAppend = false;
     if (fileExists) {
+      const headerCheckStart = Date.now();
       try {
         // Only read first 1KB to check header - avoid reading entire file into memory
         const fd = fs.openSync(this.filePath, 'r');
@@ -435,10 +445,16 @@ export class AsciinemaWriter {
             // File has a valid header, append to it
             shouldAppend = true;
             this.headerWritten = true;
+            _logger.debug(
+              `[TRUNCATION] File has valid header, will append. Header check took ${Date.now() - headerCheckStart}ms`
+            );
           }
         }
       } catch {
         // Error reading file, create new
+        _logger.debug(
+          `[TRUNCATION] Error reading file header, will create new. Header check took ${Date.now() - headerCheckStart}ms`
+        );
       }
     }
 
@@ -458,23 +474,37 @@ export class AsciinemaWriter {
     if (!this.headerWritten) {
       this.writeHeader();
     }
+
+    const totalDuration = Date.now() - startTime;
+    _logger.log(`[TRUNCATION] initializeFile completed in ${totalDuration}ms for ${this.filePath}`);
   }
 
   /**
    * Synchronously truncate the file to keep only recent events
    */
   private truncateFileSync(): void {
+    const truncateStart = Date.now();
     try {
       const targetSize = config.MAX_CAST_SIZE * config.CAST_TRUNCATION_TARGET_PERCENTAGE;
+      _logger.log(
+        `[TRUNCATION] Calling StreamingAsciinemaTrancator.truncateFileSync with targetSize: ${(targetSize / 1024 / 1024).toFixed(2)}MB`
+      );
+
       StreamingAsciinemaTrancator.truncateFileSync(this.filePath, {
         targetSize,
         addTruncationMarker: true,
       });
-      _logger.log(`Successfully truncated ${this.filePath} synchronously`);
+
+      _logger.log(
+        `[TRUNCATION] Successfully truncated ${this.filePath} synchronously in ${Date.now() - truncateStart}ms`
+      );
     } catch (err) {
       // If sync truncation fails (e.g., file too large), log and throw
       // This will be caught by the caller and handled appropriately
-      _logger.error(`Synchronous truncation failed for ${this.filePath}:`, err);
+      _logger.error(
+        `[TRUNCATION] Synchronous truncation failed for ${this.filePath} after ${Date.now() - truncateStart}ms:`,
+        err
+      );
       throw err;
     }
   }

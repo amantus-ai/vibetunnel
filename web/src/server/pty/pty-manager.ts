@@ -136,14 +136,18 @@ export class PtyManager extends EventEmitter {
    * This will trigger truncation for any files exceeding MAX_CAST_SIZE
    */
   private async recoverExistingSessions(): Promise<void> {
+    const recoveryStartTime = Date.now();
     try {
       const sessions = this.sessionManager.listSessions();
       let recoveredCount = 0;
       let truncatedCount = 0;
 
+      logger.log(`[RECOVERY] Starting session recovery for ${sessions.length} sessions`);
+
       for (const sessionInfo of sessions) {
         // Only recover running sessions (forwarder sessions that might reconnect)
         if (sessionInfo.status === 'running' && !this.sessions.has(sessionInfo.id)) {
+          const sessionRecoveryStart = Date.now();
           const paths = this.sessionManager.getSessionPaths(sessionInfo.id);
           if (!paths) {
             continue;
@@ -153,6 +157,10 @@ export class PtyManager extends EventEmitter {
           try {
             const stats = await fs.promises.stat(paths.stdoutPath);
             const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+            logger.log(
+              `[RECOVERY] Recovering session ${sessionInfo.id} with file size ${sizeMB}MB`
+            );
 
             // Create AsciinemaWriter which will automatically truncate if needed
             const asciinemaWriter = AsciinemaWriter.create(
@@ -179,9 +187,10 @@ export class PtyManager extends EventEmitter {
             // Store the partial session (without ptyProcess since it's dead)
             this.sessions.set(sessionInfo.id, recoveredSession as PtySession);
 
+            const sessionRecoveryDuration = Date.now() - sessionRecoveryStart;
             logger.log(
               chalk.green(
-                `Recovered session ${sessionInfo.id} (${sizeMB}MB) - AsciinemaWriter will handle truncation if needed`
+                `[RECOVERY] Recovered session ${sessionInfo.id} (${sizeMB}MB) in ${sessionRecoveryDuration}ms - AsciinemaWriter will handle truncation if needed`
               )
             );
             recoveredCount++;
@@ -190,20 +199,27 @@ export class PtyManager extends EventEmitter {
               truncatedCount++;
             }
           } catch (error) {
-            logger.warn(`Failed to recover session ${sessionInfo.id}:`, error);
+            logger.warn(`[RECOVERY] Failed to recover session ${sessionInfo.id}:`, error);
           }
         }
       }
 
+      const totalRecoveryDuration = Date.now() - recoveryStartTime;
       if (recoveredCount > 0) {
         logger.log(
           chalk.blue(
-            `Session recovery complete: ${recoveredCount} sessions recovered, ${truncatedCount} will be truncated`
+            `[RECOVERY] Session recovery complete in ${totalRecoveryDuration}ms: ${recoveredCount} sessions recovered, ${truncatedCount} will be truncated`
           )
         );
+      } else {
+        logger.log(`[RECOVERY] No sessions to recover (completed in ${totalRecoveryDuration}ms)`);
       }
     } catch (error) {
-      logger.error('Error during session recovery:', error);
+      const totalRecoveryDuration = Date.now() - recoveryStartTime;
+      logger.error(
+        `[RECOVERY] Error during session recovery after ${totalRecoveryDuration}ms:`,
+        error
+      );
     }
   }
 

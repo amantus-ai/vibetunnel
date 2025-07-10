@@ -292,82 +292,126 @@ export class StreamingAsciinemaTrancator {
   }
 
   /**
-   * Synchronous truncation for initialization (small files only)
-   * Falls back to async for large files
+   * Synchronous truncation using streaming for any file size
+   * Memory-efficient implementation that reads in chunks
    */
   static truncateFileSync(filePath: string, options: TruncationOptions): void {
     const startTime = Date.now();
+    logger.log(`[TRUNCATION-SYNC] Starting synchronous truncation of ${filePath}`);
 
     try {
       // Get file size first
       const stats = fs.statSync(filePath);
       const fileSize = stats.size;
+      const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+
+      logger.log(
+        `[TRUNCATION-SYNC] File size: ${fileSizeMB}MB, target size: ${(options.targetSize / (1024 * 1024)).toFixed(2)}MB`
+      );
 
       // If file is already under target size, nothing to do
       if (fileSize <= options.targetSize) {
+        logger.log(`[TRUNCATION-SYNC] File already under target size, skipping truncation`);
         return;
       }
 
-      // For files over 5MB, throw error to force async handling
-      // Conservative limit to prevent string length errors with dense output
-      const MAX_SYNC_SIZE = 5 * 1024 * 1024; // 5MB
-      if (fileSize > MAX_SYNC_SIZE) {
-        throw new Error(
-          `File too large for synchronous truncation (${(fileSize / 1024 / 1024).toFixed(2)}MB). ` +
-            `Maximum sync size is ${MAX_SYNC_SIZE / 1024 / 1024}MB.`
-        );
-      }
-
       logger.log(
-        `Performing synchronous truncation of ${filePath} (${(fileSize / 1024 / 1024).toFixed(2)}MB)`
+        `[TRUNCATION-SYNC] Performing streaming synchronous truncation of ${filePath} (${fileSizeMB}MB)`
       );
 
-      // Read file content
-      let content: string;
-      let lines: string[];
+      // Read file in chunks to handle any size
+      const CHUNK_SIZE = 64 * 1024; // 64KB chunks
+      const fd = fs.openSync(filePath, 'r');
+      let position = 0;
+      let lineBuffer = '';
+      let header = '';
+      const events: EventEntry[] = [];
+      let currentSize = 0;
+      const availableSize = options.targetSize - 1024; // Reserve space for header
+      let lineCount = 0;
+
+      const readStartTime = Date.now();
+      logger.log(`[TRUNCATION-SYNC] Reading file in ${CHUNK_SIZE / 1024}KB chunks...`);
 
       try {
-        content = fs.readFileSync(filePath, 'utf8');
-        lines = content.trim().split('\n');
-      } catch (error) {
-        // If we get a string length error even at 10MB, force async handling
-        if (error instanceof RangeError && error.message.includes('Invalid string length')) {
-          throw new Error(
-            `File content too dense for synchronous truncation. ` +
-              `File has too many lines to process synchronously.`
-          );
+        while (position < fileSize) {
+          const remainingBytes = fileSize - position;
+          const bytesToRead = Math.min(CHUNK_SIZE, remainingBytes);
+          const buffer = Buffer.alloc(bytesToRead);
+
+          const bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, position);
+          if (bytesRead === 0) break;
+
+          position += bytesRead;
+
+          // Convert chunk to string and append to line buffer
+          const chunk = buffer.toString('utf8', 0, bytesRead);
+          lineBuffer += chunk;
+
+          // Process complete lines
+          const lines = lineBuffer.split('\n');
+          lineBuffer = lines.pop() || ''; // Keep incomplete line for next iteration
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            lineCount++;
+
+            // First line is the header
+            if (!header) {
+              header = line;
+              continue;
+            }
+
+            // Parse event line
+            const eventSize = Buffer.byteLength(`${line}\n`, 'utf8');
+            events.push({ line, size: eventSize });
+            currentSize += eventSize;
+
+            // Maintain sliding window of events that fit in target size
+            while (currentSize > availableSize && events.length > 0) {
+              const removed = events.shift()!;
+              currentSize -= removed.size;
+            }
+          }
+
+          // Log progress for large files
+          if (position % (10 * 1024 * 1024) === 0) {
+            const progressMB = (position / (1024 * 1024)).toFixed(1);
+            logger.log(`[TRUNCATION-SYNC] Progress: ${progressMB}MB processed...`);
+          }
         }
+
+        // Process any remaining line buffer
+        if (lineBuffer.trim() && header) {
+          lineCount++;
+          const eventSize = Buffer.byteLength(`${lineBuffer}\n`, 'utf8');
+          events.push({ line: lineBuffer, size: eventSize });
+          currentSize += eventSize;
+
+          // Final window adjustment
+          while (currentSize > availableSize && events.length > 0) {
+            const removed = events.shift()!;
+            currentSize -= removed.size;
+          }
+        }
+
+        fs.closeSync(fd);
+        logger.log(
+          `[TRUNCATION-SYNC] Read ${lineCount} lines in ${Date.now() - readStartTime}ms, kept ${events.length} events`
+        );
+      } catch (error) {
+        fs.closeSync(fd);
         throw error;
       }
 
-      if (lines.length < 2) {
-        return; // Nothing to truncate
+      // Early exit if no header or events
+      if (!header || events.length === 0) {
+        logger.log(`[TRUNCATION-SYNC] No valid data to truncate`);
+        return;
       }
 
-      // First line is the header
-      const header = lines[0];
-      const events = lines.slice(1);
-
-      // Calculate how many events to keep
-      const reservedSize = 512;
-      const effectiveTargetSize = options.targetSize - reservedSize;
-      const headerSize = Buffer.byteLength(`${header}\n`, 'utf8');
-      const availableSize = effectiveTargetSize - headerSize;
-
-      // Keep events from the end that fit within the size limit
-      const keptEvents: string[] = [];
-      let currentSize = 0;
-
-      for (let i = events.length - 1; i >= 0; i--) {
-        const eventSize = Buffer.byteLength(`${events[i]}\n`, 'utf8');
-        if (currentSize + eventSize > availableSize) {
-          break;
-        }
-        keptEvents.unshift(events[i]);
-        currentSize += eventSize;
-      }
-
-      const eventsRemoved = events.length - keptEvents.length;
+      const eventsRemoved = lineCount - 1 - events.length; // -1 for header
 
       // Add truncation marker if requested and events were removed
       if (options.addTruncationMarker && eventsRemoved > 0) {
@@ -378,20 +422,34 @@ export class StreamingAsciinemaTrancator {
         if (truncationEvent) {
           const markerSize = Buffer.byteLength(`${truncationEvent}\n`, 'utf8');
           // Make room for marker if needed
-          if (currentSize + markerSize > availableSize && keptEvents.length > 0) {
-            keptEvents.shift();
+          if (currentSize + markerSize > availableSize && events.length > 0) {
+            const removed = events.shift()!;
+            currentSize -= removed.size;
           }
-          keptEvents.unshift(truncationEvent);
+          events.unshift({ line: truncationEvent, size: markerSize });
         }
       }
 
       // Write to temp file and rename atomically
       const tempFile = `${filePath}.tmp.${process.pid}`;
 
+      const writeStartTime = Date.now();
       try {
-        const newContent = `${header}\n${keptEvents.join('\n')}\n`;
-        fs.writeFileSync(tempFile, newContent, 'utf8');
+        logger.log(`[TRUNCATION-SYNC] Writing ${events.length} events to temporary file...`);
+
+        // Write header
+        fs.writeFileSync(tempFile, `${header}\n`, 'utf8');
+
+        // Append events one by one to avoid string concatenation issues
+        for (const event of events) {
+          fs.appendFileSync(tempFile, `${event.line}\n`, 'utf8');
+        }
+
+        logger.log(`[TRUNCATION-SYNC] Renaming temp file to original...`);
         fs.renameSync(tempFile, filePath);
+
+        const writeDuration = Date.now() - writeStartTime;
+        logger.log(`[TRUNCATION-SYNC] Write and rename completed in ${writeDuration}ms`);
       } catch (error) {
         // Clean up temp file on error
         try {
@@ -399,23 +457,16 @@ export class StreamingAsciinemaTrancator {
         } catch {
           // Ignore cleanup errors
         }
-
-        // If we get a string length error during join, throw a more informative error
-        if (error instanceof RangeError && error.message.includes('Invalid string length')) {
-          throw new Error(
-            `Cannot create output string - too many events to join. ` +
-              `File requires async streaming truncation.`
-          );
-        }
         throw error;
       }
 
       const duration = Date.now() - startTime;
       logger.log(
-        `Successfully truncated ${filePath} synchronously: removed ${eventsRemoved} events in ${duration}ms`
+        `[TRUNCATION-SYNC] Successfully truncated ${filePath}: removed ${eventsRemoved} events in ${duration}ms total`
       );
     } catch (error) {
-      logger.error(`Failed to truncate ${filePath} synchronously:`, error);
+      const duration = Date.now() - startTime;
+      logger.error(`[TRUNCATION-SYNC] Failed to truncate ${filePath} after ${duration}ms:`, error);
       throw error;
     }
   }
