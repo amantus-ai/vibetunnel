@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 
+mod api_client;
 mod forwarder;
 mod session;
 mod socket_client;
@@ -110,7 +111,7 @@ async fn update_session_title(session_id: &str, new_title: &str) -> Result<()> {
   use session::Session;
   use socket_client::SocketClient;
 
-  // Load session info
+  // Load session info to get the socket path
   let session = Session::load(session_id).context("Failed to load session info")?;
 
   // Connect to socket and send update-title command
@@ -121,8 +122,8 @@ async fn update_session_title(session_id: &str, new_title: &str) -> Result<()> {
 
   client.send_update_title(new_title).await?;
 
-  // Update session.json
-  session.update_title(new_title)?;
+  // Note: We no longer update session.json directly
+  // The server will handle updating the file after receiving the command
 
   Ok(())
 }
