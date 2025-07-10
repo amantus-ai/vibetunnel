@@ -60,21 +60,9 @@ function loadNativeAddon() {
       initPtySystem();
       logger.log('Native PTY addon loaded successfully from native-pty');
     } catch (err) {
-      // Fall back to vibetunnel-pty if native-pty fails
-      try {
-        const addon = require('../../../vibetunnel-pty');
-        NativePty = addon.NativePty;
-        ActivityDetector = addon.ActivityDetector;
-        initPtySystem = addon.initPtySystem;
-
-        // Initialize once
-        initPtySystem();
-        logger.log('Native PTY addon loaded successfully from vibetunnel-pty (fallback)');
-      } catch (fallbackErr) {
-        throw new Error(
-          `Failed to load native addon: ${err instanceof Error ? err.message : String(err)} (fallback: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)})`
-        );
-      }
+      throw new Error(
+        `Failed to load native PTY addon: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   }
 }
