@@ -264,17 +264,16 @@ export class InputManager {
 
   isKeyboardShortcut(e: KeyboardEvent): boolean {
     // Check if we're typing in an input field or editor
-    const target = e.target as HTMLElement | null;
+    const target = e.target as HTMLElement;
     if (
-      target &&
-      (target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        target.contentEditable === 'true' ||
-        target.closest('.monaco-editor') ||
-        target.closest('[data-keybinding-context]') ||
-        target.closest('.editor-container') ||
-        target.closest('inline-edit')) // Allow typing in inline-edit component
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.contentEditable === 'true' ||
+      target.closest('.monaco-editor') ||
+      target.closest('[data-keybinding-context]') ||
+      target.closest('.editor-container') ||
+      target.closest('inline-edit') // Allow typing in inline-edit component
     ) {
       // Allow normal input in form fields and editors
       return false;

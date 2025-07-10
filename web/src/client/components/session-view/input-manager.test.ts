@@ -228,6 +228,11 @@ describe('InputManager', () => {
         metaKey: true,
         shiftKey: true,
       });
+      // Mock a target element (simulating event fired on document body)
+      Object.defineProperty(event, 'target', {
+        value: document.createElement('div'),
+        configurable: true,
+      });
 
       expect(inputManager.isKeyboardShortcut(event)).toBe(true);
     });
@@ -242,6 +247,11 @@ describe('InputManager', () => {
         const event = new KeyboardEvent('keydown', {
           key: i.toString(),
           metaKey: true,
+        });
+        // Mock a target element
+        Object.defineProperty(event, 'target', {
+          value: document.createElement('div'),
+          configurable: true,
         });
 
         expect(inputManager.isKeyboardShortcut(event)).toBe(true);
@@ -259,11 +269,19 @@ describe('InputManager', () => {
         metaKey: true,
         altKey: true,
       });
+      Object.defineProperty(leftEvent, 'target', {
+        value: document.createElement('div'),
+        configurable: true,
+      });
 
       const rightEvent = new KeyboardEvent('keydown', {
         key: 'ArrowRight',
         metaKey: true,
         altKey: true,
+      });
+      Object.defineProperty(rightEvent, 'target', {
+        value: document.createElement('div'),
+        configurable: true,
       });
 
       expect(inputManager.isKeyboardShortcut(leftEvent)).toBe(true);
