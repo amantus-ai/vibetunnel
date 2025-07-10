@@ -16,6 +16,7 @@ export declare class NativePty {
   getPid(): number
   kill(signal?: string | undefined | null): void
   readOutput(timeoutMs?: number | undefined | null): Buffer | null
+  readAllOutput(): Buffer | null
   checkExitStatus(): number | null
   destroy(): void
 }
