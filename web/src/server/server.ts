@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import compression from 'compression';
 import type { Response as ExpressResponse } from 'express';
 import express from 'express';
 import * as fs from 'fs';
@@ -375,6 +376,10 @@ export async function createApp(): Promise<AppInstance> {
   const app = express();
   const server = createServer(app);
   const wss = new WebSocketServer({ noServer: true });
+
+  // Add compression middleware
+  app.use(compression());
+  logger.debug('Configured compression middleware');
 
   // Add JSON body parser middleware with size limit
   app.use(express.json({ limit: '10mb' }));
