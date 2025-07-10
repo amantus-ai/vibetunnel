@@ -25,6 +25,7 @@ interface NativePtyInstance {
   readAllOutput(): Buffer | null;
   checkExitStatus(): number | null;
   destroy(): void;
+  setOnData(callback: (data: Buffer) => void): void;
 }
 
 interface ActivityDetectorConstructor {
@@ -84,7 +85,7 @@ class NativeAddonPty extends EventEmitter implements IPty {
   private _pid: number;
   private _process: string;
   private closed = false;
-  private pollInterval: NodeJS.Timeout | null = null;
+  private exitCheckInterval: NodeJS.Timeout | null = null;
   private exitCode: number | null = null;
 
   constructor(file?: string, args?: string[], opt?: IPtyOptions) {
@@ -109,8 +110,8 @@ class NativeAddonPty extends EventEmitter implements IPty {
     // Activity detection
     this.activityDetector = new ActivityDetector();
 
-    // Start polling for output
-    this.startPolling();
+    // Set up event-driven data callback
+    this.setupDataCallback();
   }
 
   get pid(): number {
@@ -143,8 +144,13 @@ class NativeAddonPty extends EventEmitter implements IPty {
   destroy(): void {
     if (this.closed) return;
 
-    this.stopPolling();
     this.closed = true;
+
+    // Clear exit check interval
+    if (this.exitCheckInterval) {
+      clearInterval(this.exitCheckInterval);
+      this.exitCheckInterval = null;
+    }
 
     try {
       this.pty.destroy();
@@ -182,62 +188,49 @@ class NativeAddonPty extends EventEmitter implements IPty {
     // No-op for compatibility
   }
 
-  private startPolling(): void {
-    // WARNING: This polling approach is a critical performance flaw.
-    // Even though readAllOutput() attempts to minimize blocking with try_lock and
-    // data limits, it still executes synchronously on the Node.js main thread.
-    // This blocks the event loop during mutex acquisition, data copying, and buffer creation.
-    //
-    // TODO: Replace with proper async I/O using NAPI ThreadsafeFunction:
-    // 1. Rust reader thread should push data via ThreadsafeFunction callbacks
-    // 2. Eliminate this polling entirely
-    // 3. Use EventEmitter pattern triggered by Rust, not polling from JS
-    //
-    // Current mitigation: try_lock and 64KB read limit reduce but don't eliminate blocking
-    this.pollInterval = setInterval(() => {
+  private setupDataCallback(): void {
+    // Event-driven architecture - Rust calls this callback when data arrives
+    // This eliminates polling and prevents event loop blocking
+    this.pty.setOnData((data: Buffer) => {
+      if (this.closed) return;
+
+      // Check for activity
+      const activity = this.activityDetector.detect(data);
+      if (activity) {
+        this.emit('activity', activity);
+      }
+
+      // Emit data as string for compatibility
+      this.emit('data', data.toString('utf8'));
+    });
+
+    // Still need to check for process exit periodically
+    // This is much less frequent and doesn't block for I/O
+    this.exitCheckInterval = setInterval(() => {
       if (this.closed) {
-        this.stopPolling();
+        if (this.exitCheckInterval) {
+          clearInterval(this.exitCheckInterval);
+          this.exitCheckInterval = null;
+        }
         return;
       }
 
       try {
-        // Check if process has exited
         const exitStatus = this.pty.checkExitStatus();
         if (exitStatus !== null && exitStatus !== undefined) {
           // Process has exited
           this.exitCode = exitStatus;
           this.closed = true;
           this.emit('exit', exitStatus, 0);
-          this.stopPolling();
-          return;
-        }
-
-        // Read all available output at once
-        const output = this.pty.readAllOutput();
-        if (output) {
-          // Check for activity
-          const activity = this.activityDetector.detect(output);
-          if (activity) {
-            this.emit('activity', activity);
+          if (this.exitCheckInterval) {
+            clearInterval(this.exitCheckInterval);
+            this.exitCheckInterval = null;
           }
-
-          // Emit data as string for compatibility
-          this.emit('data', output.toString('utf8'));
         }
       } catch (err) {
-        logger.error('Error in PTY polling:', err);
-        this.closed = true;
-        this.emit('exit', 1, 0);
-        this.stopPolling();
+        logger.error('Error checking exit status:', err);
       }
-    }, 10); // 10ms - higher interval reduces event loop blocking frequency
-  }
-
-  private stopPolling(): void {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
+    }, 100); // Check every 100ms for exit status only
   }
 }
 

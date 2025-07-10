@@ -11,6 +11,7 @@ export interface Activity {
 }
 export declare class NativePty {
   constructor(shell?: string | undefined | null, args?: Array<string> | undefined | null, env?: Record<string, string> | undefined | null, cwd?: string | undefined | null, cols?: number | undefined | null, rows?: number | undefined | null)
+  setOnData(callback: (...args: any[]) => any): void
   write(data: Buffer): void
   resize(cols: number, rows: number): void
   getPid(): number
