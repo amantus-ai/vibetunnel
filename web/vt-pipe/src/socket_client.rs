@@ -40,6 +40,11 @@ impl SocketClient {
     self.send_message(MessageType::StdinData, data).await
   }
 
+  /// Send stdout data to the server
+  pub async fn send_stdout(&mut self, data: &[u8]) -> Result<()> {
+    self.send_message(MessageType::StdoutData, data).await
+  }
+
   /// Send a resize command
   pub async fn send_resize(&mut self, cols: u16, rows: u16) -> Result<()> {
     let cmd = json!({
