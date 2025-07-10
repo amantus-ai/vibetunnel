@@ -79,7 +79,19 @@ export class InputManager {
 
     // Handle Alt+ combinations
     if (altKey && !ctrlKey && !metaKey && !shiftKey) {
-      // Handle Alt+Backspace for word deletion
+      // Alt+Left Arrow - Move to previous word
+      if (key === 'ArrowLeft') {
+        consumeEvent(e);
+        await this.sendInput('\x1bb'); // ESC+b
+        return;
+      }
+      // Alt+Right Arrow - Move to next word
+      if (key === 'ArrowRight') {
+        consumeEvent(e);
+        await this.sendInput('\x1bf'); // ESC+f
+        return;
+      }
+      // Alt+Backspace - Delete word backward
       if (key === 'Backspace') {
         consumeEvent(e);
         await this.sendInput('\x17'); // Ctrl+W
