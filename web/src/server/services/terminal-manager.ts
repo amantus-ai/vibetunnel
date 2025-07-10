@@ -153,15 +153,47 @@ export class TerminalManager {
     }
 
     try {
-      // Read existing content first
-      const content = fs.readFileSync(streamPath, 'utf8');
-      lastOffset = Buffer.byteLength(content, 'utf8');
+      // Get file size first
+      const stats = fs.statSync(streamPath);
+      lastOffset = stats.size;
 
-      // Process existing content
-      const lines = content.split('\n');
-      for (const line of lines) {
-        if (line.trim()) {
-          this.handleStreamLine(sessionId, sessionTerminal, line);
+      // For large files, skip initial processing to avoid memory issues
+      const MAX_INITIAL_READ = 10 * 1024 * 1024; // 10MB limit
+
+      if (stats.size <= MAX_INITIAL_READ) {
+        // Safe to read entire file
+        const content = fs.readFileSync(streamPath, 'utf8');
+
+        // Process existing content
+        const lines = content.split('\n');
+        for (const line of lines) {
+          if (line.trim()) {
+            this.handleStreamLine(sessionId, sessionTerminal, line);
+          }
+        }
+      } else {
+        // File too large - stream from the end to get recent content
+        logger.warn(
+          `Stream file for session ${sessionId} is large (${(stats.size / 1024 / 1024).toFixed(2)}MB), skipping initial processing`
+        );
+
+        // Optionally read last 1MB for recent history
+        const tailSize = Math.min(1024 * 1024, stats.size); // Last 1MB
+        const tailOffset = stats.size - tailSize;
+
+        const fd = fs.openSync(streamPath, 'r');
+        const buffer = Buffer.alloc(tailSize);
+        fs.readSync(fd, buffer, 0, tailSize, tailOffset);
+        fs.closeSync(fd);
+
+        // Process only complete lines from tail
+        const tailContent = buffer.toString('utf8');
+        const lines = tailContent.split('\n');
+        // Skip first line as it might be partial
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i].trim()) {
+            this.handleStreamLine(sessionId, sessionTerminal, lines[i]);
+          }
         }
       }
 

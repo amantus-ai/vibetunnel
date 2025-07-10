@@ -422,13 +422,20 @@ export class AsciinemaWriter {
     let shouldAppend = false;
     if (fileExists) {
       try {
-        // Check if file has valid content
-        const content = fs.readFileSync(this.filePath, 'utf8');
-        const lines = content.trim().split('\n');
-        if (lines.length > 0 && lines[0].includes('"version"')) {
-          // File has a valid header, append to it
-          shouldAppend = true;
-          this.headerWritten = true;
+        // Only read first 1KB to check header - avoid reading entire file into memory
+        const fd = fs.openSync(this.filePath, 'r');
+        const buffer = Buffer.alloc(1024); // 1KB is enough to check header
+        const bytesRead = fs.readSync(fd, buffer, 0, 1024, 0);
+        fs.closeSync(fd);
+
+        if (bytesRead > 0) {
+          const firstKB = buffer.toString('utf8', 0, bytesRead);
+          const firstLine = firstKB.split('\n')[0];
+          if (firstLine && firstLine.includes('"version"')) {
+            // File has a valid header, append to it
+            shouldAppend = true;
+            this.headerWritten = true;
+          }
         }
       } catch {
         // Error reading file, create new

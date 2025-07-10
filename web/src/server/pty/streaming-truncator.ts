@@ -308,8 +308,9 @@ export class StreamingAsciinemaTrancator {
         return;
       }
 
-      // For files over 50MB, throw error to force async handling
-      const MAX_SYNC_SIZE = 50 * 1024 * 1024; // 50MB
+      // For files over 5MB, throw error to force async handling
+      // Conservative limit to prevent string length errors with dense output
+      const MAX_SYNC_SIZE = 5 * 1024 * 1024; // 5MB
       if (fileSize > MAX_SYNC_SIZE) {
         throw new Error(
           `File too large for synchronous truncation (${(fileSize / 1024 / 1024).toFixed(2)}MB). ` +
@@ -322,8 +323,22 @@ export class StreamingAsciinemaTrancator {
       );
 
       // Read file content
-      const content = fs.readFileSync(filePath, 'utf8');
-      const lines = content.trim().split('\n');
+      let content: string;
+      let lines: string[];
+
+      try {
+        content = fs.readFileSync(filePath, 'utf8');
+        lines = content.trim().split('\n');
+      } catch (error) {
+        // If we get a string length error even at 10MB, force async handling
+        if (error instanceof RangeError && error.message.includes('Invalid string length')) {
+          throw new Error(
+            `File content too dense for synchronous truncation. ` +
+              `File has too many lines to process synchronously.`
+          );
+        }
+        throw error;
+      }
 
       if (lines.length < 2) {
         return; // Nothing to truncate
@@ -372,10 +387,28 @@ export class StreamingAsciinemaTrancator {
 
       // Write to temp file and rename atomically
       const tempFile = `${filePath}.tmp.${process.pid}`;
-      const newContent = `${header}\n${keptEvents.join('\n')}\n`;
 
-      fs.writeFileSync(tempFile, newContent, 'utf8');
-      fs.renameSync(tempFile, filePath);
+      try {
+        const newContent = `${header}\n${keptEvents.join('\n')}\n`;
+        fs.writeFileSync(tempFile, newContent, 'utf8');
+        fs.renameSync(tempFile, filePath);
+      } catch (error) {
+        // Clean up temp file on error
+        try {
+          fs.unlinkSync(tempFile);
+        } catch {
+          // Ignore cleanup errors
+        }
+
+        // If we get a string length error during join, throw a more informative error
+        if (error instanceof RangeError && error.message.includes('Invalid string length')) {
+          throw new Error(
+            `Cannot create output string - too many events to join. ` +
+              `File requires async streaming truncation.`
+          );
+        }
+        throw error;
+      }
 
       const duration = Date.now() - startTime;
       logger.log(
