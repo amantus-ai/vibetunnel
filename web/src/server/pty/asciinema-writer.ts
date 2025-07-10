@@ -53,6 +53,11 @@ export class AsciinemaWriter {
 
     this.writeHeader();
 
+    // Check size immediately if file already exists
+    this.checkAndTruncateFile().catch((err) => {
+      _logger.error(`Error during initial size check for ${this.filePath}:`, err);
+    });
+
     // Start periodic size checks
     this.startSizeChecking();
   }
