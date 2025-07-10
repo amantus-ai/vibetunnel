@@ -10,6 +10,7 @@ crossterm = "0.28"
 ctrlc = "3.4"
 libc = "0.2"
 portable-pty = "0.9"
+reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 signal-hook = "0.3"
