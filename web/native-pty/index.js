@@ -310,8 +310,8 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { NativePty, ActivityDetector, initPtySystem } = nativeBinding
+const { NativePty, initPtySystem, ActivityDetector } = nativeBinding
 
 module.exports.NativePty = NativePty
-module.exports.ActivityDetector = ActivityDetector
 module.exports.initPtySystem = initPtySystem
+module.exports.ActivityDetector = ActivityDetector

@@ -369,6 +369,13 @@ impl NativePty {
   }
 }
 
+// Initialize PTY system (no-op for now, but required for compatibility)
+#[napi]
+pub fn init_pty_system() -> Result<()> {
+  // No initialization needed for portable-pty
+  Ok(())
+}
+
 // Activity detection for Claude CLI
 #[napi]
 pub struct ActivityDetector {
@@ -411,9 +418,3 @@ pub struct Activity {
   pub details: Option<String>,
 }
 
-// Module initialization
-#[napi]
-pub fn init_pty_system() -> Result<()> {
-  // Any global initialization
-  Ok(())
-}
