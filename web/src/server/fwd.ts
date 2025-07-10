@@ -16,6 +16,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { type SessionInfo, TitleMode } from '../shared/types.js';
+import { AsciinemaWriter } from './pty/asciinema-writer.js';
 import { PtyManager } from './pty/index.js';
 import { SessionManager } from './pty/session-manager.js';
 import { VibeTunnelSocketClient } from './pty/socket-client.js';
@@ -316,6 +317,7 @@ export async function startVibeTunnelForward(args: string[]) {
     // Variables that need to be accessible in cleanup
     let sessionFileWatcher: fs.FSWatcher | undefined;
     let fileWatchDebounceTimer: NodeJS.Timeout | undefined;
+    let cleanupStdoutFunction: (() => void) | undefined;
 
     const sessionOptions: Parameters<typeof ptyManager.createSession>[1] = {
       sessionId: finalSessionId,
@@ -323,7 +325,19 @@ export async function startVibeTunnelForward(args: string[]) {
       workingDir: cwd,
       titleMode: titleMode,
       forwardToStdout: true,
+      externalStdoutWriter: true, // Forwarder handles stdout writing
       onExit: async (exitCode: number) => {
+        // Write exit event to asciinema
+        asciinemaWriter.writeRawJson(['exit', exitCode || 0, finalSessionId]);
+
+        // Close AsciinemaWriter
+        try {
+          await asciinemaWriter.close();
+          logger.debug('AsciinemaWriter closed successfully');
+        } catch (error) {
+          logger.error('Failed to close AsciinemaWriter:', error);
+        }
+
         // Show exit message
         logger.log(
           chalk.yellow(`\n✓ VibeTunnel session ended`) + chalk.gray(` (exit code: ${exitCode})`)
@@ -345,9 +359,9 @@ export async function startVibeTunnelForward(args: string[]) {
           process.stdin.destroy();
         }
 
-        // Restore original stdout.write if we hooked it
-        if (cleanupStdout) {
-          cleanupStdout();
+        // Restore original stdout.write
+        if (cleanupStdoutFunction) {
+          cleanupStdoutFunction();
         }
 
         // Clean up file watchers
@@ -385,6 +399,23 @@ export async function startVibeTunnelForward(args: string[]) {
     if (!session) {
       throw new Error('Session not found after creation');
     }
+
+    // Create AsciinemaWriter for stdout capture with hardcoded config
+    const stdoutPath = path.join(controlPath, result.sessionId, 'stdout');
+    const asciinemaWriter = AsciinemaWriter.create(
+      stdoutPath,
+      originalCols || 80,
+      originalRows || 24,
+      command.join(' '),
+      sessionName,
+      { TERM: process.env.TERM || 'xterm-256color' },
+      {
+        maxCastSize: 1 * 1024 * 1024, // 1MB
+        castSizeCheckInterval: 60 * 1000, // 60 seconds
+        castTruncationTargetPercentage: 0.8, // 80%
+      }
+    );
+
     // Log session info with version
     logger.log(chalk.green(`✓ VibeTunnel session started`) + chalk.gray(` (v${VERSION})`));
     logger.log(chalk.gray('Command:'), command.join(' '));
@@ -412,6 +443,9 @@ export async function startVibeTunnelForward(args: string[]) {
       const cols = process.stdout.columns || 80;
       const rows = process.stdout.rows || 24;
       logger.debug(`Terminal resized to ${cols}x${rows}`);
+
+      // Write resize event to AsciinemaWriter
+      asciinemaWriter.writeResize(cols, rows);
 
       // Send resize command through socket
       if (!socketClient.resize(cols, rows)) {
@@ -537,52 +571,47 @@ export async function startVibeTunnelForward(args: string[]) {
 
     // Set up activity detector for Claude status updates
     let activityDetector: ActivityDetector | undefined;
-    let cleanupStdout: (() => void) | undefined;
+
+    // Always hook stdout to capture data for AsciinemaWriter
+    const originalStdoutWrite = process.stdout.write.bind(process.stdout);
 
     if (titleMode === TitleMode.DYNAMIC) {
       activityDetector = new ActivityDetector(command);
+    }
 
-      // Hook into stdout to detect Claude status
-      const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+    // Create a proper override that handles all overloads
+    const _stdoutWriteOverride = function (
+      this: NodeJS.WriteStream,
+      chunk: string | Uint8Array,
+      encodingOrCallback?: BufferEncoding | ((err?: Error | null) => void),
+      callback?: (err?: Error | null) => void
+    ): boolean {
+      // Handle the overload: write(chunk, callback)
+      if (typeof encodingOrCallback === 'function') {
+        callback = encodingOrCallback;
+        encodingOrCallback = undefined;
+      }
 
-      // Create a proper override that handles all overloads
-      const _stdoutWriteOverride = function (
-        this: NodeJS.WriteStream,
-        chunk: string | Uint8Array,
-        encodingOrCallback?: BufferEncoding | ((err?: Error | null) => void),
-        callback?: (err?: Error | null) => void
-      ): boolean {
-        // Handle the overload: write(chunk, callback)
-        if (typeof encodingOrCallback === 'function') {
-          callback = encodingOrCallback;
-          encodingOrCallback = undefined;
+      // Write to AsciinemaWriter
+      if (chunk instanceof Buffer || chunk instanceof Uint8Array) {
+        asciinemaWriter.writeOutput(Buffer.from(chunk));
+      } else if (typeof chunk === 'string') {
+        const encoding = (
+          typeof encodingOrCallback === 'string' ? encodingOrCallback : 'utf8'
+        ) as BufferEncoding;
+        asciinemaWriter.writeOutput(Buffer.from(chunk, encoding));
+      }
+
+      // Process output through activity detector if in dynamic mode
+      if (activityDetector && typeof chunk === 'string') {
+        const { filteredData, activity } = activityDetector.processOutput(chunk);
+
+        // Send status update if detected
+        if (activity.specificStatus) {
+          socketClient.sendStatus(activity.specificStatus.app, activity.specificStatus.status);
         }
 
-        // Process output through activity detector
-        if (activityDetector && typeof chunk === 'string') {
-          const { filteredData, activity } = activityDetector.processOutput(chunk);
-
-          // Send status update if detected
-          if (activity.specificStatus) {
-            socketClient.sendStatus(activity.specificStatus.app, activity.specificStatus.status);
-          }
-
-          // Call original with correct arguments
-          if (callback) {
-            return originalStdoutWrite.call(
-              this,
-              chunk,
-              encodingOrCallback as BufferEncoding | undefined,
-              callback
-            );
-          } else if (encodingOrCallback && typeof encodingOrCallback === 'string') {
-            return originalStdoutWrite.call(this, filteredData, encodingOrCallback);
-          } else {
-            return originalStdoutWrite.call(this, filteredData);
-          }
-        }
-
-        // Pass through as-is if not string or no detector
+        // Call original with correct arguments
         if (callback) {
           return originalStdoutWrite.call(
             this,
@@ -591,25 +620,39 @@ export async function startVibeTunnelForward(args: string[]) {
             callback
           );
         } else if (encodingOrCallback && typeof encodingOrCallback === 'string') {
-          return originalStdoutWrite.call(this, chunk, encodingOrCallback);
+          return originalStdoutWrite.call(this, filteredData, encodingOrCallback);
         } else {
-          return originalStdoutWrite.call(this, chunk);
+          return originalStdoutWrite.call(this, filteredData);
         }
-      };
+      }
 
-      // Apply the override
-      process.stdout.write = _stdoutWriteOverride as typeof process.stdout.write;
+      // Pass through as-is
+      if (callback) {
+        return originalStdoutWrite.call(
+          this,
+          chunk,
+          encodingOrCallback as BufferEncoding | undefined,
+          callback
+        );
+      } else if (encodingOrCallback && typeof encodingOrCallback === 'string') {
+        return originalStdoutWrite.call(this, chunk, encodingOrCallback);
+      } else {
+        return originalStdoutWrite.call(this, chunk);
+      }
+    };
 
-      // Store reference for cleanup
-      cleanupStdout = () => {
-        process.stdout.write = originalStdoutWrite;
-      };
+    // Apply the override
+    process.stdout.write = _stdoutWriteOverride as typeof process.stdout.write;
 
-      // Ensure cleanup happens on process exit
-      process.on('exit', cleanupStdout);
-      process.on('SIGINT', cleanupStdout);
-      process.on('SIGTERM', cleanupStdout);
-    }
+    // Store reference for cleanup
+    cleanupStdoutFunction = () => {
+      process.stdout.write = originalStdoutWrite;
+    };
+
+    // Ensure cleanup happens on process exit
+    process.on('exit', cleanupStdoutFunction);
+    process.on('SIGINT', cleanupStdoutFunction);
+    process.on('SIGTERM', cleanupStdoutFunction);
 
     // Set up raw mode for terminal input
     if (process.stdin.isTTY) {
@@ -621,6 +664,9 @@ export async function startVibeTunnelForward(args: string[]) {
 
     // Forward stdin through socket
     process.stdin.on('data', (data: string) => {
+      // Write input to AsciinemaWriter
+      asciinemaWriter.writeInput(data);
+
       // Send through socket
       if (!socketClient.sendStdin(data)) {
         logger.error('Failed to send stdin data');

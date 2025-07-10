@@ -18,6 +18,12 @@ import { type AsciinemaEvent, type AsciinemaHeader, PtyError } from './types.js'
 const _logger = createLogger('AsciinemaWriter');
 const fsync = promisify(fs.fsync);
 
+export interface AsciinemaWriterConfig {
+  maxCastSize?: number;
+  castSizeCheckInterval?: number;
+  castTruncationTargetPercentage?: number;
+}
+
 export class AsciinemaWriter {
   private writeStream!: fs.WriteStream; // Initialized in initializeFile()
   private startTime: Date;
@@ -28,10 +34,22 @@ export class AsciinemaWriter {
   private sizeCheckTimer: NodeJS.Timeout | null = null;
   private isTruncating = false;
 
+  // Configuration with defaults from config
+  private maxCastSize: number;
+  private castSizeCheckInterval: number;
+  private castTruncationTargetPercentage: number;
+
   constructor(
     private filePath: string,
-    private header: AsciinemaHeader
+    private header: AsciinemaHeader,
+    writerConfig?: AsciinemaWriterConfig
   ) {
+    // Set configuration with defaults
+    this.maxCastSize = writerConfig?.maxCastSize ?? config.MAX_CAST_SIZE;
+    this.castSizeCheckInterval =
+      writerConfig?.castSizeCheckInterval ?? config.CAST_SIZE_CHECK_INTERVAL;
+    this.castTruncationTargetPercentage =
+      writerConfig?.castTruncationTargetPercentage ?? config.CAST_TRUNCATION_TARGET_PERCENTAGE;
     this.startTime = new Date();
 
     // Ensure directory exists
@@ -56,7 +74,8 @@ export class AsciinemaWriter {
     height: number = 24,
     command?: string,
     title?: string,
-    env?: Record<string, string>
+    env?: Record<string, string>,
+    writerConfig?: AsciinemaWriterConfig
   ): AsciinemaWriter {
     const header: AsciinemaHeader = {
       version: 2,
@@ -68,7 +87,7 @@ export class AsciinemaWriter {
       env,
     };
 
-    return new AsciinemaWriter(filePath, header);
+    return new AsciinemaWriter(filePath, header, writerConfig);
   }
 
   /**
@@ -392,10 +411,10 @@ export class AsciinemaWriter {
       const stats = fs.statSync(this.filePath);
       fileExists = true;
 
-      if (stats.size > config.MAX_CAST_SIZE) {
+      if (stats.size > this.maxCastSize) {
         needsTruncation = true;
         _logger.log(
-          `[TRUNCATION] Existing cast file ${this.filePath} is ${(stats.size / 1024 / 1024).toFixed(2)}MB (exceeds ${(config.MAX_CAST_SIZE / 1024 / 1024).toFixed(2)}MB), will truncate before opening`
+          `[TRUNCATION] Existing cast file ${this.filePath} is ${(stats.size / 1024 / 1024).toFixed(2)}MB (exceeds ${(this.maxCastSize / 1024 / 1024).toFixed(2)}MB), will truncate before opening`
         );
       }
     } catch {
@@ -485,7 +504,7 @@ export class AsciinemaWriter {
   private truncateFileSync(): void {
     const truncateStart = Date.now();
     try {
-      const targetSize = config.MAX_CAST_SIZE * config.CAST_TRUNCATION_TARGET_PERCENTAGE;
+      const targetSize = this.maxCastSize * this.castTruncationTargetPercentage;
       _logger.log(
         `[TRUNCATION] Calling StreamingAsciinemaTrancator.truncateFileSync with targetSize: ${(targetSize / 1024 / 1024).toFixed(2)}MB`
       );
@@ -529,7 +548,7 @@ export class AsciinemaWriter {
           this.startSizeChecking();
         }
       }
-    }, config.CAST_SIZE_CHECK_INTERVAL);
+    }, this.castSizeCheckInterval);
   }
 
   /**
@@ -543,9 +562,9 @@ export class AsciinemaWriter {
 
     try {
       const stats = await fs.promises.stat(this.filePath);
-      if (stats.size > config.MAX_CAST_SIZE) {
+      if (stats.size > this.maxCastSize) {
         _logger.log(
-          `Cast file ${this.filePath} exceeds limit (${stats.size} bytes), truncating to ${config.MAX_CAST_SIZE} bytes`
+          `Cast file ${this.filePath} exceeds limit (${stats.size} bytes), truncating to ${this.maxCastSize} bytes`
         );
         await this.truncateFile();
       }
@@ -587,7 +606,7 @@ export class AsciinemaWriter {
       await new Promise<void>((resolve) => this.writeStream.end(resolve));
 
       // Use streaming truncator for memory-safe operation
-      const targetSize = config.MAX_CAST_SIZE * config.CAST_TRUNCATION_TARGET_PERCENTAGE;
+      const targetSize = this.maxCastSize * this.castTruncationTargetPercentage;
       const result = await StreamingAsciinemaTrancator.truncateFile(this.filePath, {
         targetSize,
         addTruncationMarker: true,
