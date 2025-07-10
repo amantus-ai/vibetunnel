@@ -81,9 +81,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "authenticate-pam",
-      "esbuild",
-      "puppeteer"
+      "authenticate-pam"
     ]
   },
   "dependencies": {
