@@ -17,6 +17,7 @@ import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
+import { createRepositoryRoutes } from './routes/repositories.js';
 import { createScreencapRoutes, initializeScreencap } from './routes/screencap.js';
 import { createSessionRoutes } from './routes/sessions.js';
 import { createWebRTCConfigRouter } from './routes/webrtc-config.js';
@@ -602,6 +603,10 @@ export async function createApp(): Promise<AppInstance> {
   // Mount file routes
   app.use('/api', createFileRoutes());
   logger.debug('Mounted file routes');
+
+  // Mount repository routes
+  app.use('/api', createRepositoryRoutes());
+  logger.debug('Mounted repository routes');
 
   // Mount push notification routes
   if (vapidManager) {
