@@ -1,187 +1,63 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use napi::bindgen_prelude::Buffer;
-use vibetunnel_native_pty::ActivityDetector;
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
-fn create_buffer(s: &str) -> Buffer {
-    Buffer::from(s.as_bytes().to_vec())
-}
+fn bench_regex_patterns(c: &mut Criterion) {
+  let claude_pattern = regex::Regex::new(r"(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)").unwrap();
+  let ansi_pattern = regex::Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap();
 
-fn bench_activity_detection(c: &mut Criterion) {
-    let detector = ActivityDetector::new().unwrap();
-    
-    // Different input scenarios
-    let inputs = vec![
-        ("simple", "✻ Crafting… (10s)"),
-        ("with_tokens", "✻ Processing… (42s · ↑ 2.5k tokens · esc to interrupt)"),
-        ("with_ansi", "\x1b[32m✻ Thinking…\x1b[0m (100s · ↓ 10k tokens · esc to interrupt)"),
-        ("no_match", "This is normal terminal output without any Claude status"),
-        ("multiple_lines", "Line 1\nLine 2\n✻ Analyzing… (5s)\nLine 4"),
-    ];
-    
-    let mut group = c.benchmark_group("activity_detection");
-    
-    for (name, input) in inputs {
-        group.bench_with_input(
-            BenchmarkId::new("detect", name),
-            input,
-            |b, input| {
-                let buffer = create_buffer(input);
-                b.iter(|| {
-                    detector.detect(black_box(buffer.clone()))
-                });
-            },
-        );
-    }
-    
-    group.finish();
-}
+  let mut group = c.benchmark_group("regex_patterns");
 
-fn bench_activity_detection_buffer_sizes(c: &mut Criterion) {
-    let detector = ActivityDetector::new().unwrap();
-    
-    let mut group = c.benchmark_group("buffer_sizes");
-    
-    // Test different buffer sizes
-    for size in [100, 1_000, 10_000, 100_000, 1_000_000] {
-        let mut text = String::with_capacity(size);
-        
-        // Fill with normal text
-        for _ in 0..(size / 50) {
-            text.push_str("This is some normal terminal output line\n");
-        }
-        
-        // Add Claude status at the end
-        text.push_str("✻ Processing… (42s · ↑ 2.5k tokens · esc to interrupt)");
-        
-        group.bench_with_input(
-            BenchmarkId::new("detect", format!("{}KB", size / 1000)),
-            &text,
-            |b, text| {
-                let buffer = create_buffer(text);
-                b.iter(|| {
-                    detector.detect(black_box(buffer.clone()))
-                });
-            },
-        );
-    }
-    
-    group.finish();
-}
+  // Test pattern matching performance
+  let long_text = "Some normal text ".repeat(100) + "✻ Thinking… (5s)";
+  let test_strings = vec![
+    ("simple", "✻ Crafting… (10s)".to_string()),
+    (
+      "with_tokens",
+      "✻ Processing… (42s · ↑ 2.5k tokens · esc to interrupt)".to_string(),
+    ),
+    ("no_match", "This is normal terminal output".to_string()),
+    ("long_text", long_text),
+  ];
 
-fn bench_ansi_stripping(c: &mut Criterion) {
-    let detector = ActivityDetector::new().unwrap();
-    
-    let mut group = c.benchmark_group("ansi_stripping");
-    
-    // Create text with varying amounts of ANSI codes
-    let base = "✻ Processing… (42s · ↑ 2.5k tokens · esc to interrupt)";
-    
-    let inputs = vec![
-        ("no_ansi", base.to_string()),
-        ("light_ansi", format!("\x1b[32m{}\x1b[0m", base)),
-        ("heavy_ansi", format!(
-            "\x1b[2J\x1b[H\x1b[32;1m✻\x1b[0m \x1b[33mProcessing…\x1b[0m \x1b[36m(42s\x1b[0m · \x1b[31m↑\x1b[0m \x1b[35m2.5k\x1b[0m tokens · esc to interrupt)"
-        )),
-        ("repeated_ansi", {
-            let mut s = String::new();
-            for _ in 0..10 {
-                s.push_str("\x1b[32mText\x1b[0m ");
-            }
-            s.push_str(base);
-            s
-        }),
-    ];
-    
-    for (name, input) in inputs {
-        group.bench_with_input(
-            BenchmarkId::new("detect", name),
-            &input,
-            |b, input| {
-                let buffer = create_buffer(input);
-                b.iter(|| {
-                    detector.detect(black_box(buffer.clone()))
-                });
-            },
-        );
-    }
-    
-    group.finish();
+  for (name, text) in test_strings {
+    group.bench_with_input(
+      BenchmarkId::new("claude_pattern", name),
+      &text,
+      |b, text| {
+        b.iter(|| claude_pattern.is_match(black_box(text)));
+      },
+    );
+  }
+
+  // Test ANSI stripping performance
+  let ansi_strings = vec![
+    ("no_ansi", "Normal text without ANSI"),
+    ("light_ansi", "\x1b[32mGreen text\x1b[0m"),
+    (
+      "heavy_ansi",
+      "\x1b[2J\x1b[H\x1b[32;1mBold green\x1b[0m \x1b[33mYellow\x1b[0m",
+    ),
+  ];
+
+  for (name, text) in ansi_strings {
+    group.bench_with_input(BenchmarkId::new("ansi_stripping", name), text, |b, text| {
+      b.iter(|| ansi_pattern.replace_all(black_box(text), ""));
+    });
+  }
+
+  group.finish();
 }
 
 fn bench_regex_compilation(c: &mut Criterion) {
-    c.bench_function("activity_detector_new", |b| {
+  c.bench_function("compile_claude_pattern", |b| {
         b.iter(|| {
-            ActivityDetector::new().unwrap()
+            regex::Regex::new(r"(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)").unwrap()
         });
     });
+
+  c.bench_function("compile_ansi_pattern", |b| {
+    b.iter(|| regex::Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap());
+  });
 }
 
-fn bench_worst_case_patterns(c: &mut Criterion) {
-    let detector = ActivityDetector::new().unwrap();
-    
-    let mut group = c.benchmark_group("worst_case");
-    
-    // Patterns that might cause regex backtracking
-    let inputs = vec![
-        ("many_dots", "✻" + &".".repeat(100) + "… (10s)"),
-        ("many_parens", "✻ Processing… " + &"(".repeat(50) + "10s" + &")".repeat(50)),
-        ("almost_match", "✻ Processing… (not-a-number-s · ↑ also-not-a-number tokens · esc to interrupt)"),
-        ("unicode_spam", "✻ 处理中… (10秒 · ↑ 2.5千 代币 · 按ESC中断)"),
-    ];
-    
-    for (name, input) in inputs {
-        group.bench_with_input(
-            BenchmarkId::new("detect", name),
-            &input,
-            |b, input| {
-                let buffer = create_buffer(input);
-                b.iter(|| {
-                    detector.detect(black_box(buffer.clone()))
-                });
-            },
-        );
-    }
-    
-    group.finish();
-}
-
-fn bench_memory_usage(c: &mut Criterion) {
-    let mut group = c.benchmark_group("memory");
-    
-    // Benchmark creating many detectors
-    group.bench_function("create_1000_detectors", |b| {
-        b.iter(|| {
-            let detectors: Vec<_> = (0..1000)
-                .map(|_| ActivityDetector::new().unwrap())
-                .collect();
-            black_box(detectors);
-        });
-    });
-    
-    // Benchmark detecting on many small buffers
-    group.bench_function("detect_1000_small_buffers", |b| {
-        let detector = ActivityDetector::new().unwrap();
-        let buffers: Vec<_> = (0..1000)
-            .map(|i| create_buffer(&format!("✻ Task {}… ({}s)", i, i)))
-            .collect();
-        
-        b.iter(|| {
-            for buffer in &buffers {
-                black_box(detector.detect(buffer.clone()));
-            }
-        });
-    });
-    
-    group.finish();
-}
-
-criterion_group!(
-    benches,
-    bench_activity_detection,
-    bench_activity_detection_buffer_sizes,
-    bench_ansi_stripping,
-    bench_regex_compilation,
-    bench_worst_case_patterns,
-    bench_memory_usage
-);
+criterion_group!(benches, bench_regex_patterns, bench_regex_compilation);
 criterion_main!(benches);

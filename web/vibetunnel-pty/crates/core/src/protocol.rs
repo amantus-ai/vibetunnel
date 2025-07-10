@@ -69,3 +69,7 @@ pub fn decode_message(data: &[u8]) -> Result<Option<(MessageType, Vec<u8>, usize
 
     Ok(Some((msg_type, payload, total_size)))
 }
+
+#[cfg(test)]
+#[path = "protocol_tests.rs"]
+mod tests;

@@ -77,3 +77,7 @@ pub fn resize_pty(master: &dyn MasterPty, cols: u16, rows: u16) -> Result<()> {
         .resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })
         .context("Failed to resize PTY")
 }
+
+#[cfg(test)]
+#[path = "pty_tests.rs"]
+mod tests;
