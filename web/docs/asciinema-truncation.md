@@ -14,10 +14,10 @@ The truncation behavior is configured in `/web/src/server/config.ts`:
 export const config = {
   // Maximum size for asciinema cast files (stdout)
   // When exceeded, the file will be truncated to keep only recent output
-  MAX_CAST_SIZE: 10 * 1024 * 1024, // 10MB - increased to reduce truncation frequency
+  MAX_CAST_SIZE: 1 * 1024 * 1024, // 1MB
   
   // How often to check cast file size (in milliseconds)
-  CAST_SIZE_CHECK_INTERVAL: 30 * 1000, // 30 seconds - check more frequently for large outputs
+  CAST_SIZE_CHECK_INTERVAL: 60 * 1000, // 60 seconds
   
   // When truncating, what percentage of the max size to keep
   CAST_TRUNCATION_TARGET_PERCENTAGE: 0.8, // 80%
@@ -39,7 +39,7 @@ When the server starts or a new session begins, VibeTunnel checks if existing ca
 
 During active sessions, the file size is checked periodically:
 
-1. A timer runs every `CAST_SIZE_CHECK_INTERVAL` (default: 30 seconds)
+1. A timer runs every `CAST_SIZE_CHECK_INTERVAL` (default: 60 seconds)
 2. If the file exceeds `MAX_CAST_SIZE`, asynchronous truncation begins
 3. The write queue is drained to ensure no data loss
 4. Recent events are preserved while older ones are removed
@@ -66,7 +66,7 @@ The truncation algorithm:
 
 **Solution**: Implemented `StreamingAsciinemaTrancator` class:
 - Line-by-line streaming processing using readline interface
-- Memory usage bounded to target size (~8MB) plus small buffers
+- Memory usage bounded to target size (~1MB) plus small buffers
 - Maintains sliding window of recent events
 - Atomic file replacement using temp files
 - Handles UTF-8 boundaries correctly
@@ -130,17 +130,17 @@ Or during runtime:
 
 ### Truncated File Statistics
 
-With 10MB truncation limit and 80% target, files contain approximately:
-- **9,500-10,600 events** (lines of terminal output)
-- Actual file size: ~8MB after truncation
-- Substantial history for debugging and context
+With 1MB truncation limit and 80% target, files contain approximately:
+- **950-1,060 events** (lines of terminal output)
+- Actual file size: ~819KB after truncation
+- Sufficient history for debugging and context
 
 ### Compression Benefits
 
 The server uses Express compression middleware:
 - Automatically compresses responses with `gzip/deflate/brotli`
 - Asciicast files (JSON) compress very well (70-90% reduction)
-- 8MB file → ~800KB-1.6MB over the wire
+- 819KB file → ~100-200KB over the wire
 - Transparent to clients (browsers handle decompression)
 
 ### Runtime Performance
@@ -165,17 +165,17 @@ The system handles various error scenarios gracefully:
 You can monitor truncation activity through server logs:
 
 ```
-[SRV] AsciinemaWriter] Existing cast file /path/to/file.cast is 12582912 bytes (exceeds 10485760), will truncate before opening
-[SRV] AsciinemaWriter] Successfully truncated /path/to/file.cast on startup, removed 2150 events
-[SRV] AsciinemaWriter] Cast file /path/to/file.cast exceeds limit (11534336 bytes), truncating to 10485760 bytes
+[SRV] AsciinemaWriter] Existing cast file /path/to/file.cast is 1258291 bytes (exceeds 1048576), will truncate before opening
+[SRV] AsciinemaWriter] Successfully truncated /path/to/file.cast on startup, removed 215 events
+[SRV] AsciinemaWriter] Cast file /path/to/file.cast exceeds limit (1153433 bytes), truncating to 1048576 bytes
 [SRV] StreamingAsciinemaTrancator] Starting streaming truncation of /path/to/file (875.12MB)
-[SRV] StreamingAsciinemaTrancator] Successfully truncated /path/to/file: 875.12MB → 8.00MB (removed 125455 events in 5234ms)
+[SRV] StreamingAsciinemaTrancator] Successfully truncated /path/to/file: 875.12MB → 0.80MB (removed 125455 events in 5234ms)
 ```
 
 ## Best Practices
 
-1. **Size Limit**: The 10MB limit balances history retention with performance
-2. **Check Interval**: 30-second checks minimize overhead while ensuring timely truncation
+1. **Size Limit**: The 1MB limit balances history retention with performance
+2. **Check Interval**: 60-second checks minimize overhead while ensuring timely truncation
 3. **Target Percentage**: 80% ensures some headroom after truncation
 4. **Testing**: Use the test suite to verify truncation behavior with different scenarios
 

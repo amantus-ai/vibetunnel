@@ -10,6 +10,6 @@ describe('AsciinemaWriter Configuration', () => {
 
   it('should calculate target size correctly', () => {
     const targetSize = config.MAX_CAST_SIZE * config.CAST_TRUNCATION_TARGET_PERCENTAGE;
-    expect(targetSize).toBe(838860.8); // 80% of 1MB (1048576 * 0.8)
+    expect(targetSize).toBe(1048576 * 0.8); // 80% of 1MB
   });
 });
