@@ -2,6 +2,7 @@
 
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
+use napi::{JsFunction, threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode}};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -37,6 +38,8 @@ struct PtySession {
   reader_thread: Option<JoinHandle<()>>,
   output_receiver: Receiver<Vec<u8>>,
   shutdown_sender: Sender<()>,
+  // Event-driven callback for data
+  data_callback: Option<Arc<ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal>>>,
 }
 
 impl PtyManager {
@@ -120,6 +123,9 @@ impl NativePty {
       .try_clone_reader()
       .map_err(|e| Error::from_reason(format!("Failed to clone reader: {}", e)))?;
 
+    // Store session ID for reader thread
+    let reader_session_id = session_id.clone();
+    
     // Spawn reader thread
     let reader_thread = thread::spawn(move || {
       let mut buffer = vec![0u8; 4096];
@@ -133,7 +139,21 @@ impl NativePty {
           Ok(0) => break, // EOF
           Ok(n) => {
             let data = buffer[..n].to_vec();
-            // Try to send, but don't block if channel is full (backpressure)
+            
+            // Check if we have a callback to call
+            let callback = {
+              let manager = PTY_MANAGER.lock();
+              manager.sessions.get(&reader_session_id)
+                .and_then(|session| session.data_callback.clone())
+            };
+            
+            // If callback exists, call it directly from this thread
+            if let Some(tsfn) = callback {
+              let data_clone = data.clone();
+              let _ = tsfn.call(data_clone, ThreadsafeFunctionCallMode::NonBlocking);
+            }
+            
+            // Also send to channel for polling-based consumers
             match output_sender.try_send(data) {
               Ok(_) => {},
               Err(crossbeam_channel::TrySendError::Full(_)) => {
@@ -164,6 +184,7 @@ impl NativePty {
           reader_thread: Some(reader_thread),
           output_receiver,
           shutdown_sender,
+          data_callback: None,
         },
       );
     }
@@ -174,6 +195,28 @@ impl NativePty {
       cols,
       rows,
     })
+  }
+
+  #[napi]
+  pub fn set_on_data(&self, callback: JsFunction) -> Result<()> {
+    // Create a ThreadsafeFunction from the callback
+    let tsfn: ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal> = callback
+      .create_threadsafe_function(0, |ctx| {
+        // Convert Vec<u8> to Buffer for JavaScript
+        ctx.env.create_buffer_with_data(ctx.value).map(|buffer| vec![buffer.into_raw()])
+      })?;
+    
+    let tsfn = Arc::new(tsfn);
+    
+    // Store the callback - the reader thread will call it directly
+    let mut manager = PTY_MANAGER.lock();
+    if let Some(session) = manager.sessions.get_mut(&self.session_id) {
+      session.data_callback = Some(tsfn);
+    } else {
+      return Err(Error::from_reason("Session not found"));
+    }
+    
+    Ok(())
   }
 
   #[napi]
@@ -292,14 +335,8 @@ impl NativePty {
     }
   }
 
-  // TODO: This polling approach is fundamentally flawed for Node.js performance.
-  // The correct solution is to use NAPI ThreadsafeFunction to push data from
-  // the reader thread directly to JavaScript callbacks, eliminating polling entirely.
-  // This would require:
-  // 1. Store a ThreadsafeFunction callback in NativePty
-  // 2. Call it from the reader thread when data arrives
-  // 3. Remove the polling setInterval from native-addon-adapter.ts
-  // Current implementation minimizes blocking but doesn't eliminate the architectural issue.
+  // Legacy polling method - kept for backwards compatibility
+  // New code should use set_on_data for event-driven I/O
   #[napi]
   pub fn read_all_output(&self) -> Result<Option<Buffer>> {
     // Use try_lock to avoid blocking - if we can't get the lock immediately, return None
