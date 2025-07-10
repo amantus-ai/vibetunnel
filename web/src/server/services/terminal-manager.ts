@@ -155,47 +155,54 @@ export class TerminalManager {
     try {
       // Get file size first
       const stats = fs.statSync(streamPath);
-      lastOffset = stats.size;
 
-      // For large files, skip initial processing to avoid memory issues
-      const MAX_INITIAL_READ = 10 * 1024 * 1024; // 10MB limit
+      // Stream the file in chunks to avoid memory issues
+      const CHUNK_SIZE = 64 * 1024; // 64KB chunks
+      const fd = fs.openSync(streamPath, 'r');
+      let position = 0;
 
-      if (stats.size <= MAX_INITIAL_READ) {
-        // Safe to read entire file
-        const content = fs.readFileSync(streamPath, 'utf8');
+      logger.log(
+        `Processing stream file for session ${sessionId} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+      );
 
-        // Process existing content
-        const lines = content.split('\n');
+      // Process the entire file in chunks
+      while (position < stats.size) {
+        const remainingBytes = stats.size - position;
+        const bytesToRead = Math.min(CHUNK_SIZE, remainingBytes);
+        const buffer = Buffer.alloc(bytesToRead);
+
+        const bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, position);
+        if (bytesRead === 0) break;
+
+        position += bytesRead;
+
+        // Convert chunk to string and append to line buffer
+        const chunk = buffer.toString('utf8', 0, bytesRead);
+        lineBuffer += chunk;
+
+        // Process complete lines
+        const lines = lineBuffer.split('\n');
+
+        // Keep the last line (might be incomplete) in the buffer
+        lineBuffer = lines.pop() || '';
+
+        // Process all complete lines
         for (const line of lines) {
           if (line.trim()) {
             this.handleStreamLine(sessionId, sessionTerminal, line);
           }
         }
-      } else {
-        // File too large - stream from the end to get recent content
-        logger.warn(
-          `Stream file for session ${sessionId} is large (${(stats.size / 1024 / 1024).toFixed(2)}MB), skipping initial processing`
-        );
-
-        // Optionally read last 1MB for recent history
-        const tailSize = Math.min(1024 * 1024, stats.size); // Last 1MB
-        const tailOffset = stats.size - tailSize;
-
-        const fd = fs.openSync(streamPath, 'r');
-        const buffer = Buffer.alloc(tailSize);
-        fs.readSync(fd, buffer, 0, tailSize, tailOffset);
-        fs.closeSync(fd);
-
-        // Process only complete lines from tail
-        const tailContent = buffer.toString('utf8');
-        const lines = tailContent.split('\n');
-        // Skip first line as it might be partial
-        for (let i = 1; i < lines.length; i++) {
-          if (lines[i].trim()) {
-            this.handleStreamLine(sessionId, sessionTerminal, lines[i]);
-          }
-        }
       }
+
+      // Process any remaining content in the line buffer
+      if (lineBuffer.trim()) {
+        this.handleStreamLine(sessionId, sessionTerminal, lineBuffer);
+      }
+
+      fs.closeSync(fd);
+
+      // Set lastOffset to current file size for watching new changes
+      lastOffset = stats.size;
 
       // Watch for changes
       sessionTerminal.watcher = fs.watch(streamPath, (eventType) => {
@@ -203,30 +210,46 @@ export class TerminalManager {
           try {
             const stats = fs.statSync(streamPath);
             if (stats.size > lastOffset) {
-              // Read only the new data
+              // Stream the new data in chunks to avoid memory issues
+              const CHUNK_SIZE = 64 * 1024; // 64KB chunks
               const fd = fs.openSync(streamPath, 'r');
-              const buffer = Buffer.alloc(stats.size - lastOffset);
-              fs.readSync(fd, buffer, 0, buffer.length, lastOffset);
-              fs.closeSync(fd);
+              let position = lastOffset;
 
-              // Update offset
-              lastOffset = stats.size;
-              sessionTerminal.lastFileOffset = lastOffset;
+              // Process all new data in chunks
+              while (position < stats.size) {
+                const remainingBytes = stats.size - position;
+                const bytesToRead = Math.min(CHUNK_SIZE, remainingBytes);
+                const buffer = Buffer.alloc(bytesToRead);
 
-              // Process new data
-              const newData = buffer.toString('utf8');
-              lineBuffer += newData;
+                const bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, position);
+                if (bytesRead === 0) break;
 
-              // Process complete lines
-              const lines = lineBuffer.split('\n');
-              lineBuffer = lines.pop() || ''; // Keep incomplete line for next time
-              sessionTerminal.lineBuffer = lineBuffer;
+                position += bytesRead;
 
-              for (const line of lines) {
-                if (line.trim()) {
-                  this.handleStreamLine(sessionId, sessionTerminal, line);
+                // Convert chunk to string and append to line buffer
+                const chunk = buffer.toString('utf8', 0, bytesRead);
+                lineBuffer += chunk;
+
+                // Process complete lines
+                const lines = lineBuffer.split('\n');
+
+                // Keep the last line (might be incomplete) in the buffer
+                lineBuffer = lines.pop() || '';
+
+                // Process all complete lines
+                for (const line of lines) {
+                  if (line.trim()) {
+                    this.handleStreamLine(sessionId, sessionTerminal, line);
+                  }
                 }
               }
+
+              fs.closeSync(fd);
+
+              // Update offset and save line buffer state
+              lastOffset = stats.size;
+              sessionTerminal.lastFileOffset = lastOffset;
+              sessionTerminal.lineBuffer = lineBuffer;
             }
           } catch (error) {
             logger.error(`Error reading stream file for session ${sessionId}:`, error);
