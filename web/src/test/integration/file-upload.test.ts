@@ -5,6 +5,17 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createBasicAuthHeader, ServerManager } from '../utils/server-utils.js';
 
+// Polyfill fetch and FormData for Node.js environment synchronously
+const nodeFetch = await import('node-fetch');
+if (!globalThis.fetch) {
+  (globalThis as any).fetch = nodeFetch.default;
+  (globalThis as any).Headers = nodeFetch.Headers;
+  (globalThis as any).Request = nodeFetch.Request;
+  (globalThis as any).Response = nodeFetch.Response;
+  (globalThis as any).FormData = nodeFetch.FormData;
+  (globalThis as any).Blob = nodeFetch.Blob;
+}
+
 describe.skip('File Upload API', () => {
   const serverManager = new ServerManager();
   let baseUrl: string;
