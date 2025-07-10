@@ -37,6 +37,31 @@ if (!fs.existsSync(nativePtyPath)) {
   }
 }
 
-// Legacy vibetunnel-pty is no longer needed - removed to prevent CI failures
+// Check if vibetunnel-pty addon is built
+const vibetunnelPtyPath = path.join(__dirname, '../vibetunnel-pty');
+const vibetunnelPtyNode = path.join(vibetunnelPtyPath, `vibetunnel-pty.${process.platform}-${process.arch}.node`);
+
+if (!fs.existsSync(vibetunnelPtyNode)) {
+  console.log('VibeTunnel PTY addon not found, building...');
+  
+  try {
+    // Install dependencies first
+    execSync('cd vibetunnel-pty && npm install', {
+      stdio: 'inherit',
+      shell: true,
+      cwd: path.join(__dirname, '..')
+    });
+    
+    // Build the native addon
+    execSync('cd vibetunnel-pty && npm run build', {
+      stdio: 'inherit',
+      shell: true,
+      cwd: path.join(__dirname, '..')
+    });
+  } catch (e) {
+    console.error('Failed to build VibeTunnel PTY addon:', e.message);
+    process.exit(1);
+  }
+}
 
 console.log('Native modules are ready for tests');

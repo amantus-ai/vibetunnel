@@ -83,6 +83,9 @@ importers:
       signal-exit:
         specifier: ^4.1.0
         version: 4.1.0
+      vibetunnel-pty:
+        specifier: file:./vibetunnel-pty
+        version: file:vibetunnel-pty
       web-push:
         specifier: ^3.6.7
         version: 3.6.7
@@ -3050,6 +3053,10 @@ packages:
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
+
+  vibetunnel-pty@file:vibetunnel-pty:
+    resolution: {directory: vibetunnel-pty, type: directory}
+    engines: {node: '>= 10'}
 
   vite-node@3.2.4:
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
@@ -6250,6 +6257,8 @@ snapshots:
   uuid@11.1.0: {}
 
   vary@1.1.2: {}
+
+  vibetunnel-pty@file:vibetunnel-pty: {}
 
   vite-node@3.2.4(@types/node@24.0.13)(jiti@1.21.7)(tsx@4.20.3)(yaml@2.8.0):
     dependencies:

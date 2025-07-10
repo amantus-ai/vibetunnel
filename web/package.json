@@ -85,6 +85,7 @@
     ]
   },
   "dependencies": {
+    "vibetunnel-pty": "file:./vibetunnel-pty",
     "@codemirror/commands": "^6.8.1",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.9",

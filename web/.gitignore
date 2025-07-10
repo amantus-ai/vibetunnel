@@ -121,6 +121,10 @@ lint_output.txt
 native/
 *.node
 
+# Rust target directories
+native-pty/target/
+vt-pipe/target/
+
 # vibetunnel-pty build artifacts (unified Rust PTY workspace)
 vibetunnel-pty/target/
 vibetunnel-pty/*.node
