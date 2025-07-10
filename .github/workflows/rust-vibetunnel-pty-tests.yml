@@ -26,7 +26,7 @@ jobs:
         include:
           # Test on MSRV (Minimum Supported Rust Version)
           - os: ubuntu-latest
-            rust: "1.75.0"
+            rust: "1.80.0"
     
     steps:
       - uses: actions/checkout@v4
