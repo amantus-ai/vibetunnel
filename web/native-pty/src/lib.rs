@@ -1,15 +1,18 @@
 #![deny(clippy::all)]
 
+use crossbeam_channel::{bounded, Receiver, Sender};
 use napi::bindgen_prelude::*;
+use napi::{
+  threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode},
+  JsFunction,
+};
 use napi_derive::napi;
-use napi::{JsFunction, threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode}};
+use parking_lot::Mutex;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::collections::HashMap;
-use std::sync::Arc;
-use parking_lot::Mutex;
-use crossbeam_channel::{bounded, Receiver, Sender};
-use std::thread::{self, JoinHandle};
 use std::io::Read;
+use std::sync::Arc;
+use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 #[napi]
@@ -125,7 +128,7 @@ impl NativePty {
 
     // Store session ID for reader thread
     let reader_session_id = session_id.clone();
-    
+
     // Spawn reader thread
     let reader_thread = thread::spawn(move || {
       let mut buffer = vec![0u8; 4096];
@@ -139,20 +142,22 @@ impl NativePty {
           Ok(0) => break, // EOF
           Ok(n) => {
             let data = buffer[..n].to_vec();
-            
+
             // Check if we have a callback to call
             let callback = {
               let manager = PTY_MANAGER.lock();
-              manager.sessions.get(&reader_session_id)
+              manager
+                .sessions
+                .get(&reader_session_id)
                 .and_then(|session| session.data_callback.clone())
             };
-            
+
             // If callback exists, call it directly from this thread
             if let Some(tsfn) = callback {
               let data_clone = data.clone();
               let _ = tsfn.call(data_clone, ThreadsafeFunctionCallMode::NonBlocking);
             }
-            
+
             // Also send to channel for polling-based consumers
             match output_sender.try_send(data) {
               Ok(_) => {},
@@ -162,11 +167,11 @@ impl NativePty {
               },
               Err(crossbeam_channel::TrySendError::Disconnected(_)) => break,
             }
-          }
+          },
           Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
             // No data available, sleep briefly
             thread::sleep(Duration::from_millis(1));
-          }
+          },
           Err(_) => break,
         }
       }
@@ -203,11 +208,14 @@ impl NativePty {
     let tsfn: ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal> = callback
       .create_threadsafe_function(0, |ctx| {
         // Convert Vec<u8> to Buffer for JavaScript
-        ctx.env.create_buffer_with_data(ctx.value).map(|buffer| vec![buffer.into_raw()])
+        ctx
+          .env
+          .create_buffer_with_data(ctx.value)
+          .map(|buffer| vec![buffer.into_raw()])
       })?;
-    
+
     let tsfn = Arc::new(tsfn);
-    
+
     // Store the callback - the reader thread will call it directly
     let mut manager = PTY_MANAGER.lock();
     if let Some(session) = manager.sessions.get_mut(&self.session_id) {
@@ -215,7 +223,7 @@ impl NativePty {
     } else {
       return Err(Error::from_reason("Session not found"));
     }
-    
+
     Ok(())
   }
 
@@ -311,7 +319,9 @@ impl NativePty {
       // Try to receive from the channel
       let result = if let Some(timeout) = timeout_ms {
         // With timeout
-        session.output_receiver.recv_timeout(Duration::from_millis(timeout as u64))
+        session
+          .output_receiver
+          .recv_timeout(Duration::from_millis(timeout as u64))
       } else {
         // Non-blocking
         match session.output_receiver.try_recv() {
@@ -319,7 +329,7 @@ impl NativePty {
           Err(crossbeam_channel::TryRecvError::Empty) => return Ok(None),
           Err(crossbeam_channel::TryRecvError::Disconnected) => {
             return Err(Error::from_reason("Reader thread disconnected"))
-          }
+          },
         }
       };
 
@@ -328,7 +338,7 @@ impl NativePty {
         Err(crossbeam_channel::RecvTimeoutError::Timeout) => Ok(None),
         Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
           Err(Error::from_reason("Reader thread disconnected"))
-        }
+        },
       }
     } else {
       Err(Error::from_reason("Session not found"))
@@ -349,14 +359,14 @@ impl NativePty {
       let mut all_data = Vec::new();
       let mut bytes_read = 0;
       const MAX_BYTES_PER_CALL: usize = 65536; // 64KB limit per call
-      
+
       // Read available data with a limit to prevent blocking too long
       while bytes_read < MAX_BYTES_PER_CALL {
         match session.output_receiver.try_recv() {
           Ok(data) => {
             bytes_read += data.len();
             all_data.extend_from_slice(&data);
-          }
+          },
           Err(_) => break, // No more data available
         }
       }
@@ -419,7 +429,7 @@ impl NativePty {
         },
         Err(e) => {
           eprintln!("Failed to check process status: {}", e);
-        }
+        },
       }
 
       // Wait for the child to fully exit
@@ -472,7 +482,7 @@ impl ActivityDetector {
   #[napi]
   pub fn detect(&self, data: Buffer) -> Option<Activity> {
     let text = String::from_utf8_lossy(&data);
-    
+
     // Strip ANSI escape codes for cleaner matching (same as TypeScript version)
     let clean_text = self.ansi_pattern.replace_all(&text, "");
 
@@ -486,7 +496,7 @@ impl ActivityDetector {
 
       // Format the status string similar to TypeScript version
       let status = action.to_string();
-      
+
       // Format details based on whether we have token information
       let details = if let (Some(dir), Some(tok)) = (direction, tokens) {
         Some(format!("{}s, {}{}k", duration, dir, tok))
@@ -514,44 +524,67 @@ pub struct Activity {
 
 #[cfg(test)]
 mod tests {
-    
-    // Test only the pure Rust parts that don't require NAPI
-    #[test]
-    fn test_activity_detector_regex() {
-        // Test regex creation
-        let claude_pattern = regex::Regex::new(r"(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)").unwrap();
-        let ansi_pattern = regex::Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap();
-        
-        // Test pattern matching
-        let text = "✻ Crafting… (10s)";
-        assert!(claude_pattern.is_match(text));
-        
-        // Test ANSI stripping
-        let ansi_text = "\x1b[32mHello\x1b[0m";
-        let clean = ansi_pattern.replace_all(ansi_text, "");
-        assert_eq!(clean, "Hello");
-    }
-    
-    #[test]
-    fn test_activity_pattern_variations() {
-        let pattern = regex::Regex::new(r"(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)").unwrap();
-        
-        let test_cases = vec![
-            ("✻ Crafting… (10s)", true),
-            ("⏺ Calculating… (0s)", true),
-            ("✻ Processing… (42s · ↑ 2.5k tokens · esc to interrupt)", true),
-            ("Normal text", false),
-            ("✻ Missing ellipsis (10s)", false),
-        ];
-        
-        for (text, should_match) in test_cases {
-            assert_eq!(
-                pattern.is_match(text),
-                should_match,
-                "Pattern match failed for: {}",
-                text
-            );
-        }
-    }
-}
+  // Test only the pure Rust parts that don't require NAPI
+  #[test]
+  fn test_activity_detector_regex() {
+    // Test regex creation
+    let claude_pattern = regex::Regex::new(r"(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)").unwrap();
+    let ansi_pattern = regex::Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap();
 
+    // Test pattern matching
+    let text = "✻ Crafting… (10s)";
+    assert!(claude_pattern.is_match(text));
+
+    // Test ANSI stripping
+    let ansi_text = "\x1b[32mHello\x1b[0m";
+    let clean = ansi_pattern.replace_all(ansi_text, "");
+    assert_eq!(clean, "Hello");
+  }
+
+  #[test]
+  fn test_activity_pattern_variations() {
+    let pattern = regex::Regex::new(r"(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)").unwrap();
+
+    let test_cases = vec![
+      ("✻ Crafting… (10s)", true),
+      ("⏺ Calculating… (0s)", true),
+      (
+        "✻ Processing… (42s · ↑ 2.5k tokens · esc to interrupt)",
+        true,
+      ),
+      ("Normal text", false),
+      ("✻ Missing ellipsis (10s)", false),
+    ];
+
+    for (text, should_match) in test_cases {
+      assert_eq!(
+        pattern.is_match(text),
+        should_match,
+        "Pattern match failed for: {}",
+        text
+      );
+    }
+  }
+
+  #[test]
+  fn test_session_id_generation() {
+    // Test that we can generate UUIDs
+    let id1 = uuid::Uuid::new_v4().to_string();
+    let id2 = uuid::Uuid::new_v4().to_string();
+
+    // Should be valid UUIDs
+    assert_eq!(id1.len(), 36);
+    assert_eq!(id2.len(), 36);
+
+    // Should be different
+    assert_ne!(id1, id2);
+  }
+
+  #[test]
+  fn test_buffer_creation() {
+    // Test that we can create buffers
+    let data = vec![0x48, 0x65, 0x6C, 0x6C, 0x6F]; // "Hello"
+    assert_eq!(data.len(), 5);
+    assert_eq!(data[0], 0x48);
+  }
+}

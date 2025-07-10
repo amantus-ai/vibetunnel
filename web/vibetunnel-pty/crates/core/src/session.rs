@@ -59,3 +59,7 @@ impl SessionStore for MemorySessionStore {
         self.sessions.remove(id)
     }
 }
+
+#[cfg(test)]
+#[path = "session_tests.rs"]
+mod tests;
