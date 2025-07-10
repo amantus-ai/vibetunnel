@@ -184,7 +184,9 @@ class NativeAddonPty extends EventEmitter implements IPty {
 
   private startPolling(): void {
     // Poll for output with much lower frequency since we have a dedicated reader thread
-    // and can get all buffered data at once
+    // and can get all buffered data at once.
+    // IMPORTANT: readAllOutput() is non-blocking - it uses try_recv() internally
+    // which returns immediately without blocking the event loop.
     this.pollInterval = setInterval(() => {
       if (this.closed) {
         this.stopPolling();
