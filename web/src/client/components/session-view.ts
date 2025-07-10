@@ -1248,12 +1248,6 @@ export class SessionView extends LitElement {
           }}
           @session-rename=${(e: CustomEvent) => this.handleRename(e)}
         >
-          <!-- Terminal dimensions only shown on desktop in the status area -->
-          <terminal-dimensions
-            slot="terminal-dimensions"
-            .cols=${this.terminalCols}
-            .rows=${this.terminalRows}
-          ></terminal-dimensions>
         </session-header>
 
         <!-- Enhanced Terminal Container -->

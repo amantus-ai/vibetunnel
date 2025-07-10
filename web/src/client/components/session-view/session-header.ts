@@ -15,7 +15,6 @@ import { authClient } from '../../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../../utils/ai-sessions.js';
 import { createLogger } from '../../utils/logger.js';
 import './mobile-menu.js';
-import './terminal-dimensions.js';
 
 const logger = createLogger('session-header');
 
@@ -278,8 +277,6 @@ export class SessionHeader extends LitElement {
               </div>
               ${this.getStatusText().toUpperCase()}
             </span>
-            <!-- Terminal dimensions slot -->
-            <slot name="terminal-dimensions"></slot>
           </div>
         </div>
       </div>

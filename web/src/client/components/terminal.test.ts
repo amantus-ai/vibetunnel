@@ -21,6 +21,9 @@ interface TestTerminal extends Terminal {
   measureCharacterWidth(): number;
   fitTerminal(): void;
   userOverrideWidth: boolean;
+  resizeCoordinator: {
+    forceUpdateDimensions(cols: number, rows: number): void;
+  };
 }
 
 describe('Terminal', () => {
@@ -604,6 +607,9 @@ describe('Terminal', () => {
       element.cols = currentCols;
       element.rows = currentRows;
 
+      // Initialize ResizeCoordinator with current dimensions
+      (element as TestTerminal).resizeCoordinator.forceUpdateDimensions(currentCols, currentRows);
+
       // Mock character width measurement
       vi.spyOn(element as TestTerminal, 'measureCharacterWidth').mockReturnValue(8);
 
@@ -689,6 +695,9 @@ describe('Terminal', () => {
       (element as TestTerminal).container = mockContainer;
 
       vi.spyOn(element as TestTerminal, 'measureCharacterWidth').mockReturnValue(8);
+
+      // Initialize ResizeCoordinator with current dimensions
+      (element as TestTerminal).resizeCoordinator.forceUpdateDimensions(currentCols, currentRows);
 
       // Call fitTerminal multiple times
       (element as TestTerminal).fitTerminal();
@@ -850,6 +859,9 @@ describe('Terminal', () => {
       (element as TestTerminal).container = mockContainer;
 
       vi.spyOn(element as TestTerminal, 'measureCharacterWidth').mockReturnValue(8);
+
+      // Initialize ResizeCoordinator with current dimensions
+      (element as TestTerminal).resizeCoordinator.forceUpdateDimensions(100, 30);
 
       // Clear previous calls
       mockTerminal?.resize.mockClear();
