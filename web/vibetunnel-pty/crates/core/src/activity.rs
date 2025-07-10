@@ -16,7 +16,7 @@ pub struct Activity {
 impl Default for ActivityDetector {
     fn default() -> Self {
         Self {
-            claude_pattern: Regex::new(r"✻\s+([^(]+)\s*\(([^)]+)\)")
+            claude_pattern: Regex::new(r"✻\s+([^(]+?)\s*\(([^)]+)\)")
                 .expect("Failed to compile activity regex"),
         }
     }
@@ -44,3 +44,7 @@ impl ActivityDetector {
         None
     }
 }
+
+#[cfg(test)]
+#[path = "activity_tests.rs"]
+mod tests;

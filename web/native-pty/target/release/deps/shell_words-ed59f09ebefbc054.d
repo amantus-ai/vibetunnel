@@ -1,0 +1,7 @@
+/Users/steipete/Projects/vibetunnel-rust/web/native-pty/target/release/deps/libshell_words-ed59f09ebefbc054.rmeta: /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shell-words-1.1.0/src/lib.rs
+
+/Users/steipete/Projects/vibetunnel-rust/web/native-pty/target/release/deps/libshell_words-ed59f09ebefbc054.rlib: /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shell-words-1.1.0/src/lib.rs
+
+/Users/steipete/Projects/vibetunnel-rust/web/native-pty/target/release/deps/shell_words-ed59f09ebefbc054.d: /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shell-words-1.1.0/src/lib.rs
+
+/Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shell-words-1.1.0/src/lib.rs:

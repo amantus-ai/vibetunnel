@@ -26,3 +26,9 @@ tokio = { workspace = true, optional = true }
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros", "test-util"] }
+tempfile = "3.8"
+proptest = "1.4"
+rstest = "0.18"
