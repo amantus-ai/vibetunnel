@@ -236,7 +236,7 @@ impl Forwarder {
   async fn forward_stdout(
     &self,
     reader: Arc<Mutex<Box<dyn Read + Send>>>,
-    _socket_client: Arc<Mutex<Option<SocketClient>>>,
+    socket_client: Arc<Mutex<Option<SocketClient>>>,
     shutdown: Arc<Mutex<bool>>,
   ) -> Result<()> {
     use tokio::task;
@@ -273,12 +273,14 @@ impl Forwarder {
           continue;
         },
         Some(data) => {
-          // Write to stdout
+          // Write to stdout for local display
           stdout.write_all(&data).await?;
           stdout.flush().await?;
 
-          // Note: The server handles stdout forwarding separately
-          // We don't need to send it through the socket
+          // CRITICAL: Forward to socket so it appears in the web UI
+          if let Some(client) = &mut *socket_client.lock().await {
+            client.send_stdout(&data).await?;
+          }
         },
       }
     }
