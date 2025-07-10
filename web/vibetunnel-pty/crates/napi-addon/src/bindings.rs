@@ -41,7 +41,7 @@ impl NativePty {
         };
 
         let handle = create_pty(&config)
-            .map_err(|e| Error::from_reason(format!("Failed to create PTY: {}", e)))?;
+            .map_err(|e| Error::from_reason(format!("Failed to create PTY: {e}")))?;
 
         let pid = handle.pid;
         let session_id = uuid::Uuid::new_v4().to_string();
@@ -80,13 +80,13 @@ impl NativePty {
                 .handle
                 .writer
                 .write_all(&data)
-                .map_err(|e| Error::from_reason(format!("Write failed: {}", e)))?;
+                .map_err(|e| Error::from_reason(format!("Write failed: {e}")))?;
 
             session
                 .handle
                 .writer
                 .flush()
-                .map_err(|e| Error::from_reason(format!("Flush failed: {}", e)))?;
+                .map_err(|e| Error::from_reason(format!("Flush failed: {e}")))?;
         } else {
             return Err(Error::from_reason("Session not found"));
         }
@@ -100,7 +100,7 @@ impl NativePty {
 
         if let Some(session) = manager.get_session_mut(&self.session_id) {
             resize_pty(session.handle.master.as_ref(), cols, rows)
-                .map_err(|e| Error::from_reason(format!("Resize failed: {}", e)))?;
+                .map_err(|e| Error::from_reason(format!("Resize failed: {e}")))?;
         } else {
             return Err(Error::from_reason("Session not found"));
         }
@@ -132,7 +132,7 @@ impl NativePty {
                 };
 
                 signal::kill(Pid::from_raw(self.pid as i32), signal)
-                    .map_err(|e| Error::from_reason(format!("Kill failed: {}", e)))?;
+                    .map_err(|e| Error::from_reason(format!("Kill failed: {e}")))?;
             }
 
             #[cfg(windows)]
@@ -141,7 +141,7 @@ impl NativePty {
                     .handle
                     .child
                     .kill()
-                    .map_err(|e| Error::from_reason(format!("Kill failed: {}", e)))?;
+                    .map_err(|e| Error::from_reason(format!("Kill failed: {e}")))?;
             }
         }
 
@@ -162,7 +162,7 @@ impl NativePty {
                 Ok(0) => Ok(None), // EOF
                 Ok(n) => Ok(Some(Buffer::from(&buffer[..n]))),
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(None),
-                Err(e) => Err(Error::from_reason(format!("Read failed: {}", e))),
+                Err(e) => Err(Error::from_reason(format!("Read failed: {e}"))),
             }
         } else {
             Err(Error::from_reason("Session not found"))
@@ -185,7 +185,7 @@ impl NativePty {
                     // Process is still running
                     Ok(None)
                 }
-                Err(e) => Err(Error::from_reason(format!("Failed to check exit status: {}", e))),
+                Err(e) => Err(Error::from_reason(format!("Failed to check exit status: {e}"))),
             }
         } else {
             Err(Error::from_reason("Session not found"))
@@ -201,7 +201,7 @@ impl NativePty {
             // Kill the child process if still running
             if let Err(e) = session.handle.child.kill() {
                 // It's okay if the process is already dead
-                eprintln!("Failed to kill child process: {}", e);
+                eprintln!("Failed to kill child process: {e}");
             }
 
             // Wait for the child to fully exit
@@ -226,7 +226,7 @@ impl ActivityDetector {
     pub fn new() -> Result<Self> {
         Ok(Self {
             detector: CoreActivityDetector::new()
-                .map_err(|e| Error::from_reason(format!("Failed to create detector: {}", e)))?,
+                .map_err(|e| Error::from_reason(format!("Failed to create detector: {e}")))?,
         })
     }
 
