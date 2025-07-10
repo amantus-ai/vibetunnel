@@ -377,9 +377,31 @@ export async function createApp(): Promise<AppInstance> {
   const server = createServer(app);
   const wss = new WebSocketServer({ noServer: true });
 
-  // Add compression middleware
-  app.use(compression());
-  logger.debug('Configured compression middleware');
+  // Add compression middleware with exclusions for real-time endpoints
+  app.use(
+    compression({
+      filter: (req, res) => {
+        // Don't compress WebSocket upgrades
+        if (req.headers.upgrade === 'websocket') {
+          return false;
+        }
+
+        // Don't compress SSE streams
+        if (req.path && req.path.includes('/stream')) {
+          return false;
+        }
+
+        // Don't compress buffer endpoints
+        if (req.path && req.path.includes('/buffers')) {
+          return false;
+        }
+
+        // Use default filter for other requests
+        return compression.filter(req, res);
+      },
+    })
+  );
+  logger.debug('Configured compression middleware with exclusions for real-time endpoints');
 
   // Add JSON body parser middleware with size limit
   app.use(express.json({ limit: '10mb' }));
