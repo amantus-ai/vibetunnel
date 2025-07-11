@@ -235,9 +235,18 @@ export class Terminal extends LitElement {
     this.initializeTerminal();
   }
 
+  // Consistent mobile detection across the app
+  private detectMobile(): boolean {
+    // Use the same logic as index.html for consistency
+    return (
+      /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints !== undefined && navigator.maxTouchPoints > 1)
+    );
+  }
+
   private requestResize(source: string) {
-    // Check if mobile
-    this.isMobile = window.innerWidth < 768 && 'ontouchstart' in window;
+    // Update mobile state using consistent detection
+    this.isMobile = this.detectMobile();
 
     // On mobile, only allow the initial resize
     if (this.isMobile && this.mobileResizeComplete) {
@@ -420,10 +429,10 @@ export class Terminal extends LitElement {
     }
 
     logger.debug(`[Terminal] fitTerminal called from source: ${source || 'unknown'}`);
-    const isMobile = window.innerWidth < 768 && 'ontouchstart' in window;
-    if (isMobile) {
+    // Use the class property instead of rechecking
+    if (this.isMobile) {
       logger.debug(
-        `[Terminal] Mobile detected in fitTerminal - source: ${source}, window.innerWidth: ${window.innerWidth}`
+        `[Terminal] Mobile detected in fitTerminal - source: ${source}, userAgent: ${navigator.userAgent}`
       );
     }
 
@@ -565,12 +574,13 @@ export class Terminal extends LitElement {
   private setupResize() {
     if (!this.container) return;
 
-    const isMobile = window.innerWidth < 768 && 'ontouchstart' in window;
+    // Set the class property using consistent detection
+    this.isMobile = this.detectMobile();
     logger.debug(
-      `[Terminal] Setting up resize - isMobile: ${isMobile}, window.innerWidth: ${window.innerWidth}`
+      `[Terminal] Setting up resize - isMobile: ${this.isMobile}, userAgent: ${navigator.userAgent}`
     );
 
-    if (isMobile) {
+    if (this.isMobile) {
       // On mobile: Only do ONE resize after a delay, then never resize again
       logger.debug('[Terminal] Mobile detected - scheduling single resize in 200ms');
       setTimeout(() => {
