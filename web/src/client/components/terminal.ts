@@ -77,6 +77,7 @@ export class Terminal extends LitElement {
   private lastCols = 0;
   private lastRows = 0;
   private isMobile = false;
+  private mobileInitialResizeTimeout: NodeJS.Timeout | null = null;
 
   // Operation queue for batching buffer modifications
   private operationQueue: (() => void | Promise<void>)[] = [];
@@ -218,6 +219,11 @@ export class Terminal extends LitElement {
     if (this.pendingResize) {
       cancelAnimationFrame(this.pendingResize);
       this.pendingResize = null;
+    }
+
+    if (this.mobileInitialResizeTimeout) {
+      clearTimeout(this.mobileInitialResizeTimeout);
+      this.mobileInitialResizeTimeout = null;
     }
 
     if (this.terminal) {
@@ -621,13 +627,14 @@ export class Terminal extends LitElement {
     if (this.isMobile) {
       // On mobile: Do initial resize to set width, then allow HEIGHT changes only (for keyboard)
       logger.debug('[Terminal] Mobile detected - scheduling initial resize in 200ms');
-      setTimeout(() => {
+      this.mobileInitialResizeTimeout = setTimeout(() => {
         logger.debug('[Terminal] Mobile: Executing initial resize');
         this.fitTerminal('initial-mobile-only');
         // That's it - no observers, no event listeners, nothing
         logger.debug(
           '[Terminal] Mobile: Initial width set, future WIDTH resizes blocked (height allowed for keyboard)'
         );
+        this.mobileInitialResizeTimeout = null; // Clear reference after execution
       }, 200);
     } else {
       // Desktop: Normal resize handling with observers
