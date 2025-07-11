@@ -8,7 +8,6 @@ import { customElement } from 'lit/decorators.js';
 import { HeaderBase } from './header-base.js';
 import './terminal-icon.js';
 import './notification-status.js';
-import './theme-toggle.js';
 
 @customElement('full-header')
 export class FullHeader extends HeaderBase {
@@ -41,7 +40,6 @@ export class FullHeader extends HeaderBase {
             <notification-status
               @open-settings=${() => this.dispatchEvent(new CustomEvent('open-settings'))}
             ></notification-status>
-            <theme-toggle></theme-toggle>
             <button
               class="p-2 text-text border border-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
               @click=${() => this.dispatchEvent(new CustomEvent('open-file-browser'))}
