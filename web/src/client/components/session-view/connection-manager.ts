@@ -6,6 +6,7 @@
  */
 
 import { authClient } from '../../services/auth-client.js';
+import { SessionDebugService } from '../../services/session-debug-service.js';
 import { CastConverter } from '../../utils/cast-converter.js';
 import { createLogger } from '../../utils/logger.js';
 import type { Session } from '../session-list.js';
@@ -26,6 +27,7 @@ export class ConnectionManager {
   private terminal: Terminal | null = null;
   private session: Session | null = null;
   private isConnected = false;
+  private debugService = SessionDebugService.getInstance();
 
   constructor(
     private onSessionExit: (sessionId: string) => void,
@@ -72,6 +74,9 @@ export class ConnectionManager {
 
     // Use CastConverter to connect terminal to stream with reconnection tracking
     const connection = CastConverter.connectToStream(this.terminal, streamUrl);
+
+    // Track the SSE connection in debug service
+    const streamInfo = this.debugService.trackStreamConnection(this.session.id, 'sse', streamUrl);
 
     // Listen for session-exit events from the terminal
     const handleSessionExit = (event: Event) => {
@@ -135,6 +140,16 @@ export class ConnectionManager {
       errorHandler: handleError as EventListener,
       sessionExitHandler: handleSessionExit as EventListener,
     };
+
+    // Track when data is received
+    if (streamInfo && this.session) {
+      const sessionId = this.session.id;
+      originalEventSource.addEventListener('message', (event) => {
+        if (event.data) {
+          this.debugService.updateStreamBytes(sessionId, streamInfo, event.data.length);
+        }
+      });
+    }
   }
 
   cleanupStreamConnection(): void {
@@ -144,6 +159,15 @@ export class ConnectionManager {
       // Remove session-exit event listener if it exists
       if (this.streamConnection.sessionExitHandler && this.terminal) {
         this.terminal.removeEventListener('session-exit', this.streamConnection.sessionExitHandler);
+      }
+
+      // Track stream closure in debug service
+      if (this.session) {
+        const streams = this.debugService['streamConnections'].get(this.session.id) || [];
+        const activeStream = streams.find((s) => s.state === 'active' && s.type === 'sse');
+        if (activeStream) {
+          this.debugService.closeStream(this.session.id, activeStream);
+        }
       }
 
       this.streamConnection.disconnect();

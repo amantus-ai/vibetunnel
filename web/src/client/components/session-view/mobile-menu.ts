@@ -24,6 +24,7 @@ export class MobileMenu extends LitElement {
   @property({ type: Function }) onScreenshare?: () => void;
   @property({ type: Function }) onMaxWidthToggle?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
+  @property({ type: Function }) onToggleDebug?: () => void;
 
   @state() private showMenu = false;
   @state() private focusedIndex = -1;
@@ -218,9 +219,22 @@ export class MobileMenu extends LitElement {
           Width: ${this.widthLabel}
         </button>
         
-        <!-- Settings -->
+        <!-- Debug Panel -->
         <button
           class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 4 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
+          @click=${() => this.handleAction(this.onToggleDebug)}
+          data-testid="mobile-debug-panel"
+          tabindex="${this.showMenu ? '0' : '-1'}"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm1 13H7v-2h2v2zm0-3H7V3h2v7z"/>
+          </svg>
+          Debug Info
+        </button>
+        
+        <!-- Settings -->
+        <button
+          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 5 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenSettings)}
           data-testid="mobile-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"

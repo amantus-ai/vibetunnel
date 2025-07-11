@@ -731,6 +731,69 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
     }
   });
 
+  // Get debug information for a session
+  router.get('/sessions/:sessionId/debug', async (req, res) => {
+    const sessionId = req.params.sessionId;
+
+    try {
+      const session = await ptyManager.getSession(sessionId);
+      if (!session) {
+        logger.error(`session ${sessionId} not found`);
+        return res.status(404).json({ error: 'Session not found' });
+      }
+
+      // Get buffer stats
+      const bufferStats = await terminalManager.getBufferStats(sessionId);
+
+      // Calculate approximate uptime
+      const startTime = new Date(session.startedAt).getTime();
+      const uptime = Math.floor((Date.now() - startTime) / 1000);
+
+      const debugInfo = {
+        process: {
+          pid: session.pid,
+          command: session.command,
+          workingDir: session.workingDir,
+          uptime,
+          // TODO: Add CPU and memory usage when available
+          // cpuUsage: processInfo?.cpuUsage,
+          // memoryUsage: processInfo?.memoryUsage,
+        },
+        output: {
+          // TODO: Add output stats when available
+          totalStdoutBytes: bufferStats?.totalRows ? bufferStats.totalRows * 80 : 0, // Rough estimate
+          compressedBytes: 0,
+          transferredBytes: 0,
+          lastCleanup: 0,
+        },
+        terminal: {
+          currentSize: {
+            cols: session.initialCols || 80,
+            rows: session.initialRows || 24,
+          },
+          bufferStats: bufferStats
+            ? {
+                totalLines: bufferStats.totalRows,
+                totalCharacters: bufferStats.totalRows * (session.initialCols || 80), // Rough estimate
+                viewportY: bufferStats.baseY,
+                scrollbackSize: bufferStats.totalRows,
+              }
+            : {
+                totalLines: 0,
+                totalCharacters: 0,
+                viewportY: 0,
+                scrollbackSize: 0,
+              },
+        },
+      };
+
+      res.json(debugInfo);
+    } catch (error) {
+      logger.error('error getting debug info:', error);
+      res.status(500).json({ error: 'Failed to get debug information' });
+    }
+  });
+
   // Stream session output
   router.get('/sessions/:sessionId/stream', async (req, res) => {
     const sessionId = req.params.sessionId;
