@@ -89,8 +89,12 @@ export class Terminal extends LitElement {
     if (!this.renderPending) {
       this.renderPending = true;
       requestAnimationFrame(() => {
-        this.processOperationQueue();
-        this.renderPending = false;
+        this.processOperationQueue().then(() => {
+          // Only clear renderPending when queue is truly empty
+          if (this.operationQueue.length === 0) {
+            this.renderPending = false;
+          }
+        });
       });
     }
   }
@@ -100,15 +104,27 @@ export class Terminal extends LitElement {
   }
 
   private async processOperationQueue() {
-    // Process all queued operations in order
+    const startTime = performance.now();
+    const MAX_FRAME_TIME = 8; // Target ~120fps, yield more frequently for better touch responsiveness
+
+    // Process queued operations, but yield periodically
     while (this.operationQueue.length > 0) {
       const operation = this.operationQueue.shift();
       if (operation) {
         await operation();
       }
+
+      // Check if we've been running too long
+      if (performance.now() - startTime > MAX_FRAME_TIME && this.operationQueue.length > 0) {
+        // Still have more operations, yield control and continue in next frame
+        requestAnimationFrame(() => {
+          this.processOperationQueue();
+        });
+        return; // Exit early to let browser process events
+      }
     }
 
-    // Render once after all operations are complete
+    // All operations complete, render the buffer
     this.renderBuffer();
   }
 
