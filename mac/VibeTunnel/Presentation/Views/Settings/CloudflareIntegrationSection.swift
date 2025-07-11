@@ -112,17 +112,6 @@ struct CloudflareIntegrationSection: View {
                         // Public URL display
                         if let publicUrl = cloudflareService.publicUrl, !publicUrl.isEmpty {
                             PublicURLView(url: publicUrl)
-                            
-                            // Security warning
-                            HStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.orange)
-                                    .font(.caption)
-                                Text("Public tunnel - accessible without authentication")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.top, 4)
                         }
 
                         // Error display
