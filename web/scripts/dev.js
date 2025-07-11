@@ -64,20 +64,10 @@ async function startBuilding() {
     // Create esbuild contexts
     const clientContext = await esbuild.context({
       ...devOptions,
-      entryPoints: ['src/client/app-entry.ts'],
+      entryPoints: ['src/client/react-app-entry.tsx'],
       outfile: 'public/bundle/client-bundle.js',
-    });
-
-    const testContext = await esbuild.context({
-      ...devOptions,
-      entryPoints: ['src/client/test-entry.ts'],
-      outfile: 'public/bundle/test.js',
-    });
-
-    const screencapContext = await esbuild.context({
-      ...devOptions,
-      entryPoints: ['src/client/screencap-entry.ts'],
-      outfile: 'public/bundle/screencap.js',
+      jsx: 'automatic',
+      jsxImportSource: 'react',
     });
 
     const swContext = await esbuild.context({
@@ -89,8 +79,6 @@ async function startBuilding() {
 
     // Start watching
     await clientContext.watch();
-    await testContext.watch();
-    await screencapContext.watch();
     await swContext.watch();
     console.log('ESBuild watching client bundles...');
 
@@ -112,8 +100,6 @@ async function startBuilding() {
     process.on('SIGINT', async () => {
       console.log('\nStopping all processes...');
       await clientContext.dispose();
-      await testContext.dispose();
-      await screencapContext.dispose();
       await swContext.dispose();
       processes.forEach(proc => proc.kill());
       process.exit(0);

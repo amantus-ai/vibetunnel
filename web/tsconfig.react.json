@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "jsx": "react-jsx",
     "module": "ES2020",
     "lib": ["ES2020", "dom", "dom.iterable"],
     "outDir": "./public",
@@ -10,11 +11,11 @@
     "declaration": true,
     "composite": true,
     "incremental": true,
-    "tsBuildInfoFile": "./public/tsconfig.client.tsbuildinfo",
-    "jsx": "react-jsx"
+    "tsBuildInfoFile": "./public/tsconfig.react.tsbuildinfo"
   },
   "include": [
-    "src/client/**/*",
+    "src/client/**/*.tsx",
+    "src/client/**/*.ts",
     "src/shared/**/*",
     "src/types/**/*"
   ],

@@ -52,30 +52,21 @@
       }
 
       /* Only disable touch-action on terminal components */
-      vibe-terminal {
+      .terminal-container {
         touch-action: none;
       }
 
       /* Ensure app takes full viewport */
-      vibetunnel-app {
+      #root {
         display: block;
         width: 100%;
         min-height: 100%;
       }
     </style>
 
-    <!-- Import Maps -->
-    <script type="importmap">
-      {
-        "imports": {
-          "lit": "https://cdn.skypack.dev/lit",
-          "lit/": "https://cdn.skypack.dev/lit/"
-        }
-      }
-    </script>
   </head>
   <body class="m-0 p-0" style="background: black">
-    <vibetunnel-app></vibetunnel-app>
+    <div id="root"></div>
 
     <!-- Mobile viewport height fix -->
     <script>

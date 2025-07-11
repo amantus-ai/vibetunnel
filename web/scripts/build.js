@@ -27,25 +27,13 @@ async function build() {
   console.log('Bundling client JavaScript...');
 
   try {
-    // Build main app bundle
+    // Build React app bundle (main app)
     await esbuild.build({
       ...prodOptions,
-      entryPoints: ['src/client/app-entry.ts'],
+      entryPoints: ['src/client/react-app-entry.tsx'],
       outfile: 'public/bundle/client-bundle.js',
-    });
-
-    // Build test bundle
-    await esbuild.build({
-      ...prodOptions,
-      entryPoints: ['src/client/test-entry.ts'],
-      outfile: 'public/bundle/test.js',
-    });
-
-    // Build screencap bundle
-    await esbuild.build({
-      ...prodOptions,
-      entryPoints: ['src/client/screencap-entry.ts'],
-      outfile: 'public/bundle/screencap.js',
+      jsx: 'automatic',
+      jsxImportSource: 'react',
     });
 
     // Build service worker
