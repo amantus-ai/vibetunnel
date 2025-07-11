@@ -95,36 +95,55 @@ pub fn load_session(session_id: &str) -> Result<(SessionInfo, FileSessionStore)>
 mod tests {
     use super::*;
     use tempfile::TempDir;
+    use std::sync::Mutex;
+    
+    // Ensure tests that modify VIBETUNNEL_SESSIONS_DIR don't run concurrently
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_file_session_store_paths() -> Result<()> {
+        let _guard = ENV_MUTEX.lock().unwrap();
         let temp_dir = TempDir::new()?;
+        let original_dir = std::env::var("VIBETUNNEL_SESSIONS_DIR").ok();
         std::env::set_var("VIBETUNNEL_SESSIONS_DIR", temp_dir.path());
+        
+        let result = (|| -> Result<()> {
+            let store = FileSessionStore::new("test-session")?;
 
-        let store = FileSessionStore::new("test-session")?;
+            let socket_path = store.socket_path();
+            assert!(socket_path.to_string_lossy().contains("test-session"));
+            assert!(socket_path.to_string_lossy().contains("ipc.sock"));
 
-        let socket_path = store.socket_path();
-        assert!(socket_path.to_string_lossy().contains("test-session"));
-        assert!(socket_path.to_string_lossy().contains("ipc.sock"));
+            let stdout_path = store.stdout_path();
+            assert!(stdout_path.to_string_lossy().contains("stdout"));
 
-        let stdout_path = store.stdout_path();
-        assert!(stdout_path.to_string_lossy().contains("stdout"));
+            let stdin_path = store.stdin_path();
+            assert!(stdin_path.to_string_lossy().contains("stdin"));
 
-        let stdin_path = store.stdin_path();
-        assert!(stdin_path.to_string_lossy().contains("stdin"));
-
-        Ok(())
+            Ok(())
+        })();
+        
+        // Restore original env var
+        match original_dir {
+            Some(dir) => std::env::set_var("VIBETUNNEL_SESSIONS_DIR", dir),
+            None => std::env::remove_var("VIBETUNNEL_SESSIONS_DIR"),
+        }
+        
+        result
     }
 
     #[test]
     fn test_session_lifecycle() -> Result<()> {
+        let _guard = ENV_MUTEX.lock().unwrap();
         let temp_dir = TempDir::new()?;
+        let original_dir = std::env::var("VIBETUNNEL_SESSIONS_DIR").ok();
         std::env::set_var("VIBETUNNEL_SESSIONS_DIR", temp_dir.path());
+        
+        let result = (|| -> Result<()> {
+            let mut store = FileSessionStore::new("test-lifecycle")?;
 
-        let mut store = FileSessionStore::new("test-lifecycle")?;
-
-        let session_info = SessionInfo {
-            id: "test-lifecycle".to_string(),
+            let session_info = SessionInfo {
+                id: "test-lifecycle".to_string(),
             name: "test session".to_string(),
             command: vec!["echo".to_string(), "test".to_string()],
             pid: Some(9999),
@@ -146,42 +165,51 @@ mod tests {
         assert!(store.stdout_path().exists());
         assert!(store.stdin_path().exists());
 
-        // Get session
-        let retrieved = store.get_session("test-lifecycle");
-        assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap().name, "test session");
+            // Get session
+            let retrieved = store.get_session("test-lifecycle");
+            assert!(retrieved.is_some());
+            assert_eq!(retrieved.unwrap().name, "test session");
 
-        // Update session
-        let mut updated_info = session_info.clone();
-        updated_info.status = "completed".to_string();
-        updated_info.exit_code = Some(0);
-        store.update_session("test-lifecycle", updated_info)?;
+            // Update session
+            let mut updated_info = session_info.clone();
+            updated_info.status = "completed".to_string();
+            updated_info.exit_code = Some(0);
+            store.update_session("test-lifecycle", updated_info)?;
 
-        // Verify update
-        let updated = store.get_session("test-lifecycle");
-        assert!(updated.is_some());
-        assert_eq!(updated.unwrap().status, "completed");
+            // Verify update
+            let updated = store.get_session("test-lifecycle");
+            assert!(updated.is_some());
+            assert_eq!(updated.unwrap().status, "completed");
 
-        // Remove session
-        let removed = store.remove_session("test-lifecycle");
-        assert!(removed.is_some());
-        assert!(store.get_session("test-lifecycle").is_none());
+            // Remove session
+            let removed = store.remove_session("test-lifecycle");
+            assert!(removed.is_some());
+            assert!(store.get_session("test-lifecycle").is_none());
 
-        Ok(())
+            Ok(())
+        })();
+        
+        // Restore original env var
+        match original_dir {
+            Some(dir) => std::env::set_var("VIBETUNNEL_SESSIONS_DIR", dir),
+            None => std::env::remove_var("VIBETUNNEL_SESSIONS_DIR"),
+        }
+        
+        result
     }
 
     #[test]
     fn test_load_session() -> Result<()> {
+        let _guard = ENV_MUTEX.lock().unwrap();
         let temp_dir = TempDir::new()?;
+        let original_dir = std::env::var("VIBETUNNEL_SESSIONS_DIR").ok();
         std::env::set_var("VIBETUNNEL_SESSIONS_DIR", temp_dir.path());
-
-        // Use a unique session ID to avoid test interference
-        let session_id = format!("test-load-{}", std::process::id());
-
-        // First create a session
-        let mut store = FileSessionStore::new(&session_id)?;
-        let session_info = SessionInfo {
-            id: session_id.clone(),
+        
+        let result = (|| -> Result<()> {
+            // First create a session
+            let mut store = FileSessionStore::new("test-load")?;
+            let session_info = SessionInfo {
+                id: "test-load".to_string(),
             name: "load test".to_string(),
             command: vec!["ls".to_string()],
             pid: Some(7777),
@@ -195,20 +223,33 @@ mod tests {
             is_external_terminal: false,
         };
 
-        store.create_session(session_info)?;
+            store.create_session(session_info)?;
+            
+            // Ensure the file was created
+            let session_file = store.control_dir.join("session.json");
+            assert!(session_file.exists(), "Session file should exist at {:?}", session_file);
 
-        // Load it back
-        let (loaded_info, loaded_store) = load_session(&session_id)?;
+            // Load it back
+            let (loaded_info, loaded_store) = load_session("test-load")?;
 
-        assert_eq!(loaded_info.id, session_id);
-        assert_eq!(loaded_info.name, "load test");
-        assert_eq!(loaded_info.pid, Some(7777));
-        assert_eq!(loaded_info.cols, 120);
+            assert_eq!(loaded_info.id, "test-load");
+            assert_eq!(loaded_info.name, "load test");
+            assert_eq!(loaded_info.pid, Some(7777));
+            assert_eq!(loaded_info.cols, 120);
 
-        // Verify loaded store works
-        let retrieved = loaded_store.get_session(&session_id);
-        assert!(retrieved.is_some());
+            // Verify loaded store works
+            let retrieved = loaded_store.get_session("test-load");
+            assert!(retrieved.is_some());
 
-        Ok(())
+            Ok(())
+        })();
+        
+        // Restore original env var
+        match original_dir {
+            Some(dir) => std::env::set_var("VIBETUNNEL_SESSIONS_DIR", dir),
+            None => std::env::remove_var("VIBETUNNEL_SESSIONS_DIR"),
+        }
+        
+        result
     }
 }
