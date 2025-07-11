@@ -1,6 +1,7 @@
 import { html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import '../components/monaco-editor.js';
+import { Z_INDEX } from '../utils/constants.js';
 
 @customElement('monaco-editor-test')
 export class MonacoEditorTest extends LitElement {
@@ -248,7 +249,8 @@ async def main():
 
         <div class="flex-1 relative overflow-hidden border border-gray-800 m-4 rounded-lg">
           <div
-            class="absolute top-4 right-4 bg-black/80 border border-gray-800 rounded px-3 py-1.5 text-xs z-10"
+            class="absolute top-4 right-4 bg-black/80 border border-gray-800 rounded px-3 py-1.5 text-xs"
+            style="z-index: ${Z_INDEX.TERMINAL_OVERLAY};"
           >
             <div>Mode: <code class="text-emerald-400">${this.mode}</code></div>
             <div>Language: <code class="text-emerald-400">${this.language}</code></div>

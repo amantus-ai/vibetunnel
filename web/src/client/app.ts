@@ -1262,7 +1262,7 @@ export class VibeTunnelApp extends LitElement {
     const isMobile = this.mediaState.isMobile;
     // Only apply transition class when animations are ready (not during initial load)
     const transitionClass = this.sidebarAnimationReady && !isMobile ? 'sidebar-transition' : '';
-    const mobileClasses = isMobile ? 'absolute left-0 top-0 bottom-0 z-30 flex' : transitionClass;
+    const mobileClasses = isMobile ? `absolute left-0 top-0 bottom-0 flex` : transitionClass;
 
     const collapsedClasses = this.sidebarCollapsed
       ? isMobile
@@ -1289,7 +1289,7 @@ export class VibeTunnelApp extends LitElement {
 
     // Expanded state
     if (isMobile) {
-      return `width: calc(100vw - ${SIDEBAR.MOBILE_RIGHT_MARGIN}px);`;
+      return `width: calc(100vw - ${SIDEBAR.MOBILE_RIGHT_MARGIN}px); z-index: ${Z_INDEX.SIDEBAR_MOBILE};`;
     }
 
     return `width: ${this.sidebarWidth}px;`;
@@ -1383,7 +1383,7 @@ export class VibeTunnelApp extends LitElement {
       ${
         this.errorMessage
           ? html`
-            <div class="fixed top-4 right-4 z-50">
+            <div class="fixed top-4 right-4" style="z-index: ${Z_INDEX.MODAL_BACKDROP};">
               <div
                 class="bg-status-error text-dark-bg px-4 py-2 rounded shadow-lg font-mono text-sm"
               >
@@ -1408,7 +1408,7 @@ export class VibeTunnelApp extends LitElement {
       ${
         this.successMessage
           ? html`
-            <div class="fixed top-4 right-4 z-50">
+            <div class="fixed top-4 right-4" style="z-index: ${Z_INDEX.MODAL_BACKDROP};">
               <div
                 class="bg-status-success text-dark-bg px-4 py-2 rounded shadow-lg font-mono text-sm"
               >
@@ -1545,6 +1545,7 @@ export class VibeTunnelApp extends LitElement {
                       @toggle-sidebar=${this.handleToggleSidebar}
                       @create-session=${this.handleCreateSession}
                       @session-status-changed=${this.handleSessionStatusChanged}
+                      @open-settings=${this.handleOpenSettings}
                     ></session-view>
                   `
                 )}
@@ -1587,7 +1588,7 @@ export class VibeTunnelApp extends LitElement {
       ${
         this.showLogLink
           ? html`
-        <div class="fixed ${this.getLogButtonPosition()} right-4 text-dark-text-muted text-xs font-mono z-20 bg-dark-bg-secondary px-3 py-1.5 rounded-lg border border-dark-border shadow-sm transition-all duration-200">
+        <div class="fixed ${this.getLogButtonPosition()} right-4 text-dark-text-muted text-xs font-mono bg-dark-bg-secondary px-3 py-1.5 rounded-lg border border-dark-border shadow-sm transition-all duration-200" style="z-index: ${Z_INDEX.LOG_BUTTON};">
           <a href="/logs" class="hover:text-dark-text transition-colors">Logs</a>
           <span class="ml-2 opacity-75">v${VERSION}</span>
         </div>

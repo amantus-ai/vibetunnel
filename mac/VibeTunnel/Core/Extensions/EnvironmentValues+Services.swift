@@ -18,6 +18,14 @@ private struct TerminalLauncherKey: EnvironmentKey {
     static let defaultValue: TerminalLauncher? = nil
 }
 
+private struct TailscaleServiceKey: EnvironmentKey {
+    static let defaultValue: TailscaleService? = nil
+}
+
+private struct CloudflareServiceKey: EnvironmentKey {
+    static let defaultValue: CloudflareService? = nil
+}
+
 // MARK: - Environment Values Extensions
 
 extension EnvironmentValues {
@@ -40,6 +48,16 @@ extension EnvironmentValues {
         get { self[TerminalLauncherKey.self] }
         set { self[TerminalLauncherKey.self] = newValue }
     }
+
+    var tailscaleService: TailscaleService? {
+        get { self[TailscaleServiceKey.self] }
+        set { self[TailscaleServiceKey.self] = newValue }
+    }
+
+    var cloudflareService: CloudflareService? {
+        get { self[CloudflareServiceKey.self] }
+        set { self[CloudflareServiceKey.self] = newValue }
+    }
 }
 
 // MARK: - View Extensions
@@ -51,7 +69,9 @@ extension View {
         serverManager: ServerManager? = nil,
         ngrokService: NgrokService? = nil,
         systemPermissionManager: SystemPermissionManager? = nil,
-        terminalLauncher: TerminalLauncher? = nil
+        terminalLauncher: TerminalLauncher? = nil,
+        tailscaleService: TailscaleService? = nil,
+        cloudflareService: CloudflareService? = nil
     )
         -> some View
     {
@@ -63,5 +83,7 @@ extension View {
                 systemPermissionManager ?? SystemPermissionManager.shared
             )
             .environment(\.terminalLauncher, terminalLauncher ?? TerminalLauncher.shared)
+            .environment(\.tailscaleService, tailscaleService ?? TailscaleService.shared)
+            .environment(\.cloudflareService, cloudflareService ?? CloudflareService.shared)
     }
 }

@@ -16,6 +16,11 @@ enum AppConstants {
         static let preventSleepWhenRunning = "preventSleepWhenRunning"
         static let enableScreencapService = "enableScreencapService"
         static let repositoryBasePath = "repositoryBasePath"
+        // New Session keys
+        static let newSessionCommand = "NewSession.command"
+        static let newSessionWorkingDirectory = "NewSession.workingDirectory"
+        static let newSessionSpawnWindow = "NewSession.spawnWindow"
+        static let newSessionTitleMode = "NewSession.titleMode"
     }
 
     /// Default values for UserDefaults
@@ -46,21 +51,22 @@ enum AppConstants {
     
     /// Helper to get string value with proper default
     static func stringValue(for key: String) -> String {
-        // If the key doesn't exist in UserDefaults, return our default
+        // First check if we have a string value
+        if let value = UserDefaults.standard.string(forKey: key) {
+            return value
+        }
+        
+        // If the key doesn't exist at all, return our default
         if UserDefaults.standard.object(forKey: key) == nil {
             switch key {
             case UserDefaultsKeys.repositoryBasePath:
-                // return last used path if it's exists
-                if let value =  UserDefaults.standard.value(forKey: "NewSession.workingDirectory") as? String {
-                    return value
-                } else {
-                    return Defaults.repositoryBasePath
-                }
-                
+                return Defaults.repositoryBasePath
             default:
                 return ""
             }
         }
-        return UserDefaults.standard.string(forKey: key) ?? ""
+        
+        // Key exists but contains non-string value, return empty string
+        return ""
     }
 }

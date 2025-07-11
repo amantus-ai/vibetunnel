@@ -12,6 +12,7 @@ import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 import { authClient } from '../services/auth-client.js';
+import { Z_INDEX } from '../utils/constants.js';
 import {
   type GitStatus as GitStatusType,
   getFileIcon,
@@ -499,8 +500,8 @@ export class FileBrowser extends LitElement {
     }
 
     return html`
-      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center" @click=${this.handleCancel}>
-        <div class="fixed inset-0 bg-dark-bg z-[1100] flex flex-col" @click=${(e: Event) => e.stopPropagation()}>
+      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center" style="z-index: ${Z_INDEX.FILE_BROWSER};" @click=${this.handleCancel}>
+        <div class="fixed inset-0 bg-dark-bg flex flex-col" style="z-index: ${Z_INDEX.FILE_BROWSER};" @click=${(e: Event) => e.stopPropagation()}>
         ${
           this.isMobile && this.mobileView === 'preview'
             ? html`

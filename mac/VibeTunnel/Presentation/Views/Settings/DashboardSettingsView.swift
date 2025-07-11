@@ -26,6 +26,8 @@ struct DashboardSettingsView: View {
     private var ngrokService
     @Environment(TailscaleService.self)
     private var tailscaleService
+    @Environment(CloudflareService.self)
+    private var cloudflareService
 
     @State private var ngrokAuthToken = ""
     @State private var ngrokStatus: NgrokTunnelStatus?
@@ -69,6 +71,12 @@ struct DashboardSettingsView: View {
 
                 TailscaleIntegrationSection(
                     tailscaleService: tailscaleService,
+                    serverPort: serverPort,
+                    accessMode: accessMode
+                )
+
+                CloudflareIntegrationSection(
+                    cloudflareService: cloudflareService,
                     serverPort: serverPort,
                     accessMode: accessMode
                 )

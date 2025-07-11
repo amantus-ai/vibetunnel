@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '../session-list.js';
 import { InputManager } from './input-manager.js';

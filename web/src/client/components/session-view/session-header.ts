@@ -14,6 +14,7 @@ import '../notification-status.js';
 import { authClient } from '../../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../../utils/ai-sessions.js';
 import { createLogger } from '../../utils/logger.js';
+import './mobile-menu.js';
 
 const logger = createLogger('session-header');
 
@@ -28,8 +29,6 @@ export class SessionHeader extends LitElement {
   @property({ type: Boolean }) showBackButton = true;
   @property({ type: Boolean }) showSidebarToggle = false;
   @property({ type: Boolean }) sidebarCollapsed = false;
-  @property({ type: Number }) terminalCols = 0;
-  @property({ type: Number }) terminalRows = 0;
   @property({ type: Number }) terminalMaxCols = 0;
   @property({ type: Number }) terminalFontSize = 14;
   @property({ type: String }) customWidth = '';
@@ -90,41 +89,49 @@ export class SessionHeader extends LitElement {
         class="flex items-center justify-between border-b border-dark-border text-sm min-w-0 bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary px-4 py-2 shadow-sm"
         style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
       >
-        <div class="flex items-center gap-3 min-w-0 flex-1">
-          <!-- Sidebar Toggle and Create Session Buttons (shown when sidebar is collapsed) -->
+        <div class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+          <!-- Sidebar Toggle (when sidebar is collapsed) - visible on all screen sizes -->
           ${
             this.showSidebarToggle && this.sidebarCollapsed
               ? html`
-                <div class="flex items-center gap-2">
-                  <button
-                    class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
-                    @click=${() => this.onSidebarToggle?.()}
-                    title="Show sidebar (⌘B)"
-                    aria-label="Show sidebar"
-                    aria-expanded="false"
-                    aria-controls="sidebar"
-                  >
-                    <!-- Right chevron icon to expand sidebar -->
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                    </svg>
-                  </button>
-                  
-                  <!-- Create Session button with primary color -->
-                  <button
-                    class="bg-accent-primary bg-opacity-10 border border-accent-primary text-accent-primary rounded-lg p-2 font-mono transition-all duration-200 hover:bg-accent-primary hover:text-dark-bg hover:shadow-glow-primary-sm flex-shrink-0"
-                    @click=${() => this.onCreateSession?.()}
-                    title="Create New Session (⌘K)"
-                    data-testid="create-session-button"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
-                    </svg>
-                  </button>
-                </div>
+                <button
+                  class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+                  @click=${() => this.onSidebarToggle?.()}
+                  title="Show sidebar (⌘B)"
+                  aria-label="Show sidebar"
+                  aria-expanded="false"
+                  aria-controls="sidebar"
+                >
+                  <!-- Right chevron icon to expand sidebar -->
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
+                  </svg>
+                </button>
+                
+                <!-- Create Session button (desktop only) -->
+                <button
+                  class="hidden sm:flex bg-accent-primary bg-opacity-10 border border-accent-primary text-accent-primary rounded-lg p-2 font-mono transition-all duration-200 hover:bg-accent-primary hover:text-dark-bg hover:shadow-glow-primary-sm flex-shrink-0"
+                  @click=${() => this.onCreateSession?.()}
+                  title="Create New Session (⌘K)"
+                  data-testid="create-session-button"
+                >
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+                  </svg>
+                </button>
               `
               : ''
           }
+          
+          <!-- Status dot - visible on mobile, after sidebar toggle -->
+          <div class="sm:hidden relative flex-shrink-0">
+            <div class="w-2.5 h-2.5 rounded-full ${this.getStatusDotColor()}"></div>
+            ${
+              this.getStatusText() === 'running'
+                ? html`<div class="absolute inset-0 w-2.5 h-2.5 rounded-full bg-status-success animate-ping opacity-50"></div>`
+                : ''
+            }
+          </div>
           ${
             this.showBackButton
               ? html`
@@ -137,10 +144,11 @@ export class SessionHeader extends LitElement {
               `
               : ''
           }
-          <div class="text-dark-text min-w-0 flex-1 overflow-hidden max-w-[50vw] sm:max-w-none">
-            <div class="text-dark-text-bright font-medium text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap">
-              <div class="flex items-center gap-2" @mouseenter=${this.handleMouseEnter} @mouseleave=${this.handleMouseLeave}>
+          <div class="text-dark-text min-w-0 flex-1 overflow-hidden">
+            <div class="text-dark-text-bright font-medium text-xs sm:text-sm min-w-0 overflow-hidden">
+              <div class="grid grid-cols-[1fr_auto] items-center gap-2 min-w-0" @mouseenter=${this.handleMouseEnter} @mouseleave=${this.handleMouseLeave}>
                 <inline-edit
+                  class="min-w-0"
                   .value=${
                     this.session.name ||
                     (Array.isArray(this.session.command)
@@ -155,10 +163,10 @@ export class SessionHeader extends LitElement {
                   .onSave=${(newName: string) => this.handleRename(newName)}
                 ></inline-edit>
                 ${
-                  this.isHovered && isAIAssistantSession(this.session)
+                  isAIAssistantSession(this.session)
                     ? html`
                       <button
-                        class="bg-transparent border-0 p-0 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-200 text-accent-primary"
+                        class="bg-transparent border-0 p-0 cursor-pointer transition-opacity duration-200 text-accent-primary magic-button flex-shrink-0 ${this.isHovered ? 'opacity-50 hover:opacity-100' : 'opacity-0'}"
                         @click=${(e: Event) => {
                           e.stopPropagation();
                           this.handleMagicButton();
@@ -170,12 +178,23 @@ export class SessionHeader extends LitElement {
                           <path d="M9 1a1 1 0 100 2 1 1 0 000-2zM5 0a1 1 0 100 2 1 1 0 000-2zM2 3a1 1 0 100 2 1 1 0 000-2zM14 6a1 1 0 100 2 1 1 0 000-2zM15 10a1 1 0 100 2 1 1 0 000-2zM12 13a1 1 0 100 2 1 1 0 000-2z" opacity="0.5"/>
                         </svg>
                       </button>
+                      <style>
+                        /* Always show magic button on touch devices */
+                        @media (hover: none) and (pointer: coarse) {
+                          .magic-button {
+                            opacity: 0.5 !important;
+                          }
+                          .magic-button:hover {
+                            opacity: 1 !important;
+                          }
+                        }
+                      </style>
                     `
                     : ''
                 }
               </div>
             </div>
-            <div class="text-xs opacity-75 mt-0.5 overflow-hidden">
+            <div class="text-xs opacity-75 mt-0.5 truncate">
               <clickable-path 
                 .path=${this.session.workingDir} 
                 .iconSize=${12}
@@ -183,54 +202,68 @@ export class SessionHeader extends LitElement {
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2 relative">
-          <notification-status
-            @open-settings=${() => this.onOpenSettings?.()}
-          ></notification-status>
-          <button
-            class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
-            @click=${(e: Event) => {
-              e.stopPropagation();
-              this.onOpenFileBrowser?.();
-            }}
-            title="Browse Files (⌘O)"
-            data-testid="file-browser-button"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path
-                d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"
-              />
-            </svg>
-          </button>
-          <button
-            class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
-            @click=${() => this.onScreenshare?.()}
-            title="Start Screenshare"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <line x1="8" y1="21" x2="16" y2="21"/>
-              <line x1="12" y1="17" x2="12" y2="21"/>
-              <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
-            </svg>
-          </button>
-          <button
-            class="bg-dark-bg-elevated border border-dark-border rounded-lg px-3 py-2 font-mono text-xs text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0 width-selector-button"
-            @click=${() => this.onMaxWidthToggle?.()}
-            title="${this.widthTooltip}"
-          >
-            ${this.widthLabel}
-          </button>
-          <width-selector
-            .visible=${this.showWidthSelector}
-            .terminalMaxCols=${this.terminalMaxCols}
-            .terminalFontSize=${this.terminalFontSize}
-            .customWidth=${this.customWidth}
-            .onWidthSelect=${(width: number) => this.onWidthSelect?.(width)}
-            .onFontSizeChange=${(size: number) => this.onFontSizeChange?.(size)}
-            .onClose=${() => this.handleCloseWidthSelector()}
-          ></width-selector>
-          <div class="flex flex-col items-end gap-0">
+        <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2">
+          <!-- Notification status - desktop only -->
+          <div class="hidden sm:block">
+            <notification-status
+              @open-settings=${() => this.onOpenSettings?.()}
+            ></notification-status>
+          </div>
+          
+          <!-- Desktop buttons - hidden on mobile -->
+          <div class="hidden sm:flex items-center gap-2">
+            <button
+              class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+              @click=${(e: Event) => {
+                e.stopPropagation();
+                this.onOpenFileBrowser?.();
+              }}
+              title="Browse Files (⌘O)"
+              data-testid="file-browser-button"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path
+                  d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"
+                />
+              </svg>
+            </button>
+            <button
+              class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+              @click=${() => this.onScreenshare?.()}
+              title="Start Screenshare"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+                <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
+              </svg>
+            </button>
+            <button
+              class="bg-dark-bg-elevated border border-dark-border rounded-lg px-3 py-2 font-mono text-xs text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0 width-selector-button"
+              @click=${() => this.onMaxWidthToggle?.()}
+              title="${this.widthTooltip}"
+            >
+              ${this.widthLabel}
+            </button>
+          </div>
+          
+          <!-- Mobile menu - visible only on mobile -->
+          <div class="flex sm:hidden flex-shrink-0">
+            <mobile-menu
+              .session=${this.session}
+              .widthLabel=${this.widthLabel}
+              .widthTooltip=${this.widthTooltip}
+              .onOpenFileBrowser=${this.onOpenFileBrowser}
+              .onScreenshare=${this.onScreenshare}
+              .onMaxWidthToggle=${this.onMaxWidthToggle}
+              .onOpenSettings=${this.onOpenSettings}
+              .onCreateSession=${this.onCreateSession}
+            ></mobile-menu>
+          </div>
+          
+          <!-- Status indicator - desktop only (mobile shows it on the left) -->
+          <div class="hidden sm:flex flex-col items-end gap-0">
             <span class="text-xs flex items-center gap-2 font-medium ${
               this.getStatusText() === 'running' ? 'text-status-success' : 'text-status-warning'
             }">
@@ -244,18 +277,6 @@ export class SessionHeader extends LitElement {
               </div>
               ${this.getStatusText().toUpperCase()}
             </span>
-            ${
-              this.terminalCols > 0 && this.terminalRows > 0
-                ? html`
-                  <span
-                    class="text-dark-text-muted text-xs opacity-60"
-                    style="font-size: 10px; line-height: 1;"
-                  >
-                    ${this.terminalCols}×${this.terminalRows}
-                  </span>
-                `
-                : ''
-            }
           </div>
         </div>
       </div>
