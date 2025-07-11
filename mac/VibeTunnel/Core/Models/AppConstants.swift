@@ -30,7 +30,7 @@ enum AppConstants {
         /// Screencap service is enabled by default for screen sharing
         static let enableScreencapService = true
         /// Default repository base path for auto-discovery
-        static let repositoryBasePath = "~/Development"
+        static let repositoryBasePath = "~/"
     }
 
     /// Helper to get boolean value with proper default
