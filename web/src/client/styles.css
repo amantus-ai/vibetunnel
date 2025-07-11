@@ -989,17 +989,15 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   overflow: hidden;
 }
 
-/* Dark theme terminal colors */
+/* Terminal container theme styling */
 [data-theme="dark"] .terminal-container,
 :root:not([data-theme="light"]) .terminal-container {
-  color: rgb(228 228 228); /* Terminal text always light */
-  background-color: rgb(10 10 10); /* Terminal bg always dark */
+  /* Terminal colors are now handled by xterm.js theme */
 }
 
-/* Light theme terminal colors - maintain dark background for contrast */
+/* Light theme terminal container styling */
 [data-theme="light"] .terminal-container {
-  color: rgb(228 228 228); /* Terminal text always light */
-  background-color: rgb(26 26 26); /* Terminal bg always dark */
+  /* Terminal colors are now handled by xterm.js theme */
   border: 1px solid rgb(var(--color-border));
   border-radius: 0.5rem;
 }
@@ -1079,11 +1077,12 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 /* Light mode terminal styling */
 [data-theme="light"] .xterm {
-  background-color: #1a1a1a;
+  /* Terminal background is now handled by xterm.js theme */
 }
 
 [data-theme="light"] .session-card .terminal-container {
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgb(var(--color-border));
 }
 
 /* Ensure terminal container has proper size */

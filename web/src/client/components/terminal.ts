@@ -381,29 +381,34 @@ export class Terminal extends LitElement {
         brightWhite: '#ffffff',
       };
     } else {
-      // Light theme - optimized for readability
+      // Light theme - optimized for readability with softer contrast
       return {
-        background: '#ffffff',
-        foreground: '#333333',
+        background: '#f8f9fa', // Slightly off-white for less eye strain
+        foreground: '#1f2328', // Dark gray for better readability than pure black
         cursor: 'rgb(var(--color-primary))',
-        cursorAccent: '#ffffff',
-        // Standard 16 colors adjusted for light background
-        black: '#000000',
-        red: '#c82829',
-        green: '#718c00',
-        yellow: '#eab700',
-        blue: '#4271ae',
-        magenta: '#8959a8',
-        cyan: '#3e999f',
-        white: '#4d4d4c',
-        brightBlack: '#8e908c',
-        brightRed: '#f5871f',
-        brightGreen: '#90a959',
-        brightYellow: '#f4bf75',
-        brightBlue: '#7aa6da',
-        brightMagenta: '#b77ee0',
-        brightCyan: '#54ced6',
-        brightWhite: '#ffffff',
+        cursorAccent: '#f8f9fa',
+        // Standard 16 colors optimized for light backgrounds
+        // Based on GitHub light theme for proven readability
+        black: '#24292f',
+        red: '#cf222e',
+        green: '#1a7f37',
+        yellow: '#9a6700',
+        blue: '#0969da',
+        magenta: '#8250df',
+        cyan: '#1b7c83',
+        white: '#6e7781',
+        brightBlack: '#57606a',
+        brightRed: '#da3633',
+        brightGreen: '#2da44e',
+        brightYellow: '#bf8700',
+        brightBlue: '#218bff',
+        brightMagenta: '#a475f9',
+        brightCyan: '#3192aa',
+        brightWhite: '#8c959f',
+        // Selection colors for better visibility
+        selectionBackground: '#0969da',
+        selectionForeground: '#ffffff',
+        selectionInactiveBackground: '#e1e4e8',
       };
     }
   }
