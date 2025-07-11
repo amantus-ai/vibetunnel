@@ -14,7 +14,7 @@ describe.skip('Native Addon - Real Integration Tests', () => {
   beforeAll(() => {
     try {
       // Import the real native addon directly
-      const addon = require('../../../native-pty');
+      const addon = require('../../../vibetunnel-pty');
       NativePty = addon.NativePty;
       ActivityDetector = addon.ActivityDetector;
       initPtySystem = addon.initPtySystem;
