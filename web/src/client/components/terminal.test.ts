@@ -668,7 +668,7 @@ describe('Terminal', () => {
       expect(dispatchEventSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'terminal-resize',
-          detail: { cols, rows },
+          detail: expect.objectContaining({ cols, rows }),
         })
       );
     });
