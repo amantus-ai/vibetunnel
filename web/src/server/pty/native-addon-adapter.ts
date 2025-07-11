@@ -22,10 +22,9 @@ interface NativePtyInstance {
   getPid(): number;
   kill(signal?: string | null): void;
   readOutput(timeoutMs?: number | null): Buffer | null;
-  readAllOutput(): Buffer | null;
   checkExitStatus(): number | null;
-  destroy(): void;
   setOnData(callback: (data: Buffer) => void): void;
+  destroy(): void;
 }
 
 interface ActivityDetectorConstructor {
@@ -50,15 +49,15 @@ let initPtySystem: () => void;
 function loadNativeAddon() {
   if (!NativePty) {
     try {
-      // Try native-pty first (our updated implementation)
-      const addon = require('../../../native-pty');
+      // Try vibetunnel-pty first
+      const addon = require('../../../vibetunnel-pty');
       NativePty = addon.NativePty;
       ActivityDetector = addon.ActivityDetector;
       initPtySystem = addon.initPtySystem;
 
       // Initialize once
       initPtySystem();
-      logger.log('Native PTY addon loaded successfully from native-pty');
+      logger.log('Native PTY addon loaded successfully from vibetunnel-pty');
     } catch (err) {
       throw new Error(
         `Failed to load native PTY addon: ${err instanceof Error ? err.message : String(err)}`
