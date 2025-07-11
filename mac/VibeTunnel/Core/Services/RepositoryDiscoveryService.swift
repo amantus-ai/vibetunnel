@@ -65,28 +65,15 @@ public final class RepositoryDiscoveryService {
             return
         }
         
-        Task.detached { [weak self] in
-            defer {
-                // Always reset isDiscovering flag, even if self is nil
-                Task { @MainActor in
-                    self?.isDiscovering = false
-                }
-            }
-            
-            // Perform discovery in background
-            guard let self = self else { return }
-            let discoveredRepos = await self.performDiscovery(in: expandedPath)
-    
-            await MainActor.run { [weak self] in
-                guard let self = self else { return }
-                
-                // Cache and update results
-                self.repositoryCache[expandedPath] = discoveredRepos
-                self.repositories = discoveredRepos
-                
-                Logger.repositoryDiscovery.info("Discovered \(discoveredRepos.count) repositories in: \(expandedPath)")
-            }
-        }
+        let discoveredRepos = await self.performDiscovery(in: expandedPath)
+        
+        self.isDiscovering = false
+        
+        // Cache and update results
+        self.repositoryCache[expandedPath] = discoveredRepos
+        self.repositories = discoveredRepos
+        
+        Logger.repositoryDiscovery.info("Discovered \(discoveredRepos.count) repositories in: \(expandedPath)")
     }
     
     /// Clear the repository cache
@@ -98,29 +85,21 @@ public final class RepositoryDiscoveryService {
     // MARK: - Private Methods
     
     /// Perform the actual discovery work
-    private nonisolated func performDiscovery(in basePath: String) async -> [DiscoveredRepository] {
-        return await withTaskGroup(of: [DiscoveredRepository].self) { taskGroup in
-            var allRepositories: [DiscoveredRepository] = []
-            
-            // Submit discovery task
-            taskGroup.addTask { [weak self] in
-                await self?.scanDirectory(basePath, depth: 0) ?? []
-            }
-            
-            // Collect results
-            for await repositories in taskGroup {
-                allRepositories.append(contentsOf: repositories)
-            }
-            
-            // Sort by folder name for consistent display
-            return allRepositories.sorted { $0.folderName < $1.folderName }
-        }
+    private func performDiscovery(in basePath: String) async -> [DiscoveredRepository] {
+        let allRepositories = await scanDirectory(basePath, depth: 0)
+        
+        // Sort by folder name for consistent display
+        return allRepositories.sorted { $0.folderName < $1.folderName }
     }
     
     /// Recursively scan a directory for Git repositories
-    private nonisolated func scanDirectory(_ path: String, depth: Int) async -> [DiscoveredRepository] {
+    private func scanDirectory(_ path: String, depth: Int) async -> [DiscoveredRepository] {
         guard depth < maxSearchDepth else {
             Logger.repositoryDiscovery.debug("Max depth reached at: \(path)")
+            return []
+        }
+        
+        guard !Task.isCancelled else {
             return []
         }
         
@@ -174,13 +153,13 @@ public final class RepositoryDiscoveryService {
     }
     
     /// Check if a directory is a Git repository
-    private nonisolated func isGitRepository(at path: String) -> Bool {
+    private func isGitRepository(at path: String) -> Bool {
         let gitPath = URL(fileURLWithPath: path).appendingPathComponent(".git").path
         return FileManager.default.fileExists(atPath: gitPath)
     }
     
     /// Create a DiscoveredRepository from a path
-    private nonisolated func createDiscoveredRepository(at path: String) async -> DiscoveredRepository {
+    private func createDiscoveredRepository(at path: String) async -> DiscoveredRepository {
         let url = URL(fileURLWithPath: path)
         let folderName = url.lastPathComponent
         
@@ -199,7 +178,7 @@ public final class RepositoryDiscoveryService {
     }
     
     /// Get the last modified date of a repository
-    nonisolated private func getLastModifiedDate(at path: String) -> Date {
+    private func getLastModifiedDate(at path: String) -> Date {
         do {
             let attributes = try FileManager.default.attributesOfItem(atPath: path)
             return attributes[.modificationDate] as? Date ?? Date.distantPast
