@@ -94,9 +94,9 @@ pub fn load_session(session_id: &str) -> Result<(SessionInfo, FileSessionStore)>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::sync::Mutex;
-    
+    use tempfile::TempDir;
+
     // Ensure tests that modify VIBETUNNEL_SESSIONS_DIR don't run concurrently
     static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
@@ -106,7 +106,7 @@ mod tests {
         let temp_dir = TempDir::new()?;
         let original_dir = std::env::var("VIBETUNNEL_SESSIONS_DIR").ok();
         std::env::set_var("VIBETUNNEL_SESSIONS_DIR", temp_dir.path());
-        
+
         let result = (|| -> Result<()> {
             let store = FileSessionStore::new("test-session")?;
 
@@ -122,13 +122,13 @@ mod tests {
 
             Ok(())
         })();
-        
+
         // Restore original env var
         match original_dir {
             Some(dir) => std::env::set_var("VIBETUNNEL_SESSIONS_DIR", dir),
             None => std::env::remove_var("VIBETUNNEL_SESSIONS_DIR"),
         }
-        
+
         result
     }
 
@@ -138,32 +138,32 @@ mod tests {
         let temp_dir = TempDir::new()?;
         let original_dir = std::env::var("VIBETUNNEL_SESSIONS_DIR").ok();
         std::env::set_var("VIBETUNNEL_SESSIONS_DIR", temp_dir.path());
-        
+
         let result = (|| -> Result<()> {
             let mut store = FileSessionStore::new("test-lifecycle")?;
 
             let session_info = SessionInfo {
                 id: "test-lifecycle".to_string(),
-            name: "test session".to_string(),
-            command: vec!["echo".to_string(), "test".to_string()],
-            pid: Some(9999),
-            created_at: chrono::Utc::now(),
-            status: "running".to_string(),
-            working_dir: "/tmp".to_string(),
-            cols: 80,
-            rows: 24,
-            exit_code: None,
-            title_mode: Some("none".to_string()),
-            is_external_terminal: true,
-        };
+                name: "test session".to_string(),
+                command: vec!["echo".to_string(), "test".to_string()],
+                pid: Some(9999),
+                created_at: chrono::Utc::now(),
+                status: "running".to_string(),
+                working_dir: "/tmp".to_string(),
+                cols: 80,
+                rows: 24,
+                exit_code: None,
+                title_mode: Some("none".to_string()),
+                is_external_terminal: true,
+            };
 
-        // Create session
-        store.create_session(session_info.clone())?;
+            // Create session
+            store.create_session(session_info.clone())?;
 
-        // Verify files were created
-        assert!(store.control_dir.join("session.json").exists());
-        assert!(store.stdout_path().exists());
-        assert!(store.stdin_path().exists());
+            // Verify files were created
+            assert!(store.control_dir.join("session.json").exists());
+            assert!(store.stdout_path().exists());
+            assert!(store.stdin_path().exists());
 
             // Get session
             let retrieved = store.get_session("test-lifecycle");
@@ -188,13 +188,13 @@ mod tests {
 
             Ok(())
         })();
-        
+
         // Restore original env var
         match original_dir {
             Some(dir) => std::env::set_var("VIBETUNNEL_SESSIONS_DIR", dir),
             None => std::env::remove_var("VIBETUNNEL_SESSIONS_DIR"),
         }
-        
+
         result
     }
 
@@ -204,27 +204,27 @@ mod tests {
         let temp_dir = TempDir::new()?;
         let original_dir = std::env::var("VIBETUNNEL_SESSIONS_DIR").ok();
         std::env::set_var("VIBETUNNEL_SESSIONS_DIR", temp_dir.path());
-        
+
         let result = (|| -> Result<()> {
             // First create a session
             let mut store = FileSessionStore::new("test-load")?;
             let session_info = SessionInfo {
                 id: "test-load".to_string(),
-            name: "load test".to_string(),
-            command: vec!["ls".to_string()],
-            pid: Some(7777),
-            created_at: chrono::Utc::now(),
-            status: "running".to_string(),
-            working_dir: "/home".to_string(),
-            cols: 120,
-            rows: 40,
-            exit_code: None,
-            title_mode: None,
-            is_external_terminal: false,
-        };
+                name: "load test".to_string(),
+                command: vec!["ls".to_string()],
+                pid: Some(7777),
+                created_at: chrono::Utc::now(),
+                status: "running".to_string(),
+                working_dir: "/home".to_string(),
+                cols: 120,
+                rows: 40,
+                exit_code: None,
+                title_mode: None,
+                is_external_terminal: false,
+            };
 
             store.create_session(session_info)?;
-            
+
             // Ensure the file was created
             let session_file = store.control_dir.join("session.json");
             assert!(session_file.exists(), "Session file should exist at {:?}", session_file);
@@ -243,13 +243,13 @@ mod tests {
 
             Ok(())
         })();
-        
+
         // Restore original env var
         match original_dir {
             Some(dir) => std::env::set_var("VIBETUNNEL_SESSIONS_DIR", dir),
             None => std::env::remove_var("VIBETUNNEL_SESSIONS_DIR"),
         }
-        
+
         result
     }
 }
