@@ -9,8 +9,10 @@
     "triples": {}
   },
   "scripts": {
-    "build": "napi build --platform --release crates/napi-addon",
-    "build:debug": "napi build --platform crates/napi-addon"
+    "build": "cd crates/napi-addon && napi build --platform --release ../..",
+    "build:debug": "cd crates/napi-addon && napi build --platform ../..",
+    "test": "node test/napi-addon.test.js",
+    "test:rust": "cargo test --all"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0"

@@ -1,1 +1,7 @@
-../../package.json
+{
+  "name": "vibetunnel-pty",
+  "version": "0.1.0",
+  "napi": {
+    "name": "vibetunnel-pty"
+  }
+}
