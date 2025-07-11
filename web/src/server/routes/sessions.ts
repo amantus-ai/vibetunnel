@@ -775,7 +775,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
             ? {
                 totalLines: bufferStats.totalRows,
                 totalCharacters: bufferStats.totalRows * (session.initialCols || 80), // Rough estimate
-                viewportY: bufferStats.baseY,
+                viewportY: bufferStats.viewportY,
                 scrollbackSize: bufferStats.totalRows,
               }
             : {

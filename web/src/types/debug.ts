@@ -96,7 +96,16 @@ export interface ResizeEvent {
 
 export interface DebugEvent {
   timestamp: number;
-  type: 'stream_fetch' | 'resize' | 'input' | 'output' | 'error' | 'cleanup' | 'reconnect';
+  type:
+    | 'stream_fetch'
+    | 'resize'
+    | 'input'
+    | 'output'
+    | 'error'
+    | 'cleanup'
+    | 'reconnect'
+    | 'websocket'
+    | 'session_init';
   message: string;
   data?: any;
   level: 'info' | 'warn' | 'error';

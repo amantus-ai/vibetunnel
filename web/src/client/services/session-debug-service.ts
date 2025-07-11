@@ -45,7 +45,8 @@ export class SessionDebugService {
     window.fetch = async (...args) => {
       const startTime = Date.now();
       const [input, init] = args;
-      const url = typeof input === 'string' ? input : input.url;
+      const url =
+        typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
       const method = init?.method || 'GET';
 
       try {
