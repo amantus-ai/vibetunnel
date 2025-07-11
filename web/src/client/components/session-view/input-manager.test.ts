@@ -20,6 +20,7 @@ vi.mock('../../services/websocket-input-client.js', () => ({
 
 // Simple KeyboardEvent polyfill for test environment
 if (typeof KeyboardEvent === 'undefined') {
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
   (global as any).KeyboardEvent = class KeyboardEvent extends Event {
     key: string;
     metaKey: boolean;

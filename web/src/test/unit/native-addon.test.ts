@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import type { ActivityDetector, NativePty } from '../../server/pty/native-addon-adapter.js';
 
 // Skip these tests in CI where native addon might not be built
@@ -6,7 +6,7 @@ const skipInCI = process.env.CI ? describe.skip : describe;
 
 // Set to false to run tests locally
 const SKIP_NATIVE_TESTS = false;
-const testDescribe = SKIP_NATIVE_TESTS ? describe.skip : describe;
+const _testDescribe = SKIP_NATIVE_TESTS ? describe.skip : describe;
 
 skipInCI('Native Addon - ActivityDetector', () => {
   let ActivityDetectorClass: typeof ActivityDetector;
@@ -15,7 +15,7 @@ skipInCI('Native Addon - ActivityDetector', () => {
     try {
       const addon = await import('../../server/pty/native-addon-adapter.js');
       ActivityDetectorClass = addon.ActivityDetector;
-    } catch (error) {
+    } catch (_error) {
       console.log('Native addon not available, skipping tests');
     }
   });
@@ -90,17 +90,18 @@ skipInCI('Native Addon - ActivityDetector', () => {
 });
 
 skipInCI('Native Addon - PTY Integration', () => {
-  let NativePtyClass: typeof NativePty;
+  let _NativePtyClass: typeof NativePty;
   let ActivityDetectorClass: typeof ActivityDetector;
+  // biome-ignore lint/suspicious/noExplicitAny: Mock spawn function for testing
   let spawn: any;
 
   beforeAll(async () => {
     try {
       const addon = await import('../../server/pty/native-addon-adapter.js');
-      NativePtyClass = addon.NativePty;
+      _NativePtyClass = addon.NativePty;
       ActivityDetectorClass = addon.ActivityDetector;
       spawn = addon.spawn;
-    } catch (error) {
+    } catch (_error) {
       console.log('Native addon not available, skipping tests');
     }
   });
@@ -150,6 +151,7 @@ skipInCI('Native Addon - PTY Integration', () => {
     });
 
     const detector = new ActivityDetectorClass();
+    // biome-ignore lint/suspicious/noExplicitAny: Activity type from native addon
     const activities: any[] = [];
 
     pty.onData((data: string) => {

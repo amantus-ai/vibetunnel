@@ -4,8 +4,11 @@ import { beforeAll, describe, expect, it } from 'vitest';
 // Run with: pnpm test native-addon-real --no-mock-native-addon
 
 describe.skip('Native Addon - Real Integration Tests', () => {
+  // biome-ignore lint/suspicious/noExplicitAny: Native addon types are not available in tests
   let NativePty: any;
+  // biome-ignore lint/suspicious/noExplicitAny: Native addon types are not available in tests
   let ActivityDetector: any;
+  // biome-ignore lint/suspicious/noExplicitAny: Native addon types are not available in tests
   let initPtySystem: any;
 
   beforeAll(() => {
@@ -148,6 +151,7 @@ describe.skip('Native Addon - Real Integration Tests', () => {
       const pty = new NativePty('echo', ['✻ Analyzing… (5s)']);
       const detector = new ActivityDetector();
 
+      // biome-ignore lint/suspicious/noExplicitAny: Activity type from native addon
       let detectedActivity: any = null;
 
       pty.setOnData((data: Buffer) => {

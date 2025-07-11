@@ -8,11 +8,17 @@ import { createBasicAuthHeader, ServerManager } from '../utils/server-utils.js';
 // Polyfill fetch and FormData for Node.js environment synchronously
 const nodeFetch = await import('node-fetch');
 if (!globalThis.fetch) {
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
   (globalThis as any).fetch = nodeFetch.default;
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
   (globalThis as any).Headers = nodeFetch.Headers;
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
   (globalThis as any).Request = nodeFetch.Request;
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
   (globalThis as any).Response = nodeFetch.Response;
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
   (globalThis as any).FormData = nodeFetch.FormData;
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
   (globalThis as any).Blob = nodeFetch.Blob;
 }
 
