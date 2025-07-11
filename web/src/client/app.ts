@@ -496,14 +496,8 @@ export class VibeTunnelApp extends LitElement {
       return;
     }
 
-    // Add class to prevent flicker when closing modal
-    document.body.classList.add('modal-closing');
+    // Simply close the modal without animation
     this.showCreateModal = false;
-
-    // Remove the class after a short delay
-    setTimeout(() => {
-      document.body.classList.remove('modal-closing');
-    }, 300);
 
     // Check if this was a terminal spawn (not a web session)
     if (message?.includes('Terminal spawned successfully')) {
@@ -684,40 +678,9 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private handleCreateModalClose() {
-    // Immediately hide the modal
+    // Simply close the modal without animation
     this.showCreateModal = false;
-
-    // Skip animation if we're in session detail view
-    const isInSessionDetailView = this.currentView === 'session';
-
-    // Then apply view transition if supported (non-blocking)
-    if (
-      !isInSessionDetailView &&
-      'startViewTransition' in document &&
-      typeof document.startViewTransition === 'function'
-    ) {
-      // Add a class to prevent flicker during transition
-      document.body.classList.add('modal-closing');
-      // Set data attribute to indicate transition is starting
-      document.documentElement.setAttribute('data-view-transition', 'active');
-
-      try {
-        const transition = document.startViewTransition(() => {
-          // Force a re-render
-          this.requestUpdate();
-        });
-
-        // Clean up the class and attribute after transition
-        transition.finished.finally(() => {
-          document.body.classList.remove('modal-closing');
-          document.documentElement.removeAttribute('data-view-transition');
-        });
-      } catch (_error) {
-        // If view transition fails, clean up
-        document.body.classList.remove('modal-closing');
-        document.documentElement.removeAttribute('data-view-transition');
-      }
-    }
+    this.requestUpdate();
   }
 
   private cleanupSessionViewStream(): void {

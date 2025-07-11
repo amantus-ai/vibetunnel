@@ -1609,83 +1609,12 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
     z-index: 1000;
   }
 
-  /* Custom morph animation from button to modal with spring effect */
-  @keyframes expand-from-button {
-    0% {
-      transform: scale(0)
-        translate(calc(var(--vt-button-x) - 50vw), calc(var(--vt-button-y) - 50vh));
-      opacity: 0;
-      border-radius: 0.5rem;
-    }
-    85% {
-      transform: scale(1.01) translate(0, 0);
-      opacity: 1;
-      border-radius: 0.75rem;
-    }
-    100% {
-      transform: scale(1) translate(0, 0);
-      opacity: 1;
-      border-radius: 0.75rem;
-    }
-  }
-
-  @keyframes shrink-to-button {
-    0% {
-      transform: scale(1) translate(0, 0);
-      opacity: 1;
-      border-radius: 0.75rem;
-    }
-    100% {
-      transform: scale(0)
-        translate(calc(var(--vt-button-x) - 50vw), calc(var(--vt-button-y) - 50vh));
-      opacity: 0;
-      border-radius: 0.5rem;
-    }
-  }
-
-  /* Apply the custom animations */
-  ::view-transition-new(create-session-modal) {
-    animation: expand-from-button 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  }
-
-  ::view-transition-old(create-session-modal) {
-    animation: shrink-to-button 0.25s cubic-bezier(0.4, 0, 0.6, 1);
-  }
-
-  /* Hide button during forward transition */
-  ::view-transition-old(create-session-button) {
-    animation: fade-out 0.15s ease-out;
-  }
-
-  /* Show button during reverse transition */
-  ::view-transition-new(create-session-button) {
-    animation: fade-in 0.15s ease-out;
-  }
-
-  /* Make button invisible during transition */
-  .vt-create-button {
-    contain: layout;
-  }
 
   /* Ensure smooth backdrop fade */
   .modal-backdrop {
     animation: fade-in 0.3s ease-out;
   }
 
-  /* During close transition, fade backdrop out faster */
-  body:has(::view-transition-old(create-session-modal)) .modal-backdrop {
-    animation: fade-out 0.25s ease-out;
-  }
-  
-  /* Prevent flicker during modal close on mobile Safari */
-  body.modal-closing .modal-content {
-    opacity: 0 !important;
-    pointer-events: none !important;
-  }
-  
-  body.modal-closing .modal-backdrop {
-    opacity: 0 !important;
-  }
 
 
   /* Black hole collapse animation for session removal */

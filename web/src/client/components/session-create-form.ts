@@ -165,9 +165,6 @@ export class SessionCreateForm extends LitElement {
     // Handle visibility changes
     if (changedProperties.has('visible')) {
       if (this.visible) {
-        // Remove any lingering modal-closing class that might make the modal invisible
-        document.body.classList.remove('modal-closing');
-
         // Reset to defaults first to ensure clean state
         this.workingDir = '~/';
         this.command = 'zsh';
@@ -409,21 +406,11 @@ export class SessionCreateForm extends LitElement {
       return html``;
     }
 
-    // Ensure modal-closing class is removed when rendering visible modal
-    if (this.visible) {
-      // Remove immediately
-      document.body.classList.remove('modal-closing');
-      // Also check if element has data-testid
-      requestAnimationFrame(() => {
-        document.body.classList.remove('modal-closing');
-      });
-    }
-
     return html`
       <div class="modal-backdrop flex items-center justify-center" @click=${this.handleBackdropClick} role="dialog" aria-modal="true">
         <div
           class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] mx-2 sm:mx-4"
-          style="view-transition-name: create-session-modal; pointer-events: auto;"
+          style="pointer-events: auto;"
           @click=${(e: Event) => e.stopPropagation()}
           data-testid="session-create-modal"
         >
