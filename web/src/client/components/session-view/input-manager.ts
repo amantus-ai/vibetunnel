@@ -291,6 +291,26 @@ export class InputManager {
       return true;
     }
 
+    // Allow Cmd+Shift+A (Chrome tab search) on macOS - check lowercase too
+    if (isMacOS && e.metaKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+      return true;
+    }
+
+    // Allow Cmd+1-9 (tab switching) on macOS
+    if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
+      return true;
+    }
+
+    // Allow Ctrl+1-9 (tab switching) on non-macOS
+    if (!isMacOS && e.ctrlKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
+      return true;
+    }
+
+    // Allow Cmd+Option+Left/Right (word navigation) on macOS
+    if (isMacOS && e.metaKey && e.altKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      return true;
+    }
+
     // Allow Ctrl+A (select all), Ctrl+F (find), Ctrl+R (refresh), Ctrl+C/V (copy/paste), etc.
     if (
       !isMacOS &&
@@ -301,7 +321,7 @@ export class InputManager {
       return true;
     }
 
-    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), etc. on macOS
+    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), etc. on macOS (but NOT Cmd+K)
     if (
       isMacOS &&
       e.metaKey &&

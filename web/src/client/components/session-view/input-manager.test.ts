@@ -216,4 +216,77 @@ describe('InputManager', () => {
       expect(mockCallbacks.requestUpdate).toHaveBeenCalled();
     });
   });
+
+  describe('Browser shortcut detection', () => {
+    it('should detect Cmd+Shift+A as browser shortcut on macOS', () => {
+      Object.defineProperty(navigator, 'platform', {
+        writable: true,
+        value: 'MacIntel',
+      });
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'A',
+        metaKey: true,
+        shiftKey: true,
+      });
+      // Mock a target element (simulating event fired on document body)
+      Object.defineProperty(event, 'target', {
+        value: document.createElement('div'),
+        configurable: true,
+      });
+
+      expect(inputManager.isKeyboardShortcut(event)).toBe(true);
+    });
+
+    it('should detect Cmd+1-9 as browser shortcuts on macOS', () => {
+      Object.defineProperty(navigator, 'platform', {
+        writable: true,
+        value: 'MacIntel',
+      });
+
+      for (let i = 1; i <= 9; i++) {
+        const event = new KeyboardEvent('keydown', {
+          key: i.toString(),
+          metaKey: true,
+        });
+        // Mock a target element
+        Object.defineProperty(event, 'target', {
+          value: document.createElement('div'),
+          configurable: true,
+        });
+
+        expect(inputManager.isKeyboardShortcut(event)).toBe(true);
+      }
+    });
+
+    it('should detect Cmd+Option+Left/Right as browser shortcuts on macOS', () => {
+      Object.defineProperty(navigator, 'platform', {
+        writable: true,
+        value: 'MacIntel',
+      });
+
+      const leftEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowLeft',
+        metaKey: true,
+        altKey: true,
+      });
+      Object.defineProperty(leftEvent, 'target', {
+        value: document.createElement('div'),
+        configurable: true,
+      });
+
+      const rightEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        metaKey: true,
+        altKey: true,
+      });
+      Object.defineProperty(rightEvent, 'target', {
+        value: document.createElement('div'),
+        configurable: true,
+      });
+
+      expect(inputManager.isKeyboardShortcut(leftEvent)).toBe(true);
+      expect(inputManager.isKeyboardShortcut(rightEvent)).toBe(true);
+    });
+  });
 });
