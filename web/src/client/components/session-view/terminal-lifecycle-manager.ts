@@ -149,11 +149,19 @@ export class TerminalLifecycleManager {
   async handleTerminalResize(event: Event) {
     const customEvent = event as CustomEvent;
     // Update terminal dimensions for display
-    const { cols, rows } = customEvent.detail;
+    const { cols, rows, isMobile, isHeightOnlyChange, source } = customEvent.detail;
 
     // Notify the session view to update its state
     if (this.stateCallbacks) {
       this.stateCallbacks.updateTerminalDimensions(cols, rows);
+    }
+
+    // On mobile, skip sending height-only changes to the server (keyboard events)
+    if (isMobile && isHeightOnlyChange) {
+      logger.debug(
+        `skipping mobile height-only resize to server: ${cols}x${rows} (source: ${source})`
+      );
+      return;
     }
 
     // Debounce resize requests to prevent jumpiness

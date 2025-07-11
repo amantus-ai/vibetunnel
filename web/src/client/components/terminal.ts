@@ -482,15 +482,29 @@ export class Terminal extends LitElement {
         const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
         const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
 
+        // Save old dimensions before shouldResize updates them
+        const oldCols = this.lastCols;
+        const oldRows = this.lastRows;
+
         // Use resize coordinator to check if we should actually resize
         if (this.shouldResize(safeCols, safeRows)) {
           logger.debug(`Resizing terminal (${source || 'unknown'}): ${safeCols}x${safeRows}`);
           this.terminal.resize(safeCols, safeRows);
 
           // Dispatch resize event for backend synchronization
+          // Include mobile flag and whether this is height-only change
+          const isWidthChange = safeCols !== oldCols;
+          const isHeightOnlyChange = !isWidthChange && safeRows !== oldRows;
+
           this.dispatchEvent(
             new CustomEvent('terminal-resize', {
-              detail: { cols: safeCols, rows: safeRows },
+              detail: {
+                cols: safeCols,
+                rows: safeRows,
+                isMobile: this.isMobile,
+                isHeightOnlyChange,
+                source: source || 'unknown',
+              },
               bubbles: true,
             })
           );
@@ -541,15 +555,29 @@ export class Terminal extends LitElement {
         const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
         const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
 
+        // Save old dimensions before shouldResize updates them
+        const oldCols = this.lastCols;
+        const oldRows = this.lastRows;
+
         // Use resize coordinator to check if we should actually resize
         if (this.shouldResize(safeCols, safeRows)) {
           logger.debug(`Resizing terminal (${source || 'unknown'}): ${safeCols}x${safeRows}`);
           this.terminal.resize(safeCols, safeRows);
 
           // Dispatch resize event for backend synchronization
+          // Include mobile flag and whether this is height-only change
+          const isWidthChange = safeCols !== oldCols;
+          const isHeightOnlyChange = !isWidthChange && safeRows !== oldRows;
+
           this.dispatchEvent(
             new CustomEvent('terminal-resize', {
-              detail: { cols: safeCols, rows: safeRows },
+              detail: {
+                cols: safeCols,
+                rows: safeRows,
+                isMobile: this.isMobile,
+                isHeightOnlyChange,
+                source: source || 'unknown',
+              },
               bubbles: true,
             })
           );
