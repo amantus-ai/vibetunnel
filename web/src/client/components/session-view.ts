@@ -1492,7 +1492,7 @@ export class SessionView extends LitElement {
         ${
           this.isDragOver
             ? html`
-              <div class="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
+              <div class="fixed inset-0 bg-bg bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
                 <div class="bg-elevated border-2 border-dashed border-accent-primary rounded-xl p-10 text-center max-w-md mx-4 shadow-2xl animate-scale-in">
                   <div class="relative mb-6">
                     <div class="w-24 h-24 mx-auto bg-gradient-to-br from-accent-primary to-accent-primary-light rounded-full flex items-center justify-center shadow-glow-primary">
