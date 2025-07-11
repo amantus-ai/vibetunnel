@@ -1,6 +1,7 @@
 import { createLogger } from '../utils/logger.js';
 import type { BufferCell } from '../utils/terminal-renderer.js';
 import { authClient } from './auth-client.js';
+import { SessionDebugService } from './session-debug-service.js';
 
 const logger = createLogger('buffer-subscription-service');
 
@@ -29,6 +30,7 @@ export class BufferSubscriptionService {
 
   private initialized = false;
   private noAuthMode: boolean | null = null;
+  private debugService = SessionDebugService.getInstance();
 
   // biome-ignore lint/complexity/noUselessConstructor: This constructor documents the intentional design decision to not auto-connect
   constructor() {
@@ -104,6 +106,11 @@ export class BufferSubscriptionService {
     try {
       this.ws = new WebSocket(wsUrl);
       this.ws.binaryType = 'arraybuffer';
+
+      // Track WebSocket for all subscribed sessions
+      this.subscriptions.forEach((_, sessionId) => {
+        this.debugService.trackWebSocketConnection(sessionId, this.ws!);
+      });
 
       this.ws.onopen = () => {
         logger.log('connected');
@@ -302,6 +309,11 @@ export class BufferSubscriptionService {
 
       // Send subscribe message if connected
       this.sendMessage({ type: 'subscribe', sessionId });
+
+      // Track WebSocket connection for this session
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.debugService.trackWebSocketConnection(sessionId, this.ws);
+      }
     }
 
     const handlers = this.subscriptions.get(sessionId);

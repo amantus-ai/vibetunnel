@@ -26,7 +26,9 @@ import './session-view/mobile-input-overlay.js';
 import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
+import './session-debug-panel.js';
 import { authClient } from '../services/auth-client.js';
+import { SessionDebugService } from '../services/session-debug-service.js';
 import { createLogger } from '../utils/logger.js';
 import {
   COMMON_TERMINAL_WIDTHS,
@@ -89,8 +91,10 @@ export class SessionView extends LitElement {
   @state() private terminalFontSize = 14;
   @state() private terminalContainerHeight = '100%';
   @state() private isLandscape = false;
+  @state() private showDebugPanel = false;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
+  private debugService = SessionDebugService.getInstance();
 
   // Bound event handlers to ensure proper cleanup
   private boundHandleDragOver = this.handleDragOver.bind(this);
@@ -481,6 +485,11 @@ export class SessionView extends LitElement {
       if (this.lifecycleEventManager) {
         this.lifecycleEventManager.setSession(this.session);
       }
+
+      // Initialize debug tracking for the session
+      if (this.session) {
+        this.debugService.initializeSession(this.session.id, this.session);
+      }
     }
 
     // Stop loading and create terminal when session becomes available
@@ -597,6 +606,20 @@ export class SessionView extends LitElement {
         composed: true,
       })
     );
+  }
+
+  private handleToggleDebug() {
+    this.showDebugPanel = !this.showDebugPanel;
+
+    if (this.showDebugPanel && this.session) {
+      // Initialize debug data if not already done
+      if (!this.debugService.getDebugInfo(this.session.id)) {
+        this.debugService.initializeSession(this.session.id, this.session);
+      }
+
+      // Fetch server-side debug info
+      this.debugService.fetchServerDebugInfo(this.session.id);
+    }
   }
 
   private handleSessionExit(e: Event) {
@@ -1242,6 +1265,7 @@ export class SessionView extends LitElement {
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
           .onScreenshare=${() => this.handleScreenshare()}
           .onOpenSettings=${() => this.handleOpenSettings()}
+          .onToggleDebug=${() => this.handleToggleDebug()}
           @close-width-selector=${() => {
             this.showWidthSelector = false;
             this.customWidth = '';
@@ -1514,6 +1538,15 @@ export class SessionView extends LitElement {
             `
             : ''
         }
+        
+        <!-- Debug Panel -->
+        <session-debug-panel
+          ?open=${this.showDebugPanel}
+          .debugInfo=${this.session ? this.debugService.getDebugInfo(this.session.id) : undefined}
+          @close=${() => {
+            this.showDebugPanel = false;
+          }}
+        ></session-debug-panel>
       </div>
     `;
   }

@@ -6,6 +6,7 @@
  */
 
 import { authClient } from '../../services/auth-client.js';
+import { SessionDebugService } from '../../services/session-debug-service.js';
 import { createLogger } from '../../utils/logger.js';
 import type { Session } from '../session-list.js';
 import type { Terminal } from '../terminal.js';
@@ -38,6 +39,7 @@ export class TerminalLifecycleManager {
   private domElement: Element | null = null;
   private eventHandlers: TerminalEventHandlers | null = null;
   private stateCallbacks: TerminalStateCallbacks | null = null;
+  private debugService = SessionDebugService.getInstance();
 
   setSession(session: Session | null) {
     this.session = session;
@@ -154,6 +156,20 @@ export class TerminalLifecycleManager {
     // Notify the session view to update its state
     if (this.stateCallbacks) {
       this.stateCallbacks.updateTerminalDimensions(cols, rows);
+    }
+
+    // Track resize in debug service
+    if (this.session && this.terminal) {
+      const oldCols = this.lastResizeWidth;
+      const oldRows = this.lastResizeHeight;
+      if (oldCols > 0 && oldRows > 0) {
+        this.debugService.trackResize(
+          this.session.id,
+          { cols: oldCols, rows: oldRows },
+          { cols, rows },
+          source || 'user'
+        );
+      }
     }
 
     // On mobile, skip sending height-only changes to the server (keyboard events)

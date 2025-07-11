@@ -45,6 +45,7 @@ export class SessionHeader extends LitElement {
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
   @property({ type: Function }) onScreenshare?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
+  @property({ type: Function }) onToggleDebug?: () => void;
   @state() private isHovered = false;
 
   private getStatusText(): string {
@@ -240,6 +241,16 @@ export class SessionHeader extends LitElement {
               </svg>
             </button>
             <button
+              class="bg-dark-bg-elevated border border-dark-border rounded-lg p-2 font-mono text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+              @click=${() => this.onToggleDebug?.()}
+              title="Toggle Debug Panel"
+              data-testid="debug-panel-button"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm1 13H7v-2h2v2zm0-3H7V3h2v7z"/>
+              </svg>
+            </button>
+            <button
               class="bg-dark-bg-elevated border border-dark-border rounded-lg px-3 py-2 font-mono text-xs text-dark-text-muted transition-all duration-200 hover:text-accent-primary hover:bg-dark-surface-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0 width-selector-button"
               @click=${() => this.onMaxWidthToggle?.()}
               title="${this.widthTooltip}"
@@ -259,6 +270,7 @@ export class SessionHeader extends LitElement {
               .onMaxWidthToggle=${this.onMaxWidthToggle}
               .onOpenSettings=${this.onOpenSettings}
               .onCreateSession=${this.onCreateSession}
+              .onToggleDebug=${this.onToggleDebug}
             ></mobile-menu>
           </div>
           
