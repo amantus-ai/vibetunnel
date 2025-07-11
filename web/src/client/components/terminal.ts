@@ -103,7 +103,7 @@ export class Terminal extends LitElement {
     this.queueRenderOperation(() => {});
   }
 
-  private async processOperationQueue() {
+  private async processOperationQueue(): Promise<void> {
     const startTime = performance.now();
     const MAX_FRAME_TIME = 8; // Target ~120fps, yield more frequently for better touch responsiveness
 
@@ -117,8 +117,10 @@ export class Terminal extends LitElement {
       // Check if we've been running too long
       if (performance.now() - startTime > MAX_FRAME_TIME && this.operationQueue.length > 0) {
         // Still have more operations, yield control and continue in next frame
-        requestAnimationFrame(() => {
-          this.processOperationQueue();
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => {
+            this.processOperationQueue().then(resolve);
+          });
         });
         return; // Exit early to let browser process events
       }
@@ -126,6 +128,11 @@ export class Terminal extends LitElement {
 
     // All operations complete, render the buffer
     this.renderBuffer();
+    
+    // Clear renderPending flag when truly done
+    if (this.operationQueue.length === 0) {
+      this.renderPending = false;
+    }
   }
 
   connectedCallback() {
