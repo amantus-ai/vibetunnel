@@ -23,9 +23,6 @@ final class CloudflareService {
     
     // MARK: - Constants
     
-    /// Default port for the tunnel
-    private static let defaultPort = 4020
-    
     /// Periodic status check interval in seconds
     private static let statusCheckInterval: TimeInterval = 5.0
     
@@ -173,7 +170,7 @@ final class CloudflareService {
     }
 
     /// Starts a Quick Tunnel using cloudflared
-    func startQuickTunnel(port: Int = defaultPort) async throws {
+    func startQuickTunnel(port: Int) async throws {
         guard isInstalled, let binaryPath = cloudflaredPath else {
             throw CloudflareError.notInstalled
         }

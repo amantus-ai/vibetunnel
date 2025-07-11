@@ -19,7 +19,6 @@ struct CloudflareIntegrationSection: View {
     private let statusCheckInterval: TimeInterval = 10.0 // seconds
     private let startTimeoutInterval: TimeInterval = 15.0 // seconds
     private let stopTimeoutInterval: TimeInterval = 10.0 // seconds
-    private let defaultPort = 4020
 
     var body: some View {
         Section {
@@ -222,7 +221,7 @@ struct CloudflareIntegrationSection: View {
             }
             
             do {
-                let port = Int(serverPort) ?? defaultPort
+                let port = Int(serverPort) ?? 4020
                 logger.info("Calling startQuickTunnel with port \(port)")
                 try await cloudflareService.startQuickTunnel(port: port)
                 logger.info("Cloudflare tunnel started successfully, URL: \(cloudflareService.publicUrl ?? "nil")")
