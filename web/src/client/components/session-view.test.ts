@@ -859,15 +859,14 @@ describe('SessionView', () => {
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
 
-      // Check that terminal container height was calculated correctly
-      // Quick keys height (150) + keyboard height (300) + buffer (10) = 460px reduction
-      expect(element.terminalContainerHeight).toBe('calc(100% - 460px)');
+      // On mobile, height should be fixed at 85vh to prevent resize loops
+      expect(element.terminalContainerHeight).toBe('85vh');
 
-      // Should have called fitTerminal
-      expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
+      // On mobile, fitTerminal should NOT be called to prevent resize loops
+      expect(fitTerminalSpy).not.toHaveBeenCalled();
 
-      // Should have called scrollToBottom due to height reduction
-      expect(terminalElement.scrollToBottom).toHaveBeenCalled();
+      // On mobile, scrollToBottom should NOT be called either
+      expect(terminalElement.scrollToBottom).not.toHaveBeenCalled();
 
       vi.useRealTimers();
     });
@@ -887,8 +886,8 @@ describe('SessionView', () => {
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
 
-      // On desktop, quick keys should not affect terminal height
-      expect(element.terminalContainerHeight).toBe('100%');
+      // On desktop, quick keys should affect terminal height
+      expect(element.terminalContainerHeight).toBe('calc(100% - 150px)');
 
       vi.useRealTimers();
     });
@@ -905,7 +904,8 @@ describe('SessionView', () => {
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
 
-      expect(element.terminalContainerHeight).toBe('calc(100% - 310px)');
+      // On mobile, height should be fixed at 85vh
+      expect(element.terminalContainerHeight).toBe('85vh');
 
       // Now hide the keyboard
       (element as SessionViewTestInterface).keyboardHeight = 0;
@@ -914,8 +914,8 @@ describe('SessionView', () => {
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
 
-      // Height should be reset to 100%
-      expect(element.terminalContainerHeight).toBe('100%');
+      // On mobile, height remains fixed at 85vh
+      expect(element.terminalContainerHeight).toBe('85vh');
 
       vi.useRealTimers();
     });
@@ -958,11 +958,11 @@ describe('SessionView', () => {
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
 
-      // Should use the latest values: keyboard 300 + quick keys 150 + buffer 10 = 460px
-      expect(element.terminalContainerHeight).toBe('calc(100% - 460px)');
+      // On mobile, height should remain fixed at 85vh regardless of keyboard/quick keys
+      expect(element.terminalContainerHeight).toBe('85vh');
 
-      // Should have called fitTerminal only once due to debounce
-      expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
+      // On mobile, fitTerminal should NOT be called to prevent resize loops
+      expect(fitTerminalSpy).not.toHaveBeenCalled();
 
       vi.useRealTimers();
     });
