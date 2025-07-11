@@ -29,17 +29,17 @@ std::string wstring_to_string(const std::wstring &wide_string) {
   return result;
 }
 
-const char* from_wstring(const wchar_t* wstr) {
+std::string from_wstring(const wchar_t* wstr) {
   int bufferSize = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
   if (bufferSize <= 0) {
     return "";
   }
-  char *output = new char[bufferSize];
-  int status = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, output, bufferSize, NULL, NULL);
+  std::string result(bufferSize - 1, 0); // -1 to exclude null terminator
+  int status = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &result[0], bufferSize, NULL, NULL);
   if (status == 0) {
     return "";
   }
-  return output;
+  return result;
 }
 
 bool file_exists(std::wstring filename) {

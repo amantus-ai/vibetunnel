@@ -1,5 +1,5 @@
 {
-  "name": "@vibetunnel/vendored-pty",
+  "name": "node-pty",
   "version": "1.0.0",
   "description": "Minimal PTY implementation without threading - vendored from node-pty",
   "main": "lib/index.js",

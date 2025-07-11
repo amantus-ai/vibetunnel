@@ -17,7 +17,7 @@ namespace path_util {
 
 std::wstring to_wstring(const Napi::String& str);
 std::string wstring_to_string(const std::wstring &wide_string);
-const char* from_wstring(const wchar_t* wstr);
+std::string from_wstring(const wchar_t* wstr);
 bool file_exists(std::wstring filename);
 std::wstring get_shell_path(std::wstring filename);
 

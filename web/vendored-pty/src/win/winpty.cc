@@ -222,7 +222,7 @@ static Napi::Value PtyStartProcess(const Napi::CallbackInfo& info) {
   winpty_error_free(error_ptr);
 
   LPCWSTR coninPipeName = winpty_conin_name(pc);
-  std::string coninPipeNameStr(path_util::from_wstring(coninPipeName));
+  std::string coninPipeNameStr = path_util::from_wstring(coninPipeName);
   if (coninPipeNameStr.empty()) {
     CloseHandle(handle);
     winpty_free(pc);
@@ -230,7 +230,7 @@ static Napi::Value PtyStartProcess(const Napi::CallbackInfo& info) {
   }
 
   LPCWSTR conoutPipeName = winpty_conout_name(pc);
-  std::string conoutPipeNameStr(path_util::from_wstring(conoutPipeName));
+  std::string conoutPipeNameStr = path_util::from_wstring(conoutPipeName);
   if (conoutPipeNameStr.empty()) {
     CloseHandle(handle);
     winpty_free(pc);

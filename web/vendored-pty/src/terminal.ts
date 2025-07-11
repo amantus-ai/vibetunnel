@@ -105,7 +105,7 @@ export abstract class Terminal implements ITerminal {
       if (Array.isArray(value)) {
         value.forEach((v, i) => {
           if (typeof v !== type) {
-            throw new Error(`${name}[${i}] must be a ${type} (not a ${typeof v[i]})`);
+            throw new Error(`${name}[${i}] must be a ${type} (not a ${typeof v})`);
           }
         });
         return;
