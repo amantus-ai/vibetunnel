@@ -44,7 +44,7 @@ export class SidebarHeader extends HeaderBase {
             <terminal-icon size="20"></terminal-icon>
             <div class="min-w-0">
               <h1
-                class="text-sm font-bold text-accent-primary font-mono group-hover:underline truncate"
+                class="text-sm font-bold text-primary font-mono group-hover:underline truncate"
               >
                 VibeTunnel
               </h1>
@@ -58,7 +58,7 @@ export class SidebarHeader extends HeaderBase {
           <div class="flex items-center gap-2 flex-shrink-0">
             <!-- Create Session button with primary styling -->
             <button
-              class="p-2 text-accent-primary bg-accent-primary bg-opacity-10 border border-accent-primary hover:bg-opacity-20 rounded-md transition-all duration-200 flex-shrink-0"
+              class="p-2 text-primary bg-primary bg-opacity-10 border border-primary hover:bg-opacity-20 rounded-md transition-all duration-200 flex-shrink-0"
               @click=${this.handleCreateSession}
               title="Create New Session (⌘K)"
               data-testid="create-session-button"

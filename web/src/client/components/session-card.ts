@@ -373,7 +373,7 @@ export class SessionCard extends LitElement {
         <div
           class="flex justify-between items-center px-3 py-2 border-b border-base bg-gradient-to-r from-secondary to-tertiary"
         >
-          <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-accent-green">
+          <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-primary">
             <inline-edit
               .value=${this.session.name || this.session.command?.join(' ') || ''}
               .placeholder=${this.session.command?.join(' ') || ''}
@@ -392,7 +392,7 @@ export class SessionCard extends LitElement {
               this.session.status === 'running' && isAIAssistantSession(this.session)
                 ? html`
                   <button
-                    class="bg-transparent border-0 p-0 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-200 text-accent-primary"
+                    class="bg-transparent border-0 p-0 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-200 text-primary"
                     @click=${(e: Event) => {
                       e.stopPropagation();
                       this.handleMagicButton();
@@ -498,7 +498,7 @@ export class SessionCard extends LitElement {
                 this.session.status === 'running' &&
                 this.isActive &&
                 !this.session.activityStatus?.specificStatus
-                  ? html`<span class="text-accent-green animate-pulse ml-1">●</span>`
+                  ? html`<span class="text-primary animate-pulse ml-1">●</span>`
                   : ''
               }
             </span>
@@ -506,7 +506,7 @@ export class SessionCard extends LitElement {
               this.session.pid
                 ? html`
                   <span
-                    class="cursor-pointer hover:text-accent-green transition-colors text-xs flex-shrink-0 ml-2 inline-flex items-center gap-1"
+                    class="cursor-pointer hover:text-primary transition-colors text-xs flex-shrink-0 ml-2 inline-flex items-center gap-1"
                     @click=${this.handlePidClick}
                     title="Click to copy PID"
                   >

@@ -27,7 +27,7 @@ export class FullHeader extends HeaderBase {
           >
             <terminal-icon size="24"></terminal-icon>
             <div class="flex items-baseline gap-2">
-              <h1 class="text-xl font-bold text-accent-green font-mono group-hover:underline">
+              <h1 class="text-xl font-bold text-primary font-mono group-hover:underline">
                 VibeTunnel
               </h1>
               <p class="text-text-muted text-xs font-mono">
@@ -41,7 +41,7 @@ export class FullHeader extends HeaderBase {
               @open-settings=${() => this.dispatchEvent(new CustomEvent('open-settings'))}
             ></notification-status>
             <button
-              class="p-2 text-text border border-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
+              class="p-2 text-text border border-border hover:border-primary hover:text-primary rounded-lg transition-all duration-200"
               @click=${() => this.dispatchEvent(new CustomEvent('open-file-browser'))}
               title="Browse Files (⌘O)"
             >
@@ -52,7 +52,7 @@ export class FullHeader extends HeaderBase {
               </svg>
             </button>
             <button
-              class="p-2 text-text border border-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
+              class="p-2 text-text border border-border hover:border-primary hover:text-primary rounded-lg transition-all duration-200"
               @click=${this.handleScreenshare}
               title="Start Screenshare"
             >
@@ -64,7 +64,7 @@ export class FullHeader extends HeaderBase {
               </svg>
             </button>
             <button
-              class="p-2 bg-accent-green text-text-bright hover:bg-accent-green-light rounded-lg transition-all duration-200 vt-create-button"
+              class="p-2 bg-primary text-text-bright hover:bg-primary-light rounded-lg transition-all duration-200 vt-create-button"
               @click=${this.handleCreateSession}
               title="Create New Session"
               data-testid="create-session-button"

@@ -29,38 +29,11 @@ module.exports = {
                 "primary-muted": "#10B98133",
                 "primary-glow": "#10B98166",
                 
-                // Legacy dark theme colors for gradual migration
-                "dark-bg": "#0a0a0a",
-                "dark-bg-secondary": "#141414",
-                "dark-bg-tertiary": "#1f1f1f",
-                "dark-bg-elevated": "#262626",
-                "dark-surface": "#1a1a1a",
-                "dark-surface-hover": "#2a2a2a",
-                "dark-border": "#2a2a2a",
-                "dark-border-light": "#3a3a3a",
-                "dark-border-focus": "#4a4a4a",
-                "dark-text": "#e4e4e4",
-                "dark-text-bright": "#ffffff",
-                "dark-text-muted": "#a3a3a3",
-                "dark-text-dim": "#737373",
-                
                 // Status colors
                 "status-error": "#EF4444",
                 "status-warning": "#F59E0B",
                 "status-success": "#10B981",
                 "status-info": "#3B82F6",
-                
-                // Legacy mappings for gradual migration
-                "accent-primary": "#10B981",
-                "accent-primary-dark": "#059669",
-                "accent-primary-darker": "#047857",
-                "accent-primary-light": "#34D399",
-                "accent-primary-glow": "#10B98166",
-                "accent-green": "#10B981",
-                "accent-green-dark": "#059669",
-                "accent-green-darker": "#047857",
-                "accent-green-light": "#34D399",
-                "accent-green-glow": "#10B98166",
             },
             boxShadow: {
                 // Unified glow effects with primary color
@@ -68,13 +41,6 @@ module.exports = {
                 'glow-sm': '0 0 10px rgba(16, 185, 129, 0.3)',
                 'glow-lg': '0 0 30px rgba(16, 185, 129, 0.5)',
                 'glow-intense': '0 0 40px rgba(16, 185, 129, 0.6)',
-                // Legacy mappings
-                'glow-primary': '0 0 20px rgba(16, 185, 129, 0.4)',
-                'glow-primary-sm': '0 0 10px rgba(16, 185, 129, 0.3)',
-                'glow-primary-lg': '0 0 30px rgba(16, 185, 129, 0.5)',
-                'glow-green': '0 0 20px rgba(16, 185, 129, 0.4)',
-                'glow-green-sm': '0 0 10px rgba(16, 185, 129, 0.3)',
-                'glow-green-lg': '0 0 30px rgba(16, 185, 129, 0.5)',
                 // Status-specific glow effects
                 'glow-error': '0 0 20px rgba(239, 68, 68, 0.4)',
                 'glow-error-sm': '0 0 10px rgba(239, 68, 68, 0.3)',
@@ -88,7 +54,6 @@ module.exports = {
                 'elevated': '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)',
             },
             animation: {
-                'pulse-green': 'pulseGreen 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'pulse-primary': 'pulsePrimary 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'slide-in-right': 'slideInRight 0.3s ease-out',
                 'slide-in-bottom': 'slideInBottom 0.3s ease-out',
@@ -96,14 +61,6 @@ module.exports = {
                 'scale-in': 'scaleIn 0.2s ease-out',
             },
             keyframes: {
-                pulseGreen: {
-                    '0%, 100%': {
-                        opacity: '1',
-                    },
-                    '50%': {
-                        opacity: '.8',
-                    },
-                },
                 pulsePrimary: {
                     '0%, 100%': {
                         opacity: '1',

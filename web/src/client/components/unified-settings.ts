@@ -290,7 +290,7 @@ export class UnifiedSettings extends LitElement {
         >
           <!-- Header -->
           <div class="p-4 pb-4 border-b border-base relative flex-shrink-0">
-            <h2 class="text-accent-green text-lg font-bold">Settings</h2>
+            <h2 class="text-primary text-lg font-bold">Settings</h2>
             <button
               class="absolute top-4 right-4 text-muted hover:text-primary transition-colors p-1"
               @click=${this.handleClose}
@@ -361,8 +361,8 @@ export class UnifiedSettings extends LitElement {
                   aria-checked="${this.isNotificationsEnabled}"
                   @click=${this.handleToggleNotifications}
                   ?disabled=${this.isLoading}
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-base ${
-                    this.isNotificationsEnabled ? 'bg-accent-green' : 'bg-border'
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
+                    this.isNotificationsEnabled ? 'bg-primary' : 'bg-border'
                   }"
                 >
                   <span
@@ -434,8 +434,8 @@ export class UnifiedSettings extends LitElement {
           role="switch"
           aria-checked="${this.notificationPreferences[key]}"
           @click=${() => this.handleNotificationPreferenceChange(key, !this.notificationPreferences[key])}
-          class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-base ${
-            this.notificationPreferences[key] ? 'bg-accent-green' : 'bg-border'
+          class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
+            this.notificationPreferences[key] ? 'bg-primary' : 'bg-border'
           }"
         >
           <span
@@ -470,8 +470,8 @@ export class UnifiedSettings extends LitElement {
                   role="switch"
                   aria-checked="${this.appPreferences.useDirectKeyboard}"
                   @click=${() => this.handleAppPreferenceChange('useDirectKeyboard', !this.appPreferences.useDirectKeyboard)}
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-base ${
-                    this.appPreferences.useDirectKeyboard ? 'bg-accent-green' : 'bg-border'
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
+                    this.appPreferences.useDirectKeyboard ? 'bg-primary' : 'bg-border'
                   }"
                 >
                   <span
@@ -497,8 +497,8 @@ export class UnifiedSettings extends LitElement {
             role="switch"
             aria-checked="${this.appPreferences.showLogLink}"
             @click=${() => this.handleAppPreferenceChange('showLogLink', !this.appPreferences.showLogLink)}
-            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-base ${
-              this.appPreferences.showLogLink ? 'bg-accent-green' : 'bg-border'
+            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
+              this.appPreferences.showLogLink ? 'bg-primary' : 'bg-border'
             }"
           >
             <span

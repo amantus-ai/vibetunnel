@@ -427,7 +427,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
+                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                   @mousedown=${(e: Event) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -479,7 +479,7 @@ export class TerminalQuickKeys extends LitElement {
                     <button
                       type="button"
                       tabindex="-1"
-                      class="ctrl-shortcut-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-accent-green transition-all whitespace-nowrap ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
+                      class="ctrl-shortcut-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
                       @mousedown=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -514,7 +514,7 @@ export class TerminalQuickKeys extends LitElement {
                     <button
                       type="button"
                       tabindex="-1"
-                      class="func-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-accent-green transition-all whitespace-nowrap"
+                      class="func-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap"
                       @mousedown=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -548,7 +548,7 @@ export class TerminalQuickKeys extends LitElement {
                     <button
                       type="button"
                       tabindex="-1"
-                      class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
+                      class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
                       @mousedown=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -583,7 +583,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-0.5' : 'py-1'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
+                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-0.5' : 'py-1'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                   @mousedown=${(e: Event) => {
                     e.preventDefault();
                     e.stopPropagation();

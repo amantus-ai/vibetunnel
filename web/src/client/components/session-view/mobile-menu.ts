@@ -207,7 +207,7 @@ export class MobileMenu extends LitElement {
     return html`
       <div class="relative w-[44px] flex-shrink-0">
         <button
-          class="p-2 ${this.showMenu ? 'text-accent-primary border-accent-primary' : 'text-primary border-base'} hover:border-accent-primary hover:text-accent-primary rounded-lg"
+          class="p-2 ${this.showMenu ? 'text-primary border-primary' : 'text-primary border-base'} hover:border-primary hover:text-primary rounded-lg"
           @click=${this.toggleMenu}
           @keydown=${this.handleMenuButtonKeyDown}
           title="More actions"
@@ -233,7 +233,7 @@ export class MobileMenu extends LitElement {
         
         <!-- New Session -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 0 ? 'bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 0 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onCreateSession)}
           data-testid="mobile-new-session"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -248,7 +248,7 @@ export class MobileMenu extends LitElement {
         
         <!-- File Browser -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 1 ? 'bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 1 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenFileBrowser)}
           data-testid="mobile-file-browser"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -261,7 +261,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Screenshare -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 2 ? 'bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 2 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onScreenshare)}
           data-testid="mobile-screenshare"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -277,7 +277,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Width Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 3 ? 'bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 3 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onMaxWidthToggle)}
           data-testid="mobile-width-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -290,7 +290,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Theme Toggle -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 4 ? 'bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 4 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleThemeChange()}
           data-testid="mobile-theme-toggle"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -301,7 +301,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 5 ? 'bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 5 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenSettings)}
           data-testid="mobile-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"

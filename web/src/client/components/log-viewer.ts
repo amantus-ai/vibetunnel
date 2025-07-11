@@ -284,7 +284,7 @@ export class LogViewer extends LitElement {
         <div class="flex items-center justify-center h-screen bg-base text-primary">
           <div class="text-center">
             <div
-              class="animate-spin rounded-full h-12 w-12 border-4 border-accent-green border-t-transparent mb-4"
+              class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4"
             ></div>
             <div>Loading logs...</div>
           </div>
@@ -305,7 +305,7 @@ export class LogViewer extends LitElement {
             <div class="flex items-center gap-2 mb-3">
               <!-- Back button -->
               <button
-                class="p-2 bg-base border border-base rounded text-sm text-primary hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-1 flex-shrink-0"
+                class="p-2 bg-base border border-base rounded text-sm text-primary hover:border-primary hover:text-primary transition-colors flex items-center gap-1 flex-shrink-0"
                 @click=${() => {
                   window.location.href = '/';
                 }}
@@ -323,7 +323,7 @@ export class LogViewer extends LitElement {
               </button>
 
               <h1
-                class="text-base font-bold text-accent-green flex items-center gap-2 flex-shrink-0"
+                class="text-base font-bold text-primary flex items-center gap-2 flex-shrink-0"
               >
                 <terminal-icon size="20"></terminal-icon>
                 <span>System Logs</span>
@@ -334,7 +334,7 @@ export class LogViewer extends LitElement {
                 <button
                   class="p-2 text-xs uppercase font-bold rounded transition-colors ${
                     this.autoScroll
-                      ? 'bg-accent-green text-base'
+                      ? 'bg-primary text-base'
                       : 'bg-tertiary text-muted border border-base'
                   }"
                   @click=${() => {
@@ -361,7 +361,7 @@ export class LogViewer extends LitElement {
               <!-- Search input -->
               <input
                 type="text"
-                class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary placeholder-muted focus:outline-none focus:border-accent-green transition-colors w-full"
+                class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary placeholder-muted focus:outline-none focus:border-primary transition-colors w-full"
                 placeholder="Filter logs..."
                 .value=${this.filter}
                 @input=${(e: Event) => {
@@ -422,7 +422,7 @@ export class LogViewer extends LitElement {
                   <button
                     class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${
                       this.showServer
-                        ? 'bg-accent-green text-base'
+                        ? 'bg-primary text-base'
                         : 'bg-tertiary text-muted border border-base'
                     }"
                     @click=${() => {
@@ -441,7 +441,7 @@ export class LogViewer extends LitElement {
           <div class="hidden sm:flex items-center gap-3">
             <!-- Back button -->
             <button
-              class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-2 flex-shrink-0"
+              class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary hover:border-primary hover:text-primary transition-colors flex items-center gap-2 flex-shrink-0"
               @click=${() => {
                 window.location.href = '/';
               }}
@@ -459,7 +459,7 @@ export class LogViewer extends LitElement {
               Back
             </button>
 
-            <h1 class="text-lg font-bold text-accent-green flex items-center gap-2 flex-shrink-0">
+            <h1 class="text-lg font-bold text-primary flex items-center gap-2 flex-shrink-0">
               <terminal-icon size="24"></terminal-icon>
               <span>System Logs</span>
             </h1>
@@ -468,7 +468,7 @@ export class LogViewer extends LitElement {
               <!-- Search input -->
               <input
                 type="text"
-                class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary placeholder-muted focus:outline-none focus:border-accent-green transition-colors flex-1 sm:flex-initial sm:w-64 md:w-80"
+                class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary placeholder-muted focus:outline-none focus:border-primary transition-colors flex-1 sm:flex-initial sm:w-64 md:w-80"
                 placeholder="Filter logs..."
                 .value=${this.filter}
                 @input=${(e: Event) => {
@@ -517,7 +517,7 @@ export class LogViewer extends LitElement {
                 <button
                   class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                     this.showServer
-                      ? 'bg-accent-green text-base'
+                      ? 'bg-primary text-base'
                       : 'bg-tertiary text-muted border border-base'
                   }"
                   @click=${() => {
@@ -532,7 +532,7 @@ export class LogViewer extends LitElement {
               <button
                 class="px-3 py-1 text-xs uppercase font-bold rounded transition-colors ${
                   this.autoScroll
-                    ? 'bg-accent-green text-base'
+                    ? 'bg-primary text-base'
                     : 'bg-tertiary text-muted border border-base'
                 }"
                 @click=${() => {
@@ -584,7 +584,7 @@ export class LogViewer extends LitElement {
                               ? 'text-status-warning bg-status-warning/20 px-1 rounded font-bold'
                               : log.level === 'debug'
                                 ? 'text-muted'
-                                : 'text-accent-green'
+                                : 'text-primary'
                         }"
                         >${
                           log.level === 'error'
@@ -600,7 +600,7 @@ export class LogViewer extends LitElement {
                       <!-- Source indicator -->
                       <span
                         class="flex-shrink-0 ${
-                          log.isClient ? 'text-status-warning font-bold' : 'text-accent-green'
+                          log.isClient ? 'text-status-warning font-bold' : 'text-primary'
                         }"
                         >${log.isClient ? '◆ C' : '▸ S'}</span
                       >
@@ -642,11 +642,11 @@ export class LogViewer extends LitElement {
                                 ? 'text-status-warning font-bold'
                                 : log.level === 'debug'
                                   ? 'text-muted'
-                                  : 'text-accent-green'
+                                  : 'text-primary'
                           } uppercase"
                           >${log.level}</span
                         >
-                        <span class="${log.isClient ? 'text-status-warning' : 'text-accent-green'}"
+                        <span class="${log.isClient ? 'text-status-warning' : 'text-primary'}"
                           >${log.isClient ? '[C]' : '[S]'}</span
                         >
                         <span class="text-muted">${log.module}</span>
@@ -715,7 +715,7 @@ export class LogViewer extends LitElement {
           </div>
           <div class="flex gap-2">
             <button
-              class="px-3 py-1 bg-base border border-base rounded hover:border-accent-green hover:text-accent-green transition-colors"
+              class="px-3 py-1 bg-base border border-base rounded hover:border-primary hover:text-primary transition-colors"
               @click=${this.downloadLogs}
             >
               Download

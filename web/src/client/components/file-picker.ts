@@ -228,11 +228,11 @@ export class FilePicker extends LitElement {
             <div class="mb-6">
               <div class="flex items-center justify-between mb-3">
                 <span class="text-sm text-muted font-mono">Uploading...</span>
-                <span class="text-sm text-accent-primary font-mono font-medium">${Math.round(this.uploadProgress)}%</span>
+                <span class="text-sm text-primary font-mono font-medium">${Math.round(this.uploadProgress)}%</span>
               </div>
               <div class="w-full bg-secondary rounded-full h-2 overflow-hidden">
                 <div 
-                  class="bg-gradient-to-r from-accent-primary to-accent-primary-light h-2 rounded-full transition-all duration-300 shadow-glow-primary-sm" 
+                  class="bg-gradient-to-r from-primary to-primary-light h-2 rounded-full transition-all duration-300 shadow-glow-sm" 
                   style="width: ${this.uploadProgress}%"
                 ></div>
               </div>
@@ -242,7 +242,7 @@ export class FilePicker extends LitElement {
             <div class="space-y-4">
               <button
                 @click=${this.handleFileClick}
-                class="w-full bg-accent-primary text-bg font-medium py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-all duration-200 hover:bg-accent-primary-light hover:shadow-glow-primary active:scale-95"
+                class="w-full bg-primary text-bg font-medium py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-all duration-200 hover:bg-primary-light hover:shadow-glow active:scale-95"
               >
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-5L9 2H4z" clip-rule="evenodd"/>
@@ -256,7 +256,7 @@ export class FilePicker extends LitElement {
           <div class="mt-6 pt-6 border-t border-base">
             <button
               @click=${this.handleCancel}
-              class="w-full bg-secondary border border-base text-primary font-mono py-3 px-6 rounded-lg transition-all duration-200 hover:bg-surface hover:border-accent-green active:scale-95"
+              class="w-full bg-secondary border border-base text-primary font-mono py-3 px-6 rounded-lg transition-all duration-200 hover:bg-surface hover:border-primary active:scale-95"
               ?disabled=${this.uploading}
             >
               Cancel

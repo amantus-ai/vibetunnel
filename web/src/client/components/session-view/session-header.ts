@@ -104,7 +104,7 @@ export class SessionHeader extends LitElement {
             this.showSidebarToggle && this.sidebarCollapsed
               ? html`
                 <button
-                  class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-accent-primary hover:bg-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+                  class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
                   @click=${() => this.onSidebarToggle?.()}
                   title="Show sidebar (⌘B)"
                   aria-label="Show sidebar"
@@ -119,7 +119,7 @@ export class SessionHeader extends LitElement {
                 
                 <!-- Create Session button (desktop only) -->
                 <button
-                  class="hidden sm:flex bg-accent-primary bg-opacity-10 border border-accent-primary text-accent-primary rounded-lg p-2 font-mono transition-all duration-200 hover:bg-accent-primary hover:text-base hover:shadow-glow-primary-sm flex-shrink-0"
+                  class="hidden sm:flex bg-primary bg-opacity-10 border border-primary text-primary rounded-lg p-2 font-mono transition-all duration-200 hover:bg-primary hover:text-base hover:shadow-glow-primary-sm flex-shrink-0"
                   @click=${() => this.onCreateSession?.()}
                   title="Create New Session (⌘K)"
                   data-testid="create-session-button"
@@ -145,7 +145,7 @@ export class SessionHeader extends LitElement {
             this.showBackButton
               ? html`
                 <button
-                  class="bg-elevated border border-base rounded-lg px-3 py-1.5 font-mono text-xs text-muted transition-all duration-200 hover:text-accent-primary hover:bg-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+                  class="bg-elevated border border-base rounded-lg px-3 py-1.5 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
                   @click=${() => this.onBack?.()}
                 >
                   Back
@@ -175,7 +175,7 @@ export class SessionHeader extends LitElement {
                   isAIAssistantSession(this.session)
                     ? html`
                       <button
-                        class="bg-transparent border-0 p-0 cursor-pointer transition-opacity duration-200 text-accent-primary magic-button flex-shrink-0 ${this.isHovered ? 'opacity-50 hover:opacity-100' : 'opacity-0'}"
+                        class="bg-transparent border-0 p-0 cursor-pointer transition-opacity duration-200 text-primary magic-button flex-shrink-0 ${this.isHovered ? 'opacity-50 hover:opacity-100' : 'opacity-0'}"
                         @click=${(e: Event) => {
                           e.stopPropagation();
                           this.handleMagicButton();
@@ -230,7 +230,7 @@ export class SessionHeader extends LitElement {
             ></theme-toggle-icon>
             
             <button
-              class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-accent-primary hover:bg-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+              class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
               @click=${(e: Event) => {
                 e.stopPropagation();
                 this.onOpenFileBrowser?.();
@@ -245,7 +245,7 @@ export class SessionHeader extends LitElement {
               </svg>
             </button>
             <button
-              class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-accent-primary hover:bg-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
+              class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
               @click=${() => this.onScreenshare?.()}
               title="Start Screenshare"
             >
@@ -257,7 +257,7 @@ export class SessionHeader extends LitElement {
               </svg>
             </button>
             <button
-              class="bg-elevated border border-base rounded-lg px-3 py-2 font-mono text-xs text-muted transition-all duration-200 hover:text-accent-primary hover:bg-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0 width-selector-button"
+              class="bg-elevated border border-base rounded-lg px-3 py-2 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0 width-selector-button"
               @click=${() => this.onMaxWidthToggle?.()}
               title="${this.widthTooltip}"
             >

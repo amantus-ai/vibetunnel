@@ -1269,7 +1269,7 @@ export class SessionView extends LitElement {
                   class="absolute inset-0 bg-bg bg-opacity-90 backdrop-filter backdrop-blur-sm flex items-center justify-center z-10 animate-fade-in"
                 >
                   <div class="text-primary font-mono text-center">
-                    <div class="text-2xl mb-3 text-accent-primary animate-pulse-primary">${this.loadingAnimationManager.getLoadingText()}</div>
+                    <div class="text-2xl mb-3 text-primary animate-pulse-primary">${this.loadingAnimationManager.getLoadingText()}</div>
                     <div class="text-sm text-muted">Connecting to session...</div>
                   </div>
                 </div>
@@ -1493,20 +1493,20 @@ export class SessionView extends LitElement {
           this.isDragOver
             ? html`
               <div class="fixed inset-0 bg-bg bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
-                <div class="bg-elevated border-2 border-dashed border-accent-primary rounded-xl p-10 text-center max-w-md mx-4 shadow-2xl animate-scale-in">
+                <div class="bg-elevated border-2 border-dashed border-primary rounded-xl p-10 text-center max-w-md mx-4 shadow-2xl animate-scale-in">
                   <div class="relative mb-6">
-                    <div class="w-24 h-24 mx-auto bg-gradient-to-br from-accent-primary to-accent-primary-light rounded-full flex items-center justify-center shadow-glow-primary">
+                    <div class="w-24 h-24 mx-auto bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center shadow-glow">
                       <svg class="w-12 h-12 text-base" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
                       </svg>
                     </div>
-                    <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-accent-primary to-transparent opacity-50"></div>
+                    <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"></div>
                   </div>
                   <h3 class="text-2xl font-bold text-primary mb-3">Drop files here</h3>
                   <p class="text-sm text-muted mb-4">Files will be uploaded and the path sent to terminal</p>
                   <div class="inline-flex items-center gap-2 text-xs text-dim bg-secondary px-4 py-2 rounded-lg">
                     <span class="opacity-75">Or press</span>
-                    <kbd class="px-2 py-1 bg-tertiary border border-base rounded text-accent-primary font-mono text-xs">⌘V</kbd>
+                    <kbd class="px-2 py-1 bg-tertiary border border-base rounded text-primary font-mono text-xs">⌘V</kbd>
                     <span class="opacity-75">to paste from clipboard</span>
                   </div>
                 </div>
