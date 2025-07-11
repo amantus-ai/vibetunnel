@@ -66,7 +66,7 @@ export class FullHeader extends HeaderBase {
               </svg>
             </button>
             <button
-              class="p-2 bg-accent-green text-white hover:bg-accent-green-light rounded-lg transition-all duration-200 vt-create-button"
+              class="p-2 bg-accent-green text-text-bright hover:bg-accent-green-light rounded-lg transition-all duration-200 vt-create-button"
               @click=${this.handleCreateSession}
               title="Create New Session"
               data-testid="create-session-button"

@@ -1252,7 +1252,7 @@ export class SessionView extends LitElement {
 
         <!-- Enhanced Terminal Container -->
         <div
-          class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-dark-bg overflow-hidden min-h-0 relative ${
+          class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-bg overflow-hidden min-h-0 relative ${
             this.session?.status === 'exited' ? 'session-exited opacity-90' : ''
           } ${
             // Add safe area padding for landscape mode on mobile to handle notch
@@ -1266,7 +1266,7 @@ export class SessionView extends LitElement {
               ? html`
                 <!-- Enhanced Loading overlay -->
                 <div
-                  class="absolute inset-0 bg-dark-bg bg-opacity-90 backdrop-filter backdrop-blur-sm flex items-center justify-center z-10 animate-fade-in"
+                  class="absolute inset-0 bg-bg bg-opacity-90 backdrop-filter backdrop-blur-sm flex items-center justify-center z-10 animate-fade-in"
                 >
                   <div class="text-primary font-mono text-center">
                     <div class="text-2xl mb-3 text-accent-primary animate-pulse-primary">${this.loadingAnimationManager.getLoadingText()}</div>
@@ -1492,7 +1492,7 @@ export class SessionView extends LitElement {
         ${
           this.isDragOver
             ? html`
-              <div class="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
+              <div class="fixed inset-0 bg-bg bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
                 <div class="bg-elevated border-2 border-dashed border-accent-primary rounded-xl p-10 text-center max-w-md mx-4 shadow-2xl animate-scale-in">
                   <div class="relative mb-6">
                     <div class="w-24 h-24 mx-auto bg-gradient-to-br from-accent-primary to-accent-primary-light rounded-full flex items-center justify-center shadow-glow-primary">

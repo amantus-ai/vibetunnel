@@ -272,14 +272,14 @@ export class TerminalQuickKeys extends LitElement {
         
         /* The actual bar with buttons */
         .quick-keys-bar {
-          background: #0a0a0a;
-          border-top: 1px solid #2a2a2a;
+          background: rgb(var(--color-bg-base));
+          border-top: 1px solid rgb(var(--color-border-base));
           padding: 0.5rem 0.25rem;
           /* Prevent iOS from adding its own styling */
           -webkit-appearance: none;
           appearance: none;
           /* Add shadow for visibility */
-          box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+          box-shadow: 0 -2px 10px rgb(0 0 0 / 0.5);
         }
         
         /* Quick key buttons */
@@ -294,12 +294,12 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Modifier key styling */
         .modifier-key {
-          background-color: #141414;
-          border-color: #444;
+          background-color: rgb(var(--color-bg-tertiary));
+          border-color: rgb(var(--color-border-base));
         }
         
         .modifier-key:hover {
-          background-color: #1f1f1f;
+          background-color: rgb(var(--color-bg-secondary));
         }
         
         /* Active modifier styling */
@@ -321,23 +321,23 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Combo key styling (like ^C, ^Z) */
         .combo-key {
-          background-color: #141414;
-          border-color: #555;
+          background-color: rgb(var(--color-bg-tertiary));
+          border-color: rgb(var(--color-border-accent));
         }
         
         .combo-key:hover {
-          background-color: #1f1f1f;
+          background-color: rgb(var(--color-bg-secondary));
         }
         
         /* Special key styling (like ABC) */
         .special-key {
-          background-color: rgb(16, 185, 129);
-          border-color: rgb(16, 185, 129);
-          color: white;
+          background-color: rgb(var(--color-primary));
+          border-color: rgb(var(--color-primary));
+          color: rgb(var(--color-text-bright));
         }
         
         .special-key:hover {
-          background-color: rgb(5, 150, 105);
+          background-color: rgb(var(--color-primary-hover));
         }
         
         /* Function key styling */
@@ -351,22 +351,22 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Toggle button styling */
         .toggle-key {
-          background-color: #1f1f1f;
-          border-color: #666;
+          background-color: rgb(var(--color-bg-secondary));
+          border-color: rgb(var(--color-border-accent));
         }
         
         .toggle-key:hover {
-          background-color: #2a2a2a;
+          background-color: rgb(var(--color-bg-tertiary));
         }
         
         .toggle-key.active {
-          background-color: rgb(16, 185, 129);
-          border-color: rgb(16, 185, 129);
-          color: white;
+          background-color: rgb(var(--color-primary));
+          border-color: rgb(var(--color-primary));
+          color: rgb(var(--color-text-bright));
         }
         
         .toggle-key.active:hover {
-          background-color: rgb(5, 150, 105);
+          background-color: rgb(var(--color-primary-hover));
         }
         
         /* Ctrl shortcut button styling */

@@ -20,6 +20,11 @@
   --color-text-bright: 0 0 0; /* #000000 - Pure black for emphasis */
   --color-text-muted: 100 100 100; /* #646464 - Muted gray */
   --color-text-dim: 150 150 150; /* #969696 - Dimmer gray */
+  
+  /* Primary color (same across themes) */
+  --color-primary: 16 185 129; /* #10B981 - VibeTunnel green */
+  --color-primary-hover: 5 150 105; /* #059669 */
+  --color-primary-dark: 4 120 87; /* #047857 */
 
   /* Breakpoints */
   --vt-breakpoint-mobile: 768px;
@@ -65,6 +70,11 @@
   --color-text-bright: 255 255 255; /* #ffffff */
   --color-text-muted: 163 163 163; /* #a3a3a3 */
   --color-text-dim: 115 115 115; /* #737373 */
+  
+  /* Primary color (same as light mode) */
+  --color-primary: 16 185 129; /* #10B981 */
+  --color-primary-hover: 5 150 105; /* #059669 */
+  --color-primary-dark: 4 120 87; /* #047857 */
 }
 
 /* System preference detection */
@@ -83,6 +93,9 @@
     --color-text-bright: 255 255 255;
     --color-text-muted: 163 163 163;
     --color-text-dim: 115 115 115;
+    --color-primary: 16 185 129;
+    --color-primary-hover: 5 150 105;
+    --color-primary-dark: 4 120 87;
   }
 }
 
@@ -96,7 +109,7 @@
   /* Default focus styles */
   :focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.3);
   }
 
   /* iOS Safe Area Support */
@@ -122,7 +135,7 @@
   /* Glowing terminal icon */
   .terminal-icon {
     @apply text-primary;
-    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.6));
+    filter: drop-shadow(0 0 10px rgb(var(--color-primary) / 0.6));
   }
 
   /* Input fields with unified style */

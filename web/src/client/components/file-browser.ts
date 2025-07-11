@@ -500,8 +500,8 @@ export class FileBrowser extends LitElement {
     }
 
     return html`
-      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center" style="z-index: ${Z_INDEX.FILE_BROWSER};" @click=${this.handleCancel}>
-        <div class="fixed inset-0 bg-dark-bg flex flex-col" style="z-index: ${Z_INDEX.FILE_BROWSER};" @click=${(e: Event) => e.stopPropagation()}>
+      <div class="fixed inset-0 bg-bg/80 backdrop-blur-sm flex items-center justify-center" style="z-index: ${Z_INDEX.FILE_BROWSER};" @click=${this.handleCancel}>
+        <div class="fixed inset-0 bg-bg flex flex-col" style="z-index: ${Z_INDEX.FILE_BROWSER};" @click=${(e: Event) => e.stopPropagation()}>
         ${
           this.isMobile && this.mobileView === 'preview'
             ? html`
@@ -542,7 +542,7 @@ export class FileBrowser extends LitElement {
                 </svg>
                 <span>Back</span>
               </button>
-              <div class="text-dark-text min-w-0 flex-1 overflow-hidden">
+              <div class="text-primary min-w-0 flex-1 overflow-hidden">
                 ${
                   this.editingPath
                     ? html`
@@ -601,7 +601,7 @@ export class FileBrowser extends LitElement {
                 <div class="flex gap-2">
                   <button
                     class="btn-secondary text-xs px-2 py-1 font-mono ${
-                      this.gitFilter === 'changed' ? 'bg-primary text-black' : ''
+                      this.gitFilter === 'changed' ? 'bg-primary text-text-bright' : ''
                     }"
                     @click=${this.toggleGitFilter}
                     title="Show only Git changes"
@@ -610,7 +610,7 @@ export class FileBrowser extends LitElement {
                   </button>
                   <button
                     class="btn-secondary text-xs px-2 py-1 font-mono ${
-                      this.showHidden ? 'bg-primary text-black' : ''
+                      this.showHidden ? 'bg-primary text-text-bright' : ''
                     }"
                     @click=${this.toggleHidden}
                     title="Show hidden files"
@@ -808,7 +808,7 @@ export class FileBrowser extends LitElement {
                             ? html`
                               <button
                                 class="btn-secondary text-xs px-2 py-1 font-mono ${
-                                  this.showDiff ? 'bg-primary text-black' : ''
+                                  this.showDiff ? 'bg-primary text-text-bright' : ''
                                 } ${
                                   this.isMobile &&
                                   this.selectedFile.type === 'file' &&

@@ -486,10 +486,10 @@ export class UnifiedSettings extends LitElement {
         }
 
         <!-- Show log link -->
-        <div class="flex items-center justify-between p-4 bg-dark-bg-tertiary rounded-lg border border-dark-border">
+        <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-base">
           <div class="flex-1">
             <label class="text-primary font-medium">Show Log Link</label>
-            <p class="text-dark-text-muted text-xs mt-1">
+            <p class="text-muted text-xs mt-1">
               Display log link for debugging
             </p>
           </div>

@@ -264,17 +264,17 @@ export class LogViewer extends LitElement {
 
         /* Show scrollbar on hover */
         .log-container:hover::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
+          background: rgb(255 255 255 / 0.2);
         }
 
         .log-container::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
+          background: rgb(255 255 255 / 0.3);
         }
 
         /* Firefox */
         .log-container:hover {
           scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+          scrollbar-color: rgb(255 255 255 / 0.2) transparent;
         }
       </style>
     `;
@@ -505,7 +505,7 @@ export class LogViewer extends LitElement {
                 <button
                   class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                     this.showClient
-                      ? 'bg-orange-500 text-base'
+                      ? 'bg-status-warning text-base'
                       : 'bg-tertiary text-muted border border-base'
                   }"
                   @click=${() => {
@@ -565,7 +565,7 @@ export class LogViewer extends LitElement {
                   return html`
                   <div
                     class="group hover:bg-secondary/50 transition-colors rounded ${
-                      log.isClient ? 'bg-orange-500/5 pl-2' : 'pl-2'
+                      log.isClient ? 'bg-status-warning/5 pl-2' : 'pl-2'
                     }"
                   >
                     <!-- Desktop layout (hidden on mobile) -->
@@ -579,12 +579,12 @@ export class LogViewer extends LitElement {
                       <span
                         class="w-10 text-center font-mono uppercase tracking-wider flex-shrink-0 ${
                           log.level === 'error'
-                            ? 'text-red-500 bg-red-500/20 px-1 rounded font-bold'
+                            ? 'text-status-error bg-status-error/20 px-1 rounded font-bold'
                             : log.level === 'warn'
-                              ? 'text-yellow-500 bg-yellow-500/20 px-1 rounded font-bold'
+                              ? 'text-status-warning bg-status-warning/20 px-1 rounded font-bold'
                               : log.level === 'debug'
-                                ? 'text-gray-600'
-                                : 'text-gray-500'
+                                ? 'text-muted'
+                                : 'text-accent-green'
                         }"
                         >${
                           log.level === 'error'
@@ -600,29 +600,29 @@ export class LogViewer extends LitElement {
                       <!-- Source indicator -->
                       <span
                         class="flex-shrink-0 ${
-                          log.isClient ? 'text-orange-400 font-bold' : 'text-green-600'
+                          log.isClient ? 'text-status-warning font-bold' : 'text-accent-green'
                         }"
                         >${log.isClient ? '◆ C' : '▸ S'}</span
                       >
 
                       <!-- Module -->
-                      <span class="text-gray-600 flex-shrink-0 font-mono">${log.module}</span>
+                      <span class="text-muted flex-shrink-0 font-mono">${log.module}</span>
 
                       <!-- Separator -->
-                      <span class="text-gray-700 flex-shrink-0">│</span>
+                      <span class="text-muted flex-shrink-0">│</span>
 
                       <!-- Message -->
                       <span
                         class="flex-1 ${
                           log.level === 'error'
-                            ? 'text-red-400'
+                            ? 'text-status-error'
                             : log.level === 'warn'
-                              ? 'text-yellow-400'
+                              ? 'text-status-warning'
                               : log.level === 'debug'
-                                ? 'text-gray-600'
+                                ? 'text-muted'
                                 : log.isClient
-                                  ? 'text-orange-200'
-                                  : 'text-gray-300'
+                                  ? 'text-status-warning opacity-80'
+                                  : 'text-primary'
                         }"
                         >${messageLines[0]}</span
                       >
@@ -637,31 +637,31 @@ export class LogViewer extends LitElement {
                         <span
                           class="${
                             log.level === 'error'
-                              ? 'text-red-500 font-bold'
+                              ? 'text-status-error font-bold'
                               : log.level === 'warn'
-                                ? 'text-yellow-500 font-bold'
+                                ? 'text-status-warning font-bold'
                                 : log.level === 'debug'
-                                  ? 'text-gray-600'
-                                  : 'text-gray-500'
+                                  ? 'text-muted'
+                                  : 'text-accent-green'
                           } uppercase"
                           >${log.level}</span
                         >
-                        <span class="${log.isClient ? 'text-orange-400' : 'text-green-600'}"
+                        <span class="${log.isClient ? 'text-status-warning' : 'text-accent-green'}"
                           >${log.isClient ? '[C]' : '[S]'}</span
                         >
-                        <span class="text-gray-600">${log.module}</span>
+                        <span class="text-muted">${log.module}</span>
                       </div>
                       <div
                         class="mt-1 ${
                           log.level === 'error'
-                            ? 'text-red-400'
+                            ? 'text-status-error'
                             : log.level === 'warn'
-                              ? 'text-yellow-400'
+                              ? 'text-status-warning'
                               : log.level === 'debug'
-                                ? 'text-gray-600'
+                                ? 'text-muted'
                                 : log.isClient
-                                  ? 'text-orange-200'
-                                  : 'text-gray-300'
+                                  ? 'text-status-warning opacity-80'
+                                  : 'text-primary'
                         }"
                       >
                         ${messageLines[0]}
@@ -673,10 +673,10 @@ export class LogViewer extends LitElement {
                           <div
                             class="hidden sm:block ml-36 ${
                               log.level === 'error'
-                                ? 'text-red-400'
+                                ? 'text-status-error'
                                 : log.level === 'warn'
-                                  ? 'text-yellow-400'
-                                  : 'text-gray-500'
+                                  ? 'text-status-warning'
+                                  : 'text-muted'
                             }"
                           >
                             ${messageLines
@@ -686,10 +686,10 @@ export class LogViewer extends LitElement {
                           <div
                             class="sm:hidden mt-1 ${
                               log.level === 'error'
-                                ? 'text-red-400'
+                                ? 'text-status-error'
                                 : log.level === 'warn'
-                                  ? 'text-yellow-400'
-                                  : 'text-gray-500'
+                                  ? 'text-status-warning'
+                                  : 'text-muted'
                             }"
                           >
                             ${messageLines

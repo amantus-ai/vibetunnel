@@ -458,7 +458,7 @@ export class SessionList extends LitElement {
                                       session.status === 'running' || session.status === 'exited'
                                         ? html`
                                           <button
-                                            class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-dark-bg-elevated hover:shadow-sm hover:scale-110"
+                                            class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110"
                                             @click=${async (e: Event) => {
                                               e.stopPropagation();
                                               // Kill the session
@@ -494,7 +494,7 @@ export class SessionList extends LitElement {
                                         session.status === 'running' || session.status === 'exited'
                                           ? html`
                                             <button
-                                              class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-dark-bg-elevated hover:shadow-sm hover:scale-110"
+                                              class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110"
                                               @click=${async (e: Event) => {
                                                 e.stopPropagation();
                                                 // Kill the session

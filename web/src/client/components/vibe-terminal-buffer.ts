@@ -199,7 +199,7 @@ export class VibeTerminalBuffer extends LitElement {
         }
       </style>
       <div
-        class="relative w-full h-full overflow-hidden bg-black"
+        class="relative w-full h-full overflow-hidden bg-bg"
         style="view-transition-name: terminal-${this.sessionId}; min-height: 200px;"
       >
         ${
