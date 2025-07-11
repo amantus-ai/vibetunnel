@@ -294,9 +294,9 @@ export class ScreencapView extends LitElement {
       max-width: 600px;
       max-height: 200px;
       overflow-y: auto;
-      background: rgba(10, 10, 10, 0.95);
+      background: rgb(var(--color-bg-elevated) / 0.95);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(64, 64, 64, 0.3);
+      border: 1px solid rgb(var(--color-border) / 0.3);
       border-radius: 0.5rem;
       padding: 1rem;
       font-family: var(--font-mono);
