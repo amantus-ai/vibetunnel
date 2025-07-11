@@ -26,6 +26,18 @@ pub struct Forwarder {
 }
 
 impl Forwarder {
+    #[allow(dead_code)]
+    pub fn title_mode(&self) -> TitleMode {
+        self.title_mode
+    }
+
+    #[allow(dead_code)]
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+}
+
+impl Forwarder {
     pub fn new(title_mode: TitleMode) -> Result<Self> {
         let session_id = Uuid::new_v4().to_string();
         let terminal = Terminal::new()?;
