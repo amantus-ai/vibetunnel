@@ -125,7 +125,7 @@ export class ThemeToggle extends LitElement {
             ? html`
           <div 
             class="absolute right-0 mt-2 w-36 bg-bg-elevated border border-border rounded-lg shadow-lg overflow-hidden"
-            style="z-index: ${Z_INDEX.DROPDOWN}"
+            style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN}"
           >
             <button
               @click=${() => this.selectTheme('light')}
