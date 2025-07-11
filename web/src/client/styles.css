@@ -207,7 +207,7 @@
     content: '';
     position: absolute;
     inset: -2px;
-    background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(16, 185, 129, 0.1) 100%);
+    background: radial-gradient(circle at 50% 50%, transparent 60%, rgb(var(--color-primary) / 0.1) 100%);
     opacity: 0;
     transition: opacity 0.3s ease-out;
     pointer-events: none;
@@ -973,14 +973,14 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 /* Dark theme terminal colors */
 [data-theme="dark"] .terminal-container,
 :root:not([data-theme="light"]) .terminal-container {
-  color: #e4e4e4;
-  background-color: #0a0a0a;
+  color: rgb(228 228 228); /* Terminal text always light */
+  background-color: rgb(10 10 10); /* Terminal bg always dark */
 }
 
 /* Light theme terminal colors - maintain dark background for contrast */
 [data-theme="light"] .terminal-container {
-  color: #e4e4e4;
-  background-color: #1a1a1a;
+  color: rgb(228 228 228); /* Terminal text always light */
+  background-color: rgb(26 26 26); /* Terminal bg always dark */
   border: 1px solid rgb(var(--color-border));
   border-radius: 0.5rem;
 }
@@ -1037,20 +1037,20 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 /* Enhanced cursor styling */
 .terminal-char.cursor {
   animation: cursor-blink 1s infinite;
-  background-color: #10B981;
-  color: #0a0a0a;
+  background-color: rgb(var(--color-primary));
+  color: rgb(10 10 10); /* Always dark text on cursor */
 }
 
 @keyframes cursor-blink {
   0%,
   50% {
     opacity: 1;
-    background-color: #10B981;
+    background-color: rgb(var(--color-primary));
   }
   51%,
   100% {
     opacity: 0.4;
-    background-color: #10B981;
+    background-color: rgb(var(--color-primary));
   }
 }
 
@@ -1077,8 +1077,8 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 /* Enhanced terminal focus indicator */
 .terminal-focused {
-  box-shadow: 0 0 0 2px #10B981, 0 0 20px rgba(16, 185, 129, 0.3);
-  border-color: #10B981 !important;
+  box-shadow: 0 0 0 2px rgb(var(--color-primary)), 0 0 20px rgb(var(--color-primary) / 0.3);
+  border-color: rgb(var(--color-primary)) !important;
   transition: all 0.2s ease-out;
 }
 
@@ -1087,17 +1087,17 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   position: fixed;
   top: 10px;
   right: 10px;
-  background: rgba(16, 185, 129, 0.1);
+  background: rgb(var(--color-primary) / 0.1);
   backdrop-filter: blur(8px);
-  border: 1px solid #10B981;
-  color: #10B981;
+  border: 1px solid rgb(var(--color-primary));
+  color: rgb(var(--color-primary));
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
   z-index: 1000;
   animation: slideInFromTop 0.3s ease-out;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 2px 8px rgb(var(--color-primary) / 0.2);
 }
 
 @keyframes slideInFromTop {
@@ -1472,7 +1472,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   padding: 8px 12px;
   font-family: 'Fira Code', monospace;
   font-size: 11px;
-  color: #e4e4e4;
+  color: rgb(228 228 228); /* Always light for terminal */
   user-select: none;
   z-index: 10;
   line-height: 1.4;
@@ -1507,7 +1507,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #e4e4e4;
+  color: rgb(var(--color-text));
   font-size: 20px;
   transition: all 0.2s ease;
   user-select: none;
@@ -1517,9 +1517,9 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 .fit-toggle:hover {
   background: rgba(26, 26, 26, 1);
   border-color: #10B981;
-  color: #10B981;
+  color: rgb(var(--color-primary));
   transform: translateY(-1px);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 10px rgb(var(--color-primary) / 0.3);
 }
 
 .fit-toggle:active {
@@ -1528,8 +1528,8 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 .fit-toggle.active {
   border-color: #10B981;
-  color: #10B981;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  color: rgb(var(--color-primary));
+  box-shadow: 0 0 10px rgb(var(--color-primary) / 0.3);
 }
 
 /* View Transitions */
