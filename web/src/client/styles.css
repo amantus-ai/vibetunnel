@@ -234,48 +234,12 @@
     overflow: visible;
   }
 
-  /* Container for responsive queries */
-  .session-container {
-    container-type: inline-size;
-  }
-
-  /* Container-based responsive grid for small screens */
-  @container (max-width: 400px) {
+  @media (max-width: 420px) {
     .session-flex-responsive {
-      padding: 0 1rem;
+      padding: 0 4vw;  /* 4% of viewport width = ~16px on 400px screen */
       grid-template-columns: 1fr;
-      grid-auto-rows: auto;
-      gap: 0.75rem;
-    }
-    
-    /* Maintain aspect ratio for cards on mobile */
-    .session-flex-responsive session-card {
-      aspect-ratio: 4/3;
-      min-height: 240px;
-      max-height: 320px;
-      height: auto;
-    }
-  }
-
-  /* Medium small screens */
-  @container (min-width: 401px) and (max-width: 500px) {
-    .session-flex-responsive {
-      padding: 0 0.75rem;
-      grid-template-columns: 1fr;
-      grid-auto-rows: 300px;
+      grid-auto-rows: min(320px, 80vh);  /* Height responsive to viewport */
       gap: 1rem;
-    }
-  }
-
-  /* Fallback for browsers without container query support */
-  @supports not (container-type: inline-size) {
-    @media (max-width: 420px) {
-      .session-flex-responsive {
-        padding: 0 0.5rem;
-        grid-template-columns: 1fr;
-        grid-auto-rows: 320px;
-        gap: 1rem;
-      }
     }
   }
 

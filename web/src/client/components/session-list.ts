@@ -345,8 +345,7 @@ export class SessionList extends LitElement {
                       <h3 class="text-xs font-semibold text-dark-text-muted uppercase tracking-wider mb-4">
                         Active <span class="text-dark-text-dim">(${runningSessions.length})</span>
                       </h3>
-                      <div class="${this.compactMode ? 'space-y-2' : 'session-container'}">
-                        <div class="${this.compactMode ? '' : 'session-flex-responsive'} relative">
+                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
                         ${repeat(
                           runningSessions,
                           (session) => session.id,
@@ -536,7 +535,6 @@ export class SessionList extends LitElement {
                     }
                   `
                         )}
-                        </div>
                       </div>
                     </div>
                   `
@@ -551,8 +549,7 @@ export class SessionList extends LitElement {
                       <h3 class="text-xs font-semibold text-dark-text-muted uppercase tracking-wider mb-4">
                         Idle <span class="text-dark-text-dim">(${exitedSessions.length})</span>
                       </h3>
-                      <div class="${this.compactMode ? 'space-y-2' : 'session-container'}">
-                        <div class="${this.compactMode ? '' : 'session-flex-responsive'} relative">
+                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
                         ${repeat(
                           exitedSessions,
                           (session) => session.id,
@@ -669,7 +666,6 @@ export class SessionList extends LitElement {
                             }
                           `
                         )}
-                        </div>
                       </div>
                     </div>
                   `
