@@ -17,6 +17,7 @@ export declare class NativePty {
   kill(signal?: string | undefined | null): void
   readOutput(timeoutMs?: number | undefined | null): Buffer | null
   checkExitStatus(): number | null
+  setOnData(callback: (data: Buffer) => void): void
   destroy(): void
 }
 export declare class ActivityDetector {

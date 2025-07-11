@@ -80,25 +80,26 @@ process.on('SIGTERM', () => {
 });
 
 function applyMinimalPatches() {
-  console.log('Native PTY addon does not require SEA patches.');
+  console.log('VibeTunnel PTY addon does not require SEA patches.');
   // Native addon built with napi-rs handles SEA mode automatically
 }
 
 async function main() {
   try {
-    // No patching needed - SEA support is built into our vendored node-pty
-    console.log('Using vendored node-pty with built-in SEA support...');
+    // No patching needed - SEA support is built into our vendored vibetunnel-pty
+    console.log('Using vendored vibetunnel-pty with built-in SEA support...');
     
     // Ensure native modules are built (in case postinstall didn't run)
-    const nativePtyAddonDir = path.join(__dirname, 'native-pty');
+    const vibetunnelPtyPath = path.join(__dirname, 'vibetunnel-pty');
+    const vibetunnelPtyNode = path.join(vibetunnelPtyPath, `vibetunnel-pty.${process.platform}-${process.arch}.node`);
     const nativeAuthDir = 'node_modules/authenticate-pam/build/Release';
     
-    // Build native PTY addon if needed
-    if (!fs.existsSync(path.join(nativePtyAddonDir, 'index.node'))) {
-      console.log('Building native PTY addon...');
+    // Build VibeTunnel PTY addon if needed
+    if (!fs.existsSync(vibetunnelPtyNode)) {
+      console.log('Building VibeTunnel PTY addon...');
       execSync('npm run build', { 
         stdio: 'inherit',
-        cwd: nativePtyAddonDir
+        cwd: vibetunnelPtyPath
       });
     }
     
@@ -353,17 +354,16 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
     // 9. Copy native modules
     console.log('\nCopying native modules...');
     
-    // Copy our native PTY addon
-    const nativePtyAddonPath = path.join(__dirname, 'native-pty/index.node');
-    if (!fs.existsSync(nativePtyAddonPath)) {
-      console.error('Error: Native PTY addon not found at native-pty/index.node');
-      console.error('Please build the native addon first: cd native-pty && npm run build');
+    // Copy our VibeTunnel PTY addon
+    if (!fs.existsSync(vibetunnelPtyNode)) {
+      console.error(`Error: VibeTunnel PTY addon not found at ${vibetunnelPtyNode}`);
+      console.error('Please build the native addon first: cd vibetunnel-pty && npm run build');
       process.exit(1);
     }
 
-    // Copy native PTY addon as pty.node for compatibility
-    fs.copyFileSync(nativePtyAddonPath, 'native/pty.node');
-    console.log('  - Copied native PTY addon as pty.node');
+    // Copy VibeTunnel PTY addon as pty.node for compatibility
+    fs.copyFileSync(vibetunnelPtyNode, 'native/pty.node');
+    console.log('  - Copied VibeTunnel PTY addon as pty.node');
 
     // Note: Our Rust-based PTY addon doesn't require spawn-helper
     // It uses portable-pty which handles process spawning internally
