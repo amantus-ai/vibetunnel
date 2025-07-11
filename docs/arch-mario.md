@@ -517,25 +517,35 @@ window.addEventListener('resize', () => console.count('resize'));
 
 5. **On Testing**: "Ich habe das File ersetzt und instant replay gekriegt" (I replaced the file and got instant replay)
 
-## Action Plan
+## Action Plan (From Transcript Discussion)
 
-### Immediate (This Week)
-1. Debug why forward.ts bypasses sendExistingContent
-2. Add logging to trace forward.ts code path
-3. Test fix with 850MB session files
-4. Deploy fix to stop user complaints
+### Immediate Priority (End of Week)
+Quote: "Ich will das Erste erst mal möchte ich gerne zumindest bis Ende der Woche eine Version rausgebracht haben, die dieses Endless Scrolling fixt"
 
-### Short Term (Next Month)
-1. Create minimal node-pty replacement
-2. Test with high-volume sessions
-3. Implement resize debouncing
-4. Fix session-detail-view resize triggers
+1. **Fix fwd.ts truncation bug**
+   - Find why external terminals bypass `sendExistingContent()`
+   - Test with 980MB file
+   - Deploy fix for immediate user relief
 
-### Long Term (Next Quarter)
-1. Evaluate Rust vs Go for core components
-2. Plan migration strategy
-3. Improve frontend architecture
-4. Optimize binary buffer protocol
+### Short Term
+1. **Fix Electron Crashes**
+   - Create minimal node-pty without shared pipe
+   - Extract only Unix/Windows native code
+   - Remove VS Code specific optimizations
+
+2. **Fix Resize Loop**
+   - Debug session-detail-view resize triggers
+   - Find what causes viewport expansion
+   - Fix mobile-specific issues
+
+### Medium Term
+1. **Rust Forward Binary**
+   - 2MB binary instead of 100MB Node process
+   - Reuse existing Rust code
+   - Bind to proven C PTY implementation
+
+### Summary Quote
+Mario: "Krankenhaus. Also für das Problem mit dem infinite scrolling Scheißtrick herausfinden, warum St. Existing Content nicht funktioniert... Electron Crashes, no PTY austauschen... Und drittens, Rust forward. Fuck it. Why not?"
 
 ## Testing Strategy
 
@@ -562,34 +572,41 @@ window.addEventListener('resize', () => console.count('resize'));
 
 ## Code Verification Summary (2025-07-11)
 
-After thorough code review, here are the key findings vs Mario's claims:
+After code review and transcript clarification:
 
-### ✅ Verified
-1. **Clear Sequence Truncation**: `stream-watcher.ts` does implement `sendExistingContent()` that scans for `\x1b[3J]` and truncates (line 188)
-2. **Node-PTY Usage**: Uses `pty.spawn()` from node-pty library (pty-manager.ts:307)
-3. **Asciinema Format**: Correctly implements `[timestamp, event_type, data]` format
-4. **Write Queue**: Implements backpressure handling as described
+### ✅ Verified & Clarified
+1. **Clear Sequence Truncation**: Works correctly for server sessions (2MB from 980MB file)
+2. **External terminals bypass truncation**: This is the actual bug - they get the full file
+3. **Node-PTY shared pipe**: Causes Electron crashes due to high data volume
+4. **Claude's resize behavior**: Re-renders entire scroll buffer on every resize
 
-### ❌ Not Found / Different
-1. **forward.ts doesn't exist**: The actual file is `fwd.ts` which uses standard `ptyManager.createSession()`
-2. **No duplicate AsciinemaWriter**: `fwd.ts` doesn't create extra writers
-3. **Shared Pipe is Windows-only**: The ConPTY shared pipe issue only affects Windows, not macOS/Linux
+### 📝 Corrections from Transcript
+1. **"forward.ts" = fwd.ts**: We meant fwd.ts when discussing the forward path
+2. **Duplicate AsciinemaWriter**: Was in an unmerged branch, not current code
+3. **Shared pipe affects everyone**: Not just Windows - it's how VS Code monitors all PTYs
 
-### ❓ Needs Investigation
-1. **How external terminals bypass truncation**: The `forwardToStdout: true` flag may affect streaming
-2. **Why 850MB sessions affect external terminals**: Connection path may differ from web sessions
-3. **Actual resize loop source**: Need to trace where excessive resize events originate
+### 🎯 Core Issues Confirmed
+1. **850MB Bug**: External terminals bypass stream-watcher's truncation
+2. **Electron Crashes**: Shared pipe gets overwhelmed by VibeTunnel's data volume
+3. **Resize Loop**: Claude + buggy resize handler = infinite re-rendering
 
-### Key Insight
-The bug Mario described may not be in the forwarding code itself, but in how external terminal sessions connect to and consume the stream. The `forwardToStdout` flag creates sessions marked as `isExternalTerminal`, which might use a different streaming path that bypasses the truncation logic.
+### Key Quote
+"Die Frage ist jetzt, wir müssen herausfinden, wieso der Forward das nicht macht"
 
 ## Summary
 
-This comprehensive technical documentation captures all critical details from Mario's debugging session. The three main issues (850MB sessions, Electron crashes, resize loops) all have clear solutions. While some implementation details differ from Mario's description (e.g., forward.ts vs fwd.ts), the core problems and solutions remain valid.
+This technical documentation captures the complete debugging session with Mario, identifying three critical performance issues:
 
-The immediate investigation should focus on:
-1. How external terminal sessions stream data differently
-2. Whether the stream-watcher truncation is applied to all session types
-3. The actual source of resize event loops in the client
+1. **850MB Session Bug**: External terminals bypass the 2MB truncation and send gigabyte files
+2. **Electron Crashes**: Node-PTY's shared pipe architecture can't handle VibeTunnel's data volume  
+3. **Resize Loops**: Claude re-renders entire scroll buffer on every resize event
 
-Remember Mario's wisdom: **"Velocity kills"** - high development speed makes community contribution difficult. Keep PRs focused and document changes thoroughly.
+The agreed action plan prioritizes immediate user relief by fixing the truncation bug, followed by replacing node-pty to fix crashes, and eventually migrating to a Rust forward binary for better performance.
+
+Key technical insights:
+- Clear sequence `\x1b[2J` should trigger truncation to last 2MB
+- Node-PTY's 800 lines of C code are battle-tested but wrapped in problematic VS Code optimizations
+- Claude's React Ink TUI framework causes unnecessary full re-renders
+- Go is "perfect for AI" due to automatic test caching and dependency tracking
+
+Remember Mario's wisdom: **"Velocity kills"** - high development speed makes community contribution difficult. The LitElement choice and large file sizes create barriers for new contributors.
