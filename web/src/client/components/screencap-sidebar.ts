@@ -474,7 +474,7 @@ export class ScreencapSidebar extends LitElement {
                   ${
                     process.iconData
                       ? html`<img src="data:image/png;base64,${process.iconData}" alt="${process.processName}">`
-                      : html`<svg width="20" height="20" viewBox="0 0 24 24" fill="#737373">
+                      : html`<svg width="20" height="20" viewBox="0 0 24 24" fill="rgb(var(--color-text-dim))">
                         <rect x="3" y="3" width="18" height="18" rx="2" />
                       </svg>`
                   }

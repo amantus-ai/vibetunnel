@@ -107,7 +107,20 @@ export async function initializeMonaco(): Promise<void> {
       },
     });
 
-    monaco.editor.setTheme('vs-dark');
+    // Set initial theme based on current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs');
+
+    // Watch for theme changes
+    const themeObserver = new MutationObserver(() => {
+      const currentTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+      monaco.editor.setTheme(currentTheme ? 'vs-dark' : 'vs');
+    });
+
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
 
     // Add custom themes if needed
     /*monaco.editor.defineTheme('vibetunnel-dark', {

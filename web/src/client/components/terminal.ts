@@ -135,11 +135,25 @@ export class Terminal extends LitElement {
     }
   }
 
+  private themeObserver?: MutationObserver;
+
   connectedCallback() {
     super.connectedCallback();
 
     // Check for debug mode
     this.debugMode = new URLSearchParams(window.location.search).has('debug');
+
+    // Watch for theme changes
+    this.themeObserver = new MutationObserver(() => {
+      if (this.terminal) {
+        this.terminal.options.theme = this.getTerminalTheme();
+      }
+    });
+
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
 
     // Restore user override preference if we have a sessionId
     if (this.sessionId) {
@@ -207,6 +221,9 @@ export class Terminal extends LitElement {
 
   disconnectedCallback() {
     this.cleanup();
+    if (this.themeObserver) {
+      this.themeObserver.disconnect();
+    }
     super.disconnectedCallback();
   }
 
@@ -335,6 +352,62 @@ export class Terminal extends LitElement {
     return changed;
   }
 
+  private getTerminalTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+    if (isDark) {
+      // Dark theme (original colors)
+      return {
+        background: '#1e1e1e',
+        foreground: '#d4d4d4',
+        cursor: 'rgb(var(--color-primary))',
+        cursorAccent: '#1e1e1e',
+        // Standard 16 colors (0-15) - using proper xterm colors
+        black: '#000000',
+        red: '#cd0000',
+        green: '#00cd00',
+        yellow: '#cdcd00',
+        blue: '#0000ee',
+        magenta: '#cd00cd',
+        cyan: '#00cdcd',
+        white: '#e5e5e5',
+        brightBlack: '#7f7f7f',
+        brightRed: '#ff0000',
+        brightGreen: '#00ff00',
+        brightYellow: '#ffff00',
+        brightBlue: '#5c5cff',
+        brightMagenta: '#ff00ff',
+        brightCyan: '#00ffff',
+        brightWhite: '#ffffff',
+      };
+    } else {
+      // Light theme - optimized for readability
+      return {
+        background: '#ffffff',
+        foreground: '#333333',
+        cursor: 'rgb(var(--color-primary))',
+        cursorAccent: '#ffffff',
+        // Standard 16 colors adjusted for light background
+        black: '#000000',
+        red: '#c82829',
+        green: '#718c00',
+        yellow: '#eab700',
+        blue: '#4271ae',
+        magenta: '#8959a8',
+        cyan: '#3e999f',
+        white: '#4d4d4c',
+        brightBlack: '#8e908c',
+        brightRed: '#f5871f',
+        brightGreen: '#90a959',
+        brightYellow: '#f4bf75',
+        brightBlue: '#7aa6da',
+        brightMagenta: '#b77ee0',
+        brightCyan: '#54ced6',
+        brightWhite: '#ffffff',
+      };
+    }
+  }
+
   private async initializeTerminal() {
     try {
       this.requestUpdate();
@@ -399,29 +472,7 @@ export class Terminal extends LitElement {
         altClickMovesCursor: true,
         rightClickSelectsWord: false,
         wordSeparator: ' ()[]{}\'"`',
-        theme: {
-          background: '#1e1e1e',
-          foreground: '#d4d4d4',
-          cursor: 'rgb(var(--color-primary))',
-          cursorAccent: '#1e1e1e',
-          // Standard 16 colors (0-15) - using proper xterm colors
-          black: '#000000',
-          red: '#cd0000',
-          green: '#00cd00',
-          yellow: '#cdcd00',
-          blue: '#0000ee',
-          magenta: '#cd00cd',
-          cyan: '#00cdcd',
-          white: '#e5e5e5',
-          brightBlack: '#7f7f7f',
-          brightRed: '#ff0000',
-          brightGreen: '#00ff00',
-          brightYellow: '#ffff00',
-          brightBlue: '#5c5cff',
-          brightMagenta: '#ff00ff',
-          brightCyan: '#00ffff',
-          brightWhite: '#ffffff',
-        },
+        theme: this.getTerminalTheme(),
       });
 
       // Set terminal size - don't call .open() to keep it headless
