@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { SessionProvider } from './contexts/SessionContext';
+import { FileEditorPage } from './pages/FileEditorPage';
 import { LoginPage } from './pages/LoginPage';
 import { SessionsPage } from './pages/SessionsPage';
 import { SessionViewPage } from './pages/SessionViewPage';
@@ -42,6 +43,10 @@ export function App() {
               <Route
                 path="/sessions/:sessionId"
                 element={isAuthenticated ? <SessionViewPage /> : <Navigate to="/login" replace />}
+              />
+              <Route
+                path="/files"
+                element={isAuthenticated ? <FileEditorPage /> : <Navigate to="/login" replace />}
               />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
