@@ -33,7 +33,7 @@ struct AccessDashboardPageView: View {
                     .fontWeight(.semibold)
 
                 Text(
-                    "To access your terminals from any device, create a tunnel from your device.\n\nThis can be done via **ngrok** in settings or **Tailscale** (recommended)."
+                    "To access your terminals from any device, create a tunnel from your device.\n\nThis can be done via **ngrok** in settings or **Cloudflare** or **Tailscale**."
                 )
                 .font(.body)
                 .foregroundColor(.secondary)

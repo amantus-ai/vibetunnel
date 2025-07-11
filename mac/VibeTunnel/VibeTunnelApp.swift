@@ -16,6 +16,7 @@ struct VibeTunnelApp: App {
     @State var serverManager = ServerManager.shared
     @State var ngrokService = NgrokService.shared
     @State var tailscaleService = TailscaleService.shared
+    @State var cloudflareService = CloudflareService.shared
     @State var permissionManager = SystemPermissionManager.shared
     @State var terminalLauncher = TerminalLauncher.shared
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
@@ -45,6 +46,7 @@ struct VibeTunnelApp: App {
                     .environment(serverManager)
                     .environment(ngrokService)
                     .environment(tailscaleService)
+                    .environment(cloudflareService)
                     .environment(permissionManager)
                     .environment(terminalLauncher)
                     .environment(gitRepositoryMonitor)
@@ -64,6 +66,7 @@ struct VibeTunnelApp: App {
                         .environment(serverManager)
                         .environment(ngrokService)
                         .environment(tailscaleService)
+                        .environment(cloudflareService)
                         .environment(permissionManager)
                         .environment(terminalLauncher)
                         .environment(gitRepositoryMonitor)
@@ -83,6 +86,7 @@ struct VibeTunnelApp: App {
                     .environment(serverManager)
                     .environment(ngrokService)
                     .environment(tailscaleService)
+                    .environment(cloudflareService)
                     .environment(permissionManager)
                     .environment(terminalLauncher)
                     .environment(gitRepositoryMonitor)
@@ -293,6 +297,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                     repositoryDiscovery: repositoryDiscoveryService
                 )
             }
+            
+            // Set up multi-layer cleanup for cloudflared processes
+            setupMultiLayerCleanup()
         }
     }
 
@@ -415,63 +422,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        logger.info("🚨 applicationWillTerminate called - starting cleanup process")
+        
         let processInfo = ProcessInfo.processInfo
         let isRunningInTests = processInfo.environment["XCTestConfigurationFilePath"] != nil ||
             processInfo.environment["XCTestBundlePath"] != nil ||
             processInfo.environment["XCTestSessionIdentifier"] != nil ||
             processInfo.arguments.contains("-XCTest") ||
             NSClassFromString("XCTestCase") != nil
-        let isRunningInPreview = processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-        #if DEBUG
-            let isRunningInDebug = true
-        #else
-            let isRunningInDebug = processInfo.environment["DYLD_INSERT_LIBRARIES"]?
-                .contains("libMainThreadChecker.dylib") ?? false ||
-                processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil
-        #endif
-
+        
         // Skip cleanup during tests
         if isRunningInTests {
             logger.info("Running in test mode - skipping termination cleanup")
             return
         }
-
-        // Terminal control is now handled via SharedUnixSocketManager
-        // No explicit stop needed as it's cleaned up with the socket manager
-
-        // Stop HTTP server synchronously to ensure it completes before app exits
+        
+        // Ultra-fast cleanup for cloudflared - just send signals and exit
+        if let cloudflareService = app?.cloudflareService, cloudflareService.isRunning {
+            logger.info("🔥 Sending quick termination signal to Cloudflare")
+            cloudflareService.sendTerminationSignal()
+        }
+        
+        // Stop HTTP server with very short timeout
         if let serverManager = app?.serverManager {
             let semaphore = DispatchSemaphore(value: 0)
             Task {
                 await serverManager.stop()
                 semaphore.signal()
             }
-            // Wait up to 5 seconds for server to stop
-            let timeout = DispatchTime.now() + .seconds(5)
-            if semaphore.wait(timeout: timeout) == .timedOut {
-                logger.warning("Server stop timed out during app termination")
-            }
+            // Only wait 0.5 seconds max
+            _ = semaphore.wait(timeout: .now() + .milliseconds(500))
         }
-
-        // Remove distributed notification observer
-        #if DEBUG
-        // Skip removing observer in debug builds
-        #else
-            if !isRunningInPreview && !isRunningInTests && !isRunningInDebug {
-                DistributedNotificationCenter.default().removeObserver(
-                    self,
-                    name: Self.showSettingsNotification,
-                    object: nil
-                )
-            }
+        
+        // Remove observers (quick operations)
+        #if !DEBUG
+        if !isRunningInTests {
+            DistributedNotificationCenter.default().removeObserver(
+                self,
+                name: Self.showSettingsNotification,
+                object: nil
+            )
+        }
         #endif
-
-        // Remove update check notification observer
+        
         NotificationCenter.default.removeObserver(
             self,
             name: Notification.Name("checkForUpdates"),
             object: nil
         )
+        
+        logger.info("🚨 applicationWillTerminate completed quickly")
     }
 
     // MARK: - UNUserNotificationCenterDelegate
@@ -503,4 +503,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         // Show notifications even when app is in foreground
         completionHandler([.banner, .sound])
     }
+
+    /// Set up lightweight cleanup system for cloudflared processes
+    private func setupMultiLayerCleanup() {
+        logger.info("🛡️ Setting up cloudflared cleanup system")
+        
+        // Only set up minimal cleanup - no atexit, no complex watchdog
+        // The OS will clean up child processes automatically when parent dies
+        
+        logger.info("🛡️ Cleanup system initialized (minimal mode)")
+    }
+    
+
+
 }

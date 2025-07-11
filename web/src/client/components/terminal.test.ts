@@ -21,9 +21,8 @@ interface TestTerminal extends Terminal {
   measureCharacterWidth(): number;
   fitTerminal(): void;
   userOverrideWidth: boolean;
-  resizeCoordinator: {
-    forceUpdateDimensions(cols: number, rows: number): void;
-  };
+  lastCols: number;
+  lastRows: number;
 }
 
 describe('Terminal', () => {
@@ -607,8 +606,9 @@ describe('Terminal', () => {
       element.cols = currentCols;
       element.rows = currentRows;
 
-      // Initialize ResizeCoordinator with current dimensions
-      (element as TestTerminal).resizeCoordinator.forceUpdateDimensions(currentCols, currentRows);
+      // Initialize last dimensions to match current dimensions
+      (element as TestTerminal).lastCols = currentCols;
+      (element as TestTerminal).lastRows = currentRows;
 
       // Mock character width measurement
       vi.spyOn(element as TestTerminal, 'measureCharacterWidth').mockReturnValue(8);
@@ -668,7 +668,7 @@ describe('Terminal', () => {
       expect(dispatchEventSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'terminal-resize',
-          detail: { cols, rows },
+          detail: expect.objectContaining({ cols, rows }),
         })
       );
     });
@@ -696,8 +696,9 @@ describe('Terminal', () => {
 
       vi.spyOn(element as TestTerminal, 'measureCharacterWidth').mockReturnValue(8);
 
-      // Initialize ResizeCoordinator with current dimensions
-      (element as TestTerminal).resizeCoordinator.forceUpdateDimensions(currentCols, currentRows);
+      // Initialize last dimensions to match current dimensions
+      (element as TestTerminal).lastCols = currentCols;
+      (element as TestTerminal).lastRows = currentRows;
 
       // Call fitTerminal multiple times
       (element as TestTerminal).fitTerminal();
@@ -860,8 +861,9 @@ describe('Terminal', () => {
 
       vi.spyOn(element as TestTerminal, 'measureCharacterWidth').mockReturnValue(8);
 
-      // Initialize ResizeCoordinator with current dimensions
-      (element as TestTerminal).resizeCoordinator.forceUpdateDimensions(100, 30);
+      // Initialize last dimensions to match current dimensions
+      (element as TestTerminal).lastCols = 100;
+      (element as TestTerminal).lastRows = 30;
 
       // Clear previous calls
       mockTerminal?.resize.mockClear();

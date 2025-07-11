@@ -664,7 +664,7 @@ export class WelcomeApp extends TauriBase {
         <p class="description">
           To access your terminals from any device, create a tunnel from your device.
           This can be done via <strong>ngrok</strong> in settings or 
-          <strong>Tailscale</strong> (recommended).
+          <strong>Cloudflare</strong> or <strong>Tailscale</strong>.
         </p>
         
         <vt-button

@@ -1117,7 +1117,7 @@ export class SessionView extends LitElement {
       // Calculate height reduction for keyboard and quick keys
       let heightReduction = 0;
 
-      if (this.showQuickKeys && this.isMobile) {
+      if (this.showQuickKeys) {
         // Quick keys height (approximately 140px based on CSS)
         // Add 10px buffer to ensure content is visible above quick keys
         const quickKeysHeight = 150;

@@ -72,8 +72,8 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
       node-pty:
-        specifier: github:microsoft/node-pty#v1.1.0-beta34
-        version: https://codeload.github.com/microsoft/node-pty/tar.gz/d738123f1faf7287513b0df8b9e327be54702e94
+        specifier: file:./node-pty
+        version: file:node-pty
       postject:
         specifier: ^1.0.0-alpha.6
         version: 1.0.0-alpha.6
@@ -2308,9 +2308,8 @@ packages:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  node-pty@https://codeload.github.com/microsoft/node-pty/tar.gz/d738123f1faf7287513b0df8b9e327be54702e94:
-    resolution: {tarball: https://codeload.github.com/microsoft/node-pty/tar.gz/d738123f1faf7287513b0df8b9e327be54702e94}
-    version: 1.0.0
+  node-pty@file:node-pty:
+    resolution: {directory: node-pty, type: directory}
 
   node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
@@ -5395,7 +5394,7 @@ snapshots:
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
 
-  node-pty@https://codeload.github.com/microsoft/node-pty/tar.gz/d738123f1faf7287513b0df8b9e327be54702e94:
+  node-pty@file:node-pty:
     dependencies:
       node-addon-api: 7.1.1
 
