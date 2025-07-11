@@ -16,6 +16,7 @@ if (!globalThis.crypto) {
 // Mock localStorage for client-side tests
 if (typeof localStorage === 'undefined') {
   const storage: Record<string, string> = {};
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
   (global as any).localStorage = {
     getItem: vi.fn((key: string) => storage[key] || null),
     setItem: vi.fn((key: string, value: string) => {
@@ -40,6 +41,7 @@ if (typeof localStorage === 'undefined') {
 
 // Mock window for client-side tests
 if (typeof window === 'undefined') {
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
   (global as any).window = {
     location: {
       search: '',
@@ -56,11 +58,17 @@ if (typeof fetch === 'undefined') {
   // Use dynamic import to avoid module resolution issues
   import('node-fetch').then((module) => {
     const nodeFetch = module.default;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
     (global as any).fetch = nodeFetch;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
     (global as any).Headers = module.Headers;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
     (global as any).Request = module.Request;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
     (global as any).Response = module.Response;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
     (global as any).FormData = module.FormData;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
     (global as any).Blob = module.Blob;
   });
 }
