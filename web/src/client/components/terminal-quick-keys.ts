@@ -279,7 +279,7 @@ export class TerminalQuickKeys extends LitElement {
           -webkit-appearance: none;
           appearance: none;
           /* Add shadow for visibility */
-          box-shadow: 0 -2px 10px rgb(0 0 0 / 0.5);
+          box-shadow: 0 -2px 10px rgb(var(--color-bg-base) / 0.5);
         }
         
         /* Quick key buttons */
@@ -304,13 +304,13 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Active modifier styling */
         .modifier-key.active {
-          background-color: rgb(59, 130, 246);
-          border-color: rgb(59, 130, 246);
-          color: white;
+          background-color: rgb(var(--color-primary));
+          border-color: rgb(var(--color-primary));
+          color: rgb(var(--color-text-bright));
         }
         
         .modifier-key.active:hover {
-          background-color: rgb(37, 99, 235);
+          background-color: rgb(var(--color-primary-hover));
         }
         
         /* Arrow key styling */

@@ -484,8 +484,8 @@ export class FileBrowser extends LitElement {
       <div class="overflow-auto h-full p-4 font-mono text-xs">
         ${lines.map((line) => {
           let className = 'text-muted';
-          if (line.startsWith('+')) className = 'text-status-success bg-green-900/20';
-          else if (line.startsWith('-')) className = 'text-status-error bg-red-900/20';
+          if (line.startsWith('+')) className = 'text-status-success bg-status-success/10';
+          else if (line.startsWith('-')) className = 'text-status-error bg-status-error/10';
           else if (line.startsWith('@@')) className = 'text-status-info font-semibold';
 
           return html`<div class="whitespace-pre ${className}">${line}</div>`;
@@ -553,13 +553,13 @@ export class FileBrowser extends LitElement {
                         @input=${this.handlePathInput}
                         @keydown=${this.handlePathKeyDown}
                         @blur=${this.handlePathBlur}
-                        class="bg-dark-bg border border-base rounded px-2 py-1 text-status-info text-xs sm:text-sm font-mono w-full min-w-0 focus:outline-none focus:border-primary"
+                        class="bg-bg border border-base rounded px-2 py-1 text-status-info text-xs sm:text-sm font-mono w-full min-w-0 focus:outline-none focus:border-primary"
                         placeholder="Enter path and press Enter"
                       />
                     `
                     : html`
                       <div
-                        class="text-blue-400 text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap font-mono cursor-pointer hover:bg-light rounded px-1 py-1 -mx-1"
+                        class="text-status-info text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap font-mono cursor-pointer hover:bg-light rounded px-1 py-1 -mx-1"
                         title="${
                           this.currentFullPath || this.currentPath || 'File Browser'
                         } (click to edit)"
@@ -576,7 +576,7 @@ export class FileBrowser extends LitElement {
                 this.errorMessage
                   ? html`
                     <div
-                      class="bg-red-500/20 border border-red-500 text-red-400 px-2 py-1 rounded text-xs"
+                      class="bg-status-error/20 border border-status-error text-status-error px-2 py-1 rounded text-xs"
                     >
                       ${this.errorMessage}
                     </div>
@@ -687,7 +687,7 @@ export class FileBrowser extends LitElement {
                             </span>
                             <span
                               class="flex-1 text-sm whitespace-nowrap ${
-                                file.type === 'directory' ? 'text-status-info' : 'text-dark-text'
+                                file.type === 'directory' ? 'text-status-info' : 'text-text'
                               }"
                               title="${file.name}${file.isSymlink ? ' (symlink)' : ''}"
                               >${file.name}</span
@@ -707,7 +707,7 @@ export class FileBrowser extends LitElement {
             <div
               class="${this.isMobile && this.mobileView === 'list' ? 'hidden' : ''} ${
                 this.isMobile ? 'w-full' : 'flex-1'
-              } bg-dark-bg flex flex-col overflow-hidden"
+              } bg-bg flex flex-col overflow-hidden"
             >
               ${
                 this.selectedFile

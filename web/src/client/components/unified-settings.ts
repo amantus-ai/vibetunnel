@@ -366,7 +366,7 @@ export class UnifiedSettings extends LitElement {
                   }"
                 >
                   <span
-                    class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                    class="inline-block h-5 w-5 transform rounded-full bg-bg-elevated transition-transform ${
                       this.isNotificationsEnabled ? 'translate-x-5' : 'translate-x-0.5'
                     }"
                   ></span>
@@ -439,7 +439,7 @@ export class UnifiedSettings extends LitElement {
           }"
         >
           <span
-            class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            class="inline-block h-4 w-4 transform rounded-full bg-bg-elevated transition-transform ${
               this.notificationPreferences[key] ? 'translate-x-4' : 'translate-x-0.5'
             }"
           ></span>
@@ -475,7 +475,7 @@ export class UnifiedSettings extends LitElement {
                   }"
                 >
                   <span
-                    class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                    class="inline-block h-5 w-5 transform rounded-full bg-bg-elevated transition-transform ${
                       this.appPreferences.useDirectKeyboard ? 'translate-x-5' : 'translate-x-0.5'
                     }"
                   ></span>
@@ -502,7 +502,7 @@ export class UnifiedSettings extends LitElement {
             }"
           >
             <span
-              class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+              class="inline-block h-5 w-5 transform rounded-full bg-bg-elevated transition-transform ${
                 this.appPreferences.showLogLink ? 'translate-x-5' : 'translate-x-0.5'
               }"
             ></span>

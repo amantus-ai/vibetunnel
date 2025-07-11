@@ -18,13 +18,19 @@
   /* Text colors - Light Mode */
   --color-text: 23 23 23; /* #171717 - Near black for high contrast */
   --color-text-bright: 0 0 0; /* #000000 - Pure black for emphasis */
-  --color-text-muted: 100 100 100; /* #646464 - Muted gray */
-  --color-text-dim: 150 150 150; /* #969696 - Dimmer gray */
+  --color-text-muted: 75 75 75; /* #4b4b4b - Darker muted gray for AAA compliance */
+  --color-text-dim: 115 115 115; /* #737373 - Darker dim gray for AA compliance */
   
   /* Primary color (same across themes) */
   --color-primary: 16 185 129; /* #10B981 - VibeTunnel green */
   --color-primary-hover: 5 150 105; /* #059669 */
   --color-primary-dark: 4 120 87; /* #047857 */
+  
+  /* Status colors */
+  --color-status-error: 239 68 68; /* #EF4444 */
+  --color-status-warning: 245 158 11; /* #F59E0B */
+  --color-status-success: 16 185 129; /* #10B981 */
+  --color-status-info: 59 130 246; /* #3B82F6 */
   /* Breakpoints */
   --vt-breakpoint-mobile: 768px;
   --vt-breakpoint-tablet: 1024px;
@@ -74,6 +80,12 @@
   --color-primary: 16 185 129; /* #10B981 */
   --color-primary-hover: 5 150 105; /* #059669 */
   --color-primary-dark: 4 120 87; /* #047857 */
+  
+  /* Status colors (same as light mode) */
+  --color-status-error: 239 68 68; /* #EF4444 */
+  --color-status-warning: 245 158 11; /* #F59E0B */
+  --color-status-success: 16 185 129; /* #10B981 */
+  --color-status-info: 59 130 246; /* #3B82F6 */
 }
 
 /* System preference detection */
@@ -95,11 +107,19 @@
     --color-primary: 16 185 129;
     --color-primary-hover: 5 150 105;
     --color-primary-dark: 4 120 87;
+    --color-status-error: 239 68 68;
+    --color-status-warning: 245 158 11;
+    --color-status-success: 16 185 129;
+    --color-status-info: 59 130 246;
   }
 }
 
 /* Global theme-aware styles */
 @layer base {
+  html {
+    @apply bg-bg text-text;
+  }
+  
   body {
     @apply bg-bg text-text;
     transition: background-color 0.3s ease, color 0.3s ease;
@@ -166,7 +186,7 @@
   }
 
   .btn-primary {
-    @apply btn-md bg-primary text-black;
+    @apply btn-md bg-primary text-bg;
     @apply hover:bg-primary-hover hover:shadow-glow;
     @apply active:scale-95;
   }
@@ -253,12 +273,12 @@
   }
 
   .quick-start-btn.active {
-    @apply bg-primary text-black border-primary shadow-glow-sm;
+    @apply bg-primary text-bg border-primary shadow-glow-sm;
   }
 
   /* Modal backdrop */
   .modal-backdrop {
-    @apply fixed inset-0 bg-black bg-opacity-80;
+    @apply fixed inset-0 bg-bg bg-opacity-80;
     z-index: 1000;
     backdrop-filter: blur(4px);
   }
@@ -425,11 +445,11 @@
   }
 
   .badge-rsa {
-    @apply bg-blue-500 text-white;
+    @apply bg-status-info text-bg-elevated;
   }
 
   .badge-ed25519 {
-    @apply bg-purple-500 text-white;
+    @apply bg-primary text-bg-elevated;
   }
 }
 

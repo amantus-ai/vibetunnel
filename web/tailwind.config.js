@@ -75,6 +75,13 @@ module.exports = {
                 'glow-green': '0 0 20px rgba(16, 185, 129, 0.4)',
                 'glow-green-sm': '0 0 10px rgba(16, 185, 129, 0.3)',
                 'glow-green-lg': '0 0 30px rgba(16, 185, 129, 0.5)',
+                // Status-specific glow effects
+                'glow-error': '0 0 20px rgba(239, 68, 68, 0.4)',
+                'glow-error-sm': '0 0 10px rgba(239, 68, 68, 0.3)',
+                'glow-error-lg': '0 0 30px rgba(239, 68, 68, 0.5)',
+                'glow-warning': '0 0 20px rgba(245, 158, 11, 0.4)',
+                'glow-warning-sm': '0 0 10px rgba(245, 158, 11, 0.3)',
+                'glow-warning-lg': '0 0 30px rgba(245, 158, 11, 0.5)',
                 // Subtle shadows for depth
                 'card': '0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4)',
                 'card-hover': '0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.4)',

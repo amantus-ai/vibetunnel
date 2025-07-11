@@ -527,7 +527,7 @@ export class SessionCreateForm extends LitElement {
                 data-testid="spawn-window-toggle"
               >
                 <span
-                  class="inline-block h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 transform rounded-full bg-white transition-transform ${
+                  class="inline-block h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 transform rounded-full bg-bg-elevated transition-transform ${
                     this.spawnWindow ? 'translate-x-4 sm:translate-x-5' : 'translate-x-0.5'
                   }"
                 ></span>

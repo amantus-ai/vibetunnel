@@ -224,7 +224,7 @@ export class MobileInputOverlay extends LitElement {
 
           <div
             class="mobile-input-container font-mono text-sm mx-4 flex flex-col"
-            style="background: black; border: 1px solid #569cd6; border-radius: 8px; margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
+            style="background: rgb(var(--color-bg)); border: 1px solid rgb(var(--color-primary)); border-radius: 8px; margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
             @click=${this.handleContainerClick}
           >
           <!-- Input Area -->
@@ -241,7 +241,7 @@ export class MobileInputOverlay extends LitElement {
               @compositionstart=${this.handleCompositionStart}
               @compositionupdate=${this.handleCompositionUpdate}
               @compositionend=${this.handleCompositionEnd}
-              style="height: 120px; background: black; color: #d4d4d4; border: none; padding: 12px;"
+              style="height: 120px; background: rgb(var(--color-bg)); color: rgb(var(--color-text)); border: none; padding: 12px;"
               autocomplete="off"
               autocorrect="off"
               autocapitalize="off"
@@ -250,7 +250,7 @@ export class MobileInputOverlay extends LitElement {
           </div>
 
           <!-- Controls -->
-          <div class="p-4 flex gap-2" style="border-top: 1px solid #444;">
+          <div class="p-4 flex gap-2" style="border-top: 1px solid rgb(var(--color-border));">
             <button
               class="font-mono px-3 py-2 text-xs transition-colors btn-ghost"
               @click=${() => this.onCancel?.()}

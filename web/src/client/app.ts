@@ -1359,7 +1359,7 @@ export class VibeTunnelApp extends LitElement {
           ? html`
             <div class="fixed top-4 right-4" style="z-index: ${Z_INDEX.MODAL_BACKDROP};">
               <div
-                class="bg-status-error text-dark-bg px-4 py-2 rounded shadow-lg font-mono text-sm"
+                class="bg-status-error text-bg-elevated px-4 py-2 rounded shadow-lg font-mono text-sm"
               >
                 ${this.errorMessage}
                 <button
@@ -1370,7 +1370,7 @@ export class VibeTunnelApp extends LitElement {
                     }
                     this.errorMessage = '';
                   }}
-                  class="ml-2 text-dark-bg hover:text-dark-text"
+                  class="ml-2 text-bg-elevated hover:text-text-muted"
                 >
                   ✕
                 </button>
@@ -1384,7 +1384,7 @@ export class VibeTunnelApp extends LitElement {
           ? html`
             <div class="fixed top-4 right-4" style="z-index: ${Z_INDEX.MODAL_BACKDROP};">
               <div
-                class="bg-status-success text-dark-bg px-4 py-2 rounded shadow-lg font-mono text-sm"
+                class="bg-status-success text-bg-elevated px-4 py-2 rounded shadow-lg font-mono text-sm"
               >
                 ${this.successMessage}
                 <button
@@ -1395,7 +1395,7 @@ export class VibeTunnelApp extends LitElement {
                     }
                     this.successMessage = '';
                   }}
-                  class="ml-2 text-dark-bg hover:text-dark-text"
+                  class="ml-2 text-bg-elevated hover:text-text-muted"
                 >
                   ✕
                 </button>
@@ -1437,7 +1437,7 @@ export class VibeTunnelApp extends LitElement {
               <div
                 class="fixed inset-0 sm:hidden transition-all ${
                   this.isInSidebarDismissMode
-                    ? 'bg-black bg-opacity-50 backdrop-blur-sm'
+                    ? 'bg-bg bg-opacity-50 backdrop-blur-sm'
                     : 'bg-transparent pointer-events-none'
                 }"
                 style="z-index: ${Z_INDEX.MOBILE_OVERLAY}; transition-duration: ${TRANSITIONS.MOBILE_SLIDE}ms;"
@@ -1490,7 +1490,7 @@ export class VibeTunnelApp extends LitElement {
           this.shouldShowResizeHandle
             ? html`
               <div
-                class="w-1 bg-dark-border hover:bg-accent-green cursor-ew-resize transition-colors ${
+                class="w-1 bg-border hover:bg-accent-green cursor-ew-resize transition-colors ${
                   this.isResizing ? 'bg-accent-green' : ''
                 }"
                 style="transition-duration: ${TRANSITIONS.RESIZE_HANDLE}ms;"
@@ -1563,7 +1563,7 @@ export class VibeTunnelApp extends LitElement {
         this.showLogLink
           ? html`
         <div class="fixed ${this.getLogButtonPosition()} right-4 text-muted text-xs font-mono bg-secondary px-3 py-1.5 rounded-lg border border-base shadow-sm transition-all duration-200" style="z-index: ${Z_INDEX.LOG_BUTTON};">
-          <a href="/logs" class="hover:text-dark-text transition-colors">Logs</a>
+          <a href="/logs" class="hover:text-text transition-colors">Logs</a>
           <span class="ml-2 opacity-75">v${VERSION}</span>
         </div>
       `

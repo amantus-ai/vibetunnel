@@ -15,26 +15,26 @@ export class FileBrowserFAB extends LitElement {
       width: 56px;
       height: 56px;
       border-radius: 50%;
-      background: #007acc;
-      color: white;
+      background: rgb(var(--color-primary));
+      color: rgb(var(--color-text-bright));
       border: none;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 8px rgb(var(--color-bg-base) / 0.3);
       transition: all 0.3s ease;
     }
 
     .fab:hover {
-      background: #005a9e;
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+      background: rgb(var(--color-primary-hover));
+      box-shadow: 0 6px 12px rgb(var(--color-bg-base) / 0.4);
       transform: translateY(-2px);
     }
 
     .fab:active {
       transform: translateY(0);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 2px 4px rgb(var(--color-bg-base) / 0.3);
     }
 
     .icon {
@@ -46,8 +46,8 @@ export class FileBrowserFAB extends LitElement {
       bottom: 100%;
       right: 0;
       margin-bottom: 8px;
-      background: #333;
-      color: white;
+      background: rgb(var(--color-surface));
+      color: rgb(var(--color-text));
       padding: 6px 12px;
       border-radius: 4px;
       font-size: 12px;

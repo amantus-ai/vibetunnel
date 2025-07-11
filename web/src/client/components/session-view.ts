@@ -1212,7 +1212,7 @@ export class SessionView extends LitElement {
           box-shadow: none !important;
         }
         session-view:focus {
-          outline: 2px solid rgb(16 185 129) !important;
+          outline: 2px solid rgb(var(--color-primary)) !important;
           outline-offset: -2px;
         }
       </style>

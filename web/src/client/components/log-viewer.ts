@@ -264,17 +264,17 @@ export class LogViewer extends LitElement {
 
         /* Show scrollbar on hover */
         .log-container:hover::-webkit-scrollbar-thumb {
-          background: rgb(255 255 255 / 0.2);
+          background: rgb(var(--color-text-bright) / 0.2);
         }
 
         .log-container::-webkit-scrollbar-thumb:hover {
-          background: rgb(255 255 255 / 0.3);
+          background: rgb(var(--color-text-bright) / 0.3);
         }
 
         /* Firefox */
         .log-container:hover {
           scrollbar-width: thin;
-          scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+          scrollbar-color: rgb(var(--color-text-bright) / 0.2) transparent;
         }
       </style>
     `;

@@ -110,13 +110,13 @@ export class ThemeToggle extends LitElement {
       <div class="relative">
         <button
           @click=${this.toggleExpanded}
-          class="btn-ghost p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
+          class="p-2 text-text border border-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
           aria-label="Theme toggle"
           aria-expanded=${this.expanded}
         >
           <iconify-icon 
             icon="ph:${currentIcon}" 
-            class="text-xl text-text-muted"
+            class="text-xl"
           ></iconify-icon>
         </button>
         
