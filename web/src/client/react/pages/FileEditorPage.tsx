@@ -103,36 +103,39 @@ export function FileEditorPage() {
     }
   };
 
-  const saveFile = useCallback(async (content: string) => {
-    if (!currentFile) return;
+  const saveFile = useCallback(
+    async (content: string) => {
+      if (!currentFile) return;
 
-    setIsSaving(true);
-    setError(null);
+      setIsSaving(true);
+      setError(null);
 
-    try {
-      const response = await fetch('/api/filesystem/write', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          path: currentFile.path,
-          content,
-        }),
-      });
+      try {
+        const response = await fetch('/api/filesystem/write', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: currentFile.path,
+            content,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error(`Failed to save file: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`Failed to save file: ${response.statusText}`);
+        }
+
+        setCurrentFile({ ...currentFile, content });
+        setHasUnsavedChanges(false);
+        logger.log(`Saved ${currentFile.path}`);
+      } catch (err) {
+        logger.error('Failed to save file:', err);
+        setError(err instanceof Error ? err.message : 'Failed to save file');
+      } finally {
+        setIsSaving(false);
       }
-
-      setCurrentFile({ ...currentFile, content });
-      setHasUnsavedChanges(false);
-      logger.log(`Saved ${currentFile.path}`);
-    } catch (err) {
-      logger.error('Failed to save file:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save file');
-    } finally {
-      setIsSaving(false);
-    }
-  }, [currentFile]);
+    },
+    [currentFile]
+  );
 
   const handleFileSelect = (file: { path: string; type: string }) => {
     if (file.type === 'file') {

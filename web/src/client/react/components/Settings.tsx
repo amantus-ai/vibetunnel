@@ -106,7 +106,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
             min="10"
             max="24"
             value={settings.fontSize}
-            onChange={(e) => handleChange('fontSize', parseInt(e.target.value))}
+            onChange={(e) => handleChange('fontSize', Number.parseInt(e.target.value))}
             className="w-full"
           />
         </div>
@@ -158,7 +158,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
             max="10000"
             step="100"
             value={settings.scrollback}
-            onChange={(e) => handleChange('scrollback', parseInt(e.target.value))}
+            onChange={(e) => handleChange('scrollback', Number.parseInt(e.target.value))}
             className="w-full"
           />
         </div>
@@ -188,7 +188,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
             min="2"
             max="8"
             value={settings.tabStopWidth}
-            onChange={(e) => handleChange('tabStopWidth', parseInt(e.target.value))}
+            onChange={(e) => handleChange('tabStopWidth', Number.parseInt(e.target.value))}
             className="w-full"
           />
         </div>

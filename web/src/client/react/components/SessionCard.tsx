@@ -27,6 +27,7 @@ export function SessionCard({ session, onClick, onDelete }: SessionCardProps) {
     <div
       className="bg-gray-800 rounded-lg p-6 cursor-pointer hover:bg-gray-700 transition-all duration-200 transform hover:scale-[1.02] relative group"
       onClick={() => onClick(session.id)}
+      data-testid="session-card"
     >
       {/* Status indicator */}
       <div
@@ -34,7 +35,7 @@ export function SessionCard({ session, onClick, onDelete }: SessionCardProps) {
       />
 
       {/* Session info */}
-      <h3 className="text-lg font-semibold text-white mb-2">
+      <h3 className="text-lg font-semibold text-white mb-2" data-testid="session-name">
         {session.name || `Session ${session.id.slice(0, 8)}`}
       </h3>
 
@@ -86,7 +87,7 @@ export function SessionCard({ session, onClick, onDelete }: SessionCardProps) {
               d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
             />
           </svg>
-          {session.status}
+          <span data-testid="session-status">{session.status}</span>
         </div>
       </div>
 

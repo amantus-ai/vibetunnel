@@ -1,15 +1,21 @@
-import React, { lazy, Suspense, type ReactNode } from 'react';
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import React, { lazy, type ReactNode, Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { useAppStore } from './stores/useAppStore';
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
-const SessionsPage = lazy(() => import('./pages/SessionsPageRefactored').then((m) => ({ default: m.SessionsPageRefactored })));
-const SessionViewPage = lazy(() => import('./pages/SessionViewPage').then((m) => ({ default: m.SessionViewPage })));
-const FileEditorPage = lazy(() => import('./pages/FileEditorPage').then((m) => ({ default: m.FileEditorPage })));
+const SessionsPage = lazy(() =>
+  import('./pages/SessionsPageRefactored').then((m) => ({ default: m.SessionsPageRefactored }))
+);
+const SessionViewPage = lazy(() =>
+  import('./pages/SessionViewPage').then((m) => ({ default: m.SessionViewPage }))
+);
+const FileEditorPage = lazy(() =>
+  import('./pages/FileEditorPage').then((m) => ({ default: m.FileEditorPage }))
+);
 
 // Create a query client with optimized defaults
 const queryClient = new QueryClient({
@@ -65,7 +71,13 @@ function PageLoader() {
 }
 
 // Error fallback component
-function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+function ErrorFallback({
+  error,
+  resetErrorBoundary,
+}: {
+  error: Error;
+  resetErrorBoundary: () => void;
+}) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-gray-900 rounded-lg p-6 text-center">
@@ -98,11 +110,11 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetError
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 }
 

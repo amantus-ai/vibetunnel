@@ -12,12 +12,10 @@ import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { waitForElementStable } from '../helpers/wait-strategies.helper';
 import { SessionListPage } from '../pages/session-list.page';
 
-// Type for session card web component
-interface SessionCardElement extends HTMLElement {
-  session?: {
-    name?: string;
-    command?: string[];
-  };
+// Type for session card data
+interface SessionCardData {
+  name?: string;
+  command?: string[];
 }
 
 // These tests create their own sessions and can run in parallel
@@ -79,7 +77,7 @@ test.describe('Session Creation', () => {
     console.log(`Navigated to session: ${page.url()}`);
 
     // Wait for terminal to be ready
-    await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('[data-testid="terminal"]', { state: 'visible', timeout: 5000 });
 
     // Navigate back to session list
     await page.goto('/');
@@ -98,34 +96,30 @@ test.describe('Session Creation', () => {
 
     // Look for the session with more specific debugging
     const found = await page.evaluate((targetName) => {
-      const cards = document.querySelectorAll('session-card');
+      const cards = document.querySelectorAll('[data-testid="session-card"]');
       const sessions = [];
       for (const card of cards) {
-        // Session cards are web components with properties
-        const sessionCard = card as SessionCardElement;
+        // Look for session name in React components
         let name = 'unknown';
 
-        // Try to get session name from the card's session property
-        if (sessionCard.session) {
-          name = sessionCard.session.name || sessionCard.session.command?.join(' ') || 'unknown';
+        // Look for the session name text element
+        const nameElement = card.querySelector('[data-testid="session-name"]');
+        if (nameElement) {
+          name = nameElement.textContent || 'unknown';
         } else {
-          // Fallback: Look for inline-edit component which contains the session name
-          const inlineEdit = card.querySelector('inline-edit');
-          if (inlineEdit) {
-            // Try to get the value property (Lit property binding)
-            const inlineEditElement = inlineEdit as HTMLElement & { value?: string };
-            name = inlineEditElement.value || 'unknown';
-
-            // If that doesn't work, try the shadow DOM
-            if (name === 'unknown' && inlineEdit.shadowRoot) {
-              const displayText = inlineEdit.shadowRoot.querySelector('.display-text');
-              name = displayText?.textContent || 'unknown';
+          // Fallback: Look for any text content that might contain the session name
+          const textElements = card.querySelectorAll('h3, span, p');
+          for (const elem of textElements) {
+            const text = elem.textContent?.trim();
+            if (text && text.length > 0 && !text.includes('Status')) {
+              name = text;
+              break;
             }
           }
         }
 
-        const statusEl = card.querySelector('span[data-status]');
-        const status = statusEl?.getAttribute('data-status') || 'no-status';
+        const statusEl = card.querySelector('[data-testid="session-status"]');
+        const status = statusEl?.textContent?.toLowerCase() || 'no-status';
         sessions.push({ name, status });
         if (name.includes(targetName)) {
           return { found: true, name, status };
@@ -205,7 +199,10 @@ test.describe('Session Creation', () => {
       // Check if we navigated to the session
       if (page.url().includes('?session=')) {
         // Wait for terminal to be ready before navigating back
-        await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
+        await page.waitForSelector('[data-testid="terminal"]', {
+          state: 'visible',
+          timeout: 10000,
+        });
         await assertTerminalReady(page, 15000);
       } else {
         console.log(`Session ${sessionName} created in background`);
@@ -221,7 +218,10 @@ test.describe('Session Creation', () => {
     // Navigate to list and verify all exist
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
+    await page.waitForSelector('[data-testid="session-card"]', {
+      state: 'visible',
+      timeout: 15000,
+    });
 
     // Add a longer delay to ensure the session list is fully updated
     await page.waitForTimeout(8000);
@@ -235,15 +235,12 @@ test.describe('Session Creation', () => {
 
     // Debug: Log all sessions found
     const allSessions = await page.evaluate(() => {
-      const cards = document.querySelectorAll('session-card');
+      const cards = document.querySelectorAll('[data-testid="session-card"]');
       const sessions = [];
       for (const card of cards) {
-        const sessionCard = card as SessionCardElement;
-        if (sessionCard.session) {
-          const name =
-            sessionCard.session.name || sessionCard.session.command?.join(' ') || 'unknown';
-          sessions.push(name);
-        }
+        const nameElement = card.querySelector('[data-testid="session-name"]');
+        const name = nameElement?.textContent || 'unknown';
+        sessions.push(name);
       }
       return sessions;
     });
@@ -252,14 +249,12 @@ test.describe('Session Creation', () => {
     // Verify each session exists using custom evaluation
     for (const sessionName of sessions) {
       const found = await page.evaluate((targetName) => {
-        const cards = document.querySelectorAll('session-card');
+        const cards = document.querySelectorAll('[data-testid="session-card"]');
         for (const card of cards) {
-          const sessionCard = card as SessionCardElement;
-          if (sessionCard.session) {
-            const name = sessionCard.session.name || sessionCard.session.command?.join(' ') || '';
-            if (name.includes(targetName)) {
-              return true;
-            }
+          const nameElement = card.querySelector('[data-testid="session-name"]');
+          const name = nameElement?.textContent || '';
+          if (name.includes(targetName)) {
+            return true;
           }
         }
         return false;

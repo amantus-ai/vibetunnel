@@ -24,15 +24,14 @@ export class SessionViewPage extends BasePage {
 
     await this.page.waitForFunction(
       () => {
-        const terminal = document.querySelector('vibe-terminal');
+        const terminal = document.querySelector('[data-testid="terminal"]');
         if (!terminal) return false;
 
-        // Terminal is ready if it has content, shadow root, or xterm element
+        // Terminal is ready if it has content or xterm element
         const hasContent = terminal.textContent && terminal.textContent.trim().length > 0;
-        const hasShadowRoot = !!terminal.shadowRoot;
         const hasXterm = !!terminal.querySelector('.xterm');
 
-        return hasContent || hasShadowRoot || hasXterm;
+        return hasContent || hasXterm;
       },
       { timeout }
     );

@@ -1,8 +1,7 @@
-import { oneEvent } from '@open-wc/testing';
-import { LitElement } from 'lit';
+import { fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 
-export { waitForElement } from '@/test/utils/lit-test-utils';
+export { waitForElement } from '@/test/utils/react-test-utils';
 
 /**
  * Wait for a condition to be met with configurable polling
@@ -81,7 +80,7 @@ export async function waitForAsync(delay: number = 0): Promise<void> {
   // First wait for microtasks
   await waitForMicrotasks();
 
-  // Then wait for any pending updates in LitElement components
+  // Then wait for any pending updates in React components
   await new Promise((resolve) => setTimeout(resolve, delay));
 
   // Finally wait for another round of microtasks
@@ -89,63 +88,47 @@ export async function waitForAsync(delay: number = 0): Promise<void> {
 }
 
 /**
- * Types an input field with a given value and triggers input event (supports both shadow and light DOM)
+ * Types an input field with a given value and triggers input event
  */
 export async function typeInInput(
   element: HTMLElement,
   selector: string,
   text: string
 ): Promise<void> {
-  const input = (
-    element.shadowRoot
-      ? element.shadowRoot.querySelector(selector)
-      : element.querySelector(selector)
-  ) as HTMLInputElement;
+  const input = element.querySelector(selector) as HTMLInputElement;
   if (!input) throw new Error(`Input with selector ${selector} not found`);
 
-  input.value = text;
-  input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+  fireEvent.change(input, { target: { value: text } });
+  fireEvent.input(input, { target: { value: text } });
 
-  if (element instanceof LitElement) {
-    await element.updateComplete;
-  }
+  await waitFor(() => {
+    expect(input.value).toBe(text);
+  });
 }
 
 /**
- * Clicks an element and waits for updates (supports both shadow and light DOM)
+ * Clicks an element and waits for updates
  */
 export async function clickElement(element: HTMLElement, selector: string): Promise<void> {
-  const target = (
-    element.shadowRoot
-      ? element.shadowRoot.querySelector(selector)
-      : element.querySelector(selector)
-  ) as HTMLElement;
+  const target = element.querySelector(selector) as HTMLElement;
   if (!target) throw new Error(`Element with selector ${selector} not found`);
 
-  target.click();
-
-  if (element instanceof LitElement) {
-    await element.updateComplete;
-  }
+  fireEvent.click(target);
 }
 
 /**
- * Gets text content from an element (supports both shadow and light DOM)
+ * Gets text content from an element
  */
 export function getTextContent(element: HTMLElement, selector: string): string | null {
-  const target = element.shadowRoot
-    ? element.shadowRoot.querySelector(selector)
-    : element.querySelector(selector);
+  const target = element.querySelector(selector);
   return target?.textContent?.trim() || null;
 }
 
 /**
- * Checks if an element exists (supports both shadow and light DOM)
+ * Checks if an element exists
  */
 export function elementExists(element: HTMLElement, selector: string): boolean {
-  return element.shadowRoot
-    ? !!element.shadowRoot.querySelector(selector)
-    : !!element.querySelector(selector);
+  return !!element.querySelector(selector);
 }
 
 /**
@@ -156,10 +139,14 @@ export async function waitForEvent<T = unknown>(
   eventName: string,
   action: () => void | Promise<void>
 ): Promise<T> {
-  const eventPromise = oneEvent(element, eventName);
-  await action();
-  const event = await eventPromise;
-  return (event as CustomEvent<T>).detail;
+  return new Promise<T>(async (resolve) => {
+    const handler = (event: Event) => {
+      element.removeEventListener(eventName, handler);
+      resolve((event as CustomEvent<T>).detail);
+    };
+    element.addEventListener(eventName, handler);
+    await action();
+  });
 }
 
 /**
@@ -283,29 +270,20 @@ export async function pressKey(
   key: string,
   options: Partial<KeyboardEventInit> = {}
 ): Promise<void> {
-  const event = new KeyboardEvent('keydown', {
+  fireEvent.keyDown(element, {
     key,
-    bubbles: true,
-    composed: true,
     ...options,
   });
-  element.dispatchEvent(event);
-
-  if (element instanceof LitElement) {
-    await element.updateComplete;
-  }
 }
 
 /**
- * Gets all elements matching a selector (supports both shadow and light DOM)
+ * Gets all elements matching a selector
  */
 export function getAllElements<T extends Element = Element>(
   element: HTMLElement,
   selector: string
 ): T[] {
-  return element.shadowRoot
-    ? Array.from(element.shadowRoot.querySelectorAll<T>(selector))
-    : Array.from(element.querySelectorAll<T>(selector));
+  return Array.from(element.querySelectorAll<T>(selector));
 }
 
 /**
@@ -316,19 +294,15 @@ export async function waitForElementToAppear(
   selector: string,
   timeout: number = 5000
 ): Promise<Element> {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeout) {
-    const target = element.shadowRoot?.querySelector(selector);
-    if (target) return target;
-
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    if (element instanceof LitElement) {
-      await element.updateComplete;
-    }
-  }
-
-  throw new Error(`Element ${selector} did not appear within ${timeout}ms`);
+  const result = await waitFor(
+    () => {
+      const target = element.querySelector(selector);
+      if (!target) throw new Error(`Element ${selector} not found`);
+      return target;
+    },
+    { timeout }
+  );
+  return result;
 }
 
 /**
@@ -338,7 +312,7 @@ export function getComputedStyles(
   element: HTMLElement,
   selector: string
 ): CSSStyleDeclaration | null {
-  const target = element.shadowRoot?.querySelector(selector) as HTMLElement;
+  const target = element.querySelector(selector) as HTMLElement;
   if (!target) return null;
 
   return window.getComputedStyle(target);
@@ -348,7 +322,7 @@ export function getComputedStyles(
  * Checks if element has a specific class
  */
 export function hasClass(element: HTMLElement, selector: string, className: string): boolean {
-  const target = element.shadowRoot?.querySelector(selector);
+  const target = element.querySelector(selector);
   return target?.classList.contains(className) || false;
 }
 
@@ -360,27 +334,18 @@ export function getAttribute(
   selector: string,
   attribute: string
 ): string | null {
-  const target = element.shadowRoot?.querySelector(selector);
+  const target = element.querySelector(selector);
   return target?.getAttribute(attribute) || null;
 }
 
 /**
- * Simulates form submission (supports both shadow and light DOM)
+ * Simulates form submission
  */
 export async function submitForm(element: HTMLElement, formSelector: string): Promise<void> {
-  const form = (
-    element.shadowRoot
-      ? element.shadowRoot.querySelector(formSelector)
-      : element.querySelector(formSelector)
-  ) as HTMLFormElement;
+  const form = element.querySelector(formSelector) as HTMLFormElement;
   if (!form) throw new Error(`Form ${formSelector} not found`);
 
-  const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-  form.dispatchEvent(submitEvent);
-
-  if (element instanceof LitElement) {
-    await element.updateComplete;
-  }
+  fireEvent.submit(form);
 }
 
 /**

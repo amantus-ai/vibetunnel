@@ -309,17 +309,14 @@ export async function waitForTerminalText(
  * Wait for terminal to be visible and ready
  */
 export async function waitForTerminalReady(page: Page, timeout = 4000): Promise<void> {
-  await page.waitForSelector('vibe-terminal', { state: 'visible', timeout });
+  await page.waitForSelector('[data-testid="terminal"]', { state: 'visible', timeout });
 
   // Additional check for terminal content or structure
   await page.waitForFunction(
     () => {
-      const terminal = document.querySelector('vibe-terminal');
+      const terminal = document.querySelector('[data-testid="terminal"]');
       return (
-        terminal &&
-        (terminal.textContent?.trim().length > 0 ||
-          !!terminal.shadowRoot ||
-          !!terminal.querySelector('.xterm'))
+        terminal && (terminal.textContent?.trim().length > 0 || !!terminal.querySelector('.xterm'))
       );
     },
     { timeout: 2000 }

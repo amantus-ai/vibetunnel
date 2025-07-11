@@ -1,12 +1,12 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { Session } from '../../../shared/types';
+import { createLogger } from '../../utils/logger';
 import { Header } from '../components/Header';
 import { SessionCard } from '../components/SessionCard';
 import { Settings } from '../components/Settings';
 import { useAppStore, useSettingsOpen } from '../stores/useAppStore';
-import type { Session } from '../../../shared/types';
-import { createLogger } from '../../utils/logger';
 
 const logger = createLogger('SessionsPage');
 
@@ -37,26 +37,28 @@ const sessionApi = {
 };
 
 // Memoized components
-const SessionGrid = memo(({ 
-  sessions, 
-  onSessionClick, 
-  onSessionDelete 
-}: {
-  sessions: Session[];
-  onSessionClick: (id: string) => void;
-  onSessionDelete: (id: string) => void;
-}) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-    {sessions.map((session) => (
-      <SessionCard
-        key={session.id}
-        session={session}
-        onClick={onSessionClick}
-        onDelete={onSessionDelete}
-      />
-    ))}
-  </div>
-));
+const SessionGrid = memo(
+  ({
+    sessions,
+    onSessionClick,
+    onSessionDelete,
+  }: {
+    sessions: Session[];
+    onSessionClick: (id: string) => void;
+    onSessionDelete: (id: string) => void;
+  }) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {sessions.map((session) => (
+        <SessionCard
+          key={session.id}
+          session={session}
+          onClick={onSessionClick}
+          onDelete={onSessionDelete}
+        />
+      ))}
+    </div>
+  )
+);
 
 SessionGrid.displayName = 'SessionGrid';
 
@@ -97,7 +99,11 @@ export function SessionsPageRefactored() {
   const settingsOpen = useSettingsOpen();
 
   // React Query hooks
-  const { data: sessions = [], isLoading, error } = useQuery({
+  const {
+    data: sessions = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['sessions'],
     queryFn: sessionApi.fetchAll,
     refetchInterval: 5000,
@@ -110,7 +116,7 @@ export function SessionsPageRefactored() {
       // Optimistic update
       await queryClient.cancelQueries({ queryKey: ['sessions'] });
       const previousSessions = queryClient.getQueryData<Session[]>(['sessions']);
-      
+
       const optimisticSession: Session = {
         id: `temp-${Date.now()}`,
         name: newSession.name,
@@ -120,9 +126,9 @@ export function SessionsPageRefactored() {
         startedAt: new Date().toISOString(),
         lastModified: new Date().toISOString(),
       };
-      
+
       queryClient.setQueryData<Session[]>(['sessions'], (old = []) => [...old, optimisticSession]);
-      
+
       return { previousSessions };
     },
     onError: (err, variables, context) => {
@@ -144,11 +150,11 @@ export function SessionsPageRefactored() {
     onMutate: async (sessionId) => {
       await queryClient.cancelQueries({ queryKey: ['sessions'] });
       const previousSessions = queryClient.getQueryData<Session[]>(['sessions']);
-      
+
       queryClient.setQueryData<Session[]>(['sessions'], (old = []) =>
         old.filter((session) => session.id !== sessionId)
       );
-      
+
       return { previousSessions };
     },
     onError: (err, variables, context) => {

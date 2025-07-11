@@ -202,6 +202,7 @@ export const Terminal = React.forwardRef<TerminalHandle, TerminalProps>(
         ref={containerRef}
         className="terminal-container w-full h-full bg-black"
         style={{ padding: '8px' }}
+        data-testid="terminal"
       />
     );
   }

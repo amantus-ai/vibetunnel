@@ -10,16 +10,16 @@ export default defineConfig(({ mode }) => {
   
   // Default to running all tests if no mode specified
   const testInclude = isClient 
-    ? ['src/client/**/*.test.ts']
+    ? ['src/client/**/*.test.{ts,tsx}']
     : isServer 
     ? ['src/server/**/*.test.ts', 'src/test/e2e/**/*.test.ts', 'src/test/unit/**/*.test.ts']
-    : ['src/**/*.test.ts'];
+    : ['src/**/*.test.{ts,tsx}'];
     
   const coverageInclude = isClient
-    ? ['src/client/**/*.ts']
+    ? ['src/client/**/*.{ts,tsx}']
     : isServer
     ? ['src/server/**/*.ts']
-    : ['src/**/*.ts'];
+    : ['src/**/*.{ts,tsx}'];
     
   const coverageDir = isClient
     ? './coverage/client'
@@ -47,8 +47,8 @@ export default defineConfig(({ mode }) => {
           'public/',
           '*.config.ts',
           '*.config.js',
-          '**/*.test.ts',
-          '**/*.spec.ts',
+          '**/*.test.{ts,tsx}',
+          '**/*.spec.{ts,tsx}',
         ],
         include: coverageInclude,
         all: true,

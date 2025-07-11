@@ -37,7 +37,7 @@ export function useAuth(): UseAuthReturn {
   useEffect(() => {
     const savedToken = localStorage.getItem(TOKEN_KEY);
     const savedUser = localStorage.getItem(USER_KEY);
-    
+
     if (savedToken && savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser);

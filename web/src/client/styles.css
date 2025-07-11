@@ -1448,10 +1448,6 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
     animation: fade-in 0.15s ease-out;
   }
 
-  /* Make button invisible during transition */
-  .vt-create-button {
-    contain: layout;
-  }
 
   /* Ensure smooth backdrop fade */
   .modal-backdrop {

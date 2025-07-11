@@ -302,12 +302,11 @@ export async function assertTerminalReady(page: Page, timeout = 15000): Promise<
 
       // Check if terminal has xterm structure (fallback check)
       const hasXterm = !!term.querySelector('.xterm');
-      const hasShadowRoot = !!term.shadowRoot;
 
       const content = term?.textContent || '';
 
       // If terminal structure exists but no content yet, wait
-      if ((hasXterm || hasShadowRoot) && !content) {
+      if (hasXterm && !content) {
         return false;
       }
 

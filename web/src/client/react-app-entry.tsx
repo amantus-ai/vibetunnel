@@ -10,13 +10,8 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 
-// Use concurrent features in production, strict mode in development
-if (process.env.NODE_ENV === 'development') {
-  root.render(
-    <React.StrictMode>
-      <AppRefactored />
-    </React.StrictMode>
-  );
-} else {
-  root.render(<AppRefactored />);
-}
+root.render(
+  <React.StrictMode>
+    <AppRefactored />
+  </React.StrictMode>
+);

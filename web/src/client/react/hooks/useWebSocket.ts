@@ -89,9 +89,9 @@ export function useWebSocket({
           reconnectCountRef.current < reconnectAttempts &&
           !event.wasClean
         ) {
-          const timeout = reconnectInterval * Math.pow(2, reconnectCountRef.current);
+          const timeout = reconnectInterval * 2 ** reconnectCountRef.current;
           logger.log(`Reconnecting in ${timeout}ms (attempt ${reconnectCountRef.current + 1})`);
-          
+
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectCountRef.current++;
             connect();
@@ -131,20 +131,23 @@ export function useWebSocket({
   const disconnect = useCallback(() => {
     clearReconnectTimeout();
     reconnectCountRef.current = reconnectAttempts; // Prevent reconnection
-    
+
     if (webSocketRef.current) {
       webSocketRef.current.close();
       webSocketRef.current = null;
     }
   }, [clearReconnectTimeout, reconnectAttempts]);
 
-  const sendMessage = useCallback((message: string | ArrayBuffer | Blob) => {
-    if (webSocketRef.current?.readyState === ReadyState.OPEN) {
-      webSocketRef.current.send(message);
-    } else {
-      logger.warn('WebSocket is not open. Current state:', readyState);
-    }
-  }, [readyState]);
+  const sendMessage = useCallback(
+    (message: string | ArrayBuffer | Blob) => {
+      if (webSocketRef.current?.readyState === ReadyState.OPEN) {
+        webSocketRef.current.send(message);
+      } else {
+        logger.warn('WebSocket is not open. Current state:', readyState);
+      }
+    },
+    [readyState]
+  );
 
   // Handle connection lifecycle
   useEffect(() => {

@@ -67,10 +67,10 @@ export function useSessionApi(): UseSessionApiReturn {
 
       const newSession = await response.json();
       const result = await createAsync.execute(async () => newSession);
-      
+
       // Optimistically update the list
       setSessions((prev) => [...prev, result]);
-      
+
       return result;
     },
     [sessions.length, createAsync]

@@ -1,6 +1,6 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Session } from '../../../shared/types';
 import { createLogger } from '../../utils/logger';
 import { Header } from '../components/Header';
@@ -38,7 +38,7 @@ const sessionApi = {
 // Session status indicator component
 const SessionStatus = memo(({ session }: { session: Session }) => {
   const isRunning = session.status === 'running';
-  
+
   return (
     <div className="flex items-center space-x-4">
       <div className="text-sm text-gray-400 font-mono">
@@ -69,12 +69,16 @@ export function SessionViewPageRefactored() {
   const terminalRef = useRef<TerminalHandle>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const [terminalReady, setTerminalReady] = useState(false);
-  
+
   // Store actions
   const { setActiveSession } = useAppStore();
 
   // Fetch session data
-  const { data: session, error, isLoading } = useQuery({
+  const {
+    data: session,
+    error,
+    isLoading,
+  } = useQuery({
     queryKey: ['session', sessionId],
     queryFn: () => sessionApi.fetchSession(sessionId!),
     enabled: !!sessionId,
@@ -112,7 +116,7 @@ export function SessionViewPageRefactored() {
     if (!sessionId || !terminalReady) return;
 
     logger.log(`Setting up SSE stream for session ${sessionId}`);
-    
+
     const eventSource = new EventSource(`/api/sessions/${sessionId}/stream`);
     eventSourceRef.current = eventSource;
 
@@ -128,7 +132,7 @@ export function SessionViewPageRefactored() {
 
     eventSource.onerror = (error) => {
       logger.error('SSE connection error:', error);
-      
+
       // Check if the session still exists
       queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
     };
@@ -159,7 +163,7 @@ export function SessionViewPageRefactored() {
 
       try {
         await sessionApi.resizeSession(sessionId, cols, rows);
-        
+
         // Update local cache
         queryClient.setQueryData(['session', sessionId], (old: Session | undefined) => {
           if (!old) return old;
@@ -175,10 +179,12 @@ export function SessionViewPageRefactored() {
   // Handle bell
   const handleBell = useCallback(() => {
     const settings = useAppStore.getState().settings;
-    
+
     if (settings.bellStyle === 'sound' || settings.bellStyle === 'both') {
       // Play bell sound
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE');
+      const audio = new Audio(
+        'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE'
+      );
       audio.play().catch(() => {
         // Ignore audio play errors
       });
@@ -205,9 +211,7 @@ export function SessionViewPageRefactored() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <p className="text-red-400 mb-4">
-            {error?.message || 'Session not found'}
-          </p>
+          <p className="text-red-400 mb-4">{error?.message || 'Session not found'}</p>
           <button
             type="button"
             onClick={() => navigate('/')}

@@ -24,18 +24,18 @@ interface AppState {
   // Auth state
   user: User | null;
   isAuthenticated: boolean;
-  
+
   // Session state
   sessions: Session[];
   activeSessionId: string | null;
-  
+
   // UI state
   sidebarOpen: boolean;
   settingsOpen: boolean;
-  
+
   // Settings
   settings: AppSettings;
-  
+
   // Actions
   setUser: (user: User | null) => void;
   setAuthenticated: (isAuthenticated: boolean) => void;

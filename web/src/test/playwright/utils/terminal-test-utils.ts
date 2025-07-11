@@ -17,18 +17,17 @@ export class TerminalTestUtils {
     // The content will come through WebSocket/SSE
     await page.waitForFunction(
       () => {
-        const terminal = document.querySelector('vibe-terminal');
+        const terminal = document.querySelector('[data-testid="terminal"]');
         if (!terminal) {
           return false;
         }
 
-        // Check if terminal has been initialized (has shadow root or content)
+        // Check if terminal has been initialized (has content or xterm element)
         const hasContent = terminal.textContent && terminal.textContent.trim().length > 0;
-        const hasShadowRoot = !!terminal.shadowRoot;
         const hasXterm = !!terminal.querySelector('.xterm');
 
-        // Terminal is ready if it has any of these
-        return hasContent || hasShadowRoot || hasXterm;
+        // Terminal is ready if it has either of these
+        return hasContent || hasXterm;
       },
       { timeout }
     );

@@ -44,28 +44,31 @@ export function FileBrowser({
   const [error, setError] = useState<string | null>(null);
   const [gitInfo, setGitInfo] = useState<{ isRepo: boolean; branch?: string } | null>(null);
 
-  const loadDirectory = useCallback(async (path: string) => {
-    setIsLoading(true);
-    setError(null);
+  const loadDirectory = useCallback(
+    async (path: string) => {
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      const response = await fetch(`/api/filesystem/list?path=${encodeURIComponent(path)}`);
-      if (!response.ok) {
-        throw new Error(`Failed to load directory: ${response.statusText}`);
+      try {
+        const response = await fetch(`/api/filesystem/list?path=${encodeURIComponent(path)}`);
+        if (!response.ok) {
+          throw new Error(`Failed to load directory: ${response.statusText}`);
+        }
+
+        const data: DirectoryResponse = await response.json();
+        setFiles(data.files);
+        setCurrentPath(data.path);
+        setGitInfo(data.gitInfo || null);
+        onPathChange?.(data.path);
+      } catch (err) {
+        logger.error('Failed to load directory:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load directory');
+      } finally {
+        setIsLoading(false);
       }
-
-      const data: DirectoryResponse = await response.json();
-      setFiles(data.files);
-      setCurrentPath(data.path);
-      setGitInfo(data.gitInfo || null);
-      onPathChange?.(data.path);
-    } catch (err) {
-      logger.error('Failed to load directory:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load directory');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [onPathChange]);
+    },
+    [onPathChange]
+  );
 
   useEffect(() => {
     loadDirectory(currentPath);
@@ -89,7 +92,7 @@ export function FileBrowser({
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+    return `${Number.parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
   };
 
   const formatDate = (dateString: string): string => {
@@ -106,7 +109,7 @@ export function FileBrowser({
   const getFileIcon = (item: FileInfo): string => {
     if (item.type === 'directory') return '📁';
     if (item.isSymlink) return '🔗';
-    
+
     const ext = item.name.split('.').pop()?.toLowerCase();
     switch (ext) {
       case 'js':

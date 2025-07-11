@@ -192,9 +192,6 @@ beforeAll(() => {
   };
 
   console.warn = (...args: unknown[]) => {
-    if (typeof args[0] === 'string' && args[0].includes('LitElement')) {
-      return;
-    }
     originalWarn.call(console, ...args);
   };
 });

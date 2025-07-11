@@ -1,8 +1,16 @@
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal as XTerm } from '@xterm/xterm';
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import '@xterm/xterm/css/xterm.css';
 import { createLogger } from '../../utils/logger';
 import { useAppStore } from '../stores/useAppStore';
@@ -102,7 +110,7 @@ const TerminalContent = memo(
       const fitAddonRef = useRef<FitAddon | null>(null);
       const webglAddonRef = useRef<WebglAddon | null>(null);
       const [isReady, setIsReady] = useState(false);
-      
+
       // Get settings from store
       const settings = useAppStore((state) => state.settings);
 
@@ -220,7 +228,7 @@ const TerminalContent = memo(
       // Handle resize
       const handleResize = useCallback(() => {
         if (!fitAddonRef.current || !isReady) return;
-        
+
         try {
           fitAddonRef.current.fit();
         } catch (e) {

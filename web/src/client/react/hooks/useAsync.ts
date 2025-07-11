@@ -59,10 +59,7 @@ export function useAsync<T>() {
 }
 
 // Specialized version for immediate execution
-export function useAsyncEffect<T>(
-  asyncFunction: () => Promise<T>,
-  deps: DependencyList = []
-) {
+export function useAsyncEffect<T>(asyncFunction: () => Promise<T>, deps: DependencyList = []) {
   const async = useAsync<T>();
 
   useEffect(() => {

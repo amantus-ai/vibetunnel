@@ -18,9 +18,7 @@ execSync('pnpm exec tailwindcss -i ./src/client/styles.css -o ./public/bundle/st
 
 // Bundle client JavaScript
 console.log('Bundling client JavaScript...');
-execSync('esbuild src/client/app-entry.ts --bundle --outfile=public/bundle/client-bundle.js --format=esm --minify --define:process.env.NODE_ENV=\'"test"\'', { stdio: 'inherit' });
-execSync('esbuild src/client/test-entry.ts --bundle --outfile=public/bundle/test.js --format=esm --minify --define:process.env.NODE_ENV=\'"test"\'', { stdio: 'inherit' });
-execSync('esbuild src/client/screencap-entry.ts --bundle --outfile=public/bundle/screencap.js --format=esm --minify --define:process.env.NODE_ENV=\'"test"\'', { stdio: 'inherit' });
+execSync('esbuild src/client/react-app-entry.tsx --bundle --outfile=public/bundle/client-bundle.js --format=esm --minify --define:process.env.NODE_ENV=\'"test"\' --jsx=automatic --jsx-import-source=react', { stdio: 'inherit' });
 execSync('esbuild src/client/sw.ts --bundle --outfile=public/sw.js --format=iife --minify --define:process.env.NODE_ENV=\'"test"\'', { stdio: 'inherit' });
 
 // Build server TypeScript
