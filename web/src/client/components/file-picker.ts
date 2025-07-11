@@ -11,6 +11,7 @@
 import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { authClient } from '../services/auth-client.js';
+import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('file-picker');
@@ -215,7 +216,7 @@ export class FilePicker extends LitElement {
     }
 
     return html`
-      <div class="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" @click=${this.handleCancel}>
+      <div class="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex items-center justify-center animate-fade-in" style="z-index: ${Z_INDEX.FILE_PICKER};" @click=${this.handleCancel}>
         <div class="bg-dark-bg-elevated border border-dark-border rounded-xl shadow-2xl p-8 m-4 max-w-sm w-full animate-scale-in" @click=${(e: Event) => e.stopPropagation()}>
           <h3 class="text-xl font-bold text-dark-text mb-6">
             Select File

@@ -15,6 +15,7 @@ import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { processKeyboardShortcuts } from '../utils/keyboard-shortcut-highlighter.js';
 import { createLogger } from '../utils/logger.js';
+import { ResizeCoordinator } from '../utils/resize-coordinator.js';
 import { UrlHighlighter } from '../utils/url-highlighter';
 
 const logger = createLogger('terminal');
@@ -72,6 +73,7 @@ export class Terminal extends LitElement {
   private momentumVelocityX = 0;
   private momentumAnimation: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private resizeCoordinator = new ResizeCoordinator();
 
   // Operation queue for batching buffer modifications
   private operationQueue: (() => void | Promise<void>)[] = [];
@@ -134,7 +136,7 @@ export class Terminal extends LitElement {
           this.userOverrideWidth = stored === 'true';
           // Apply the loaded preference immediately
           if (this.container) {
-            this.fitTerminal();
+            this.resizeCoordinator.requestResize('property-change');
           }
         }
       } catch (error) {
@@ -157,7 +159,7 @@ export class Terminal extends LitElement {
       }
       // Recalculate terminal dimensions when font size changes
       if (this.terminal && this.container) {
-        this.fitTerminal();
+        this.resizeCoordinator.requestResize('property-change');
       }
     }
     if (changedProperties.has('fitHorizontally')) {
@@ -165,12 +167,12 @@ export class Terminal extends LitElement {
         // Restore original font size when turning off horizontal fitting
         this.fontSize = this.originalFontSize;
       }
-      this.fitTerminal();
+      this.resizeCoordinator.requestResize('property-change');
     }
     // If maxCols changed, trigger a resize
     if (changedProperties.has('maxCols')) {
       if (this.terminal && this.container) {
-        this.fitTerminal();
+        this.resizeCoordinator.requestResize('property-change');
       }
     }
   }
@@ -194,7 +196,7 @@ export class Terminal extends LitElement {
     }
     // Trigger a resize to apply the new setting
     if (this.container) {
-      this.fitTerminal();
+      this.resizeCoordinator.requestResize('property-change');
     }
   }
 
@@ -210,6 +212,10 @@ export class Terminal extends LitElement {
       this.resizeObserver = null;
     }
 
+    if (this.resizeCoordinator) {
+      this.resizeCoordinator.destroy();
+    }
+
     if (this.terminal) {
       this.terminal.dispose();
       this.terminal = null;
@@ -219,6 +225,12 @@ export class Terminal extends LitElement {
   firstUpdated() {
     // Store the initial font size as original
     this.originalFontSize = this.fontSize;
+
+    // Set up resize coordinator callback
+    this.resizeCoordinator.setResizeCallback((source: string) => {
+      this.fitTerminal(source);
+    });
+
     this.initializeTerminal();
   }
 
@@ -263,7 +275,7 @@ export class Terminal extends LitElement {
       const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
       const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
       this.terminal.resize(safeCols, safeRows);
-      this.fitTerminal();
+      this.resizeCoordinator.requestResize('property-change');
     }
   }
 
@@ -349,7 +361,7 @@ export class Terminal extends LitElement {
     return Number.isFinite(actualCharWidth) && actualCharWidth > 0 ? actualCharWidth : 8;
   }
 
-  private fitTerminal() {
+  private fitTerminal(source?: string) {
     if (!this.terminal || !this.container) return;
 
     const _oldActualRows = this.actualRows;
@@ -388,8 +400,9 @@ export class Terminal extends LitElement {
         const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
         const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
 
-        // Only resize if dimensions have actually changed
-        if (safeCols !== this.terminal.cols || safeRows !== this.terminal.rows) {
+        // Use resize coordinator to check if we should actually resize
+        if (this.resizeCoordinator.shouldResize(safeCols, safeRows)) {
+          logger.debug(`Resizing terminal (${source || 'unknown'}): ${safeCols}x${safeRows}`);
           this.terminal.resize(safeCols, safeRows);
 
           // Dispatch resize event for backend synchronization
@@ -399,6 +412,8 @@ export class Terminal extends LitElement {
               bubbles: true,
             })
           );
+        } else {
+          logger.debug(`Skipping resize (${source || 'unknown'}): dimensions unchanged`);
         }
       }
     } else {
@@ -444,8 +459,9 @@ export class Terminal extends LitElement {
         const safeCols = Number.isFinite(this.cols) ? Math.floor(this.cols) : 80;
         const safeRows = Number.isFinite(this.rows) ? Math.floor(this.rows) : 24;
 
-        // Only resize if dimensions have actually changed
-        if (safeCols !== this.terminal.cols || safeRows !== this.terminal.rows) {
+        // Use resize coordinator to check if we should actually resize
+        if (this.resizeCoordinator.shouldResize(safeCols, safeRows)) {
+          logger.debug(`Resizing terminal (${source || 'unknown'}): ${safeCols}x${safeRows}`);
           this.terminal.resize(safeCols, safeRows);
 
           // Dispatch resize event for backend synchronization
@@ -455,6 +471,8 @@ export class Terminal extends LitElement {
               bubbles: true,
             })
           );
+        } else {
+          logger.debug(`Skipping resize (${source || 'unknown'}): dimensions unchanged`);
         }
       }
     }
@@ -485,18 +503,27 @@ export class Terminal extends LitElement {
     if (!this.container) return;
 
     this.resizeObserver = new ResizeObserver(() => {
-      if (this.resizeTimeout) {
-        clearTimeout(this.resizeTimeout);
-      }
-      this.resizeTimeout = setTimeout(() => {
-        this.fitTerminal();
-      }, 50);
+      this.resizeCoordinator.requestResize('ResizeObserver');
     });
     this.resizeObserver.observe(this.container);
 
     window.addEventListener('resize', () => {
-      this.fitTerminal();
+      this.resizeCoordinator.requestResize('window-resize');
     });
+
+    // On mobile, delay initial resize to let everything settle
+    if (this.resizeCoordinator.getIsMobile()) {
+      setTimeout(() => {
+        this.resizeCoordinator.requestResize('initial-mobile');
+        // Mark initial resize complete after a short delay
+        setTimeout(() => {
+          this.resizeCoordinator.markInitialResizeComplete();
+        }, 100);
+      }, 100);
+    } else {
+      // Desktop: immediate initial resize
+      this.resizeCoordinator.requestResize('initial-desktop');
+    }
   }
 
   private setupScrolling() {
@@ -1083,7 +1110,7 @@ export class Terminal extends LitElement {
     this.queueRenderOperation(() => {
       if (!this.terminal) return;
 
-      this.fitTerminal();
+      this.resizeCoordinator.requestResize('property-change');
 
       const buffer = this.terminal.buffer.active;
       const lineHeight = this.fontSize * 1.2;
@@ -1297,7 +1324,7 @@ export class Terminal extends LitElement {
     }
 
     // Recalculate fit
-    this.fitTerminal();
+    this.resizeCoordinator.requestResize('fit-mode-change');
 
     // Restore scroll position - prioritize staying at bottom if we were there
     if (wasAtBottom) {

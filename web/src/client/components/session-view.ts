@@ -88,6 +88,7 @@ export class SessionView extends LitElement {
   @state() private isDragOver = false;
   @state() private terminalFontSize = 14;
   @state() private terminalContainerHeight = '100%';
+  @state() private isLandscape = false;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
 
@@ -96,6 +97,7 @@ export class SessionView extends LitElement {
   private boundHandleDragLeave = this.handleDragLeave.bind(this);
   private boundHandleDrop = this.handleDrop.bind(this);
   private boundHandlePaste = this.handlePaste.bind(this);
+  private boundHandleOrientationChange?: () => void;
   private connectionManager!: ConnectionManager;
   private inputManager!: InputManager;
   private mobileInputManager!: MobileInputManager;
@@ -191,6 +193,16 @@ export class SessionView extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.connected = true;
+
+    // Check initial orientation
+    this.checkOrientation();
+
+    // Create bound orientation handler
+    this.boundHandleOrientationChange = () => this.handleOrientationChange();
+
+    // Listen for orientation changes
+    window.addEventListener('orientationchange', this.boundHandleOrientationChange);
+    window.addEventListener('resize', this.boundHandleOrientationChange);
 
     // Initialize connection manager
     this.connectionManager = new ConnectionManager(
@@ -393,6 +405,12 @@ export class SessionView extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
 
+    // Remove orientation listeners
+    if (this.boundHandleOrientationChange) {
+      window.removeEventListener('orientationchange', this.boundHandleOrientationChange);
+      window.removeEventListener('resize', this.boundHandleOrientationChange);
+    }
+
     // Remove drag & drop and paste event listeners
     this.removeEventListener('dragover', this.boundHandleDragOver);
     this.removeEventListener('dragleave', this.boundHandleDragLeave);
@@ -419,6 +437,18 @@ export class SessionView extends LitElement {
 
     // Clean up loading animation manager
     this.loadingAnimationManager.cleanup();
+  }
+
+  private checkOrientation() {
+    // Check if we're in landscape mode
+    const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+    this.isLandscape = isLandscape;
+  }
+
+  private handleOrientationChange() {
+    this.checkOrientation();
+    // Request update to re-render with new safe area classes
+    this.requestUpdate();
   }
 
   firstUpdated(changedProperties: PropertyValues) {
@@ -787,44 +817,39 @@ export class SessionView extends LitElement {
     }
   }
 
-  private getCurrentWidthLabel(): string {
+  getCurrentWidthLabel(): string {
     const terminal = this.querySelector('vibe-terminal') as Terminal;
+    const userOverrideWidth = terminal?.userOverrideWidth || false;
+    const initialCols = terminal?.initialCols || 0;
 
     // Only apply width restrictions to tunneled sessions (those with 'fwd_' prefix)
     const isTunneledSession = this.session?.id?.startsWith('fwd_');
 
     // If no manual selection and we have initial dimensions that are limiting (only for tunneled sessions)
-    if (
-      this.terminalMaxCols === 0 &&
-      terminal?.initialCols > 0 &&
-      !terminal.userOverrideWidth &&
-      isTunneledSession
-    ) {
-      return `≤${terminal.initialCols}`; // Shows "≤120" to indicate limited to session width
+    if (this.terminalMaxCols === 0 && initialCols > 0 && !userOverrideWidth && isTunneledSession) {
+      return `≤${initialCols}`; // Shows "≤120" to indicate limited to session width
+    } else if (this.terminalMaxCols === 0) {
+      return '∞';
+    } else {
+      const commonWidth = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
+      return commonWidth ? commonWidth.label : this.terminalMaxCols.toString();
     }
-
-    if (this.terminalMaxCols === 0) return '∞';
-    const commonWidth = COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
-    return commonWidth ? commonWidth.label : this.terminalMaxCols.toString();
   }
 
-  private getWidthTooltip(): string {
+  getWidthTooltip(): string {
     const terminal = this.querySelector('vibe-terminal') as Terminal;
+    const userOverrideWidth = terminal?.userOverrideWidth || false;
+    const initialCols = terminal?.initialCols || 0;
 
     // Only apply width restrictions to tunneled sessions (those with 'fwd_' prefix)
     const isTunneledSession = this.session?.id?.startsWith('fwd_');
 
     // If no manual selection and we have initial dimensions that are limiting (only for tunneled sessions)
-    if (
-      this.terminalMaxCols === 0 &&
-      terminal?.initialCols > 0 &&
-      !terminal.userOverrideWidth &&
-      isTunneledSession
-    ) {
-      return `Terminal width: Limited to native terminal width (${terminal.initialCols} columns)`;
+    if (this.terminalMaxCols === 0 && initialCols > 0 && !userOverrideWidth && isTunneledSession) {
+      return `Terminal width: Limited to native terminal width (${initialCols} columns)`;
+    } else {
+      return `Terminal width: ${this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`}`;
     }
-
-    return `Terminal width: ${this.terminalMaxCols === 0 ? 'Unlimited' : `${this.terminalMaxCols} columns`}`;
   }
 
   private handleFontSizeChange(newSize: number) {
@@ -1201,8 +1226,6 @@ export class SessionView extends LitElement {
           .showBackButton=${this.showBackButton}
           .showSidebarToggle=${this.showSidebarToggle}
           .sidebarCollapsed=${this.sidebarCollapsed}
-          .terminalCols=${this.terminalCols}
-          .terminalRows=${this.terminalRows}
           .terminalMaxCols=${this.terminalMaxCols}
           .terminalFontSize=${this.terminalFontSize}
           .customWidth=${this.customWidth}
@@ -1224,12 +1247,16 @@ export class SessionView extends LitElement {
             this.customWidth = '';
           }}
           @session-rename=${(e: CustomEvent) => this.handleRename(e)}
-        ></session-header>
+        >
+        </session-header>
 
         <!-- Enhanced Terminal Container -->
         <div
           class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-dark-bg overflow-hidden min-h-0 relative ${
             this.session?.status === 'exited' ? 'session-exited opacity-90' : ''
+          } ${
+            // Add safe area padding for landscape mode on mobile to handle notch
+            this.isMobile && this.isLandscape ? 'safe-area-left safe-area-right' : ''
           }"
           id="terminal-container"
           style="${this.terminalContainerHeight !== '100%' ? `height: ${this.terminalContainerHeight}; flex: none; max-height: ${this.terminalContainerHeight};` : ''}"
@@ -1445,6 +1472,21 @@ export class SessionView extends LitElement {
           @file-error=${this.handleFileError}
           @file-cancel=${this.handleCloseFilePicker}
         ></file-picker>
+        
+        <!-- Width Selector Modal (moved here for proper positioning) -->
+        <width-selector
+          .visible=${this.showWidthSelector}
+          .terminalMaxCols=${this.terminalMaxCols}
+          .terminalFontSize=${this.terminalFontSize}
+          .customWidth=${this.customWidth}
+          .isMobile=${this.isMobile}
+          .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
+          .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
+          .onClose=${() => {
+            this.showWidthSelector = false;
+            this.customWidth = '';
+          }}
+        ></width-selector>
 
         <!-- Drag & Drop Overlay -->
         ${

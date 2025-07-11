@@ -14,18 +14,19 @@ import { customElement, property, state } from 'lit/decorators.js';
 export class InlineEdit extends LitElement {
   static override styles = css`
     :host {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
+      display: block;
       max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
     }
 
     .display-container {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 0.25rem;
       max-width: 100%;
       min-width: 0;
+      width: 100%;
     }
 
     .display-text {
@@ -33,6 +34,7 @@ export class InlineEdit extends LitElement {
       text-overflow: ellipsis;
       white-space: nowrap;
       min-width: 0;
+      flex: 1;
     }
 
     .edit-icon {

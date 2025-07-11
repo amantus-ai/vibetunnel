@@ -19,10 +19,40 @@ export const TRANSITIONS = {
   RESIZE_HANDLE: 200,
 } as const;
 
+/**
+ * Z-Index layering system for UI components
+ *
+ * Layers (from bottom to top):
+ * - 0-49: Base UI elements (terminals, buttons, mobile overlays)
+ * - 50-99: Dropdowns and popovers
+ * - 100-199: Modal dialogs and their backdrops
+ * - 200+: Special overlays that must appear above everything
+ *
+ * When adding new z-index values:
+ * 1. Choose the appropriate range based on the component type
+ * 2. Leave gaps between values for future insertions
+ * 3. Document why the component needs its specific layer
+ */
 export const Z_INDEX = {
-  MOBILE_OVERLAY: 20,
+  // Base UI elements (0-49)
+  SESSION_LIST_BOTTOM_BAR: 10,
+  TERMINAL_OVERLAY: 15,
+  LOG_BUTTON: 20,
+  MOBILE_OVERLAY: 25,
   SIDEBAR_MOBILE: 30,
-  SESSION_EXITED_OVERLAY: 100,
+  MOBILE_INPUT_OVERLAY: 40,
+  CTRL_ALPHA_OVERLAY: 45,
+
+  // Dropdowns and popovers (50-99)
+  WIDTH_SELECTOR_DROPDOWN: 60,
+
+  // Modals and overlays (100-199)
+  MODAL_BACKDROP: 100,
+  FILE_PICKER: 110,
+  SESSION_EXITED_OVERLAY: 120,
+
+  // Special high-priority overlays (200+)
+  FILE_BROWSER: 200, // Reduced from 1100
 } as const;
 
 export const TERMINAL = {

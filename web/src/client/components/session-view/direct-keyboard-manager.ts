@@ -26,6 +26,8 @@
  * - `compositionend`: Sends only the final composed text to terminal
  * - `input`: Skipped entirely during composition, normal handling otherwise
  */
+
+import { Z_INDEX } from '../../utils/constants.js';
 import { createLogger } from '../../utils/logger.js';
 import type { InputManager } from './input-manager.js';
 
@@ -629,7 +631,7 @@ export class DirectKeyboardManager {
       this.hiddenInput.style.left = '0';
       this.hiddenInput.style.width = '100%';
       this.hiddenInput.style.height = '1px';
-      this.hiddenInput.style.zIndex = '10';
+      this.hiddenInput.style.zIndex = String(Z_INDEX.TERMINAL_OVERLAY);
       this.hiddenInput.style.pointerEvents = 'none';
     } else {
       // In scroll mode: position off-screen
