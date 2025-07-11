@@ -274,17 +274,12 @@ if ! gh auth status >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check if changelog file exists - prefer project root location
+# Check if changelog file exists in project root
 if [[ -f "$PROJECT_ROOT/../CHANGELOG.md" ]]; then
     CHANGELOG_PATH="$PROJECT_ROOT/../CHANGELOG.md"
-elif [[ -f "$PROJECT_ROOT/CHANGELOG.md" ]]; then
-    # Fallback to mac/ directory if it exists there
-    CHANGELOG_PATH="$PROJECT_ROOT/CHANGELOG.md"
 else
     echo -e "${YELLOW}⚠️  Warning: CHANGELOG.md not found${NC}"
-    echo "   Searched in:"
-    echo "   - Project root: $PROJECT_ROOT/../CHANGELOG.md"
-    echo "   - Mac directory: $PROJECT_ROOT/CHANGELOG.md"
+    echo "   Expected location: $PROJECT_ROOT/../CHANGELOG.md"
     echo "   Release notes will be basic"
     CHANGELOG_PATH=""
 fi

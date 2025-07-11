@@ -150,13 +150,13 @@ if [[ "$GITHUB_DONE" == "false" ]]; then
     if [[ "$RELEASE_TYPE" == "stable" ]]; then
         gh release create "$TAG_NAME" \
             --title "VibeTunnel $RELEASE_VERSION" \
-            --notes-file "$PROJECT_ROOT/CHANGELOG.md" \
+            --notes-file "$PROJECT_ROOT/../CHANGELOG.md" \
             "$DMG_PATH" \
             "$ZIP_PATH"
     else
         gh release create "$TAG_NAME" \
             --title "VibeTunnel $RELEASE_VERSION" \
-            --notes-file "$PROJECT_ROOT/CHANGELOG.md" \
+            --notes-file "$PROJECT_ROOT/../CHANGELOG.md" \
             --prerelease \
             "$DMG_PATH" \
             "$ZIP_PATH"

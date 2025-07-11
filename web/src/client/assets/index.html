@@ -80,6 +80,7 @@
     <!-- Mobile viewport height fix -->
     <script>
       // Check if mobile device
+      // NOTE: This detection logic must match detectMobile() in src/client/utils/mobile-utils.ts
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
                        (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
 

@@ -16,6 +16,7 @@ import type { Session } from '../shared/types.js';
 import { BREAKPOINTS, SIDEBAR, TIMING, TRANSITIONS, Z_INDEX } from './utils/constants.js';
 // Import logger
 import { createLogger } from './utils/logger.js';
+import { isIOS } from './utils/mobile-utils.js';
 import { type MediaQueryState, responsiveObserver } from './utils/responsive-utils.js';
 import { triggerTerminalResize } from './utils/terminal-utils.js';
 import { initTitleUpdater } from './utils/title-updater.js';
@@ -1285,14 +1286,10 @@ export class VibeTunnelApp extends LitElement {
     // In main view, we need normal document flow for scrolling
     if (this.showSplitView) {
       // Add iOS-specific class to prevent rubber band scrolling
-      const iosClass = this.isIOS() ? 'ios-split-view' : '';
+      const iosClass = isIOS() ? 'ios-split-view' : '';
       return `flex h-screen overflow-hidden relative ${iosClass}`;
     }
     return 'min-h-screen';
-  }
-
-  private isIOS(): boolean {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
   }
 
   private getLogButtonPosition(): string {

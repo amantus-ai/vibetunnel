@@ -4,6 +4,7 @@
  */
 
 import { createLogger } from './logger.js';
+import { detectMobile } from './mobile-utils.js';
 
 const logger = createLogger('terminal-preferences');
 
@@ -25,7 +26,7 @@ export const COMMON_TERMINAL_WIDTHS = [
 
 const DEFAULT_PREFERENCES: TerminalPreferences = {
   maxCols: 0, // No limit by default - take as much as possible
-  fontSize: 14,
+  fontSize: detectMobile() ? 12 : 14, // 12px on mobile, 14px on desktop
   fitHorizontally: false,
 };
 

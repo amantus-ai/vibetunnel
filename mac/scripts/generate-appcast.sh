@@ -283,10 +283,10 @@ create_appcast_item() {
         description+="<p><strong>Pre-release version</strong></p>"
     fi
     
-    # Try to get changelog from local CHANGELOG.md using changelog-to-html.sh
+    # Try to get changelog from root CHANGELOG.md using changelog-to-html.sh
     local changelog_html=""
     local changelog_script="$(dirname "$SCRIPT_DIR")/scripts/changelog-to-html.sh"
-    local changelog_file="$(dirname "$SCRIPT_DIR")/CHANGELOG.md"
+    local changelog_file="$(dirname "$(dirname "$SCRIPT_DIR")")/CHANGELOG.md"
     
     if [ -x "$changelog_script" ] && [ -f "$changelog_file" ]; then
         # Extract version number from tag (remove 'v' prefix)
