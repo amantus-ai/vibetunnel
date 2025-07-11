@@ -1108,6 +1108,22 @@ export class SessionView extends LitElement {
   private _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null = null;
 
   private updateTerminalTransform(): void {
+    // On mobile, use fixed heights to prevent resize loops
+    if (this.isMobile) {
+      // Set a fixed height once for mobile - no dynamic calculations
+      // This prevents viewport changes from triggering resize loops
+      if (this.terminalContainerHeight === '100%') {
+        // Initial setup: use a safe fixed height that accounts for mobile browser chrome
+        // Using 85vh gives space for browser UI and prevents scrolling issues
+        this.terminalContainerHeight = '85vh';
+        logger.log('[SessionView] Mobile: Using fixed terminal height of 85vh');
+        this.requestUpdate();
+      }
+      // After initial setup, never change the height on mobile
+      return;
+    }
+
+    // Desktop only: dynamic height calculations
     // Clear any existing timeout to debounce calls
     if (this._updateTerminalTransformTimeout) {
       clearTimeout(this._updateTerminalTransformTimeout);
@@ -1117,7 +1133,7 @@ export class SessionView extends LitElement {
       // Calculate height reduction for keyboard and quick keys
       let heightReduction = 0;
 
-      if (this.showQuickKeys && this.isMobile) {
+      if (this.showQuickKeys) {
         // Quick keys height (approximately 140px based on CSS)
         // Add 10px buffer to ensure content is visible above quick keys
         const quickKeysHeight = 150;
