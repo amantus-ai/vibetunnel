@@ -505,7 +505,7 @@ export class LogViewer extends LitElement {
                 <button
                   class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                     this.showClient
-                      ? 'bg-status-warning text-base'
+                      ? 'bg-orange-500 text-base'
                       : 'bg-tertiary text-muted border border-base'
                   }"
                   @click=${() => {
@@ -565,7 +565,7 @@ export class LogViewer extends LitElement {
                   return html`
                   <div
                     class="group hover:bg-secondary/50 transition-colors rounded ${
-                      log.isClient ? 'bg-status-warning/5 pl-2' : 'pl-2'
+                      log.isClient ? 'bg-orange-500/5 pl-2' : 'pl-2'
                     }"
                   >
                     <!-- Desktop layout (hidden on mobile) -->
