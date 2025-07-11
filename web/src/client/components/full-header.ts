@@ -8,6 +8,7 @@ import { customElement } from 'lit/decorators.js';
 import { HeaderBase } from './header-base.js';
 import './terminal-icon.js';
 import './notification-status.js';
+import './theme-toggle.js';
 
 @customElement('full-header')
 export class FullHeader extends HeaderBase {
@@ -16,7 +17,7 @@ export class FullHeader extends HeaderBase {
 
     return html`
       <div
-        class="app-header bg-dark-bg-secondary border-b border-dark-border p-3"
+        class="app-header bg-bg-secondary border-b border-border p-3"
         style="padding-top: max(0.75rem, calc(0.75rem + env(safe-area-inset-top)));"
       >
         <div class="flex items-center justify-between">
@@ -30,7 +31,7 @@ export class FullHeader extends HeaderBase {
               <h1 class="text-xl font-bold text-accent-green font-mono group-hover:underline">
                 VibeTunnel
               </h1>
-              <p class="text-dark-text-muted text-xs font-mono">
+              <p class="text-text-muted text-xs font-mono">
                 (${runningSessions.length})
               </p>
             </div>
@@ -40,8 +41,9 @@ export class FullHeader extends HeaderBase {
             <notification-status
               @open-settings=${() => this.dispatchEvent(new CustomEvent('open-settings'))}
             ></notification-status>
+            <theme-toggle></theme-toggle>
             <button
-              class="p-2 text-dark-text border border-dark-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
+              class="p-2 text-text border border-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
               @click=${() => this.dispatchEvent(new CustomEvent('open-file-browser'))}
               title="Browse Files (⌘O)"
             >
@@ -52,7 +54,7 @@ export class FullHeader extends HeaderBase {
               </svg>
             </button>
             <button
-              class="p-2 text-dark-text border border-dark-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
+              class="p-2 text-text border border-border hover:border-accent-green hover:text-accent-green rounded-lg transition-all duration-200"
               @click=${this.handleScreenshare}
               title="Start Screenshare"
             >
@@ -64,7 +66,7 @@ export class FullHeader extends HeaderBase {
               </svg>
             </button>
             <button
-              class="p-2 bg-accent-green text-dark-bg hover:bg-accent-green-light rounded-lg transition-all duration-200 vt-create-button"
+              class="p-2 bg-accent-green text-white hover:bg-accent-green-light rounded-lg transition-all duration-200 vt-create-button"
               @click=${this.handleCreateSession}
               title="Create New Session"
               data-testid="create-session-button"
@@ -89,7 +91,7 @@ export class FullHeader extends HeaderBase {
     return html`
       <div class="user-menu-container relative flex-shrink-0">
         <button
-          class="font-mono text-sm px-3 py-2 text-dark-text border border-dark-border hover:bg-dark-bg-tertiary hover:text-dark-text rounded-lg transition-all duration-200 flex items-center gap-2"
+          class="font-mono text-sm px-3 py-2 text-text border border-border hover:bg-bg-tertiary hover:text-text rounded-lg transition-all duration-200 flex items-center gap-2"
           @click=${this.toggleUserMenu}
           title="User menu"
         >
@@ -117,13 +119,13 @@ export class FullHeader extends HeaderBase {
           this.showUserMenu
             ? html`
               <div
-                class="absolute right-0 top-full mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg py-1 z-50 min-w-36"
+                class="absolute right-0 top-full mt-1 bg-surface border border-border rounded-lg shadow-lg py-1 z-50 min-w-36"
               >
-                <div class="px-3 py-2 text-sm text-dark-text-muted border-b border-dark-border">
+                <div class="px-3 py-2 text-sm text-text-muted border-b border-border">
                   ${this.authMethod || 'authenticated'}
                 </div>
                 <button
-                  class="w-full text-left px-3 py-2 text-sm font-mono text-status-warning hover:bg-dark-bg-secondary hover:text-status-error"
+                  class="w-full text-left px-3 py-2 text-sm font-mono text-status-warning hover:bg-bg-secondary hover:text-status-error"
                   @click=${this.handleLogout}
                 >
                   Logout

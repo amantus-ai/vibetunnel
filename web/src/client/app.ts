@@ -1236,7 +1236,7 @@ export class VibeTunnelApp extends LitElement {
       return 'w-full min-h-screen flex flex-col';
     }
 
-    const baseClasses = 'bg-dark-bg-secondary border-r border-dark-border flex flex-col';
+    const baseClasses = 'bg-secondary border-r border-base flex flex-col';
     const isMobile = this.mediaState.isMobile;
     // Only apply transition class when animations are ready (not during initial load)
     const transitionClass = this.sidebarAnimationReady && !isMobile ? 'sidebar-transition' : '';
@@ -1465,7 +1465,7 @@ export class VibeTunnelApp extends LitElement {
             @navigate-to-list=${this.handleNavigateToList}
             @toggle-sidebar=${this.handleToggleSidebar}
           ></app-header>
-          <div class="${this.showSplitView ? 'flex-1 overflow-y-auto' : 'flex-1'} bg-dark-bg-secondary">
+          <div class="${this.showSplitView ? 'flex-1 overflow-y-auto' : 'flex-1'} bg-secondary">
             <session-list
               .sessions=${this.sessions}
               .loading=${this.loading}
@@ -1562,7 +1562,7 @@ export class VibeTunnelApp extends LitElement {
       ${
         this.showLogLink
           ? html`
-        <div class="fixed ${this.getLogButtonPosition()} right-4 text-dark-text-muted text-xs font-mono bg-dark-bg-secondary px-3 py-1.5 rounded-lg border border-dark-border shadow-sm transition-all duration-200" style="z-index: ${Z_INDEX.LOG_BUTTON};">
+        <div class="fixed ${this.getLogButtonPosition()} right-4 text-muted text-xs font-mono bg-secondary px-3 py-1.5 rounded-lg border border-base shadow-sm transition-all duration-200" style="z-index: ${Z_INDEX.LOG_BUTTON};">
           <a href="/logs" class="hover:text-dark-text transition-colors">Logs</a>
           <span class="ml-2 opacity-75">v${VERSION}</span>
         </div>

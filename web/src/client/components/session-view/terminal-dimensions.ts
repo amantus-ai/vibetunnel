@@ -37,7 +37,7 @@ export class TerminalDimensions extends LitElement {
 
     return html`
       <span
-        class="hidden sm:inline text-dark-text-muted text-xs opacity-60"
+        class="hidden sm:inline text-muted text-xs opacity-60"
         style="font-size: 10px; line-height: 1;"
       >
         ${this.cols}×${this.rows}

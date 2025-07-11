@@ -60,15 +60,15 @@ export class WidthSelector extends LitElement {
       
       <!-- Width selector modal -->
       <div
-        class="width-selector-container fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-dark-bg-elevated border border-dark-border rounded-lg shadow-elevated min-w-[280px] max-w-[90vw] animate-fade-in"
+        class="width-selector-container fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-elevated border border-base rounded-lg shadow-elevated min-w-[280px] max-w-[90vw] animate-fade-in"
         style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
       >
         <div class="p-4">
           <div class="flex items-center justify-between mb-3">
-            <div class="text-sm font-semibold text-dark-text">Terminal Width</div>
+            <div class="text-sm font-semibold text-primary">Terminal Width</div>
             <!-- Close button for mobile -->
             <button
-              class="sm:hidden p-1.5 rounded-md text-dark-text-muted hover:text-dark-text hover:bg-dark-surface-hover transition-all duration-200"
+              class="sm:hidden p-1.5 rounded-md text-muted hover:text-primary hover:bg-hover transition-all duration-200"
               @click=${() => this.onClose?.()}
               aria-label="Close width selector"
             >
@@ -84,17 +84,17 @@ export class WidthSelector extends LitElement {
                   ${
                     this.terminalMaxCols === width.value
                       ? 'bg-accent-primary bg-opacity-10 text-accent-primary border border-accent-primary'
-                      : 'text-dark-text hover:bg-dark-surface-hover hover:text-dark-text-bright border border-transparent'
+                      : 'text-primary hover:bg-hover hover:text-bright border border-transparent'
                   }"
                 @click=${() => this.onWidthSelect?.(width.value)}
               >
                 <span class="font-mono font-medium">${width.label}</span>
-                <span class="text-dark-text-muted text-xs ml-4">${width.description}</span>
+                <span class="text-muted text-xs ml-4">${width.description}</span>
               </button>
             `
           )}
-          <div class="border-t border-dark-border mt-3 pt-3">
-            <div class="text-sm font-semibold text-dark-text mb-2">Custom (20-500)</div>
+          <div class="border-t border-base mt-3 pt-3">
+            <div class="text-sm font-semibold text-primary mb-2">Custom (20-500)</div>
             <div class="flex gap-2">
               <input
                 type="number"
@@ -105,7 +105,7 @@ export class WidthSelector extends LitElement {
                 @input=${this.handleCustomWidthInput}
                 @keydown=${this.handleCustomWidthKeydown}
                 @click=${(e: Event) => e.stopPropagation()}
-                class="flex-1 bg-dark-bg-secondary border border-dark-border rounded-md px-3 py-2 text-sm font-mono text-dark-text placeholder:text-dark-text-dim focus:border-accent-primary focus:shadow-glow-primary-sm transition-all"
+                class="flex-1 bg-secondary border border-base rounded-md px-3 py-2 text-sm font-mono text-primary placeholder:text-dim focus:border-accent-primary focus:shadow-glow-primary-sm transition-all"
               />
               <button
                 class="px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
@@ -113,8 +113,8 @@ export class WidthSelector extends LitElement {
                     !this.customWidth ||
                     Number.parseInt(this.customWidth) < 20 ||
                     Number.parseInt(this.customWidth) > 500
-                      ? 'bg-dark-bg-secondary border border-dark-border text-dark-text-muted cursor-not-allowed'
-                      : 'bg-accent-primary text-dark-bg hover:bg-accent-primary-light active:scale-95'
+                      ? 'bg-secondary border border-base text-muted cursor-not-allowed'
+                      : 'bg-accent-primary text-base hover:bg-accent-primary-light active:scale-95'
                   }"
                 @click=${this.handleCustomWidthSubmit}
                 ?disabled=${
@@ -127,15 +127,15 @@ export class WidthSelector extends LitElement {
               </button>
             </div>
           </div>
-          <div class="border-t border-dark-border mt-3 pt-3">
-            <div class="text-sm font-semibold text-dark-text mb-3">Font Size</div>
+          <div class="border-t border-base mt-3 pt-3">
+            <div class="text-sm font-semibold text-primary mb-3">Font Size</div>
             <div class="flex items-center gap-3">
               <button
                 class="w-10 h-10 rounded-md border transition-all duration-200 flex items-center justify-center
                   ${
                     this.terminalFontSize <= 8
-                      ? 'border-dark-border bg-dark-bg-secondary text-dark-text-muted cursor-not-allowed'
-                      : 'border-dark-border bg-dark-bg-elevated text-dark-text hover:border-accent-primary hover:text-accent-primary active:scale-95'
+                      ? 'border-base bg-secondary text-muted cursor-not-allowed'
+                      : 'border-base bg-elevated text-primary hover:border-accent-primary hover:text-accent-primary active:scale-95'
                   }"
                 @click=${() => this.onFontSizeChange?.(this.terminalFontSize - 1)}
                 ?disabled=${this.terminalFontSize <= 8}
@@ -144,15 +144,15 @@ export class WidthSelector extends LitElement {
                   <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
                 </svg>
               </button>
-              <span class="font-mono text-lg font-medium text-dark-text min-w-[60px] text-center">
+              <span class="font-mono text-lg font-medium text-primary min-w-[60px] text-center">
                 ${this.terminalFontSize}px
               </span>
               <button
                 class="w-10 h-10 rounded-md border transition-all duration-200 flex items-center justify-center
                   ${
                     this.terminalFontSize >= 32
-                      ? 'border-dark-border bg-dark-bg-secondary text-dark-text-muted cursor-not-allowed'
-                      : 'border-dark-border bg-dark-bg-elevated text-dark-text hover:border-accent-primary hover:text-accent-primary active:scale-95'
+                      ? 'border-base bg-secondary text-muted cursor-not-allowed'
+                      : 'border-base bg-elevated text-primary hover:border-accent-primary hover:text-accent-primary active:scale-95'
                   }"
                 @click=${() => this.onFontSizeChange?.(this.terminalFontSize + 1)}
                 ?disabled=${this.terminalFontSize >= 32}
@@ -165,8 +165,8 @@ export class WidthSelector extends LitElement {
                 class="ml-auto px-3 py-2 rounded-md text-sm transition-all duration-200
                   ${
                     this.terminalFontSize === 14
-                      ? 'text-dark-text-muted cursor-not-allowed'
-                      : 'text-dark-text-muted hover:text-dark-text hover:bg-dark-surface-hover'
+                      ? 'text-muted cursor-not-allowed'
+                      : 'text-muted hover:text-primary hover:bg-hover'
                   }"
                 @click=${() => this.onFontSizeChange?.(14)}
                 ?disabled=${this.terminalFontSize === 14}

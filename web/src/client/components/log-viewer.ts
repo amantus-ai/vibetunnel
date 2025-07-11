@@ -281,7 +281,7 @@ export class LogViewer extends LitElement {
 
     if (this.loading) {
       return html`
-        <div class="flex items-center justify-center h-screen bg-dark-bg text-dark-text">
+        <div class="flex items-center justify-center h-screen bg-base text-primary">
           <div class="text-center">
             <div
               class="animate-spin rounded-full h-12 w-12 border-4 border-accent-green border-t-transparent mb-4"
@@ -296,16 +296,16 @@ export class LogViewer extends LitElement {
 
     return html`
       ${scrollbarStyles}
-      <div class="flex flex-col h-full bg-dark-bg text-dark-text font-mono">
+      <div class="flex flex-col h-full bg-base text-primary font-mono">
         <!-- Header - single row on desktop, two rows on mobile -->
-        <div class="bg-dark-bg-secondary border-b border-dark-border p-3 sm:p-4">
+        <div class="bg-secondary border-b border-base p-3 sm:p-4">
           <!-- Mobile layout (two rows) -->
           <div class="sm:hidden">
             <!-- Top row with back button and title -->
             <div class="flex items-center gap-2 mb-3">
               <!-- Back button -->
               <button
-                class="p-2 bg-dark-bg border border-dark-border rounded text-sm text-dark-text hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-1 flex-shrink-0"
+                class="p-2 bg-base border border-base rounded text-sm text-primary hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-1 flex-shrink-0"
                 @click=${() => {
                   window.location.href = '/';
                 }}
@@ -334,8 +334,8 @@ export class LogViewer extends LitElement {
                 <button
                   class="p-2 text-xs uppercase font-bold rounded transition-colors ${
                     this.autoScroll
-                      ? 'bg-accent-green text-dark-bg'
-                      : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                      ? 'bg-accent-green text-base'
+                      : 'bg-tertiary text-muted border border-base'
                   }"
                   @click=${() => {
                     this.autoScroll = !this.autoScroll;
@@ -361,7 +361,7 @@ export class LogViewer extends LitElement {
               <!-- Search input -->
               <input
                 type="text"
-                class="px-3 py-1.5 bg-dark-bg border border-dark-border rounded text-sm text-dark-text placeholder-dark-text-muted focus:outline-none focus:border-accent-green transition-colors w-full"
+                class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary placeholder-muted focus:outline-none focus:border-accent-green transition-colors w-full"
                 placeholder="Filter logs..."
                 .value=${this.filter}
                 @input=${(e: Event) => {
@@ -379,13 +379,13 @@ export class LogViewer extends LitElement {
                         class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${
                           this.levelFilter.has(level)
                             ? level === 'error'
-                              ? 'bg-status-error text-dark-bg'
+                              ? 'bg-status-error text-base'
                               : level === 'warn'
-                                ? 'bg-status-warning text-dark-bg'
+                                ? 'bg-status-warning text-base'
                                 : level === 'debug'
-                                  ? 'bg-dark-text-muted text-dark-bg'
-                                  : 'bg-dark-text text-dark-bg'
-                            : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                                  ? 'bg-muted text-base'
+                                  : 'bg-primary text-base'
+                            : 'bg-tertiary text-muted border border-base'
                         }"
                         @click=${() => this.toggleLevel(level)}
                         title="${level} logs"
@@ -409,8 +409,8 @@ export class LogViewer extends LitElement {
                   <button
                     class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${
                       this.showClient
-                        ? 'bg-orange-500 text-dark-bg'
-                        : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                        ? 'bg-orange-500 text-base'
+                        : 'bg-tertiary text-muted border border-base'
                     }"
                     @click=${() => {
                       this.showClient = !this.showClient;
@@ -422,8 +422,8 @@ export class LogViewer extends LitElement {
                   <button
                     class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${
                       this.showServer
-                        ? 'bg-accent-green text-dark-bg'
-                        : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                        ? 'bg-accent-green text-base'
+                        : 'bg-tertiary text-muted border border-base'
                     }"
                     @click=${() => {
                       this.showServer = !this.showServer;
@@ -441,7 +441,7 @@ export class LogViewer extends LitElement {
           <div class="hidden sm:flex items-center gap-3">
             <!-- Back button -->
             <button
-              class="px-3 py-1.5 bg-dark-bg border border-dark-border rounded text-sm text-dark-text hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-2 flex-shrink-0"
+              class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary hover:border-accent-green hover:text-accent-green transition-colors flex items-center gap-2 flex-shrink-0"
               @click=${() => {
                 window.location.href = '/';
               }}
@@ -468,7 +468,7 @@ export class LogViewer extends LitElement {
               <!-- Search input -->
               <input
                 type="text"
-                class="px-3 py-1.5 bg-dark-bg border border-dark-border rounded text-sm text-dark-text placeholder-dark-text-muted focus:outline-none focus:border-accent-green transition-colors flex-1 sm:flex-initial sm:w-64 md:w-80"
+                class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary placeholder-muted focus:outline-none focus:border-accent-green transition-colors flex-1 sm:flex-initial sm:w-64 md:w-80"
                 placeholder="Filter logs..."
                 .value=${this.filter}
                 @input=${(e: Event) => {
@@ -484,13 +484,13 @@ export class LogViewer extends LitElement {
                       class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                         this.levelFilter.has(level)
                           ? level === 'error'
-                            ? 'bg-status-error text-dark-bg'
+                            ? 'bg-status-error text-base'
                             : level === 'warn'
-                              ? 'bg-status-warning text-dark-bg'
+                              ? 'bg-status-warning text-base'
                               : level === 'debug'
-                                ? 'bg-dark-text-muted text-dark-bg'
-                                : 'bg-dark-text text-dark-bg'
-                          : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                                ? 'bg-muted text-base'
+                                : 'bg-primary text-base'
+                          : 'bg-tertiary text-muted border border-base'
                       }"
                       @click=${() => this.toggleLevel(level)}
                     >
@@ -505,8 +505,8 @@ export class LogViewer extends LitElement {
                 <button
                   class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                     this.showClient
-                      ? 'bg-orange-500 text-dark-bg'
-                      : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                      ? 'bg-orange-500 text-base'
+                      : 'bg-tertiary text-muted border border-base'
                   }"
                   @click=${() => {
                     this.showClient = !this.showClient;
@@ -517,8 +517,8 @@ export class LogViewer extends LitElement {
                 <button
                   class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                     this.showServer
-                      ? 'bg-accent-green text-dark-bg'
-                      : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                      ? 'bg-accent-green text-base'
+                      : 'bg-tertiary text-muted border border-base'
                   }"
                   @click=${() => {
                     this.showServer = !this.showServer;
@@ -532,8 +532,8 @@ export class LogViewer extends LitElement {
               <button
                 class="px-3 py-1 text-xs uppercase font-bold rounded transition-colors ${
                   this.autoScroll
-                    ? 'bg-accent-green text-dark-bg'
-                    : 'bg-dark-bg-tertiary text-dark-text-muted border border-dark-border'
+                    ? 'bg-accent-green text-base'
+                    : 'bg-tertiary text-muted border border-base'
                 }"
                 @click=${() => {
                   this.autoScroll = !this.autoScroll;
@@ -547,12 +547,12 @@ export class LogViewer extends LitElement {
 
         <!-- Log container -->
         <div
-          class="log-container flex-1 overflow-y-auto p-4 bg-dark-bg font-mono text-xs leading-relaxed"
+          class="log-container flex-1 overflow-y-auto p-4 bg-base font-mono text-xs leading-relaxed"
         >
           ${
             this.filteredLogs.length === 0
               ? html`
-                <div class="flex items-center justify-center h-full text-dark-text-muted">
+                <div class="flex items-center justify-center h-full text-muted">
                   <div class="text-center">
                     <div>No logs to display</div>
                   </div>
@@ -564,14 +564,14 @@ export class LogViewer extends LitElement {
 
                   return html`
                   <div
-                    class="group hover:bg-dark-bg-secondary/50 transition-colors rounded ${
+                    class="group hover:bg-secondary/50 transition-colors rounded ${
                       log.isClient ? 'bg-orange-500/5 pl-2' : 'pl-2'
                     }"
                   >
                     <!-- Desktop layout (hidden on mobile) -->
                     <div class="hidden sm:flex items-start gap-2 py-0.5">
                       <!-- Timestamp -->
-                      <span class="text-dark-text-muted w-16 flex-shrink-0 opacity-50"
+                      <span class="text-muted w-16 flex-shrink-0 opacity-50"
                         >${this.formatRelativeTime(log.timestamp)}</span
                       >
 
@@ -631,7 +631,7 @@ export class LogViewer extends LitElement {
                     <!-- Mobile layout (visible only on mobile) -->
                     <div class="sm:hidden py-1">
                       <div class="flex items-center gap-2 text-xs">
-                        <span class="text-dark-text-muted opacity-50"
+                        <span class="text-muted opacity-50"
                           >${this.formatRelativeTime(log.timestamp)}</span
                         >
                         <span
@@ -707,23 +707,21 @@ export class LogViewer extends LitElement {
 
         <!-- Footer -->
         <div
-          class="flex items-center justify-between p-3 bg-dark-bg-secondary border-t border-dark-border text-xs"
+          class="flex items-center justify-between p-3 bg-secondary border-t border-base text-xs"
         >
-          <div class="text-dark-text-muted">
+          <div class="text-muted">
             ${this.filteredLogs.length} / ${this.logs.length} logs
-            ${
-              this.logSize ? html` <span class="text-dark-text-muted">• ${this.logSize}</span>` : ''
-            }
+            ${this.logSize ? html` <span class="text-muted">• ${this.logSize}</span>` : ''}
           </div>
           <div class="flex gap-2">
             <button
-              class="px-3 py-1 bg-dark-bg border border-dark-border rounded hover:border-accent-green hover:text-accent-green transition-colors"
+              class="px-3 py-1 bg-base border border-base rounded hover:border-accent-green hover:text-accent-green transition-colors"
               @click=${this.downloadLogs}
             >
               Download
             </button>
             <button
-              class="px-3 py-1 bg-dark-bg border border-status-error text-status-error rounded hover:bg-status-error hover:text-dark-bg transition-colors"
+              class="px-3 py-1 bg-base border border-status-error text-status-error rounded hover:bg-status-error hover:text-base transition-colors"
               @click=${this.clearLogs}
             >
               Clear

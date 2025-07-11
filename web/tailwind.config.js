@@ -4,7 +4,32 @@ module.exports = {
     theme: {
         extend: {
             colors: {
-                // Unified Dark theme colors with consistent depth
+                // Theme-aware colors using CSS variables
+                "bg": "rgb(var(--color-bg) / <alpha-value>)",
+                "bg-secondary": "rgb(var(--color-bg-secondary) / <alpha-value>)",
+                "bg-tertiary": "rgb(var(--color-bg-tertiary) / <alpha-value>)",
+                "bg-elevated": "rgb(var(--color-bg-elevated) / <alpha-value>)",
+                "surface": "rgb(var(--color-surface) / <alpha-value>)",
+                "surface-hover": "rgb(var(--color-surface-hover) / <alpha-value>)",
+                "border": "rgb(var(--color-border) / <alpha-value>)",
+                "border-light": "rgb(var(--color-border-light) / <alpha-value>)",
+                "border-focus": "rgb(var(--color-border-focus) / <alpha-value>)",
+                
+                // Text colors
+                "text": "rgb(var(--color-text) / <alpha-value>)",
+                "text-bright": "rgb(var(--color-text-bright) / <alpha-value>)",
+                "text-muted": "rgb(var(--color-text-muted) / <alpha-value>)",
+                "text-dim": "rgb(var(--color-text-dim) / <alpha-value>)",
+                
+                // Unified accent color - Vibrant teal-green (stays the same across themes)
+                "primary": "#10B981",
+                "primary-hover": "#059669",
+                "primary-dark": "#047857",
+                "primary-light": "#34D399",
+                "primary-muted": "#10B98133",
+                "primary-glow": "#10B98166",
+                
+                // Legacy dark theme colors for gradual migration
                 "dark-bg": "#0a0a0a",
                 "dark-bg-secondary": "#141414",
                 "dark-bg-tertiary": "#1f1f1f",
@@ -14,20 +39,10 @@ module.exports = {
                 "dark-border": "#2a2a2a",
                 "dark-border-light": "#3a3a3a",
                 "dark-border-focus": "#4a4a4a",
-                
-                // Text colors
                 "dark-text": "#e4e4e4",
                 "dark-text-bright": "#ffffff",
                 "dark-text-muted": "#a3a3a3",
                 "dark-text-dim": "#737373",
-                
-                // Unified accent color - Vibrant teal-green
-                "primary": "#10B981",
-                "primary-hover": "#059669",
-                "primary-dark": "#047857",
-                "primary-light": "#34D399",
-                "primary-muted": "#10B98133",
-                "primary-glow": "#10B98166",
                 
                 // Status colors
                 "status-error": "#EF4444",

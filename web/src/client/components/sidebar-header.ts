@@ -8,6 +8,7 @@ import { customElement } from 'lit/decorators.js';
 import { HeaderBase } from './header-base.js';
 import './terminal-icon.js';
 import './notification-status.js';
+import './theme-toggle.js';
 
 @customElement('sidebar-header')
 export class SidebarHeader extends HeaderBase {
@@ -16,14 +17,14 @@ export class SidebarHeader extends HeaderBase {
 
     return html`
       <div
-        class="app-header sidebar-header bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary border-b border-dark-border px-4 py-2 shadow-sm"
+        class="app-header sidebar-header bg-gradient-to-r from-bg-secondary to-bg-tertiary border-b border-border px-4 py-2 shadow-sm"
         style="padding-top: max(0.625rem, env(safe-area-inset-top));"
       >
         <!-- Compact layout for sidebar -->
         <div class="flex items-center gap-2">
           <!-- Toggle button -->
           <button
-            class="p-2 text-dark-text-muted hover:text-dark-text rounded-lg hover:bg-dark-bg-tertiary transition-all duration-200 flex-shrink-0"
+            class="p-2 text-text-muted hover:text-text rounded-lg hover:bg-bg-tertiary transition-all duration-200 flex-shrink-0"
             @click=${() => this.dispatchEvent(new CustomEvent('toggle-sidebar'))}
             title="Collapse sidebar (⌘B)"
             aria-label="Collapse sidebar"
@@ -48,7 +49,7 @@ export class SidebarHeader extends HeaderBase {
               >
                 VibeTunnel
               </h1>
-              <p class="text-dark-text-muted text-xs font-mono">
+              <p class="text-text-muted text-xs font-mono">
                 ${runningSessions.length} ${runningSessions.length === 1 ? 'session' : 'sessions'}
               </p>
             </div>
@@ -56,6 +57,7 @@ export class SidebarHeader extends HeaderBase {
           
           <!-- Action buttons group with consistent styling -->
           <div class="flex items-center gap-2 flex-shrink-0">
+            <theme-toggle></theme-toggle>
             <!-- Create Session button with primary styling -->
             <button
               class="p-2 text-accent-primary bg-accent-primary bg-opacity-10 border border-accent-primary hover:bg-opacity-20 rounded-md transition-all duration-200 flex-shrink-0"
@@ -85,7 +87,7 @@ export class SidebarHeader extends HeaderBase {
     return html`
       <div class="user-menu-container relative">
         <button
-          class="font-mono text-xs px-2 py-1 text-dark-text-muted hover:text-dark-text rounded border border-dark-border hover:bg-dark-bg-tertiary transition-all duration-200"
+          class="font-mono text-xs px-2 py-1 text-text-muted hover:text-text rounded border border-border hover:bg-bg-tertiary transition-all duration-200"
           @click=${this.toggleUserMenu}
           title="User menu"
         >
@@ -99,15 +101,15 @@ export class SidebarHeader extends HeaderBase {
           this.showUserMenu
             ? html`
               <div
-                class="absolute right-0 top-full mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg py-1 z-50 min-w-32"
+                class="absolute right-0 top-full mt-1 bg-surface border border-border rounded-lg shadow-lg py-1 z-50 min-w-32"
               >
                 <div
-                  class="px-3 py-1.5 text-xs text-dark-text-muted border-b border-dark-border font-mono"
+                  class="px-3 py-1.5 text-xs text-text-muted border-b border-border font-mono"
                 >
                   ${this.currentUser}
                 </div>
                 <button
-                  class="w-full text-left px-3 py-1.5 text-xs font-mono text-status-warning hover:bg-dark-bg-secondary hover:text-status-error"
+                  class="w-full text-left px-3 py-1.5 text-xs font-mono text-status-warning hover:bg-bg-secondary hover:text-status-error"
                   @click=${this.handleLogout}
                 >
                   Logout

@@ -4,6 +4,23 @@
 
 /* CSS Custom Properties for VibeTunnel constants */
 :root {
+  /* Theme Colors - Light Mode (Default) */
+  --color-bg: 250 250 250; /* #fafafa - Off-white background */
+  --color-bg-secondary: 245 245 245; /* #f5f5f5 - Subtle gray */
+  --color-bg-tertiary: 237 237 237; /* #ededed - Card backgrounds */
+  --color-bg-elevated: 255 255 255; /* #ffffff - Pure white for elevated surfaces */
+  --color-surface: 245 245 245; /* #f5f5f5 */
+  --color-surface-hover: 237 237 237; /* #ededed */
+  --color-border: 226 226 226; /* #e2e2e2 - Subtle gray borders */
+  --color-border-light: 237 237 237; /* #ededed */
+  --color-border-focus: 200 200 200; /* #c8c8c8 */
+  
+  /* Text colors - Light Mode */
+  --color-text: 23 23 23; /* #171717 - Near black for high contrast */
+  --color-text-bright: 0 0 0; /* #000000 - Pure black for emphasis */
+  --color-text-muted: 100 100 100; /* #646464 - Muted gray */
+  --color-text-dim: 150 150 150; /* #969696 - Dimmer gray */
+
   /* Breakpoints */
   --vt-breakpoint-mobile: 768px;
   --vt-breakpoint-tablet: 1024px;
@@ -31,10 +48,49 @@
   --vt-terminal-resize-debounce: 100ms;
 }
 
-/* Global dark theme styles */
+/* Dark mode theme colors */
+[data-theme="dark"] {
+  --color-bg: 10 10 10; /* #0a0a0a */
+  --color-bg-secondary: 20 20 20; /* #141414 */
+  --color-bg-tertiary: 31 31 31; /* #1f1f1f */
+  --color-bg-elevated: 38 38 38; /* #262626 */
+  --color-surface: 26 26 26; /* #1a1a1a */
+  --color-surface-hover: 42 42 42; /* #2a2a2a */
+  --color-border: 42 42 42; /* #2a2a2a */
+  --color-border-light: 58 58 58; /* #3a3a3a */
+  --color-border-focus: 74 74 74; /* #4a4a4a */
+  
+  /* Text colors - Dark Mode */
+  --color-text: 228 228 228; /* #e4e4e4 */
+  --color-text-bright: 255 255 255; /* #ffffff */
+  --color-text-muted: 163 163 163; /* #a3a3a3 */
+  --color-text-dim: 115 115 115; /* #737373 */
+}
+
+/* System preference detection */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: 10 10 10;
+    --color-bg-secondary: 20 20 20;
+    --color-bg-tertiary: 31 31 31;
+    --color-bg-elevated: 38 38 38;
+    --color-surface: 26 26 26;
+    --color-surface-hover: 42 42 42;
+    --color-border: 42 42 42;
+    --color-border-light: 58 58 58;
+    --color-border-focus: 74 74 74;
+    --color-text: 228 228 228;
+    --color-text-bright: 255 255 255;
+    --color-text-muted: 163 163 163;
+    --color-text-dim: 115 115 115;
+  }
+}
+
+/* Global theme-aware styles */
 @layer base {
   body {
-    @apply bg-black text-dark-text;
+    @apply bg-bg text-text;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   /* Default focus styles */
@@ -71,11 +127,11 @@
 
   /* Input fields with unified style */
   .input-field {
-    @apply bg-dark-bg-secondary border border-dark-border rounded-lg px-4 py-3 text-dark-text w-full;
+    @apply bg-bg-secondary border border-border rounded-lg px-4 py-3 text-text w-full;
     @apply transition-all duration-200 ease-in-out;
     @apply hover:border-primary/50 focus:border-primary;
     @apply focus:shadow-glow-sm focus:outline-none;
-    @apply text-left placeholder:text-dark-text-muted;
+    @apply text-left placeholder:text-text-muted;
   }
 
   /* Unified button styles */
@@ -110,15 +166,15 @@
   }
 
   .btn-ghost {
-    @apply btn-md text-dark-text-muted;
-    @apply hover:text-dark-text hover:bg-dark-bg-tertiary;
+    @apply btn-md text-text-muted;
+    @apply hover:text-text hover:bg-bg-tertiary;
   }
 
   /* Enhanced card styles */
   .card {
-    @apply bg-dark-bg-secondary border border-dark-border rounded-lg p-0;
+    @apply bg-bg-secondary border border-border rounded-lg p-0;
     @apply transition-all duration-300 ease-out shadow-sm;
-    @apply hover:border-dark-border-light hover:shadow-lg hover:-translate-y-1;
+    @apply hover:border-border-light hover:shadow-lg hover:-translate-y-1;
     position: relative;
     overflow: hidden;
     /* Ensure cards have proper z-index for hover */
@@ -150,8 +206,8 @@
   }
   
   .card-elevated {
-    @apply bg-dark-bg-elevated rounded-xl p-6 shadow-card;
-    @apply hover:shadow-elevated hover:bg-dark-surface-hover;
+    @apply bg-bg-elevated rounded-xl p-6 shadow-card;
+    @apply hover:shadow-elevated hover:bg-surface-hover;
     @apply transition-all duration-200;
   }
   
@@ -178,8 +234,8 @@
 
   /* Quick start buttons */
   .quick-start-btn {
-    @apply bg-dark-bg-tertiary border border-dark-border rounded-lg px-4 py-3 h-12;
-    @apply transition-all duration-200 ease-in-out text-dark-text-muted;
+    @apply bg-bg-tertiary border border-border rounded-lg px-4 py-3 h-12;
+    @apply transition-all duration-200 ease-in-out text-text-muted;
     @apply hover:border-primary hover:text-primary hover:shadow-glow-sm;
     @apply active:scale-95;
   }
@@ -197,7 +253,7 @@
 
   /* Modal content */
   .modal-content {
-    @apply bg-dark-bg-secondary border border-dark-border rounded-xl;
+    @apply bg-bg-secondary border border-border rounded-xl;
     @apply shadow-2xl shadow-black/50;
     position: relative;
     z-index: 1001;
@@ -213,7 +269,7 @@
 
   /* Labels */
   .form-label {
-    @apply text-dark-text-muted text-sm font-medium mb-2 flex items-center gap-2;
+    @apply text-text-muted text-sm font-medium mb-2 flex items-center gap-2;
   }
 
   /* Enhanced responsive session grid layout */
@@ -299,7 +355,7 @@
 
   /* Enhanced authentication styles */
   .auth-container {
-    @apply bg-gradient-to-br from-dark-bg to-dark-bg-secondary flex items-center justify-center p-4;
+    @apply bg-gradient-to-br from-bg to-bg-secondary flex items-center justify-center p-4;
     min-height: 100vh;
     min-height: 100dvh; /* Dynamic viewport height for mobile */
   }
@@ -319,36 +375,36 @@
   }
 
   .auth-title {
-    @apply text-3xl font-mono font-bold text-dark-text-bright;
+    @apply text-3xl font-mono font-bold text-text-bright;
     font-family: 'JetBrains Mono', monospace;
     letter-spacing: -0.02em;
   }
 
   .auth-subtitle {
-    @apply text-dark-text-muted font-mono text-xs;
+    @apply text-text-muted font-mono text-xs;
   }
 
   .auth-form {
-    @apply bg-dark-bg-elevated border border-dark-border rounded-xl shadow-card p-0 w-full;
+    @apply bg-bg-elevated border border-border rounded-xl shadow-card p-0 w-full;
   }
 
   .auth-divider {
-    @apply relative text-center text-dark-text-muted font-mono text-sm;
+    @apply relative text-center text-text-muted font-mono text-sm;
   }
 
   .auth-divider::before {
-    @apply absolute top-1/2 left-0 w-full h-px bg-dark-border;
+    @apply absolute top-1/2 left-0 w-full h-px bg-border;
     content: '';
     transform: translateY(-50%);
   }
 
   .auth-divider span {
-    @apply bg-dark-bg-secondary px-4;
+    @apply bg-bg-secondary px-4;
   }
 
   /* SSH Key Manager styles */
   .ssh-key-item {
-    @apply bg-dark-bg border-0 rounded-lg p-6;
+    @apply bg-bg border-0 rounded-lg p-6;
     @apply transition-all duration-200 ease-in-out;
   }
 
@@ -898,9 +954,22 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 /* Enhanced terminal container styling */
 .terminal-container {
-  color: #e4e4e4;
   overflow: hidden;
+}
+
+/* Dark theme terminal colors */
+[data-theme="dark"] .terminal-container,
+:root:not([data-theme="light"]) .terminal-container {
+  color: #e4e4e4;
   background-color: #0a0a0a;
+}
+
+/* Light theme terminal colors - maintain dark background for contrast */
+[data-theme="light"] .terminal-container {
+  color: #e4e4e4;
+  background-color: #1a1a1a;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: 0.5rem;
 }
 
 /* Terminal line styling */
@@ -974,6 +1043,15 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 .xterm .xterm-viewport {
   background-color: transparent !important;
+}
+
+/* Light mode terminal styling */
+[data-theme="light"] .xterm {
+  background-color: #1a1a1a;
+}
+
+[data-theme="light"] .session-card .terminal-container {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Ensure terminal container has proper size */
@@ -1330,8 +1408,8 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 .keyboard-button {
   @apply absolute flex items-center justify-center;
   @apply w-12 h-12 rounded-md;
-  @apply bg-dark-bg/20 border border-dark-border/50;
-  @apply text-dark-text text-2xl;
+  @apply bg-bg/20 border border-border/50;
+  @apply text-text text-2xl;
   @apply cursor-pointer select-none;
   @apply transition-all duration-200;
   backdrop-filter: blur(12px) saturate(1.5);
@@ -1358,7 +1436,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 /* Hover state for both buttons */
 .scroll-to-bottom:hover,
 .keyboard-button:hover {
-  @apply bg-dark-bg/40 border-primary text-primary;
+  @apply bg-bg/40 border-primary text-primary;
   @apply -translate-y-0.5 shadow-glow-sm;
   backdrop-filter: blur(16px) saturate(1.8);
   -webkit-backdrop-filter: blur(16px) saturate(1.8);

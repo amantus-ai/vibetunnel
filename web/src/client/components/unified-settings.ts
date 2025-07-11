@@ -245,21 +245,21 @@ export class UnifiedSettings extends LitElement {
       return html`
         <div class="flex items-center space-x-2">
           <span class="text-status-success font-mono">✓</span>
-          <span class="text-sm text-dark-text">Active</span>
+          <span class="text-sm text-primary">Active</span>
         </div>
       `;
     } else if (this.permission === 'granted') {
       return html`
         <div class="flex items-center space-x-2">
           <span class="text-status-warning font-mono">!</span>
-          <span class="text-sm text-dark-text">Not subscribed</span>
+          <span class="text-sm text-primary">Not subscribed</span>
         </div>
       `;
     } else {
       return html`
         <div class="flex items-center space-x-2">
           <span class="text-status-error font-mono">✗</span>
-          <span class="text-sm text-dark-text">Disabled</span>
+          <span class="text-sm text-primary">Disabled</span>
         </div>
       `;
     }
@@ -289,10 +289,10 @@ export class UnifiedSettings extends LitElement {
           style="view-transition-name: settings-modal"
         >
           <!-- Header -->
-          <div class="p-4 pb-4 border-b border-dark-border relative flex-shrink-0">
+          <div class="p-4 pb-4 border-b border-base relative flex-shrink-0">
             <h2 class="text-accent-green text-lg font-bold">Settings</h2>
             <button
-              class="absolute top-4 right-4 text-dark-text-muted hover:text-dark-text transition-colors p-1"
+              class="absolute top-4 right-4 text-muted hover:text-primary transition-colors p-1"
               @click=${this.handleClose}
               title="Close"
               aria-label="Close settings"
@@ -321,7 +321,7 @@ export class UnifiedSettings extends LitElement {
     return html`
       <div class="space-y-4">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-md font-bold text-dark-text">Notifications</h3>
+          <h3 class="text-md font-bold text-primary">Notifications</h3>
           ${this.renderSubscriptionStatus()}
         </div>
         
@@ -349,10 +349,10 @@ export class UnifiedSettings extends LitElement {
             `
             : html`
               <!-- Main toggle -->
-              <div class="flex items-center justify-between p-4 bg-dark-bg-tertiary rounded-lg border border-dark-border">
+              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-base"
                 <div class="flex-1">
-                  <label class="text-dark-text font-medium">Enable Notifications</label>
-                  <p class="text-dark-text-muted text-xs mt-1">
+                  <label class="text-primary font-medium">Enable Notifications</label>
+                  <p class="text-muted text-xs mt-1">
                     Receive alerts for session events
                   </p>
                 </div>
@@ -361,8 +361,8 @@ export class UnifiedSettings extends LitElement {
                   aria-checked="${this.isNotificationsEnabled}"
                   @click=${this.handleToggleNotifications}
                   ?disabled=${this.isLoading}
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-dark-bg ${
-                    this.isNotificationsEnabled ? 'bg-accent-green' : 'bg-dark-border'
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-base ${
+                    this.isNotificationsEnabled ? 'bg-accent-green' : 'bg-border'
                   }"
                 >
                   <span
@@ -379,8 +379,8 @@ export class UnifiedSettings extends LitElement {
                     <!-- Notification types -->
                     <div class="mt-4 space-y-4">
                       <div>
-                        <h4 class="text-sm font-medium text-dark-text-muted mb-3">Notification Types</h4>
-                        <div class="space-y-2 bg-dark-bg rounded-lg p-3">
+                        <h4 class="text-sm font-medium text-muted mb-3">Notification Types</h4>
+                        <div class="space-y-2 bg-base rounded-lg p-3"
                           ${this.renderNotificationToggle('sessionExit', 'Session Exit', 'When a session terminates')}
                           ${this.renderNotificationToggle('sessionStart', 'Session Start', 'When a new session starts')}
                           ${this.renderNotificationToggle('sessionError', 'Session Errors', 'When errors occur in sessions')}
@@ -390,8 +390,8 @@ export class UnifiedSettings extends LitElement {
 
                       <!-- Sound and vibration -->
                       <div>
-                        <h4 class="text-sm font-medium text-dark-text-muted mb-3">Notification Behavior</h4>
-                        <div class="space-y-2 bg-dark-bg rounded-lg p-3">
+                        <h4 class="text-sm font-medium text-muted mb-3">Notification Behavior</h4>
+                        <div class="space-y-2 bg-base rounded-lg p-3"
                           ${this.renderNotificationToggle('soundEnabled', 'Sound', 'Play sound with notifications')}
                           ${this.renderNotificationToggle('vibrationEnabled', 'Vibration', 'Vibrate device with notifications')}
                         </div>
@@ -399,8 +399,8 @@ export class UnifiedSettings extends LitElement {
                     </div>
 
                     <!-- Test button -->
-                    <div class="flex items-center justify-between pt-3 mt-3 border-t border-dark-border">
-                      <p class="text-xs text-dark-text-muted">Test your notification settings</p>
+                    <div class="flex items-center justify-between pt-3 mt-3 border-t border-base">
+                      <p class="text-xs text-muted">Test your notification settings</p>
                       <button
                         class="btn-secondary text-xs px-3 py-1.5"
                         @click=${this.handleTestNotification}
@@ -427,15 +427,15 @@ export class UnifiedSettings extends LitElement {
     return html`
       <div class="flex items-center justify-between py-2">
         <div class="flex-1 pr-4">
-          <label class="text-dark-text text-sm font-medium">${label}</label>
-          <p class="text-dark-text-muted text-xs">${description}</p>
+          <label class="text-primary text-sm font-medium">${label}</label>
+          <p class="text-muted text-xs">${description}</p>
         </div>
         <button
           role="switch"
           aria-checked="${this.notificationPreferences[key]}"
           @click=${() => this.handleNotificationPreferenceChange(key, !this.notificationPreferences[key])}
-          class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-dark-bg ${
-            this.notificationPreferences[key] ? 'bg-accent-green' : 'bg-dark-border'
+          class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-base ${
+            this.notificationPreferences[key] ? 'bg-accent-green' : 'bg-border'
           }"
         >
           <span
@@ -451,18 +451,18 @@ export class UnifiedSettings extends LitElement {
   private renderAppSettings() {
     return html`
       <div class="space-y-4">
-        <h3 class="text-md font-bold text-dark-text mb-3">Application</h3>
+        <h3 class="text-md font-bold text-primary mb-3">Application</h3>
         
         <!-- Direct keyboard input (Mobile only) -->
         ${
           this.mediaState.isMobile
             ? html`
-              <div class="flex items-center justify-between p-4 bg-dark-bg-tertiary rounded-lg border border-dark-border">
+              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-base"
                 <div class="flex-1">
-                  <label class="text-dark-text font-medium">
+                  <label class="text-primary font-medium">
                     Use Direct Keyboard
                   </label>
-                  <p class="text-dark-text-muted text-xs mt-1">
+                  <p class="text-muted text-xs mt-1">
                     Capture keyboard input directly without showing a text field (desktop-like experience)
                   </p>
                 </div>
@@ -470,8 +470,8 @@ export class UnifiedSettings extends LitElement {
                   role="switch"
                   aria-checked="${this.appPreferences.useDirectKeyboard}"
                   @click=${() => this.handleAppPreferenceChange('useDirectKeyboard', !this.appPreferences.useDirectKeyboard)}
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-dark-bg ${
-                    this.appPreferences.useDirectKeyboard ? 'bg-accent-green' : 'bg-dark-border'
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-base ${
+                    this.appPreferences.useDirectKeyboard ? 'bg-accent-green' : 'bg-border'
                   }"
                 >
                   <span
@@ -488,7 +488,7 @@ export class UnifiedSettings extends LitElement {
         <!-- Show log link -->
         <div class="flex items-center justify-between p-4 bg-dark-bg-tertiary rounded-lg border border-dark-border">
           <div class="flex-1">
-            <label class="text-dark-text font-medium">Show Log Link</label>
+            <label class="text-primary font-medium">Show Log Link</label>
             <p class="text-dark-text-muted text-xs mt-1">
               Display log link for debugging
             </p>
@@ -497,8 +497,8 @@ export class UnifiedSettings extends LitElement {
             role="switch"
             aria-checked="${this.appPreferences.showLogLink}"
             @click=${() => this.handleAppPreferenceChange('showLogLink', !this.appPreferences.showLogLink)}
-            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-dark-bg ${
-              this.appPreferences.showLogLink ? 'bg-accent-green' : 'bg-dark-border'
+            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-base ${
+              this.appPreferences.showLogLink ? 'bg-accent-green' : 'bg-border'
             }"
           >
             <span
