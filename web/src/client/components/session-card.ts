@@ -459,7 +459,7 @@ export class SessionCard extends LitElement {
           class="session-preview bg-bg overflow-hidden flex-1 relative ${
             this.session.status === 'exited' ? 'session-exited' : ''
           }"
-          style="background: linear-gradient(to bottom, rgb(var(--color-bg-base)), rgb(var(--color-bg-secondary))); box-shadow: inset 0 1px 3px rgb(var(--color-bg-base) / 0.5);"
+          style="background: linear-gradient(to bottom, rgb(var(--color-bg)), rgb(var(--color-bg-secondary))); box-shadow: inset 0 1px 3px rgb(var(--color-bg) / 0.5);"
         >
           ${
             this.killing

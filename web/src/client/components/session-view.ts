@@ -1319,7 +1319,7 @@ export class SessionView extends LitElement {
         ${
           this.isMobile && !this.showMobileInput && !this.useDirectKeyboard
             ? html`
-              <div class="flex-shrink-0 p-4" style="background: black;">
+              <div class="flex-shrink-0 p-4 bg-secondary">
                 <!-- First row: Arrow keys -->
                 <div class="flex gap-2 mb-2">
                   <button
