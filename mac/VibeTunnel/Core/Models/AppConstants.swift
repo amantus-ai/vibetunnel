@@ -43,7 +43,7 @@ enum AppConstants {
         }
         return UserDefaults.standard.bool(forKey: key)
     }
-    
+
     /// Helper to get string value with proper default
     static func stringValue(for key: String) -> String {
         // If the key doesn't exist in UserDefaults, return our default
@@ -51,12 +51,12 @@ enum AppConstants {
             switch key {
             case UserDefaultsKeys.repositoryBasePath:
                 // return last used path if it's exists
-                if let value =  UserDefaults.standard.value(forKey: "NewSession.workingDirectory") as? String {
+                if let value = UserDefaults.standard.value(forKey: "NewSession.workingDirectory") as? String {
                     return value
                 } else {
                     return Defaults.repositoryBasePath
                 }
-                
+
             default:
                 return ""
             }

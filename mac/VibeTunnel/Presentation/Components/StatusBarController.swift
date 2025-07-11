@@ -52,7 +52,7 @@ final class StatusBarController: NSObject {
         self.terminalLauncher = terminalLauncher
         self.gitRepositoryMonitor = gitRepositoryMonitor
         self.repositoryDiscovery = repositoryDiscovery
-        
+
         self.menuManager = StatusBarMenuManager()
 
         super.init()

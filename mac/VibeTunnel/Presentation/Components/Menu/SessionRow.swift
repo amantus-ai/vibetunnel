@@ -504,18 +504,18 @@ struct SessionRow: View {
 
     private var tooltipText: String {
         var tooltip = ""
-        
+
         // Session name
         if let name = session.value.name, !name.isEmpty {
             tooltip += "Session: \(name)\n"
         }
-        
+
         // Command
         tooltip += "Command: \(session.value.command.joined(separator: " "))\n"
-        
+
         // Project path
         tooltip += "Path: \(session.value.workingDir)\n"
-        
+
         // Git info
         if let repo = gitRepository {
             tooltip += "Git: \(repo.currentBranch ?? "detached")"
@@ -524,25 +524,25 @@ struct SessionRow: View {
             }
             tooltip += "\n"
         }
-        
+
         // Activity status
         if let activityStatus = session.value.activityStatus?.specificStatus?.status {
             tooltip += "Activity: \(activityStatus)\n"
         } else {
             tooltip += "Activity: \(isActive ? "Active" : "Idle")\n"
         }
-        
+
         // Duration
         tooltip += "Duration: \(formattedDuration)"
-        
+
         return tooltip
     }
-    
+
     private var formattedDuration: String {
         // Parse ISO8601 date string with fractional seconds
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        
+
         guard let startDate = formatter.date(from: session.value.startedAt) else {
             // Fallback: try without fractional seconds
             formatter.formatOptions = [.withInternetDateTime]
@@ -551,13 +551,13 @@ struct SessionRow: View {
             }
             return formatLongDuration(from: startDate)
         }
-        
+
         return formatLongDuration(from: startDate)
     }
-    
+
     private func formatLongDuration(from startDate: Date) -> String {
         let elapsed = Date().timeIntervalSince(startDate)
-        
+
         if elapsed < 60 {
             return "just started"
         } else if elapsed < 3_600 {
