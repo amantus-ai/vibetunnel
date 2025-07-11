@@ -14,6 +14,12 @@ struct CloudflareIntegrationSection: View {
     @State private var tunnelEnabled = false
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "CloudflareIntegrationSection")
+    
+    // MARK: - Constants
+    private let statusCheckInterval: TimeInterval = 10.0 // seconds
+    private let startTimeoutInterval: TimeInterval = 15.0 // seconds
+    private let stopTimeoutInterval: TimeInterval = 10.0 // seconds
+    private let defaultPort = 4020
 
     var body: some View {
         Section {
@@ -106,6 +112,17 @@ struct CloudflareIntegrationSection: View {
                         // Public URL display
                         if let publicUrl = cloudflareService.publicUrl, !publicUrl.isEmpty {
                             PublicURLView(url: publicUrl)
+                            
+                            // Security warning
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption)
+                                Text("Public tunnel - accessible without authentication")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.top, 4)
                         }
 
                         // Error display
@@ -138,8 +155,8 @@ struct CloudflareIntegrationSection: View {
             await cloudflareService.checkCloudflaredStatus()
             await syncUIWithService()
             
-            // Set up timer for automatic updates every 10 seconds (less frequent)
-            statusCheckTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { _ in
+            // Set up timer for automatic updates
+            statusCheckTimer = Timer.scheduledTimer(withTimeInterval: statusCheckInterval, repeats: true) { _ in
                 Task { @MainActor in
                     logger.debug("CloudflareIntegrationSection: Running periodic status check, isTogglingTunnel: \(isTogglingTunnel)")
                     // Only check if we're not currently toggling
@@ -194,7 +211,7 @@ struct CloudflareIntegrationSection: View {
         
         // Set up timeout to force reset if stuck
         toggleTimeoutTimer?.invalidate()
-        toggleTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { _ in
+        toggleTimeoutTimer = Timer.scheduledTimer(withTimeInterval: startTimeoutInterval, repeats: false) { _ in
             Task { @MainActor in
                 if isTogglingTunnel {
                     logger.error("CloudflareIntegrationSection: Tunnel start timed out, force resetting isTogglingTunnel")
@@ -216,7 +233,7 @@ struct CloudflareIntegrationSection: View {
             }
             
             do {
-                let port = Int(serverPort) ?? 4020
+                let port = Int(serverPort) ?? defaultPort
                 logger.info("Calling startQuickTunnel with port \(port)")
                 try await cloudflareService.startQuickTunnel(port: port)
                 logger.info("Cloudflare tunnel started successfully, URL: \(cloudflareService.publicUrl ?? "nil")")
@@ -246,7 +263,7 @@ struct CloudflareIntegrationSection: View {
         
         // Set up timeout to force reset if stuck
         toggleTimeoutTimer?.invalidate()
-        toggleTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { _ in
+        toggleTimeoutTimer = Timer.scheduledTimer(withTimeInterval: stopTimeoutInterval, repeats: false) { _ in
             Task { @MainActor in
                 if isTogglingTunnel {
                     logger.error("CloudflareIntegrationSection: Tunnel stop timed out, force resetting isTogglingTunnel")
