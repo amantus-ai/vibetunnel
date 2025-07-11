@@ -1247,7 +1247,13 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 /* Position keyboard button */
 .keyboard-button {
-  @apply fixed bottom-3 right-3 z-20;
+  @apply fixed bottom-3 right-3 z-50;
+  /* Ensure button is always touchable */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* Prevent touch delays */
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 
 /* Hover state for both buttons */
