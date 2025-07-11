@@ -967,7 +967,6 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 /* Enhanced terminal container styling */
 .terminal-container {
   overflow: hidden;
-<<<<<<< HEAD
 }
 
 /* Dark theme terminal colors */
@@ -981,25 +980,6 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 [data-theme="light"] .terminal-container {
   color: rgb(228 228 228); /* Terminal text always light */
   background-color: rgb(26 26 26); /* Terminal bg always dark */
-  border: 1px solid rgb(var(--color-border));
-  border-radius: 0.5rem;
-||||||| parent of 37ddea39e (Add professional light mode with theme toggle)
-  background-color: #0a0a0a;
-=======
-}
-
-/* Dark theme terminal colors */
-[data-theme="dark"] .terminal-container,
-:root:not([data-theme="light"]) .terminal-container {
-  color: #e4e4e4;
-  background-color: #0a0a0a;
->>>>>>> 37ddea39e (Add professional light mode with theme toggle)
-}
-
-/* Light theme terminal colors - maintain dark background for contrast */
-[data-theme="light"] .terminal-container {
-  color: #e4e4e4;
-  background-color: #1a1a1a;
   border: 1px solid rgb(var(--color-border));
   border-radius: 0.5rem;
 }
