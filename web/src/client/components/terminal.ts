@@ -128,7 +128,7 @@ export class Terminal extends LitElement {
 
     // All operations complete, render the buffer
     this.renderBuffer();
-    
+
     // Clear renderPending flag when truly done
     if (this.operationQueue.length === 0) {
       this.renderPending = false;
