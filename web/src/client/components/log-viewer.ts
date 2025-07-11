@@ -379,13 +379,13 @@ export class LogViewer extends LitElement {
                         class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${
                           this.levelFilter.has(level)
                             ? level === 'error'
-                              ? 'bg-status-error text-base'
+                              ? 'bg-status-error bg-opacity-20 text-status-error border border-status-error'
                               : level === 'warn'
-                                ? 'bg-status-warning text-base'
+                                ? 'bg-status-warning bg-opacity-20 text-status-warning border border-status-warning'
                                 : level === 'debug'
-                                  ? 'bg-muted text-base'
-                                  : 'bg-primary text-base'
-                            : 'bg-tertiary text-muted border border-base'
+                                  ? 'bg-bg-tertiary text-text-muted border border-border'
+                                  : 'bg-primary bg-opacity-20 text-primary border border-primary'
+                            : 'bg-bg-tertiary text-text-muted border border-border'
                         }"
                         @click=${() => this.toggleLevel(level)}
                         title="${level} logs"
@@ -409,8 +409,8 @@ export class LogViewer extends LitElement {
                   <button
                     class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${
                       this.showClient
-                        ? 'bg-orange-500 text-base'
-                        : 'bg-tertiary text-muted border border-base'
+                        ? 'bg-status-warning bg-opacity-20 text-status-warning border border-status-warning'
+                        : 'bg-bg-tertiary text-text-muted border border-border'
                     }"
                     @click=${() => {
                       this.showClient = !this.showClient;
@@ -422,8 +422,8 @@ export class LogViewer extends LitElement {
                   <button
                     class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${
                       this.showServer
-                        ? 'bg-primary text-base'
-                        : 'bg-tertiary text-muted border border-base'
+                        ? 'bg-primary bg-opacity-20 text-primary border border-primary'
+                        : 'bg-bg-tertiary text-text-muted border border-border'
                     }"
                     @click=${() => {
                       this.showServer = !this.showServer;
@@ -441,7 +441,7 @@ export class LogViewer extends LitElement {
           <div class="hidden sm:flex items-center gap-3">
             <!-- Back button -->
             <button
-              class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary hover:border-primary hover:text-primary transition-colors flex items-center gap-2 flex-shrink-0"
+              class="px-3 py-1.5 bg-bg border border-border rounded text-sm text-primary hover:border-primary hover:text-primary transition-colors flex items-center gap-2 flex-shrink-0"
               @click=${() => {
                 window.location.href = '/';
               }}
@@ -468,7 +468,7 @@ export class LogViewer extends LitElement {
               <!-- Search input -->
               <input
                 type="text"
-                class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary placeholder-muted focus:outline-none focus:border-primary transition-colors flex-1 sm:flex-initial sm:w-64 md:w-80"
+                class="px-3 py-1.5 bg-bg border border-border rounded text-sm text-primary placeholder-text-muted focus:outline-none focus:border-primary transition-colors flex-1 sm:flex-initial sm:w-64 md:w-80"
                 placeholder="Filter logs..."
                 .value=${this.filter}
                 @input=${(e: Event) => {
@@ -484,13 +484,13 @@ export class LogViewer extends LitElement {
                       class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                         this.levelFilter.has(level)
                           ? level === 'error'
-                            ? 'bg-status-error text-base'
+                            ? 'bg-status-error bg-opacity-20 text-status-error border border-status-error'
                             : level === 'warn'
-                              ? 'bg-status-warning text-base'
+                              ? 'bg-status-warning bg-opacity-20 text-status-warning border border-status-warning'
                               : level === 'debug'
-                                ? 'bg-muted text-base'
-                                : 'bg-primary text-base'
-                          : 'bg-tertiary text-muted border border-base'
+                                ? 'bg-bg-tertiary text-text-muted border border-border'
+                                : 'bg-primary bg-opacity-20 text-primary border border-primary'
+                          : 'bg-bg-tertiary text-text-muted border border-border'
                       }"
                       @click=${() => this.toggleLevel(level)}
                     >
@@ -505,8 +505,8 @@ export class LogViewer extends LitElement {
                 <button
                   class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                     this.showClient
-                      ? 'bg-status-warning text-base'
-                      : 'bg-tertiary text-muted border border-base'
+                      ? 'bg-status-warning bg-opacity-20 text-status-warning border border-status-warning'
+                      : 'bg-bg-tertiary text-text-muted border border-border'
                   }"
                   @click=${() => {
                     this.showClient = !this.showClient;
@@ -517,8 +517,8 @@ export class LogViewer extends LitElement {
                 <button
                   class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                     this.showServer
-                      ? 'bg-primary text-base'
-                      : 'bg-tertiary text-muted border border-base'
+                      ? 'bg-primary bg-opacity-20 text-primary border border-primary'
+                      : 'bg-bg-tertiary text-text-muted border border-border'
                   }"
                   @click=${() => {
                     this.showServer = !this.showServer;
@@ -532,8 +532,8 @@ export class LogViewer extends LitElement {
               <button
                 class="px-3 py-1 text-xs uppercase font-bold rounded transition-colors ${
                   this.autoScroll
-                    ? 'bg-primary text-base'
-                    : 'bg-tertiary text-muted border border-base'
+                    ? 'bg-primary bg-opacity-20 text-primary border border-primary'
+                    : 'bg-bg-tertiary text-text-muted border border-border'
                 }"
                 @click=${() => {
                   this.autoScroll = !this.autoScroll;
@@ -547,12 +547,12 @@ export class LogViewer extends LitElement {
 
         <!-- Log container -->
         <div
-          class="log-container flex-1 overflow-y-auto p-4 bg-base font-mono text-xs leading-relaxed"
+          class="log-container flex-1 overflow-y-auto p-4 bg-bg font-mono text-xs leading-relaxed"
         >
           ${
             this.filteredLogs.length === 0
               ? html`
-                <div class="flex items-center justify-center h-full text-muted">
+                <div class="flex items-center justify-center h-full text-text-muted">
                   <div class="text-center">
                     <div>No logs to display</div>
                   </div>
@@ -564,14 +564,14 @@ export class LogViewer extends LitElement {
 
                   return html`
                   <div
-                    class="group hover:bg-secondary/50 transition-colors rounded ${
+                    class="group hover:bg-bg-secondary/50 transition-colors rounded ${
                       log.isClient ? 'bg-status-warning/5 pl-2' : 'pl-2'
                     }"
                   >
                     <!-- Desktop layout (hidden on mobile) -->
                     <div class="hidden sm:flex items-start gap-2 py-0.5">
                       <!-- Timestamp -->
-                      <span class="text-muted w-16 flex-shrink-0 opacity-50"
+                      <span class="text-text-muted w-16 flex-shrink-0 opacity-50"
                         >${this.formatRelativeTime(log.timestamp)}</span
                       >
 
@@ -583,7 +583,7 @@ export class LogViewer extends LitElement {
                             : log.level === 'warn'
                               ? 'text-status-warning bg-status-warning/20 px-1 rounded font-bold'
                               : log.level === 'debug'
-                                ? 'text-muted'
+                                ? 'text-text-muted'
                                 : 'text-primary'
                         }"
                         >${
@@ -606,10 +606,10 @@ export class LogViewer extends LitElement {
                       >
 
                       <!-- Module -->
-                      <span class="text-muted flex-shrink-0 font-mono">${log.module}</span>
+                      <span class="text-text-muted flex-shrink-0 font-mono">${log.module}</span>
 
                       <!-- Separator -->
-                      <span class="text-muted flex-shrink-0">│</span>
+                      <span class="text-text-muted flex-shrink-0">│</span>
 
                       <!-- Message -->
                       <span
@@ -619,7 +619,7 @@ export class LogViewer extends LitElement {
                             : log.level === 'warn'
                               ? 'text-status-warning'
                               : log.level === 'debug'
-                                ? 'text-muted'
+                                ? 'text-text-muted'
                                 : log.isClient
                                   ? 'text-status-warning opacity-80'
                                   : 'text-primary'
@@ -631,7 +631,7 @@ export class LogViewer extends LitElement {
                     <!-- Mobile layout (visible only on mobile) -->
                     <div class="sm:hidden py-1">
                       <div class="flex items-center gap-2 text-xs">
-                        <span class="text-muted opacity-50"
+                        <span class="text-text-muted opacity-50"
                           >${this.formatRelativeTime(log.timestamp)}</span
                         >
                         <span
@@ -641,7 +641,7 @@ export class LogViewer extends LitElement {
                               : log.level === 'warn'
                                 ? 'text-status-warning font-bold'
                                 : log.level === 'debug'
-                                  ? 'text-muted'
+                                  ? 'text-text-muted'
                                   : 'text-primary'
                           } uppercase"
                           >${log.level}</span
@@ -649,7 +649,7 @@ export class LogViewer extends LitElement {
                         <span class="${log.isClient ? 'text-status-warning' : 'text-primary'}"
                           >${log.isClient ? '[C]' : '[S]'}</span
                         >
-                        <span class="text-muted">${log.module}</span>
+                        <span class="text-text-muted">${log.module}</span>
                       </div>
                       <div
                         class="mt-1 ${
@@ -658,7 +658,7 @@ export class LogViewer extends LitElement {
                             : log.level === 'warn'
                               ? 'text-status-warning'
                               : log.level === 'debug'
-                                ? 'text-muted'
+                                ? 'text-text-muted'
                                 : log.isClient
                                   ? 'text-status-warning opacity-80'
                                   : 'text-primary'
@@ -676,7 +676,7 @@ export class LogViewer extends LitElement {
                                 ? 'text-status-error'
                                 : log.level === 'warn'
                                   ? 'text-status-warning'
-                                  : 'text-muted'
+                                  : 'text-text-muted'
                             }"
                           >
                             ${messageLines
@@ -689,7 +689,7 @@ export class LogViewer extends LitElement {
                                 ? 'text-status-error'
                                 : log.level === 'warn'
                                   ? 'text-status-warning'
-                                  : 'text-muted'
+                                  : 'text-text-muted'
                             }"
                           >
                             ${messageLines
@@ -707,21 +707,21 @@ export class LogViewer extends LitElement {
 
         <!-- Footer -->
         <div
-          class="flex items-center justify-between p-3 bg-secondary border-t border-base text-xs"
+          class="flex items-center justify-between p-3 bg-bg-secondary border-t border-border text-xs"
         >
-          <div class="text-muted">
+          <div class="text-text-muted">
             ${this.filteredLogs.length} / ${this.logs.length} logs
-            ${this.logSize ? html` <span class="text-muted">• ${this.logSize}</span>` : ''}
+            ${this.logSize ? html` <span class="text-text-muted">• ${this.logSize}</span>` : ''}
           </div>
           <div class="flex gap-2">
             <button
-              class="px-3 py-1 bg-base border border-base rounded hover:border-primary hover:text-primary transition-colors"
+              class="px-3 py-1 bg-bg border border-border rounded hover:border-primary hover:text-primary transition-colors"
               @click=${this.downloadLogs}
             >
               Download
             </button>
             <button
-              class="px-3 py-1 bg-base border border-status-error text-status-error rounded hover:bg-status-error hover:text-base transition-colors"
+              class="px-3 py-1 bg-bg border border-status-error text-status-error rounded hover:bg-status-error hover:text-text-bright transition-colors"
               @click=${this.clearLogs}
             >
               Clear
