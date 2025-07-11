@@ -448,7 +448,17 @@ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
   Napi::Object obj = Napi::Object::New(napiEnv);  
   obj.Set("fd", Napi::Number::New(napiEnv, master));  
   obj.Set("pid", Napi::Number::New(napiEnv, pid));  
-  obj.Set("pty", Napi::String::New(napiEnv, ptsname(master)));  
+#if defined(__APPLE__)
+  // Use TIOCPTYGNAME instead of ptsname() to avoid threading problems.
+  char slave_pty_name[128];
+  if (ioctl(master, TIOCPTYGNAME, slave_pty_name) != -1) {
+    obj.Set("pty", Napi::String::New(napiEnv, slave_pty_name));
+  } else {
+    obj.Set("pty", Napi::String::New(napiEnv, ""));
+  }
+#else
+  obj.Set("pty", Napi::String::New(napiEnv, ptsname(master)));
+#endif  
 
   // Set up process exit callback.
   Napi::Function cb = info[10].As<Napi::Function>();
@@ -492,7 +502,17 @@ Napi::Value PtyOpen(const Napi::CallbackInfo& info) {
   Napi::Object obj = Napi::Object::New(env);  
   obj.Set("master", Napi::Number::New(env, master));  
   obj.Set("slave", Napi::Number::New(env, slave));  
-  obj.Set("pty", Napi::String::New(env, ptsname(master)));  
+#if defined(__APPLE__)
+  // Use TIOCPTYGNAME instead of ptsname() to avoid threading problems.
+  char slave_pty_name[128];
+  if (ioctl(master, TIOCPTYGNAME, slave_pty_name) != -1) {
+    obj.Set("pty", Napi::String::New(env, slave_pty_name));
+  } else {
+    obj.Set("pty", Napi::String::New(env, ""));
+  }
+#else
+  obj.Set("pty", Napi::String::New(env, ptsname(master)));
+#endif  
 
   return obj;
 }
