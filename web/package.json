@@ -75,7 +75,7 @@
     "mime-types": "^3.0.1",
     "monaco-editor": "^0.52.2",
     "multer": "^2.0.1",
-    "node-pty": "file:./vendored-pty",
+    "node-pty": "file:./node-pty",
     "postject": "^1.0.0-alpha.6",
     "signal-exit": "^4.1.0",
     "web-push": "^3.6.7",

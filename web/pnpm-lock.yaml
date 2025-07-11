@@ -72,8 +72,8 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
       node-pty:
-        specifier: file:./vendored-pty
-        version: '@vibetunnel/vendored-pty@file:vendored-pty'
+        specifier: file:./node-pty
+        version: file:node-pty
       postject:
         specifier: ^1.0.0-alpha.6
         version: 1.0.0-alpha.6
@@ -969,9 +969,6 @@ packages:
 
   '@types/yauzl@2.10.3':
     resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
-
-  '@vibetunnel/vendored-pty@file:vendored-pty':
-    resolution: {directory: vendored-pty, type: directory}
 
   '@vitest/coverage-v8@3.2.4':
     resolution: {integrity: sha512-EyF9SXU6kS5Ku/U82E259WSnvg6c8KTjppUncuNdm5QHpe17mwREHnjDzozC8x9MZ0xfBUFSaLkRv4TMA75ALQ==}
@@ -2310,6 +2307,9 @@ packages:
   node-fetch@3.3.2:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  node-pty@file:node-pty:
+    resolution: {directory: node-pty, type: directory}
 
   node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
@@ -3934,10 +3934,6 @@ snapshots:
       '@types/node': 24.0.4
     optional: true
 
-  '@vibetunnel/vendored-pty@file:vendored-pty':
-    dependencies:
-      node-addon-api: 7.1.1
-
   '@vitest/coverage-v8@3.2.4(vitest@3.2.4)':
     dependencies:
       '@ampproject/remapping': 2.3.0
@@ -5397,6 +5393,10 @@ snapshots:
       data-uri-to-buffer: 4.0.1
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
+
+  node-pty@file:node-pty:
+    dependencies:
+      node-addon-api: 7.1.1
 
   node-releases@2.0.19: {}
 
