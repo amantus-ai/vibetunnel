@@ -14,7 +14,7 @@ interface FileContent {
 }
 
 export function FileEditorPage() {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const [currentFile, setCurrentFile] = useState<FileContent | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

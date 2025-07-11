@@ -39,7 +39,7 @@ export const Terminal = React.forwardRef<TerminalHandle, TerminalProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const terminalRef = useRef<XTerm | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
-    const [isReady, setIsReady] = useState(false);
+    const [_isReady, setIsReady] = useState(false);
 
     // Initialize terminal
     useEffect(() => {
@@ -119,7 +119,8 @@ export const Terminal = React.forwardRef<TerminalHandle, TerminalProps>(
 
       // Initial fit
       setTimeout(() => {
-        fitAddon.fit(); // biome-ignore lint/suspicious/noFocusedTests: This is not a test, it's the xterm fit method
+        // biome-ignore lint/suspicious/noFocusedTests: This is not a test, it's the xterm fit method
+        fitAddon.fit();
         setIsReady(true);
       }, 0);
 
@@ -127,7 +128,7 @@ export const Terminal = React.forwardRef<TerminalHandle, TerminalProps>(
       return () => {
         terminal.dispose();
       };
-    }, [sessionId]);
+    }, [initialCols, initialRows, onData, onResize, theme]);
 
     // Handle window resize
     useEffect(() => {
@@ -135,7 +136,8 @@ export const Terminal = React.forwardRef<TerminalHandle, TerminalProps>(
 
       const handleResize = () => {
         try {
-          fitAddonRef.current?.fit(); // biome-ignore lint/suspicious/noFocusedTests: This is not a test, it's the xterm fit method
+          // biome-ignore lint/suspicious/noFocusedTests: This is not a test, it's the xterm fit method
+          fitAddonRef.current?.fit();
         } catch (e) {
           logger.error('Failed to fit terminal', e);
         }
@@ -156,7 +158,7 @@ export const Terminal = React.forwardRef<TerminalHandle, TerminalProps>(
         window.removeEventListener('resize', handleResize);
         resizeObserver.disconnect();
       };
-    }, [isReady]);
+    }, []);
 
     // Public methods exposed via ref
     const write = useCallback((data: string) => {
@@ -176,6 +178,7 @@ export const Terminal = React.forwardRef<TerminalHandle, TerminalProps>(
     }, []);
 
     const fit = useCallback(() => {
+      // biome-ignore lint/suspicious/noFocusedTests: This is not a test, it's the xterm fit method
       fitAddonRef.current?.fit();
     }, []);
 

@@ -26,12 +26,16 @@ export function Header({
       <div className="px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-4">
           {showBackButton && (
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button type="button" onClick={() => navigate(-1)} aria-label="Go back">
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                role="img"
+                aria-hidden="true"
+              >
+                <title>Back Arrow</title>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

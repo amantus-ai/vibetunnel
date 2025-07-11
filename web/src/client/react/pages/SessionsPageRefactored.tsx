@@ -131,7 +131,7 @@ export function SessionsPageRefactored() {
 
       return { previousSessions };
     },
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       if (context?.previousSessions) {
         queryClient.setQueryData(['sessions'], context.previousSessions);
       }
@@ -157,7 +157,7 @@ export function SessionsPageRefactored() {
 
       return { previousSessions };
     },
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       if (context?.previousSessions) {
         queryClient.setQueryData(['sessions'], context.previousSessions);
       }

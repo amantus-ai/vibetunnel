@@ -1,3 +1,4 @@
+import { type editor, KeyCode, KeyMod } from 'monaco-editor';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createLogger } from '../../utils/logger';
 
@@ -21,7 +22,7 @@ interface MonacoEditorProps {
   onSave?: (value: string) => void;
   readOnly?: boolean;
   className?: string;
-  options?: Record<string, any>;
+  options?: editor.IStandaloneEditorConstructionOptions;
 }
 
 export function MonacoEditor({
@@ -35,14 +36,14 @@ export function MonacoEditor({
   options = {},
 }: MonacoEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Initialize Monaco editor
   useEffect(() => {
     let mounted = true;
-    let editor: any = null;
+    let editorInstance: editor.IStandaloneCodeEditor | null = null;
 
     const initEditor = async () => {
       if (!containerRef.current) return;
@@ -52,7 +53,7 @@ export function MonacoEditor({
         if (!mounted) return;
 
         // Create editor
-        editor = monaco.editor.create(containerRef.current, {
+        editorInstance = monaco.editor.create(containerRef.current, {
           value,
           language,
           theme,
@@ -65,19 +66,19 @@ export function MonacoEditor({
           ...options,
         });
 
-        editorRef.current = editor;
+        editorRef.current = editorInstance;
 
         // Set up change listener
-        const changeDisposable = editor.onDidChangeModelContent(() => {
+        const changeDisposable = editorInstance.onDidChangeModelContent(() => {
           if (onChange) {
-            onChange(editor.getValue());
+            onChange(editorInstance?.getValue() ?? '');
           }
         });
 
         // Set up keyboard shortcuts
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+        editorInstance.addCommand(KeyMod.CtrlCmd | KeyCode.KeyS, () => {
           if (onSave) {
-            onSave(editor.getValue());
+            onSave(editorInstance?.getValue() ?? '');
           }
         });
 
@@ -86,7 +87,7 @@ export function MonacoEditor({
         // Cleanup
         return () => {
           changeDisposable.dispose();
-          editor.dispose();
+          editorInstance?.dispose();
         };
       } catch (err) {
         logger.error('Failed to initialize Monaco editor:', err);
@@ -99,11 +100,9 @@ export function MonacoEditor({
 
     return () => {
       mounted = false;
-      if (editor) {
-        editor.dispose();
-      }
+      editorInstance?.dispose();
     };
-  }, []); // Only run once on mount
+  }, [language, onChange, onSave, options, readOnly, theme, value]);
 
   // Update editor value when prop changes
   useEffect(() => {
@@ -116,7 +115,7 @@ export function MonacoEditor({
   useEffect(() => {
     if (editorRef.current) {
       loadMonaco().then((monaco) => {
-        const model = editorRef.current.getModel();
+        const model = editorRef.current?.getModel();
         if (model) {
           monaco.editor.setModelLanguage(model, language);
         }

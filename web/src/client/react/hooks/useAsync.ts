@@ -64,7 +64,8 @@ export function useAsyncEffect<T>(asyncFunction: () => Promise<T>, deps: Depende
 
   useEffect(() => {
     async.execute(asyncFunction);
-  }, deps);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [async.execute, asyncFunction, ...deps]);
 
   return async;
 }

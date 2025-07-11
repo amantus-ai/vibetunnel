@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { createLogger } from '../../utils/logger';
 import { Modal } from './Modal';
 
@@ -34,6 +34,7 @@ const defaultSettings: UserSettings = {
 export function Settings({ isOpen, onClose }: SettingsProps) {
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [isSaving, setIsSaving] = useState(false);
+  const id = useId();
 
   // Load settings
   useEffect(() => {
@@ -76,19 +77,24 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
     }
   }, [settings, onClose]);
 
-  const handleChange = (key: keyof UserSettings, value: any) => {
+  const handleChange = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Settings" size="lg">
       <div className="space-y-6">
-        {/* Theme */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Theme</label>
+          <label
+            htmlFor={`${id}-theme-select`}
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
+            Theme
+          </label>
           <select
+            id={`${id}-theme-select`}
             value={settings.theme}
-            onChange={(e) => handleChange('theme', e.target.value)}
+            onChange={(e) => handleChange('theme', e.target.value as 'dark' | 'light')}
             className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="dark">Dark</option>
@@ -98,10 +104,14 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
         {/* Font Size */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label
+            htmlFor={`${id}-font-size-range`}
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
             Font Size: {settings.fontSize}px
           </label>
           <input
+            id={`${id}-font-size-range`}
             type="range"
             min="10"
             max="24"
@@ -113,8 +123,14 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
         {/* Font Family */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Font Family</label>
+          <label
+            htmlFor={`${id}-font-family-input`}
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
+            Font Family
+          </label>
           <input
+            id={`${id}-font-family-input`}
             type="text"
             value={settings.fontFamily}
             onChange={(e) => handleChange('fontFamily', e.target.value)}
@@ -124,10 +140,18 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
         {/* Cursor Style */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Cursor Style</label>
+          <label
+            htmlFor={`${id}-cursor-style-select`}
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
+            Cursor Style
+          </label>
           <select
+            id={`${id}-cursor-style-select`}
             value={settings.cursorStyle}
-            onChange={(e) => handleChange('cursorStyle', e.target.value)}
+            onChange={(e) =>
+              handleChange('cursorStyle', e.target.value as 'block' | 'underline' | 'bar')
+            }
             className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="block">Block</option>
@@ -138,8 +162,14 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
         {/* Cursor Blink */}
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-gray-300">Cursor Blink</label>
+          <label
+            htmlFor={`${id}-cursor-blink-checkbox`}
+            className="text-sm font-medium text-gray-300"
+          >
+            Cursor Blink
+          </label>
           <input
+            id={`${id}-cursor-blink-checkbox`}
             type="checkbox"
             checked={settings.cursorBlink}
             onChange={(e) => handleChange('cursorBlink', e.target.checked)}
@@ -149,10 +179,14 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
         {/* Scrollback */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label
+            htmlFor={`${id}-scrollback-range`}
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
             Scrollback Lines: {settings.scrollback}
           </label>
           <input
+            id={`${id}-scrollback-range`}
             type="range"
             min="100"
             max="10000"
@@ -165,10 +199,18 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
         {/* Bell Style */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Bell Style</label>
+          <label
+            htmlFor={`${id}-bell-style-select`}
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
+            Bell Style
+          </label>
           <select
+            id={`${id}-bell-style-select`}
             value={settings.bellStyle}
-            onChange={(e) => handleChange('bellStyle', e.target.value)}
+            onChange={(e) =>
+              handleChange('bellStyle', e.target.value as 'none' | 'visual' | 'sound' | 'both')
+            }
             className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="none">None</option>
@@ -180,10 +222,14 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
         {/* Tab Stop Width */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label
+            htmlFor={`${id}-tab-width-range`}
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
             Tab Width: {settings.tabStopWidth}
           </label>
           <input
+            id={`${id}-tab-width-range`}
             type="range"
             min="2"
             max="8"

@@ -78,11 +78,16 @@ export function Modal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
       onClick={onClose}
+      onKeyDown={(e) => e.key === 'Enter' && onClose()}
+      role="button"
+      tabIndex={0}
     >
       <div
         ref={modalRef}
         className={`bg-gray-900 rounded-lg shadow-xl ${sizeClasses[size]} w-full transform transition-all ${className}`}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
@@ -91,8 +96,17 @@ export function Modal({
               type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-white transition-colors"
+              aria-label="Close modal"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                role="img"
+                aria-hidden="true"
+              >
+                <title>Close Icon</title>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

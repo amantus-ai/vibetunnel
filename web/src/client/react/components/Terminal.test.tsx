@@ -181,7 +181,7 @@ describe('Terminal', () => {
     });
 
     // Simulate terminal input
-    dataCallback!('test input');
+    dataCallback?.('test input');
     expect(mockOnData).toHaveBeenCalledWith('test input');
   });
 
@@ -221,7 +221,7 @@ describe('Terminal', () => {
     });
 
     // Simulate terminal resize
-    resizeCallback!({ cols: 100, rows: 30 });
+    resizeCallback?.({ cols: 100, rows: 30 });
     expect(mockOnResize).toHaveBeenCalledWith(100, 30);
   });
 
@@ -284,7 +284,7 @@ describe('Terminal', () => {
       expect(terminalRef.current).toBeDefined();
     });
 
-    terminalRef.current!.write('Hello, Terminal!');
+    terminalRef.current?.write('Hello, Terminal!');
     expect(mockWrite).toHaveBeenCalledWith('Hello, Terminal!');
   });
 
@@ -316,7 +316,7 @@ describe('Terminal', () => {
       expect(terminalRef.current).toBeDefined();
     });
 
-    terminalRef.current!.clear();
+    terminalRef.current?.clear();
     expect(mockClear).toHaveBeenCalled();
   });
 });

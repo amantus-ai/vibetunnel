@@ -10,24 +10,17 @@
     "declaration": true,
     "composite": true,
     "incremental": true,
-    "tsBuildInfoFile": "./public/tsconfig.client.tsbuildinfo",
-    "jsx": "react-jsx"
+    "tsBuildInfoFile": "./public/tsconfig.client.tsbuildinfo"
   },
-  "include": [
-    "src/client/**/*",
-    "src/shared/**/*",
-    "src/types/**/*",
-    "src/test/utils/react-test-utils.tsx",
-    "src/test/utils/test-factories.ts",
-    "src/test/types/**/*",
-    "src/test/vitest.d.ts",
-    "src/test/setup.ts",
-    "src/test/fixtures/**/*"
-  ],
+  "include": ["src/client/**/*.ts", "src/shared/**/*", "src/types/**/*"],
   "exclude": [
     "node_modules",
     "dist",
     "src/cli.ts",
-    "src/client/sw.ts"
+    "src/client/sw.ts",
+    "src/client/react/**/*",
+    "src/client/**/*.tsx",
+    "src/client/**/*.test.ts",
+    "src/client/**/*.spec.ts"
   ]
 }

@@ -207,7 +207,17 @@ const TerminalContent = memo(
           fitAddonRef.current = null;
           webglAddonRef.current = null;
         };
-      }, [sessionId, onReady]); // Only re-create on sessionId change
+      }, [
+        sessionId,
+        onReady,
+        initialCols,
+        initialRows,
+        theme,
+        settings,
+        onData,
+        onResize,
+        onBell,
+      ]); // Re-create on these changes
 
       // Update terminal options when settings change
       useEffect(() => {

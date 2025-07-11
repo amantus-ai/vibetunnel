@@ -28,7 +28,7 @@ export function LoginPage() {
         } else {
           setError('Invalid password');
         }
-      } catch (err) {
+      } catch (_err) {
         setError('Login failed. Please try again.');
       } finally {
         setIsLoading(false);
@@ -46,7 +46,10 @@ export function LoginPage() {
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            role="img"
+            aria-label="VibeTunnel Logo"
           >
+            <title>VibeTunnel Logo</title>
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -97,7 +100,10 @@ export function LoginPage() {
                     className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
                     fill="none"
                     viewBox="0 0 24 24"
+                    role="img"
+                    aria-label="Loading"
                   >
+                    <title>Loading</title>
                     <circle
                       className="opacity-25"
                       cx="12"

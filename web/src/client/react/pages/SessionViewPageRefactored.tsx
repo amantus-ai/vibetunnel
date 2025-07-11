@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Session } from '../../../shared/types';
 import { createLogger } from '../../utils/logger';
@@ -80,7 +80,12 @@ export function SessionViewPageRefactored() {
     isLoading,
   } = useQuery({
     queryKey: ['session', sessionId],
-    queryFn: () => sessionApi.fetchSession(sessionId!),
+    queryFn: () => {
+      if (!sessionId) {
+        return Promise.reject(new Error('Session ID is required'));
+      }
+      return sessionApi.fetchSession(sessionId);
+    },
     enabled: !!sessionId,
     retry: (failureCount, error) => {
       if (error.message === 'Session not found') return false;
@@ -233,17 +238,19 @@ export function SessionViewPageRefactored() {
       />
 
       <div className="flex-1 overflow-hidden">
-        <Terminal
-          ref={terminalRef}
-          sessionId={sessionId!}
-          onData={handleTerminalData}
-          onResize={handleTerminalResize}
-          onBell={handleBell}
-          onReady={handleTerminalReady}
-          initialCols={session.initialCols}
-          initialRows={session.initialRows}
-          className="h-full"
-        />
+        {sessionId && (
+          <Terminal
+            ref={terminalRef}
+            sessionId={sessionId}
+            onData={handleTerminalData}
+            onResize={handleTerminalResize}
+            onBell={handleBell}
+            onReady={handleTerminalReady}
+            initialCols={session.initialCols}
+            initialRows={session.initialRows}
+            className="h-full"
+          />
+        )}
       </div>
     </div>
   );

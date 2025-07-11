@@ -86,7 +86,10 @@ function ErrorFallback({
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
+          role="img"
+          aria-label="Error Icon"
         >
+          <title>Error Icon</title>
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -97,6 +100,7 @@ function ErrorFallback({
         <h2 className="text-xl font-semibold text-white mb-2">Something went wrong</h2>
         <p className="text-gray-400 mb-4">{error.message}</p>
         <button
+          type="button"
           onClick={resetErrorBoundary}
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
         >
