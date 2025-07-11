@@ -72,7 +72,7 @@ export class Terminal extends LitElement {
   private momentumVelocityX = 0;
   private momentumAnimation: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
-  private mobileResizeComplete = false;
+  private mobileWidthResizeComplete = false;
   private pendingResize: number | null = null;
   private lastCols = 0;
   private lastRows = 0;
@@ -248,12 +248,6 @@ export class Terminal extends LitElement {
     // Update mobile state using consistent detection
     this.isMobile = this.detectMobile();
 
-    // On mobile, only allow the initial resize
-    if (this.isMobile && this.mobileResizeComplete) {
-      logger.debug(`[Terminal] Blocking resize on mobile from source: ${source}`);
-      return;
-    }
-
     logger.debug(`[Terminal] Resize requested from ${source} (mobile: ${this.isMobile})`);
 
     // Cancel any pending resize
@@ -269,9 +263,25 @@ export class Terminal extends LitElement {
   }
 
   private shouldResize(cols: number, rows: number): boolean {
-    // On mobile, once we've done the initial resize, don't resize again
-    if (this.isMobile && this.mobileResizeComplete) {
-      logger.debug(`[Terminal] Preventing resize on mobile (already complete)`);
+    // On mobile, prevent WIDTH changes after initial setup, but allow HEIGHT changes
+    if (this.isMobile && this.mobileWidthResizeComplete) {
+      // Check if only height changed (allow keyboard resizes)
+      const widthChanged = this.lastCols !== cols;
+      const heightChanged = this.lastRows !== rows;
+
+      if (widthChanged) {
+        logger.debug(`[Terminal] Preventing WIDTH resize on mobile (width already set)`);
+        return false;
+      }
+
+      if (heightChanged) {
+        logger.debug(
+          `[Terminal] Allowing HEIGHT resize on mobile: ${this.lastRows} → ${rows} rows`
+        );
+        this.lastRows = rows;
+        return true;
+      }
+
       return false;
     }
 
@@ -285,10 +295,10 @@ export class Terminal extends LitElement {
       this.lastCols = cols;
       this.lastRows = rows;
 
-      // Mark mobile resize as complete after first resize
-      if (this.isMobile && !this.mobileResizeComplete) {
-        this.mobileResizeComplete = true;
-        logger.debug(`[Terminal] Mobile resize complete - blocking future resizes`);
+      // Mark mobile WIDTH resize as complete after first resize
+      if (this.isMobile && !this.mobileWidthResizeComplete) {
+        this.mobileWidthResizeComplete = true;
+        logger.debug(`[Terminal] Mobile WIDTH resize complete - blocking future width changes`);
       }
     }
 
@@ -581,13 +591,15 @@ export class Terminal extends LitElement {
     );
 
     if (this.isMobile) {
-      // On mobile: Only do ONE resize after a delay, then never resize again
-      logger.debug('[Terminal] Mobile detected - scheduling single resize in 200ms');
+      // On mobile: Do initial resize to set width, then allow HEIGHT changes only (for keyboard)
+      logger.debug('[Terminal] Mobile detected - scheduling initial resize in 200ms');
       setTimeout(() => {
-        logger.debug('[Terminal] Mobile: Executing single resize now');
+        logger.debug('[Terminal] Mobile: Executing initial resize');
         this.fitTerminal('initial-mobile-only');
         // That's it - no observers, no event listeners, nothing
-        logger.debug('[Terminal] Mobile: Single resize complete, all future resizes blocked');
+        logger.debug(
+          '[Terminal] Mobile: Initial width set, future WIDTH resizes blocked (height allowed for keyboard)'
+        );
       }, 200);
     } else {
       // Desktop: Normal resize handling with observers

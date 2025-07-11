@@ -859,14 +859,15 @@ describe('SessionView', () => {
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
 
-      // On mobile, height should be fixed at 85vh to prevent resize loops
-      expect(element.terminalContainerHeight).toBe('85vh');
+      // On mobile with keyboard and quick keys, height should be calculated dynamically
+      // Height reduction = keyboardHeight (300) + quickKeysHeight (150) + buffer (10) = 460px
+      expect(element.terminalContainerHeight).toBe('calc(100% - 460px)');
 
-      // On mobile, fitTerminal should NOT be called to prevent resize loops
-      expect(fitTerminalSpy).not.toHaveBeenCalled();
+      // fitTerminal should be called even on mobile now (height changes allowed)
+      expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
 
-      // On mobile, scrollToBottom should NOT be called either
-      expect(terminalElement.scrollToBottom).not.toHaveBeenCalled();
+      // scrollToBottom should be called when height is reduced
+      expect(terminalElement.scrollToBottom).toHaveBeenCalled();
 
       vi.useRealTimers();
     });
@@ -904,8 +905,9 @@ describe('SessionView', () => {
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
 
-      // On mobile, height should be fixed at 85vh
-      expect(element.terminalContainerHeight).toBe('85vh');
+      // On mobile with keyboard only, height should be calculated dynamically
+      // Height reduction = keyboardHeight (300) + buffer (10) = 310px
+      expect(element.terminalContainerHeight).toBe('calc(100% - 310px)');
 
       // Now hide the keyboard
       (element as SessionViewTestInterface).keyboardHeight = 0;
@@ -914,8 +916,8 @@ describe('SessionView', () => {
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
 
-      // On mobile, height remains fixed at 85vh
-      expect(element.terminalContainerHeight).toBe('85vh');
+      // On mobile with keyboard hidden, height should be back to 100%
+      expect(element.terminalContainerHeight).toBe('100%');
 
       vi.useRealTimers();
     });
@@ -958,11 +960,12 @@ describe('SessionView', () => {
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
 
-      // On mobile, height should remain fixed at 85vh regardless of keyboard/quick keys
-      expect(element.terminalContainerHeight).toBe('85vh');
+      // On mobile with quick keys and keyboard, height should be calculated
+      // Height reduction = keyboardHeight (300) + quickKeysHeight (150) + buffer (10) = 460px
+      expect(element.terminalContainerHeight).toBe('calc(100% - 460px)');
 
-      // On mobile, fitTerminal should NOT be called to prevent resize loops
-      expect(fitTerminalSpy).not.toHaveBeenCalled();
+      // fitTerminal should be called on mobile for height changes
+      expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
 
       vi.useRealTimers();
     });
