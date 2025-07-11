@@ -15,6 +15,7 @@ import { authClient } from '../../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../../utils/ai-sessions.js';
 import { createLogger } from '../../utils/logger.js';
 import './mobile-menu.js';
+import '../theme-toggle-icon.js';
 
 const logger = createLogger('session-header');
 
@@ -45,7 +46,15 @@ export class SessionHeader extends LitElement {
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
   @property({ type: Function }) onScreenshare?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
+  @property({ type: String }) currentTheme = 'system';
   @state() private isHovered = false;
+
+  connectedCallback() {
+    super.connectedCallback();
+    // Load saved theme preference
+    const saved = localStorage.getItem('vibetunnel-theme');
+    this.currentTheme = (saved as 'light' | 'dark' | 'system') || 'system';
+  }
 
   private getStatusText(): string {
     if (!this.session) return '';
@@ -212,6 +221,14 @@ export class SessionHeader extends LitElement {
           
           <!-- Desktop buttons - hidden on mobile -->
           <div class="hidden sm:flex items-center gap-2">
+            <!-- Theme toggle -->
+            <theme-toggle-icon
+              .theme=${this.currentTheme}
+              @theme-changed=${(e: CustomEvent) => {
+                this.currentTheme = e.detail.theme;
+              }}
+            ></theme-toggle-icon>
+            
             <button
               class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-accent-primary hover:bg-hover hover:border-accent-primary hover:shadow-sm flex-shrink-0"
               @click=${(e: Event) => {
@@ -259,6 +276,7 @@ export class SessionHeader extends LitElement {
               .onMaxWidthToggle=${this.onMaxWidthToggle}
               .onOpenSettings=${this.onOpenSettings}
               .onCreateSession=${this.onCreateSession}
+              .currentTheme=${this.currentTheme}
             ></mobile-menu>
           </div>
           

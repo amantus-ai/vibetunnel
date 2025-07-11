@@ -8,7 +8,6 @@ import { customElement } from 'lit/decorators.js';
 import { HeaderBase } from './header-base.js';
 import './terminal-icon.js';
 import './notification-status.js';
-import './theme-toggle.js';
 
 @customElement('sidebar-header')
 export class SidebarHeader extends HeaderBase {
@@ -57,7 +56,6 @@ export class SidebarHeader extends HeaderBase {
           
           <!-- Action buttons group with consistent styling -->
           <div class="flex items-center gap-2 flex-shrink-0">
-            <theme-toggle></theme-toggle>
             <!-- Create Session button with primary styling -->
             <button
               class="p-2 text-accent-primary bg-accent-primary bg-opacity-10 border border-accent-primary hover:bg-opacity-20 rounded-md transition-all duration-200 flex-shrink-0"
