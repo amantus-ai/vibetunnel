@@ -1433,20 +1433,14 @@ export class SessionView extends LitElement {
             ? html`
               <div
                 class="keyboard-button"
-                @touchstart=${(e: TouchEvent) => {
+                @pointerdown=${(e: PointerEvent) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  // Handle touch immediately, don't wait for click
-                  this.handleKeyboardButtonClick();
                 }}
                 @click=${(e: MouseEvent) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  // Also handle click for non-touch devices
-                  if (e.detail > 0) {
-                    // Only handle real clicks, not programmatic ones
-                    this.handleKeyboardButtonClick();
-                  }
+                  this.handleKeyboardButtonClick();
                 }}
                 title="Show keyboard"
               >
