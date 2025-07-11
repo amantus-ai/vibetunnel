@@ -180,11 +180,11 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
     // Format tokens - the input already has 'k' suffix in the regex pattern
     // So "6.0" means 6.0k tokens, not 6.0 tokens
     const formattedTokens = `${tokens}k`;
-    // Include indicator + action and stats
-    displayText = `${indicator} ${action} (${duration}s, ${direction}${formattedTokens})`;
+    // Include action and stats (without indicator to avoid title jumping)
+    displayText = `${action} (${duration}s, ${direction}${formattedTokens})`;
   } else {
-    // Simple format without token info
-    displayText = `${indicator} ${action} (${duration}s)`;
+    // Simple format without token info (without indicator to avoid title jumping)
+    displayText = `${action} (${duration}s)`;
   }
 
   return {
