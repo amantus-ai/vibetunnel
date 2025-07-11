@@ -1,7 +1,10 @@
 use napi::bindgen_prelude::*;
+use napi::threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 use std::collections::HashMap;
-use std::io::Write;
+use std::io::{Read, Write};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 use crate::manager::PTY_MANAGER;
 use vibetunnel_pty_core::pty::{create_pty, resize_pty};
@@ -15,6 +18,8 @@ pub struct NativePty {
     cols: u16,
     #[allow(dead_code)]
     rows: u16,
+    data_callback: Arc<Mutex<Option<ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal>>>>,
+    reader_thread: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
 }
 
 #[napi]
@@ -68,7 +73,14 @@ impl NativePty {
             manager.add_session(session_id.clone(), handle, info);
         }
 
-        Ok(Self { session_id, pid, cols, rows })
+        Ok(Self {
+            session_id,
+            pid,
+            cols,
+            rows,
+            data_callback: Arc::new(Mutex::new(None)),
+            reader_thread: Arc::new(Mutex::new(None)),
+        })
     }
 
     #[napi]
@@ -192,8 +204,100 @@ impl NativePty {
         }
     }
 
+    #[napi(ts_args_type = "callback: (data: Buffer) => void")]
+    pub fn set_on_data(&self, callback: JsFunction) -> Result<()> {
+        // Create a threadsafe function from the callback
+        // Using ErrorStrategy::Fatal to simplify error handling
+        let tsfn: ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal> = callback
+            .create_threadsafe_function(0, |ctx| {
+                // Create buffer from Vec<u8> data
+                let buffer = ctx.env.create_buffer_with_data(ctx.value)
+                    .map(|b| b.into_raw())?;
+                Ok(vec![buffer])
+            })?;
+
+        // Store the callback
+        {
+            let mut cb = self.data_callback.lock().unwrap();
+            *cb = Some(tsfn);
+        }
+
+        // Start the reader thread if not already started
+        let mut reader_thread = self.reader_thread.lock().unwrap();
+        if reader_thread.is_none() {
+            let session_id = self.session_id.clone();
+            let data_callback = Arc::clone(&self.data_callback);
+            
+            // Spawn reader thread
+            let handle = thread::spawn(move || {
+                // Get the reader from the PTY handle
+                let mut buffer = vec![0u8; 4096];
+                
+                loop {
+                    // Sleep briefly to avoid busy-waiting
+                    thread::sleep(std::time::Duration::from_millis(10));
+                    
+                    // Try to get the session's reader
+                    let read_result = {
+                        let mut manager = PTY_MANAGER.lock().unwrap();
+                        if let Some(session) = manager.get_session_mut(&session_id) {
+                            // Read data from PTY
+                            match session.handle.reader.read(&mut buffer) {
+                                Ok(0) => {
+                                    // EOF - process has ended
+                                    break;
+                                }
+                                Ok(n) => Some(buffer[..n].to_vec()),
+                                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                    // No data available, continue loop
+                                    None
+                                }
+                                Err(_) => {
+                                    // Error, exit thread
+                                    break;
+                                }
+                            }
+                        } else {
+                            // Session not found, exit thread
+                            break;
+                        }
+                    };
+
+                    // Call the callback only if we have data
+                    if let Some(data) = read_result {
+                        let cb = data_callback.lock().unwrap();
+                        if let Some(ref callback) = *cb {
+                            // Call the JavaScript callback with the data
+                            // ThreadsafeFunction will convert Vec<u8> to Buffer
+                            callback.call(data, ThreadsafeFunctionCallMode::Blocking);
+                        }
+                    }
+                }
+            });
+            
+            *reader_thread = Some(handle);
+        }
+
+        Ok(())
+    }
+
     #[napi]
     pub fn destroy(&self) -> Result<()> {
+        // Clear the callback to signal the reader thread to stop
+        {
+            let mut cb = self.data_callback.lock().unwrap();
+            *cb = None;
+        }
+
+        // Wait for reader thread to finish
+        {
+            let mut reader_thread = self.reader_thread.lock().unwrap();
+            if let Some(handle) = reader_thread.take() {
+                // Give the thread a moment to exit cleanly
+                let _ = handle.join();
+            }
+        }
+
         let mut manager = PTY_MANAGER.lock().unwrap();
 
         // Remove session from manager
