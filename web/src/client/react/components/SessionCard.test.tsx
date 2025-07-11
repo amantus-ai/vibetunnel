@@ -34,7 +34,16 @@ describe('SessionCard', () => {
   });
 
   it('should show session ID when name is not provided', () => {
-    const sessionWithoutName = { ...defaultSession, name: undefined };
+    const sessionWithoutName = createTestSession({
+      id: defaultSession.id,
+      name: '',
+      command: defaultSession.command,
+      workingDir: defaultSession.workingDir,
+      startedAt: defaultSession.startedAt,
+      lastModified: defaultSession.lastModified,
+      status: defaultSession.status,
+      active: defaultSession.active,
+    });
 
     renderWithProviders(<SessionCard session={sessionWithoutName} onClick={mockOnClick} />);
 
@@ -57,10 +66,10 @@ describe('SessionCard', () => {
     expect(statusText.parentElement).toHaveClass('text-green-500');
   });
 
-  it('should show gray status indicator for stopped sessions', () => {
-    const stoppedSession = { ...defaultSession, status: 'stopped' as const };
+  it('should show gray status indicator for exited sessions', () => {
+    const exitedSession = createTestSession({ ...defaultSession, status: 'exited' });
 
-    renderWithProviders(<SessionCard session={stoppedSession} onClick={mockOnClick} />);
+    renderWithProviders(<SessionCard session={exitedSession} onClick={mockOnClick} />);
 
     const statusText = screen.getByTestId('session-status');
     expect(statusText.parentElement).toHaveClass('text-gray-500');
@@ -125,7 +134,10 @@ describe('SessionCard', () => {
   });
 
   it('should show "Never" when lastModified is not provided', () => {
-    const sessionWithoutDate = { ...defaultSession, lastModified: undefined };
+    const sessionWithoutDate = createTestSession({
+      ...defaultSession,
+      lastModified: '',
+    });
 
     renderWithProviders(<SessionCard session={sessionWithoutDate} onClick={mockOnClick} />);
 

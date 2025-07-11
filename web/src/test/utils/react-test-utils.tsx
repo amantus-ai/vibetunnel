@@ -10,7 +10,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import React, { type ReactElement, type ReactNode } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
 import type { Session } from '../../shared/types';
 import type { ActivityStatus } from '../types/test-types';
 import { createTestSession } from './test-factories';
@@ -18,7 +18,10 @@ import { createTestSession } from './test-factories';
 /**
  * Custom render function that wraps components with providers
  */
-export function renderWithProviders(ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) {
+export function renderWithProviders(
+  ui: ReactElement,
+  options?: Omit<RenderOptions, 'wrapper'>
+): ReturnType<typeof render> {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -221,23 +224,7 @@ export async function waitForCondition(
  */
 export function createMockSession(overrides: Partial<Session> = {}): Session {
   // Convert SessionData properties to Session properties if needed
-  const overridesWithLegacy = overrides as Partial<Session> & {
-    cmdline?: string[];
-    cwd?: string;
-    started_at?: string;
-  };
-
-  const command = overridesWithLegacy.command || overridesWithLegacy.cmdline || ['/bin/bash', '-l'];
-  const workingDir = overridesWithLegacy.workingDir || overridesWithLegacy.cwd || '/home/test';
-  const startedAt =
-    overridesWithLegacy.startedAt || overridesWithLegacy.started_at || new Date().toISOString();
-
-  return createTestSession({
-    ...overrides,
-    command: Array.isArray(command) ? command : [command],
-    workingDir,
-    startedAt,
-  });
+  return createTestSession(overrides);
 }
 
 /**

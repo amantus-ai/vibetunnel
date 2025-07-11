@@ -26,9 +26,12 @@ interface TerminalProps {
 
 export interface TerminalHandle {
   write: (data: string) => void;
+  writeln: (data: string) => void;
   clear: () => void;
   focus: () => void;
   fit: () => void;
+  resize: (cols: number, rows: number) => void;
+  terminal?: XTerm;
 }
 
 export const Terminal = React.forwardRef<TerminalHandle, TerminalProps>(
@@ -191,7 +194,7 @@ export const Terminal = React.forwardRef<TerminalHandle, TerminalProps>(
         fit,
         resize,
         get terminal() {
-          return terminalRef.current;
+          return terminalRef.current || undefined;
         },
       }),
       [write, writeln, clear, focus, fit, resize]

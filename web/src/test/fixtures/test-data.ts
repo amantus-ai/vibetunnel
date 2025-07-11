@@ -2,57 +2,57 @@
  * Common test data fixtures for unit tests
  */
 
-import type { SessionEntryWithId, SessionWithId } from '../../server/types';
+import type { Session } from '../../shared/types';
 
-export const mockSessions: SessionWithId[] = [
+export const mockSessions: Session[] = [
   {
     id: 'session-1',
-    cmdline: ['bash', '-l'],
+    command: ['bash', '-l'],
     name: 'Production Server',
-    cwd: '/home/user/projects',
+    workingDir: '/home/user/projects',
     pid: 12345,
     status: 'running',
-    started_at: '2025-01-01T10:00:00Z',
-    exit_code: null,
-    term: 'xterm-256color',
-    spawn_type: 'pty',
-    cols: 120,
-    rows: 40,
+    startedAt: '2025-01-01T10:00:00Z',
+    exitCode: undefined,
+    source: 'local',
+    initialCols: 120,
+    initialRows: 40,
+    lastModified: '2025-01-01T10:00:00Z',
+    active: true,
   },
   {
     id: 'session-2',
-    cmdline: ['pnpm', 'run', 'dev'],
+    command: ['pnpm', 'run', 'dev'],
     name: 'Development Server',
-    cwd: '/home/user/projects/app',
+    workingDir: '/home/user/projects/app',
     pid: 12346,
     status: 'running',
-    started_at: '2025-01-01T10:30:00Z',
-    exit_code: null,
-    term: 'xterm-256color',
-    spawn_type: 'pty',
-    cols: 120,
-    rows: 40,
+    startedAt: '2025-01-01T10:30:00Z',
+    exitCode: undefined,
+    source: 'local',
+    initialCols: 120,
+    initialRows: 40,
+    lastModified: '2025-01-01T10:30:00Z',
+    active: true,
   },
   {
     id: 'session-3',
-    cmdline: ['python', 'script.py'],
+    command: ['python', 'script.py'],
     name: 'Data Processing',
-    cwd: '/home/user/scripts',
+    workingDir: '/home/user/scripts',
     pid: 12347,
     status: 'exited',
-    started_at: '2025-01-01T09:00:00Z',
-    exit_code: 0,
-    term: 'xterm-256color',
-    spawn_type: 'pty',
-    cols: 80,
-    rows: 24,
+    startedAt: '2025-01-01T09:00:00Z',
+    exitCode: 0,
+    source: 'local',
+    initialCols: 80,
+    initialRows: 24,
+    lastModified: '2025-01-01T09:00:00Z',
+    active: false,
   },
 ];
 
-export const mockSessionEntries: SessionEntryWithId[] = mockSessions.map((session) => ({
-  ...session,
-  source: 'local' as const,
-}));
+// mockSessionEntries no longer needed with new Session type
 
 export const mockActivityStatus = {
   'session-1': {

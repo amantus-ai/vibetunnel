@@ -17,14 +17,18 @@
     "src/client/**/*.tsx",
     "src/client/**/*.ts",
     "src/shared/**/*",
-    "src/types/**/*"
+    "src/types/**/*",
+    "src/test/utils/react-test-utils.tsx",
+    "src/test/utils/test-factories.ts",
+    "src/test/types/**/*",
+    "src/test/vitest.d.ts",
+    "src/test/setup.ts",
+    "src/test/fixtures/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "src/cli.ts",
-    "src/client/sw.ts",
-    "src/**/*.test.ts",
-    "src/**/*.spec.ts"
+    "src/client/sw.ts"
   ]
 }

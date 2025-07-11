@@ -1,6 +1,7 @@
 // Global test setup for Vitest
 import { webcrypto } from 'crypto';
-import { vi } from 'vitest';
+import { afterAll, beforeAll, vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
 
 // Disable SEA loader for tests
 process.env.VIBETUNNEL_SEA = '';
@@ -50,7 +51,9 @@ vi.mock('node-pty', () => {
         // Simulate process exit
         if (exitCallback) {
           setTimeout(() => {
-            exitCallback({ exitCode: signal === 'SIGTERM' ? 143 : 137, signal: 15 });
+            if (exitCallback) {
+              exitCallback({ exitCode: signal === 'SIGTERM' ? 143 : 137, signal: 15 });
+            }
           }, 50);
         }
       }),
@@ -103,10 +106,13 @@ global.IntersectionObserver = class IntersectionObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
+  takeRecords() {
+    return [];
+  }
   root = null;
   rootMargin = '';
   thresholds = [];
-};
+} as any;
 
 // Mock matchMedia (only if window exists - for browser tests)
 if (typeof window !== 'undefined') {

@@ -2,9 +2,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockBinaryBuffer } from '../../test/fixtures/test-data';
 import type { MockWebSocketConstructor } from '../../test/types/test-types';
-import { MockWebSocket } from '../../test/utils/lit-test-utils';
-import type { BufferSnapshot } from '../utils/terminal-renderer';
+import { MockWebSocket } from '../../test/utils/react-test-utils';
 import { BufferSubscriptionService } from './buffer-subscription-service';
+
+interface BufferSnapshot {
+  cols: number;
+  rows: number;
+  viewportY: number;
+  cursorX: number;
+  cursorY: number;
+  cells: unknown[][];
+}
 
 // Mock the terminal renderer module
 vi.mock('../utils/terminal-renderer.js', () => ({
@@ -45,7 +53,7 @@ vi.mock('../utils/logger.js', () => ({
 
 describe('BufferSubscriptionService', () => {
   let service: BufferSubscriptionService;
-  let mockWebSocketConstructor: typeof MockWebSocket;
+  let mockWebSocketConstructor: any;
   let mockWebSocketInstance: MockWebSocket;
 
   beforeEach(() => {
@@ -81,10 +89,10 @@ describe('BufferSubscriptionService', () => {
       mockWebSocketInstance.binaryType = 'arraybuffer';
       return mockWebSocketInstance;
     }) as unknown as MockWebSocketConstructor;
-    mockWebSocketConstructor.CONNECTING = 0;
-    mockWebSocketConstructor.OPEN = 1;
-    mockWebSocketConstructor.CLOSING = 2;
-    mockWebSocketConstructor.CLOSED = 3;
+    (mockWebSocketConstructor as any).CONNECTING = 0;
+    (mockWebSocketConstructor as any).OPEN = 1;
+    (mockWebSocketConstructor as any).CLOSING = 2;
+    (mockWebSocketConstructor as any).CLOSED = 3;
 
     global.WebSocket = mockWebSocketConstructor as unknown as typeof WebSocket;
   });
@@ -336,7 +344,7 @@ describe('BufferSubscriptionService', () => {
 
       // Create new mock instance for reconnection
       const newMockInstance = new MockWebSocket('ws://localhost/buffers');
-      mockWebSocketConstructor.mockReturnValue(newMockInstance);
+      (mockWebSocketConstructor as any).mockReturnValue(newMockInstance);
 
       // Advance time to trigger reconnect
       vi.advanceTimersByTime(1000);

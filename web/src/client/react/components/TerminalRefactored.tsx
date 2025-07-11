@@ -134,7 +134,6 @@ const TerminalContent = memo(
           windowsMode: navigator.platform.includes('Win'),
           macOptionIsMeta: true,
           rightClickSelectsWord: true,
-          rendererType: 'webgl',
         });
 
         terminalRef.current = terminal;

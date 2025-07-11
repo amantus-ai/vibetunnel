@@ -3,7 +3,7 @@
  * This helps reduce duplication and makes tests more maintainable
  */
 
-import type { Session } from '@/shared/types';
+import type { Session } from '../../shared/types';
 
 interface Activity {
   id: number;
@@ -18,7 +18,7 @@ interface CreateSessionOptions {
   name?: string;
   command?: string[];
   workingDir?: string;
-  status?: 'running' | 'exited' | 'stopped';
+  status?: 'starting' | 'running' | 'exited' | 'stopped';
   exitCode?: number;
   startedAt?: string;
   pid?: number;
@@ -28,6 +28,9 @@ interface CreateSessionOptions {
   remoteId?: string;
   remoteName?: string;
   remoteUrl?: string;
+  initialCols?: number;
+  initialRows?: number;
+  version?: string;
 }
 
 interface CreateActivityOptions {
@@ -76,6 +79,9 @@ export function createTestSession(options: CreateSessionOptions = {}): Session {
     remoteId: options.remoteId,
     remoteName: options.remoteName,
     remoteUrl: options.remoteUrl,
+    initialCols: options.initialCols,
+    initialRows: options.initialRows,
+    version: options.version,
   };
 }
 
