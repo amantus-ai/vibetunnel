@@ -214,10 +214,17 @@ export class DirectKeyboardManager {
     this.hiddenInput.style.cursor = 'default';
     this.hiddenInput.style.pointerEvents = 'none'; // Start with pointer events disabled
     this.hiddenInput.style.webkitUserSelect = 'text'; // iOS specific
-    this.hiddenInput.autocapitalize = 'off';
+    this.hiddenInput.autocapitalize = 'none'; // More explicit than 'off'
     this.hiddenInput.autocomplete = 'off';
     this.hiddenInput.setAttribute('autocorrect', 'off');
     this.hiddenInput.setAttribute('spellcheck', 'false');
+    this.hiddenInput.setAttribute('data-autocorrect', 'off');
+    this.hiddenInput.setAttribute('data-gramm', 'false'); // Disable Grammarly
+    this.hiddenInput.setAttribute('data-ms-editor', 'false'); // Disable Microsoft Editor
+    this.hiddenInput.setAttribute('data-smartpunctuation', 'false'); // Disable smart quotes/dashes
+    this.hiddenInput.setAttribute('data-form-type', 'other'); // Hint this isn't a form field
+    this.hiddenInput.setAttribute('inputmode', 'none'); // Prevent iOS keyboard optimizations
+    this.hiddenInput.setAttribute('enterkeyhint', 'done'); // Prevent iOS enter key behavior
     this.hiddenInput.setAttribute('aria-hidden', 'true');
 
     // Set initial position based on mode
@@ -469,13 +476,50 @@ export class DirectKeyboardManager {
       return;
     } else if (key === 'Paste') {
       // Handle Paste key
+      logger.log('Paste button pressed - attempting clipboard read');
+
+      // Log environment details for debugging
+      logger.log('Clipboard context:', {
+        hasClipboard: !!navigator.clipboard,
+        hasReadText: !!navigator.clipboard?.readText,
+        isSecureContext: window.isSecureContext,
+        protocol: window.location.protocol,
+        userAgent: navigator.userAgent.includes('Safari') ? 'Safari' : 'Other',
+      });
+
       try {
+        logger.log('Calling navigator.clipboard.readText()...');
         const text = await navigator.clipboard.readText();
+        logger.log('Clipboard read successful, text length:', text?.length || 0);
+
         if (text && this.inputManager) {
+          logger.log('Sending clipboard text to terminal');
           this.inputManager.sendInputText(text);
+        } else if (!text) {
+          logger.warn('Clipboard is empty or contains no text');
+        } else {
+          logger.error('No input manager available for paste operation');
         }
       } catch (err) {
-        logger.error('Failed to read clipboard:', err);
+        // Enhanced error logging for iOS Safari debugging
+        const error = err as Error;
+        logger.error('Failed to read clipboard:', {
+          name: error?.name,
+          message: error?.message,
+          stack: error?.stack,
+          toString: error?.toString?.(),
+          errorType: typeof err,
+          errorConstructor: error?.constructor?.name,
+        });
+
+        // Check for specific Safari clipboard errors
+        if (error?.name === 'NotAllowedError') {
+          logger.error('Clipboard access denied - user gesture or permissions issue');
+        } else if (error?.name === 'SecurityError') {
+          logger.error('Clipboard security error - likely HTTPS or iframe issue');
+        } else if (error?.name === 'AbortError') {
+          logger.error('Clipboard operation was aborted');
+        }
       }
     } else if (key === 'Ctrl+A') {
       // Send Ctrl+A (start of line)

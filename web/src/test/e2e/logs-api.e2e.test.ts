@@ -117,7 +117,7 @@ describe.sequential('Logs API Tests', () => {
       });
 
       // Wait and retry for the log file to be written and flushed
-      let info: any;
+      let info: { exists: boolean; size: number };
       let attempts = 0;
       const maxAttempts = 10;
       const retryDelay = 200;
