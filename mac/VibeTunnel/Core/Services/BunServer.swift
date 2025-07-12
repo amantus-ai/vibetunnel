@@ -403,6 +403,16 @@ final class BunServer {
         var environment = ProcessInfo.processInfo.environment
         // Add Node.js memory settings
         environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128"
+        
+        // Add pnpm to PATH so that scripts can use it
+        let pnpmDir = URL(fileURLWithPath: pnpmPath).deletingLastPathComponent().path
+        if let existingPath = environment["PATH"] {
+            environment["PATH"] = "\(pnpmDir):\(existingPath)"
+        } else {
+            environment["PATH"] = pnpmDir
+        }
+        logger.info("Added pnpm directory to PATH: \(pnpmDir)")
+        
         process.environment = environment
 
         // Set up pipes for stdout and stderr
