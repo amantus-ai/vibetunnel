@@ -111,7 +111,6 @@ export class SessionList extends LitElement {
     this.selectedSessionId = sessions[index].id;
     this.requestUpdate();
   };
-
   private handleRefresh() {
     this.dispatchEvent(new CustomEvent('refresh'));
   }
