@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SessionManager } from '../../server/pty/session-manager.js';
 import type { AsciinemaHeader } from '../../server/pty/types.js';
 import { StreamWatcher } from '../../server/services/stream-watcher.js';
 import {
@@ -35,7 +36,8 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
       locals: {},
     };
 
-    streamWatcher = new StreamWatcher();
+    const sessionManager = new SessionManager(tempDir);
+    streamWatcher = new StreamWatcher(sessionManager);
   });
 
   afterEach(() => {
@@ -80,7 +82,10 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
     // Use reflection to call private method
     // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
     const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
-    sendExistingContent(filepath, { response: mockResponse, startTime: Date.now() / 1000 });
+    sendExistingContent('session1', filepath, {
+      response: mockResponse,
+      startTime: Date.now() / 1000,
+    });
 
     // Wait for async operations to complete
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -117,7 +122,10 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
 
     // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
     const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
-    sendExistingContent(filepath, { response: mockResponse, startTime: Date.now() / 1000 });
+    sendExistingContent('session2', filepath, {
+      response: mockResponse,
+      startTime: Date.now() / 1000,
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 200));
 
@@ -138,7 +146,10 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
 
     // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
     const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
-    sendExistingContent(filepath, { response: mockResponse, startTime: Date.now() / 1000 });
+    sendExistingContent('session3', filepath, {
+      response: mockResponse,
+      startTime: Date.now() / 1000,
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 200));
 
@@ -157,7 +168,10 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
 
     // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
     const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
-    sendExistingContent(nonExistentPath, { response: mockResponse, startTime: Date.now() / 1000 });
+    sendExistingContent('session4', nonExistentPath, {
+      response: mockResponse,
+      startTime: Date.now() / 1000,
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 200));
 
@@ -171,7 +185,10 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
 
     // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
     const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
-    sendExistingContent(filepath, { response: mockResponse, startTime: Date.now() / 1000 });
+    sendExistingContent('session5', filepath, {
+      response: mockResponse,
+      startTime: Date.now() / 1000,
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 200));
 

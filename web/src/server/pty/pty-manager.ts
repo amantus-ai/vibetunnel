@@ -246,6 +246,7 @@ export class PtyManager extends EventEmitter {
         startedAt: new Date().toISOString(),
         initialCols: cols,
         initialRows: rows,
+        lastClearOffset: 0,
         version: VERSION,
       };
 
