@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import copy from 'rollup-plugin-copy';
+import { nativeBuildPlugin } from './vite-plugin-native-build';
 
 export default defineConfig({
   
@@ -111,7 +112,10 @@ export default defineConfig({
         // Ensure the exact file structure expected by Mac app
         console.log('Generated bundle files:', Object.keys(bundle));
       }
-    }
+    },
+
+    // Build native executable after web bundle
+    nativeBuildPlugin()
   ],
 
   // Optimize dependencies
