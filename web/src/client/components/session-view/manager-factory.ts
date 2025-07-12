@@ -91,6 +91,8 @@ function wireDependencies(managers: ManagerInstances, sessionView: SessionView):
   terminalLifecycleManager.setInputManager(inputManager);
   terminalLifecycleManager.setConnected(true);
   terminalLifecycleManager.setDomElement(sessionView);
+  connectionManager.setLogCallback((msg) => sessionView['logStat']?.call(sessionView, msg));
+  terminalLifecycleManager.setLogCallback((msg) => sessionView['logStat']?.call(sessionView, msg));
 
   // Set up lifecycle event manager
   lifecycleEventManager.setSessionViewElement(sessionView);

@@ -46,6 +46,8 @@ export class SessionHeader extends LitElement {
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
   @property({ type: Function }) onScreenshare?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
+  @property({ type: Function }) onToggleStatsLog?: () => void;
+  @property({ type: Boolean }) statsLogVisible = false;
   @property({ type: String }) currentTheme = 'system';
   @state() private isHovered = false;
 
@@ -262,6 +264,15 @@ export class SessionHeader extends LitElement {
               title="${this.widthTooltip}"
             >
               ${this.widthLabel}
+            </button>
+            <button
+              class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
+              @click=${() => this.onToggleStatsLog?.()}
+              title=${this.statsLogVisible ? 'Hide Stats Log' : 'Show Stats Log'}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M3 3h10v2H3V3zm0 4h10v2H3V7zm0 4h10v2H3v-2z" />
+              </svg>
             </button>
           </div>
           
