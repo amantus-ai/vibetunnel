@@ -8,6 +8,7 @@ import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { Z_INDEX } from '../../utils/constants.js';
 import { COMMON_TERMINAL_WIDTHS } from '../../utils/terminal-preferences.js';
+import { TERMINAL_THEMES, type TerminalThemeId } from '../../utils/terminal-themes.js';
 
 @customElement('width-selector')
 export class WidthSelector extends LitElement {
@@ -19,9 +20,11 @@ export class WidthSelector extends LitElement {
   @property({ type: Boolean }) visible = false;
   @property({ type: Number }) terminalMaxCols = 0;
   @property({ type: Number }) terminalFontSize = 14;
+  @property({ type: String }) terminalTheme: TerminalThemeId = 'auto';
   @property({ type: String }) customWidth = '';
   @property({ type: Function }) onWidthSelect?: (width: number) => void;
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
+  @property({ type: Function }) onThemeChange?: (theme: TerminalThemeId) => void;
   @property({ type: Function }) onClose?: () => void;
   @property({ type: Boolean }) isMobile = false;
 
@@ -128,8 +131,8 @@ export class WidthSelector extends LitElement {
             </div>
           </div>
           <div class="border-t border-border mt-3 pt-3">
-            <div class="text-sm font-semibold text-text-bright mb-3">Font Size</div>
-            <div class="flex items-center gap-3">
+          <div class="text-sm font-semibold text-text-bright mb-3">Font Size</div>
+          <div class="flex items-center gap-3">
               <button
                 class="w-10 h-10 rounded-md border transition-all duration-200 flex items-center justify-center
                   ${
@@ -174,6 +177,19 @@ export class WidthSelector extends LitElement {
                 Reset
               </button>
             </div>
+          </div>
+          <div class="border-t border-border mt-3 pt-3">
+            <div class="text-sm font-semibold text-text-bright mb-3">Theme</div>
+            <select
+              class="w-full bg-bg-secondary border border-border rounded-md p-2 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm"
+              .value=${this.terminalTheme}
+              @change=${(e: Event) => this.onThemeChange?.((e.target as HTMLSelectElement).value as TerminalThemeId)}
+            >
+              ${TERMINAL_THEMES.map(
+                (t) =>
+                  html`<option value=${t.id} ?selected=${this.terminalTheme === t.id}>${t.name}</option>`
+              )}
+            </select>
           </div>
         </div>
       </div>

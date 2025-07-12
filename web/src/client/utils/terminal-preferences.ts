@@ -5,6 +5,7 @@
 
 import { createLogger } from './logger.js';
 import { detectMobile } from './mobile-utils.js';
+import type { TerminalThemeId } from './terminal-themes.js';
 
 const logger = createLogger('terminal-preferences');
 
@@ -12,6 +13,7 @@ export interface TerminalPreferences {
   maxCols: number; // 0 means no limit, positive numbers set max width
   fontSize: number;
   fitHorizontally: boolean;
+  theme: TerminalThemeId;
 }
 
 // Common terminal widths
@@ -28,6 +30,7 @@ const DEFAULT_PREFERENCES: TerminalPreferences = {
   maxCols: 0, // No limit by default - take as much as possible
   fontSize: detectMobile() ? 12 : 14, // 12px on mobile, 14px on desktop
   fitHorizontally: false,
+  theme: 'auto',
 };
 
 const STORAGE_KEY_TERMINAL_PREFS = 'vibetunnel_terminal_preferences';
@@ -93,6 +96,15 @@ export class TerminalPreferencesManager {
 
   setFitHorizontally(fitHorizontally: boolean) {
     this.preferences.fitHorizontally = fitHorizontally;
+    this.savePreferences();
+  }
+
+  getTheme(): TerminalThemeId {
+    return this.preferences.theme;
+  }
+
+  setTheme(theme: TerminalThemeId) {
+    this.preferences.theme = theme;
     this.savePreferences();
   }
 

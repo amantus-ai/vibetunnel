@@ -32,6 +32,7 @@ import {
   COMMON_TERMINAL_WIDTHS,
   TerminalPreferencesManager,
 } from '../utils/terminal-preferences.js';
+import type { TerminalThemeId } from '../utils/terminal-themes.js';
 import { ConnectionManager } from './session-view/connection-manager.js';
 import {
   type DirectKeyboardCallbacks,
@@ -87,6 +88,7 @@ export class SessionView extends LitElement {
   @state() private showImagePicker = false;
   @state() private isDragOver = false;
   @state() private terminalFontSize = 14;
+  @state() private terminalTheme: TerminalThemeId = 'auto';
   @state() private terminalContainerHeight = '100%';
   @state() private isLandscape = false;
 
@@ -369,8 +371,10 @@ export class SessionView extends LitElement {
     // Load terminal preferences
     this.terminalMaxCols = this.preferencesManager.getMaxCols();
     this.terminalFontSize = this.preferencesManager.getFontSize();
+    this.terminalTheme = this.preferencesManager.getTheme();
     this.terminalLifecycleManager.setTerminalFontSize(this.terminalFontSize);
     this.terminalLifecycleManager.setTerminalMaxCols(this.terminalMaxCols);
+    this.terminalLifecycleManager.setTerminalTheme(this.terminalTheme);
 
     // Initialize lifecycle event manager
     this.lifecycleEventManager = new LifecycleEventManager();
@@ -869,6 +873,18 @@ export class SessionView extends LitElement {
     }
   }
 
+  private handleThemeChange(newTheme: TerminalThemeId) {
+    this.terminalTheme = newTheme;
+    this.preferencesManager.setTheme(newTheme);
+    this.terminalLifecycleManager.setTerminalTheme(newTheme);
+
+    const terminal = this.querySelector('vibe-terminal') as Terminal;
+    if (terminal) {
+      terminal.theme = newTheme;
+      terminal.requestUpdate();
+    }
+  }
+
   private handleOpenFileBrowser() {
     this.showFileBrowser = true;
   }
@@ -1285,6 +1301,7 @@ export class SessionView extends LitElement {
             .fontSize=${this.terminalFontSize}
             .fitHorizontally=${false}
             .maxCols=${this.terminalMaxCols}
+            .theme=${this.terminalTheme}
             .initialCols=${this.session?.initialCols || 0}
             .initialRows=${this.session?.initialRows || 0}
             .disableClick=${this.isMobile && this.useDirectKeyboard}
@@ -1478,10 +1495,12 @@ export class SessionView extends LitElement {
           .visible=${this.showWidthSelector}
           .terminalMaxCols=${this.terminalMaxCols}
           .terminalFontSize=${this.terminalFontSize}
+          .terminalTheme=${this.terminalTheme}
           .customWidth=${this.customWidth}
           .isMobile=${this.isMobile}
           .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
+          .onThemeChange=${(theme: TerminalThemeId) => this.handleThemeChange(theme)}
           .onClose=${() => {
             this.showWidthSelector = false;
             this.customWidth = '';

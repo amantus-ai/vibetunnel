@@ -16,6 +16,8 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { processKeyboardShortcuts } from '../utils/keyboard-shortcut-highlighter.js';
 import { createLogger } from '../utils/logger.js';
 import { detectMobile } from '../utils/mobile-utils.js';
+import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
+import { TERMINAL_THEMES, type TerminalThemeId } from '../utils/terminal-themes.js';
 import { UrlHighlighter } from '../utils/url-highlighter';
 
 const logger = createLogger('terminal');
@@ -34,6 +36,7 @@ export class Terminal extends LitElement {
   @property({ type: Number }) fontSize = 14;
   @property({ type: Boolean }) fitHorizontally = false;
   @property({ type: Number }) maxCols = 0; // 0 means no limit
+  @property({ type: String }) theme: TerminalThemeId = 'auto';
   @property({ type: Boolean }) disableClick = false; // Disable click handling (for mobile direct keyboard)
   @property({ type: Boolean }) hideScrollButton = false; // Hide scroll-to-bottom button
   @property({ type: Number }) initialCols = 0; // Initial terminal width from session creation
@@ -138,6 +141,8 @@ export class Terminal extends LitElement {
   private themeObserver?: MutationObserver;
 
   connectedCallback() {
+    const prefs = TerminalPreferencesManager.getInstance();
+    this.theme = prefs.getTheme();
     super.connectedCallback();
 
     // Check for debug mode
@@ -215,6 +220,12 @@ export class Terminal extends LitElement {
     if (changedProperties.has('maxCols')) {
       if (this.terminal && this.container) {
         this.requestResize('property-change');
+      }
+    }
+
+    if (changedProperties.has('theme')) {
+      if (this.terminal) {
+        this.terminal.options.theme = this.getTerminalTheme();
       }
     }
   }
@@ -353,64 +364,14 @@ export class Terminal extends LitElement {
   }
 
   private getTerminalTheme() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    let themeId = this.theme;
 
-    if (isDark) {
-      // Dark theme (original colors)
-      return {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: 'rgb(var(--color-primary))',
-        cursorAccent: '#1e1e1e',
-        // Standard 16 colors (0-15) - using proper xterm colors
-        black: '#000000',
-        red: '#cd0000',
-        green: '#00cd00',
-        yellow: '#cdcd00',
-        blue: '#0000ee',
-        magenta: '#cd00cd',
-        cyan: '#00cdcd',
-        white: '#e5e5e5',
-        brightBlack: '#7f7f7f',
-        brightRed: '#ff0000',
-        brightGreen: '#00ff00',
-        brightYellow: '#ffff00',
-        brightBlue: '#5c5cff',
-        brightMagenta: '#ff00ff',
-        brightCyan: '#00ffff',
-        brightWhite: '#ffffff',
-      };
-    } else {
-      // Light theme - optimized for readability with softer contrast
-      return {
-        background: '#f8f9fa', // Slightly off-white for less eye strain
-        foreground: '#1f2328', // Dark gray for better readability than pure black
-        cursor: 'rgb(var(--color-primary))',
-        cursorAccent: '#f8f9fa',
-        // Standard 16 colors optimized for light backgrounds
-        // Based on GitHub light theme for proven readability
-        black: '#24292f',
-        red: '#cf222e',
-        green: '#1a7f37',
-        yellow: '#9a6700',
-        blue: '#0969da',
-        magenta: '#8250df',
-        cyan: '#1b7c83',
-        white: '#6e7781',
-        brightBlack: '#57606a',
-        brightRed: '#da3633',
-        brightGreen: '#2da44e',
-        brightYellow: '#bf8700',
-        brightBlue: '#218bff',
-        brightMagenta: '#a475f9',
-        brightCyan: '#3192aa',
-        brightWhite: '#8c959f',
-        // Selection colors for better visibility
-        selectionBackground: '#0969da',
-        selectionForeground: '#ffffff',
-        selectionInactiveBackground: '#e1e4e8',
-      };
+    if (themeId === 'auto') {
+      themeId = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
     }
+
+    const preset = TERMINAL_THEMES.find((t) => t.id === themeId) || TERMINAL_THEMES[0];
+    return { ...preset.colors };
   }
 
   private async initializeTerminal() {
