@@ -56,6 +56,9 @@ export class Terminal extends LitElement {
   private renderCount = 0;
   private totalRenderTime = 0;
   private lastRenderTime = 0;
+  private debugExpanded = false;
+  private debugLogs: Array<{ timestamp: number; message: string; level: string }> = [];
+  private maxDebugLogs = 50;
 
   get viewportY() {
     return this._viewportY;
@@ -87,10 +90,9 @@ export class Terminal extends LitElement {
   // Operation queue for batching buffer modifications
   private operationQueue: (() => void | Promise<void>)[] = [];
   private activeTouchCount = 0; // Track active touches
-  private globalActiveTouches = 0; // Track ALL touches on the page
-  private buttonTouches = 0; // Track touches specifically on buttons (not terminal)
-  private handleGlobalTouchStart!: (e: TouchEvent) => void;
-  private handleGlobalTouchEnd!: (e: TouchEvent) => void;
+  private globalActivePointers = 0; // Track ALL active pointers on the page
+  private buttonPointers = 0; // Track pointers specifically on buttons (not terminal)
+  private buttonPointerIds = new Set<number>(); // Track which pointer IDs are on buttons
 
   private queueRenderOperation(operation: () => void | Promise<void>) {
     this.operationQueue.push(operation);
@@ -180,19 +182,19 @@ export class Terminal extends LitElement {
       attributeFilter: ['data-theme'],
     });
 
-    // Add global touch tracking to prevent terminal updates during ANY touch
-    this.handleGlobalTouchStart = this.handleGlobalTouchStart.bind(this);
-    this.handleGlobalTouchEnd = this.handleGlobalTouchEnd.bind(this);
+    // Add global pointer tracking to prevent terminal updates during button interactions
+    this.handleGlobalPointerDown = this.handleGlobalPointerDown.bind(this);
+    this.handleGlobalPointerUp = this.handleGlobalPointerUp.bind(this);
 
-    document.addEventListener('touchstart', this.handleGlobalTouchStart, {
+    document.addEventListener('pointerdown', this.handleGlobalPointerDown, {
       passive: true,
       capture: true,
     });
-    document.addEventListener('touchend', this.handleGlobalTouchEnd, {
+    document.addEventListener('pointerup', this.handleGlobalPointerUp, {
       passive: true,
       capture: true,
     });
-    document.addEventListener('touchcancel', this.handleGlobalTouchEnd, {
+    document.addEventListener('pointercancel', this.handleGlobalPointerUp, {
       passive: true,
       capture: true,
     });
@@ -293,14 +295,16 @@ export class Terminal extends LitElement {
       clearInterval(this.mainThreadMonitor);
     }
 
-    // Remove global touch listeners
-    document.removeEventListener('touchstart', this.handleGlobalTouchStart, {
+    // Remove global pointer listeners
+    document.removeEventListener('pointerdown', this.handleGlobalPointerDown, {
       capture: true,
-    } as any);
-    document.removeEventListener('touchend', this.handleGlobalTouchEnd, { capture: true } as any);
-    document.removeEventListener('touchcancel', this.handleGlobalTouchEnd, {
+    });
+    document.removeEventListener('pointerup', this.handleGlobalPointerUp, {
       capture: true,
-    } as any);
+    });
+    document.removeEventListener('pointercancel', this.handleGlobalPointerUp, {
+      capture: true,
+    });
 
     super.disconnectedCallback();
   }
@@ -317,8 +321,8 @@ export class Terminal extends LitElement {
       if (elapsed > BLOCK_THRESHOLD) {
         console.warn(`[Terminal] Main thread blocked for ${Math.round(elapsed)}ms`, {
           activeTouches: this.activeTouchCount,
-          globalActiveTouches: this.globalActiveTouches,
-          buttonTouches: this.buttonTouches,
+          globalActivePointers: this.globalActivePointers,
+          buttonPointers: this.buttonPointers,
           renderPending: this.renderPending,
           operationQueueLength: this.operationQueue.length,
         });
@@ -328,10 +332,35 @@ export class Terminal extends LitElement {
     }, CHECK_INTERVAL) as unknown as number;
   }
 
-  private handleGlobalTouchStart = (e: TouchEvent) => {
-    this.globalActiveTouches = e.touches.length;
+  private addDebugLog(message: string, level: 'info' | 'warn' | 'error' = 'info') {
+    if (!this.debugMode) return;
 
-    // Check if touch is on a button (not on terminal)
+    this.debugLogs.push({
+      timestamp: Date.now(),
+      message,
+      level,
+    });
+
+    // Keep only the most recent logs
+    if (this.debugLogs.length > this.maxDebugLogs) {
+      this.debugLogs.shift();
+    }
+
+    // Trigger update if expanded
+    if (this.debugExpanded) {
+      this.requestUpdate();
+    }
+  }
+
+  private toggleDebugExpanded = () => {
+    this.debugExpanded = !this.debugExpanded;
+    this.requestUpdate();
+  };
+
+  private handleGlobalPointerDown = (e: PointerEvent) => {
+    this.globalActivePointers++;
+
+    // Check if pointer is on a button
     const target = e.target as Element;
     const isButton =
       target.closest('button') ||
@@ -340,45 +369,68 @@ export class Terminal extends LitElement {
       target.closest('.quick-start-btn');
 
     if (isButton) {
-      this.buttonTouches++;
+      this.buttonPointerIds.add(e.pointerId);
+      this.addDebugLog(
+        `Button pointer down ${e.pointerId} (${this.buttonPointerIds.size} total)`,
+        'warn'
+      );
     }
 
+    this.buttonPointers = this.buttonPointerIds.size;
+
     if (this.debugMode) {
-      logger.debug('Global touch start', {
-        touches: this.globalActiveTouches,
-        buttonTouches: this.buttonTouches,
-        target: e.target,
+      logger.debug('Global pointer down', {
+        pointerId: e.pointerId,
+        pointerType: e.pointerType,
+        activePointers: this.globalActivePointers,
+        buttonPointers: this.buttonPointers,
+        buttonPointerIds: Array.from(this.buttonPointerIds),
+        target: target.tagName,
         isButton,
       });
     }
   };
 
-  private handleGlobalTouchEnd = (e: TouchEvent) => {
-    this.globalActiveTouches = e.touches.length;
+  private handleGlobalPointerUp = (e: PointerEvent) => {
+    this.globalActivePointers--;
 
-    // Check if touch was on a button and decrement button touch count
-    const target = e.target as Element;
-    const isButton =
-      target.closest('button') ||
-      target.closest('.keyboard-button') ||
-      target.closest('session-header') ||
-      target.closest('.quick-start-btn');
+    // Remove this pointer from button tracking if it was on a button
+    if (this.buttonPointerIds.has(e.pointerId)) {
+      this.buttonPointerIds.delete(e.pointerId);
+      this.addDebugLog(
+        `Button pointer up ${e.pointerId} (${this.buttonPointerIds.size} remaining)`,
+        'info'
+      );
+    }
 
-    if (isButton && this.buttonTouches > 0) {
-      this.buttonTouches--;
+    this.buttonPointers = this.buttonPointerIds.size;
+
+    // Additional safety: if no pointers remain globally, clear all button pointers
+    if (this.globalActivePointers <= 0) {
+      this.globalActivePointers = 0; // Ensure it doesn't go negative
+      if (this.buttonPointerIds.size > 0) {
+        this.addDebugLog(
+          `Force clearing ${this.buttonPointerIds.size} stuck button pointers`,
+          'warn'
+        );
+        this.buttonPointerIds.clear();
+        this.buttonPointers = 0;
+      }
     }
 
     if (this.debugMode) {
-      logger.debug('Global touch end', {
-        touches: this.globalActiveTouches,
-        buttonTouches: this.buttonTouches,
-        target: e.target,
-        isButton,
+      logger.debug('Global pointer up', {
+        pointerId: e.pointerId,
+        pointerType: e.pointerType,
+        activePointers: this.globalActivePointers,
+        buttonPointers: this.buttonPointers,
+        buttonPointerIds: Array.from(this.buttonPointerIds),
       });
     }
 
-    // If no more button touches, schedule a render if one was pending
-    if (this.buttonTouches === 0 && this.renderPending) {
+    // If no more button pointers, schedule a render if one was pending
+    if (this.buttonPointers === 0 && this.renderPending) {
+      this.addDebugLog('Queued render after button pointer end', 'info');
       requestAnimationFrame(() => {
         this.renderBuffer();
       });
@@ -1263,13 +1315,15 @@ export class Terminal extends LitElement {
     // Set the complete innerHTML at once
     // On mobile, skip innerHTML update if button touches are active to prevent lost taps
     // Allow terminal touches to proceed normally for scrolling
-    if (this.isMobile && this.buttonTouches > 0) {
+    if (this.isMobile && this.buttonPointers > 0) {
+      this.addDebugLog(`Deferring render due to button pointers (${this.buttonPointers})`, 'warn');
       // Schedule innerHTML update for after touch ends
       if (!this.renderPending) {
         this.renderPending = true;
         requestAnimationFrame(() => {
-          if (this.buttonTouches === 0) {
+          if (this.buttonPointers === 0) {
             this.renderPending = false;
+            this.addDebugLog('Executing deferred render', 'info');
             // Now safe to update innerHTML
             if (this.container) {
               this.container.innerHTML = html;
@@ -1880,25 +1934,55 @@ export class Terminal extends LitElement {
         ${
           this.debugMode
             ? html`
-              <div class="debug-overlay">
-                <div class="metric">
-                  <span class="metric-label">Renders:</span>
-                  <span class="metric-value">${this.renderCount}</span>
+              <div class="debug-overlay ${this.debugExpanded ? 'expanded' : ''}" @click=${this.toggleDebugExpanded}>
+                <div class="debug-header">
+                  <div class="metric">
+                    <span class="metric-label">Renders:</span>
+                    <span class="metric-value">${this.renderCount}</span>
+                  </div>
+                  <div class="metric">
+                    <span class="metric-label">Avg:</span>
+                    <span class="metric-value"
+                      >${
+                        this.renderCount > 0
+                          ? (this.totalRenderTime / this.renderCount).toFixed(2)
+                          : '0.00'
+                      }ms</span
+                    >
+                  </div>
+                  <div class="metric">
+                    <span class="metric-label">Last:</span>
+                    <span class="metric-value">${this.lastRenderTime.toFixed(2)}ms</span>
+                  </div>
+                  <div class="metric">
+                    <span class="metric-label">Pointers:</span>
+                    <span class="metric-value">${this.buttonPointers}</span>
+                  </div>
+                  <div class="expand-indicator">${this.debugExpanded ? '▼' : '▶'}</div>
                 </div>
-                <div class="metric">
-                  <span class="metric-label">Avg:</span>
-                  <span class="metric-value"
-                    >${
-                      this.renderCount > 0
-                        ? (this.totalRenderTime / this.renderCount).toFixed(2)
-                        : '0.00'
-                    }ms</span
-                  >
-                </div>
-                <div class="metric">
-                  <span class="metric-label">Last:</span>
-                  <span class="metric-value">${this.lastRenderTime.toFixed(2)}ms</span>
-                </div>
+                ${
+                  this.debugExpanded
+                    ? html`
+                      <div class="debug-logs">
+                        <div class="logs-header">Recent Events (${this.debugLogs.length}/${this.maxDebugLogs})</div>
+                        <div class="logs-list">
+                          ${this.debugLogs
+                            .slice(-20)
+                            .reverse()
+                            .map((log) => {
+                              const time = new Date(log.timestamp).toLocaleTimeString();
+                              return html`
+                              <div class="log-entry log-${log.level}">
+                                <span class="log-time">${time}</span>
+                                <span class="log-message">${log.message}</span>
+                              </div>
+                            `;
+                            })}
+                        </div>
+                      </div>
+                    `
+                    : ''
+                }
               </div>
             `
             : ''

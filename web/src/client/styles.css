@@ -1511,12 +1511,36 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   user-select: none;
   z-index: 10;
   line-height: 1.4;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  max-width: 400px;
+}
+
+.debug-overlay:hover {
+  background: rgba(26, 26, 26, 0.95);
+  border-color: #3a3a3a;
+}
+
+.debug-overlay.expanded {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.debug-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
 
 .debug-overlay .metric {
   display: flex;
   justify-content: space-between;
-  min-width: 120px;
+  min-width: 80px;
+  margin-right: 8px;
 }
 
 .debug-overlay .metric-label {
@@ -1525,7 +1549,64 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 .debug-overlay .metric-value {
   font-weight: bold;
-  margin-left: 8px;
+  margin-left: 6px;
+}
+
+.expand-indicator {
+  color: #10B981;
+  font-weight: bold;
+  margin-left: auto;
+}
+
+.debug-logs {
+  border-top: 1px solid #2a2a2a;
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.logs-header {
+  font-weight: bold;
+  color: #10B981;
+  margin-bottom: 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.logs-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.log-entry {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 2px;
+  font-size: 10px;
+  align-items: flex-start;
+}
+
+.log-time {
+  color: #666;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.log-message {
+  flex: 1;
+  word-break: break-word;
+}
+
+.log-info {
+  color: #10B981;
+}
+
+.log-warn {
+  color: #F59E0B;
+}
+
+.log-error {
+  color: #EF4444;
 }
 
 /* Fit toggle button */
