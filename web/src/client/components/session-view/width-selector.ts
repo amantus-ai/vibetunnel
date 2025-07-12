@@ -1,8 +1,8 @@
 /**
- * Width Selector Component
+ * Terminal Settings Component
  *
- * Dropdown menu for selecting terminal width constraints.
- * Includes common presets and custom width input with font size controls.
+ * Modal for configuring terminal width, font size, and theme.
+ * Features a grid-based layout with conditional custom width input.
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
@@ -22,6 +22,7 @@ export class WidthSelector extends LitElement {
   @property({ type: Number }) terminalFontSize = 14;
   @property({ type: String }) terminalTheme: TerminalThemeId = 'auto';
   @property({ type: String }) customWidth = '';
+  @property({ type: Boolean }) showCustomInput = false;
   @property({ type: Function }) onWidthSelect?: (width: number) => void;
   @property({ type: Function }) onFontSizeChange?: (size: number) => void;
   @property({ type: Function }) onThemeChange?: (theme: TerminalThemeId) => void;
@@ -39,150 +40,182 @@ export class WidthSelector extends LitElement {
     if (!Number.isNaN(width) && width >= 20 && width <= 500) {
       this.onWidthSelect?.(width);
       this.customWidth = '';
+      this.showCustomInput = false;
     }
+  }
+
+  private handleClose() {
+    this.showCustomInput = false;
+    this.customWidth = '';
+    this.onClose?.();
   }
 
   private handleCustomWidthKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter') {
       this.handleCustomWidthSubmit();
     } else if (e.key === 'Escape') {
-      this.customWidth = '';
-      this.onClose?.();
+      this.handleClose();
     }
   }
 
   render() {
     if (!this.visible) return null;
 
+    // Check if we're showing a custom value that doesn't match presets
+    const isCustomValue =
+      this.terminalMaxCols > 0 &&
+      !COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
+
     return html`
       <!-- Backdrop to close on outside click -->
       <div 
         class="fixed inset-0 z-40" 
-        @click=${() => this.onClose?.()}
+        @click=${() => this.handleClose()}
       ></div>
       
-      <!-- Width selector modal -->
+      <!-- Terminal settings modal -->
       <div
-        class="width-selector-container fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-surface border border-border rounded-lg shadow-elevated min-w-[280px] max-w-[90vw] animate-fade-in"
+        class="width-selector-container fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-surface border border-border rounded-lg shadow-elevated min-w-[480px] max-w-[90vw] animate-fade-in"
         style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
       >
-        <div class="p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-sm font-semibold text-text-bright">Terminal Width</div>
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-text-bright">Terminal Settings</h2>
             <button
               class="text-muted hover:text-primary transition-colors p-1"
-              @click=${() => this.onClose?.()}
+              @click=${() => this.handleClose()}
               title="Close"
-              aria-label="Close width selector"
+              aria-label="Close terminal settings"
             >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          ${COMMON_TERMINAL_WIDTHS.map(
-            (width) => html`
-              <button
-                class="w-full text-left px-3 py-2 text-sm rounded-md flex justify-between items-center transition-all duration-200
-                  ${
-                    this.terminalMaxCols === width.value
-                      ? 'bg-primary bg-opacity-20 text-primary font-semibold border border-primary'
-                      : 'text-text hover:bg-surface hover:text-text-bright border border-transparent'
-                  }"
-                @click=${() => this.onWidthSelect?.(width.value)}
-              >
-                <span class="font-mono font-medium">${width.label}</span>
-                <span class="text-text-muted text-xs ml-4">${width.description}</span>
-              </button>
-            `
-          )}
-          <div class="border-t border-border mt-3 pt-3">
-            <div class="text-sm font-semibold text-text-bright mb-2">Custom (20-500)</div>
-            <div class="flex gap-2">
-              <input
-                type="number"
-                min="20"
-                max="500"
-                placeholder="80"
-                .value=${this.customWidth}
-                @input=${this.handleCustomWidthInput}
-                @keydown=${this.handleCustomWidthKeydown}
-                @click=${(e: Event) => e.stopPropagation()}
-                class="flex-1 bg-bg-secondary border border-border rounded-md px-3 py-2 text-sm font-mono text-text placeholder:text-text-dim focus:border-primary focus:shadow-glow-sm transition-all"
-              />
-              <button
-                class="px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
-                  ${
-                    !this.customWidth ||
-                    Number.parseInt(this.customWidth) < 20 ||
-                    Number.parseInt(this.customWidth) > 500
-                      ? 'bg-bg-secondary border border-border text-text-muted cursor-not-allowed'
-                      : 'bg-primary text-text-bright hover:bg-primary-hover active:scale-95'
-                  }"
-                @click=${this.handleCustomWidthSubmit}
-                ?disabled=${
-                  !this.customWidth ||
-                  Number.parseInt(this.customWidth) < 20 ||
-                  Number.parseInt(this.customWidth) > 500
-                }
-              >
-                Set
-              </button>
-            </div>
-          </div>
-          <div class="border-t border-border mt-3 pt-3">
-          <div class="text-sm font-semibold text-text-bright mb-3">Font Size</div>
-          <div class="flex items-center gap-3">
-              <button
-                class="w-10 h-10 rounded-md border transition-all duration-200 flex items-center justify-center
-                  ${
-                    this.terminalFontSize <= 8
-                      ? 'border-border bg-bg-secondary text-text-muted cursor-not-allowed'
-                      : 'border-border bg-bg-elevated text-text hover:border-primary hover:text-primary active:scale-95'
-                  }"
-                @click=${() => this.onFontSizeChange?.(this.terminalFontSize - 1)}
-                ?disabled=${this.terminalFontSize <= 8}
-              >
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
-                </svg>
-              </button>
-              <span class="font-mono text-lg font-medium text-text-bright min-w-[60px] text-center">
-                ${this.terminalFontSize}px
-              </span>
-              <button
-                class="w-10 h-10 rounded-md border transition-all duration-200 flex items-center justify-center
-                  ${
-                    this.terminalFontSize >= 32
-                      ? 'border-border bg-bg-secondary text-text-muted cursor-not-allowed'
-                      : 'border-border bg-bg-elevated text-text hover:border-primary hover:text-primary active:scale-95'
-                  }"
-                @click=${() => this.onFontSizeChange?.(this.terminalFontSize + 1)}
-                ?disabled=${this.terminalFontSize >= 32}
-              >
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-                </svg>
-              </button>
-              <button
-                class="ml-auto px-3 py-2 rounded-md text-sm transition-all duration-200
-                  ${
-                    this.terminalFontSize === 14
-                      ? 'text-text-muted cursor-not-allowed'
-                      : 'text-text-muted hover:text-text hover:bg-surface'
-                  }"
-                @click=${() => this.onFontSizeChange?.(14)}
-                ?disabled=${this.terminalFontSize === 14}
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-          <div class="border-t border-border mt-3 pt-3">
-            <div class="flex items-center justify-between">
-              <div class="text-sm font-semibold text-text-bright">Theme</div>
+          
+          <!-- Width setting -->
+          <div class="space-y-3">
+            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+              <label class="text-sm font-medium text-text-bright">Width</label>
               <select
-                class="bg-bg-secondary border border-border rounded-md px-3 py-1.5 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer"
+                class="bg-bg-secondary border border-border rounded-md px-3 py-2 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer"
+                .value=${isCustomValue || this.showCustomInput ? 'custom' : String(this.terminalMaxCols)}
+                @change=${(e: Event) => {
+                  const value = (e.target as HTMLSelectElement).value;
+                  if (value === 'custom') {
+                    this.showCustomInput = true;
+                    this.customWidth = isCustomValue ? String(this.terminalMaxCols) : '';
+                  } else {
+                    this.showCustomInput = false;
+                    this.customWidth = '';
+                    this.onWidthSelect?.(Number.parseInt(value));
+                  }
+                }}
+              >
+                <option value="0">Fit to Window</option>
+                ${COMMON_TERMINAL_WIDTHS.slice(1).map(
+                  (width) => html`
+                    <option value=${width.value}>
+                      ${width.description} (${width.value})
+                    </option>
+                  `
+                )}
+                <option value="custom">Custom...</option>
+              </select>
+            </div>
+            
+            <!-- Custom width input (conditional) -->
+            ${
+              this.showCustomInput
+                ? html`
+              <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                <div></div>
+                <div class="flex gap-2">
+                  <input
+                    type="number"
+                    min="20"
+                    max="500"
+                    placeholder="Enter width (20-500)"
+                    .value=${this.customWidth}
+                    @input=${this.handleCustomWidthInput}
+                    @keydown=${this.handleCustomWidthKeydown}
+                    @click=${(e: Event) => e.stopPropagation()}
+                    class="flex-1 bg-bg-secondary border border-border rounded-md px-3 py-2 text-sm font-mono text-text placeholder:text-text-dim focus:border-primary focus:shadow-glow-sm transition-all"
+                    autofocus
+                  />
+                  <button
+                    class="px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
+                      ${
+                        !this.customWidth ||
+                        Number.parseInt(this.customWidth) < 20 ||
+                        Number.parseInt(this.customWidth) > 500
+                          ? 'bg-bg-secondary border border-border text-text-muted cursor-not-allowed'
+                          : 'bg-primary text-text-bright hover:bg-primary-hover active:scale-95'
+                      }"
+                    @click=${this.handleCustomWidthSubmit}
+                    ?disabled=${
+                      !this.customWidth ||
+                      Number.parseInt(this.customWidth) < 20 ||
+                      Number.parseInt(this.customWidth) > 500
+                    }
+                  >
+                    Set
+                  </button>
+                </div>
+              </div>
+            `
+                : ''
+            }
+          </div>
+          
+          <div class="border-t border-border mt-4 pt-4">
+            <!-- Font size setting -->
+            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+              <label class="text-sm font-medium text-text-bright">Font Size</label>
+              <div class="flex items-center gap-3">
+                <button
+                  class="w-8 h-8 rounded-md border transition-all duration-200 flex items-center justify-center
+                    ${
+                      this.terminalFontSize <= 8
+                        ? 'border-border bg-bg-secondary text-text-muted cursor-not-allowed'
+                        : 'border-border bg-bg-elevated text-text hover:border-primary hover:text-primary active:scale-95'
+                    }"
+                  @click=${() => this.onFontSizeChange?.(this.terminalFontSize - 1)}
+                  ?disabled=${this.terminalFontSize <= 8}
+                  title="Decrease font size"
+                >
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                  </svg>
+                </button>
+                <span class="font-mono text-base font-medium text-text-bright min-w-[50px] text-center">
+                  ${this.terminalFontSize}px
+                </span>
+                <button
+                  class="w-8 h-8 rounded-md border transition-all duration-200 flex items-center justify-center
+                    ${
+                      this.terminalFontSize >= 32
+                        ? 'border-border bg-bg-secondary text-text-muted cursor-not-allowed'
+                        : 'border-border bg-bg-elevated text-text hover:border-primary hover:text-primary active:scale-95'
+                    }"
+                  @click=${() => this.onFontSizeChange?.(this.terminalFontSize + 1)}
+                  ?disabled=${this.terminalFontSize >= 32}
+                  title="Increase font size"
+                >
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="border-t border-border mt-4 pt-4">
+            <!-- Theme setting -->
+            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+              <label class="text-sm font-medium text-text-bright">Theme</label>
+              <select
+                class="bg-bg-secondary border border-border rounded-md px-3 py-2 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer"
                 .value=${this.terminalTheme}
                 @change=${(e: Event) => {
                   e.stopPropagation();

@@ -551,7 +551,7 @@ export async function createApp(): Promise<AppInstance> {
   // Serve static files with .html extension handling and caching headers
   const publicPath = path.join(process.cwd(), 'public');
   const isDevelopment = !process.env.BUILD_DATE || process.env.NODE_ENV === 'development';
-  
+
   app.use(
     express.static(publicPath, {
       extensions: ['html'], // This allows /logs to resolve to /logs.html
@@ -578,7 +578,9 @@ export async function createApp(): Promise<AppInstance> {
       },
     })
   );
-  logger.debug(`Serving static files from: ${publicPath} ${isDevelopment ? 'with caching disabled (dev mode)' : 'with caching headers'}`);
+  logger.debug(
+    `Serving static files from: ${publicPath} ${isDevelopment ? 'with caching disabled (dev mode)' : 'with caching headers'}`
+  );
 
   // Health check endpoint (no auth required)
   app.get('/api/health', (_req, res) => {
