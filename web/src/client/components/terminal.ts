@@ -87,6 +87,9 @@ export class Terminal extends LitElement {
   // Operation queue for batching buffer modifications
   private operationQueue: (() => void | Promise<void>)[] = [];
   private activeTouchCount = 0; // Track active touches
+  private globalActiveTouches = 0; // Track ALL touches on the page
+  private handleGlobalTouchStart!: (e: TouchEvent) => void;
+  private handleGlobalTouchEnd!: (e: TouchEvent) => void;
 
   private queueRenderOperation(operation: () => void | Promise<void>) {
     this.operationQueue.push(operation);
@@ -174,6 +177,23 @@ export class Terminal extends LitElement {
     this.themeObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme'],
+    });
+
+    // Add global touch tracking to prevent terminal updates during ANY touch
+    this.handleGlobalTouchStart = this.handleGlobalTouchStart.bind(this);
+    this.handleGlobalTouchEnd = this.handleGlobalTouchEnd.bind(this);
+
+    document.addEventListener('touchstart', this.handleGlobalTouchStart, {
+      passive: true,
+      capture: true,
+    });
+    document.addEventListener('touchend', this.handleGlobalTouchEnd, {
+      passive: true,
+      capture: true,
+    });
+    document.addEventListener('touchcancel', this.handleGlobalTouchEnd, {
+      passive: true,
+      capture: true,
     });
 
     // Restore user override preference if we have a sessionId
@@ -271,6 +291,16 @@ export class Terminal extends LitElement {
     if (this.mainThreadMonitor) {
       clearInterval(this.mainThreadMonitor);
     }
+
+    // Remove global touch listeners
+    document.removeEventListener('touchstart', this.handleGlobalTouchStart, {
+      capture: true,
+    } as any);
+    document.removeEventListener('touchend', this.handleGlobalTouchEnd, { capture: true } as any);
+    document.removeEventListener('touchcancel', this.handleGlobalTouchEnd, {
+      capture: true,
+    } as any);
+
     super.disconnectedCallback();
   }
 
@@ -286,6 +316,7 @@ export class Terminal extends LitElement {
       if (elapsed > BLOCK_THRESHOLD) {
         console.warn(`[Terminal] Main thread blocked for ${Math.round(elapsed)}ms`, {
           activeTouches: this.activeTouchCount,
+          globalActiveTouches: this.globalActiveTouches,
           renderPending: this.renderPending,
           operationQueueLength: this.operationQueue.length,
         });
@@ -294,6 +325,33 @@ export class Terminal extends LitElement {
       lastCheck = now;
     }, CHECK_INTERVAL) as unknown as number;
   }
+
+  private handleGlobalTouchStart = (e: TouchEvent) => {
+    this.globalActiveTouches = e.touches.length;
+    if (this.debugMode) {
+      logger.debug('Global touch start', {
+        touches: this.globalActiveTouches,
+        target: e.target,
+      });
+    }
+  };
+
+  private handleGlobalTouchEnd = (e: TouchEvent) => {
+    this.globalActiveTouches = e.touches.length;
+    if (this.debugMode) {
+      logger.debug('Global touch end', {
+        touches: this.globalActiveTouches,
+        target: e.target,
+      });
+    }
+
+    // If no more touches, schedule a render if one was pending
+    if (this.globalActiveTouches === 0 && this.renderPending) {
+      requestAnimationFrame(() => {
+        this.renderBuffer();
+      });
+    }
+  };
 
   // Method to set user override when width is manually selected
   setUserOverrideWidth(override: boolean) {
@@ -1118,12 +1176,13 @@ export class Terminal extends LitElement {
     if (!this.terminal || !this.container) return;
 
     // On mobile, defer renders during active touches to prevent lost taps
-    if (this.isMobile && this.activeTouchCount > 0) {
+    // Check both local terminal touches AND global touches on any button
+    if (this.isMobile && (this.activeTouchCount > 0 || this.globalActiveTouches > 0)) {
       // Schedule render for after touch ends
       if (!this.renderPending) {
         this.renderPending = true;
         requestAnimationFrame(() => {
-          if (this.activeTouchCount === 0) {
+          if (this.activeTouchCount === 0 && this.globalActiveTouches === 0) {
             this.renderPending = false;
             this.renderBuffer();
           } else {
