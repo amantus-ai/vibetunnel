@@ -1175,26 +1175,6 @@ export class Terminal extends LitElement {
   private renderBuffer() {
     if (!this.terminal || !this.container) return;
 
-    // On mobile, defer renders during active touches to prevent lost taps
-    // Check both local terminal touches AND global touches on any button
-    if (this.isMobile && (this.activeTouchCount > 0 || this.globalActiveTouches > 0)) {
-      // Schedule render for after touch ends
-      if (!this.renderPending) {
-        this.renderPending = true;
-        requestAnimationFrame(() => {
-          if (this.activeTouchCount === 0 && this.globalActiveTouches === 0) {
-            this.renderPending = false;
-            this.renderBuffer();
-          } else {
-            // Still touching, try again next frame
-            this.renderPending = false;
-            this.requestRenderBuffer();
-          }
-        });
-      }
-      return;
-    }
-
     const startTime = this.debugMode ? performance.now() : 0;
 
     // Increment render count immediately
@@ -1249,6 +1229,31 @@ export class Terminal extends LitElement {
     }
 
     // Set the complete innerHTML at once
+    // On mobile, skip innerHTML update if ANY touch is active to prevent lost taps
+    if (this.isMobile && (this.activeTouchCount > 0 || this.globalActiveTouches > 0)) {
+      // Schedule innerHTML update for after touch ends
+      if (!this.renderPending) {
+        this.renderPending = true;
+        requestAnimationFrame(() => {
+          if (this.activeTouchCount === 0 && this.globalActiveTouches === 0) {
+            this.renderPending = false;
+            // Now safe to update innerHTML
+            if (this.container) {
+              this.container.innerHTML = html;
+              // Process links and shortcuts after rendering
+              UrlHighlighter.processLinks(this.container);
+              processKeyboardShortcuts(this.container, this.handleShortcutClick);
+            }
+          } else {
+            // Still touching, try again next frame
+            this.renderPending = false;
+            this.requestRenderBuffer();
+          }
+        });
+      }
+      return; // Skip the rest of the render
+    }
+
     this.container.innerHTML = html;
 
     // Process links after rendering
