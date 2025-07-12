@@ -139,7 +139,7 @@ final class StatusBarController: NSObject {
 
     func updateStatusItemDisplay() {
         guard let button = statusItem?.button else { return }
-        
+
         // Update accessibility title (might have changed due to debug/dev server state)
         button.setAccessibilityTitle(getAppDisplayName())
 
@@ -275,11 +275,11 @@ final class StatusBarController: NSObject {
     }
 
     // MARK: - Helpers
-    
+
     private func getAppDisplayName() -> String {
         let debugMode = UserDefaults.standard.bool(forKey: "debugMode")
         let useDevServer = UserDefaults.standard.bool(forKey: "useDevServer")
-        
+
         var name = debugMode ? "VibeTunnel Debug" : "VibeTunnel"
         if useDevServer && serverManager.isRunning {
             name += " Dev Server"

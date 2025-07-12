@@ -106,10 +106,13 @@ final class BunServer {
         let devServerPath = UserDefaults.standard.string(forKey: "devServerPath") ?? ""
 
         if useDevServer && !devServerPath.isEmpty {
-            logger.info("Starting development server with pnpm run dev on port \(self.port)")
+            logger.notice("🔧 Starting DEVELOPMENT SERVER with hot reload (pnpm run dev) on port \(self.port)")
+            logger.info("Development path: \(devServerPath)")
+            serverOutput.notice("🔧 VibeTunnel Development Mode - Hot reload enabled")
+            serverOutput.info("Project: \(devServerPath)")
             try await startDevServer(path: devServerPath)
         } else {
-            logger.info("Starting Bun vibetunnel server on port \(self.port)")
+            logger.info("Starting production server (built-in SPA) on port \(self.port)")
             try await startProductionServer()
         }
     }
@@ -360,20 +363,21 @@ final class BunServer {
             logger.error("Failed to find pnpm executable")
             throw error
         }
-        
+
         logger.info("Using pnpm at: \(pnpmPath)")
-        
+
         // Create wrapper to run pnpm with parent death monitoring AND crash detection
         let parentPid = ProcessInfo.processInfo.processIdentifier
         let pnpmDir = URL(fileURLWithPath: pnpmPath).deletingLastPathComponent().path
         let pnpmCommand = """
         # Change to the project directory
         cd '\(expandedPath)'
-        
+
         # Add pnpm to PATH for the dev script
         export PATH="\(pnpmDir):$PATH"
-        
+
         # Start pnpm dev in background
+        # We'll use pkill later to ensure all related processes are terminated
         \(pnpmPath) \(devArgs.joined(separator: " ")) &
         PNPM_PID=$!
 
@@ -387,12 +391,29 @@ final class BunServer {
             # Pnpm died - wait to get its exit code
             wait $PNPM_PID
             EXIT_CODE=$?
-            echo "Development server process died with exit code: $EXIT_CODE" >&2
+            echo "🔴 Development server crashed with exit code: $EXIT_CODE" >&2
+            echo "Check 'pnpm run dev' output above for errors" >&2
             exit $EXIT_CODE
         else
-            # Parent died - kill pnpm
+            # Parent died - kill pnpm and all its children
+            echo "🛑 VibeTunnel is shutting down, stopping development server..." >&2
+
+            # First try to kill pnpm gracefully
             kill -TERM $PNPM_PID 2>/dev/null
-            wait $PNPM_PID
+
+            # Give it a moment to clean up
+            sleep 0.5
+
+            # If still running, force kill
+            if kill -0 $PNPM_PID 2>/dev/null; then
+                kill -KILL $PNPM_PID 2>/dev/null
+            fi
+
+            # Also kill any node processes that might have been spawned
+            # This ensures we don't leave orphaned processes
+            pkill -P $PNPM_PID 2>/dev/null || true
+
+            wait $PNPM_PID 2>/dev/null
             exit 0
         fi
         """
@@ -401,6 +422,7 @@ final class BunServer {
         // Set up a termination handler for logging
         process.terminationHandler = { [weak self] process in
             self?.logger.info("Dev server process terminated with status: \(process.terminationStatus)")
+            self?.serverOutput.notice("🛑 Development server stopped")
         }
 
         logger.info("Executing command: /bin/zsh -l -c \"\(pnpmCommand)\"")
@@ -410,7 +432,7 @@ final class BunServer {
         var environment = ProcessInfo.processInfo.environment
         // Add Node.js memory settings
         environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128"
-        
+
         // Add pnpm to PATH so that scripts can use it
         let pnpmDir = URL(fileURLWithPath: pnpmPath).deletingLastPathComponent().path
         if let existingPath = environment["PATH"] {
@@ -419,7 +441,7 @@ final class BunServer {
             environment["PATH"] = pnpmDir
         }
         logger.info("Added pnpm directory to PATH: \(pnpmDir)")
-        
+
         process.environment = environment
 
         // Set up pipes for stdout and stderr
@@ -440,6 +462,17 @@ final class BunServer {
             try await process.runWithParentTerminationAsync()
 
             logger.info("Dev server process started")
+
+            // Output a clear banner in the server logs
+            serverOutput.notice("\n" +
+                "==========================================\n" +
+                "🔧 DEVELOPMENT MODE ACTIVE\n" +
+                "------------------------------------------\n" +
+                "Hot reload enabled - changes auto-refresh\n" +
+                "Project: \(expandedPath)\n" +
+                "Port: \(self.port)\n" +
+                "==========================================\n"
+            )
 
             // Give the process a moment to start before checking for early failures
             try await Task.sleep(for: .milliseconds(500)) // Dev server takes longer to start
@@ -471,7 +504,8 @@ final class BunServer {
             // Mark server as running only after successful start
             state = .running
 
-            logger.info("Dev server process started successfully")
+            logger.notice("✅ Development server started successfully with hot reload")
+            serverOutput.notice("🔧 Development server is running - changes will auto-reload")
 
             // Monitor process termination
             Task {
@@ -814,7 +848,15 @@ final class BunServer {
 
         if wasRunning {
             // Unexpected termination
-            self.logger.error("Bun server terminated unexpectedly with exit code: \(exitCode)")
+            let useDevServer = UserDefaults.standard.bool(forKey: "useDevServer")
+            let serverType = useDevServer ? "Development server (pnpm run dev)" : "Production server"
+
+            self.logger.error("\(serverType) terminated unexpectedly with exit code: \(exitCode)")
+
+            if useDevServer {
+                self.serverOutput.error("🔴 Development server crashed (exit code: \(exitCode))")
+                self.serverOutput.error("Check the output above for error details")
+            }
 
             // Clean up process reference
             self.process = nil
@@ -826,7 +868,9 @@ final class BunServer {
             }
         } else {
             // Normal termination
-            self.logger.info("Bun server terminated normally with exit code: \(exitCode)")
+            let useDevServer = UserDefaults.standard.bool(forKey: "useDevServer")
+            let serverType = useDevServer ? "Development server" : "Production server"
+            self.logger.info("\(serverType) terminated normally with exit code: \(exitCode)")
         }
     }
 
