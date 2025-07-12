@@ -226,6 +226,8 @@ export class Terminal extends LitElement {
     if (changedProperties.has('theme')) {
       if (this.terminal) {
         this.terminal.options.theme = this.getTerminalTheme();
+        // Force a re-render of the terminal content with new theme
+        this.requestRenderBuffer();
       }
     }
   }
