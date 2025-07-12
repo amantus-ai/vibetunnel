@@ -18,8 +18,7 @@ struct ServerInfoHeader: View {
     private var colorScheme
 
     private var appDisplayName: String {
-        let debugMode = UserDefaults.standard.bool(forKey: "debugMode")
-        let useDevServer = UserDefaults.standard.bool(forKey: "useDevServer")
+        let (debugMode, useDevServer) = AppConstants.getDevelopmentStatus()
 
         var name = debugMode ? "VibeTunnel Debug" : "VibeTunnel"
         if useDevServer && serverManager.isRunning {

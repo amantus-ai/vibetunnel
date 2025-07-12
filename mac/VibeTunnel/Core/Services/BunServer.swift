@@ -60,8 +60,8 @@ final class BunServer {
     /// Get the local auth token for use in HTTP requests
     var localToken: String? {
         // Check if authentication is disabled
-        let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
-        if authMode == "none" {
+        let authConfig = AppConstants.AuthConfig.current()
+        if authConfig.mode == "none" {
             return nil
         }
         return localAuthToken
@@ -102,15 +102,14 @@ final class BunServer {
         }
 
         // Check if we should use dev server
-        let useDevServer = UserDefaults.standard.bool(forKey: "useDevServer")
-        let devServerPath = UserDefaults.standard.string(forKey: "devServerPath") ?? ""
+        let devConfig = AppConstants.DevServerConfig.current()
 
-        if useDevServer && !devServerPath.isEmpty {
+        if devConfig.useDevServer && !devConfig.devServerPath.isEmpty {
             logger.notice("🔧 Starting DEVELOPMENT SERVER with hot reload (pnpm run dev) on port \(self.port)")
-            logger.info("Development path: \(devServerPath)")
+            logger.info("Development path: \(devConfig.devServerPath)")
             serverOutput.notice("🔧 VibeTunnel Development Mode - Hot reload enabled")
-            serverOutput.info("Project: \(devServerPath)")
-            try await startDevServer(path: devServerPath)
+            serverOutput.info("Project: \(devConfig.devServerPath)")
+            try await startDevServer(path: devConfig.devServerPath)
         } else {
             logger.info("Starting production server (built-in SPA) on port \(self.port)")
             try await startProductionServer()
@@ -172,10 +171,10 @@ final class BunServer {
         var vibetunnelArgs = ["--port", String(port), "--bind", bindAddress]
 
         // Add authentication flags based on configuration
-        let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
-        logger.info("Configuring authentication mode: \(authMode)")
+        let authConfig = AppConstants.AuthConfig.current()
+        logger.info("Configuring authentication mode: \(authConfig.mode)")
 
-        switch authMode {
+        switch authConfig.mode {
         case "none":
             vibetunnelArgs.append("--no-auth")
         case "ssh":
@@ -347,13 +346,13 @@ final class BunServer {
         logger.info("Dev server working directory: \(expandedPath)")
 
         // Get authentication mode
-        let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
+        let authConfig = AppConstants.AuthConfig.current()
 
         // Build the dev server arguments
         let devArgs = devServerManager.buildDevServerArguments(
             port: port,
             bindAddress: bindAddress,
-            authMode: authMode,
+            authMode: authConfig.mode,
             localToken: localToken
         )
 
@@ -848,12 +847,12 @@ final class BunServer {
 
         if wasRunning {
             // Unexpected termination
-            let useDevServer = UserDefaults.standard.bool(forKey: "useDevServer")
-            let serverType = useDevServer ? "Development server (pnpm run dev)" : "Production server"
+            let devConfig = AppConstants.DevServerConfig.current()
+            let serverType = devConfig.useDevServer ? "Development server (pnpm run dev)" : "Production server"
 
             self.logger.error("\(serverType) terminated unexpectedly with exit code: \(exitCode)")
 
-            if useDevServer {
+            if devConfig.useDevServer {
                 self.serverOutput.error("🔴 Development server crashed (exit code: \(exitCode))")
                 self.serverOutput.error("Check the output above for error details")
             }
@@ -868,8 +867,8 @@ final class BunServer {
             }
         } else {
             // Normal termination
-            let useDevServer = UserDefaults.standard.bool(forKey: "useDevServer")
-            let serverType = useDevServer ? "Development server" : "Production server"
+            let devConfig = AppConstants.DevServerConfig.current()
+            let serverType = devConfig.useDevServer ? "Development server" : "Production server"
             self.logger.info("\(serverType) terminated normally with exit code: \(exitCode)")
         }
     }

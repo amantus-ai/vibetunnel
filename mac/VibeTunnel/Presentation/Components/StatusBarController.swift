@@ -277,8 +277,7 @@ final class StatusBarController: NSObject {
     // MARK: - Helpers
 
     private func getAppDisplayName() -> String {
-        let debugMode = UserDefaults.standard.bool(forKey: "debugMode")
-        let useDevServer = UserDefaults.standard.bool(forKey: "useDevServer")
+        let (debugMode, useDevServer) = AppConstants.getDevelopmentStatus()
 
         var name = debugMode ? "VibeTunnel Debug" : "VibeTunnel"
         if useDevServer && serverManager.isRunning {

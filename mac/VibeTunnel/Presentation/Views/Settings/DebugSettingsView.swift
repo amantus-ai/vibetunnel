@@ -23,13 +23,13 @@ enum DevServerValidation: Equatable {
 
 /// Debug settings tab for development and troubleshooting
 struct DebugSettingsView: View {
-    @AppStorage("debugMode")
+    @AppStorage(AppConstants.UserDefaultsKeys.debugMode)
     private var debugMode = false
-    @AppStorage("logLevel")
+    @AppStorage(AppConstants.UserDefaultsKeys.logLevel)
     private var logLevel = "info"
-    @AppStorage("useDevServer")
+    @AppStorage(AppConstants.UserDefaultsKeys.useDevServer)
     private var useDevServer = false
-    @AppStorage("devServerPath")
+    @AppStorage(AppConstants.UserDefaultsKeys.devServerPath)
     private var devServerPath = ""
     @Environment(ServerManager.self)
     private var serverManager

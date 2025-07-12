@@ -10,13 +10,13 @@ extension Logger {
 
 /// Advanced settings tab for power user options
 struct AdvancedSettingsView: View {
-    @AppStorage("debugMode")
+    @AppStorage(AppConstants.UserDefaultsKeys.debugMode)
     private var debugMode = false
-    @AppStorage("cleanupOnStartup")
+    @AppStorage(AppConstants.UserDefaultsKeys.cleanupOnStartup)
     private var cleanupOnStartup = true
-    @AppStorage("showInDock")
+    @AppStorage(AppConstants.UserDefaultsKeys.showInDock)
     private var showInDock = true
-    @AppStorage("repositoryBasePath")
+    @AppStorage(AppConstants.UserDefaultsKeys.repositoryBasePath)
     private var repositoryBasePath = AppConstants.Defaults.repositoryBasePath
     @State private var cliInstaller = CLIInstaller()
     @State private var showingVtConflictAlert = false
@@ -222,9 +222,9 @@ struct AdvancedSettingsView: View {
 // MARK: - Terminal Preference Section
 
 private struct TerminalPreferenceSection: View {
-    @AppStorage("preferredTerminal")
+    @AppStorage(AppConstants.UserDefaultsKeys.preferredTerminal)
     private var preferredTerminal = Terminal.terminal.rawValue
-    @AppStorage("preferredGitApp")
+    @AppStorage(AppConstants.UserDefaultsKeys.preferredGitApp)
     private var preferredGitApp = ""
     @State private var terminalLauncher = TerminalLauncher.shared
     @State private var gitAppLauncher = GitAppLauncher.shared

@@ -22,7 +22,7 @@ import SwiftUI
 struct AccessDashboardPageView: View {
     @AppStorage("ngrokEnabled")
     private var ngrokEnabled = false
-    @AppStorage("serverPort")
+    @AppStorage(AppConstants.UserDefaultsKeys.serverPort)
     private var serverPort = "4020"
 
     var body: some View {

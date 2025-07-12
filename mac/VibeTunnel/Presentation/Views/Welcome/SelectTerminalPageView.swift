@@ -13,7 +13,7 @@ import SwiftUI
 /// - Test button to verify terminal automation works
 /// - Error handling for permission issues
 struct SelectTerminalPageView: View {
-    @AppStorage("preferredTerminal")
+    @AppStorage(AppConstants.UserDefaultsKeys.preferredTerminal)
     private var preferredTerminal = Terminal.terminal.rawValue
     private let terminalLauncher = TerminalLauncher.shared
     @State private var showingError = false

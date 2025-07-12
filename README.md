@@ -261,11 +261,33 @@ cd web && ./scripts/coverage-report.sh
 - macOS/iOS: 75% minimum (enforced in CI)
 - Web: 80% minimum for lines, functions, branches, and statements
 
-### Testing on External Devices (iPad, iPhone, etc.)
+### Development Server & Hot Reload
+
+VibeTunnel includes a development server with automatic rebuilding for faster iteration:
+
+#### Development Mode
+
+```bash
+cd web
+pnpm run dev
+```
+
+**What this provides:**
+- **Automatic Rebuilds**: esbuild watches for file changes and rebuilds bundles instantly
+- **Fast Feedback**: Changes are compiled within seconds of saving
+- **Manual Refresh Required**: Browser needs manual refresh to see changes (no hot module replacement)
+
+**How it works:**
+- esbuild watch mode detects file changes in `src/`
+- Automatically rebuilds JavaScript bundles and CSS
+- Express server serves updated files immediately
+- Visit `http://localhost:4020` and refresh to see changes
+
+#### Testing on External Devices (iPad, iPhone, etc.)
 
 When developing the web interface, you often need to test changes on external devices to debug browser-specific issues. Here's how to do it:
 
-#### Quick Setup
+##### Quick Setup
 
 1. **Run the dev server with network access**:
    ```bash
@@ -283,22 +305,52 @@ When developing the web interface, you often need to test changes on external de
    http://[your-mac-ip]:4021
    ```
 
-#### Important Notes
+##### Important Notes
 
 - **Port conflict**: The Mac app runs on port 4020, so use a different port (e.g., 4021) for development
 - **Same network**: Ensure both devices are on the same Wi-Fi network
 - **Firewall**: macOS may prompt to allow incoming connections - click "Allow"
-- **Hot reload**: Changes to the web code will automatically update on your external device
+- **Auto-rebuild**: Changes to the web code are automatically rebuilt, but you need to manually refresh the browser
 
-#### Alternative: Using the Mac App
+#### Future: Hot Module Replacement
 
-If you need to test with the full Mac app integration:
+For true hot module replacement without manual refresh, see our [Vite migration plan](docs/vite-plan.md) which would provide:
+- Instant updates without page refresh
+- Preserved application state during development
+- Sub-second feedback loops
+- Modern development tooling
+
+#### Mac App Development Server Mode
+
+The VibeTunnel Mac app includes a special development server mode that integrates with the web development workflow:
+
+**Setup:**
+1. Open VibeTunnel Settings → Debug tab (enable Debug Mode first in General settings)
+2. Enable "Use Development Server"
+3. Set the path to your `web/` directory
+4. Restart the VibeTunnel server
+
+**How it works:**
+- Instead of using the bundled production server, the Mac app runs `pnpm run dev` in your web directory
+- Provides hot reload and automatic rebuilding during development
+- Maintains all Mac app functionality (session management, logging, etc.)
+- Shows "Dev Server" in the menu bar and status indicators
+
+**Benefits:**
+- No need to manually rebuild after code changes
+- Automatic esbuild watch mode for instant compilation
+- Full integration with Mac app features
+- Same terminal session management as production
+
+**Alternative: Standalone Development**
+
+If you prefer working outside the Mac app:
 
 1. Build the web project: `cd web && pnpm run build`
 2. In VibeTunnel settings, set Dashboard Access to "Network"
 3. Access from external device: `http://[your-mac-ip]:4020`
 
-Note: This requires rebuilding after each change, so the dev server method above is preferred for rapid iteration.
+Note: This requires rebuilding after each change, so the dev server mode above is preferred for rapid iteration.
 
 ### Debug Logging
 

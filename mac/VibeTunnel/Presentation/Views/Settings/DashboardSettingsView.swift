@@ -5,15 +5,15 @@ import UserNotifications
 
 /// Dashboard settings tab for server and access configuration
 struct DashboardSettingsView: View {
-    @AppStorage("serverPort")
+    @AppStorage(AppConstants.UserDefaultsKeys.serverPort)
     private var serverPort = "4020"
     @AppStorage("ngrokEnabled")
     private var ngrokEnabled = false
-    @AppStorage("authenticationMode")
+    @AppStorage(AppConstants.UserDefaultsKeys.authenticationMode)
     private var authModeString = "os"
     @AppStorage("ngrokTokenPresent")
     private var ngrokTokenPresent = false
-    @AppStorage("dashboardAccessMode")
+    @AppStorage(AppConstants.UserDefaultsKeys.dashboardAccessMode)
     private var accessModeString = DashboardAccessMode.network.rawValue
 
     @State private var authMode: SecuritySection.AuthenticationMode = .osAuth

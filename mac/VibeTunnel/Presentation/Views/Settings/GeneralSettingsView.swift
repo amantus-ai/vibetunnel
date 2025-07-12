@@ -6,9 +6,9 @@ struct GeneralSettingsView: View {
     private var autostart = false
     @AppStorage("showNotifications")
     private var showNotifications = true
-    @AppStorage("updateChannel")
+    @AppStorage(AppConstants.UserDefaultsKeys.updateChannel)
     private var updateChannelRaw = UpdateChannel.stable.rawValue
-    @AppStorage("preventSleepWhenRunning")
+    @AppStorage(AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
     private var preventSleepWhenRunning = true
 
     @State private var isCheckingForUpdates = false
