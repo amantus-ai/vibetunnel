@@ -579,14 +579,14 @@ private struct WindowHighlightSettingsSection: View {
 
 private struct RepositorySettingsSection: View {
     @Binding var repositoryBasePath: String
-    
+
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     TextField("Default base path", text: $repositoryBasePath)
                         .textFieldStyle(.roundedBorder)
-                    
+
                     Button(action: selectDirectory) {
                         Image(systemName: "folder")
                             .font(.system(size: 12))
@@ -595,7 +595,7 @@ private struct RepositorySettingsSection: View {
                     .buttonStyle(.borderless)
                     .help("Choose directory")
                 }
-                
+
                 Text("Base path where VibeTunnel will search for Git repositories to show in the New Session form.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -610,14 +610,14 @@ private struct RepositorySettingsSection: View {
                 .multilineTextAlignment(.center)
         }
     }
-    
+
     private func selectDirectory() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.directoryURL = URL(fileURLWithPath: NSString(string: repositoryBasePath).expandingTildeInPath)
-        
+
         if panel.runModal() == .OK, let url = panel.url {
             let path = url.path
             let homeDir = NSHomeDirectory()

@@ -1,5 +1,5 @@
-import SwiftUI
 import os.log
+import SwiftUI
 
 /// CloudflareIntegrationSection displays Cloudflare tunnel status and management controls
 /// Following the same pattern as TailscaleIntegrationSection
@@ -14,8 +14,9 @@ struct CloudflareIntegrationSection: View {
     @State private var tunnelEnabled = false
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "CloudflareIntegrationSection")
-    
+
     // MARK: - Constants
+
     private let statusCheckInterval: TimeInterval = 10.0 // seconds
     private let startTimeoutInterval: TimeInterval = 15.0 // seconds
     private let stopTimeoutInterval: TimeInterval = 10.0 // seconds
@@ -137,16 +138,22 @@ struct CloudflareIntegrationSection: View {
                 logger.warning("CloudflareIntegrationSection: Found stuck isTogglingTunnel state, resetting")
                 isTogglingTunnel = false
             }
-            
+
             // Check status when view appears
-            logger.info("CloudflareIntegrationSection: Starting initial status check, isTogglingTunnel: \(isTogglingTunnel)")
+            logger
+                .info(
+                    "CloudflareIntegrationSection: Starting initial status check, isTogglingTunnel: \(isTogglingTunnel)"
+                )
             await cloudflareService.checkCloudflaredStatus()
             await syncUIWithService()
-            
+
             // Set up timer for automatic updates
             statusCheckTimer = Timer.scheduledTimer(withTimeInterval: statusCheckInterval, repeats: true) { _ in
                 Task { @MainActor in
-                    logger.debug("CloudflareIntegrationSection: Running periodic status check, isTogglingTunnel: \(isTogglingTunnel)")
+                    logger
+                        .debug(
+                            "CloudflareIntegrationSection: Running periodic status check, isTogglingTunnel: \(isTogglingTunnel)"
+                        )
                     // Only check if we're not currently toggling
                     if !isTogglingTunnel {
                         await cloudflareService.checkCloudflaredStatus()
@@ -173,36 +180,43 @@ struct CloudflareIntegrationSection: View {
         await MainActor.run {
             let wasEnabled = tunnelEnabled
             let oldUrl = cloudflareService.publicUrl
-            
+
             tunnelEnabled = cloudflareService.isRunning
-            
+
             if wasEnabled != tunnelEnabled {
                 logger.info("CloudflareIntegrationSection: Tunnel enabled changed: \(wasEnabled) -> \(tunnelEnabled)")
             }
-            
+
             if oldUrl != cloudflareService.publicUrl {
-                logger.info("CloudflareIntegrationSection: URL changed: \(oldUrl ?? "nil") -> \(cloudflareService.publicUrl ?? "nil")")
+                logger
+                    .info(
+                        "CloudflareIntegrationSection: URL changed: \(oldUrl ?? "nil") -> \(cloudflareService.publicUrl ?? "nil")"
+                    )
             }
-            
-            logger.info("CloudflareIntegrationSection: Synced UI - isRunning: \(cloudflareService.isRunning), publicUrl: \(cloudflareService.publicUrl ?? "nil")")
+
+            logger
+                .info(
+                    "CloudflareIntegrationSection: Synced UI - isRunning: \(cloudflareService.isRunning), publicUrl: \(cloudflareService.publicUrl ?? "nil")"
+                )
         }
     }
 
     private func startTunnel() {
-        guard !isTogglingTunnel else { 
+        guard !isTogglingTunnel else {
             logger.warning("Already toggling tunnel, ignoring start request")
-            return 
+            return
         }
-        
+
         isTogglingTunnel = true
         logger.info("Starting Cloudflare Quick Tunnel on port \(serverPort)")
-        
+
         // Set up timeout to force reset if stuck
         toggleTimeoutTimer?.invalidate()
         toggleTimeoutTimer = Timer.scheduledTimer(withTimeInterval: startTimeoutInterval, repeats: false) { _ in
             Task { @MainActor in
                 if isTogglingTunnel {
-                    logger.error("CloudflareIntegrationSection: Tunnel start timed out, force resetting isTogglingTunnel")
+                    logger
+                        .error("CloudflareIntegrationSection: Tunnel start timed out, force resetting isTogglingTunnel")
                     isTogglingTunnel = false
                     tunnelEnabled = false
                 }
@@ -219,19 +233,18 @@ struct CloudflareIntegrationSection: View {
                     logger.info("CloudflareIntegrationSection: Reset isTogglingTunnel = false")
                 }
             }
-            
+
             do {
-                let port = Int(serverPort) ?? 4020
+                let port = Int(serverPort) ?? 4_020
                 logger.info("Calling startQuickTunnel with port \(port)")
                 try await cloudflareService.startQuickTunnel(port: port)
                 logger.info("Cloudflare tunnel started successfully, URL: \(cloudflareService.publicUrl ?? "nil")")
-                
+
                 // Sync UI with service state
                 await syncUIWithService()
-                
             } catch {
                 logger.error("Failed to start Cloudflare tunnel: \(error)")
-                
+
                 // Reset toggle on failure
                 await MainActor.run {
                     tunnelEnabled = false
@@ -241,20 +254,21 @@ struct CloudflareIntegrationSection: View {
     }
 
     private func stopTunnel() {
-        guard !isTogglingTunnel else { 
+        guard !isTogglingTunnel else {
             logger.warning("Already toggling tunnel, ignoring stop request")
-            return 
+            return
         }
-        
+
         isTogglingTunnel = true
         logger.info("Stopping Cloudflare Quick Tunnel")
-        
+
         // Set up timeout to force reset if stuck
         toggleTimeoutTimer?.invalidate()
         toggleTimeoutTimer = Timer.scheduledTimer(withTimeInterval: stopTimeoutInterval, repeats: false) { _ in
             Task { @MainActor in
                 if isTogglingTunnel {
-                    logger.error("CloudflareIntegrationSection: Tunnel stop timed out, force resetting isTogglingTunnel")
+                    logger
+                        .error("CloudflareIntegrationSection: Tunnel stop timed out, force resetting isTogglingTunnel")
                     isTogglingTunnel = false
                 }
             }
@@ -270,10 +284,10 @@ struct CloudflareIntegrationSection: View {
                     logger.info("CloudflareIntegrationSection: Reset isTogglingTunnel = false after stop")
                 }
             }
-            
+
             await cloudflareService.stopQuickTunnel()
             logger.info("Cloudflare tunnel stopped")
-            
+
             // Sync UI with service state
             await syncUIWithService()
         }
@@ -294,9 +308,9 @@ private struct PublicURLView: View {
                 Text("Public URL:")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(url, forType: .string)
@@ -315,7 +329,7 @@ private struct PublicURLView: View {
                 .buttonStyle(.borderless)
                 .help("Copy URL")
             }
-            
+
             HStack {
                 Text(url)
                     .font(.caption)
@@ -323,9 +337,9 @@ private struct PublicURLView: View {
                     .textSelection(.enabled)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     if let nsUrl = URL(string: url) {
                         NSWorkspace.shared.open(nsUrl)

@@ -160,7 +160,7 @@ struct NewSessionForm: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Choose directory")
-                                
+
                                 Button(action: { showingRepositoryDropdown.toggle() }) {
                                     Image(systemName: "arrow.trianglehead.pull")
                                         .font(.system(size: 12))
@@ -173,7 +173,7 @@ struct NewSessionForm: View {
                                 .help("Choose from repositories")
                                 .disabled(repositoryDiscovery.repositories.isEmpty || repositoryDiscovery.isDiscovering)
                             }
-                            
+
                             // Repository dropdown
                             if showingRepositoryDropdown && !repositoryDiscovery.repositories.isEmpty {
                                 RepositoryDropdownList(
@@ -349,7 +349,6 @@ struct NewSessionForm: View {
         .onAppear {
             loadPreferences()
             focusedField = .name
-            
         }
         .task {
             let repositoryBasePath = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.repositoryBasePath)
@@ -477,9 +476,11 @@ struct NewSessionForm: View {
         if let savedCommand = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.newSessionCommand) {
             command = savedCommand
         }
-      
+
         // Restore last used working directory, not repository base path
-        if let savedDirectory = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.newSessionWorkingDirectory) {
+        if let savedDirectory = UserDefaults.standard
+            .string(forKey: AppConstants.UserDefaultsKeys.newSessionWorkingDirectory)
+        {
             workingDirectory = savedDirectory
         } else {
             // Default to home directory if never set
@@ -516,7 +517,7 @@ private struct RepositoryDropdownList: View {
     let isDiscovering: Bool
     @Binding var selectedPath: String
     @Binding var isShowing: Bool
-    
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -531,14 +532,14 @@ private struct RepositoryDropdownList: View {
                                     Text(repository.displayName)
                                         .font(.system(size: 11, weight: .medium))
                                         .foregroundColor(.primary)
-                                    
+
                                     Text(repository.relativePath)
                                         .font(.system(size: 10))
                                         .foregroundColor(.secondary)
                                 }
-                                
+
                                 Spacer()
-                                
+
                                 Text(repository.formattedLastModified)
                                     .font(.system(size: 10))
                                     .foregroundColor(.secondary)
@@ -557,7 +558,7 @@ private struct RepositoryDropdownList: View {
                                 // Add hover effect if needed
                             }
                         }
-                        
+
                         if repository.id != repositories.last?.id {
                             Divider()
                                 .padding(.horizontal, 8)

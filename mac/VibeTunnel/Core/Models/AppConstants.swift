@@ -48,14 +48,14 @@ enum AppConstants {
         }
         return UserDefaults.standard.bool(forKey: key)
     }
-    
+
     /// Helper to get string value with proper default
     static func stringValue(for key: String) -> String {
         // First check if we have a string value
         if let value = UserDefaults.standard.string(forKey: key) {
             return value
         }
-        
+
         // If the key doesn't exist at all, return our default
         if UserDefaults.standard.object(forKey: key) == nil {
             switch key {
@@ -65,7 +65,7 @@ enum AppConstants {
                 return ""
             }
         }
-        
+
         // Key exists but contains non-string value, return empty string
         return ""
     }
