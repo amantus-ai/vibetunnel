@@ -1,6 +1,8 @@
 import chalk from 'chalk';
 import type { Response } from 'express';
 import * as fs from 'fs';
+import type { SessionInfo } from '../../shared/types.js';
+import type { SessionManager } from '../pty/session-manager.js';
 import type { AsciinemaHeader } from '../pty/types.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -50,8 +52,10 @@ interface WatcherInfo {
 
 export class StreamWatcher {
   private activeWatchers: Map<string, WatcherInfo> = new Map();
+  private sessionManager: SessionManager;
 
-  constructor() {
+  constructor(sessionManager: SessionManager) {
+    this.sessionManager = sessionManager;
     // Clean up notification listeners on exit
     process.on('beforeExit', () => {
       this.cleanup();
@@ -82,7 +86,7 @@ export class StreamWatcher {
       this.activeWatchers.set(sessionId, watcherInfo);
 
       // Send existing content first
-      this.sendExistingContent(streamPath, client);
+      this.sendExistingContent(sessionId, streamPath, client);
 
       // Get current file size and stats
       if (fs.existsSync(streamPath)) {
@@ -99,7 +103,7 @@ export class StreamWatcher {
       this.startWatching(sessionId, streamPath, watcherInfo);
     } else {
       // Send existing content to new client
-      this.sendExistingContent(streamPath, client);
+      this.sendExistingContent(sessionId, streamPath, client);
     }
 
     // Add client to set
@@ -150,23 +154,55 @@ export class StreamWatcher {
   /**
    * Send existing content to a client
    */
-  private sendExistingContent(streamPath: string, client: StreamClient): void {
+  private sendExistingContent(sessionId: string, streamPath: string, client: StreamClient): void {
     try {
-      // First pass: analyze the stream to find the last clear and track resize events
-      const analysisStream = fs.createReadStream(streamPath, { encoding: 'utf8' });
+      const sessionInfo: SessionInfo =
+        this.sessionManager.loadSessionInfo(sessionId) || ({ id: sessionId } as SessionInfo);
+      const startOffset = sessionInfo.lastClearOffset ?? 0;
+
+      // Read header line separately (first line of file)
+      let header: AsciinemaHeader | null = null;
+      try {
+        const fd = fs.openSync(streamPath, 'r');
+        const buf = Buffer.alloc(4096);
+        let data = '';
+        let bytesRead = fs.readSync(fd, buf, 0, buf.length, data.length);
+        while (!data.includes('\n') && bytesRead > 0) {
+          data += buf.toString('utf8', 0, bytesRead);
+          if (!data.includes('\n')) {
+            bytesRead = fs.readSync(fd, buf, 0, buf.length, data.length);
+          }
+        }
+        fs.closeSync(fd);
+        const idx = data.indexOf('\n');
+        if (idx !== -1) {
+          header = JSON.parse(data.slice(0, idx));
+        }
+      } catch (e) {
+        logger.debug(`failed to read asciinema header for session ${sessionId}: ${e}`);
+      }
+
+      // Analyze the stream starting from stored offset
+      const analysisStream = fs.createReadStream(streamPath, {
+        encoding: 'utf8',
+        start: startOffset,
+      });
       let lineBuffer = '';
       const events: AsciinemaEvent[] = [];
       let lastClearIndex = -1;
       let lastResizeBeforeClear: AsciinemaResizeEvent | null = null;
       let currentResize: AsciinemaResizeEvent | null = null;
-      let header: AsciinemaHeader | null = null;
+      let fileOffset = startOffset;
+      let lastClearOffset = startOffset;
 
       analysisStream.on('data', (chunk: string | Buffer) => {
         lineBuffer += chunk.toString();
-        const lines = lineBuffer.split('\n');
-        lineBuffer = lines.pop() || ''; // Keep incomplete line for next chunk
+        let index = lineBuffer.indexOf('\n');
+        while (index !== -1) {
+          const line = lineBuffer.slice(0, index);
+          lineBuffer = lineBuffer.slice(index + 1);
+          fileOffset += Buffer.byteLength(line, 'utf8') + 1;
 
-        for (const line of lines) {
           if (line.trim()) {
             try {
               const parsed = JSON.parse(line);
@@ -188,6 +224,7 @@ export class StreamWatcher {
                   if (isOutputEvent(event) && event[2].includes('\x1b[3J')) {
                     lastClearIndex = events.length;
                     lastResizeBeforeClear = currentResize;
+                    lastClearOffset = fileOffset;
                     logger.debug(
                       `found clear sequence at event index ${lastClearIndex}, current resize: ${currentResize ? currentResize[2] : 'none'}`
                     );
@@ -200,6 +237,7 @@ export class StreamWatcher {
               logger.debug(`skipping invalid JSON line during analysis: ${e}`);
             }
           }
+          index = lineBuffer.indexOf('\n');
         }
       });
 
@@ -208,6 +246,7 @@ export class StreamWatcher {
         if (lineBuffer.trim()) {
           try {
             const parsed = JSON.parse(lineBuffer);
+            fileOffset += Buffer.byteLength(lineBuffer, 'utf8');
             if (Array.isArray(parsed)) {
               if (parsed[0] === 'exit') {
                 events.push(parsed as AsciinemaExitEvent);
@@ -220,6 +259,7 @@ export class StreamWatcher {
                 if (isOutputEvent(event) && event[2].includes('\x1b[3J')) {
                   lastClearIndex = events.length;
                   lastResizeBeforeClear = currentResize;
+                  lastClearOffset = fileOffset;
                   logger.debug(
                     `found clear sequence at event index ${lastClearIndex} (last event)`
                   );
@@ -239,8 +279,14 @@ export class StreamWatcher {
           // Start from after the last clear
           startIndex = lastClearIndex + 1;
           logger.log(
-            chalk.green(`pruning stream: skipping ${lastClearIndex + 1} events before last clear`)
+            chalk.green(
+              `pruning stream: skipping ${lastClearIndex + 1} events before last clear at offset ${lastClearOffset}`
+            )
           );
+
+          // Persist new clear offset to session
+          sessionInfo.lastClearOffset = lastClearOffset;
+          this.sessionManager.saveSessionInfo(sessionId, sessionInfo);
         }
 
         // Send header first - update dimensions if we have a resize
@@ -283,7 +329,7 @@ export class StreamWatcher {
       analysisStream.on('error', (error) => {
         logger.error('failed to analyze stream for pruning:', error);
         // Fall back to original implementation without pruning
-        this.sendExistingContentWithoutPruning(streamPath, client);
+        this.sendExistingContentWithoutPruning(sessionId, streamPath, client);
       });
     } catch (error) {
       logger.error('failed to create read stream:', error);
@@ -293,7 +339,11 @@ export class StreamWatcher {
   /**
    * Original implementation without pruning (fallback)
    */
-  private sendExistingContentWithoutPruning(streamPath: string, client: StreamClient): void {
+  private sendExistingContentWithoutPruning(
+    _sessionId: string,
+    streamPath: string,
+    client: StreamClient
+  ): void {
     try {
       const stream = fs.createReadStream(streamPath, { encoding: 'utf8' });
       let exitEventFound = false;

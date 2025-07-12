@@ -418,7 +418,7 @@ export async function createApp(): Promise<AppInstance> {
   logger.debug('Initialized terminal manager');
 
   // Initialize stream watcher for file-based streaming
-  const streamWatcher = new StreamWatcher();
+  const streamWatcher = new StreamWatcher(sessionManager);
   logger.debug('Initialized stream watcher');
 
   // Initialize activity monitor
