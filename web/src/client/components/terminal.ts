@@ -104,9 +104,9 @@ export class Terminal extends LitElement {
   }
 
   private requestRenderBuffer() {
-    console.log('🎨 [STEP 4] requestRenderBuffer called - queuing render operation');
+    logger.debug('Requesting render buffer update');
     this.queueRenderOperation(() => {
-      console.log('🎨 [STEP 4] Render operation executing');
+      logger.debug('Executing render operation');
     });
   }
 
@@ -155,12 +155,12 @@ export class Terminal extends LitElement {
     // Watch for theme changes (only when using auto theme)
     this.themeObserver = new MutationObserver(() => {
       if (this.terminal && this.theme === 'auto') {
-        console.log('🎨 [MUTATION] Auto theme detected system change, updating terminal');
+        logger.debug('Auto theme detected system change, updating terminal');
         this.terminal.options.theme = this.getTerminalTheme();
         this.updateTerminalColorProperties(this.getTerminalTheme());
         this.requestRenderBuffer();
       } else if (this.theme !== 'auto') {
-        console.log('🎨 [MUTATION] Ignoring system theme change - explicit theme selected:', this.theme);
+        logger.debug('Ignoring system theme change - explicit theme selected:', this.theme);
       }
     });
 
@@ -233,41 +233,25 @@ export class Terminal extends LitElement {
     }
 
     if (changedProperties.has('theme')) {
-      console.log(
-        '🎨 [STEP 3] Terminal theme property changed from',
-        changedProperties.get('theme'),
-        'to',
-        this.theme
-      );
+      logger.debug('Terminal theme changed to:', this.theme);
       if (this.terminal) {
         const resolvedTheme = this.getTerminalTheme();
-        console.log('🎨 [STEP 3] Resolved theme colors:', resolvedTheme);
-        console.log(
-          '🎨 [STEP 3] Current terminal.options.theme before:',
-          this.terminal.options.theme
-        );
+        logger.debug('Applying terminal theme:', this.theme);
         this.terminal.options.theme = resolvedTheme;
-        console.log('🎨 [STEP 3] Set terminal.options.theme to:', this.terminal.options.theme);
 
         // Update CSS custom properties for terminal colors
-        console.log('🎨 [STEP 3] Updating CSS terminal color properties...');
         this.updateTerminalColorProperties(resolvedTheme);
 
         // Force complete HTML regeneration to pick up new colors
-        console.log('🎨 [STEP 3] Forcing complete HTML regeneration...');
         if (this.container) {
           // Clear the container first
           this.container.innerHTML = '';
-          console.log('🎨 [STEP 3] Cleared container HTML');
         }
 
         // Force immediate buffer re-render with new colors
         this.requestRenderBuffer();
-        console.log('🎨 [STEP 3] Called requestRenderBuffer() - will regenerate HTML');
-
-        console.log('🎨 [STEP 3] Terminal theme update complete');
       } else {
-        console.log('🎨 [STEP 3] No terminal instance found!');
+        logger.warn('No terminal instance found for theme update');
       }
     }
   }
@@ -421,7 +405,7 @@ export class Terminal extends LitElement {
    * This allows the already-rendered HTML to immediately pick up new colors
    */
   private updateTerminalColorProperties(themeColors: Record<string, string>) {
-    console.log('🎨 [STEP 3.1] Updating terminal color CSS properties with theme:', themeColors);
+    logger.debug('Updating terminal CSS color properties');
 
     // Standard 16 colors mapping from XTerm.js theme to CSS custom properties
     const colorMapping = {
@@ -448,21 +432,21 @@ export class Terminal extends LitElement {
       if (themeColors[colorName]) {
         const cssProperty = `--terminal-color-${colorIndex}`;
         document.documentElement.style.setProperty(cssProperty, themeColors[colorName]);
-        console.log(`🎨 [STEP 3.1] Set ${cssProperty}: ${themeColors[colorName]}`);
+        logger.debug(`Set CSS property ${cssProperty}:`, themeColors[colorName]);
       }
     });
 
     // Update main terminal foreground and background colors
     if (themeColors.foreground) {
       document.documentElement.style.setProperty('--terminal-foreground', themeColors.foreground);
-      console.log(`🎨 [STEP 3.1] Set --terminal-foreground: ${themeColors.foreground}`);
+      logger.debug('Set terminal foreground color:', themeColors.foreground);
     }
     if (themeColors.background) {
       document.documentElement.style.setProperty('--terminal-background', themeColors.background);
-      console.log(`🎨 [STEP 3.1] Set --terminal-background: ${themeColors.background}`);
+      logger.debug('Set terminal background color:', themeColors.background);
     }
 
-    console.log('🎨 [STEP 3.1] CSS terminal color properties updated');
+    logger.debug('CSS terminal color properties updated');
   }
 
   private async initializeTerminal() {
@@ -1648,7 +1632,7 @@ export class Terminal extends LitElement {
       background-color: ${terminalTheme.background || 'var(--terminal-background, #0a0a0a)'};
       color: ${terminalTheme.foreground || 'var(--terminal-foreground, #e4e4e4)'};
     `;
-    
+
     return html`
       <style>
         /* Dynamic terminal sizing */

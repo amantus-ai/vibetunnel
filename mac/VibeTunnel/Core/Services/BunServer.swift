@@ -241,7 +241,7 @@ final class BunServer {
                 environment[key] = value
             }
         }
-        
+
         // Set NODE_ENV to development in debug builds to disable caching
         #if DEBUG
             environment["NODE_ENV"] = "development"
@@ -437,7 +437,7 @@ final class BunServer {
         var environment = ProcessInfo.processInfo.environment
         // Add Node.js memory settings
         environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128"
-        
+
         // Always set NODE_ENV to development for dev server to ensure caching is disabled
         environment["NODE_ENV"] = "development"
         logger.info("Dev server mode - setting NODE_ENV=development to disable caching")

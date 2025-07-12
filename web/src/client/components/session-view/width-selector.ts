@@ -7,15 +7,27 @@
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { Z_INDEX } from '../../utils/constants.js';
+import { createLogger } from '../../utils/logger.js';
 import { COMMON_TERMINAL_WIDTHS } from '../../utils/terminal-preferences.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../../utils/terminal-themes.js';
 import { getTextColorEncoded } from '../../utils/theme-utils.js';
 
-@customElement('width-selector')
-export class WidthSelector extends LitElement {
+const logger = createLogger('terminal-settings-modal');
+
+@customElement('terminal-settings-modal')
+export class TerminalSettingsModal extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    // Load theme from localStorage on component initialization
+    const savedTheme = localStorage.getItem('terminal-theme') as TerminalThemeId;
+    if (savedTheme) {
+      this.terminalTheme = savedTheme;
+    }
   }
 
   @property({ type: Boolean }) visible = false;
@@ -28,7 +40,7 @@ export class WidthSelector extends LitElement {
     return this._terminalTheme;
   }
   set terminalTheme(value: TerminalThemeId) {
-    console.log('🎨 [WIDTH-SELECTOR] terminalTheme property set to:', value);
+    logger.debug('Terminal theme set to:', value);
     this._terminalTheme = value;
     this.requestUpdate();
   }
@@ -83,14 +95,8 @@ export class WidthSelector extends LitElement {
       requestAnimationFrame(() => {
         const themeSelect = this.querySelector('#theme-select') as HTMLSelectElement;
         if (themeSelect && this.terminalTheme) {
-          console.log('🎨 [WIDTH-SELECTOR] Setting select value to:', this.terminalTheme);
-          console.log('🎨 [WIDTH-SELECTOR] Select current value before:', themeSelect.value);
+          logger.debug('Updating theme select value to:', this.terminalTheme);
           themeSelect.value = this.terminalTheme;
-          console.log('🎨 [WIDTH-SELECTOR] Select current value after:', themeSelect.value);
-
-          // Verify the option exists
-          const option = themeSelect.querySelector(`option[value="${this.terminalTheme}"]`);
-          console.log('🎨 [WIDTH-SELECTOR] Option exists for', this.terminalTheme, ':', !!option);
         }
       });
     }
@@ -100,11 +106,7 @@ export class WidthSelector extends LitElement {
     if (!this.visible) return null;
 
     // Debug localStorage when dialog opens
-    console.log(
-      '🎨 [WIDTH-SELECTOR] Dialog opening, current localStorage:',
-      localStorage.getItem('vibetunnel_terminal_preferences')
-    );
-    console.log('🎨 [WIDTH-SELECTOR] Dialog opening, terminalTheme prop:', this.terminalTheme);
+    logger.debug('Dialog opening, terminal theme:', this.terminalTheme);
 
     // Check if we're showing a custom value that doesn't match presets
     const isCustomValue =
@@ -115,6 +117,9 @@ export class WidthSelector extends LitElement {
       <!-- Backdrop to close on outside click -->
       <div 
         class="fixed inset-0 z-40" 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="terminal-settings-title"
         @click=${() => this.handleClose()}
       ></div>
       
@@ -125,7 +130,7 @@ export class WidthSelector extends LitElement {
       >
         <div class="p-6">
           <div class="flex items-center justify-between mb-6">
-            <h2 class="text-lg font-semibold text-text-bright">Terminal Settings</h2>
+            <h2 id="terminal-settings-title" class="text-lg font-semibold text-text-bright">Terminal Settings</h2>
             <button
               class="text-muted hover:text-primary transition-colors p-1"
               @click=${() => this.handleClose()}
@@ -265,10 +270,10 @@ export class WidthSelector extends LitElement {
                 @change=${(e: Event) => {
                   e.stopPropagation();
                   const value = (e.target as HTMLSelectElement).value as TerminalThemeId;
-                  console.log('🎨 [STEP 1] Theme dropdown changed to:', value);
-                  console.log('🎨 [STEP 1] onThemeChange callback exists:', !!this.onThemeChange);
+                  logger.debug('Theme changed to:', value);
+                  // Save theme to localStorage
+                  localStorage.setItem('terminal-theme', value);
                   this.onThemeChange?.(value);
-                  console.log('🎨 [STEP 1] onThemeChange callback called');
                 }}
                 @click=${(e: Event) => e.stopPropagation()}
               >

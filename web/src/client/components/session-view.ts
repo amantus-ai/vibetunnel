@@ -372,9 +372,8 @@ export class SessionView extends LitElement {
     // Load terminal preferences
     this.terminalMaxCols = this.preferencesManager.getMaxCols();
     this.terminalFontSize = this.preferencesManager.getFontSize();
-    console.log('🎨 [SESSION] Loading terminal theme from preferences...');
     this.terminalTheme = this.preferencesManager.getTheme();
-    console.log('🎨 [SESSION] Loaded terminal theme:', this.terminalTheme);
+    logger.debug('Loaded terminal theme:', this.terminalTheme);
     this.terminalLifecycleManager.setTerminalFontSize(this.terminalFontSize);
     this.terminalLifecycleManager.setTerminalMaxCols(this.terminalMaxCols);
     this.terminalLifecycleManager.setTerminalTheme(this.terminalTheme);
@@ -462,9 +461,8 @@ export class SessionView extends LitElement {
     super.firstUpdated(changedProperties);
 
     // Load terminal preferences BEFORE terminal setup to ensure proper initialization
-    console.log('🎨 [SESSION] Loading terminal theme from preferences in firstUpdated...');
     this.terminalTheme = this.preferencesManager.getTheme();
-    console.log('🎨 [SESSION] Loaded terminal theme in firstUpdated:', this.terminalTheme);
+    logger.debug('Loaded terminal theme from preferences:', this.terminalTheme);
 
     // Don't setup terminal here - wait for session data to be available
     // Terminal setup will be triggered in updated() when session becomes available
@@ -893,27 +891,17 @@ export class SessionView extends LitElement {
   }
 
   private handleThemeChange(newTheme: TerminalThemeId) {
-    console.log('🎨 [STEP 2] handleThemeChange called with:', newTheme);
+    logger.debug('Changing terminal theme to:', newTheme);
 
-    console.log('🎨 [STEP 2] Setting this.terminalTheme from', this.terminalTheme, 'to', newTheme);
     this.terminalTheme = newTheme;
-
-    console.log('🎨 [STEP 2] Saving theme to preferences manager');
     this.preferencesManager.setTheme(newTheme);
-
-    console.log('🎨 [STEP 2] Setting theme in terminal lifecycle manager');
     this.terminalLifecycleManager.setTerminalTheme(newTheme);
 
     const terminal = this.querySelector('vibe-terminal') as Terminal;
-    console.log('🎨 [STEP 2] Found terminal element:', !!terminal);
     if (terminal) {
-      console.log('🎨 [STEP 2] Setting terminal.theme from', terminal.theme, 'to', newTheme);
       terminal.theme = newTheme;
-      console.log('🎨 [STEP 2] Calling terminal.requestUpdate()');
       terminal.requestUpdate();
     }
-
-    console.log('🎨 [STEP 2] handleThemeChange complete');
   }
 
   private handleOpenFileBrowser() {
@@ -1526,7 +1514,7 @@ export class SessionView extends LitElement {
         ></file-picker>
         
         <!-- Width Selector Modal (moved here for proper positioning) -->
-        <width-selector
+        <terminal-settings-modal
           .visible=${this.showWidthSelector}
           .terminalMaxCols=${this.terminalMaxCols}
           .terminalFontSize=${this.terminalFontSize}
@@ -1540,7 +1528,7 @@ export class SessionView extends LitElement {
             this.showWidthSelector = false;
             this.customWidth = '';
           }}
-        ></width-selector>
+        ></terminal-settings-modal>
 
         <!-- Drag & Drop Overlay -->
         ${
