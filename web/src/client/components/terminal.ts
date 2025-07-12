@@ -248,9 +248,17 @@ export class Terminal extends LitElement {
         console.log('🎨 [STEP 3] Updating CSS terminal color properties...');
         this.updateTerminalColorProperties(resolvedTheme);
 
-        // Force buffer re-render to pick up new colors
+        // Force complete HTML regeneration to pick up new colors
+        console.log('🎨 [STEP 3] Forcing complete HTML regeneration...');
+        if (this.container) {
+          // Clear the container first
+          this.container.innerHTML = '';
+          console.log('🎨 [STEP 3] Cleared container HTML');
+        }
+
+        // Force immediate buffer re-render with new colors
         this.requestRenderBuffer();
-        console.log('🎨 [STEP 3] Called requestRenderBuffer()');
+        console.log('🎨 [STEP 3] Called requestRenderBuffer() - will regenerate HTML');
 
         console.log('🎨 [STEP 3] Terminal theme update complete');
       } else {

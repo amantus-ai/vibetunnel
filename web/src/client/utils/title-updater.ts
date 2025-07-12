@@ -30,11 +30,11 @@ function updateTitleFromUrl() {
           break;
         }
 
-        // Try to extract from element content - be more flexible
+        // Try to extract from element content - be more specific
         // Look for patterns like "Session X", "test-session-X", or any non-path text
         if (text && !text.includes('/') && text.length > 0 && text.length < 100) {
-          // Skip if it looks like a path or too generic
-          if (!text.startsWith('~') && !text.startsWith('/')) {
+          // Skip if it looks like a path, too generic, or is "VibeTunnel" itself
+          if (!text.startsWith('~') && !text.startsWith('/') && text !== 'VibeTunnel') {
             sessionName = text.split('\n')[0]; // Take first line if multi-line
             break;
           }
