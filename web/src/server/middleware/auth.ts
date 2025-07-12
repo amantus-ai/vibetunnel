@@ -58,9 +58,10 @@ export function createAuthMiddleware(config: AuthConfig) {
       return next();
     }
 
-    // If no auth is disabled, allow all requests
+    // If no auth is required, allow all requests
     if (config.noAuth) {
       req.authMethod = 'no-auth';
+      req.userId = 'no-auth-user'; // Set a default user ID for no-auth mode
       return next();
     }
 

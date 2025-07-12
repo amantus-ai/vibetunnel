@@ -71,7 +71,7 @@ export class PushNotificationService {
         scope: '/',
       });
 
-      logger.log('service worker registered');
+      logger.log('service worker registered successfully');
 
       // Wait for service worker to be ready
       await navigator.serviceWorker.ready;

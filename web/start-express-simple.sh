@@ -13,6 +13,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
   if ! lsof -i :$PORT > /dev/null 2>&1; then
     echo "✅ Port $PORT is available"
     export PORT=$PORT
+    export EXPRESS_PORT=$PORT
     export VIBETUNNEL_SEA=""
     exec npx tsx watch src/cli.ts --no-auth
     exit 0

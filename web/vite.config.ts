@@ -7,7 +7,15 @@ import { child_process } from 'vite-plugin-child-process';
 // Get Express port from environment or default to 4030 range
 const expressPort = process.env.EXPRESS_PORT || '4030';
 
+// Read package.json for version
+import packageJson from './package.json';
+
 export default defineConfig({
+  
+  // Define global constants
+  define: {
+    __APP_VERSION__: JSON.stringify(packageJson.version),
+  },
   
   // Enable experimental features for faster builds
   experimental: {
@@ -19,7 +27,8 @@ export default defineConfig({
   // Root directory for source files
   root: resolve(__dirname, 'src/client'),
   
-  // Public directory for static assets - removed to prevent duplication with copy plugin
+  // Disable public directory since we're outputting to the same folder
+  publicDir: false,
   
   // Build configuration
   build: {
@@ -40,6 +49,7 @@ export default defineConfig({
         app: resolve(__dirname, 'src/client/index.html'),
         test: resolve(__dirname, 'src/client/test.html'),
         screencap: resolve(__dirname, 'src/client/screencap.html'),
+        sw: resolve(__dirname, 'src/client/sw.ts'),
       },
       
       // Maintain exact output structure for Mac app compatibility
@@ -48,6 +58,7 @@ export default defineConfig({
           if (chunkInfo.name === 'app') return 'bundle/client-bundle.js';
           if (chunkInfo.name === 'test') return 'bundle/test.js';
           if (chunkInfo.name === 'screencap') return 'bundle/screencap.js';
+          if (chunkInfo.name === 'sw') return 'sw.js';
           return 'bundle/[name].js';
         },
         chunkFileNames: 'bundle/[name]-[hash].js',
@@ -57,7 +68,8 @@ export default defineConfig({
             return 'assets/[name][extname]';
           }
           return 'assets/[name]-[hash][extname]';
-        }
+        },
+        format: 'es' // Use ES modules for all outputs
       }
     }
   },
@@ -88,6 +100,15 @@ export default defineConfig({
         configure: (proxy) => {
           proxy.on('error', (err) => {
             console.error('WebSocket proxy error:', err);
+          });
+        }
+      },
+      '/ws/input': {
+        target: `ws://localhost:${expressPort}`,
+        ws: true,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.error('WebSocket input proxy error:', err);
           });
         }
       }
@@ -126,6 +147,25 @@ export default defineConfig({
         { 
           src: resolve(__dirname, 'src/client/assets/**/*'), 
           dest: resolve(__dirname, 'public/assets') 
+        },
+        // Copy fonts to original /fonts/ path for backward compatibility
+        { 
+          src: resolve(__dirname, 'src/client/assets/fonts/*'), 
+          dest: resolve(__dirname, 'public/fonts') 
+        },
+        // Copy icon files to root for direct access
+        { 
+          src: resolve(__dirname, 'src/client/assets/*.png'), 
+          dest: resolve(__dirname, 'public') 
+        },
+        { 
+          src: resolve(__dirname, 'src/client/assets/*.ico'), 
+          dest: resolve(__dirname, 'public') 
+        },
+        // Copy manifest.json to root
+        { 
+          src: resolve(__dirname, 'src/client/assets/manifest.json'), 
+          dest: resolve(__dirname, 'public') 
         }
       ],
       hook: 'writeBundle'
@@ -134,6 +174,30 @@ export default defineConfig({
     // Custom plugin to ensure exact compatibility with current build structure
     {
       name: 'vibetunnel-compatibility',
+      buildStart() {
+        // Copy fonts to original paths during development
+        const fs = require('fs');
+        const path = require('path');
+        
+        const srcFontsDir = resolve(__dirname, 'src/client/assets/fonts');
+        const destFontsDir = resolve(__dirname, 'public/fonts');
+        
+        // Ensure destination directory exists
+        if (!fs.existsSync(destFontsDir)) {
+          fs.mkdirSync(destFontsDir, { recursive: true });
+        }
+        
+        // Copy font files
+        if (fs.existsSync(srcFontsDir)) {
+          const files = fs.readdirSync(srcFontsDir);
+          files.forEach(file => {
+            fs.copyFileSync(
+              path.join(srcFontsDir, file),
+              path.join(destFontsDir, file)
+            );
+          });
+        }
+      },
       generateBundle(options, bundle) {
         // Ensure the exact file structure expected by Mac app
         console.log('Generated bundle files:', Object.keys(bundle));
