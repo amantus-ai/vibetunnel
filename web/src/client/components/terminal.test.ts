@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { fixture, html } from '@open-wc/testing';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resetViewport, waitForElement } from '@/test/utils/component-helpers';
+import { resetViewport, waitForElement, waitForEvent } from '@/test/utils/component-helpers';
 import { MockResizeObserver, MockTerminal } from '@/test/utils/terminal-mocks';
 
 // Mock xterm modules before importing the component
@@ -140,7 +140,6 @@ describe('Terminal', () => {
     it('should handle paste events', async () => {
       const pasteText = 'pasted content';
 
-      // Create and dispatch paste event
       const clipboardData = new DataTransfer();
       clipboardData.setData('text/plain', pasteText);
       const pasteEvent = new ClipboardEvent('paste', {
@@ -149,12 +148,19 @@ describe('Terminal', () => {
         cancelable: true,
       });
 
-      // The terminal component listens for paste on the container
       const container = element.querySelector('.terminal-container');
-      if (container) {
-        container.dispatchEvent(pasteEvent);
-        expect(pasteEvent.defaultPrevented).toBe(true);
-      }
+      expect(container).toBeTruthy();
+
+      const detail = await waitForEvent<{ text: string }>(
+        element,
+        'terminal-paste',
+        () => {
+          container?.dispatchEvent(pasteEvent);
+        }
+      );
+
+      expect(pasteEvent.defaultPrevented).toBe(true);
+      expect(detail.text).toBe(pasteText);
     });
   });
 

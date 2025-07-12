@@ -1587,11 +1587,20 @@ export class Terminal extends LitElement {
     this.requestUpdate();
   };
 
-  private handlePaste = (e: ClipboardEvent) => {
+  private handlePaste = async (e: ClipboardEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const clipboardData = e.clipboardData?.getData('text/plain');
+    let clipboardData = e.clipboardData?.getData('text/plain');
+
+    if (!clipboardData && navigator.clipboard) {
+      try {
+        clipboardData = await navigator.clipboard.readText();
+      } catch (error) {
+        logger.error('Failed to read clipboard via navigator API', error);
+      }
+    }
+
     if (clipboardData) {
       // Dispatch a custom event with the pasted text
       this.dispatchEvent(
