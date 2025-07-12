@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import copy from 'rollup-plugin-copy';
 import { nativeBuildPlugin } from './vite-plugin-native-build';
+import { child_process } from 'vite-plugin-child-process';
 
 export default defineConfig({
   
@@ -94,6 +95,14 @@ export default defineConfig({
   },
 
   plugins: [
+    // Start Express server in development
+    child_process({
+      name: 'express-server',
+      command: ['env', 'VIBETUNNEL_SEA=', 'PORT=4030', 'tsx', 'watch', 'src/cli.ts', '--no-auth'],
+      watch: [/src\/server/, /src\/cli/],
+      delay: 100
+    }),
+
     // Copy assets to maintain compatibility
     copy({
       targets: [
