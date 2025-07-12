@@ -101,8 +101,20 @@ final class BunServer {
             throw error
         }
 
-        logger.info("Starting Bun vibetunnel server on port \(self.port)")
+        // Check if we should use dev server
+        let useDevServer = UserDefaults.standard.bool(forKey: "useDevServer")
+        let devServerPath = UserDefaults.standard.string(forKey: "devServerPath") ?? ""
 
+        if useDevServer && !devServerPath.isEmpty {
+            logger.info("Starting development server with pnpm run dev on port \(self.port)")
+            try await startDevServer(path: devServerPath)
+        } else {
+            logger.info("Starting Bun vibetunnel server on port \(self.port)")
+            try await startProductionServer()
+        }
+    }
+
+    private func startProductionServer() async throws {
         // Get the vibetunnel binary path (the Bun executable)
         guard let binaryPath = Bundle.main.path(forResource: "vibetunnel", ofType: nil) else {
             let error = BunServerError.binaryNotFound
@@ -307,6 +319,141 @@ final class BunServer {
             }
 
             logger.error("Failed to start Bun server: \(errorMessage)")
+            throw error
+        }
+    }
+
+    private func startDevServer(path: String) async throws {
+        let devServerManager = DevServerManager.shared
+        let expandedPath = devServerManager.expandedPath(for: path)
+
+        // Validate the path first
+        let validation = devServerManager.validate(path: path)
+        guard validation.isValid else {
+            let error = BunServerError.devServerInvalid(validation.errorMessage ?? "Invalid dev server path")
+            logger.error("Dev server validation failed: \(error.localizedDescription)")
+            throw error
+        }
+
+        // Create the process using login shell
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+
+        // Set working directory to the web project
+        process.currentDirectoryURL = URL(fileURLWithPath: expandedPath)
+        logger.info("Dev server working directory: \(expandedPath)")
+
+        // Get authentication mode
+        let authMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
+
+        // Build the dev server arguments
+        let devArgs = devServerManager.buildDevServerArguments(
+            port: port,
+            bindAddress: bindAddress,
+            authMode: authMode,
+            localToken: localToken
+        )
+
+        // Create wrapper to run pnpm with parent death monitoring AND crash detection
+        let parentPid = ProcessInfo.processInfo.processIdentifier
+        let pnpmCommand = """
+        # Start pnpm dev in background
+        pnpm \(devArgs.joined(separator: " ")) &
+        PNPM_PID=$!
+
+        # Monitor both parent process AND pnpm process
+        while kill -0 \(parentPid) 2>/dev/null && kill -0 $PNPM_PID 2>/dev/null; do
+            sleep 1
+        done
+
+        # Check why we exited the loop
+        if ! kill -0 $PNPM_PID 2>/dev/null; then
+            # Pnpm died - wait to get its exit code
+            wait $PNPM_PID
+            EXIT_CODE=$?
+            echo "Development server process died with exit code: $EXIT_CODE" >&2
+            exit $EXIT_CODE
+        else
+            # Parent died - kill pnpm
+            kill -TERM $PNPM_PID 2>/dev/null
+            wait $PNPM_PID
+            exit 0
+        fi
+        """
+        process.arguments = ["-l", "-c", pnpmCommand]
+
+        // Set up a termination handler for logging
+        process.terminationHandler = { [weak self] process in
+            self?.logger.info("Dev server process terminated with status: \(process.terminationStatus)")
+        }
+
+        logger.info("Executing command: /bin/zsh -l -c \"\(pnpmCommand)\"")
+        logger.info("Working directory: \(expandedPath)")
+
+        // Set up environment for dev server
+        var environment = ProcessInfo.processInfo.environment
+        // Add Node.js memory settings
+        environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128"
+        process.environment = environment
+
+        // Set up pipes for stdout and stderr
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+
+        self.process = process
+        self.stdoutPipe = stdoutPipe
+        self.stderrPipe = stderrPipe
+
+        // Start monitoring output
+        startOutputMonitoring()
+
+        do {
+            // Start the process with parent termination handling
+            try await process.runWithParentTerminationAsync()
+
+            logger.info("Dev server process started")
+
+            // Give the process a moment to start before checking for early failures
+            try await Task.sleep(for: .milliseconds(500)) // Dev server takes longer to start
+
+            // Check if process exited immediately (indicating failure)
+            if !process.isRunning {
+                let exitCode = process.terminationStatus
+                logger.error("Dev server process exited immediately with code: \(exitCode)")
+
+                // Try to read any error output
+                var errorDetails = "Exit code: \(exitCode)"
+                if let stderrPipe = self.stderrPipe {
+                    do {
+                        if let errorData = try stderrPipe.fileHandleForReading.readToEnd(),
+                           !errorData.isEmpty,
+                           let errorOutput = String(data: errorData, encoding: .utf8)
+                        {
+                            errorDetails += "\nError: \(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
+                        }
+                    } catch {
+                        logger.debug("Could not read stderr: \(error.localizedDescription)")
+                    }
+                }
+
+                logger.error("Dev server failed to start: \(errorDetails)")
+                throw BunServerError.processFailedToStart
+            }
+
+            // Mark server as running only after successful start
+            state = .running
+
+            logger.info("Dev server process started successfully")
+
+            // Monitor process termination
+            Task {
+                await monitorProcessTermination()
+            }
+        } catch {
+            // Log more detailed error information
+            logger.error("Failed to start dev server: \(error.localizedDescription)")
             throw error
         }
     }
@@ -667,6 +814,7 @@ enum BunServerError: LocalizedError {
     case processFailedToStart
     case invalidPort
     case invalidState
+    case devServerInvalid(String)
 
     var errorDescription: String? {
         switch self {
@@ -678,6 +826,8 @@ enum BunServerError: LocalizedError {
             "Server port is not configured"
         case .invalidState:
             "Server is in an invalid state for this operation"
+        case .devServerInvalid(let reason):
+            "Dev server configuration invalid: \(reason)"
         }
     }
 }
