@@ -550,25 +550,35 @@ export async function createApp(): Promise<AppInstance> {
 
   // Serve static files with .html extension handling and caching headers
   const publicPath = path.join(process.cwd(), 'public');
+  const isDevelopment = !process.env.BUILD_DATE || process.env.NODE_ENV === 'development';
+  
   app.use(
     express.static(publicPath, {
       extensions: ['html'], // This allows /logs to resolve to /logs.html
-      maxAge: '1d', // Cache static assets for 1 day
-      etag: true, // Enable ETag generation
-      lastModified: true, // Enable Last-Modified header
+      maxAge: isDevelopment ? 0 : '1d', // No cache in dev, 1 day in production
+      etag: !isDevelopment, // Disable ETag in development
+      lastModified: !isDevelopment, // Disable Last-Modified in development
       setHeaders: (res, filePath) => {
-        // Set longer cache for immutable assets
-        if (filePath.match(/\.(js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico)$/)) {
-          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        }
-        // Shorter cache for HTML files
-        else if (filePath.endsWith('.html')) {
-          res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
+        if (isDevelopment) {
+          // Disable all caching in development
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        } else {
+          // Production caching rules
+          // Set longer cache for immutable assets
+          if (filePath.match(/\.(js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico)$/)) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          }
+          // Shorter cache for HTML files
+          else if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
+          }
         }
       },
     })
   );
-  logger.debug(`Serving static files from: ${publicPath} with caching headers`);
+  logger.debug(`Serving static files from: ${publicPath} ${isDevelopment ? 'with caching disabled (dev mode)' : 'with caching headers'}`);
 
   // Health check endpoint (no auth required)
   app.get('/api/health', (_req, res) => {
