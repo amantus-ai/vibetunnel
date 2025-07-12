@@ -67,6 +67,9 @@ export class DirectKeyboardManager {
 
   constructor(instanceId: string) {
     this.instanceId = instanceId;
+
+    // Add global paste listener for environments where Clipboard API doesn't work
+    this.setupGlobalPasteListener();
   }
 
   setInputManager(inputManager: InputManager): void {
@@ -477,7 +480,7 @@ export class DirectKeyboardManager {
       }
       return;
     } else if (key === 'Paste') {
-      // Handle Paste key - centralized clipboard logic
+      // Handle Paste key - following iOS Safari best practices
       logger.log('Paste button pressed - attempting clipboard read');
 
       // Log environment details for debugging
@@ -489,10 +492,10 @@ export class DirectKeyboardManager {
         userAgent: navigator.userAgent.includes('Safari') ? 'Safari' : 'Other',
       });
 
-      // First try the modern Clipboard API if available
-      if (navigator.clipboard && navigator.clipboard.readText) {
+      // Check if we're in a secure context (HTTPS/localhost/PWA)
+      if (window.isSecureContext && navigator.clipboard && navigator.clipboard.readText) {
         try {
-          logger.log('Calling navigator.clipboard.readText()...');
+          logger.log('Secure context detected - trying modern clipboard API...');
           const text = await navigator.clipboard.readText();
           logger.log('Clipboard read successful, text length:', text?.length || 0);
 
@@ -506,19 +509,21 @@ export class DirectKeyboardManager {
           }
         } catch (err) {
           const error = err as Error;
-          logger.warn('Clipboard API failed, trying fallback:', {
+          logger.warn('Clipboard API failed despite secure context:', {
             name: error?.name,
             message: error?.message,
           });
-          // Continue to fallback instead of returning
+          // Continue to fallback
         }
       } else {
-        logger.log('Clipboard API not available, using fallback');
+        logger.log(
+          'Not in secure context (HTTP) - clipboard API unavailable, using textarea fallback'
+        );
       }
 
-      // Fallback: Use existing hidden input with paste event
-      logger.log('Using iOS native paste fallback with existing hidden input');
-      this.triggerNativePasteWithHiddenInput();
+      // Fallback: Create temporary off-screen textarea (works on HTTP and older iOS)
+      logger.log('Creating temporary textarea for paste fallback');
+      this.createTemporaryPasteTextarea();
     } else if (key === 'Ctrl+A') {
       // Send Ctrl+A (start of line)
       this.inputManager.sendControlSequence('\x01');
@@ -687,95 +692,120 @@ export class DirectKeyboardManager {
     }
   }
 
-  private triggerNativePasteWithHiddenInput(): void {
-    if (!this.hiddenInput) {
-      logger.error('No hidden input available for paste fallback');
-      return;
+  private createTemporaryPasteTextarea(): void {
+    logger.log('Creating temporary off-screen textarea for iOS paste fallback');
+
+    // Temporarily disable ALL focus retention mechanisms including keyboard mode
+    const wasRetentionActive = !!this.focusRetentionInterval;
+    const wasKeyboardMode = this.keyboardMode;
+
+    // Stop focus retention interval
+    if (this.focusRetentionInterval) {
+      clearInterval(this.focusRetentionInterval);
+      this.focusRetentionInterval = null;
+      logger.log('Stopped focus retention interval for paste');
     }
 
-    logger.log('Making hidden input temporarily visible for paste');
-    
-    // Store original styles to restore later
-    const originalStyles = {
-      position: this.hiddenInput.style.position,
-      opacity: this.hiddenInput.style.opacity,
-      left: this.hiddenInput.style.left,
-      top: this.hiddenInput.style.top,
-      width: this.hiddenInput.style.width,
-      height: this.hiddenInput.style.height,
-      backgroundColor: this.hiddenInput.style.backgroundColor,
-      border: this.hiddenInput.style.border,
-      borderRadius: this.hiddenInput.style.borderRadius,
-      padding: this.hiddenInput.style.padding,
-      zIndex: this.hiddenInput.style.zIndex,
-    };
-    
-    // Make the input visible and positioned for interaction
-    this.hiddenInput.style.position = 'fixed';
-    this.hiddenInput.style.left = '50%';
-    this.hiddenInput.style.top = '50%';
-    this.hiddenInput.style.transform = 'translate(-50%, -50%)';
-    this.hiddenInput.style.width = '200px';
-    this.hiddenInput.style.height = '40px';
-    this.hiddenInput.style.opacity = '1';
-    this.hiddenInput.style.backgroundColor = 'white';
-    this.hiddenInput.style.border = '2px solid #007AFF';
-    this.hiddenInput.style.borderRadius = '8px';
-    this.hiddenInput.style.padding = '8px';
-    this.hiddenInput.style.zIndex = '10000';
-    this.hiddenInput.placeholder = 'Long-press to paste';
-    
-    const restoreStyles = () => {
-      if (!this.hiddenInput) return;
-      
-      // Restore all original styles
-      Object.entries(originalStyles).forEach(([key, value]) => {
-        if (value !== undefined) {
-          (this.hiddenInput!.style as any)[key] = value;
-        }
-      });
-      this.hiddenInput.placeholder = '';
-      logger.log('Restored hidden input to original state');
-    };
-    
-    // Create a one-time paste event handler
-    const handlePasteEvent = (e: ClipboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const clipboardData = e.clipboardData?.getData('text/plain');
-      logger.log('Native paste event received, text length:', clipboardData?.length || 0);
-      
-      if (clipboardData && this.inputManager) {
-        logger.log('Sending native paste text to terminal');
-        this.inputManager.sendInputText(clipboardData);
-      } else {
-        logger.warn('No clipboard data received in paste event');
+    // Temporarily exit keyboard mode to prevent forced refocusing
+    this.keyboardMode = false;
+    logger.log('Temporarily disabled keyboard mode to prevent focus stealing');
+
+    // Blur the hidden input to ensure it doesn't fight for focus
+    if (this.hiddenInput) {
+      this.hiddenInput.blur();
+      logger.log('Blurred hidden input to prevent focus conflicts');
+    }
+
+    // Create textarea following Apple's documented approach
+    const textarea = document.createElement('textarea');
+    textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+    textarea.setAttribute('readonly', 'readonly');
+    textarea.setAttribute('autocorrect', 'off');
+    textarea.setAttribute('autocapitalize', 'none');
+    textarea.setAttribute('spellcheck', 'false');
+
+    document.body.appendChild(textarea);
+
+    const cleanup = (success: boolean = false) => {
+      logger.log(`Cleaning up textarea (${success ? 'success' : 'timeout'})`);
+
+      // Remove textarea
+      textarea.removeEventListener('paste', handlePaste);
+      if (document.body.contains(textarea)) {
+        document.body.removeChild(textarea);
       }
-      
-      // Clean up
-      this.hiddenInput?.removeEventListener('paste', handlePasteEvent);
-      restoreStyles();
-      logger.log('Removed paste event listener and restored styles');
+
+      // Restore keyboard mode if it was active
+      if (wasKeyboardMode) {
+        this.keyboardMode = true;
+        logger.log('Restored keyboard mode after paste');
+      }
+
+      // Restore focus retention if it was active
+      if (wasRetentionActive && !this.focusRetentionInterval) {
+        this.startFocusRetention();
+        logger.log('Restored focus retention after paste');
+      }
+
+      // Refocus our hidden input only after a short delay
+      if (this.hiddenInput && wasKeyboardMode) {
+        setTimeout(() => {
+          if (this.hiddenInput) {
+            this.hiddenInput.focus();
+            logger.log('Refocused hidden input after paste cleanup');
+          }
+        }, 200);
+      }
     };
 
     // Add paste event listener
-    this.hiddenInput.addEventListener('paste', handlePasteEvent);
-    
-    // Focus and select the now-visible input
-    this.hiddenInput.focus();
-    this.hiddenInput.select();
-    
-    logger.log('Input is now visible and focused - long-press to see paste menu');
-    
-    // Clean up after timeout if no paste occurs
-    setTimeout(() => {
-      if (this.hiddenInput) {
-        this.hiddenInput.removeEventListener('paste', handlePasteEvent);
-        restoreStyles();
-        logger.log('Paste timeout - restored input to hidden state');
+    const handlePaste = (e: Event) => {
+      const pasteEvent = e as ClipboardEvent;
+      const clipboardData = pasteEvent.clipboardData?.getData('text/plain');
+
+      logger.log('Textarea paste event received, text length:', clipboardData?.length || 0);
+
+      if (clipboardData && this.inputManager) {
+        logger.log('Sending textarea paste text to terminal');
+        this.inputManager.sendInputText(clipboardData);
       }
-    }, 10000); // 10 second timeout
+
+      cleanup(true);
+    };
+
+    textarea.addEventListener('paste', handlePaste, { once: true });
+
+    // Focus textarea AFTER completely disabling all focus management
+    setTimeout(() => {
+      textarea.focus();
+      logger.log('Temporary textarea focused and ready - use long-press or context menu to paste');
+    }, 50);
+
+    // Auto cleanup after timeout
+    setTimeout(() => {
+      if (document.body.contains(textarea)) {
+        cleanup(false);
+      }
+    }, 10000);
+  }
+
+  private setupGlobalPasteListener(): void {
+    // Listen for paste events anywhere in the document
+    // This catches CMD+V or context menu paste when the hidden input is focused
+    document.addEventListener('paste', (e) => {
+      // Only handle if our hidden input is focused and we're in keyboard mode
+      if (this.hiddenInput && document.activeElement === this.hiddenInput && this.showQuickKeys) {
+        const clipboardData = e.clipboardData?.getData('text/plain');
+        if (clipboardData && this.inputManager) {
+          logger.log('Global paste event captured, text length:', clipboardData.length);
+          this.inputManager.sendInputText(clipboardData);
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    });
+
+    logger.log('Global paste listener setup for CMD+V support');
   }
 
   private dismissKeyboard(): void {
