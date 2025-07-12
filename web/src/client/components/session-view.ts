@@ -460,30 +460,35 @@ export class SessionView extends LitElement {
 
   firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
-    
+
     // Load terminal preferences BEFORE terminal setup to ensure proper initialization
     console.log('🎨 [SESSION] Loading terminal theme from preferences in firstUpdated...');
     this.terminalTheme = this.preferencesManager.getTheme();
     console.log('🎨 [SESSION] Loaded terminal theme in firstUpdated:', this.terminalTheme);
-    
-    if (this.session && this.connected) {
-      // Terminal setup is handled by state machine when reaching active state
-      this.terminalLifecycleManager.setupTerminal();
-    }
+
+    // Don't setup terminal here - wait for session data to be available
+    // Terminal setup will be triggered in updated() when session becomes available
   }
 
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
 
-    // If session changed, clean up old stream connection
+    // If session changed, clean up old stream connection and reset terminal state
     if (changedProperties.has('session')) {
       const oldSession = changedProperties.get('session') as Session | null;
-      if (oldSession && oldSession.id !== this.session?.id) {
+      const sessionChanged = oldSession?.id !== this.session?.id;
+
+      if (sessionChanged && oldSession) {
         logger.log('Session changed, cleaning up old stream connection');
         if (this.connectionManager) {
           this.connectionManager.cleanupStreamConnection();
         }
+        // Clean up terminal lifecycle manager for fresh start
+        if (this.terminalLifecycleManager) {
+          this.terminalLifecycleManager.cleanup();
+        }
       }
+
       // Update managers with new session
       if (this.inputManager) {
         this.inputManager.setSession(this.session);
@@ -494,59 +499,64 @@ export class SessionView extends LitElement {
       if (this.lifecycleEventManager) {
         this.lifecycleEventManager.setSession(this.session);
       }
+
+      // Initialize terminal when session first becomes available
+      if (this.session && this.connected && !oldSession) {
+        logger.log('Session data now available, initializing terminal');
+        this.ensureTerminalInitialized();
+      }
     }
 
-    // Stop loading and create terminal when session becomes available
+    // Stop loading and ensure terminal is initialized when session becomes available
     if (
       changedProperties.has('session') &&
       this.session &&
       this.loadingAnimationManager.isLoading()
     ) {
       this.loadingAnimationManager.stopLoading();
-      this.terminalLifecycleManager.setupTerminal();
+      this.ensureTerminalInitialized();
     }
 
-    // Initialize terminal after first render when terminal element exists
-    if (!this.terminalLifecycleManager.getTerminal() && this.session && this.connected) {
-      const terminalElement = this.querySelector('vibe-terminal') as Terminal;
-      if (terminalElement) {
-        this.terminalLifecycleManager.initializeTerminal();
-      }
+    // Ensure terminal is initialized when connected state changes
+    if (changedProperties.has('connected') && this.connected && this.session) {
+      this.ensureTerminalInitialized();
+    }
+  }
+
+  /**
+   * Ensures terminal is properly initialized with current session data.
+   * This method is idempotent and can be called multiple times safely.
+   */
+  private ensureTerminalInitialized() {
+    if (!this.session || !this.connected) {
+      logger.log('Cannot initialize terminal: missing session or not connected');
+      return;
     }
 
-    // Create hidden input if direct keyboard is enabled on mobile
-    if (
-      this.isMobile &&
-      this.useDirectKeyboard &&
-      !this.directKeyboardManager.getShowQuickKeys() &&
-      this.session &&
-      this.connected
-    ) {
-      // Clear any existing timeout
-      if (this.createHiddenInputTimeout) {
-        clearTimeout(this.createHiddenInputTimeout);
-      }
-
-      // Delay creation to ensure terminal is rendered and DOM is stable
-      const TERMINAL_RENDER_DELAY_MS = 100;
-      this.createHiddenInputTimeout = setTimeout(() => {
-        try {
-          // Re-validate conditions in case component state changed during the delay
-          if (
-            this.isMobile &&
-            this.useDirectKeyboard &&
-            !this.directKeyboardManager.getShowQuickKeys() &&
-            this.connected // Ensure component is still connected to DOM
-          ) {
-            this.directKeyboardManager.ensureHiddenInputVisible();
-          }
-        } catch (error) {
-          logger.warn('Failed to create hidden input during setTimeout:', error);
-        }
-        // Clear the timeout reference after execution
-        this.createHiddenInputTimeout = null;
-      }, TERMINAL_RENDER_DELAY_MS);
+    // Check if terminal is already initialized
+    if (this.terminalLifecycleManager.getTerminal()) {
+      logger.log('Terminal already initialized');
+      return;
     }
+
+    // Check if terminal element exists in DOM
+    const terminalElement = this.querySelector('vibe-terminal') as Terminal;
+    if (!terminalElement) {
+      logger.log('Terminal element not found in DOM, deferring initialization');
+      // Retry after next render cycle
+      requestAnimationFrame(() => {
+        this.ensureTerminalInitialized();
+      });
+      return;
+    }
+
+    logger.log('Initializing terminal with session:', this.session.id);
+
+    // Setup terminal with session data
+    this.terminalLifecycleManager.setupTerminal();
+
+    // Initialize terminal after setup
+    this.terminalLifecycleManager.initializeTerminal();
   }
 
   async handleKeyboardInput(e: KeyboardEvent) {

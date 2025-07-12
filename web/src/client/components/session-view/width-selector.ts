@@ -76,7 +76,7 @@ export class WidthSelector extends LitElement {
 
   updated(changedProperties: Map<string | number | symbol, unknown>) {
     super.updated(changedProperties);
-    
+
     // Force update the theme select value when terminalTheme property changes OR when visible changes
     if (changedProperties.has('terminalTheme') || changedProperties.has('visible')) {
       // Use requestAnimationFrame to ensure DOM is fully updated
@@ -87,7 +87,7 @@ export class WidthSelector extends LitElement {
           console.log('🎨 [WIDTH-SELECTOR] Select current value before:', themeSelect.value);
           themeSelect.value = this.terminalTheme;
           console.log('🎨 [WIDTH-SELECTOR] Select current value after:', themeSelect.value);
-          
+
           // Verify the option exists
           const option = themeSelect.querySelector(`option[value="${this.terminalTheme}"]`);
           console.log('🎨 [WIDTH-SELECTOR] Option exists for', this.terminalTheme, ':', !!option);

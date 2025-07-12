@@ -152,10 +152,15 @@ export class Terminal extends LitElement {
     // Check for debug mode
     this.debugMode = new URLSearchParams(window.location.search).has('debug');
 
-    // Watch for theme changes
+    // Watch for theme changes (only when using auto theme)
     this.themeObserver = new MutationObserver(() => {
-      if (this.terminal) {
+      if (this.terminal && this.theme === 'auto') {
+        console.log('🎨 [MUTATION] Auto theme detected system change, updating terminal');
         this.terminal.options.theme = this.getTerminalTheme();
+        this.updateTerminalColorProperties(this.getTerminalTheme());
+        this.requestRenderBuffer();
+      } else if (this.theme !== 'auto') {
+        console.log('🎨 [MUTATION] Ignoring system theme change - explicit theme selected:', this.theme);
       }
     });
 
@@ -1637,6 +1642,13 @@ export class Terminal extends LitElement {
   };
 
   render() {
+    const terminalTheme = this.getTerminalTheme();
+    const containerStyle = `
+      view-transition-name: session-${this.sessionId};
+      background-color: ${terminalTheme.background || 'var(--terminal-background, #0a0a0a)'};
+      color: ${terminalTheme.foreground || 'var(--terminal-foreground, #e4e4e4)'};
+    `;
+    
     return html`
       <style>
         /* Dynamic terminal sizing */
@@ -1657,7 +1669,7 @@ export class Terminal extends LitElement {
           class="terminal-container w-full h-full overflow-hidden p-0 m-0"
           tabindex="0"
           contenteditable="false"
-          style="view-transition-name: session-${this.sessionId}"
+          style="${containerStyle}"
           @paste=${this.handlePaste}
           @click=${this.handleClick}
           data-testid="terminal-container"

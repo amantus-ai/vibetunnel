@@ -27,9 +27,10 @@ export class TitleManager {
    * Set title for list view with session count
    */
   setListTitle(sessionCount: number): void {
-    document.title = sessionCount > 0
-      ? `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`
-      : 'VibeTunnel';
+    document.title =
+      sessionCount > 0
+        ? `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`
+        : 'VibeTunnel';
   }
 
   /**
@@ -52,7 +53,7 @@ export class TitleManager {
 
       if (sessionId !== this.currentSessionId) {
         this.currentSessionId = sessionId;
-        
+
         // Only auto-update title for list view (no session ID)
         if (!sessionId) {
           setTimeout(() => {
