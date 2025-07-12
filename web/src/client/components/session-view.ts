@@ -874,7 +874,6 @@ export class SessionView extends LitElement {
   }
 
   private handleThemeChange(newTheme: TerminalThemeId) {
-    console.log('[SessionView] handleThemeChange called with:', newTheme);
     this.terminalTheme = newTheme;
     this.preferencesManager.setTheme(newTheme);
     this.terminalLifecycleManager.setTerminalTheme(newTheme);
@@ -883,7 +882,6 @@ export class SessionView extends LitElement {
     if (terminal) {
       terminal.theme = newTheme;
       terminal.requestUpdate();
-      console.log('[SessionView] Updated terminal theme to:', newTheme);
     }
   }
 

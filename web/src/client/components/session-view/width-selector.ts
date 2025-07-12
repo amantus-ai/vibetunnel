@@ -45,7 +45,6 @@ export class WidthSelector extends LitElement {
   }
 
   private handleClose() {
-    console.log('[WidthSelector] handleClose called');
     this.showCustomInput = false;
     this.customWidth = '';
     this.onClose?.();
@@ -221,7 +220,6 @@ export class WidthSelector extends LitElement {
                 @change=${(e: Event) => {
                   e.stopPropagation();
                   const value = (e.target as HTMLSelectElement).value as TerminalThemeId;
-                  console.log('[WidthSelector] Theme changed to:', value);
                   this.onThemeChange?.(value);
                 }}
                 @click=${(e: Event) => e.stopPropagation()}
