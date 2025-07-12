@@ -56,11 +56,9 @@ final class DevServerManager: ObservableObject {
         ]
 
         // Check common paths first
-        for path in commonPaths {
-            if FileManager.default.isExecutableFile(atPath: path) {
-                logger.debug("Found pnpm at: \(path)")
-                return true
-            }
+        for path in commonPaths where FileManager.default.isExecutableFile(atPath: path) {
+            logger.debug("Found pnpm at: \(path)")
+            return true
         }
 
         // Try using the shell to find pnpm with full PATH
@@ -93,11 +91,13 @@ final class DevServerManager: ObservableObject {
 
             if pnpmCheck.terminationStatus == 0 {
                 // Try to read the output to log where pnpm was found
-                if let pipe = pnpmCheck.standardOutput as? Pipe,
-                   let data = try? pipe.fileHandleForReading.readDataToEndOfFile(),
-                   let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-                {
-                    logger.debug("Found pnpm via shell at: \(output)")
+                if let pipe = pnpmCheck.standardOutput as? Pipe {
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    if let output = String(data: data, encoding: .utf8)?
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    {
+                        logger.debug("Found pnpm via shell at: \(output)")
+                    }
                 }
                 return true
             }
@@ -137,10 +137,8 @@ final class DevServerManager: ObservableObject {
         ]
 
         // Check common paths first
-        for path in commonPaths {
-            if FileManager.default.isExecutableFile(atPath: path) {
-                return path
-            }
+        for path in commonPaths where FileManager.default.isExecutableFile(atPath: path) {
+            return path
         }
 
         // Try to find via shell
@@ -172,12 +170,14 @@ final class DevServerManager: ObservableObject {
             findPnpm.waitUntilExit()
 
             if findPnpm.terminationStatus == 0,
-               let pipe = findPnpm.standardOutput as? Pipe,
-               let data = try? pipe.fileHandleForReading.readDataToEndOfFile(),
-               let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !output.isEmpty
+               let pipe = findPnpm.standardOutput as? Pipe
             {
-                return output
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !output.isEmpty
+                {
+                    return output
+                }
             }
         } catch {
             logger.error("Failed to find pnpm path: \(error.localizedDescription)")

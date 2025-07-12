@@ -434,7 +434,7 @@ final class BunServer {
         environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128"
 
         // Add pnpm to PATH so that scripts can use it
-        let pnpmDir = URL(fileURLWithPath: pnpmPath).deletingLastPathComponent().path
+        // pnpmDir is already defined above
         if let existingPath = environment["PATH"] {
             environment["PATH"] = "\(pnpmDir):\(existingPath)"
         } else {
@@ -464,15 +464,15 @@ final class BunServer {
             logger.info("Dev server process started")
 
             // Output a clear banner in the server logs
-            serverOutput.notice("\n" +
-                "==========================================\n" +
-                "🔧 DEVELOPMENT MODE ACTIVE\n" +
-                "------------------------------------------\n" +
-                "Hot reload enabled - changes auto-refresh\n" +
-                "Project: \(expandedPath)\n" +
-                "Port: \(self.port)\n" +
-                "==========================================\n"
-            )
+            serverOutput.notice("")
+            serverOutput.notice("==========================================")
+            serverOutput.notice("🔧 DEVELOPMENT MODE ACTIVE")
+            serverOutput.notice("------------------------------------------")
+            serverOutput.notice("Hot reload enabled - changes auto-refresh")
+            serverOutput.notice("Project: \(expandedPath, privacy: .public)")
+            serverOutput.notice("Port: \(self.port, privacy: .public)")
+            serverOutput.notice("==========================================")
+            serverOutput.notice("")
 
             // Give the process a moment to start before checking for early failures
             try await Task.sleep(for: .milliseconds(500)) // Dev server takes longer to start
