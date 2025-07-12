@@ -4,14 +4,36 @@
  * These types match the tty-fwd format to ensure compatibility
  */
 
+import type { EventEmitter } from 'events';
 import type * as fs from 'fs';
 import type * as net from 'net';
-import type { IPty } from 'node-pty';
 import type { SessionInfo, TitleMode } from '../../shared/types.js';
-import type { ActivityDetector } from '../utils/activity-detector.js';
 import type { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
 import type { WriteQueue } from '../utils/write-queue.js';
 import type { AsciinemaWriter } from './asciinema-writer.js';
+
+// Define IPty interface for PTY implementations
+export interface IPty extends EventEmitter {
+  pid: number;
+  process: string;
+  write(data: string | Buffer): void;
+  resize(cols: number, rows: number): void;
+  kill(signal?: string): void;
+  destroy(): void;
+  pause?(): void;
+  resume?(): void;
+}
+
+export interface IPtyOptions {
+  name?: string;
+  cols?: number;
+  rows?: number;
+  cwd?: string;
+  env?: Record<string, string>;
+  uid?: number;
+  gid?: number;
+  encoding?: string | null;
+}
 
 export interface AsciinemaHeader {
   version: number;
@@ -78,8 +100,6 @@ export interface PtySession {
   currentWorkingDir?: string;
   // Track if initial title has been sent
   initialTitleSent?: boolean;
-  // Activity detector for dynamic title mode
-  activityDetector?: ActivityDetector;
   // Timer for periodic title updates in dynamic mode
   titleUpdateInterval?: NodeJS.Timeout;
   // Track if activity file has been written (for debug logging)

@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "VibeTunnel - Cross-platform terminal session manager"
 authors = ["VibeTunnel Team"]
 edition = "2021"
+rust-version = "1.80.0"
 
 [package.metadata.bundle]
 identifier = "com.vibetunnel.app"
@@ -15,6 +16,7 @@ long_description = "VibeTunnel is a powerful terminal session manager that allow
 [lib]
 name = "tauri_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
+
 
 [build-dependencies]
 tauri-build = { version = "2.2.0", features = [] }
@@ -84,6 +86,9 @@ reqwest = { version = "0.12", features = ["json", "blocking"] }
 # Authentication
 base64 = "0.22"
 sha2 = "0.10"
+
+# Pattern matching for activity detection
+regex = "1"
 
 # Keychain/Credential Storage
 keyring = "3"

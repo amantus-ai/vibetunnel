@@ -45,6 +45,9 @@ pub mod window_enumerator;
 pub mod window_matcher;
 pub mod window_tracker;
 
+// Activity tracking
+pub mod activity_detector;
+
 #[cfg(mobile)]
 pub fn init() {
     // Mobile-specific initialization

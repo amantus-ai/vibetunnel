@@ -51,7 +51,7 @@ See [spec.md](./spec.md) for detailed architecture documentation.
 
 ## Key Features
 
-- Terminal sessions via node-pty
+- Terminal sessions via native Rust addon
 - Real-time streaming (SSE + WebSocket)
 - Binary-optimized buffer updates
 - Multi-session support

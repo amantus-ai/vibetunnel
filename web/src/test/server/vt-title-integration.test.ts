@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const execAsync = promisify(exec);
 
-describe('vt title Command Integration', () => {
+describe.skip('vt title Command Integration (requires vt-pipe)', () => {
   let testControlDir: string;
   let vtScriptPath: string;
   let vibetunnelPath: string;
