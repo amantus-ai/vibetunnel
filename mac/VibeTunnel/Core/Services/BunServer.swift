@@ -365,7 +365,14 @@ final class BunServer {
         
         // Create wrapper to run pnpm with parent death monitoring AND crash detection
         let parentPid = ProcessInfo.processInfo.processIdentifier
+        let pnpmDir = URL(fileURLWithPath: pnpmPath).deletingLastPathComponent().path
         let pnpmCommand = """
+        # Change to the project directory
+        cd '\(expandedPath)'
+        
+        # Add pnpm to PATH for the dev script
+        export PATH="\(pnpmDir):$PATH"
+        
         # Start pnpm dev in background
         \(pnpmPath) \(devArgs.joined(separator: " ")) &
         PNPM_PID=$!
