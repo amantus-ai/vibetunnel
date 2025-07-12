@@ -4,6 +4,9 @@ import copy from 'rollup-plugin-copy';
 import { nativeBuildPlugin } from './vite-plugin-native-build';
 import { child_process } from 'vite-plugin-child-process';
 
+// Get Express port from environment or default to 4030 range
+const expressPort = process.env.EXPRESS_PORT || '4030';
+
 export default defineConfig({
   
   // Enable experimental features for faster builds
@@ -64,23 +67,23 @@ export default defineConfig({
     port: parseInt(process.env.VITE_PORT || '4020'),
     host: process.env.VITE_HOST || 'localhost', // Safer default, use VITE_HOST=0.0.0.0 for network access
     
-    // Proxy API calls to Express server (now on port 4030)
+    // Proxy configuration - uses Express port with fallback
     proxy: {
       '/api': {
-        target: 'http://localhost:4030',
+        target: `http://localhost:${expressPort}`,
         changeOrigin: true,
         configure: (proxy) => {
           proxy.on('error', (err, req, res) => {
             console.error('API proxy error:', err);
             if ('writeHead' in res && !res.headersSent) {
               res.writeHead(502, { 'Content-Type': 'text/plain' });
-              res.end('Express server unavailable. Make sure the backend is running.');
+              res.end('Express server unavailable. Try restarting dev server.');
             }
           });
         }
       },
       '/buffers': {
-        target: 'ws://localhost:4030',
+        target: `ws://localhost:${expressPort}`,
         ws: true,
         configure: (proxy) => {
           proxy.on('error', (err) => {
@@ -109,10 +112,10 @@ export default defineConfig({
   },
 
   plugins: [
-    // Start Express server in development
+    // Start Express server with automatic port discovery
     child_process({
       name: 'express-server',
-      command: ['env', 'VIBETUNNEL_SEA=', 'PORT=4030', 'tsx', 'watch', 'src/cli.ts', '--no-auth'],
+      command: ['bash', 'start-express-simple.sh'],
       watch: [/src\/server/, /src\/cli/],
       delay: 100
     }),
