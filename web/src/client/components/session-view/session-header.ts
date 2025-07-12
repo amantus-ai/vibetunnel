@@ -153,9 +153,26 @@ export class SessionHeader extends LitElement {
                       timestamp: Date.now(),
                     });
                   }}
+                  @pointerup=${(e: PointerEvent) => {
+                    console.log('[SessionHeader] Back button pointerup', {
+                      type: e.pointerType,
+                      pointerId: e.pointerId,
+                      timestamp: Date.now(),
+                    });
+                    // Handle the action on pointerup for mobile since click may not fire
+                    if (e.pointerType === 'touch') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('[SessionHeader] Back button triggered via pointerup');
+                      this.onBack?.();
+                    }
+                  }}
                   @click=${() => {
                     console.log('[SessionHeader] Back button clicked');
-                    this.onBack?.();
+                    // Only handle click for mouse to avoid double-firing
+                    if (!('ontouchstart' in window)) {
+                      this.onBack?.();
+                    }
                   }}
                   @touchstart=${(e: TouchEvent) => {
                     console.log('[SessionHeader] Back button touchstart', {

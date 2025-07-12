@@ -1490,12 +1490,21 @@ export class SessionView extends LitElement {
                     pointerId: e.pointerId,
                     timestamp: Date.now(),
                   });
+                  // Handle the action on pointerup for mobile since click may not fire
+                  if (e.pointerType === 'touch') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleKeyboardButtonClick();
+                  }
                 }}
                 @click=${(e: MouseEvent) => {
                   console.log('[SessionView] Keyboard button click event');
                   e.preventDefault();
                   e.stopPropagation();
-                  this.handleKeyboardButtonClick();
+                  // Only handle click for mouse to avoid double-firing
+                  if (!('ontouchstart' in window)) {
+                    this.handleKeyboardButtonClick();
+                  }
                 }}
                 @touchstart=${(e: TouchEvent) => {
                   console.log('[SessionView] Keyboard button touchstart', {
