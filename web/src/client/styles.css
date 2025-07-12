@@ -732,6 +732,25 @@ body.in-session-view .transition-transform {
   transition: none !important;
 }
 
+/* Ensure touch buttons have proper interaction states */
+.keyboard-button,
+session-header button {
+  /* Prevent touch delay and ensure immediate feedback */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Use GPU acceleration for transforms */
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Active state for touch feedback */
+.keyboard-button:active,
+session-header button:active {
+  transform: translateZ(0) scale(0.95);
+}
+
 /* Disable modal backdrop animation in session view */
 body.in-session-view .modal-backdrop {
   animation: none !important;
