@@ -51,6 +51,67 @@ export class SessionList extends LitElement {
   @state() private cleaningExited = false;
   private previousRunningCount = 0;
 
+  connectedCallback() {
+    super.connectedCallback();
+    // Make the component focusable
+    this.tabIndex = 0;
+    // Add keyboard listener only to this component
+    this.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  private getVisibleSessions() {
+    const running = this.sessions.filter((s) => s.status === 'running');
+    const exited = this.sessions.filter((s) => s.status === 'exited');
+    return this.hideExited ? running : running.concat(exited);
+  }
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    const { key } = e;
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(key)) {
+      return;
+    }
+
+    // Check if we're inside an input element - since we're now listening on the component
+    // itself, we need to stop propagation for child inputs
+    const target = e.target as HTMLElement;
+    if (
+      target !== this &&
+      (target.closest('input, textarea, select') || target.isContentEditable)
+    ) {
+      return;
+    }
+
+    const sessions = this.getVisibleSessions();
+    if (sessions.length === 0) return;
+
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event from bubbling up
+
+    let index = this.selectedSessionId
+      ? sessions.findIndex((s) => s.id === this.selectedSessionId)
+      : 0;
+    if (index < 0) index = 0;
+
+    if (key === 'Enter') {
+      this.handleSessionSelect({ detail: sessions[index] } as CustomEvent);
+      return;
+    }
+
+    if (key === 'ArrowLeft' || key === 'ArrowUp') {
+      index = (index - 1 + sessions.length) % sessions.length;
+    } else if (key === 'ArrowRight' || key === 'ArrowDown') {
+      index = (index + 1) % sessions.length;
+    }
+
+    this.selectedSessionId = sessions[index].id;
+    this.requestUpdate();
+  };
+
   private handleRefresh() {
     this.dispatchEvent(new CustomEvent('refresh'));
   }
@@ -260,7 +321,7 @@ export class SessionList extends LitElement {
     const showExitedSection = !this.hideExited && hasExitedSessions;
 
     return html`
-      <div class="font-mono text-sm" data-testid="session-list-container">
+      <div class="font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-primary rounded-lg" data-testid="session-list-container">
         <div class="p-4 pt-5">
         ${
           !hasRunningSessions && (!hasExitedSessions || this.hideExited)
@@ -524,6 +585,7 @@ export class SessionList extends LitElement {
                           <session-card
                             .session=${session}
                             .authClient=${this.authClient}
+                            .selected=${session.id === this.selectedSessionId}
                             @session-select=${this.handleSessionSelect}
                             @session-killed=${this.handleSessionKilled}
                             @session-kill-error=${this.handleSessionKillError}
