@@ -146,7 +146,23 @@ export class SessionHeader extends LitElement {
               ? html`
                 <button
                   class="bg-elevated border border-base rounded-lg px-3 py-1.5 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
-                  @click=${() => this.onBack?.()}
+                  @pointerdown=${(e: PointerEvent) => {
+                    console.log('[SessionHeader] Back button pointerdown', {
+                      type: e.pointerType,
+                      pointerId: e.pointerId,
+                      timestamp: Date.now(),
+                    });
+                  }}
+                  @click=${() => {
+                    console.log('[SessionHeader] Back button clicked');
+                    this.onBack?.();
+                  }}
+                  @touchstart=${(e: TouchEvent) => {
+                    console.log('[SessionHeader] Back button touchstart', {
+                      touches: e.touches.length,
+                      timestamp: Date.now(),
+                    });
+                  }}
                 >
                   Back
                 </button>

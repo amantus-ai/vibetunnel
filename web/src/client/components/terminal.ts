@@ -144,11 +144,17 @@ export class Terminal extends LitElement {
   }
 
   private themeObserver?: MutationObserver;
+  private mainThreadMonitor?: number;
 
   connectedCallback() {
     const prefs = TerminalPreferencesManager.getInstance();
     this.theme = prefs.getTheme();
     super.connectedCallback();
+
+    // Add main thread blocking detector
+    if (this.debugMode || new URLSearchParams(window.location.search).has('debug')) {
+      this.startMainThreadMonitor();
+    }
 
     // Check for debug mode
     this.debugMode = new URLSearchParams(window.location.search).has('debug');
@@ -262,7 +268,31 @@ export class Terminal extends LitElement {
     if (this.themeObserver) {
       this.themeObserver.disconnect();
     }
+    if (this.mainThreadMonitor) {
+      clearInterval(this.mainThreadMonitor);
+    }
     super.disconnectedCallback();
+  }
+
+  private startMainThreadMonitor() {
+    let lastCheck = performance.now();
+    const CHECK_INTERVAL = 100; // Check every 100ms
+    const BLOCK_THRESHOLD = 150; // Consider blocked if >150ms delay
+
+    this.mainThreadMonitor = setInterval(() => {
+      const now = performance.now();
+      const elapsed = now - lastCheck;
+
+      if (elapsed > BLOCK_THRESHOLD) {
+        console.warn(`[Terminal] Main thread blocked for ${Math.round(elapsed)}ms`, {
+          activeTouches: this.activeTouchCount,
+          renderPending: this.renderPending,
+          operationQueueLength: this.operationQueue.length,
+        });
+      }
+
+      lastCheck = now;
+    }, CHECK_INTERVAL) as unknown as number;
   }
 
   // Method to set user override when width is manually selected

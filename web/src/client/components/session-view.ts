@@ -787,6 +787,8 @@ export class SessionView extends LitElement {
   }
 
   private handleKeyboardButtonClick() {
+    console.log('[SessionView] Keyboard button clicked');
+
     // Show quick keys immediately for visual feedback
     this.showQuickKeys = true;
 
@@ -1474,13 +1476,38 @@ export class SessionView extends LitElement {
               <div
                 class="keyboard-button"
                 @pointerdown=${(e: PointerEvent) => {
+                  console.log('[SessionView] Keyboard button pointerdown', {
+                    type: e.pointerType,
+                    pointerId: e.pointerId,
+                    timestamp: Date.now(),
+                  });
                   e.preventDefault();
                   e.stopPropagation();
                 }}
+                @pointerup=${(e: PointerEvent) => {
+                  console.log('[SessionView] Keyboard button pointerup', {
+                    type: e.pointerType,
+                    pointerId: e.pointerId,
+                    timestamp: Date.now(),
+                  });
+                }}
                 @click=${(e: MouseEvent) => {
+                  console.log('[SessionView] Keyboard button click event');
                   e.preventDefault();
                   e.stopPropagation();
                   this.handleKeyboardButtonClick();
+                }}
+                @touchstart=${(e: TouchEvent) => {
+                  console.log('[SessionView] Keyboard button touchstart', {
+                    touches: e.touches.length,
+                    timestamp: Date.now(),
+                  });
+                }}
+                @touchend=${(e: TouchEvent) => {
+                  console.log('[SessionView] Keyboard button touchend', {
+                    touches: e.touches.length,
+                    timestamp: Date.now(),
+                  });
                 }}
                 title="Show keyboard"
               >
