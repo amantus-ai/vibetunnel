@@ -354,11 +354,20 @@ final class BunServer {
             localToken: localToken
         )
 
+        // Find pnpm executable
+        guard let pnpmPath = devServerManager.findPnpmPath() else {
+            let error = BunServerError.devServerInvalid("pnpm executable not found")
+            logger.error("Failed to find pnpm executable")
+            throw error
+        }
+        
+        logger.info("Using pnpm at: \(pnpmPath)")
+        
         // Create wrapper to run pnpm with parent death monitoring AND crash detection
         let parentPid = ProcessInfo.processInfo.processIdentifier
         let pnpmCommand = """
         # Start pnpm dev in background
-        pnpm \(devArgs.joined(separator: " ")) &
+        \(pnpmPath) \(devArgs.joined(separator: " ")) &
         PNPM_PID=$!
 
         # Monitor both parent process AND pnpm process

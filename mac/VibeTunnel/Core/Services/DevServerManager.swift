@@ -45,20 +45,66 @@ final class DevServerManager: ObservableObject {
 
     /// Checks if pnpm is installed on the system
     private func isPnpmInstalled() -> Bool {
+        // Common locations where pnpm might be installed
+        let commonPaths = [
+            "/usr/local/bin/pnpm",
+            "/opt/homebrew/bin/pnpm",
+            "/usr/bin/pnpm",
+            NSString("~/Library/pnpm/pnpm").expandingTildeInPath,
+            NSString("~/.local/share/pnpm/pnpm").expandingTildeInPath,
+            NSString("~/Library/Caches/fnm_multishells/*/bin/pnpm").expandingTildeInPath
+        ]
+        
+        // Check common paths first
+        for path in commonPaths {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                logger.debug("Found pnpm at: \(path)")
+                return true
+            }
+        }
+        
+        // Try using the shell to find pnpm with full PATH
         let pnpmCheck = Process()
         pnpmCheck.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        pnpmCheck.arguments = ["-l", "-c", "which pnpm"]
+        pnpmCheck.arguments = ["-l", "-c", "command -v pnpm"]
         pnpmCheck.standardOutput = Pipe()
         pnpmCheck.standardError = Pipe()
+        
+        // Set up environment with common PATH additions
+        var environment = ProcessInfo.processInfo.environment
+        let homePath = NSHomeDirectory()
+        let additionalPaths = [
+            "\(homePath)/Library/pnpm",
+            "\(homePath)/.local/share/pnpm",
+            "/usr/local/bin",
+            "/opt/homebrew/bin"
+        ].joined(separator: ":")
+        
+        if let existingPath = environment["PATH"] {
+            environment["PATH"] = "\(existingPath):\(additionalPaths)"
+        } else {
+            environment["PATH"] = additionalPaths
+        }
+        pnpmCheck.environment = environment
 
         do {
             try pnpmCheck.run()
             pnpmCheck.waitUntilExit()
-            return pnpmCheck.terminationStatus == 0
+            
+            if pnpmCheck.terminationStatus == 0 {
+                // Try to read the output to log where pnpm was found
+                if let pipe = pnpmCheck.standardOutput as? Pipe,
+                   let data = try? pipe.fileHandleForReading.readDataToEndOfFile(),
+                   let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                    logger.debug("Found pnpm via shell at: \(output)")
+                }
+                return true
+            }
         } catch {
             logger.error("Failed to check for pnpm: \(error.localizedDescription)")
-            return false
         }
+        
+        return false
     }
 
     /// Checks if package.json has a dev script
@@ -76,6 +122,66 @@ final class DevServerManager: ObservableObject {
     /// Gets the expanded path for a given path string
     func expandedPath(for path: String) -> String {
         NSString(string: path).expandingTildeInPath
+    }
+    
+    /// Finds the path to pnpm executable
+    func findPnpmPath() -> String? {
+        // Common locations where pnpm might be installed
+        let commonPaths = [
+            "/usr/local/bin/pnpm",
+            "/opt/homebrew/bin/pnpm",
+            "/usr/bin/pnpm",
+            NSString("~/Library/pnpm/pnpm").expandingTildeInPath,
+            NSString("~/.local/share/pnpm/pnpm").expandingTildeInPath
+        ]
+        
+        // Check common paths first
+        for path in commonPaths {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                return path
+            }
+        }
+        
+        // Try to find via shell
+        let findPnpm = Process()
+        findPnpm.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        findPnpm.arguments = ["-l", "-c", "command -v pnpm"]
+        findPnpm.standardOutput = Pipe()
+        findPnpm.standardError = Pipe()
+        
+        // Set up environment with common PATH additions
+        var environment = ProcessInfo.processInfo.environment
+        let homePath = NSHomeDirectory()
+        let additionalPaths = [
+            "\(homePath)/Library/pnpm",
+            "\(homePath)/.local/share/pnpm",
+            "/usr/local/bin",
+            "/opt/homebrew/bin"
+        ].joined(separator: ":")
+        
+        if let existingPath = environment["PATH"] {
+            environment["PATH"] = "\(existingPath):\(additionalPaths)"
+        } else {
+            environment["PATH"] = additionalPaths
+        }
+        findPnpm.environment = environment
+        
+        do {
+            try findPnpm.run()
+            findPnpm.waitUntilExit()
+            
+            if findPnpm.terminationStatus == 0,
+               let pipe = findPnpm.standardOutput as? Pipe,
+               let data = try? pipe.fileHandleForReading.readDataToEndOfFile(),
+               let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !output.isEmpty {
+                return output
+            }
+        } catch {
+            logger.error("Failed to find pnpm path: \(error.localizedDescription)")
+        }
+        
+        return nil
     }
 
     /// Builds the command arguments for running the dev server
