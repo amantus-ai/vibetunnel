@@ -9,7 +9,7 @@
   "scripts": {
     "clean": "rm -rf public dist",
     "dev": "vite",
-    "dev:server": "tsx watch src/cli.ts --no-auth",
+    "dev:server": "PORT=4030 tsx watch src/cli.ts --no-auth",
     "dev:client": "vite",
     "build": "vite build",
     "build:ci": "vite build",

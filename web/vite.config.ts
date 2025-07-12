@@ -59,17 +59,17 @@ export default defineConfig({
 
   // Development server configuration
   server: {
-    port: 4021,
+    port: 4020,
     host: '0.0.0.0',
     
-    // Proxy API calls to Express server
+    // Proxy API calls to Express server (now on port 4030)
     proxy: {
       '/api': {
-        target: 'http://localhost:4020',
+        target: 'http://localhost:4030',
         changeOrigin: true
       },
       '/buffers': {
-        target: 'ws://localhost:4020',
+        target: 'ws://localhost:4030',
         ws: true
       }
     }
