@@ -102,6 +102,7 @@
     "chokidar": "^4.0.3",
     "chokidar-cli": "^3.0.0",
     "concurrently": "^9.1.2",
+    "esbuild": "^0.25.6",
     "happy-dom": "^18.0.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
