@@ -116,13 +116,19 @@ describe.sequential('Logs API Tests', () => {
         }),
       });
 
-      // Give it a moment to write (longer in CI environments)
-      await sleep(500);
+      // Wait and retry for the log file to be written and flushed
+      let info: any;
+      let attempts = 0;
+      const maxAttempts = 10;
+      const retryDelay = 200;
 
-      const response = await fetch(`http://localhost:${server?.port}/api/logs/info`);
-
-      expect(response.status).toBe(200);
-      const info = await response.json();
+      do {
+        await sleep(retryDelay);
+        const response = await fetch(`http://localhost:${server?.port}/api/logs/info`);
+        expect(response.status).toBe(200);
+        info = await response.json();
+        attempts++;
+      } while (!info.exists && attempts < maxAttempts);
 
       expect(info).toHaveProperty('exists');
       expect(info).toHaveProperty('size');
