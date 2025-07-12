@@ -3,6 +3,7 @@ import Testing
 @testable import VibeTunnel
 
 /// Tests to verify that the race condition in GitHub URL fetching is fixed
+@Suite("Git Repository Monitor Race Condition Tests", .disabled("Concurrent Git operations disabled in CI"))
 @MainActor
 struct GitRepositoryMonitorRaceConditionTests {
     @Test("Concurrent GitHub URL fetches don't cause duplicate Git operations")

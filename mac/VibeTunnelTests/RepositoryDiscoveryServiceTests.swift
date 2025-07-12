@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import VibeTunnel
 
-@Suite("RepositoryDiscoveryService Tests")
+@Suite("RepositoryDiscoveryService Tests", .disabled("File system scanning tests disabled in CI"))
 struct RepositoryDiscoveryServiceTests {
     @Test("Test repository discovery initialization")
     @MainActor

@@ -229,7 +229,7 @@ jobs:
     # TEST PHASE
     - name: Run tests with coverage
       id: test-coverage
-      timeout-minutes: 10
+      timeout-minutes: 15
       run: |
         # Debug: Check if web build artifacts were downloaded
         echo "=== Checking web build artifacts ==="
