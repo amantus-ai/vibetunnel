@@ -1,5 +1,7 @@
 # Keyboard Event Handling Analysis for VibeTunnel Web
 
+> **Note**: This document has been superseded by the comprehensive keyboard documentation at `web/docs/keyboard-shortcuts.md`
+
 ## Overview
 
 This document provides a comprehensive analysis of keyboard event handling in the VibeTunnel web client, focusing on how keyboard events are captured, processed, and potentially blocked from browser defaults.
