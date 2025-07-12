@@ -43,12 +43,14 @@ import type { LifecycleEventManagerCallbacks } from './session-view/interfaces.j
 import { LifecycleEventManager } from './session-view/lifecycle-event-manager.js';
 import { LoadingAnimationManager } from './session-view/loading-animation-manager.js';
 import { MobileInputManager } from './session-view/mobile-input-manager.js';
+import './terminal-stats-log.js';
 import {
   type TerminalEventHandlers,
   TerminalLifecycleManager,
   type TerminalStateCallbacks,
 } from './session-view/terminal-lifecycle-manager.js';
 import type { Terminal } from './terminal.js';
+import type { TerminalStatsLog } from './terminal-stats-log.js';
 
 // Extend Window interface to include our custom property
 declare global {
@@ -91,6 +93,7 @@ export class SessionView extends LitElement {
   @state() private terminalTheme: TerminalThemeId = 'auto';
   @state() private terminalContainerHeight = '100%';
   @state() private isLandscape = false;
+  @state() private showStatsLog = false;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
 
@@ -107,6 +110,7 @@ export class SessionView extends LitElement {
   private terminalLifecycleManager!: TerminalLifecycleManager;
   private lifecycleEventManager!: LifecycleEventManager;
   private loadingAnimationManager = new LoadingAnimationManager();
+  private statsLogElement: (HTMLElement & { addEntry: (msg: string) => void }) | null = null;
   @state() private ctrlSequence: string[] = [];
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
@@ -251,6 +255,7 @@ export class SessionView extends LitElement {
       }
     );
     this.connectionManager.setConnected(true);
+    this.connectionManager.setLogCallback((msg) => this.logStat(msg));
 
     // Initialize input manager
     this.inputManager = new InputManager();
@@ -362,6 +367,7 @@ export class SessionView extends LitElement {
       },
     };
     this.terminalLifecycleManager.setStateCallbacks(stateCallbacks);
+    this.terminalLifecycleManager.setLogCallback((msg) => this.logStat(msg));
 
     if (this.session) {
       this.inputManager.setSession(this.session);
@@ -800,6 +806,10 @@ export class SessionView extends LitElement {
     this.showWidthSelector = !this.showWidthSelector;
   }
 
+  private handleToggleStatsLog() {
+    this.showStatsLog = !this.showStatsLog;
+  }
+
   private handleWidthSelect(newMaxCols: number) {
     this.terminalMaxCols = newMaxCols;
     this.preferencesManager.setMaxCols(newMaxCols);
@@ -1157,6 +1167,7 @@ export class SessionView extends LitElement {
       logger.log(
         `Terminal height updated: quickKeys=${this.showQuickKeys}, keyboardHeight=${this.keyboardHeight}, reduction=${heightReduction}px`
       );
+      this.logStat(`terminal resize computed: ${this.terminalContainerHeight}`);
 
       // Force immediate update to apply height change
       this.requestUpdate();
@@ -1203,8 +1214,14 @@ export class SessionView extends LitElement {
 
         // Then scroll to bottom to fix the position
         currentTerminal.scrollToBottom();
+        this.logStat('scroll to bottom after mobile input');
       }
     }, 300); // Wait for viewport to settle
+  }
+
+  private logStat(message: string) {
+    const el = this.querySelector('terminal-stats-log') as TerminalStatsLog | null;
+    el?.addEntry(message);
   }
 
   render() {
@@ -1258,6 +1275,8 @@ export class SessionView extends LitElement {
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
           .onScreenshare=${() => this.handleScreenshare()}
           .onOpenSettings=${() => this.handleOpenSettings()}
+          .onToggleStatsLog=${() => this.handleToggleStatsLog()}
+          .statsLogVisible=${this.showStatsLog}
           @close-width-selector=${() => {
             this.showWidthSelector = false;
             this.customWidth = '';
@@ -1308,9 +1327,10 @@ export class SessionView extends LitElement {
             .hideScrollButton=${this.showQuickKeys}
             class="w-full h-full p-0 m-0 terminal-container"
             @click=${this.handleTerminalClick}
-            @terminal-input=${this.handleTerminalInput}
-          ></vibe-terminal>
-        </div>
+          @terminal-input=${this.handleTerminalInput}
+        ></vibe-terminal>
+        <terminal-stats-log .visible=${this.showStatsLog}></terminal-stats-log>
+      </div>
 
         <!-- Floating Session Exited Banner (outside terminal container to avoid filter effects) -->
         ${

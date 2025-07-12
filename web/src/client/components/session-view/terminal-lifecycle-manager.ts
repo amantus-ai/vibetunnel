@@ -40,6 +40,7 @@ export class TerminalLifecycleManager {
   private domElement: Element | null = null;
   private eventHandlers: TerminalEventHandlers | null = null;
   private stateCallbacks: TerminalStateCallbacks | null = null;
+  private logCallback?: (msg: string) => void;
 
   setSession(session: Session | null) {
     this.session = session;
@@ -87,6 +88,10 @@ export class TerminalLifecycleManager {
 
   setStateCallbacks(callbacks: TerminalStateCallbacks | null) {
     this.stateCallbacks = callbacks;
+  }
+
+  setLogCallback(callback: ((msg: string) => void) | undefined) {
+    this.logCallback = callback;
   }
 
   setupTerminal() {
@@ -163,6 +168,8 @@ export class TerminalLifecycleManager {
       this.stateCallbacks.updateTerminalDimensions(cols, rows);
     }
 
+    this.logCallback?.(`resize event from terminal: ${cols}x${rows}`);
+
     // On mobile, skip sending height-only changes to the server (keyboard events)
     if (isMobile && isHeightOnlyChange) {
       logger.debug(
@@ -199,10 +206,13 @@ export class TerminalLifecycleManager {
             body: JSON.stringify({ cols: cols, rows: rows }),
           });
 
+          this.logCallback?.(`sent resize request: ${cols}x${rows}`);
+
           if (response.ok) {
             // Cache the successfully sent dimensions
             this.lastResizeWidth = cols;
             this.lastResizeHeight = rows;
+            this.logCallback?.('resize ack');
           } else {
             logger.warn(`failed to resize session: ${response.status}`);
           }

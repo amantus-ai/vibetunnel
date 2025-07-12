@@ -26,11 +26,16 @@ export class ConnectionManager {
   private terminal: Terminal | null = null;
   private session: Session | null = null;
   private isConnected = false;
+  private logCallback?: (msg: string) => void;
 
   constructor(
     private onSessionExit: (sessionId: string) => void,
     private onSessionUpdate: (session: Session) => void
   ) {}
+
+  setLogCallback(callback: ((msg: string) => void) | undefined): void {
+    this.logCallback = callback;
+  }
 
   setTerminal(terminal: Terminal | null): void {
     this.terminal = terminal;
@@ -164,6 +169,7 @@ export class ConnectionManager {
       if (!response.ok) throw new Error(`Failed to fetch snapshot: ${response.status}`);
 
       const castContent = await response.text();
+      this.logCallback?.(`snapshot size: ${castContent.length} bytes`);
 
       // Clear terminal and load snapshot
       this.terminal.clear();
