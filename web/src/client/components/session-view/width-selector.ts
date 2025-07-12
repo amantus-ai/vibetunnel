@@ -8,7 +8,10 @@ import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { Z_INDEX } from '../../utils/constants.js';
 import { createLogger } from '../../utils/logger.js';
-import { COMMON_TERMINAL_WIDTHS } from '../../utils/terminal-preferences.js';
+import {
+  COMMON_TERMINAL_WIDTHS,
+  TerminalPreferencesManager,
+} from '../../utils/terminal-preferences.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../../utils/terminal-themes.js';
 import { getTextColorEncoded } from '../../utils/theme-utils.js';
 
@@ -23,12 +26,25 @@ export class TerminalSettingsModal extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    // Load theme from localStorage on component initialization
-    const savedTheme = localStorage.getItem('terminal-theme') as TerminalThemeId;
-    if (savedTheme) {
-      this.terminalTheme = savedTheme;
+
+    // Clean up old conflicting localStorage key if it exists
+    if (localStorage.getItem('terminal-theme')) {
+      const oldTheme = localStorage.getItem('terminal-theme') as TerminalThemeId;
+      // Migrate to TerminalPreferencesManager if it's a valid theme
+      if (
+        oldTheme &&
+        ['auto', 'light', 'dark', 'vscode-dark', 'dracula', 'nord'].includes(oldTheme)
+      ) {
+        this.preferencesManager.setTheme(oldTheme);
+      }
+      localStorage.removeItem('terminal-theme');
     }
+
+    // Load theme from TerminalPreferencesManager
+    this.terminalTheme = this.preferencesManager.getTheme();
   }
+
+  private preferencesManager = TerminalPreferencesManager.getInstance();
 
   @property({ type: Boolean }) visible = false;
   @property({ type: Number }) terminalMaxCols = 0;
@@ -271,8 +287,12 @@ export class TerminalSettingsModal extends LitElement {
                   e.stopPropagation();
                   const value = (e.target as HTMLSelectElement).value as TerminalThemeId;
                   logger.debug('Theme changed to:', value);
-                  // Save theme to localStorage
-                  localStorage.setItem('terminal-theme', value);
+                  // Save theme using TerminalPreferencesManager
+                  this.preferencesManager.setTheme(value);
+                  // Dispatch custom event to notify other components
+                  window.dispatchEvent(
+                    new CustomEvent('terminal-theme-changed', { detail: value })
+                  );
                   this.onThemeChange?.(value);
                 }}
                 @click=${(e: Event) => e.stopPropagation()}

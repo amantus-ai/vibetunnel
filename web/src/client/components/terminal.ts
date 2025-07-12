@@ -234,7 +234,7 @@ export class Terminal extends LitElement {
 
     if (changedProperties.has('theme')) {
       logger.debug('Terminal theme changed to:', this.theme);
-      if (this.terminal) {
+      if (this.terminal?.options) {
         const resolvedTheme = this.getTerminalTheme();
         logger.debug('Applying terminal theme:', this.theme);
         this.terminal.options.theme = resolvedTheme;
