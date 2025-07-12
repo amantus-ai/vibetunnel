@@ -42,10 +42,10 @@ function updateTitleFromUrl() {
       }
 
       if (sessionName) {
-        document.title = `${sessionName} - VibeTunnel`;
+        document.title = `VibeTunnel - ${sessionName}`;
       } else {
         // Fallback to generic session title
-        document.title = `Session - VibeTunnel`;
+        document.title = `VibeTunnel - Session`;
       }
     }, 500);
   } else if (!sessionId && currentSessionId) {

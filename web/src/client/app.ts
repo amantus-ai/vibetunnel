@@ -723,7 +723,7 @@ export class VibeTunnelApp extends LitElement {
     if (session) {
       const sessionName = session.name || session.command.join(' ');
       console.log('[App] Setting title:', sessionName);
-      document.title = `${sessionName} - VibeTunnel`;
+      document.title = `VibeTunnel - ${sessionName}`;
     } else {
       console.log('[App] No session found:', sessionId);
     }
