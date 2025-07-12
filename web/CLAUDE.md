@@ -73,3 +73,11 @@ Do NOT use three separate commands (add, commit, push) as this is slow.
 
 ## Best Practices
 - ALWAYS use `Z_INDEX` constants in `src/client/utils/constants.ts` instead of setting z-index properties using primitives / magic numbers
+
+## CRITICAL: Package Installation Policy
+**NEVER install packages without explicit user approval!**
+- Do NOT run `pnpm add`, `npm install`, or any package installation commands
+- Do NOT modify `package.json` or `pnpm-lock.yaml` unless explicitly requested
+- Always ask for permission before suggesting new dependencies
+- Understand and work with the existing codebase architecture first
+- This project has custom implementations - don't assume we need standard packages

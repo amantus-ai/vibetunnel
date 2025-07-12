@@ -616,6 +616,14 @@ struct NetworkAvailableCondition: ConditionTrait {
     }
 }
 
+/// Checks if we're in a valid Git repository for repository-specific tests
+struct ValidGitRepositoryCondition: ConditionTrait {
+    func evaluate(for test: Test) -> ConditionResult {
+        let gitDir = FileManager.default.fileExists(atPath: ".git")
+        return gitDir ? .continue : .skip(reason: "Not in a Git repository")
+    }
+}
+
 /// Checks if we're running in CI environment
 struct NotInCICondition: ConditionTrait {
     func evaluate(for test: Test) -> ConditionResult {
@@ -665,9 +673,9 @@ extension Tag {
     @Tag static var exitTests: Self          // Tests using processExitsWith
     @Tag static var attachmentTests: Self    // Tests with rich diagnostic attachments
     @Tag static var requiresServerBinary: Self  // Tests needing actual server binary
-    @Tag static var requiresGit: Self       // Tests needing Git installation
     @Tag static var requiresNetwork: Self   // Tests needing network interfaces
     @Tag static var processSpawn: Self      // Tests that spawn external processes
+    @Tag static var gitRepository: Self     // Tests that need to run in a Git repository
 }
 ```
 
@@ -684,7 +692,10 @@ swift test --skip .exitTests
 swift test --filter .performance --filter .attachmentTests
 
 # Run all tests that require external dependencies
-swift test --filter .requiresServerBinary --filter .requiresGit --filter .requiresNetwork
+swift test --filter .requiresServerBinary --filter .requiresNetwork
+
+# Run Git repository tests only when in a Git repo
+swift test --filter .gitRepository
 ```
 
 ### 13.5 Best Practices for Swift 6.2 Features

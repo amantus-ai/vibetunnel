@@ -243,9 +243,15 @@ export class Terminal extends LitElement {
         );
         this.terminal.options.theme = resolvedTheme;
         console.log('🎨 [STEP 3] Set terminal.options.theme to:', this.terminal.options.theme);
-        // Force a re-render of the terminal content with new theme
-        console.log('🎨 [STEP 3] Calling requestRenderBuffer()');
+
+        // Update CSS custom properties for terminal colors
+        console.log('🎨 [STEP 3] Updating CSS terminal color properties...');
+        this.updateTerminalColorProperties(resolvedTheme);
+
+        // Force buffer re-render to pick up new colors
         this.requestRenderBuffer();
+        console.log('🎨 [STEP 3] Called requestRenderBuffer()');
+
         console.log('🎨 [STEP 3] Terminal theme update complete');
       } else {
         console.log('🎨 [STEP 3] No terminal instance found!');
@@ -395,6 +401,45 @@ export class Terminal extends LitElement {
 
     const preset = TERMINAL_THEMES.find((t) => t.id === themeId) || TERMINAL_THEMES[0];
     return { ...preset.colors };
+  }
+
+  /**
+   * Updates CSS custom properties for terminal colors based on theme
+   * This allows the already-rendered HTML to immediately pick up new colors
+   */
+  private updateTerminalColorProperties(themeColors: Record<string, string>) {
+    console.log('🎨 [STEP 3.1] Updating terminal color CSS properties with theme:', themeColors);
+
+    // Standard 16 colors mapping from XTerm.js theme to CSS custom properties
+    const colorMapping = {
+      black: 0,
+      red: 1,
+      green: 2,
+      yellow: 3,
+      blue: 4,
+      magenta: 5,
+      cyan: 6,
+      white: 7,
+      brightBlack: 8,
+      brightRed: 9,
+      brightGreen: 10,
+      brightYellow: 11,
+      brightBlue: 12,
+      brightMagenta: 13,
+      brightCyan: 14,
+      brightWhite: 15,
+    };
+
+    // Update the CSS custom properties
+    Object.entries(colorMapping).forEach(([colorName, colorIndex]) => {
+      if (themeColors[colorName]) {
+        const cssProperty = `--terminal-color-${colorIndex}`;
+        document.documentElement.style.setProperty(cssProperty, themeColors[colorName]);
+        console.log(`🎨 [STEP 3.1] Set ${cssProperty}: ${themeColors[colorName]}`);
+      }
+    });
+
+    console.log('🎨 [STEP 3.1] CSS terminal color properties updated');
   }
 
   private async initializeTerminal() {
