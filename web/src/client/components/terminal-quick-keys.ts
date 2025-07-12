@@ -308,8 +308,6 @@ export class TerminalQuickKeys extends LitElement {
           z-index: 2;
           /* Prevent layout shifts during touch */
           will-change: transform;
-          /* Minimum touch target size */
-          min-height: 44px;
         }
         
         /* Modifier key styling */
