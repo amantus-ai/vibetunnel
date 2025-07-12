@@ -51,6 +51,61 @@ export class SessionList extends LitElement {
   @state() private cleaningExited = false;
   private previousRunningCount = 0;
 
+  connectedCallback() {
+    super.connectedCallback();
+    document.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  private getVisibleSessions() {
+    const running = this.sessions.filter((s) => s.status === 'running');
+    const exited = this.sessions.filter((s) => s.status === 'exited');
+    return this.hideExited ? running : running.concat(exited);
+  }
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    const { key } = e;
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(key)) {
+      return;
+    }
+
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('input, textarea, select') ||
+      target.isContentEditable
+    ) {
+      return;
+    }
+
+    const sessions = this.getVisibleSessions();
+    if (sessions.length === 0) return;
+
+    e.preventDefault();
+
+    let index = this.selectedSessionId
+      ? sessions.findIndex((s) => s.id === this.selectedSessionId)
+      : 0;
+    if (index < 0) index = 0;
+
+    if (key === 'Enter') {
+      this.handleSessionSelect({ detail: sessions[index] } as CustomEvent);
+      return;
+    }
+
+    if (key === 'ArrowLeft' || key === 'ArrowUp') {
+      index = (index - 1 + sessions.length) % sessions.length;
+    } else if (key === 'ArrowRight' || key === 'ArrowDown') {
+      index = (index + 1) % sessions.length;
+    }
+
+    this.selectedSessionId = sessions[index].id;
+    this.requestUpdate();
+  };
+
   private handleRefresh() {
     this.dispatchEvent(new CustomEvent('refresh'));
   }
