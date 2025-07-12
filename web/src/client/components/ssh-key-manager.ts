@@ -33,10 +33,29 @@ export class SSHKeyManager extends LitElement {
   @state() private importKeyContent = '';
   @state() private showInstructions = false;
   @state() private instructionsKeyId = '';
+  private documentKeyHandler = (e: KeyboardEvent) => this.handleDocumentKeyDown(e);
 
   connectedCallback() {
     super.connectedCallback();
     this.refreshKeys();
+  }
+
+  updated(changedProperties: Map<string | number | symbol, unknown>) {
+    super.updated(changedProperties);
+    
+    // Handle document keydown events when modal visibility changes
+    if (changedProperties.has('visible')) {
+      if (this.visible) {
+        document.addEventListener('keydown', this.documentKeyHandler);
+      } else {
+        document.removeEventListener('keydown', this.documentKeyHandler);
+      }
+    }
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this.documentKeyHandler);
   }
 
   private refreshKeys() {
@@ -145,8 +164,8 @@ export class SSHKeyManager extends LitElement {
     }
   }
 
-  private handleKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
+  private handleDocumentKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && this.visible) {
       e.preventDefault();
       this.handleClose();
     }
@@ -159,7 +178,6 @@ export class SSHKeyManager extends LitElement {
       <div 
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[1000]"
         @click=${this.handleBackdropClick}
-        @keydown=${this.handleKeyDown}
       >
         <div
           class="bg-bg-secondary border border-border rounded-lg p-6 w-full max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl z-[1001]"
