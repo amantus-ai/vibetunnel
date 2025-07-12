@@ -1,5 +1,6 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { Z_INDEX } from '../utils/constants.js';
 
 // Terminal-specific quick keys for mobile use
 const TERMINAL_QUICK_KEYS = [
@@ -275,11 +276,13 @@ export class TerminalQuickKeys extends LitElement {
           /* Chrome: Use env() if supported */
           bottom: env(keyboard-inset-height, 0px);
           /* Safari: Will be overridden by inline style */
-          z-index: 999999;
-          /* Ensure it stays on top */
+          z-index: ${Z_INDEX.TERMINAL_QUICK_KEYS};
+          /* Above other UI but not excessive */
           isolation: isolate;
           /* Smooth transition when keyboard appears/disappears */
           transition: bottom 0.3s ease-out;
+          /* Only capture events on actual content */
+          pointer-events: none;
         }
         
         /* The actual bar with buttons */
@@ -287,6 +290,8 @@ export class TerminalQuickKeys extends LitElement {
           background: rgb(var(--color-bg-base));
           border-top: 1px solid rgb(var(--color-border-base));
           padding: 0.5rem 0.25rem;
+          /* Re-enable pointer events for the actual bar */
+          pointer-events: auto;
           /* Prevent iOS from adding its own styling */
           -webkit-appearance: none;
           appearance: none;
