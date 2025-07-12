@@ -11,43 +11,8 @@ function updateTitleFromUrl() {
 
   if (sessionId && sessionId !== currentSessionId) {
     currentSessionId = sessionId;
-
-    // Find session name from the page content
-    setTimeout(() => {
-      // Look for session name in multiple places
-      const sessionElements = document.querySelectorAll(
-        'session-card, .sidebar, [data-session-id], .session-name, h1, h2'
-      );
-      let sessionName: string | null = null;
-
-      for (const element of sessionElements) {
-        const text = element.textContent?.trim() || '';
-
-        // Look for any text that could be a session name
-        // First try to find data attributes
-        if (element.hasAttribute('data-session-name')) {
-          sessionName = element.getAttribute('data-session-name');
-          break;
-        }
-
-        // Try to extract from element content - be more specific
-        // Look for patterns like "Session X", "test-session-X", or any non-path text
-        if (text && !text.includes('/') && text.length > 0 && text.length < 100) {
-          // Skip if it looks like a path, too generic, or is "VibeTunnel" itself
-          if (!text.startsWith('~') && !text.startsWith('/') && text !== 'VibeTunnel') {
-            sessionName = text.split('\n')[0]; // Take first line if multi-line
-            break;
-          }
-        }
-      }
-
-      if (sessionName) {
-        document.title = `VibeTunnel - ${sessionName}`;
-      } else {
-        // Fallback to generic session title
-        document.title = `VibeTunnel - Session`;
-      }
-    }, 500);
+    // Title updates for session view are handled by app.ts
+    // Don't interfere with that logic
   } else if (!sessionId && currentSessionId) {
     // Back to list view
     currentSessionId = null;
