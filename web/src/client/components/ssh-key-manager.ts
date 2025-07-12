@@ -42,7 +42,7 @@ export class SSHKeyManager extends LitElement {
 
   updated(changedProperties: Map<string | number | symbol, unknown>) {
     super.updated(changedProperties);
-    
+
     // Handle document keydown events when modal visibility changes
     if (changedProperties.has('visible')) {
       if (this.visible) {
