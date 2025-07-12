@@ -10,14 +10,7 @@ const __dirname = path.dirname(__filename);
 export function nativeBuildPlugin(): Plugin {
   return {
     name: 'vite-plugin-native-build',
-    apply: 'build', // Only run during build, not dev
     writeBundle() {
-      // Skip native build in development mode or CI
-      if (process.env.NODE_ENV === 'development' || process.env.CI === 'true') {
-        console.log('⏭️  Skipping native build in development/CI mode');
-        return;
-      }
-      
       console.log('Building native executable...');
       
       // Check if native binaries already exist
