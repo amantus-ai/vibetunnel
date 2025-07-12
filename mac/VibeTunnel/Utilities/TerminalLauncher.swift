@@ -464,9 +464,15 @@ final class TerminalLauncher {
                     let components = result.split(separator: "|").map(String.init)
                     logger.debug("Terminal.app components: \(components)")
                     if components.count >= 2 {
-                        windowID = CGWindowID(components[0])
-                        tabReference = "tab id \(components[1]) of window id \(components[0])"
-                        logger.info("Terminal.app window ID: \(windowID ?? 0), tab reference: \(tabReference ?? "")")
+                        if let windowIDValue = UInt32(components[0]) {
+                            windowID = CGWindowID(windowIDValue)
+                            tabReference = "tab id \(components[1]) of window id \(components[0])"
+                            logger.info("Terminal.app window ID: \(windowID ?? 0), tab reference: \(tabReference ?? "")")
+                        } else {
+                            logger.warning("Failed to parse window ID from components[0]: '\(components[0])'")
+                        }
+                    } else {
+                        logger.warning("Unexpected AppleScript result format for Terminal.app. Expected 'windowID|tabID', got: '\(result)'. Components: \(components)")
                     }
                 } else if config.terminal == .iTerm2 {
                     // iTerm2 returns window ID
