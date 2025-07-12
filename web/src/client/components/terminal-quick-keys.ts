@@ -197,32 +197,13 @@ export class TerminalQuickKeys extends LitElement {
   }
 
   private handlePasteImmediate(e: Event) {
-    console.log('[QuickKeys] Paste button touched - reading clipboard immediately');
+    console.log('[QuickKeys] Paste button touched - delegating to paste handler');
 
-    // Call clipboard read IMMEDIATELY in touchend to preserve user gesture context
-    navigator.clipboard
-      .readText()
-      .then((text) => {
-        console.log('[QuickKeys] Clipboard read successful, text length:', text?.length || 0);
-        if (text && this.onKeyPress) {
-          // Send the text directly through callback with special paste text parameter
-          this.onKeyPress('Paste', false, false, false, text);
-        } else if (!text) {
-          console.warn('[QuickKeys] Clipboard is empty or contains no text');
-        }
-      })
-      .catch((err) => {
-        console.error('[QuickKeys] Immediate clipboard read failed:', {
-          name: err?.name,
-          message: err?.message,
-          userAgent: navigator.userAgent.includes('Safari') ? 'Safari' : 'Other',
-        });
-
-        // Still call the handler to trigger the enhanced logging in direct-keyboard-manager
-        if (this.onKeyPress) {
-          this.onKeyPress('Paste', false, false);
-        }
-      });
+    // Always delegate to the main paste handler in direct-keyboard-manager
+    // This preserves user gesture context while keeping all clipboard logic in one place
+    if (this.onKeyPress) {
+      this.onKeyPress('Paste', false, false);
+    }
   }
 
   private startKeyRepeat(key: string, isModifier: boolean, isSpecial: boolean) {

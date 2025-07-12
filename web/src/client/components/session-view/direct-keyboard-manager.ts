@@ -223,7 +223,7 @@ export class DirectKeyboardManager {
     this.hiddenInput.setAttribute('data-ms-editor', 'false'); // Disable Microsoft Editor
     this.hiddenInput.setAttribute('data-smartpunctuation', 'false'); // Disable smart quotes/dashes
     this.hiddenInput.setAttribute('data-form-type', 'other'); // Hint this isn't a form field
-    this.hiddenInput.setAttribute('inputmode', 'none'); // Prevent iOS keyboard optimizations
+    this.hiddenInput.setAttribute('inputmode', 'text'); // Allow keyboard but disable optimizations
     this.hiddenInput.setAttribute('enterkeyhint', 'done'); // Prevent iOS enter key behavior
     this.hiddenInput.setAttribute('aria-hidden', 'true');
 
@@ -477,15 +477,8 @@ export class DirectKeyboardManager {
       }
       return;
     } else if (key === 'Paste') {
-      // Handle Paste key - check if we have immediate paste text from touch handler
-      if (pasteText) {
-        logger.log('Using immediate paste text from touch handler, length:', pasteText.length);
-        this.inputManager.sendInputText(pasteText);
-        return;
-      }
-
-      // Fallback to original clipboard read (should rarely be needed now)
-      logger.log('Paste button pressed - attempting fallback clipboard read');
+      // Handle Paste key - centralized clipboard logic
+      logger.log('Paste button pressed - attempting clipboard read');
 
       // Log environment details for debugging
       logger.log('Clipboard context:', {
@@ -496,40 +489,36 @@ export class DirectKeyboardManager {
         userAgent: navigator.userAgent.includes('Safari') ? 'Safari' : 'Other',
       });
 
-      try {
-        logger.log('Calling navigator.clipboard.readText()...');
-        const text = await navigator.clipboard.readText();
-        logger.log('Clipboard read successful, text length:', text?.length || 0);
+      // First try the modern Clipboard API if available
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        try {
+          logger.log('Calling navigator.clipboard.readText()...');
+          const text = await navigator.clipboard.readText();
+          logger.log('Clipboard read successful, text length:', text?.length || 0);
 
-        if (text && this.inputManager) {
-          logger.log('Sending clipboard text to terminal');
-          this.inputManager.sendInputText(text);
-        } else if (!text) {
-          logger.warn('Clipboard is empty or contains no text');
-        } else {
-          logger.error('No input manager available for paste operation');
+          if (text && this.inputManager) {
+            logger.log('Sending clipboard text to terminal');
+            this.inputManager.sendInputText(text);
+            return; // Success - exit early
+          } else if (!text) {
+            logger.warn('Clipboard is empty or contains no text');
+            return;
+          }
+        } catch (err) {
+          const error = err as Error;
+          logger.warn('Clipboard API failed, trying fallback:', {
+            name: error?.name,
+            message: error?.message,
+          });
+          // Continue to fallback instead of returning
         }
-      } catch (err) {
-        // Enhanced error logging for iOS Safari debugging
-        const error = err as Error;
-        logger.error('Failed to read clipboard:', {
-          name: error?.name,
-          message: error?.message,
-          stack: error?.stack,
-          toString: error?.toString?.(),
-          errorType: typeof err,
-          errorConstructor: error?.constructor?.name,
-        });
-
-        // Check for specific Safari clipboard errors
-        if (error?.name === 'NotAllowedError') {
-          logger.error('Clipboard access denied - user gesture or permissions issue');
-        } else if (error?.name === 'SecurityError') {
-          logger.error('Clipboard security error - likely HTTPS or iframe issue');
-        } else if (error?.name === 'AbortError') {
-          logger.error('Clipboard operation was aborted');
-        }
+      } else {
+        logger.log('Clipboard API not available, using fallback');
       }
+
+      // Fallback: Use existing hidden input with paste event
+      logger.log('Using iOS native paste fallback with existing hidden input');
+      this.triggerNativePasteWithHiddenInput();
     } else if (key === 'Ctrl+A') {
       // Send Ctrl+A (start of line)
       this.inputManager.sendControlSequence('\x01');
@@ -696,6 +685,97 @@ export class DirectKeyboardManager {
       this.hiddenInput.style.zIndex = '-1';
       this.hiddenInput.style.pointerEvents = 'none';
     }
+  }
+
+  private triggerNativePasteWithHiddenInput(): void {
+    if (!this.hiddenInput) {
+      logger.error('No hidden input available for paste fallback');
+      return;
+    }
+
+    logger.log('Making hidden input temporarily visible for paste');
+    
+    // Store original styles to restore later
+    const originalStyles = {
+      position: this.hiddenInput.style.position,
+      opacity: this.hiddenInput.style.opacity,
+      left: this.hiddenInput.style.left,
+      top: this.hiddenInput.style.top,
+      width: this.hiddenInput.style.width,
+      height: this.hiddenInput.style.height,
+      backgroundColor: this.hiddenInput.style.backgroundColor,
+      border: this.hiddenInput.style.border,
+      borderRadius: this.hiddenInput.style.borderRadius,
+      padding: this.hiddenInput.style.padding,
+      zIndex: this.hiddenInput.style.zIndex,
+    };
+    
+    // Make the input visible and positioned for interaction
+    this.hiddenInput.style.position = 'fixed';
+    this.hiddenInput.style.left = '50%';
+    this.hiddenInput.style.top = '50%';
+    this.hiddenInput.style.transform = 'translate(-50%, -50%)';
+    this.hiddenInput.style.width = '200px';
+    this.hiddenInput.style.height = '40px';
+    this.hiddenInput.style.opacity = '1';
+    this.hiddenInput.style.backgroundColor = 'white';
+    this.hiddenInput.style.border = '2px solid #007AFF';
+    this.hiddenInput.style.borderRadius = '8px';
+    this.hiddenInput.style.padding = '8px';
+    this.hiddenInput.style.zIndex = '10000';
+    this.hiddenInput.placeholder = 'Long-press to paste';
+    
+    const restoreStyles = () => {
+      if (!this.hiddenInput) return;
+      
+      // Restore all original styles
+      Object.entries(originalStyles).forEach(([key, value]) => {
+        if (value !== undefined) {
+          (this.hiddenInput!.style as any)[key] = value;
+        }
+      });
+      this.hiddenInput.placeholder = '';
+      logger.log('Restored hidden input to original state');
+    };
+    
+    // Create a one-time paste event handler
+    const handlePasteEvent = (e: ClipboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const clipboardData = e.clipboardData?.getData('text/plain');
+      logger.log('Native paste event received, text length:', clipboardData?.length || 0);
+      
+      if (clipboardData && this.inputManager) {
+        logger.log('Sending native paste text to terminal');
+        this.inputManager.sendInputText(clipboardData);
+      } else {
+        logger.warn('No clipboard data received in paste event');
+      }
+      
+      // Clean up
+      this.hiddenInput?.removeEventListener('paste', handlePasteEvent);
+      restoreStyles();
+      logger.log('Removed paste event listener and restored styles');
+    };
+
+    // Add paste event listener
+    this.hiddenInput.addEventListener('paste', handlePasteEvent);
+    
+    // Focus and select the now-visible input
+    this.hiddenInput.focus();
+    this.hiddenInput.select();
+    
+    logger.log('Input is now visible and focused - long-press to see paste menu');
+    
+    // Clean up after timeout if no paste occurs
+    setTimeout(() => {
+      if (this.hiddenInput) {
+        this.hiddenInput.removeEventListener('paste', handlePasteEvent);
+        restoreStyles();
+        logger.log('Paste timeout - restored input to hidden state');
+      }
+    }, 10000); // 10 second timeout
   }
 
   private dismissKeyboard(): void {
