@@ -224,10 +224,14 @@ export class Terminal extends LitElement {
     }
 
     if (changedProperties.has('theme')) {
+      console.log('[DEBUG] Terminal theme property changed to:', this.theme);
       if (this.terminal) {
-        this.terminal.options.theme = this.getTerminalTheme();
+        const resolvedTheme = this.getTerminalTheme();
+        console.log('[DEBUG] Resolved theme colors:', resolvedTheme);
+        this.terminal.options.theme = resolvedTheme;
         // Force a re-render of the terminal content with new theme
         this.requestRenderBuffer();
+        console.log('[DEBUG] Terminal theme applied and buffer re-render requested');
       }
     }
   }

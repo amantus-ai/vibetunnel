@@ -230,6 +230,7 @@ export class WidthSelector extends LitElement {
                 @change=${(e: Event) => {
                   e.stopPropagation();
                   const value = (e.target as HTMLSelectElement).value as TerminalThemeId;
+                  console.log('[DEBUG] Width-selector theme change:', value);
                   this.onThemeChange?.(value);
                 }}
                 @click=${(e: Event) => e.stopPropagation()}

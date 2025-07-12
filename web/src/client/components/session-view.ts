@@ -874,12 +874,15 @@ export class SessionView extends LitElement {
   }
 
   private handleThemeChange(newTheme: TerminalThemeId) {
+    console.log('[DEBUG] Theme change requested:', newTheme);
     this.terminalTheme = newTheme;
     this.preferencesManager.setTheme(newTheme);
     this.terminalLifecycleManager.setTerminalTheme(newTheme);
 
     const terminal = this.querySelector('vibe-terminal') as Terminal;
+    console.log('[DEBUG] Terminal element found:', !!terminal);
     if (terminal) {
+      console.log('[DEBUG] Setting terminal theme to:', newTheme);
       terminal.theme = newTheme;
       terminal.requestUpdate();
     }
