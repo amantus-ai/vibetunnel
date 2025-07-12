@@ -246,39 +246,6 @@ cp -R "${PUBLIC_DIR}/"* "${DEST_DIR}/"
 # Copy native executable and modules to app bundle
 NATIVE_DIR="${WEB_DIR}/native"
 
-# Check if native files exist, build them if missing (needed for CI environments)
-if [ ! -f "${NATIVE_DIR}/vibetunnel" ] || [ ! -f "${NATIVE_DIR}/pty.node" ] || [ ! -f "${NATIVE_DIR}/spawn-helper" ]; then
-    echo "Native files missing, building them locally..."
-    echo "This happens when using CI-built web artifacts that don't include platform-specific binaries."
-    cd "${WEB_DIR}"
-    
-    # Build native components using the build-native script
-    if [ -f "build-native.js" ]; then
-        echo "Running native build..."
-        node build-native.js 2>&1 | filter_build_output
-    else
-        echo "error: build-native.js not found. Cannot build missing native components."
-        echo "Available files in web directory:"
-        ls -la
-        exit 1
-    fi
-    
-    # Verify native files were created
-    if [ ! -f "${NATIVE_DIR}/vibetunnel" ] || [ ! -f "${NATIVE_DIR}/pty.node" ] || [ ! -f "${NATIVE_DIR}/spawn-helper" ]; then
-        echo "error: Native build failed to create required files"
-        echo "Expected files in ${NATIVE_DIR}:"
-        echo "  - vibetunnel (executable)"
-        echo "  - pty.node (Node.js native module)"
-        echo "  - spawn-helper (helper executable)"
-        echo "Actual files in ${NATIVE_DIR}:"
-        ls -la "${NATIVE_DIR}" || echo "  Directory does not exist"
-        exit 1
-    fi
-    
-    echo "✓ Native components built successfully"
-    cd "${PROJECT_DIR}"
-fi
-
 if [ -f "${NATIVE_DIR}/vibetunnel" ]; then
     echo "Copying native executable to app bundle..."
     EXEC_SIZE=$(ls -lh "${NATIVE_DIR}/vibetunnel" | awk '{print $5}')
