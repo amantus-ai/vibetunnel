@@ -16,8 +16,7 @@ export default defineConfig({
   // Root directory for source files
   root: resolve(__dirname, 'src/client'),
   
-  // Public directory for static assets
-  publicDir: resolve(__dirname, 'src/client/assets'),
+  // Public directory for static assets - removed to prevent duplication with copy plugin
   
   // Build configuration
   build: {
@@ -50,8 +49,9 @@ export default defineConfig({
         },
         chunkFileNames: 'bundle/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'index.css' || assetInfo.name === 'style.css') {
-            return 'styles.css';
+          // Preserve original CSS file names to avoid collision
+          if (assetInfo.name?.endsWith('.css')) {
+            return 'assets/[name][extname]';
           }
           return 'assets/[name]-[hash][extname]';
         }
@@ -61,18 +61,32 @@ export default defineConfig({
 
   // Development server configuration
   server: {
-    port: 4020,
-    host: '0.0.0.0',
+    port: parseInt(process.env.VITE_PORT || '4020'),
+    host: process.env.VITE_HOST || 'localhost', // Safer default, use VITE_HOST=0.0.0.0 for network access
     
     // Proxy API calls to Express server (now on port 4030)
     proxy: {
       '/api': {
         target: 'http://localhost:4030',
-        changeOrigin: true
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (err, req, res) => {
+            console.error('API proxy error:', err);
+            if ('writeHead' in res && !res.headersSent) {
+              res.writeHead(502, { 'Content-Type': 'text/plain' });
+              res.end('Express server unavailable. Make sure the backend is running.');
+            }
+          });
+        }
       },
       '/buffers': {
         target: 'ws://localhost:4030',
-        ws: true
+        ws: true,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.error('WebSocket proxy error:', err);
+          });
+        }
       }
     }
   },
