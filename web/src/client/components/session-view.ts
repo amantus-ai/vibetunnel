@@ -94,51 +94,11 @@ export class SessionView extends LitElement {
   @state() private isLandscape = false;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
-  private updateDebounceTimer: number | null = null;
-  private pendingUpdates = new Set<PropertyKey>();
 
   // Bound event handlers to ensure proper cleanup
   private boundHandleDragOver = this.handleDragOver.bind(this);
   private boundHandleDragLeave = this.handleDragLeave.bind(this);
 
-  // Override requestUpdate to batch updates during busy periods
-  requestUpdate(name?: PropertyKey, oldValue?: unknown) {
-    // Critical updates that should happen immediately
-    const criticalUpdates = new Set([
-      'showMobileInput',
-      'showQuickKeys',
-      'showCtrlAlpha',
-      'showFileBrowser',
-      'showImagePicker',
-    ]);
-
-    if (name && criticalUpdates.has(name)) {
-      // Critical updates happen immediately
-      super.requestUpdate(name, oldValue);
-      return;
-    }
-
-    // For non-critical updates, batch them
-    if (name) {
-      this.pendingUpdates.add(name);
-    }
-
-    // Clear existing timer
-    if (this.updateDebounceTimer) {
-      clearTimeout(this.updateDebounceTimer);
-    }
-
-    // Set a new timer to batch updates
-    this.updateDebounceTimer = setTimeout(() => {
-      // Process all pending updates at once
-      const updates = Array.from(this.pendingUpdates);
-      this.pendingUpdates.clear();
-      this.updateDebounceTimer = null;
-
-      // Call super.requestUpdate() once for all batched updates
-      super.requestUpdate();
-    }, 16) as unknown as number; // 16ms = roughly one frame
-  }
   private boundHandleDrop = this.handleDrop.bind(this);
   private boundHandlePaste = this.handlePaste.bind(this);
   private boundHandleOrientationChange?: () => void;
