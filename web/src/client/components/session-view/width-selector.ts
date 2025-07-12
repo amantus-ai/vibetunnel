@@ -179,17 +179,21 @@ export class WidthSelector extends LitElement {
             </div>
           </div>
           <div class="border-t border-border mt-3 pt-3">
-            <div class="text-sm font-semibold text-text-bright mb-3">Theme</div>
-            <select
-              class="w-full bg-bg-secondary border border-border rounded-md p-2 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm"
-              .value=${this.terminalTheme}
-              @change=${(e: Event) => this.onThemeChange?.((e.target as HTMLSelectElement).value as TerminalThemeId)}
-            >
-              ${TERMINAL_THEMES.map(
-                (t) =>
-                  html`<option value=${t.id} ?selected=${this.terminalTheme === t.id}>${t.name}</option>`
-              )}
-            </select>
+            <div class="flex items-center justify-between">
+              <div class="text-sm font-semibold text-text-bright">Theme</div>
+              <select
+                class="bg-bg-secondary border border-border rounded-md px-3 py-1.5 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer"
+                .value=${this.terminalTheme}
+                @change=${(e: Event) => {
+                  e.stopPropagation();
+                  const value = (e.target as HTMLSelectElement).value as TerminalThemeId;
+                  this.onThemeChange?.(value);
+                }}
+                @click=${(e: Event) => e.stopPropagation()}
+              >
+                ${TERMINAL_THEMES.map((t) => html`<option value=${t.id}>${t.name}</option>`)}
+              </select>
+            </div>
           </div>
         </div>
       </div>

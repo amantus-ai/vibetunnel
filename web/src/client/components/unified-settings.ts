@@ -349,7 +349,7 @@ export class UnifiedSettings extends LitElement {
             `
             : html`
               <!-- Main toggle -->
-              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-base"
+              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-base">
                 <div class="flex-1">
                   <label class="text-primary font-medium">Enable Notifications</label>
                   <p class="text-muted text-xs mt-1">
@@ -380,7 +380,7 @@ export class UnifiedSettings extends LitElement {
                     <div class="mt-4 space-y-4">
                       <div>
                         <h4 class="text-sm font-medium text-muted mb-3">Notification Types</h4>
-                        <div class="space-y-2 bg-base rounded-lg p-3"
+                        <div class="space-y-2 bg-base rounded-lg p-3">
                           ${this.renderNotificationToggle('sessionExit', 'Session Exit', 'When a session terminates')}
                           ${this.renderNotificationToggle('sessionStart', 'Session Start', 'When a new session starts')}
                           ${this.renderNotificationToggle('sessionError', 'Session Errors', 'When errors occur in sessions')}
@@ -391,7 +391,7 @@ export class UnifiedSettings extends LitElement {
                       <!-- Sound and vibration -->
                       <div>
                         <h4 class="text-sm font-medium text-muted mb-3">Notification Behavior</h4>
-                        <div class="space-y-2 bg-base rounded-lg p-3"
+                        <div class="space-y-2 bg-base rounded-lg p-3">
                           ${this.renderNotificationToggle('soundEnabled', 'Sound', 'Play sound with notifications')}
                           ${this.renderNotificationToggle('vibrationEnabled', 'Vibration', 'Vibrate device with notifications')}
                         </div>
@@ -457,7 +457,7 @@ export class UnifiedSettings extends LitElement {
         ${
           this.mediaState.isMobile
             ? html`
-              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-base"
+              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-base">
                 <div class="flex-1">
                   <label class="text-primary font-medium">
                     Use Direct Keyboard

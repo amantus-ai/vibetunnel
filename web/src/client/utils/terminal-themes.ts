@@ -9,6 +9,12 @@ export interface TerminalTheme {
 
 export const TERMINAL_THEMES: TerminalTheme[] = [
   {
+    id: 'auto',
+    name: 'Auto',
+    description: 'Follow system theme',
+    colors: {}, // Actual colors determined at runtime
+  },
+  {
     id: 'dark',
     name: 'Dark',
     description: 'VibeTunnel default dark',
