@@ -187,7 +187,7 @@ final class BunServer {
         }
 
         // Add local bypass authentication for the Mac app
-        if authMode != "none" {
+        if authConfig.mode != "none" {
             // Enable local bypass with our generated token
             vibetunnelArgs.append(contentsOf: ["--allow-local-bypass", "--local-auth-token", localAuthToken])
             logger.info("Local authentication bypass enabled for Mac app")
