@@ -18,6 +18,10 @@ import { TitleMode } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
 import type { Session } from './session-list.js';
+import {
+  STORAGE_KEY as APP_PREFERENCES_STORAGE_KEY,
+  type AppPreferences,
+} from './unified-settings.js';
 
 const logger = createLogger('session-create-form');
 
@@ -50,6 +54,15 @@ export class SessionCreateForm extends LitElement {
   @state() private isCreating = false;
   @state() private showFileBrowser = false;
   @state() private selectedQuickStart = 'zsh';
+  @state() private showRepositoryDropdown = false;
+  @state() private repositories: Array<{
+    id: string;
+    path: string;
+    folderName: string;
+    lastModified: string;
+    relativePath: string;
+  }> = [];
+  @state() private isDiscovering = false;
 
   quickStartCommands = [
     { label: 'claude', command: 'claude' },
@@ -110,8 +123,21 @@ export class SessionCreateForm extends LitElement {
       const savedSpawnWindow = localStorage.getItem(this.STORAGE_KEY_SPAWN_WINDOW);
       const savedTitleMode = localStorage.getItem(this.STORAGE_KEY_TITLE_MODE);
 
+      // Get app preferences for repository base path to use as default working dir
+      let appRepoBasePath = '~/';
+      const savedPreferences = localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
+      if (savedPreferences) {
+        try {
+          const preferences: AppPreferences = JSON.parse(savedPreferences);
+          appRepoBasePath = preferences.repositoryBasePath || '~/';
+        } catch (error) {
+          logger.error('Failed to parse app preferences:', error);
+        }
+      }
+
       // Always set values, using saved values or defaults
-      this.workingDir = savedWorkingDir || '~/';
+      // Priority: savedWorkingDir > appRepoBasePath > default
+      this.workingDir = savedWorkingDir || appRepoBasePath || '~/';
       this.command = savedCommand || 'zsh';
 
       // For spawn window, only use saved value if it exists and is valid
@@ -181,6 +207,9 @@ export class SessionCreateForm extends LitElement {
         // Set data attributes for testing - both synchronously to avoid race conditions
         this.setAttribute('data-modal-state', 'open');
         this.setAttribute('data-modal-rendered', 'true');
+
+        // Discover repositories
+        this.discoverRepositories();
       } else {
         // Remove global keyboard listener when hidden
         document.removeEventListener('keydown', this.handleGlobalKeyDown);
@@ -401,6 +430,52 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
+  private async discoverRepositories() {
+    // Get app preferences to read repositoryBasePath
+    const savedPreferences = localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
+    let basePath = '~/';
+
+    if (savedPreferences) {
+      try {
+        const preferences: AppPreferences = JSON.parse(savedPreferences);
+        basePath = preferences.repositoryBasePath || '~/';
+      } catch (error) {
+        logger.error('Failed to parse app preferences:', error);
+      }
+    }
+
+    this.isDiscovering = true;
+
+    try {
+      const response = await fetch(
+        `/api/repositories/discover?path=${encodeURIComponent(basePath)}`,
+        {
+          headers: this.authClient.getAuthHeader(),
+        }
+      );
+
+      if (response.ok) {
+        this.repositories = await response.json();
+        logger.debug(`Discovered ${this.repositories.length} repositories`);
+      } else {
+        logger.error('Failed to discover repositories');
+      }
+    } catch (error) {
+      logger.error('Error discovering repositories:', error);
+    } finally {
+      this.isDiscovering = false;
+    }
+  }
+
+  private handleToggleRepositoryDropdown() {
+    this.showRepositoryDropdown = !this.showRepositoryDropdown;
+  }
+
+  private handleSelectRepository(repoPath: string) {
+    this.workingDir = repoPath;
+    this.showRepositoryDropdown = false;
+  }
+
   render() {
     if (!this.visible) {
       return html``;
@@ -494,7 +569,52 @@ export class SessionCreateForm extends LitElement {
                     />
                   </svg>
                 </button>
+                <button
+                  class="bg-dark-bg-elevated border border-dark-border rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-dark-text-muted transition-all duration-200 hover:text-primary hover:bg-dark-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 ${
+                    this.showRepositoryDropdown ? 'text-primary border-primary' : ''
+                  }"
+                  @click=${this.handleToggleRepositoryDropdown}
+                  ?disabled=${this.disabled || this.isCreating || this.repositories.length === 0 || this.isDiscovering}
+                  title="Choose from repositories"
+                  type="button"
+                >
+                  <svg width="12" height="12" class="sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" viewBox="0 0 16 16" fill="currentColor">
+                    <path
+                      d="M5.22 1.22a.75.75 0 011.06 0l6.25 6.25a.75.75 0 010 1.06l-6.25 6.25a.75.75 0 01-1.06-1.06L10.94 8 5.22 2.28a.75.75 0 010-1.06z"
+                      transform=${this.showRepositoryDropdown ? 'rotate(90 8 8)' : ''}
+                    />
+                  </svg>
+                </button>
               </div>
+              ${
+                this.showRepositoryDropdown && this.repositories.length > 0
+                  ? html`
+                    <div class="mt-2 bg-dark-bg-elevated border border-dark-border rounded-lg overflow-hidden">
+                      <div class="max-h-48 overflow-y-auto">
+                        ${this.repositories.map(
+                          (repo) => html`
+                            <button
+                              @click=${() => this.handleSelectRepository(repo.path)}
+                              class="w-full text-left px-3 py-2 hover:bg-dark-surface-hover transition-colors duration-200 border-b border-dark-border last:border-b-0"
+                              type="button"
+                            >
+                              <div class="flex items-center justify-between">
+                                <div>
+                                  <div class="text-dark-text text-xs sm:text-sm font-medium">${repo.folderName}</div>
+                                  <div class="text-dark-text-muted text-[9px] sm:text-[10px] mt-0.5">${repo.relativePath}</div>
+                                </div>
+                                <div class="text-dark-text-muted text-[9px] sm:text-[10px]">
+                                  ${new Date(repo.lastModified).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </button>
+                          `
+                        )}
+                      </div>
+                    </div>
+                  `
+                  : ''
+              }
             </div>
 
             <!-- Spawn Window Toggle -->

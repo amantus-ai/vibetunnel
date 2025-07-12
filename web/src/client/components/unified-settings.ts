@@ -13,14 +13,16 @@ const logger = createLogger('unified-settings');
 export interface AppPreferences {
   useDirectKeyboard: boolean;
   showLogLink: boolean;
+  repositoryBasePath: string;
 }
 
 const DEFAULT_APP_PREFERENCES: AppPreferences = {
   useDirectKeyboard: true, // Default to modern direct keyboard for new users
   showLogLink: false,
+  repositoryBasePath: '~/',
 };
 
-const STORAGE_KEY = 'vibetunnel_app_preferences';
+export const STORAGE_KEY = 'vibetunnel_app_preferences';
 
 @customElement('unified-settings')
 export class UnifiedSettings extends LitElement {
@@ -223,7 +225,7 @@ export class UnifiedSettings extends LitElement {
     pushNotificationService.savePreferences(this.notificationPreferences);
   }
 
-  private handleAppPreferenceChange(key: keyof AppPreferences, value: boolean) {
+  private handleAppPreferenceChange(key: keyof AppPreferences, value: boolean | string) {
     this.appPreferences = { ...this.appPreferences, [key]: value };
     this.saveAppPreferences();
   }
@@ -507,6 +509,28 @@ export class UnifiedSettings extends LitElement {
               }"
             ></span>
           </button>
+        </div>
+
+        <!-- Repository Base Path -->
+        <div class="p-4 bg-dark-bg-tertiary rounded-lg border border-dark-border">
+          <div class="mb-3">
+            <label class="text-dark-text font-medium">Repository Base Path</label>
+            <p class="text-dark-text-muted text-xs mt-1">
+              Default directory for new sessions and repository discovery
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              .value=${this.appPreferences.repositoryBasePath}
+              @input=${(e: Event) => {
+                const input = e.target as HTMLInputElement;
+                this.handleAppPreferenceChange('repositoryBasePath', input.value);
+              }}
+              placeholder="~/"
+              class="input-field py-2 text-sm flex-1"
+            />
+          </div>
         </div>
       </div>
     `;
