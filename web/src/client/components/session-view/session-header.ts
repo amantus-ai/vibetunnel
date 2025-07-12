@@ -26,17 +26,6 @@ export class SessionHeader extends LitElement {
     return this;
   }
 
-  private touchInProgress = false; // Flag to prevent re-renders during touch
-
-  // Override requestUpdate to check touch flag
-  requestUpdate(name?: PropertyKey, oldValue?: unknown) {
-    if (this.touchInProgress) {
-      console.log('[SessionHeader] Skipping update during touch interaction');
-      return;
-    }
-    super.requestUpdate(name, oldValue);
-  }
-
   @property({ type: Object }) session: Session | null = null;
   @property({ type: Boolean }) showBackButton = true;
   @property({ type: Boolean }) showSidebarToggle = false;
@@ -163,9 +152,6 @@ export class SessionHeader extends LitElement {
                       pointerId: e.pointerId,
                       timestamp: Date.now(),
                     });
-                    if (e.pointerType === 'touch') {
-                      this.touchInProgress = true;
-                    }
                   }}
                   @pointerup=${(e: PointerEvent) => {
                     console.log('[SessionHeader] Back button pointerup', {
@@ -179,8 +165,6 @@ export class SessionHeader extends LitElement {
                       e.stopPropagation();
                       console.log('[SessionHeader] Back button triggered via pointerup');
                       this.onBack?.();
-                      // Clear flag after action
-                      this.touchInProgress = false;
                     }
                   }}
                   @click=${() => {
