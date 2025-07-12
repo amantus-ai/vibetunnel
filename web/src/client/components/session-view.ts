@@ -94,10 +94,20 @@ export class SessionView extends LitElement {
   @state() private isLandscape = false;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
+  private touchInProgress = false; // Flag to prevent re-renders during touch
 
   // Bound event handlers to ensure proper cleanup
   private boundHandleDragOver = this.handleDragOver.bind(this);
   private boundHandleDragLeave = this.handleDragLeave.bind(this);
+
+  // Override requestUpdate to check touch flag
+  requestUpdate(name?: PropertyKey, oldValue?: unknown) {
+    if (this.touchInProgress) {
+      logger.debug('[SessionView] Skipping update during touch interaction');
+      return;
+    }
+    super.requestUpdate(name, oldValue);
+  }
   private boundHandleDrop = this.handleDrop.bind(this);
   private boundHandlePaste = this.handlePaste.bind(this);
   private boundHandleOrientationChange?: () => void;
@@ -1481,6 +1491,9 @@ export class SessionView extends LitElement {
                     pointerId: e.pointerId,
                     timestamp: Date.now(),
                   });
+                  if (e.pointerType === 'touch') {
+                    this.touchInProgress = true;
+                  }
                   e.preventDefault();
                   e.stopPropagation();
                 }}
@@ -1495,6 +1508,8 @@ export class SessionView extends LitElement {
                     e.preventDefault();
                     e.stopPropagation();
                     this.handleKeyboardButtonClick();
+                    // Clear flag after action
+                    this.touchInProgress = false;
                   }
                 }}
                 @click=${(e: MouseEvent) => {
