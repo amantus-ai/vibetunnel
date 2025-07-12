@@ -88,6 +88,7 @@ export class Terminal extends LitElement {
   private operationQueue: (() => void | Promise<void>)[] = [];
   private activeTouchCount = 0; // Track active touches
   private globalActiveTouches = 0; // Track ALL touches on the page
+  private buttonTouches = 0; // Track touches specifically on buttons (not terminal)
   private handleGlobalTouchStart!: (e: TouchEvent) => void;
   private handleGlobalTouchEnd!: (e: TouchEvent) => void;
 
@@ -317,6 +318,7 @@ export class Terminal extends LitElement {
         console.warn(`[Terminal] Main thread blocked for ${Math.round(elapsed)}ms`, {
           activeTouches: this.activeTouchCount,
           globalActiveTouches: this.globalActiveTouches,
+          buttonTouches: this.buttonTouches,
           renderPending: this.renderPending,
           operationQueueLength: this.operationQueue.length,
         });
@@ -328,25 +330,55 @@ export class Terminal extends LitElement {
 
   private handleGlobalTouchStart = (e: TouchEvent) => {
     this.globalActiveTouches = e.touches.length;
+
+    // Check if touch is on a button (not on terminal)
+    const target = e.target as Element;
+    const isButton =
+      target.closest('button') ||
+      target.closest('.keyboard-button') ||
+      target.closest('session-header') ||
+      target.closest('.quick-start-btn');
+
+    if (isButton) {
+      this.buttonTouches++;
+    }
+
     if (this.debugMode) {
       logger.debug('Global touch start', {
         touches: this.globalActiveTouches,
+        buttonTouches: this.buttonTouches,
         target: e.target,
+        isButton,
       });
     }
   };
 
   private handleGlobalTouchEnd = (e: TouchEvent) => {
     this.globalActiveTouches = e.touches.length;
+
+    // Check if touch was on a button and decrement button touch count
+    const target = e.target as Element;
+    const isButton =
+      target.closest('button') ||
+      target.closest('.keyboard-button') ||
+      target.closest('session-header') ||
+      target.closest('.quick-start-btn');
+
+    if (isButton && this.buttonTouches > 0) {
+      this.buttonTouches--;
+    }
+
     if (this.debugMode) {
       logger.debug('Global touch end', {
         touches: this.globalActiveTouches,
+        buttonTouches: this.buttonTouches,
         target: e.target,
+        isButton,
       });
     }
 
-    // If no more touches, schedule a render if one was pending
-    if (this.globalActiveTouches === 0 && this.renderPending) {
+    // If no more button touches, schedule a render if one was pending
+    if (this.buttonTouches === 0 && this.renderPending) {
       requestAnimationFrame(() => {
         this.renderBuffer();
       });
@@ -1229,13 +1261,14 @@ export class Terminal extends LitElement {
     }
 
     // Set the complete innerHTML at once
-    // On mobile, skip innerHTML update if ANY touch is active to prevent lost taps
-    if (this.isMobile && (this.activeTouchCount > 0 || this.globalActiveTouches > 0)) {
+    // On mobile, skip innerHTML update if button touches are active to prevent lost taps
+    // Allow terminal touches to proceed normally for scrolling
+    if (this.isMobile && this.buttonTouches > 0) {
       // Schedule innerHTML update for after touch ends
       if (!this.renderPending) {
         this.renderPending = true;
         requestAnimationFrame(() => {
-          if (this.activeTouchCount === 0 && this.globalActiveTouches === 0) {
+          if (this.buttonTouches === 0) {
             this.renderPending = false;
             // Now safe to update innerHTML
             if (this.container) {
@@ -1245,7 +1278,7 @@ export class Terminal extends LitElement {
               processKeyboardShortcuts(this.container, this.handleShortcutClick);
             }
           } else {
-            // Still touching, try again next frame
+            // Still touching buttons, try again next frame
             this.renderPending = false;
             this.requestRenderBuffer();
           }
