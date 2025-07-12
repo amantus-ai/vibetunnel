@@ -45,12 +45,13 @@ struct ProcessLifecycleTests {
         // Test that we properly handle process failures
         Attachment.record("""
             Test: Process Error Handling
-            Command: /bin/false (always exits with code 1)
+            Command: /bin/sh -c "exit 1" (always exits with code 1)
             Expected: Exit with failure status
             """, named: "Error Test Configuration")
         
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/false")
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "exit 1"]
         
         try process.run()
         process.waitUntilExit()
