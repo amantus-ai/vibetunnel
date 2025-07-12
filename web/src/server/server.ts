@@ -1,7 +1,9 @@
 import chalk from 'chalk';
+import compression from 'compression';
 import type { Response as ExpressResponse } from 'express';
 import express from 'express';
 import * as fs from 'fs';
+import helmet from 'helmet';
 import type * as http from 'http';
 import { createServer } from 'http';
 import * as os from 'os';
@@ -374,7 +376,34 @@ export async function createApp(): Promise<AppInstance> {
   logger.log('Initializing VibeTunnel server components');
   const app = express();
   const server = createServer(app);
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true, perMessageDeflate: true });
+
+  // Add security headers with Helmet
+  app.use(
+    helmet({
+      contentSecurityPolicy: false, // We handle CSP ourselves for the web terminal
+      crossOriginEmbedderPolicy: false, // Allow embedding in iframes for integrations
+    })
+  );
+  logger.debug('Configured security headers with helmet');
+
+  // Add compression middleware with Brotli support
+  // Skip compression for SSE streams (asciicast)
+  app.use(
+    compression({
+      filter: (req, res) => {
+        // Skip compression for Server-Sent Events (asciicast streams)
+        if (req.path.match(/\/api\/sessions\/[^/]+\/stream$/)) {
+          return false;
+        }
+        // Use default filter for other requests
+        return compression.filter(req, res);
+      },
+      // Enable Brotli compression with highest priority
+      level: 6, // Balanced compression level
+    })
+  );
+  logger.debug('Configured compression middleware (with asciicast exclusion)');
 
   // Add JSON body parser middleware with size limit
   app.use(express.json({ limit: '10mb' }));
@@ -519,14 +548,27 @@ export async function createApp(): Promise<AppInstance> {
     localAuthToken: config.localAuthToken || undefined,
   });
 
-  // Serve static files with .html extension handling
+  // Serve static files with .html extension handling and caching headers
   const publicPath = path.join(process.cwd(), 'public');
   app.use(
     express.static(publicPath, {
       extensions: ['html'], // This allows /logs to resolve to /logs.html
+      maxAge: '1d', // Cache static assets for 1 day
+      etag: true, // Enable ETag generation
+      lastModified: true, // Enable Last-Modified header
+      setHeaders: (res, filePath) => {
+        // Set longer cache for immutable assets
+        if (filePath.match(/\.(js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico)$/)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        // Shorter cache for HTML files
+        else if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
+        }
+      },
     })
   );
-  logger.debug(`Serving static files from: ${publicPath}`);
+  logger.debug(`Serving static files from: ${publicPath} with caching headers`);
 
   // Health check endpoint (no auth required)
   app.get('/api/health', (_req, res) => {

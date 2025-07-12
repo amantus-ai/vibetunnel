@@ -846,7 +846,6 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
     // Send initial connection event
     res.write(':ok\n\n');
-    // @ts-expect-error - flush exists but not in types
     if (res.flush) res.flush();
 
     // Add client to stream watcher
@@ -856,7 +855,6 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
     // Send heartbeat every 30 seconds to keep connection alive
     const heartbeat = setInterval(() => {
       res.write(':heartbeat\n\n');
-      // @ts-expect-error - flush exists but not in types
       if (res.flush) res.flush();
     }, 30000);
 
