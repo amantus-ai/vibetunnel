@@ -9,6 +9,7 @@ import { customElement, property } from 'lit/decorators.js';
 import { Z_INDEX } from '../../utils/constants.js';
 import { COMMON_TERMINAL_WIDTHS } from '../../utils/terminal-preferences.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../../utils/terminal-themes.js';
+import { getTextColorEncoded } from '../../utils/theme-utils.js';
 
 @customElement('width-selector')
 export class WidthSelector extends LitElement {
@@ -59,13 +60,8 @@ export class WidthSelector extends LitElement {
   }
 
   private getArrowColor(): string {
-    // Check if we're in dark mode
-    const isDarkMode =
-      document.documentElement.getAttribute('data-theme') === 'dark' ||
-      (window.matchMedia('(prefers-color-scheme: dark)').matches &&
-        document.documentElement.getAttribute('data-theme') !== 'light');
-    // Return URL-encoded color for SVG
-    return isDarkMode ? '%23e4e4e4' : '%23171717'; // #e4e4e4 for dark, #171717 for light
+    // Return URL-encoded text color from CSS custom properties
+    return getTextColorEncoded();
   }
 
   render() {
@@ -230,8 +226,10 @@ export class WidthSelector extends LitElement {
                 @change=${(e: Event) => {
                   e.stopPropagation();
                   const value = (e.target as HTMLSelectElement).value as TerminalThemeId;
-                  console.log('[DEBUG] Width-selector theme change:', value);
+                  console.log('🎨 [STEP 1] Theme dropdown changed to:', value);
+                  console.log('🎨 [STEP 1] onThemeChange callback exists:', !!this.onThemeChange);
                   this.onThemeChange?.(value);
+                  console.log('🎨 [STEP 1] onThemeChange callback called');
                 }}
                 @click=${(e: Event) => e.stopPropagation()}
               >

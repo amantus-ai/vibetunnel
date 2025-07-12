@@ -18,6 +18,7 @@ import { createLogger } from '../utils/logger.js';
 import { detectMobile } from '../utils/mobile-utils.js';
 import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../utils/terminal-themes.js';
+import { getCurrentTheme } from '../utils/theme-utils.js';
 import { UrlHighlighter } from '../utils/url-highlighter';
 
 const logger = createLogger('terminal');
@@ -103,7 +104,10 @@ export class Terminal extends LitElement {
   }
 
   private requestRenderBuffer() {
-    this.queueRenderOperation(() => {});
+    console.log('🎨 [STEP 4] requestRenderBuffer called - queuing render operation');
+    this.queueRenderOperation(() => {
+      console.log('🎨 [STEP 4] Render operation executing');
+    });
   }
 
   private async processOperationQueue(): Promise<void> {
@@ -224,14 +228,27 @@ export class Terminal extends LitElement {
     }
 
     if (changedProperties.has('theme')) {
-      console.log('[DEBUG] Terminal theme property changed to:', this.theme);
+      console.log(
+        '🎨 [STEP 3] Terminal theme property changed from',
+        changedProperties.get('theme'),
+        'to',
+        this.theme
+      );
       if (this.terminal) {
         const resolvedTheme = this.getTerminalTheme();
-        console.log('[DEBUG] Resolved theme colors:', resolvedTheme);
+        console.log('🎨 [STEP 3] Resolved theme colors:', resolvedTheme);
+        console.log(
+          '🎨 [STEP 3] Current terminal.options.theme before:',
+          this.terminal.options.theme
+        );
         this.terminal.options.theme = resolvedTheme;
+        console.log('🎨 [STEP 3] Set terminal.options.theme to:', this.terminal.options.theme);
         // Force a re-render of the terminal content with new theme
+        console.log('🎨 [STEP 3] Calling requestRenderBuffer()');
         this.requestRenderBuffer();
-        console.log('[DEBUG] Terminal theme applied and buffer re-render requested');
+        console.log('🎨 [STEP 3] Terminal theme update complete');
+      } else {
+        console.log('🎨 [STEP 3] No terminal instance found!');
       }
     }
   }
@@ -373,7 +390,7 @@ export class Terminal extends LitElement {
     let themeId = this.theme;
 
     if (themeId === 'auto') {
-      themeId = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      themeId = getCurrentTheme();
     }
 
     const preset = TERMINAL_THEMES.find((t) => t.id === themeId) || TERMINAL_THEMES[0];

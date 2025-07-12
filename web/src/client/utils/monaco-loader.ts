@@ -5,6 +5,7 @@
  * This module ensures Monaco is properly loaded and configured before use.
  */
 import { createLogger } from './logger.js';
+import { isDarkMode } from './theme-utils.js';
 
 const logger = createLogger('monaco-loader');
 
@@ -108,13 +109,11 @@ export async function initializeMonaco(): Promise<void> {
     });
 
     // Set initial theme based on current theme
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs');
+    monaco.editor.setTheme(isDarkMode() ? 'vs-dark' : 'vs');
 
     // Watch for theme changes
     const themeObserver = new MutationObserver(() => {
-      const currentTheme = document.documentElement.getAttribute('data-theme') === 'dark';
-      monaco.editor.setTheme(currentTheme ? 'vs-dark' : 'vs');
+      monaco.editor.setTheme(isDarkMode() ? 'vs-dark' : 'vs');
     });
 
     themeObserver.observe(document.documentElement, {

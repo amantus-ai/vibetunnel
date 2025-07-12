@@ -874,18 +874,27 @@ export class SessionView extends LitElement {
   }
 
   private handleThemeChange(newTheme: TerminalThemeId) {
-    console.log('[DEBUG] Theme change requested:', newTheme);
+    console.log('🎨 [STEP 2] handleThemeChange called with:', newTheme);
+
+    console.log('🎨 [STEP 2] Setting this.terminalTheme from', this.terminalTheme, 'to', newTheme);
     this.terminalTheme = newTheme;
+
+    console.log('🎨 [STEP 2] Saving theme to preferences manager');
     this.preferencesManager.setTheme(newTheme);
+
+    console.log('🎨 [STEP 2] Setting theme in terminal lifecycle manager');
     this.terminalLifecycleManager.setTerminalTheme(newTheme);
 
     const terminal = this.querySelector('vibe-terminal') as Terminal;
-    console.log('[DEBUG] Terminal element found:', !!terminal);
+    console.log('🎨 [STEP 2] Found terminal element:', !!terminal);
     if (terminal) {
-      console.log('[DEBUG] Setting terminal theme to:', newTheme);
+      console.log('🎨 [STEP 2] Setting terminal.theme from', terminal.theme, 'to', newTheme);
       terminal.theme = newTheme;
+      console.log('🎨 [STEP 2] Calling terminal.requestUpdate()');
       terminal.requestUpdate();
     }
+
+    console.log('🎨 [STEP 2] handleThemeChange complete');
   }
 
   private handleOpenFileBrowser() {
