@@ -75,9 +75,7 @@ test.describe('SSH Key Manager', () => {
           hasText: /rsa|ed25519|ecdsa|ssh-/i,
         });
 
-        const emptyState = page.locator(
-          'ssh-key-manager :has-text("No SSH keys found")'
-        ).first();
+        const emptyState = page.locator('ssh-key-manager :has-text("No SSH keys found")').first();
 
         const hasKeysOrEmpty = (await keyItems.count()) > 0 || (await emptyState.isVisible());
         expect(hasKeysOrEmpty).toBeTruthy();
@@ -110,7 +108,9 @@ test.describe('SSH Key Manager', () => {
       }
 
       // First fill in the required key name field
-      const keyNameInput = page.locator('input[placeholder*="name"], input[placeholder*="Name"]').first();
+      const keyNameInput = page
+        .locator('input[placeholder*="name"], input[placeholder*="Name"]')
+        .first();
       if (await keyNameInput.isVisible()) {
         await keyNameInput.fill('test-key-name');
       }
@@ -123,17 +123,19 @@ test.describe('SSH Key Manager', () => {
 
       if (await generateButton.isVisible()) {
         await generateButton.click();
-        
+
         // Wait for the generation to complete
         await page.waitForTimeout(1000);
 
         // Check if key was generated successfully - look for setup instructions or key in list
-        const setupInstructions = page.locator('ssh-key-manager h4:has-text("Setup Instructions")').first();
+        const setupInstructions = page
+          .locator('ssh-key-manager h4:has-text("Setup Instructions")')
+          .first();
         const keyInList = page.locator('ssh-key-manager :has-text("test-key-name")').first();
-        
+
         // Should see either setup instructions or the key in the list
-        const hasInstructionsOrKey = (await setupInstructions.isVisible()) || 
-                                    (await keyInList.isVisible());
+        const hasInstructionsOrKey =
+          (await setupInstructions.isVisible()) || (await keyInList.isVisible());
         expect(hasInstructionsOrKey).toBeTruthy();
       }
     } else {
@@ -170,7 +172,9 @@ test.describe('SSH Key Manager', () => {
       // Fill in the private key content
       const keyContentTextarea = page.locator('textarea[placeholder*="PRIVATE KEY"]');
       if (await keyContentTextarea.isVisible()) {
-        await keyContentTextarea.fill('-----BEGIN PRIVATE KEY-----\ntest-key-content\n-----END PRIVATE KEY-----');
+        await keyContentTextarea.fill(
+          '-----BEGIN PRIVATE KEY-----\ntest-key-content\n-----END PRIVATE KEY-----'
+        );
       }
 
       // Look for import button
@@ -196,17 +200,17 @@ test.describe('SSH Key Manager', () => {
         } else {
           // Regular import button - click to import the key
           await importButton.click();
-          
+
           // Wait for import to complete
           await page.waitForTimeout(1000);
 
           // Should see success message or imported key in list
           const successMessage = page.locator('ssh-key-manager .bg-status-success').first();
           const keyInList = page.locator('ssh-key-manager :has-text("imported-test-key")').first();
-          
+
           // Either success message appears or key is added to the list
-          const hasSuccessOrKey = (await successMessage.isVisible()) || 
-                                 (await keyInList.isVisible());
+          const hasSuccessOrKey =
+            (await successMessage.isVisible()) || (await keyInList.isVisible());
           expect(hasSuccessOrKey).toBeTruthy();
         }
       }
