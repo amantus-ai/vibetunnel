@@ -878,7 +878,7 @@ final class BunServer {
 
 // MARK: - Errors
 
-enum BunServerError: LocalizedError {
+enum BunServerError: LocalizedError, Equatable {
     case binaryNotFound
     case processFailedToStart
     case invalidPort
