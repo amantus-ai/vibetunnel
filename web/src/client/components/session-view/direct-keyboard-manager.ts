@@ -60,6 +60,7 @@ export class DirectKeyboardManager {
   private keyboardModeTimestamp = 0; // Track when we entered keyboard mode
   private keyboardActivationTimeout: number | null = null;
   private captureClickHandler: ((e: Event) => void) | null = null;
+  private globalPasteHandler: ((e: Event) => void) | null = null;
 
   // IME composition state tracking for Japanese/CJK input
   private isComposing = false;
@@ -786,19 +787,21 @@ export class DirectKeyboardManager {
   private setupGlobalPasteListener(): void {
     // Listen for paste events anywhere in the document
     // This catches CMD+V or context menu paste when the hidden input is focused
-    document.addEventListener('paste', (e) => {
+    this.globalPasteHandler = (e: Event) => {
+      const pasteEvent = e as ClipboardEvent;
       // Only handle if our hidden input is focused and we're in keyboard mode
       if (this.hiddenInput && document.activeElement === this.hiddenInput && this.showQuickKeys) {
-        const clipboardData = e.clipboardData?.getData('text/plain');
+        const clipboardData = pasteEvent.clipboardData?.getData('text/plain');
         if (clipboardData && this.inputManager) {
           logger.log('Global paste event captured, text length:', clipboardData.length);
           this.inputManager.sendInputText(clipboardData);
-          e.preventDefault();
-          e.stopPropagation();
+          pasteEvent.preventDefault();
+          pasteEvent.stopPropagation();
         }
       }
-    });
+    };
 
+    document.addEventListener('paste', this.globalPasteHandler);
     logger.log('Global paste listener setup for CMD+V support');
   }
 
@@ -860,6 +863,12 @@ export class DirectKeyboardManager {
       document.removeEventListener('click', this.captureClickHandler, true);
       document.removeEventListener('pointerdown', this.captureClickHandler, true);
       this.captureClickHandler = null;
+    }
+
+    // Remove global paste listener
+    if (this.globalPasteHandler) {
+      document.removeEventListener('paste', this.globalPasteHandler);
+      this.globalPasteHandler = null;
     }
 
     // Remove hidden input if it exists
