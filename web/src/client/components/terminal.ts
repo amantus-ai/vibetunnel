@@ -15,7 +15,7 @@ import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { processKeyboardShortcuts } from '../utils/keyboard-shortcut-highlighter.js';
 import { createLogger } from '../utils/logger.js';
-import { detectMobile } from '../utils/mobile-utils.js';
+import { detectMobile, isIOS } from '../utils/mobile-utils.js';
 import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../utils/terminal-themes.js';
 import { getCurrentTheme } from '../utils/theme-utils.js';
@@ -846,12 +846,18 @@ export class Terminal extends LitElement {
       touchHistory = [{ y: e.clientY, x: e.clientX, time: performance.now() }];
 
       // Capture the pointer so we continue to receive events even if DOM rebuilds
-      this.container?.setPointerCapture(e.pointerId);
+      // iOS Safari has issues with pointer capture causing lost taps when the
+      // terminal is updating, so skip capture on iOS devices
+      if (!isIOS()) {
+        this.container?.setPointerCapture(e.pointerId);
+      }
     };
 
     const handlePointerMove = (e: PointerEvent) => {
-      // Only handle touch pointers that we have captured
-      if (e.pointerType !== 'touch' || !this.container?.hasPointerCapture(e.pointerId)) return;
+      // Only handle touch pointers; on non-iOS we require pointer capture to avoid
+      // losing events when the DOM updates
+      if (e.pointerType !== 'touch') return;
+      if (!isIOS() && !this.container?.hasPointerCapture(e.pointerId)) return;
 
       const currentY = e.clientY;
       const currentX = e.clientX;
@@ -910,8 +916,10 @@ export class Terminal extends LitElement {
         }
       }
 
-      // Release pointer capture
-      this.container?.releasePointerCapture(e.pointerId);
+      // Release pointer capture on non-iOS devices. On iOS we skip capture entirely
+      if (!isIOS()) {
+        this.container?.releasePointerCapture(e.pointerId);
+      }
     };
 
     const handlePointerCancel = (e: PointerEvent) => {
@@ -919,7 +927,9 @@ export class Terminal extends LitElement {
       if (e.pointerType !== 'touch') return;
 
       // Release pointer capture
-      this.container?.releasePointerCapture(e.pointerId);
+      if (!isIOS()) {
+        this.container?.releasePointerCapture(e.pointerId);
+      }
     };
 
     // Attach pointer events to the container (touch only)
