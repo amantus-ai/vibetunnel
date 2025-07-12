@@ -53,20 +53,32 @@ export class TerminalPreferencesManager {
   private loadPreferences(): TerminalPreferences {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_TERMINAL_PREFS);
+      console.log('🎨 [PREFS] loadPreferences() raw localStorage value:', saved);
       if (saved) {
         const parsed = JSON.parse(saved);
+        console.log('🎨 [PREFS] loadPreferences() parsed:', parsed);
         // Merge with defaults to handle new properties
-        return { ...DEFAULT_PREFERENCES, ...parsed };
+        const merged = { ...DEFAULT_PREFERENCES, ...parsed };
+        console.log('🎨 [PREFS] loadPreferences() merged with defaults:', merged);
+        return merged;
       }
     } catch (error) {
       logger.warn('Failed to load terminal preferences', { error });
     }
+    console.log('🎨 [PREFS] loadPreferences() returning defaults:', DEFAULT_PREFERENCES);
     return { ...DEFAULT_PREFERENCES };
   }
 
   private savePreferences() {
     try {
-      localStorage.setItem(STORAGE_KEY_TERMINAL_PREFS, JSON.stringify(this.preferences));
+      const toSave = JSON.stringify(this.preferences);
+      console.log('🎨 [PREFS] savePreferences() saving to localStorage:', toSave);
+      localStorage.setItem(STORAGE_KEY_TERMINAL_PREFS, toSave);
+      console.log('🎨 [PREFS] savePreferences() successfully saved');
+
+      // Verify it was saved correctly
+      const verified = localStorage.getItem(STORAGE_KEY_TERMINAL_PREFS);
+      console.log('🎨 [PREFS] savePreferences() verification read:', verified);
     } catch (error) {
       logger.warn('Failed to save terminal preferences', { error });
     }
@@ -100,12 +112,17 @@ export class TerminalPreferencesManager {
   }
 
   getTheme(): TerminalThemeId {
+    console.log('🎨 [PREFS] getTheme() returning:', this.preferences.theme);
     return this.preferences.theme;
   }
 
   setTheme(theme: TerminalThemeId) {
+    console.log('🎨 [PREFS] setTheme() called with:', theme);
+    console.log('🎨 [PREFS] Current theme before:', this.preferences.theme);
     this.preferences.theme = theme;
+    console.log('🎨 [PREFS] Theme updated to:', this.preferences.theme);
     this.savePreferences();
+    console.log('🎨 [PREFS] savePreferences() called');
   }
 
   getPreferences(): TerminalPreferences {

@@ -21,7 +21,17 @@ export class WidthSelector extends LitElement {
   @property({ type: Boolean }) visible = false;
   @property({ type: Number }) terminalMaxCols = 0;
   @property({ type: Number }) terminalFontSize = 14;
-  @property({ type: String }) terminalTheme: TerminalThemeId = 'auto';
+
+  private _terminalTheme: TerminalThemeId = 'auto';
+  @property({ type: String })
+  get terminalTheme(): TerminalThemeId {
+    return this._terminalTheme;
+  }
+  set terminalTheme(value: TerminalThemeId) {
+    console.log('🎨 [WIDTH-SELECTOR] terminalTheme property set to:', value);
+    this._terminalTheme = value;
+    this.requestUpdate();
+  }
   @property({ type: String }) customWidth = '';
   @property({ type: Boolean }) showCustomInput = false;
   @property({ type: Function }) onWidthSelect?: (width: number) => void;
@@ -66,6 +76,13 @@ export class WidthSelector extends LitElement {
 
   render() {
     if (!this.visible) return null;
+
+    // Debug localStorage when dialog opens
+    console.log(
+      '🎨 [WIDTH-SELECTOR] Dialog opening, current localStorage:',
+      localStorage.getItem('vibetunnel_terminal_preferences')
+    );
+    console.log('🎨 [WIDTH-SELECTOR] Dialog opening, terminalTheme prop:', this.terminalTheme);
 
     // Check if we're showing a custom value that doesn't match presets
     const isCustomValue =

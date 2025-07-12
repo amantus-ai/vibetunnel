@@ -371,7 +371,9 @@ export class SessionView extends LitElement {
     // Load terminal preferences
     this.terminalMaxCols = this.preferencesManager.getMaxCols();
     this.terminalFontSize = this.preferencesManager.getFontSize();
+    console.log('🎨 [SESSION] Loading terminal theme from preferences...');
     this.terminalTheme = this.preferencesManager.getTheme();
+    console.log('🎨 [SESSION] Loaded terminal theme:', this.terminalTheme);
     this.terminalLifecycleManager.setTerminalFontSize(this.terminalFontSize);
     this.terminalLifecycleManager.setTerminalMaxCols(this.terminalMaxCols);
     this.terminalLifecycleManager.setTerminalTheme(this.terminalTheme);
