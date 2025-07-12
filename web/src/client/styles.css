@@ -998,8 +998,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 /* Light theme terminal container styling */
 [data-theme="light"] .terminal-container {
   /* Terminal colors are now handled by xterm.js theme */
-  border: 1px solid rgb(var(--color-border));
-  border-radius: 0.5rem;
+  /* Removed border and border-radius to prevent double-line effect with card borders */
 }
 
 /* Terminal line styling */
@@ -1081,8 +1080,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 }
 
 [data-theme="light"] .session-card .terminal-container {
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgb(var(--color-border));
+  /* Removed border and box-shadow to prevent double-line effect with card borders */
 }
 
 /* Ensure terminal container has proper size */

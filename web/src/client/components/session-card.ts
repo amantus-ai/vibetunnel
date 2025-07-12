@@ -17,6 +17,7 @@ import type { AuthClient } from '../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { createLogger } from '../utils/logger.js';
 import { copyToClipboard } from '../utils/path-utils.js';
+import type { TerminalThemeId } from '../utils/terminal-themes.js';
 
 const logger = createLogger('session-card');
 import './vibe-terminal-buffer.js';
@@ -340,6 +341,11 @@ export class SessionCard extends LitElement {
     this.isHovered = false;
   }
 
+  private getTerminalTheme(): TerminalThemeId {
+    const savedTheme = localStorage.getItem('terminal-theme') as TerminalThemeId;
+    return savedTheme || 'auto';
+  }
+
   render() {
     // Debug logging to understand what's in the session
     if (!this.session.name) {
@@ -475,6 +481,7 @@ export class SessionCard extends LitElement {
               : html`
                 <vibe-terminal-buffer
                   .sessionId=${this.session.id}
+                  .theme=${this.getTerminalTheme()}
                   class="w-full h-full"
                   style="pointer-events: none;"
                   @content-changed=${this.handleContentChanged}
