@@ -276,13 +276,11 @@ export class TerminalQuickKeys extends LitElement {
           /* Chrome: Use env() if supported */
           bottom: env(keyboard-inset-height, 0px);
           /* Safari: Will be overridden by inline style */
-          z-index: ${Z_INDEX.TERMINAL_QUICK_KEYS};
+          z-index: ${Z_INDEX.TERMINAL_QUICK_KEYS_HIGH};
           /* Above other UI but not excessive */
           isolation: isolate;
           /* Smooth transition when keyboard appears/disappears */
           transition: bottom 0.3s ease-out;
-          /* Only capture events on actual content */
-          pointer-events: none;
         }
         
         /* The actual bar with buttons */
@@ -290,8 +288,6 @@ export class TerminalQuickKeys extends LitElement {
           background: rgb(var(--color-bg-base));
           border-top: 1px solid rgb(var(--color-border-base));
           padding: 0.5rem 0.25rem;
-          /* Re-enable pointer events for the actual bar */
-          pointer-events: auto;
           /* Prevent iOS from adding its own styling */
           -webkit-appearance: none;
           appearance: none;
@@ -307,6 +303,13 @@ export class TerminalQuickKeys extends LitElement {
           -webkit-user-select: none;
           /* Ensure buttons are clickable */
           touch-action: manipulation;
+          /* Ensure button is not blocked by other elements */
+          position: relative;
+          z-index: 2;
+          /* Prevent layout shifts during touch */
+          will-change: transform;
+          /* Minimum touch target size */
+          min-height: 44px;
         }
         
         /* Modifier key styling */
@@ -433,8 +436,6 @@ export class TerminalQuickKeys extends LitElement {
       <div 
         class="terminal-quick-keys-container"
         style=${bottomPosition ? `bottom: ${bottomPosition}` : ''}
-        @mousedown=${(e: Event) => e.preventDefault()}
-        @touchstart=${(e: Event) => e.preventDefault()}
       >
         <div class="quick-keys-bar">
           <!-- Row 1 -->
@@ -445,38 +446,43 @@ export class TerminalQuickKeys extends LitElement {
                   type="button"
                   tabindex="-1"
                   class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
-                  @mousedown=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  @touchstart=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Start key repeat for arrow keys
-                    if (arrow) {
-                      this.startKeyRepeat(key, modifier || false, false);
+                  @pointerdown=${(e: PointerEvent) => {
+                    if (e.pointerType === 'touch' || e.pointerType === 'mouse') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Add visual feedback
+                      (e.currentTarget as HTMLElement).classList.add('active');
+                      // Start key repeat for arrow keys
+                      if (arrow) {
+                        this.startKeyRepeat(key, modifier || false, false);
+                      }
                     }
                   }}
-                  @touchend=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Stop key repeat
-                    if (arrow) {
-                      this.stopKeyRepeat();
-                    } else {
-                      this.handleKeyPress(key, modifier, false, toggle, e);
+                  @pointerup=${(e: PointerEvent) => {
+                    if (e.pointerType === 'touch' || e.pointerType === 'mouse') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Remove visual feedback
+                      (e.currentTarget as HTMLElement).classList.remove('active');
+                      // Stop key repeat
+                      if (arrow) {
+                        this.stopKeyRepeat();
+                      } else {
+                        this.handleKeyPress(key, modifier, false, toggle, e);
+                      }
                     }
                   }}
-                  @touchcancel=${(_e: Event) => {
-                    // Also stop on touch cancel
+                  @pointercancel=${(e: PointerEvent) => {
+                    // Remove visual feedback and stop repeat
+                    (e.currentTarget as HTMLElement).classList.remove('active');
                     if (arrow) {
                       this.stopKeyRepeat();
                     }
                   }}
                   @click=${(e: MouseEvent) => {
-                    if (e.detail !== 0 && !arrow) {
-                      this.handleKeyPress(key, modifier, false, toggle, e);
-                    }
+                    // Prevent double-firing
+                    e.preventDefault();
+                    e.stopPropagation();
                   }}
                 >
                   ${label}
