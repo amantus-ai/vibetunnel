@@ -23,6 +23,7 @@ import type { FilePicker } from './file-picker.js';
 import './clickable-path.js';
 import './terminal-quick-keys.js';
 import './session-view/mobile-input-overlay.js';
+import { titleManager } from '../utils/title-manager.js';
 import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
@@ -459,6 +460,12 @@ export class SessionView extends LitElement {
 
   firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
+    
+    // Load terminal preferences BEFORE terminal setup to ensure proper initialization
+    console.log('🎨 [SESSION] Loading terminal theme from preferences in firstUpdated...');
+    this.terminalTheme = this.preferencesManager.getTheme();
+    console.log('🎨 [SESSION] Loaded terminal theme in firstUpdated:', this.terminalTheme);
+    
     if (this.session && this.connected) {
       // Terminal setup is handled by state machine when reaching active state
       this.terminalLifecycleManager.setupTerminal();
@@ -979,7 +986,7 @@ export class SessionView extends LitElement {
 
       // Update the page title with the new session name
       const sessionName = actualName || this.session.command.join(' ');
-      document.title = `VibeTunnel - ${sessionName}`;
+      titleManager.setSessionTitle(sessionName);
 
       // Dispatch event to notify parent components with the actual name
       this.dispatchEvent(

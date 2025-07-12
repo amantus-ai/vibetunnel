@@ -447,6 +447,16 @@ export class Terminal extends LitElement {
       }
     });
 
+    // Update main terminal foreground and background colors
+    if (themeColors.foreground) {
+      document.documentElement.style.setProperty('--terminal-foreground', themeColors.foreground);
+      console.log(`🎨 [STEP 3.1] Set --terminal-foreground: ${themeColors.foreground}`);
+    }
+    if (themeColors.background) {
+      document.documentElement.style.setProperty('--terminal-background', themeColors.background);
+      console.log(`🎨 [STEP 3.1] Set --terminal-background: ${themeColors.background}`);
+    }
+
     console.log('🎨 [STEP 3.1] CSS terminal color properties updated');
   }
 
@@ -1208,9 +1218,9 @@ export class Terminal extends LitElement {
         const tempFg = style.match(/color: ([^;]+);/)?.[1];
         const tempBg = style.match(/background-color: ([^;]+);/)?.[1];
 
-        // Default terminal colors
-        const defaultFg = '#e4e4e4';
-        const defaultBg = '#0a0a0a';
+        // Use theme colors as defaults
+        const defaultFg = 'var(--terminal-foreground, #e4e4e4)';
+        const defaultBg = 'var(--terminal-background, #0a0a0a)';
 
         // Determine actual foreground and background
         const actualFg = tempFg || defaultFg;
