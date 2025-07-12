@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
+    <title>VibeTunnel - Terminal Multiplexer</title>
+    <meta
+      name="description"
+      content="Interactive terminal sessions in your browser with real-time streaming and mobile support"
+    />
+
+    <!-- PWA and mobile optimizations -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#1e1e1e" />
+
+    <!-- Favicon -->
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+
+    <!-- Single high-res Apple/Android/Web App icon -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Web App Manifest (important for iOS/Android home screen apps) -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Styles -->
+    <link href="./styles.css" rel="stylesheet" />
+
+    <!-- Mobile viewport and address bar handling -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100vh;
+        height: calc(var(--vh, 1vh) * 100); /* Dynamic viewport height for mobile */
+        overscroll-behavior-y: none; /* Prevent pull-to-refresh */
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Prevent pull-to-refresh only on specific elements */
+      body {
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /* Only disable touch-action on terminal components */
+      vibe-terminal {
+        touch-action: none;
+      }
+
+      /* Ensure app takes full viewport */
+      vibetunnel-app {
+        display: block;
+        width: 100%;
+        min-height: 100%;
+      }
+    </style>
+    
+    <!-- Initialize theme immediately to prevent flash -->
+    <script>
+      (function() {
+        // Load saved theme preference or use system preference
+        const saved = localStorage.getItem('vibetunnel-theme');
+        const theme = saved || 'system';
+        
+        // Apply theme immediately
+        if (theme === 'system') {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+        } else {
+          document.documentElement.setAttribute('data-theme', theme);
+        }
+        
+        // Apply immediate background to prevent flash
+        const effectiveTheme = theme === 'system' 
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : theme;
+        
+        // Set initial background color
+        document.documentElement.style.backgroundColor = effectiveTheme === 'dark' ? '#0a0a0a' : '#fafafa';
+      })();
+    </script>
+  </head>
+  <body class="m-0 p-0 bg-bg text-text">
+    <vibetunnel-app></vibetunnel-app>
+
+    <!-- Mobile viewport height fix -->
+    <script>
+      // Check if mobile device
+      // NOTE: This detection logic must match detectMobile() in src/client/utils/mobile-utils.ts
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
+                       (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+
+      // Handle viewport height - set only once on mobile to prevent resize loops
+      function setViewportHeight() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+      }
+
+      // Set initial height
+      setViewportHeight();
+
+      // On mobile, we only set viewport height once to prevent resize loops
+      // On desktop, we still allow dynamic resizing
+      if (!isMobile) {
+        window.addEventListener('resize', setViewportHeight);
+        window.addEventListener('orientationchange', () => {
+          setTimeout(setViewportHeight, 100);
+        });
+      }
+
+      // Force full-screen behavior
+      window.addEventListener('load', () => {
+        // Scroll to top to hide address bar
+        setTimeout(() => {
+          window.scrollTo(0, 1);
+          setTimeout(() => window.scrollTo(0, 0), 10);
+        }, 10);
+      });
+    </script>
+
+    <script type="module" src="./app-entry.ts"></script>
+  </body>
+</html>

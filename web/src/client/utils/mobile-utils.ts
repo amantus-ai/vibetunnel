@@ -10,10 +10,7 @@
  * @returns true if the device is mobile (iPhone, iPad, iPod, Android)
  */
 export function detectMobile(): boolean {
-  return (
-    /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
-    (!!navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
-  );
+  return (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (!!navigator.maxTouchPoints && navigator.maxTouchPoints > 1));
 }
 
 /**
