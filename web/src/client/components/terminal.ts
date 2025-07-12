@@ -86,6 +86,7 @@ export class Terminal extends LitElement {
 
   // Operation queue for batching buffer modifications
   private operationQueue: (() => void | Promise<void>)[] = [];
+  private activeTouchCount = 0; // Track active touches
 
   private queueRenderOperation(operation: () => void | Promise<void>) {
     this.operationQueue.push(operation);
@@ -832,6 +833,9 @@ export class Terminal extends LitElement {
       // Only handle touch pointers, not mouse
       if (e.pointerType !== 'touch' || !e.isPrimary) return;
 
+      // Track active touches
+      this.activeTouchCount++;
+
       // Stop any existing momentum
       if (this.momentumAnimation) {
         cancelAnimationFrame(this.momentumAnimation);
@@ -850,6 +854,16 @@ export class Terminal extends LitElement {
       // when the terminal is updating, so skip capture on mobile devices
       if (!isIOS() && !isAndroid()) {
         this.container?.setPointerCapture(e.pointerId);
+      }
+
+      // Log touch events for debugging on mobile
+      if (this.debugMode) {
+        logger.debug('Touch start', {
+          touches: this.activeTouchCount,
+          x: e.clientX,
+          y: e.clientY,
+          pointerId: e.pointerId,
+        });
       }
     };
 
@@ -895,6 +909,18 @@ export class Terminal extends LitElement {
       // Only handle touch pointers
       if (e.pointerType !== 'touch') return;
 
+      // Track active touches
+      this.activeTouchCount = Math.max(0, this.activeTouchCount - 1);
+
+      // Log touch events for debugging
+      if (this.debugMode) {
+        logger.debug('Touch end', {
+          touches: this.activeTouchCount,
+          wasScrolling: isScrolling,
+          pointerId: e.pointerId,
+        });
+      }
+
       // Calculate momentum if we were scrolling
       if (isScrolling && touchHistory.length >= 2) {
         const now = performance.now();
@@ -926,17 +952,32 @@ export class Terminal extends LitElement {
       // Only handle touch pointers
       if (e.pointerType !== 'touch') return;
 
+      // Track active touches
+      this.activeTouchCount = Math.max(0, this.activeTouchCount - 1);
+
+      // Log for debugging
+      if (this.debugMode) {
+        logger.debug('Touch cancel', {
+          touches: this.activeTouchCount,
+          pointerId: e.pointerId,
+        });
+      }
+
       // Release pointer capture on non-mobile devices
       if (!isIOS() && !isAndroid()) {
         this.container?.releasePointerCapture(e.pointerId);
       }
+
+      // Reset scrolling state
+      isScrolling = false;
     };
 
     // Attach pointer events to the container (touch only)
-    this.container.addEventListener('pointerdown', handlePointerDown);
-    this.container.addEventListener('pointermove', handlePointerMove);
-    this.container.addEventListener('pointerup', handlePointerUp);
-    this.container.addEventListener('pointercancel', handlePointerCancel);
+    // Use non-passive listeners to allow preventDefault if needed
+    this.container.addEventListener('pointerdown', handlePointerDown, { passive: false });
+    this.container.addEventListener('pointermove', handlePointerMove, { passive: false });
+    this.container.addEventListener('pointerup', handlePointerUp, { passive: false });
+    this.container.addEventListener('pointercancel', handlePointerCancel, { passive: false });
   }
 
   private scrollViewport(deltaLines: number) {
@@ -1045,6 +1086,25 @@ export class Terminal extends LitElement {
 
   private renderBuffer() {
     if (!this.terminal || !this.container) return;
+
+    // On mobile, defer renders during active touches to prevent lost taps
+    if (this.isMobile && this.activeTouchCount > 0) {
+      // Schedule render for after touch ends
+      if (!this.renderPending) {
+        this.renderPending = true;
+        requestAnimationFrame(() => {
+          if (this.activeTouchCount === 0) {
+            this.renderPending = false;
+            this.renderBuffer();
+          } else {
+            // Still touching, try again next frame
+            this.renderPending = false;
+            this.requestRenderBuffer();
+          }
+        });
+      }
+      return;
+    }
 
     const startTime = this.debugMode ? performance.now() : 0;
 
