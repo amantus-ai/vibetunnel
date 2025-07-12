@@ -427,7 +427,9 @@ export class DirectKeyboardManager {
   handleQuickKeyPress = async (
     key: string,
     isModifier?: boolean,
-    isSpecial?: boolean
+    isSpecial?: boolean,
+    isToggle?: boolean,
+    pasteText?: string
   ): Promise<void> => {
     if (!this.inputManager) {
       logger.error('No input manager found');
@@ -475,8 +477,15 @@ export class DirectKeyboardManager {
       }
       return;
     } else if (key === 'Paste') {
-      // Handle Paste key
-      logger.log('Paste button pressed - attempting clipboard read');
+      // Handle Paste key - check if we have immediate paste text from touch handler
+      if (pasteText) {
+        logger.log('Using immediate paste text from touch handler, length:', pasteText.length);
+        this.inputManager.sendInputText(pasteText);
+        return;
+      }
+
+      // Fallback to original clipboard read (should rarely be needed now)
+      logger.log('Paste button pressed - attempting fallback clipboard read');
 
       // Log environment details for debugging
       logger.log('Clipboard context:', {

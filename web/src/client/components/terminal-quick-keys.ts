@@ -72,7 +72,9 @@ export class TerminalQuickKeys extends LitElement {
   @property({ type: Function }) onKeyPress?: (
     key: string,
     isModifier?: boolean,
-    isSpecial?: boolean
+    isSpecial?: boolean,
+    isToggle?: boolean,
+    pasteText?: string
   ) => void;
   @property({ type: Boolean }) visible = false;
   @property({ type: Number }) keyboardHeight = 0;
@@ -192,6 +194,35 @@ export class TerminalQuickKeys extends LitElement {
     if (this.onKeyPress) {
       this.onKeyPress(key, isModifier, isSpecial);
     }
+  }
+
+  private handlePasteImmediate(e: Event) {
+    console.log('[QuickKeys] Paste button touched - reading clipboard immediately');
+
+    // Call clipboard read IMMEDIATELY in touchend to preserve user gesture context
+    navigator.clipboard
+      .readText()
+      .then((text) => {
+        console.log('[QuickKeys] Clipboard read successful, text length:', text?.length || 0);
+        if (text && this.onKeyPress) {
+          // Send the text directly through callback with special paste text parameter
+          this.onKeyPress('Paste', false, false, false, text);
+        } else if (!text) {
+          console.warn('[QuickKeys] Clipboard is empty or contains no text');
+        }
+      })
+      .catch((err) => {
+        console.error('[QuickKeys] Immediate clipboard read failed:', {
+          name: err?.name,
+          message: err?.message,
+          userAgent: navigator.userAgent.includes('Safari') ? 'Safari' : 'Other',
+        });
+
+        // Still call the handler to trigger the enhanced logging in direct-keyboard-manager
+        if (this.onKeyPress) {
+          this.onKeyPress('Paste', false, false);
+        }
+      });
   }
 
   private startKeyRepeat(key: string, isModifier: boolean, isSpecial: boolean) {
@@ -560,7 +591,11 @@ export class TerminalQuickKeys extends LitElement {
                       @touchend=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        this.handleKeyPress(key, modifier || combo, special, toggle, e);
+                        if (key === 'Paste') {
+                          this.handlePasteImmediate(e);
+                        } else {
+                          this.handleKeyPress(key, modifier || combo, special, toggle, e);
+                        }
                       }}
                       @click=${(e: MouseEvent) => {
                         if (e.detail !== 0) {
