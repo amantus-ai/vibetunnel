@@ -15,7 +15,7 @@ import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { processKeyboardShortcuts } from '../utils/keyboard-shortcut-highlighter.js';
 import { createLogger } from '../utils/logger.js';
-import { detectMobile, isIOS } from '../utils/mobile-utils.js';
+import { detectMobile, isAndroid, isIOS } from '../utils/mobile-utils.js';
 import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../utils/terminal-themes.js';
 import { getCurrentTheme } from '../utils/theme-utils.js';
@@ -846,18 +846,18 @@ export class Terminal extends LitElement {
       touchHistory = [{ y: e.clientY, x: e.clientX, time: performance.now() }];
 
       // Capture the pointer so we continue to receive events even if DOM rebuilds
-      // iOS Safari has issues with pointer capture causing lost taps when the
-      // terminal is updating, so skip capture on iOS devices
-      if (!isIOS()) {
+      // iOS Safari and Android browsers have issues with pointer capture causing lost taps
+      // when the terminal is updating, so skip capture on mobile devices
+      if (!isIOS() && !isAndroid()) {
         this.container?.setPointerCapture(e.pointerId);
       }
     };
 
     const handlePointerMove = (e: PointerEvent) => {
-      // Only handle touch pointers; on non-iOS we require pointer capture to avoid
+      // Only handle touch pointers; on non-mobile we require pointer capture to avoid
       // losing events when the DOM updates
       if (e.pointerType !== 'touch') return;
-      if (!isIOS() && !this.container?.hasPointerCapture(e.pointerId)) return;
+      if (!isIOS() && !isAndroid() && !this.container?.hasPointerCapture(e.pointerId)) return;
 
       const currentY = e.clientY;
       const currentX = e.clientX;
@@ -885,7 +885,7 @@ export class Terminal extends LitElement {
       }
 
       // Horizontal scrolling (native browser scrollLeft) - only if not in horizontal fit mode
-      if (Math.abs(deltaX) > 0 && !this.fitHorizontally) {
+      if (Math.abs(deltaX) > 0 && !this.fitHorizontally && this.container) {
         this.container.scrollLeft += deltaX;
         lastX = currentX;
       }
@@ -916,8 +916,8 @@ export class Terminal extends LitElement {
         }
       }
 
-      // Release pointer capture on non-iOS devices. On iOS we skip capture entirely
-      if (!isIOS()) {
+      // Release pointer capture on non-mobile devices. On mobile we skip capture entirely
+      if (!isIOS() && !isAndroid()) {
         this.container?.releasePointerCapture(e.pointerId);
       }
     };
@@ -926,8 +926,8 @@ export class Terminal extends LitElement {
       // Only handle touch pointers
       if (e.pointerType !== 'touch') return;
 
-      // Release pointer capture
-      if (!isIOS()) {
+      // Release pointer capture on non-mobile devices
+      if (!isIOS() && !isAndroid()) {
         this.container?.releasePointerCapture(e.pointerId);
       }
     };
