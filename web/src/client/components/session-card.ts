@@ -57,6 +57,7 @@ export class SessionCard extends LitElement {
 
   @property({ type: Object }) session!: Session;
   @property({ type: Object }) authClient!: AuthClient;
+  @property({ type: Boolean }) selected = false;
   @state() private killing = false;
   @state() private killingFrame = 0;
   @state() private isActive = false;
@@ -357,7 +358,7 @@ export class SessionCard extends LitElement {
           this.isActive && this.session.status === 'running'
             ? 'ring-2 ring-primary shadow-glow-sm'
             : ''
-        }"
+        } ${this.selected ? 'ring-2 ring-accent-primary shadow-card-hover' : ''}"
         style="view-transition-name: session-${this.session.id}; --session-id: session-${
           this.session.id
         }"

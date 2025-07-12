@@ -44,6 +44,8 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
      - Mac app runs `pnpm run dev` instead of embedded server
      - Provides hot reload - web changes automatically rebuild without Mac app rebuild
      - Restart VibeTunnel server (not full rebuild) to pick up web changes
+6. **Never kill all sessions**
+   - You are running inside a session yourself; killing all sessions would terminate your own process
 
 ### Git Workflow Reminders
 - Our workflow: start from main → create branch → make PR → merge → return to main
