@@ -4,7 +4,7 @@ import Testing
 
 // MARK: - Server Manager Tests
 
-@Suite("Server Manager Tests", .serialized, .disabled("Server tests disabled in CI"))
+@Suite("Server Manager Tests", .serialized, .tags(.serverManager))
 @MainActor
 final class ServerManagerTests {
     /// We'll use the shared ServerManager instance since it's a singleton
@@ -21,18 +21,31 @@ final class ServerManagerTests {
 
     // MARK: - Server Lifecycle Tests
 
-    @Test("Starting and stopping Bun server", .tags(.critical))
+    @Test("Starting and stopping Bun server", .tags(.critical, .attachmentTests), .enabled(if: !TestConditions.isRunningInCI()))
     func serverLifecycle() async throws {
+        // Attach system information for debugging
+        Attachment.record(TestUtilities.captureSystemInfo(), named: "System Info")
+        
+        // Attach initial server state
+        Attachment.record(TestUtilities.captureServerState(manager), named: "Initial Server State")
+        
         // Start the server
         await manager.start()
 
         // Give server time to attempt start
         try await Task.sleep(for: .milliseconds(2_000))
 
+        // Attach server state after start attempt
+        Attachment.record(TestUtilities.captureServerState(manager), named: "Post-Start Server State")
+
         // In test environment, server binary won't be found, so we expect failure
         // Check that lastError indicates the binary wasn't found
         if let error = manager.lastError as? BunServerError {
             #expect(error == .binaryNotFound)
+            Attachment.record("""
+                Error Type: \(error)
+                Error Description: \(error.localizedDescription)
+                """, named: "Server Error Details")
         }
 
         // Server should not be running without the binary
@@ -45,6 +58,9 @@ final class ServerManagerTests {
         // Check server is stopped
         #expect(!manager.isRunning)
         #expect(manager.bunServer == nil)
+        
+        // Attach final state
+        Attachment.record(TestUtilities.captureServerState(manager), named: "Final Server State")
     }
 
     @Test("Starting server when already running does not create duplicate", .tags(.critical))
@@ -239,5 +255,64 @@ final class ServerManagerTests {
 
         // Cleanup
         await manager.stop()
+    }
+    
+    // MARK: - Enhanced Server Management Tests with Attachments
+    
+    @Test("Server configuration management with diagnostics", .tags(.attachmentTests, .requiresServerBinary), .enabled(if: BunServerAvailableCondition.isAvailable()))
+    func serverConfigurationDiagnostics() async throws {
+        // Attach test environment
+        Attachment.record("""
+            Test: Server Configuration Management
+            Binary Available: \(BunServerAvailableCondition.isAvailable())
+            Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
+            """, named: "Test Configuration")
+        
+        // Record initial state
+        Attachment.record(TestUtilities.captureServerState(manager), named: "Initial State")
+        
+        // Test server configuration without actually starting it
+        let originalPort = manager.port
+        manager.port = "4567"
+        
+        // Record configuration change
+        Attachment.record("""
+            Port changed from \(originalPort) to \(manager.port)
+            Bind address: \(manager.bindAddress)
+            """, named: "Configuration Change")
+        
+        #expect(manager.port == "4567")
+        
+        // Restore original configuration
+        manager.port = originalPort
+        
+        // Record final state
+        Attachment.record(TestUtilities.captureServerState(manager), named: "Final State")
+    }
+    
+    @Test("Session model validation with attachments", .tags(.attachmentTests, .sessionManagement))
+    func sessionModelValidation() async throws {
+        // Attach test info
+        Attachment.record("""
+            Test: TunnelSession Model Validation
+            Purpose: Verify session creation and state management
+            """, named: "Test Info")
+        
+        // Create test session
+        let session = TunnelSession()
+        
+        // Record session details
+        Attachment.record("""
+            Session ID: \(session.id)
+            Created At: \(session.createdAt)
+            Last Activity: \(session.lastActivity)
+            Is Active: \(session.isActive)
+            Process ID: \(session.processID?.description ?? "none")
+            """, named: "Session Details")
+        
+        // Validate session properties
+        #expect(session.isActive)
+        #expect(session.lastActivity >= session.createdAt)
+        #expect(session.id != UUID())
     }
 }

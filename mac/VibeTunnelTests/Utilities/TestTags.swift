@@ -14,4 +14,5 @@ extension Tag {
     @Tag static var regression: Self
     @Tag static var sessionManagement: Self
     @Tag static var serverManager: Self
+    @Tag static var gitRepository: Self
 }

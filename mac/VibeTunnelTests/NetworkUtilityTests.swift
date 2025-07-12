@@ -190,19 +190,54 @@ struct NetworkUtilityTests {
 
     // MARK: - Performance Tests
 
-    @Test("Performance of IP address retrieval", .tags(.performance))
+    @Test("Performance of IP address retrieval", .tags(.performance, .attachmentTests))
     func iPRetrievalPerformance() async throws {
-        // Measure time to get IP addresses
-        let start = Date()
-
-        for _ in 0..<10 {
+        // Enhanced performance testing with detailed metrics
+        var timings: [TimeInterval] = []
+        let iterations = 50
+        
+        // Attach system configuration
+        Attachment.record("""
+            Test: IP Address Retrieval Performance
+            Iterations: \(iterations)
+            Test Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
+            System: \(TestUtilities.captureSystemInfo())
+            Network: \(TestUtilities.captureNetworkConfig())
+            """, named: "Performance Test Configuration")
+        
+        // Measure individual timings
+        for i in 0..<iterations {
+            let start = CFAbsoluteTimeGetCurrent()
             _ = NetworkUtility.getLocalIPAddress()
+            let end = CFAbsoluteTimeGetCurrent()
+            timings.append(end - start)
         }
-
-        let elapsed = Date().timeIntervalSince(start)
-
-        // Should be reasonably fast (< 1 second for 10 calls)
-        #expect(elapsed < 1.0, "IP retrieval took too long: \(elapsed) seconds")
+        
+        // Calculate statistics
+        let average = timings.reduce(0, +) / Double(timings.count)
+        let max = timings.max() ?? 0
+        let min = timings.min() ?? 0
+        let stdDev = TestUtilities.calculateStandardDeviation(timings)
+        
+        // Attach detailed performance metrics
+        Attachment.record("""
+            Iterations: \(iterations)
+            Average: \(String(format: "%.4f", average * 1000))ms
+            Min: \(String(format: "%.4f", min * 1000))ms  
+            Max: \(String(format: "%.4f", max * 1000))ms
+            Standard Deviation: \(String(format: "%.4f", stdDev * 1000))ms
+            95th Percentile: \(String(format: "%.4f", timings.sorted()[Int(0.95 * Double(timings.count))] * 1000))ms
+            """, named: "Performance Metrics")
+        
+        // Attach timing distribution for analysis
+        let timingData = timings.enumerated().map { i, timing in
+            "Iteration \(i + 1): \(String(format: "%.4f", timing * 1000))ms"
+        }.joined(separator: "\n")
+        Attachment.record(timingData, named: "Individual Timings")
+        
+        // Performance assertions
+        #expect(average < 0.01, "Average response time should be under 10ms, got \(String(format: "%.2f", average * 1000))ms")
+        #expect(max < 0.05, "Maximum response time should be under 50ms, got \(String(format: "%.2f", max * 1000))ms")
     }
 
     // MARK: - Concurrent Access Tests
