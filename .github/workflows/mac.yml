@@ -148,6 +148,19 @@ jobs:
         name: web-build-${{ github.sha }}
         path: web/
     
+    - name: Build web artifacts if missing
+      run: |
+        if [ ! -d "web/dist" ] || [ ! -d "web/public/bundle" ]; then
+          echo "Web build artifacts not found, building locally..."
+          cd web
+          # Skip custom Node.js build in CI to avoid timeout
+          export CI=true
+          pnpm run build
+          echo "Web artifacts built successfully"
+        else
+          echo "Web build artifacts found, skipping local build"
+        fi
+    
     - name: Resolve Dependencies (once)
       run: |
         echo "Resolving Swift package dependencies..."

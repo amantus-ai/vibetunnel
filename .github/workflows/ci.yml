@@ -47,7 +47,7 @@ jobs:
   node:
     name: Node.js CI
     needs: changes
-    if: ${{ needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ needs.changes.outputs.web == 'true' || needs.changes.outputs.mac == 'true' || github.event_name == 'workflow_dispatch' }}
     uses: ./.github/workflows/node.yml
 
   mac:
