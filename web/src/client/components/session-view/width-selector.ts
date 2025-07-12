@@ -58,6 +58,16 @@ export class WidthSelector extends LitElement {
     }
   }
 
+  private getArrowColor(): string {
+    // Check if we're in dark mode
+    const isDarkMode =
+      document.documentElement.getAttribute('data-theme') === 'dark' ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches &&
+        document.documentElement.getAttribute('data-theme') !== 'light');
+    // Return URL-encoded color for SVG
+    return isDarkMode ? '%23e4e4e4' : '%23171717'; // #e4e4e4 for dark, #171717 for light
+  }
+
   render() {
     if (!this.visible) return null;
 
@@ -130,9 +140,9 @@ export class WidthSelector extends LitElement {
             ${
               this.showCustomInput
                 ? html`
-              <div class="flex items-center gap-4">
-                <div class="w-20"></div>
-                <div class="flex-1 flex gap-2">
+              <div class="grid grid-cols-[120px_1fr] gap-4 items-center">
+                <div></div>
+                <div class="flex gap-2">
                   <input
                     type="number"
                     min="20"
@@ -142,11 +152,11 @@ export class WidthSelector extends LitElement {
                     @input=${this.handleCustomWidthInput}
                     @keydown=${this.handleCustomWidthKeydown}
                     @click=${(e: Event) => e.stopPropagation()}
-                    class="flex-1 bg-bg-secondary border border-border rounded-md px-3 py-2 text-sm font-mono text-text placeholder:text-text-dim focus:border-primary focus:shadow-glow-sm transition-all"
+                    class="flex-1 bg-bg-secondary border border-border rounded-md px-4 py-3 text-sm font-mono text-text placeholder:text-text-dim focus:border-primary focus:shadow-glow-sm transition-all"
                     autofocus
                   />
                   <button
-                    class="px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
+                    class="px-4 py-3 rounded-md text-sm font-medium transition-all duration-200
                       ${
                         !this.customWidth ||
                         Number.parseInt(this.customWidth) < 20 ||
@@ -168,18 +178,16 @@ export class WidthSelector extends LitElement {
             `
                 : ''
             }
-          </div>
           
-          <div class="border-t border-border mt-4 pt-4 space-y-4">
             <!-- Font size setting -->
-            <div class="flex items-center gap-4">
-              <label class="text-sm font-medium text-text-bright w-20">Font Size</label>
-              <div class="flex items-center gap-3">
+            <div class="grid grid-cols-[120px_1fr] gap-4 items-center">
+              <label class="text-sm font-medium text-text-bright text-right">Font Size</label>
+              <div class="flex items-center gap-3 bg-bg-secondary border border-border rounded-md px-4 py-2">
                 <button
                   class="w-8 h-8 rounded-md border transition-all duration-200 flex items-center justify-center
                     ${
                       this.terminalFontSize <= 8
-                        ? 'border-border bg-bg-secondary text-text-muted cursor-not-allowed'
+                        ? 'border-border bg-bg-tertiary text-text-muted cursor-not-allowed'
                         : 'border-border bg-bg-elevated text-text hover:border-primary hover:text-primary active:scale-95'
                     }"
                   @click=${() => this.onFontSizeChange?.(this.terminalFontSize - 1)}
@@ -190,14 +198,14 @@ export class WidthSelector extends LitElement {
                     <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
                   </svg>
                 </button>
-                <span class="font-mono text-base font-medium text-text-bright min-w-[50px] text-center">
+                <span class="font-mono text-base font-medium text-text-bright min-w-[60px] text-center">
                   ${this.terminalFontSize}px
                 </span>
                 <button
                   class="w-8 h-8 rounded-md border transition-all duration-200 flex items-center justify-center
                     ${
                       this.terminalFontSize >= 32
-                        ? 'border-border bg-bg-secondary text-text-muted cursor-not-allowed'
+                        ? 'border-border bg-bg-tertiary text-text-muted cursor-not-allowed'
                         : 'border-border bg-bg-elevated text-text hover:border-primary hover:text-primary active:scale-95'
                     }"
                   @click=${() => this.onFontSizeChange?.(this.terminalFontSize + 1)}
@@ -208,15 +216,16 @@ export class WidthSelector extends LitElement {
                     <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                   </svg>
                 </button>
+                <div class="flex-1"></div>
               </div>
             </div>
             
             <!-- Theme setting -->
-            <div class="flex items-center gap-4">
-              <label class="text-sm font-medium text-text-bright w-20">Theme</label>
+            <div class="grid grid-cols-[120px_1fr] gap-4 items-center">
+              <label class="text-sm font-medium text-text-bright text-right">Theme</label>
               <select
-                class="flex-1 bg-bg-secondary border border-border rounded-md pl-3 pr-10 py-2 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer appearance-none"
-                style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22currentColor%22%3e%3cpath fill-rule=%22evenodd%22 d=%22M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z%22 clip-rule=%22evenodd%22/%3e%3c/svg%3e'); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em;"
+                class="w-full bg-bg-secondary border border-border rounded-md pl-4 pr-10 py-3 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer appearance-none"
+                style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22${this.getArrowColor()}%22%3e%3cpath fill-rule=%22evenodd%22 d=%22M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z%22 clip-rule=%22evenodd%22/%3e%3c/svg%3e'); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.25em 1.25em;"
                 .value=${this.terminalTheme}
                 @change=${(e: Event) => {
                   e.stopPropagation();

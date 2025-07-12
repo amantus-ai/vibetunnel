@@ -962,7 +962,7 @@ export class SessionView extends LitElement {
 
       // Update the local session object with the server-assigned name
       this.session = { ...this.session, name: actualName };
-      
+
       // Update the page title with the new session name
       const sessionName = actualName || this.session.command.join(' ');
       document.title = `VibeTunnel - ${sessionName}`;
