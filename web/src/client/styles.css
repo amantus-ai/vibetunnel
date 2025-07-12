@@ -1481,7 +1481,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 .debug-overlay {
   position: absolute;
   bottom: 8px;
-  right: 8px;
+  left: 8px;
   background: rgba(26, 26, 26, 0.9);
   border: 1px solid #2a2a2a;
   border-radius: 4px;
