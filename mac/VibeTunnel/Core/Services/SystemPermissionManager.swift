@@ -297,7 +297,7 @@ final class SystemPermissionManager {
             // Try to get windows from the app - this definitely needs accessibility
             var windows: CFTypeRef?
             let windowResult = AXUIElementCopyAttributeValue(
-                app as! AXUIElement,
+                app as! AXUIElement, // swiftlint:disable:this force_cast
                 kAXWindowsAttribute as CFString,
                 &windows
             )

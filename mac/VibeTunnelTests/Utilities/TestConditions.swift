@@ -7,7 +7,13 @@ import Testing
 /// Condition that checks if the Bun server binary is available for testing
 struct BunServerAvailableCondition {
     static func isAvailable() -> Bool {
-        // Check if we can find the Bun binary
+        // Check for the embedded vibetunnel binary (same logic as BunServer)
+        if let embeddedBinaryPath = Bundle.main.path(forResource: "vibetunnel", ofType: nil),
+           FileManager.default.fileExists(atPath: embeddedBinaryPath) {
+            return true
+        }
+        
+        // Fallback: Check if we can find external Bun binary
         let bunPath = "/usr/local/bin/bun"
         let altBunPath = "/opt/homebrew/bin/bun"
         

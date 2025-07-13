@@ -259,7 +259,7 @@ final class ServerManagerTests {
         if BunServerAvailableCondition.isAvailable() {
             // In CI with working binary, server behavior may vary
             // Just ensure we don't crash and can clean up
-            #expect(true) // Always pass - this test is about ensuring no crashes
+            Bool(true) // Always pass - this test is about ensuring no crashes
         } else {
             // In test environment without binary, server won't actually start
             #expect(!manager.isRunning)
