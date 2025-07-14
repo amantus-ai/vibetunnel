@@ -138,7 +138,7 @@ This npm package includes:
 
 ## Documentation
 
-For full documentation, visit: https://vibetunnel.com
+See the main repository for complete documentation: https://github.com/amantus-ai/vibetunnel
 
 ## License
 
