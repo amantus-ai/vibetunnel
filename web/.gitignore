@@ -141,3 +141,10 @@ coverage-summary.json
 # Playwright traces and test data
 data/
 trace/
+
+# Compiled binaries (should not be in git)
+bin-macos/
+*.dylib
+*.so
+*.exe
+spawn-helper*

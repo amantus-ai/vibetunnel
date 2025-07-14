@@ -183,9 +183,35 @@ int main (int argc, char** argv) {
 ```
 
 ### Installation Handling
-- **With prebuilds**: spawn-helper builds during installation via node-gyp
+- **Current approach**: spawn-helper builds during installation via node-gyp
+- **Alternative approach**: Could ship prebuilt universal binaries (see below)
 - **Fallback path**: Compilation happens automatically when needed
 - **Error handling**: Non-fatal if missing (warns but continues)
+
+### Universal Binary Option
+Since spawn-helper is pure C with no Node.js dependencies, we could potentially ship prebuilt universal binaries:
+
+**Benefits**:
+- Faster installation (no compilation needed)
+- Works without build tools
+- Smaller than compiling during install
+
+**Current limitation**: 
+- Would need both x64 and arm64 builds
+- Requires proper code signing for distribution
+- Need to ensure compatibility across macOS versions
+
+**Implementation**: Create universal binary with `lipo`:
+```bash
+# Build for both architectures
+clang -arch x64 -o spawn-helper-x64 spawn-helper.cc
+clang -arch arm64 -o spawn-helper-arm64 spawn-helper.cc
+
+# Create universal binary  
+lipo -create spawn-helper-x64 spawn-helper-arm64 -output spawn-helper-universal
+
+# Include in prebuilds for macOS
+```
 
 ## Package Optimization
 
