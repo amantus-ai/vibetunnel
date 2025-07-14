@@ -1,0 +1,219 @@
+#!/bin/bash
+# VibeTunnel CLI wrapper - compatible with both Mac app and npm installations
+
+# First, check if the Mac app's vt command exists and should be used
+MAC_VT_LOCATIONS=(
+    "/usr/local/bin/vt"  # Standard symlink location
+    "/Applications/VibeTunnel.app/Contents/Resources/vt"
+    "$HOME/Applications/VibeTunnel.app/Contents/Resources/vt"
+)
+
+# Check if we have a Mac app vt command
+for MAC_VT in "${MAC_VT_LOCATIONS[@]}"; do
+    if [ -f "$MAC_VT" ] && [ -x "$MAC_VT" ]; then
+        # Found Mac app vt - check if it's not us (avoid infinite recursion)
+        RESOLVED_MAC_VT="$(readlink -f "$MAC_VT" 2>/dev/null || echo "$MAC_VT")"
+        RESOLVED_SELF="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+        
+        if [ "$RESOLVED_MAC_VT" != "$RESOLVED_SELF" ]; then
+            # It's a different vt command, defer to it
+            exec "$MAC_VT" "$@"
+        fi
+    fi
+done
+
+# If we get here, use the npm-installed vibetunnel
+VIBETUNNEL_BIN=""
+
+# First, try to find vibetunnel in the same directory as this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/vibetunnel" ]; then
+    VIBETUNNEL_BIN="$SCRIPT_DIR/vibetunnel"
+elif [ -f "$SCRIPT_DIR/vibetunnel-fwd" ]; then
+    # Fallback to vibetunnel-fwd for basic functionality
+    VIBETUNNEL_BIN="$SCRIPT_DIR/vibetunnel-fwd"
+else
+    # Try to find vibetunnel in PATH
+    if command -v vibetunnel >/dev/null 2>&1; then
+        VIBETUNNEL_BIN="$(command -v vibetunnel)"
+    elif command -v vibetunnel-fwd >/dev/null 2>&1; then
+        VIBETUNNEL_BIN="$(command -v vibetunnel-fwd)"
+    fi
+fi
+
+if [ -z "$VIBETUNNEL_BIN" ] || [ ! -f "$VIBETUNNEL_BIN" ]; then
+    echo "Error: vibetunnel binary not found. Please ensure @vibetunnel/vibetunnel-cli is installed." >&2
+    echo "Install with: npm install -g @vibetunnel/vibetunnel-cli" >&2
+    exit 1
+fi
+
+# Check if we're already inside a VibeTunnel session
+if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
+    # Special case: handle 'vt title' command inside a session
+    if [[ "$1" == "title" ]]; then
+        if [[ $# -lt 2 ]]; then
+            echo "Error: 'vt title' requires a title argument" >&2
+            echo "Usage: vt title <new title>" >&2
+            exit 1
+        fi
+        shift # Remove 'title' from arguments
+        TITLE="$*" # Get all remaining arguments as the title
+        
+        # Use the vibetunnel binary's new --update-title flag
+        exec "$VIBETUNNEL_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
+        # If exec fails, exit with error
+        exit 1
+    fi
+    
+    echo "Error: Already inside a VibeTunnel session (ID: $VIBETUNNEL_SESSION_ID). Recursive VibeTunnel sessions are not supported." >&2
+    echo "If you need to run commands, use them directly without the 'vt' prefix." >&2
+    exit 1
+fi
+
+# Function to show help
+show_help() {
+    cat << 'EOF'
+vt - VibeTunnel TTY Forward Wrapper
+
+USAGE:
+    vt [command] [args...]
+    vt --shell [args...]
+    vt -i [args...]
+    vt --no-shell-wrap [command] [args...]
+    vt -S [command] [args...]
+    vt title <new title>    # Inside a VibeTunnel session only
+    vt --help
+
+DESCRIPTION:
+    This wrapper script allows VibeTunnel to see the output of commands by
+    forwarding TTY data through the vibetunnel utility. When you run commands
+    through 'vt', VibeTunnel can monitor and display the command's output
+    in real-time.
+
+    By default, commands are executed through your shell to resolve aliases,
+    functions, and builtins. Use --no-shell-wrap to execute commands directly.
+
+    Inside a VibeTunnel session, use 'vt title' to update the session name.
+
+EXAMPLES:
+    vt top                  # Watch top with VibeTunnel monitoring
+    vt python script.py     # Run Python script with output forwarding
+    vt npm test             # Run tests with VibeTunnel visibility
+    vt --shell              # Launch current shell (equivalent to vt $SHELL)
+    vt -i                   # Launch current shell (short form)
+    vt -S ls -la            # List files without shell alias resolution
+    vt title "My Project"   # Update session title (inside session only)
+
+OPTIONS:
+    --shell, -i            Launch current shell (equivalent to vt $SHELL)
+    --no-shell-wrap, -S    Execute command directly without shell wrapper
+    --title-mode <mode>    Terminal title mode (none, filter, static, dynamic)
+                          Default: none (dynamic for claude)
+    --help, -h             Show this help message and exit
+    
+TITLE MODES:
+    none       No title management - apps control their own titles
+    filter     Block all title changes from applications  
+    static     Show working directory and command in title
+    dynamic    Show directory, command, and live activity status (default for web UI)
+
+NOTE:
+    This script uses the vibetunnel executable installed via npm.
+EOF
+    
+    # Show path and version info
+    echo
+    echo "VIBETUNNEL BINARY:"
+    echo "    Path: $VIBETUNNEL_BIN"
+    if [ -f "$VIBETUNNEL_BIN" ]; then
+        # Extract version from the package.json if available
+        PACKAGE_JSON="$(dirname "$(dirname "$VIBETUNNEL_BIN")")/package.json"
+        if [ -f "$PACKAGE_JSON" ]; then
+            VERSION=$(grep '"version"' "$PACKAGE_JSON" | head -1 | sed 's/.*"version".*:.*"\(.*\)".*/\1/')
+            echo "    Version: $VERSION"
+        fi
+        echo "    Status: Installed via npm"
+    else
+        echo "    Status: Not found"
+    fi
+}
+
+# Function to resolve command through user's shell
+resolve_command() {
+    local user_shell="${SHELL:-/bin/bash}"
+    local cmd="$1"
+    shift
+
+    local shell_name=$(basename "$user_shell")
+
+    # Always try through shell first to handle aliases, functions, and builtins
+    # The shell will fall back to PATH lookup if no alias/function exists
+    case "$shell_name" in
+        zsh)
+            # For zsh, we need interactive mode to get aliases
+            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            ;;
+        bash)
+            # For bash, expand aliases in non-interactive mode
+            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            ;;
+        *)
+            # Generic shell handling
+            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            ;;
+    esac
+}
+
+# Handle --help or -h option, or no arguments (show help)
+if [[ $# -eq 0 || "$1" == "--help" || "$1" == "-h" ]]; then
+    show_help
+    exit 0
+fi
+
+# Handle 'vt title' command when not inside a session
+if [[ "$1" == "title" ]]; then
+    echo "Error: 'vt title' can only be used inside a VibeTunnel session." >&2
+    echo "Start a session first with 'vt' or 'vt <command>'" >&2
+    exit 1
+fi
+
+# Handle --shell or -i option (launch current shell)
+if [[ "$1" == "--shell" || "$1" == "-i" ]]; then
+    shift
+    # Execute current shell through vibetunnel
+    exec "$0" "${SHELL:-/bin/bash}" "$@"
+fi
+
+# Handle --no-shell-wrap or -S option
+NO_SHELL_WRAP=false
+if [[ "$1" == "--no-shell-wrap" || "$1" == "-S" ]]; then
+    NO_SHELL_WRAP=true
+    shift
+fi
+
+# Handle --title-mode option
+TITLE_MODE_ARGS=""
+if [[ "$1" == "--title-mode" && $# -gt 1 ]]; then
+    TITLE_MODE_ARGS="--title-mode $2"
+    shift 2
+fi
+
+# Check if we have arguments and if the first argument is not an option
+if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
+    if [[ "$NO_SHELL_WRAP" == "true" ]]; then
+        # Execute directly without shell wrapper
+        exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+    else
+        # Check if the first argument is a real binary
+        if which "$1" >/dev/null 2>&1; then
+            # It's a real binary, execute directly
+            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+        else
+            # Not a real binary, try alias resolution
+            resolve_command "$@"
+        fi
+    fi
+else
+    # Run with fwd command (original behavior for options)
+    exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+fi

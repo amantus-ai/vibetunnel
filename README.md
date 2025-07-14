@@ -54,6 +54,15 @@ VibeTunnel lives in your menu bar. Click the icon to start the server.
 
 ### 3. Use the `vt` Command
 
+The `vt` command is available through two sources:
+
+**macOS App**: If you have the VibeTunnel app installed, it provides the `vt` command. The app installer creates a symlink at `/usr/local/bin/vt`.
+
+**npm Package**: If you install the npm package (`npm install -g @vibetunnel/vibetunnel-cli`), it also provides a `vt` command that:
+- Automatically detects if the Mac app is installed and defers to it
+- Falls back to using the npm-installed server if no Mac app is found
+- Works seamlessly on Linux where there's no Mac app
+
 ```bash
 # Run any command in the browser
 vt pnpm run dev

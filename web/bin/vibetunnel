@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+
+// Check if running as fwd command
+if (process.argv[2] === 'fwd') {
+  // Remove 'fwd' from args and pass to fwd module
+  process.argv.splice(2, 1);
+  require('../dist/server/fwd.js').startVibeTunnelForward(process.argv.slice(2));
+} else {
+  // Start the server
+  require('../dist/cli.js');
+}
