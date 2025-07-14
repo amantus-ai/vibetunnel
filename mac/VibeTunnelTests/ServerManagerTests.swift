@@ -335,6 +335,10 @@ final class ServerManagerTests {
         // Validate session properties
         #expect(session.isActive)
         #expect(session.lastActivity >= session.createdAt)
-        #expect(session.id != UUID())
+        
+        // Ensure session ID is valid and stable
+        let sessionID = session.id
+        #expect(!sessionID.uuidString.isEmpty)
+        #expect(sessionID == session.id) // Ensures ID is stable across calls
     }
 }
