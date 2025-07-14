@@ -226,7 +226,7 @@ struct NetworkUtilityTests {
             Min: \(String(format: "%.4f", min * 1000))ms  
             Max: \(String(format: "%.4f", max * 1000))ms
             Standard Deviation: \(String(format: "%.4f", stdDev * 1000))ms
-            95th Percentile: \(String(format: "%.4f", timings.sorted()[Int(0.95 * Double(timings.count))] * 1000))ms
+            95th Percentile: \(String(format: "%.4f", calculatePercentile95(timings) * 1000))ms
             """, named: "Performance Metrics")
         
         // Attach timing distribution for analysis
@@ -313,5 +313,15 @@ struct NetworkUtilityTests {
         #expect(MockNetworkUtility.getAllIPAddresses().isEmpty)
 
         MockNetworkUtility.reset()
+    }
+    
+    // MARK: - Helper Functions
+    
+    /// Safely calculate 95th percentile, guarding against empty arrays and out-of-bounds access
+    private func calculatePercentile95(_ timings: [TimeInterval]) -> TimeInterval {
+        guard !timings.isEmpty else { return 0 }
+        let sortedTimings = timings.sorted()
+        let percentileIndex = min(Int(0.95 * Double(sortedTimings.count)), sortedTimings.count - 1)
+        return sortedTimings[percentileIndex]
     }
 }

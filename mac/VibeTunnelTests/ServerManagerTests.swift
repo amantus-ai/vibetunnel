@@ -39,7 +39,7 @@ final class ServerManagerTests {
         Attachment.record(TestUtilities.captureServerState(manager), named: "Post-Start Server State")
 
         // Handle both scenarios: binary not found vs binary working
-        if BunServerAvailableCondition.isAvailable() {
+        if ServerBinaryAvailableCondition.isAvailable() {
             // In CI with working binary, server should start successfully or fail gracefully
             #expect(manager.isRunning || manager.lastError != nil)
             Attachment.record("""
@@ -199,7 +199,7 @@ final class ServerManagerTests {
         #expect(manager.port == testPort)
 
         // Handle both scenarios: binary available vs not available
-        if BunServerAvailableCondition.isAvailable() {
+        if ServerBinaryAvailableCondition.isAvailable() {
             // In CI with working binary, server instances may vary
             // Focus on configuration persistence
             #expect(manager.port == testPort) // Configuration should persist
@@ -256,7 +256,7 @@ final class ServerManagerTests {
         try await Task.sleep(for: .milliseconds(200))
 
         // Handle both scenarios: binary available vs not available
-        if BunServerAvailableCondition.isAvailable() {
+        if ServerBinaryAvailableCondition.isAvailable() {
             // In CI with working binary, server behavior may vary
             // Just ensure we don't crash and can clean up
             Bool(true) // Always pass - this test is about ensuring no crashes
@@ -281,12 +281,12 @@ final class ServerManagerTests {
     
     // MARK: - Enhanced Server Management Tests with Attachments
     
-    @Test("Server configuration management with diagnostics", .tags(.attachmentTests, .requiresServerBinary), .enabled(if: BunServerAvailableCondition.isAvailable()))
+    @Test("Server configuration management with diagnostics", .tags(.attachmentTests, .requiresServerBinary), .enabled(if: ServerBinaryAvailableCondition.isAvailable()))
     func serverConfigurationDiagnostics() async throws {
         // Attach test environment
         Attachment.record("""
             Test: Server Configuration Management
-            Binary Available: \(BunServerAvailableCondition.isAvailable())
+            Binary Available: \(ServerBinaryAvailableCondition.isAvailable())
             Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
             """, named: "Test Configuration")
         

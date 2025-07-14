@@ -9,61 +9,49 @@ struct ProcessLifecycleTests {
     
     @Test("Basic process spawning validation", .tags(.attachmentTests))
     func basicProcessSpawning() async throws {
-        // Test that we can spawn simple processes without issues
-        Attachment.record("""
-            Test: Basic Process Spawning
-            Command: /bin/echo
-            Expected: Clean exit with status 0
-            Environment: \(ProcessInfo.processInfo.environment["USER"] ?? "unknown")
-            """, named: "Process Test Configuration")
+        TestUtilities.recordTestConfiguration(
+            name: "Basic Process Spawning",
+            details: "Command: /bin/echo\nExpected: Clean exit with status 0"
+        )
         
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/echo")
-        process.arguments = ["Hello from VibeTunnel test"]
+        let result = try await runProcessWithTimeout(
+            executablePath: "/bin/echo",
+            arguments: ["Hello from VibeTunnel test"],
+            timeoutSeconds: 5
+        )
         
-        let pipe = Pipe()
-        process.standardOutput = pipe
+        TestUtilities.recordProcessExecution(
+            command: "/bin/echo",
+            arguments: ["Hello from VibeTunnel test"],
+            exitStatus: result.exitStatus,
+            output: result.output
+        )
         
-        try process.run()
-        process.waitUntilExit()
-        
-        // Capture output for verification
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8) ?? ""
-        
-        Attachment.record("""
-            Exit Status: \(process.terminationStatus)
-            Output: \(output.trimmingCharacters(in: .whitespacesAndNewlines))
-            Process ID: \(process.processIdentifier)
-            """, named: "Process Output")
-        
-        #expect(process.terminationStatus == 0)
+        #expect(result.exitStatus == 0)
+        #expect(!result.output.isEmpty)
     }
     
     @Test("Process error handling", .tags(.attachmentTests))
     func processErrorHandling() async throws {
-        // Test that we properly handle process failures
-        Attachment.record("""
-            Test: Process Error Handling
-            Command: /bin/sh -c "exit 1" (always exits with code 1)
-            Expected: Exit with failure status
-            """, named: "Error Test Configuration")
+        TestUtilities.recordTestConfiguration(
+            name: "Process Error Handling", 
+            details: "Command: /bin/sh -c \"exit 1\"\nExpected: Exit with failure status"
+        )
         
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", "exit 1"]
+        let result = try await runProcessWithTimeout(
+            executablePath: "/bin/sh",
+            arguments: ["-c", "exit 1"],
+            timeoutSeconds: 5
+        )
         
-        try process.run()
-        process.waitUntilExit()
-        
-        Attachment.record("""
-            Exit Status: \(process.terminationStatus)
-            Expected: Non-zero exit status
-            Process ID: \(process.processIdentifier)
-            """, named: "Process Error Details")
+        TestUtilities.recordProcessExecution(
+            command: "/bin/sh",
+            arguments: ["-c", "exit 1"],
+            exitStatus: result.exitStatus
+        )
         
         // This should fail as intended
-        #expect(process.terminationStatus != 0)
+        #expect(result.exitStatus != 0)
     }
     
     @Test("Shell command execution", .tags(.attachmentTests, .integration))
@@ -132,6 +120,50 @@ struct ProcessLifecycleTests {
         
         #expect(process.terminationStatus == 0)
     }
+    
+    // MARK: - Helper Functions
+    
+    /// Run a process with timeout protection
+    private func runProcessWithTimeout(
+        executablePath: String,
+        arguments: [String],
+        timeoutSeconds: TimeInterval
+    ) async throws -> ProcessResult {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = arguments
+        
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+        
+        // Start timeout task
+        let timeoutTask = Task {
+            try await Task.sleep(for: .seconds(timeoutSeconds))
+            if process.isRunning {
+                process.terminate()
+                throw ProcessError.timeout
+            }
+        }
+        
+        // Run the process
+        try process.run()
+        process.waitUntilExit()
+        timeoutTask.cancel()
+        
+        // Capture output
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: outputData, encoding: .utf8) ?? ""
+        let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+        
+        return ProcessResult(
+            exitStatus: process.terminationStatus,
+            output: output.trimmingCharacters(in: .whitespacesAndNewlines),
+            errorOutput: errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
 }
 
 // MARK: - Process Error Types
@@ -141,6 +173,7 @@ enum ProcessError: Error, LocalizedError {
     case unexpectedSuccess
     case shellCommandFailed(Int32, String)
     case networkCommandFailed(Int32)
+    case timeout
     
     var errorDescription: String? {
         switch self {
@@ -152,6 +185,16 @@ enum ProcessError: Error, LocalizedError {
             return "Shell command failed with status \(code): \(error)"
         case .networkCommandFailed(let code):
             return "Network command failed with status \(code)"
+        case .timeout:
+            return "Process timed out"
         }
     }
+}
+
+// MARK: - Process Result
+
+struct ProcessResult {
+    let exitStatus: Int32
+    let output: String
+    let errorOutput: String
 }

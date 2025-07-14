@@ -4,21 +4,24 @@ import Testing
 
 // MARK: - Enhanced Test Conditions for Swift 6.2
 
-/// Condition that checks if the Bun server binary is available for testing
-struct BunServerAvailableCondition {
+/// Condition that checks if the server binary is available for testing
+struct ServerBinaryAvailableCondition {
     static func isAvailable() -> Bool {
-        // Check for the embedded vibetunnel binary (same logic as BunServer)
+        // Check for the embedded vibetunnel binary (same logic as the actual server)
         if let embeddedBinaryPath = Bundle.main.path(forResource: "vibetunnel", ofType: nil),
            FileManager.default.fileExists(atPath: embeddedBinaryPath) {
             return true
         }
         
-        // Fallback: Check if we can find external Bun binary
-        let bunPath = "/usr/local/bin/bun"
-        let altBunPath = "/opt/homebrew/bin/bun"
+        // Fallback: Check for Node.js binary paths (we use Node, not Bun!)
+        let nodePaths = [
+            "/usr/local/bin/node",
+            "/opt/homebrew/bin/node", 
+            "/usr/bin/node",
+            ProcessInfo.processInfo.environment["NODE_PATH"]
+        ].compactMap { $0 }
         
-        return FileManager.default.fileExists(atPath: bunPath) || 
-               FileManager.default.fileExists(atPath: altBunPath)
+        return nodePaths.contains { FileManager.default.fileExists(atPath: $0) }
     }
 }
 
@@ -113,5 +116,24 @@ enum TestUtilities {
         let variance = squaredDifferences.reduce(0, +) / Double(values.count)
         
         return sqrt(variance)
+    }
+    
+    /// Record standardized test configuration with environment info
+    static func recordTestConfiguration(name: String, details: String) {
+        Attachment.record("""
+            Test: \(name)
+            Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
+            \(details)
+            """, named: "Test Configuration")
+    }
+    
+    /// Record process execution details
+    static func recordProcessExecution(command: String, arguments: [String], exitStatus: Int32, output: String? = nil) {
+        Attachment.record("""
+            Command: \(command) \(arguments.joined(separator: " "))
+            Exit Status: \(exitStatus)
+            Output: \(output ?? "(none)")
+            Process Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
+            """, named: "Process Execution Details")
     }
 }
