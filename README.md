@@ -36,7 +36,7 @@ This gives you the full VibeTunnel server with web UI, just without the macOS me
 
 **macOS App**: Requires an Apple Silicon Mac (M1+). Intel Macs are not supported for the native app.
 
-**npm Package**: Works on any system with Node.js 20+, including Intel Macs and Linux.
+**npm Package**: Works on any system with Node.js 20+, including Intel Macs and Linux. Windows is not yet supported ([#252](https://github.com/amantus-ai/vibetunnel/issues/252)).
 
 ### 1. Download & Install
 
@@ -254,10 +254,11 @@ npm run start -- --allow-local-bypass --local-auth-token mytoken
 
 ### macOS App Authentication
 
-The macOS menu bar app handles authentication differently:
-- In "Localhost Only" mode: No authentication required
-- In "Network" mode: Configure via Settings → Security
-- Supports system authentication and custom credentials
+The macOS menu bar app supports these authentication modes:
+- **No Authentication**: For trusted environments only
+- **System Authentication**: Uses your macOS user account credentials
+- **SSH Key Authentication**: Uses Ed25519 SSH keys from `~/.ssh/authorized_keys`
+- Configure via Settings → Security when in "Network" mode
 
 ### Security Best Practices
 

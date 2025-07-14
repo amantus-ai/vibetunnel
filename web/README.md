@@ -1,6 +1,6 @@
 # VibeTunnel CLI
 
-Full-featured terminal sharing server with web interface for macOS and Linux.
+Full-featured terminal sharing server with web interface for macOS and Linux. Windows not yet supported.
 
 ## Installation
 
@@ -11,7 +11,7 @@ npm install -g vibetunnel
 ## Requirements
 
 - Node.js >= 20.0.0
-- macOS or Linux
+- macOS or Linux (Windows not yet supported)
 - Build tools for native modules (Xcode on macOS, build-essential on Linux)
 
 ## Usage
@@ -88,6 +88,7 @@ This npm package includes:
 
 - macOS (Intel and Apple Silicon)
 - Linux (x64 and ARM64)
+- Windows: Not yet supported ([#252](https://github.com/amantus-ai/vibetunnel/issues/252))
 
 ## Documentation
 
