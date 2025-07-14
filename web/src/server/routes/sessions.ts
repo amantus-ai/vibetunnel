@@ -1230,7 +1230,22 @@ async function requestTerminalSpawn(params: {
       };
     }
 
-    const success = (response.payload as { success?: boolean })?.success === true;
+    // Decode base64 payload if it's a string
+    let payload = response.payload;
+    if (typeof payload === 'string') {
+      try {
+        const decoded = Buffer.from(payload, 'base64').toString('utf-8');
+        payload = JSON.parse(decoded);
+      } catch (e) {
+        logger.error('Failed to decode terminal spawn response payload:', e);
+        return {
+          success: false,
+          error: 'Invalid response payload',
+        };
+      }
+    }
+
+    const success = (payload as { success?: boolean })?.success === true;
     return {
       success,
       error: success ? undefined : 'Terminal spawn failed',
