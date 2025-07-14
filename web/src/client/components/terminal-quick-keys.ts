@@ -72,7 +72,9 @@ export class TerminalQuickKeys extends LitElement {
   @property({ type: Function }) onKeyPress?: (
     key: string,
     isModifier?: boolean,
-    isSpecial?: boolean
+    isSpecial?: boolean,
+    isToggle?: boolean,
+    pasteText?: string
   ) => void;
   @property({ type: Boolean }) visible = false;
   @property({ type: Number }) keyboardHeight = 0;
@@ -191,6 +193,16 @@ export class TerminalQuickKeys extends LitElement {
 
     if (this.onKeyPress) {
       this.onKeyPress(key, isModifier, isSpecial);
+    }
+  }
+
+  private handlePasteImmediate(e: Event) {
+    console.log('[QuickKeys] Paste button touched - delegating to paste handler');
+
+    // Always delegate to the main paste handler in direct-keyboard-manager
+    // This preserves user gesture context while keeping all clipboard logic in one place
+    if (this.onKeyPress) {
+      this.onKeyPress('Paste', false, false);
     }
   }
 
@@ -560,7 +572,11 @@ export class TerminalQuickKeys extends LitElement {
                       @touchend=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        this.handleKeyPress(key, modifier || combo, special, toggle, e);
+                        if (key === 'Paste') {
+                          this.handlePasteImmediate(e);
+                        } else {
+                          this.handleKeyPress(key, modifier || combo, special, toggle, e);
+                        }
                       }}
                       @click=${(e: MouseEvent) => {
                         if (e.detail !== 0) {

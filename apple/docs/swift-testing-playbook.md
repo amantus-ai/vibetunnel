@@ -441,6 +441,295 @@ Continue using XCTest for the following, as they are not currently supported by 
 
 ---
 
+## **13. Swift 6.2 Testing Enhancements (2025 Edition)**
+
+Swift 6.2 introduces powerful new testing capabilities that take Swift Testing to the next level. These features provide enhanced debugging context, process lifecycle testing, and more sophisticated test control.
+
+### 13.1 Exit Tests: Testing Process Lifecycle and Crashes
+
+Exit tests allow you to verify that code properly handles process termination scenarios, crash recovery, and subprocess management. This is crucial for applications that spawn external processes or need robust crash recovery.
+
+| Feature | Use Case | Benefits |
+|---|---|---|
+| **`#expect(processExitsWith: .success)`** | Test that processes terminate cleanly | Verifies graceful shutdown and cleanup |
+| **`#expect(processExitsWith: .failure)`** | Test that invalid operations fail appropriately | Ensures proper error handling and exit codes |
+| **Process Recovery Testing** | Test auto-restart and crash recovery logic | Validates resilience mechanisms |
+
+#### Practical Example: Server Process Lifecycle
+
+```swift
+@Test("Server handles unexpected termination gracefully", .tags(.exitTests))
+func serverCrashRecovery() async throws {
+    await #expect(processExitsWith: .success) {
+        let serverManager = ServerManager.shared
+        
+        // Start server process
+        await serverManager.start()
+        
+        // Simulate unexpected termination
+        if let server = serverManager.bunServer {
+            server.terminate()
+        }
+        
+        // Wait for auto-restart logic
+        try await Task.sleep(for: .milliseconds(2_000))
+        
+        // Verify recovery behavior
+        // Test should verify that the system handles the crash gracefully
+        
+        // Clean shutdown
+        await serverManager.stop()
+    }
+}
+```
+
+#### CLI Tool Process Validation
+
+```swift
+@Test("Shell command executes successfully", .tags(.exitTests))
+func shellCommandExecution() async throws {
+    await #expect(processExitsWith: .success) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "ls /tmp | head -5"]
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        guard process.terminationStatus == 0 else {
+            throw ProcessError.commandFailed(process.terminationStatus)
+        }
+    }
+}
+```
+
+### 13.2 Attachments: Rich Debugging Context
+
+Attachments revolutionize test debugging by capturing system state, configuration details, and diagnostic information when tests fail. This provides invaluable context that makes debugging faster and more effective.
+
+| Attachment Type | Best For | Example Use Cases |
+|---|---|---|
+| **System Information** | Environment debugging | OS version, memory, processor info |
+| **Configuration State** | Settings and setup issues | Server ports, network config, feature flags |
+| **Process Details** | Service lifecycle issues | PIDs, running state, error messages |
+| **Performance Metrics** | Performance regression analysis | Timing data, memory usage, throughput |
+
+#### Enhanced Test with Diagnostic Attachments
+
+```swift
+@Test("Network configuration with full diagnostics", .tags(.attachmentTests))
+func networkConfigurationDiagnostics() throws {
+    // Attach system environment for context
+    Attachment.record("System Info", """
+        OS: \(ProcessInfo.processInfo.operatingSystemVersionString)
+        Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
+        Timestamp: \(Date().ISO8601Format())
+        """)
+    
+    // Attach network state
+    let localIP = NetworkUtility.getLocalIPAddress()
+    let allIPs = NetworkUtility.getAllIPAddresses()
+    
+    Attachment.record("Network Configuration", """
+        Local IP: \(localIP ?? "none")
+        All IPs: \(allIPs.joined(separator: ", "))
+        Interface Count: \(allIPs.count)
+        """)
+    
+    // Test logic with rich failure context
+    #expect(localIP != nil || allIPs.isEmpty)
+}
+```
+
+#### Performance Testing with Detailed Metrics
+
+```swift
+@Test("API performance with statistical analysis", .tags(.performance, .attachmentTests))
+func apiPerformanceAnalysis() async throws {
+    var timings: [TimeInterval] = []
+    let iterations = 100
+    
+    // Capture test configuration
+    Attachment.record("Performance Test Setup", """
+        Iterations: \(iterations)
+        Test Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
+        API Endpoint: /api/sessions
+        """)
+    
+    // Collect timing data
+    for _ in 0..<iterations {
+        let start = CFAbsoluteTimeGetCurrent()
+        _ = await apiCall()
+        let end = CFAbsoluteTimeGetCurrent()
+        timings.append(end - start)
+    }
+    
+    // Calculate comprehensive statistics
+    let average = timings.reduce(0, +) / Double(timings.count)
+    let stdDev = calculateStandardDeviation(timings)
+    let p95 = timings.sorted()[Int(0.95 * Double(timings.count))]
+    
+    // Attach detailed performance metrics
+    Attachment.record("Performance Results", """
+        Average: \(String(format: "%.2f", average * 1000))ms
+        Standard Deviation: \(String(format: "%.2f", stdDev * 1000))ms
+        95th Percentile: \(String(format: "%.2f", p95 * 1000))ms
+        Min: \(String(format: "%.2f", (timings.min() ?? 0) * 1000))ms
+        Max: \(String(format: "%.2f", (timings.max() ?? 0) * 1000))ms
+        """)
+    
+    // Attach raw timing data for analysis
+    let timingData = timings.enumerated().map { i, timing in
+        "Sample \(i + 1): \(String(format: "%.4f", timing * 1000))ms"
+    }.joined(separator: "\n")
+    Attachment.record("Raw Timing Data", timingData)
+    
+    #expect(average < 0.05, "Average response time exceeded 50ms")
+}
+```
+
+### 13.3 Enhanced Conditional Testing with ConditionTrait.evaluate()
+
+Swift 6.2 enhances conditional testing with the ability to check trait conditions outside of test context, enabling smarter test execution based on system capabilities.
+
+#### Custom Condition Traits
+
+```swift
+/// Checks if the required server binary is available
+struct ServerBinaryAvailableCondition: ConditionTrait {
+    func evaluate(for test: Test) -> ConditionResult {
+        let bunPath = "/usr/local/bin/bun"
+        let altBunPath = "/opt/homebrew/bin/bun"
+        
+        let hasBinary = FileManager.default.fileExists(atPath: bunPath) || 
+                       FileManager.default.fileExists(atPath: altBunPath)
+        
+        return hasBinary ? .continue : .skip(reason: "Server binary not available")
+    }
+}
+
+/// Checks if network interfaces are available for testing
+struct NetworkAvailableCondition: ConditionTrait {
+    func evaluate(for test: Test) -> ConditionResult {
+        let hasNetwork = !NetworkUtility.getAllIPAddresses().isEmpty
+        return hasNetwork ? .continue : .skip(reason: "No network interfaces available")
+    }
+}
+
+/// Checks if we're in a valid Git repository for repository-specific tests
+struct ValidGitRepositoryCondition: ConditionTrait {
+    func evaluate(for test: Test) -> ConditionResult {
+        let gitDir = FileManager.default.fileExists(atPath: ".git")
+        return gitDir ? .continue : .skip(reason: "Not in a Git repository")
+    }
+}
+
+/// Checks if we're running in CI environment
+struct NotInCICondition: ConditionTrait {
+    func evaluate(for test: Test) -> ConditionResult {
+        let isCI = ProcessInfo.processInfo.environment["CI"] != nil ||
+                   ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil
+        return isCI ? .skip(reason: "Disabled in CI environment") : .continue
+    }
+}
+```
+
+#### Smart Test Execution
+
+```swift
+// Replace broad .disabled() with intelligent conditions
+@Suite("Server Manager Tests", .tags(.serverManager))
+struct ServerManagerTests {
+    
+    @Test("Server lifecycle with full binary", ServerBinaryAvailableCondition(), NotInCICondition())
+    func serverLifecycleWithBinary() async throws {
+        // This test only runs when:
+        // 1. The server binary is actually available
+        // 2. We're not in a CI environment
+        // This prevents false failures and provides clear skip reasons
+    }
+    
+    @Test("Network configuration", NetworkAvailableCondition())
+    func networkConfiguration() throws {
+        // Only runs when network interfaces are available
+        // Automatically skipped in containerized or network-less environments
+    }
+}
+```
+
+### 13.4 Enhanced Tag System for Better Organization
+
+Expand your tag system to include the new Swift 6.2 testing capabilities:
+
+```swift
+// Enhanced TestTags.swift
+extension Tag {
+    // Existing tags
+    @Tag static var critical: Self
+    @Tag static var networking: Self
+    @Tag static var concurrency: Self
+    
+    // Swift 6.2 Enhanced Tags
+    @Tag static var exitTests: Self          // Tests using processExitsWith
+    @Tag static var attachmentTests: Self    // Tests with rich diagnostic attachments
+    @Tag static var requiresServerBinary: Self  // Tests needing actual server binary
+    @Tag static var requiresNetwork: Self   // Tests needing network interfaces
+    @Tag static var processSpawn: Self      // Tests that spawn external processes
+    @Tag static var gitRepository: Self     // Tests that need to run in a Git repository
+}
+```
+
+#### Strategic Test Filtering
+
+```bash
+# Run only tests with attachments for debugging
+swift test --filter .attachmentTests
+
+# Skip exit tests in CI environments
+swift test --skip .exitTests
+
+# Run performance tests with attachments for detailed analysis
+swift test --filter .performance --filter .attachmentTests
+
+# Run all tests that require external dependencies
+swift test --filter .requiresServerBinary --filter .requiresNetwork
+
+# Run Git repository tests only when in a Git repo
+swift test --filter .gitRepository
+```
+
+### 13.5 Best Practices for Swift 6.2 Features
+
+#### Exit Tests Guidelines
+- **Use Sparingly**: Exit tests are powerful but should be used for critical process lifecycle scenarios
+- **Clean State**: Always ensure proper cleanup in exit test blocks
+- **Avoid Elevated Permissions**: Don't test operations requiring sudo or admin rights
+- **Mock When Possible**: Use mock processes for testing logic without actual system processes
+
+#### Attachment Strategy
+- **Contextual Information**: Attach system state, configuration, and environment details
+- **Progressive Detail**: Start with summary info, add detailed data as needed
+- **Performance Focus**: Use attachments extensively in performance tests for trend analysis
+- **Failure Context**: Attach diagnostic info that helps understand why tests failed
+
+#### Condition Trait Design
+- **Specific Conditions**: Create focused conditions for specific capabilities
+- **Clear Skip Reasons**: Always provide descriptive reasons for skipped tests
+- **Environment Awareness**: Consider CI, local development, and different platforms
+- **Combine Thoughtfully**: Use multiple conditions when tests have multiple requirements
+
+### Action Items for Swift 6.2 Adoption
+
+- [ ] **Audit Disabled Tests**: Replace broad `.disabled()` with specific condition traits
+- [ ] **Add Exit Tests**: Identify critical process lifecycle scenarios and add exit tests
+- [ ] **Enhance Debugging**: Add attachments to complex tests and all performance tests
+- [ ] **Update Tag Strategy**: Add Swift 6.2 tags and update filtering strategies
+- [ ] **Create Condition Traits**: Build reusable conditions for common system requirements
+- [ ] **Document Skip Reasons**: Ensure all conditional tests have clear skip explanations
+- [ ] **CI Integration**: Update CI scripts to handle new test filtering and skip reasons
+
+---
+
 ## **Appendix: Evergreen Testing Principles (The F.I.R.S.T. Principles)**
 
 These foundational principles are framework-agnostic, and Swift Testing is designed to make adhering to them easier than ever.

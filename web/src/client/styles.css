@@ -66,9 +66,9 @@
   --color-bg-elevated: 38 38 38; /* #262626 */
   --color-surface: 26 26 26; /* #1a1a1a */
   --color-surface-hover: 42 42 42; /* #2a2a2a */
-  --color-border: 42 42 42; /* #2a2a2a */
-  --color-border-light: 58 58 58; /* #3a3a3a */
-  --color-border-focus: 74 74 74; /* #4a4a4a */
+  --color-border: 26 26 26; /* #1a1a1a - Much more subtle */
+  --color-border-light: 31 31 31; /* #1f1f1f - More subtle */
+  --color-border-focus: 58 58 58; /* #3a3a3a - Keep some contrast for focus */
   
   /* Text colors - Dark Mode */
   --color-text: 228 228 228; /* #e4e4e4 */
@@ -97,9 +97,9 @@
     --color-bg-elevated: 38 38 38;
     --color-surface: 26 26 26;
     --color-surface-hover: 42 42 42;
-    --color-border: 42 42 42;
-    --color-border-light: 58 58 58;
-    --color-border-focus: 74 74 74;
+    --color-border: 26 26 26;
+    --color-border-light: 31 31 31;
+    --color-border-focus: 58 58 58;
     --color-text: 228 228 228;
     --color-text-bright: 255 255 255;
     --color-text-muted: 163 163 163;
@@ -998,8 +998,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 /* Light theme terminal container styling */
 [data-theme="light"] .terminal-container {
   /* Terminal colors are now handled by xterm.js theme */
-  border: 1px solid rgb(var(--color-border));
-  border-radius: 0.5rem;
+  /* Removed border and border-radius to prevent double-line effect with card borders */
 }
 
 /* Terminal line styling */
@@ -1081,8 +1080,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 }
 
 [data-theme="light"] .session-card .terminal-container {
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgb(var(--color-border));
+  /* Removed border and box-shadow to prevent double-line effect with card borders */
 }
 
 /* Ensure terminal container has proper size */

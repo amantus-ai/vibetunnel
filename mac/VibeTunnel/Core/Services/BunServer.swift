@@ -242,6 +242,12 @@ final class BunServer {
             }
         }
 
+        // Set NODE_ENV to development in debug builds to disable caching
+        #if DEBUG
+            environment["NODE_ENV"] = "development"
+            logger.info("Running in DEBUG configuration - setting NODE_ENV=development to disable caching")
+        #endif
+
         // Add Node.js memory settings as command line arguments instead of NODE_OPTIONS
         // NODE_OPTIONS can interfere with SEA binaries
 
@@ -431,6 +437,10 @@ final class BunServer {
         var environment = ProcessInfo.processInfo.environment
         // Add Node.js memory settings
         environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128"
+
+        // Always set NODE_ENV to development for dev server to ensure caching is disabled
+        environment["NODE_ENV"] = "development"
+        logger.info("Dev server mode - setting NODE_ENV=development to disable caching")
 
         // Add pnpm to PATH so that scripts can use it
         // pnpmDir is already defined above

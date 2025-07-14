@@ -23,6 +23,7 @@ import type { FilePicker } from './file-picker.js';
 import './clickable-path.js';
 import './terminal-quick-keys.js';
 import './session-view/mobile-input-overlay.js';
+import { titleManager } from '../utils/title-manager.js';
 import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
@@ -32,6 +33,7 @@ import {
   COMMON_TERMINAL_WIDTHS,
   TerminalPreferencesManager,
 } from '../utils/terminal-preferences.js';
+import type { TerminalThemeId } from '../utils/terminal-themes.js';
 import { ConnectionManager } from './session-view/connection-manager.js';
 import {
   type DirectKeyboardCallbacks,
@@ -87,6 +89,7 @@ export class SessionView extends LitElement {
   @state() private showImagePicker = false;
   @state() private isDragOver = false;
   @state() private terminalFontSize = 14;
+  @state() private terminalTheme: TerminalThemeId = 'auto';
   @state() private terminalContainerHeight = '100%';
   @state() private isLandscape = false;
 
@@ -369,8 +372,11 @@ export class SessionView extends LitElement {
     // Load terminal preferences
     this.terminalMaxCols = this.preferencesManager.getMaxCols();
     this.terminalFontSize = this.preferencesManager.getFontSize();
+    this.terminalTheme = this.preferencesManager.getTheme();
+    logger.debug('Loaded terminal theme:', this.terminalTheme);
     this.terminalLifecycleManager.setTerminalFontSize(this.terminalFontSize);
     this.terminalLifecycleManager.setTerminalMaxCols(this.terminalMaxCols);
+    this.terminalLifecycleManager.setTerminalTheme(this.terminalTheme);
 
     // Initialize lifecycle event manager
     this.lifecycleEventManager = new LifecycleEventManager();
@@ -453,24 +459,34 @@ export class SessionView extends LitElement {
 
   firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
-    if (this.session && this.connected) {
-      // Terminal setup is handled by state machine when reaching active state
-      this.terminalLifecycleManager.setupTerminal();
-    }
+
+    // Load terminal preferences BEFORE terminal setup to ensure proper initialization
+    this.terminalTheme = this.preferencesManager.getTheme();
+    logger.debug('Loaded terminal theme from preferences:', this.terminalTheme);
+
+    // Don't setup terminal here - wait for session data to be available
+    // Terminal setup will be triggered in updated() when session becomes available
   }
 
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
 
-    // If session changed, clean up old stream connection
+    // If session changed, clean up old stream connection and reset terminal state
     if (changedProperties.has('session')) {
       const oldSession = changedProperties.get('session') as Session | null;
-      if (oldSession && oldSession.id !== this.session?.id) {
+      const sessionChanged = oldSession?.id !== this.session?.id;
+
+      if (sessionChanged && oldSession) {
         logger.log('Session changed, cleaning up old stream connection');
         if (this.connectionManager) {
           this.connectionManager.cleanupStreamConnection();
         }
+        // Clean up terminal lifecycle manager for fresh start
+        if (this.terminalLifecycleManager) {
+          this.terminalLifecycleManager.cleanup();
+        }
       }
+
       // Update managers with new session
       if (this.inputManager) {
         this.inputManager.setSession(this.session);
@@ -481,59 +497,64 @@ export class SessionView extends LitElement {
       if (this.lifecycleEventManager) {
         this.lifecycleEventManager.setSession(this.session);
       }
+
+      // Initialize terminal when session first becomes available
+      if (this.session && this.connected && !oldSession) {
+        logger.log('Session data now available, initializing terminal');
+        this.ensureTerminalInitialized();
+      }
     }
 
-    // Stop loading and create terminal when session becomes available
+    // Stop loading and ensure terminal is initialized when session becomes available
     if (
       changedProperties.has('session') &&
       this.session &&
       this.loadingAnimationManager.isLoading()
     ) {
       this.loadingAnimationManager.stopLoading();
-      this.terminalLifecycleManager.setupTerminal();
+      this.ensureTerminalInitialized();
     }
 
-    // Initialize terminal after first render when terminal element exists
-    if (!this.terminalLifecycleManager.getTerminal() && this.session && this.connected) {
-      const terminalElement = this.querySelector('vibe-terminal') as Terminal;
-      if (terminalElement) {
-        this.terminalLifecycleManager.initializeTerminal();
-      }
+    // Ensure terminal is initialized when connected state changes
+    if (changedProperties.has('connected') && this.connected && this.session) {
+      this.ensureTerminalInitialized();
+    }
+  }
+
+  /**
+   * Ensures terminal is properly initialized with current session data.
+   * This method is idempotent and can be called multiple times safely.
+   */
+  private ensureTerminalInitialized() {
+    if (!this.session || !this.connected) {
+      logger.log('Cannot initialize terminal: missing session or not connected');
+      return;
     }
 
-    // Create hidden input if direct keyboard is enabled on mobile
-    if (
-      this.isMobile &&
-      this.useDirectKeyboard &&
-      !this.directKeyboardManager.getShowQuickKeys() &&
-      this.session &&
-      this.connected
-    ) {
-      // Clear any existing timeout
-      if (this.createHiddenInputTimeout) {
-        clearTimeout(this.createHiddenInputTimeout);
-      }
-
-      // Delay creation to ensure terminal is rendered and DOM is stable
-      const TERMINAL_RENDER_DELAY_MS = 100;
-      this.createHiddenInputTimeout = setTimeout(() => {
-        try {
-          // Re-validate conditions in case component state changed during the delay
-          if (
-            this.isMobile &&
-            this.useDirectKeyboard &&
-            !this.directKeyboardManager.getShowQuickKeys() &&
-            this.connected // Ensure component is still connected to DOM
-          ) {
-            this.directKeyboardManager.ensureHiddenInputVisible();
-          }
-        } catch (error) {
-          logger.warn('Failed to create hidden input during setTimeout:', error);
-        }
-        // Clear the timeout reference after execution
-        this.createHiddenInputTimeout = null;
-      }, TERMINAL_RENDER_DELAY_MS);
+    // Check if terminal is already initialized
+    if (this.terminalLifecycleManager.getTerminal()) {
+      logger.log('Terminal already initialized');
+      return;
     }
+
+    // Check if terminal element exists in DOM
+    const terminalElement = this.querySelector('vibe-terminal') as Terminal;
+    if (!terminalElement) {
+      logger.log('Terminal element not found in DOM, deferring initialization');
+      // Retry after next render cycle
+      requestAnimationFrame(() => {
+        this.ensureTerminalInitialized();
+      });
+      return;
+    }
+
+    logger.log('Initializing terminal with session:', this.session.id);
+
+    // Setup terminal with session data
+    this.terminalLifecycleManager.setupTerminal();
+
+    // Initialize terminal after setup
+    this.terminalLifecycleManager.initializeTerminal();
   }
 
   async handleKeyboardInput(e: KeyboardEvent) {
@@ -869,6 +890,20 @@ export class SessionView extends LitElement {
     }
   }
 
+  private handleThemeChange(newTheme: TerminalThemeId) {
+    logger.debug('Changing terminal theme to:', newTheme);
+
+    this.terminalTheme = newTheme;
+    this.preferencesManager.setTheme(newTheme);
+    this.terminalLifecycleManager.setTerminalTheme(newTheme);
+
+    const terminal = this.querySelector('vibe-terminal') as Terminal;
+    if (terminal) {
+      terminal.theme = newTheme;
+      terminal.requestUpdate();
+    }
+  }
+
   private handleOpenFileBrowser() {
     this.showFileBrowser = true;
   }
@@ -946,6 +981,10 @@ export class SessionView extends LitElement {
 
       // Update the local session object with the server-assigned name
       this.session = { ...this.session, name: actualName };
+
+      // Update the page title with the new session name
+      const sessionName = actualName || this.session.command.join(' ');
+      titleManager.setSessionTitle(sessionName);
 
       // Dispatch event to notify parent components with the actual name
       this.dispatchEvent(
@@ -1285,6 +1324,7 @@ export class SessionView extends LitElement {
             .fontSize=${this.terminalFontSize}
             .fitHorizontally=${false}
             .maxCols=${this.terminalMaxCols}
+            .theme=${this.terminalTheme}
             .initialCols=${this.session?.initialCols || 0}
             .initialRows=${this.session?.initialRows || 0}
             .disableClick=${this.isMobile && this.useDirectKeyboard}
@@ -1474,19 +1514,21 @@ export class SessionView extends LitElement {
         ></file-picker>
         
         <!-- Width Selector Modal (moved here for proper positioning) -->
-        <width-selector
+        <terminal-settings-modal
           .visible=${this.showWidthSelector}
           .terminalMaxCols=${this.terminalMaxCols}
           .terminalFontSize=${this.terminalFontSize}
+          .terminalTheme=${this.terminalTheme}
           .customWidth=${this.customWidth}
           .isMobile=${this.isMobile}
           .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
+          .onThemeChange=${(theme: TerminalThemeId) => this.handleThemeChange(theme)}
           .onClose=${() => {
             this.showWidthSelector = false;
             this.customWidth = '';
           }}
-        ></width-selector>
+        ></terminal-settings-modal>
 
         <!-- Drag & Drop Overlay -->
         ${

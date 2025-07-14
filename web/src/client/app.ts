@@ -19,7 +19,7 @@ import { createLogger } from './utils/logger.js';
 import { isIOS } from './utils/mobile-utils.js';
 import { type MediaQueryState, responsiveObserver } from './utils/responsive-utils.js';
 import { triggerTerminalResize } from './utils/terminal-utils.js';
-import { initTitleUpdater } from './utils/title-updater.js';
+import { titleManager } from './utils/title-manager.js';
 // Import version
 import { VERSION } from './version.js';
 
@@ -95,7 +95,7 @@ export class VibeTunnelApp extends LitElement {
     this.setupResponsiveObserver();
     this.setupPreferences();
     // Initialize title updater
-    initTitleUpdater();
+    titleManager.initAutoUpdates();
     // Initialize authentication and routing together
     this.initializeApp();
   }
@@ -373,7 +373,7 @@ export class VibeTunnelApp extends LitElement {
           // Update page title if we're in list view
           if (this.currentView === 'list') {
             const sessionCount = this.sessions.length;
-            document.title = `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`;
+            titleManager.setListTitle(sessionCount);
           }
 
           // Handle session loading state tracking
@@ -723,7 +723,7 @@ export class VibeTunnelApp extends LitElement {
     if (session) {
       const sessionName = session.name || session.command.join(' ');
       console.log('[App] Setting title:', sessionName);
-      document.title = `${sessionName} - VibeTunnel`;
+      titleManager.setSessionTitle(sessionName);
     } else {
       console.log('[App] No session found:', sessionId);
     }
@@ -745,7 +745,7 @@ export class VibeTunnelApp extends LitElement {
     this.selectedSessionId = sessionId || null;
 
     // Update document title
-    document.title = 'VibeTunnel - File Browser';
+    titleManager.setFileBrowserTitle();
 
     // Navigate to file browser view
     this.currentView = 'file-browser';
@@ -758,7 +758,7 @@ export class VibeTunnelApp extends LitElement {
 
     // Update document title with session count
     const sessionCount = this.sessions.length;
-    document.title = `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`;
+    titleManager.setListTitle(sessionCount);
 
     // Disable View Transitions when navigating from session detail view
     // to prevent animations when sidebar is involved
@@ -1199,7 +1199,7 @@ export class VibeTunnelApp extends LitElement {
       return 'w-full min-h-screen flex flex-col';
     }
 
-    const baseClasses = 'bg-secondary border-r border-base flex flex-col';
+    const baseClasses = 'bg-secondary flex flex-col';
     const isMobile = this.mediaState.isMobile;
     // Only apply transition class when animations are ready (not during initial load)
     const transitionClass = this.sidebarAnimationReady && !isMobile ? 'sidebar-transition' : '';

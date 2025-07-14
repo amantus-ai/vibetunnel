@@ -75,7 +75,7 @@ export interface AppDetector {
 // Format 4: ✳ Measuring… (120s · ⚒ 671 tokens · esc to interrupt) - with hammer symbol
 // Note: We match ANY non-whitespace character as the indicator since Claude uses many symbols
 const CLAUDE_STATUS_REGEX =
-  /(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)/gi;
+  /(\S)\s+([\w\s]+?)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)/gi;
 
 /**
  * Parse Claude-specific status from output

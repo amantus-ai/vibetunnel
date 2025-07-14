@@ -1,9 +1,9 @@
-import { PushNotificationPreferences, PushSubscription } from '../../shared/types.js';
-import { createLogger } from '../utils/logger.js';
-import { authClient } from './auth-client.js';
+import type { PushNotificationPreferences, PushSubscription } from '../../shared/types';
+import { createLogger } from '../utils/logger';
+import { authClient } from './auth-client';
 
 // Re-export types for components
-export { PushSubscription, PushNotificationPreferences };
+export type { PushSubscription, PushNotificationPreferences };
 export type NotificationPreferences = PushNotificationPreferences;
 
 const logger = createLogger('push-notification-service');
@@ -71,7 +71,7 @@ export class PushNotificationService {
         scope: '/',
       });
 
-      logger.log('service worker registered');
+      logger.log('service worker registered successfully');
 
       // Wait for service worker to be ready
       await navigator.serviceWorker.ready;

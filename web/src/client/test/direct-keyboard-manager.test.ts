@@ -28,6 +28,13 @@ describe('DirectKeyboardManager', () => {
       writable: true,
       configurable: true,
     });
+
+    // Mock secure context for clipboard API to work
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
   });
 
   afterEach(() => {

@@ -70,6 +70,29 @@ export class SessionList extends LitElement {
     return this.hideExited ? running : running.concat(exited);
   }
 
+  private getGridColumns(): number {
+    // Get the grid container element
+    const gridContainer = this.querySelector('.session-flex-responsive');
+    if (!gridContainer || this.compactMode) return 1; // Compact mode is single column
+
+    // Get the computed style to check the actual grid columns
+    const computedStyle = window.getComputedStyle(gridContainer);
+    const templateColumns = computedStyle.getPropertyValue('grid-template-columns');
+
+    // Count the number of columns by splitting the template value
+    const columns = templateColumns.split(' ').filter((col) => col && col !== '0px').length;
+
+    // Fallback: calculate based on container width and minimum item width
+    if (columns === 0 || columns === 1) {
+      const containerWidth = gridContainer.clientWidth;
+      const minItemWidth = 280; // From CSS: minmax(280px, 1fr)
+      const gap = 20; // 1.25rem = 20px
+      return Math.max(1, Math.floor((containerWidth + gap) / (minItemWidth + gap)));
+    }
+
+    return columns;
+  }
+
   private handleKeyDown = (e: KeyboardEvent) => {
     const { key } = e;
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(key)) {
@@ -102,16 +125,47 @@ export class SessionList extends LitElement {
       return;
     }
 
-    if (key === 'ArrowLeft' || key === 'ArrowUp') {
+    const columns = this.getGridColumns();
+
+    if (key === 'ArrowLeft') {
+      // Move left, wrap to previous row
       index = (index - 1 + sessions.length) % sessions.length;
-    } else if (key === 'ArrowRight' || key === 'ArrowDown') {
+    } else if (key === 'ArrowRight') {
+      // Move right, wrap to next row
       index = (index + 1) % sessions.length;
+    } else if (key === 'ArrowUp') {
+      // Move up one row
+      index = index - columns;
+      if (index < 0) {
+        // Wrap to the bottom, trying to maintain column position
+        const currentColumn = index + columns; // Original index
+        const lastRowStart = Math.floor((sessions.length - 1) / columns) * columns;
+        index = Math.min(lastRowStart + currentColumn, sessions.length - 1);
+      }
+    } else if (key === 'ArrowDown') {
+      // Move down one row
+      const oldIndex = index;
+      index = index + columns;
+      if (index >= sessions.length) {
+        // Wrap to the top, maintaining column position
+        const currentColumn = oldIndex % columns;
+        index = currentColumn;
+      }
     }
 
     this.selectedSessionId = sessions[index].id;
     this.requestUpdate();
-  };
 
+    // Ensure the selected element is visible by scrolling it into view
+    setTimeout(() => {
+      const selectedCard =
+        this.querySelector(`session-card[selected]`) ||
+        this.querySelector(`div[class*="bg-bg-elevated"][class*="border-accent-primary"]`);
+      if (selectedCard) {
+        selectedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 0);
+  };
   private handleRefresh() {
     this.dispatchEvent(new CustomEvent('refresh'));
   }
@@ -717,6 +771,7 @@ export class SessionList extends LitElement {
                                   <session-card
                                     .session=${session}
                                     .authClient=${this.authClient}
+                                    .selected=${session.id === this.selectedSessionId}
                                     @session-select=${this.handleSessionSelect}
                                     @session-killed=${this.handleSessionKilled}
                                     @session-kill-error=${this.handleSessionKillError}

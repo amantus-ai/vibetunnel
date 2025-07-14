@@ -1394,7 +1394,9 @@ final class WebRTCManager: NSObject {
 
             // Look for codecs in rtpmap before processing m=video line
             if line.contains("rtpmap") {
-                let payloadType = line.components(separatedBy: " ")[0]
+                let components = line.components(separatedBy: " ")
+                guard !components.isEmpty else { continue }
+                let payloadType = components[0]
                     .replacingOccurrences(of: "a=rtpmap:", with: "")
 
                 if line.uppercased().contains("H264/90000") {

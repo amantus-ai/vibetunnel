@@ -5,6 +5,7 @@
 
 import { createLogger } from './logger.js';
 import { detectMobile } from './mobile-utils.js';
+import type { TerminalThemeId } from './terminal-themes.js';
 
 const logger = createLogger('terminal-preferences');
 
@@ -12,6 +13,7 @@ export interface TerminalPreferences {
   maxCols: number; // 0 means no limit, positive numbers set max width
   fontSize: number;
   fitHorizontally: boolean;
+  theme: TerminalThemeId;
 }
 
 // Common terminal widths
@@ -28,6 +30,7 @@ const DEFAULT_PREFERENCES: TerminalPreferences = {
   maxCols: 0, // No limit by default - take as much as possible
   fontSize: detectMobile() ? 12 : 14, // 12px on mobile, 14px on desktop
   fitHorizontally: false,
+  theme: 'auto',
 };
 
 const STORAGE_KEY_TERMINAL_PREFS = 'vibetunnel_terminal_preferences';
@@ -53,17 +56,22 @@ export class TerminalPreferencesManager {
       if (saved) {
         const parsed = JSON.parse(saved);
         // Merge with defaults to handle new properties
-        return { ...DEFAULT_PREFERENCES, ...parsed };
+        const merged = { ...DEFAULT_PREFERENCES, ...parsed };
+        logger.debug('Loaded terminal preferences:', merged);
+        return merged;
       }
     } catch (error) {
       logger.warn('Failed to load terminal preferences', { error });
     }
+    logger.debug('Using default terminal preferences');
     return { ...DEFAULT_PREFERENCES };
   }
 
   private savePreferences() {
     try {
-      localStorage.setItem(STORAGE_KEY_TERMINAL_PREFS, JSON.stringify(this.preferences));
+      const toSave = JSON.stringify(this.preferences);
+      localStorage.setItem(STORAGE_KEY_TERMINAL_PREFS, toSave);
+      logger.debug('Saved terminal preferences to localStorage');
     } catch (error) {
       logger.warn('Failed to save terminal preferences', { error });
     }
@@ -93,6 +101,16 @@ export class TerminalPreferencesManager {
 
   setFitHorizontally(fitHorizontally: boolean) {
     this.preferences.fitHorizontally = fitHorizontally;
+    this.savePreferences();
+  }
+
+  getTheme(): TerminalThemeId {
+    return this.preferences.theme;
+  }
+
+  setTheme(theme: TerminalThemeId) {
+    logger.debug('Setting terminal theme:', theme);
+    this.preferences.theme = theme;
     this.savePreferences();
   }
 

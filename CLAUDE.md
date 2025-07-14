@@ -52,6 +52,7 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
 - PRs sometimes contain multiple different features and that's okay
 - Always check current branch with `git branch` before making changes
 - If unsure about branching, ASK THE USER FIRST
+- **"Adopt" means REVIEW, not merge!** When asked to "adopt" a PR, switch to its branch and review the changes. NEVER merge without explicit permission.
 
 ### Terminal Title Management with VT
 
