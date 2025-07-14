@@ -1,21 +1,43 @@
 #!/bin/bash
 # VibeTunnel CLI wrapper - compatible with both Mac app and npm installations
 
-# First, check if the Mac app is installed and should be used
-MAC_APP_LOCATIONS=(
-    "/Applications/VibeTunnel.app/Contents/Resources/vt"
-    "$HOME/Applications/VibeTunnel.app/Contents/Resources/vt"
-)
+# Only check for Mac app on macOS
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS symlink resolution function using BSD readlink
+    resolve_symlink_macos() {
+        local target="$1"
+        local current="$target"
+        while [ -L "$current" ]; do
+            current="$(readlink "$current")"
+            # Handle relative symlinks
+            if [[ "$current" != /* ]]; then
+                current="$(dirname "$target")/$current"
+            fi
+        done
+        echo "$current"
+    }
 
-# Check if we have a Mac app installation
-for MAC_VT in "${MAC_APP_LOCATIONS[@]}"; do
-    if [ -f "$MAC_VT" ] && [ -x "$MAC_VT" ]; then
-        # Found Mac app's vt script
-        # Note: We directly use the app's vt script, avoiding /usr/local/bin/vt
-        # This prevents conflicts with other tools that might use 'vt'
-        exec "$MAC_VT" "$@"
-    fi
-done
+    # Get the real path of this script to avoid infinite recursion
+    SCRIPT_REAL_PATH="$(resolve_symlink_macos "${BASH_SOURCE[0]}")"
+
+    # Check if the Mac app is installed and should be used
+    MAC_APP_LOCATIONS=(
+        "/Applications/VibeTunnel.app/Contents/Resources/vt"
+        "$HOME/Applications/VibeTunnel.app/Contents/Resources/vt"
+    )
+
+    # Check if we have a Mac app installation
+    for MAC_VT in "${MAC_APP_LOCATIONS[@]}"; do
+        if [ -f "$MAC_VT" ] && [ -x "$MAC_VT" ]; then
+            # Avoid infinite recursion by checking if this is the same script
+            MAC_VT_REAL_PATH="$(resolve_symlink_macos "$MAC_VT")"
+            if [ "$SCRIPT_REAL_PATH" != "$MAC_VT_REAL_PATH" ]; then
+                # Found Mac app's vt script and it's different from this script
+                exec "$MAC_VT" "$@"
+            fi
+        fi
+    done
+fi
 
 # If we get here, use the npm-installed vibetunnel
 VIBETUNNEL_BIN=""
@@ -32,8 +54,8 @@ else
 fi
 
 if [ -z "$VIBETUNNEL_BIN" ] || [ ! -f "$VIBETUNNEL_BIN" ]; then
-    echo "Error: vibetunnel binary not found. Please ensure @vibetunnel/vibetunnel-cli is installed." >&2
-    echo "Install with: npm install -g @vibetunnel/vibetunnel-cli" >&2
+    echo "Error: vibetunnel binary not found. Please ensure vibetunnel is installed." >&2
+    echo "Install with: npm install -g vibetunnel" >&2
     exit 1
 fi
 
@@ -141,15 +163,15 @@ resolve_command() {
     case "$shell_name" in
         zsh)
             # For zsh, we need interactive mode to get aliases
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
             ;;
         bash)
             # For bash, expand aliases in non-interactive mode
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
             ;;
         *)
             # Generic shell handling
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
             ;;
     esac
 }
@@ -192,12 +214,12 @@ fi
 if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     if [[ "$NO_SHELL_WRAP" == "true" ]]; then
         # Execute directly without shell wrapper
-        exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+        exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
     else
         # Check if the first argument is a real binary
         if which "$1" >/dev/null 2>&1; then
             # It's a real binary, execute directly
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+            exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
         else
             # Not a real binary, try alias resolution
             resolve_command "$@"
@@ -205,5 +227,5 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     fi
 else
     # Run with fwd command (original behavior for options)
-    exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+    exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
 fi
