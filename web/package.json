@@ -1,20 +1,18 @@
 {
-  "name": "@vibetunnel/vibetunnel-cli",
+  "name": "vibetunnel",
   "version": "1.0.0-beta.10",
   "description": "Terminal sharing server with web interface - supports macOS, Linux, and headless environments",
   "main": "dist/server/server.js",
   "bin": {
-    "vibetunnel": "./bin/vibetunnel",
-    "vibetunnel-fwd": "./bin/vibetunnel-fwd",
-    "vt": "./bin/vt"
+    "vibetunnel": "./bin/vibetunnel"
   },
   "files": [
     "dist/",
     "public/",
     "bin/",
     "node-pty/lib/",
-    "node-pty/build/",
     "node-pty/package.json",
+    "prebuilds/",
     "README.md"
   ],
   "os": [
@@ -41,8 +39,11 @@
     "build": "node scripts/build.js",
     "build:ci": "node scripts/build-ci.js",
     "build:npm": "node scripts/build-npm.js",
+    "build:npm:multiplatform": "node scripts/build-npm-multiplatform.js",
     "prepublishOnly": "npm run build:npm",
-    "postinstall": "node scripts/postinstall-npm.js",
+    "install": "prebuild-install || node scripts/postinstall-npm.js",
+    "prebuild": "prebuild --all",
+    "prebuild:upload": "prebuild --upload-all",
     "lint": "concurrently -n biome,tsc-server,tsc-client,tsc-sw \"biome check src\" \"tsc --noEmit --project tsconfig.server.json\" \"tsc --noEmit --project tsconfig.client.json\" \"tsc --noEmit --project tsconfig.sw.json\"",
     "lint:fix": "biome check src --write",
     "lint:biome": "biome check src",
@@ -114,6 +115,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.1",
+    "prebuild": "^13.0.0",
+    "prebuild-install": "^7.1.2",
     "@open-wc/testing": "^4.0.0",
     "@playwright/test": "^1.54.1",
     "@prettier/plugin-oxc": "^0.0.4",

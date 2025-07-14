@@ -1,4 +1,0 @@
-#!/usr/bin/env node
-
-// Direct entry point for fwd command
-require('../dist/server/fwd.js').startVibeTunnelForward(process.argv.slice(2));

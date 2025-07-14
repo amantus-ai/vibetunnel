@@ -36,6 +36,10 @@ Then open http://localhost:4020 in your browser to access the web interface.
 The `vt` command allows you to run commands with TTY forwarding:
 
 ```bash
+# Monitor AI agents with automatic activity tracking
+vt claude
+vt claude --dangerously-skip-permissions
+
 # Run commands with output visible in VibeTunnel
 vt npm test
 vt python script.py
@@ -56,12 +60,9 @@ vt title "My Project"
 vibetunnel fwd <session-id> <command> [args...]
 
 # Examples
-vibetunnel fwd abc123 ls -la
-vibetunnel fwd abc123 npm test
-vibetunnel fwd abc123 python script.py
-
-# Using the direct command
-vibetunnel-fwd abc123 ls -la
+vibetunnel fwd --session-id abc123 ls -la
+vibetunnel fwd --session-id abc123 npm test
+vibetunnel fwd --session-id abc123 python script.py
 ```
 
 ## Features
@@ -78,7 +79,7 @@ vibetunnel-fwd abc123 ls -la
 
 This npm package includes:
 - Full VibeTunnel server with web UI
-- Command-line tools (vibetunnel, vt, vibetunnel-fwd)
+- Command-line tools (vibetunnel, vt)
 - Native PTY support for terminal emulation
 - Web interface with xterm.js
 - Session management and forwarding

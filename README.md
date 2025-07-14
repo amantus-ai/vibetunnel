@@ -28,7 +28,7 @@ For Linux servers, Docker containers, or headless macOS systems, install via npm
 npm install -g @vibetunnel/vibetunnel-cli
 ```
 
-This gives you the full VibeTunnel server with web UI, just without the macOS menu bar app.
+This gives you the full VibeTunnel server with web UI, just without the macOS menu bar app. See the [npm Package section](#npm-package) for detailed usage.
 
 ## Quick Start
 
@@ -54,14 +54,23 @@ VibeTunnel lives in your menu bar. Click the icon to start the server.
 
 ### 3. Use the `vt` Command
 
-The `vt` command is available through two sources:
+The `vt` command is a smart wrapper that forwards your terminal sessions through VibeTunnel:
 
-**macOS App**: If you have the VibeTunnel app installed, it provides the `vt` command. The app installer creates a symlink at `/usr/local/bin/vt`.
+**How it works**:
+- `vt` is a bash script that internally calls `vibetunnel fwd` to forward terminal output
+- It provides additional features like shell alias resolution and session title management
+- Available from both the Mac app and npm package installations
 
-**npm Package**: If you install the npm package (`npm install -g @vibetunnel/vibetunnel-cli`), it also provides a `vt` command that:
-- Automatically detects if the Mac app is installed and defers to it
-- Falls back to using the npm-installed server if no Mac app is found
-- Works seamlessly on Linux where there's no Mac app
+**Installation sources**:
+- **macOS App**: Creates `/usr/local/bin/vt` symlink during installation
+- **npm Package**: Installs `vt` globally, with intelligent Mac app detection
+
+**Smart detection**:
+When you run `vt` from the npm package, it:
+1. Checks if the Mac app is installed at `/Applications/VibeTunnel.app`
+2. If found, forwards to the Mac app's `vt` for the best experience
+3. If not found, uses the npm-installed `vibetunnel fwd`
+4. This ensures `vt` always uses the best available implementation
 
 ```bash
 # Run any command in the browser
@@ -260,83 +269,140 @@ The macOS menu bar app handles authentication differently:
 6. **Monitor access logs** for suspicious authentication patterns
 7. **Default to secure** - explicitly enable less secure options only when needed
 
-## Running on Linux
 
-VibeTunnel's web server can run on Linux systems, providing terminal access through any web browser. While the macOS menu bar app is platform-specific, the core server functionality works great on Linux.
+## npm Package
 
-### Prerequisites
-- Linux system (tested on Ubuntu 22.04+, Debian 12+)
-- Node.js 20+ (minimum supported version)
-- Git
+The VibeTunnel npm package provides the full server functionality for Linux, Docker, CI/CD environments, and headless macOS systems.
 
-### Running from Source
+### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/amantus-ai/vibetunnel.git
-cd vibetunnel
-
-# Build and run the server
-cd web
-npm install
-npm run build
-npm run start -- --bind 0.0.0.0 --port 4020
-```
-
-### Common Server Parameters
-
-```bash
-# Bind to all network interfaces (allows external access)
-npm run start -- --bind 0.0.0.0
-
-# Use a custom port
-npm run start -- --port 8080
-
-# Enable debug logging
-VIBETUNNEL_DEBUG=1 npm run start
-
-# Run without authentication (trusted networks only!)
-npm run start -- --no-auth
-
-# Combined example for production use
-VIBETUNNEL_USERNAME=admin VIBETUNNEL_PASSWORD=mysecret npm run start -- --bind 0.0.0.0 --port 4020
-```
-
-### Security Considerations
-
-When running with `--bind 0.0.0.0`:
-- The server will be accessible from any network interface
-- Always configure authentication (see Authentication section above)
-- Consider using a reverse proxy (nginx, Caddy) for HTTPS
-- Or use SSH tunneling for secure remote access
-
-### npm Package Installation
-
-VibeTunnel is now available as an npm package for easy installation on Linux and headless macOS systems:
-
-```bash
-# Install globally
+# Install globally via npm
 npm install -g @vibetunnel/vibetunnel-cli
 
-# Start the server
+# Or with yarn
+yarn global add @vibetunnel/vibetunnel-cli
+
+# Or with pnpm
+pnpm add -g @vibetunnel/vibetunnel-cli
+```
+
+**Requirements**: Node.js 20.0.0 or higher
+
+### Running the VibeTunnel Server
+
+#### Basic Usage
+
+```bash
+# Start with default settings (localhost:4020)
 vibetunnel
+
+# Bind to all network interfaces
+vibetunnel --bind 0.0.0.0
+
+# Use a custom port
+vibetunnel --port 8080
 
 # With authentication
 VIBETUNNEL_USERNAME=admin VIBETUNNEL_PASSWORD=secure vibetunnel --bind 0.0.0.0
 
-# Use the vt command wrapper
+# Enable debug logging
+VIBETUNNEL_DEBUG=1 vibetunnel
+
+# Run without authentication (trusted networks only!)
+vibetunnel --no-auth
+```
+
+#### Using the `vt` Command
+
+The `vt` command wrapper makes it easy to forward terminal sessions:
+
+```bash
+# Monitor AI agents with automatic activity tracking
+vt claude
+vt claude --dangerously-skip-permissions
+vt --title-mode dynamic claude    # See real-time Claude status
+
+# Run any command and see it in the browser
 vt npm test
 vt python script.py
-vt --shell  # Interactive shell
+vt cargo build --release
+
+# Open an interactive shell
+vt --shell
+vt -i  # short form
+
+# Control terminal titles
+vt --title-mode static npm run dev    # Shows path and command
+vt --title-mode dynamic python app.py  # Shows path, command, and activity
+vt --title-mode filter vim            # Blocks vim from changing title
+
+# Shell aliases work automatically!
+vt claude-danger  # Your custom alias for claude --dangerously-skip-permissions
+
+# Update session title (inside a VibeTunnel session)
+vt title "My Project - Testing"
 ```
+
+### Mac App Interoperability
+
+The npm package is designed to work seamlessly alongside the Mac app:
+
+#### Smart Command Routing
+- The `vt` command automatically detects if the Mac app is installed
+- If found at `/Applications/VibeTunnel.app`, it defers to the Mac app
+- If not found, it uses the npm-installed server
+- This ensures you always get the best available implementation
+
+#### Installation Behavior
+- If `/usr/local/bin/vt` already exists (from another tool), npm won't overwrite it
+- You'll see a helpful warning with alternatives: `vibetunnel` or `npx vt`
+- The installation always succeeds, even if the `vt` symlink can't be created
+
+#### When to Use Each Version
+- **Mac app only**: Best for macOS users who want menu bar integration
+- **npm only**: Perfect for Linux, Docker, CI/CD, or headless servers
+- **Both installed**: Mac app takes precedence, npm serves as fallback
+- **Development**: npm package useful for testing without affecting Mac app
+
+### Package Contents
 
 The npm package includes:
 - Full VibeTunnel server with web UI
-- All CLI tools including the `vt` command wrapper
-- Native PTY support for terminal emulation
-- Complete feature parity with the macOS app (minus the menu bar UI)
+- CLI tools (`vibetunnel` and `vt` commands)
+- Native PTY support via node-pty
+- Pre-built binaries for common platforms
+- Complete feature parity with macOS app (minus menu bar)
 
-**Requirements**: Node.js 20.0.0 or higher
+### Building the npm Package
+
+For maintainers who need to build the npm package:
+
+#### Single Platform Build
+```bash
+# Build for current platform only
+npm run build:npm
+```
+
+#### Multi-Platform Build
+```bash
+# Build with prebuilt binaries for all platforms
+# Requires Docker for Linux cross-compilation
+npm run build:npm:multiplatform
+```
+
+This creates prebuilt binaries for:
+- macOS (x64, arm64) - Node.js 20, 22, 23, 24
+- Linux (x64, arm64) - Node.js 20, 22, 23, 24
+
+#### Publishing
+```bash
+# Test the package locally
+npm pack
+
+# Publish to npm
+npm publish
+```
 
 ## Building from Source
 

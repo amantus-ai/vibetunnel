@@ -1,24 +1,19 @@
 #!/bin/bash
 # VibeTunnel CLI wrapper - compatible with both Mac app and npm installations
 
-# First, check if the Mac app's vt command exists and should be used
-MAC_VT_LOCATIONS=(
-    "/usr/local/bin/vt"  # Standard symlink location
+# First, check if the Mac app is installed and should be used
+MAC_APP_LOCATIONS=(
     "/Applications/VibeTunnel.app/Contents/Resources/vt"
     "$HOME/Applications/VibeTunnel.app/Contents/Resources/vt"
 )
 
-# Check if we have a Mac app vt command
-for MAC_VT in "${MAC_VT_LOCATIONS[@]}"; do
+# Check if we have a Mac app installation
+for MAC_VT in "${MAC_APP_LOCATIONS[@]}"; do
     if [ -f "$MAC_VT" ] && [ -x "$MAC_VT" ]; then
-        # Found Mac app vt - check if it's not us (avoid infinite recursion)
-        RESOLVED_MAC_VT="$(readlink -f "$MAC_VT" 2>/dev/null || echo "$MAC_VT")"
-        RESOLVED_SELF="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
-        
-        if [ "$RESOLVED_MAC_VT" != "$RESOLVED_SELF" ]; then
-            # It's a different vt command, defer to it
-            exec "$MAC_VT" "$@"
-        fi
+        # Found Mac app's vt script
+        # Note: We directly use the app's vt script, avoiding /usr/local/bin/vt
+        # This prevents conflicts with other tools that might use 'vt'
+        exec "$MAC_VT" "$@"
     fi
 done
 
@@ -29,15 +24,10 @@ VIBETUNNEL_BIN=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/vibetunnel" ]; then
     VIBETUNNEL_BIN="$SCRIPT_DIR/vibetunnel"
-elif [ -f "$SCRIPT_DIR/vibetunnel-fwd" ]; then
-    # Fallback to vibetunnel-fwd for basic functionality
-    VIBETUNNEL_BIN="$SCRIPT_DIR/vibetunnel-fwd"
 else
     # Try to find vibetunnel in PATH
     if command -v vibetunnel >/dev/null 2>&1; then
         VIBETUNNEL_BIN="$(command -v vibetunnel)"
-    elif command -v vibetunnel-fwd >/dev/null 2>&1; then
-        VIBETUNNEL_BIN="$(command -v vibetunnel-fwd)"
     fi
 fi
 

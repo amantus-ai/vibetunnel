@@ -121,6 +121,10 @@ native/
 # Custom Node.js builds
 .node-builds/
 
+# Prebuild binaries (generated)
+prebuilds/
+prebuilds-linux/
+
 # Bun lockfile (generated during native build)
 bun.lock
 

@@ -83,6 +83,10 @@ Then open http://localhost:4020 in your browser to access the web interface.
 The \`vt\` command allows you to run commands with TTY forwarding:
 
 \`\`\`bash
+# Monitor AI agents with automatic activity tracking
+vt claude
+vt claude --dangerously-skip-permissions
+
 # Run commands with output visible in VibeTunnel
 vt npm test
 vt python script.py
@@ -103,12 +107,9 @@ vt title "My Project"
 vibetunnel fwd <session-id> <command> [args...]
 
 # Examples
-vibetunnel fwd abc123 ls -la
-vibetunnel fwd abc123 npm test
-vibetunnel fwd abc123 python script.py
-
-# Using the direct command
-vibetunnel-fwd abc123 ls -la
+vibetunnel fwd --session-id abc123 ls -la
+vibetunnel fwd --session-id abc123 npm test
+vibetunnel fwd --session-id abc123 python script.py
 \`\`\`
 
 ## Features
@@ -125,7 +126,7 @@ vibetunnel-fwd abc123 ls -la
 
 This npm package includes:
 - Full VibeTunnel server with web UI
-- Command-line tools (vibetunnel, vt, vibetunnel-fwd)
+- Command-line tools (vibetunnel, vt)
 - Native PTY support for terminal emulation
 - Web interface with xterm.js
 - Session management and forwarding
@@ -150,8 +151,8 @@ console.log('\n4. Cleaning up test files...');
 const testFiles = [
   'public/bundle/test.js',
   'public/bundle/screencap.js',
-  'public/test/',
-  'public/test.cast'
+  'public/test',  // Remove entire test directory
+  'public/test.cast'  // Remove test recording file
 ];
 
 testFiles.forEach(file => {
@@ -174,8 +175,22 @@ console.log('  - bin/          (CLI entry points including vt)');
 console.log('  - node-pty/     (native terminal support)');
 console.log('  - README.md     (package documentation)');
 
-// Step 6: Show package size estimate
-console.log('\n6. Checking package size...');
+// Step 6: Build prebuilt binaries if requested
+if (process.argv.includes('--prebuild')) {
+  console.log('\n6. Building prebuilt binaries...');
+  try {
+    execSync('npm run prebuild', { stdio: 'inherit' });
+    console.log('✓ Prebuilt binaries created');
+  } catch (error) {
+    console.error('Failed to create prebuilt binaries:', error.message);
+    console.log('Continuing without prebuilds...');
+  }
+} else {
+  console.log('\n6. Skipping prebuild (use --prebuild flag to build binaries)');
+}
+
+// Step 7: Show package size estimate
+console.log('\n7. Checking package size...');
 const checkSize = () => {
   try {
     const output = execSync('npm pack --dry-run 2>&1 | grep "package size" || true', { encoding: 'utf8' });
@@ -191,5 +206,6 @@ checkSize();
 
 console.log('\n✅ Build for npm distribution complete!');
 console.log('\nThis package includes the full VibeTunnel server with web UI.');
-console.log('\nTo test locally: npm pack');
+console.log('\nTo build with prebuilt binaries: npm run build:npm -- --prebuild');
+console.log('To test locally: npm pack');
 console.log('To publish: npm publish');
