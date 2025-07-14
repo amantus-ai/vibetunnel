@@ -202,17 +202,21 @@ For trusted environments only:
 npm run start -- --no-auth
 ```
 
-#### 5. Local Bypass
+#### 5. Local Bypass (Development Only)
 Allow localhost connections to bypass authentication:
 ```bash
-# Basic local bypass (development only)
+# Basic local bypass (DEVELOPMENT ONLY - NOT FOR PRODUCTION)
 npm run start -- --allow-local-bypass
 
-# With token for additional security (recommended)
+# With token for additional security (minimum for production)
 npm run start -- --allow-local-bypass --local-auth-token mytoken
 ```
 
-**Security Note**: Local bypass verifies the actual socket connection address, not just HTTP headers, preventing remote spoofing attacks. However, we recommend always using a token in production environments.
+**Security Note**: Local bypass uses `req.socket.remoteAddress` which cannot be spoofed remotely due to TCP's three-way handshake. The implementation also rejects requests with proxy headers (`X-Forwarded-For`, etc.) to prevent header injection attacks. However:
+- **Development only**: Basic bypass without token should never be used in production
+- **Local processes**: Any process on the same machine can access the API
+- **Always use tokens**: In production, always require `--local-auth-token`
+- **Consider alternatives**: For production, use proper authentication instead of local bypass
 
 ### macOS App Authentication
 
@@ -227,7 +231,9 @@ The macOS menu bar app handles authentication differently:
 2. **Use HTTPS** in production with a reverse proxy (nginx, Caddy)
 3. **Rotate credentials** regularly
 4. **Consider SSH keys** for stronger security
-5. **Enable local bypass** only on trusted networks
+5. **Never use local bypass without tokens** in production environments
+6. **Monitor access logs** for suspicious authentication patterns
+7. **Default to secure** - explicitly enable less secure options only when needed
 
 ## Running on Linux
 
