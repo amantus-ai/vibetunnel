@@ -241,7 +241,7 @@ VibeTunnel's web server can run on Linux systems, providing terminal access thro
 
 ### Prerequisites
 - Linux system (tested on Ubuntu 22.04+, Debian 12+)
-- Node.js 20+
+- Node.js 20+ (minimum supported version)
 - Git
 
 ### Running from Source
@@ -301,7 +301,7 @@ We need more testing and feedback from the Linux community before the npm releas
 ### Prerequisites
 - macOS 14.0+ (Sonoma) on Apple Silicon (M1/M2/M3)
 - Xcode 16.0+
-- Node.js 20+
+- Node.js 20+ (minimum supported version)
 - Bun runtime
 
 ### Build Steps
