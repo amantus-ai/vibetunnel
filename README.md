@@ -205,12 +205,14 @@ npm run start -- --no-auth
 #### 5. Local Bypass
 Allow localhost connections to bypass authentication:
 ```bash
-# Basic local bypass
+# Basic local bypass (development only)
 npm run start -- --allow-local-bypass
 
-# With token for additional security
+# With token for additional security (recommended)
 npm run start -- --allow-local-bypass --local-auth-token mytoken
 ```
+
+**Security Note**: Local bypass verifies the actual socket connection address, not just HTTP headers, preventing remote spoofing attacks. However, we recommend always using a token in production environments.
 
 ### macOS App Authentication
 
