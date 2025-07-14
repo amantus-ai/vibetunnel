@@ -1,5 +1,5 @@
 #!/bin/bash
-# VibeTunnel CLI wrapper - compatible with both Mac app and npm installations
+# Unified VibeTunnel CLI wrapper - compatible with both Mac app and npm installations
 
 # Only check for Mac app on macOS
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -20,43 +20,88 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # Get the real path of this script to avoid infinite recursion
     SCRIPT_REAL_PATH="$(resolve_symlink_macos "${BASH_SOURCE[0]}")"
 
-    # Check if the Mac app is installed and should be used
-    MAC_APP_LOCATIONS=(
-        "/Applications/VibeTunnel.app/Contents/Resources/vt"
-        "$HOME/Applications/VibeTunnel.app/Contents/Resources/vt"
-    )
-
-    # Check if we have a Mac app installation
-    for MAC_VT in "${MAC_APP_LOCATIONS[@]}"; do
-        if [ -f "$MAC_VT" ] && [ -x "$MAC_VT" ]; then
-            # Avoid infinite recursion by checking if this is the same script
-            MAC_VT_REAL_PATH="$(resolve_symlink_macos "$MAC_VT")"
-            if [ "$SCRIPT_REAL_PATH" != "$MAC_VT_REAL_PATH" ]; then
-                # Found Mac app's vt script and it's different from this script
-                exec "$MAC_VT" "$@"
+    # Comprehensive Mac app search - try standard locations first, then development locations
+    APP_PATH=""
+    
+    # First try standard locations with valid binary check
+    for TRY_PATH in "/Applications/VibeTunnel.app" "$HOME/Applications/VibeTunnel.app"; do
+        if [ -d "$TRY_PATH" ] && [ -f "$TRY_PATH/Contents/Resources/vibetunnel" ]; then
+            VT_SCRIPT="$TRY_PATH/Contents/Resources/vt"
+            if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                # Avoid infinite recursion by checking if this is the same script
+                VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                    exec "$VT_SCRIPT" "$@"
+                fi
             fi
+            APP_PATH="$TRY_PATH"
+            break
         fi
     done
-fi
-
-# If we get here, use the npm-installed vibetunnel
-VIBETUNNEL_BIN=""
-
-# First, try to find vibetunnel in the same directory as this script
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/vibetunnel" ]; then
-    VIBETUNNEL_BIN="$SCRIPT_DIR/vibetunnel"
-else
-    # Try to find vibetunnel in PATH
-    if command -v vibetunnel >/dev/null 2>&1; then
-        VIBETUNNEL_BIN="$(command -v vibetunnel)"
+    
+    # If not found in standard locations, search for development builds
+    if [ -z "$APP_PATH" ]; then
+        # First try DerivedData (for development)
+        for CANDIDATE in $(find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null | grep -v "\.dSYM" | grep -v "Index\.noindex"); do
+            if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
+                VT_SCRIPT="$CANDIDATE/Contents/Resources/vt"
+                if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                    VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                    if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                        exec "$VT_SCRIPT" "$@"
+                    fi
+                fi
+                APP_PATH="$CANDIDATE"
+                break
+            fi
+        done
+        
+        # If still not found, use mdfind as last resort
+        if [ -z "$APP_PATH" ]; then
+            for CANDIDATE in $(mdfind -name "VibeTunnel.app" 2>/dev/null | grep -v "\.dSYM"); do
+                if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
+                    VT_SCRIPT="$CANDIDATE/Contents/Resources/vt"
+                    if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                        VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                        if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                            exec "$VT_SCRIPT" "$@"
+                        fi
+                    fi
+                    APP_PATH="$CANDIDATE"
+                    break
+                fi
+            done
+        fi
+    fi
+    
+    # If we found a Mac app but couldn't use its vt script, use its binary directly
+    if [ -n "$APP_PATH" ]; then
+        VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
+        if [ -f "$VIBETUNNEL_BIN" ]; then
+            # Found Mac app bundle - will use this binary
+            echo "# Using VibeTunnel from Mac app bundle" >&2
+        fi
     fi
 fi
 
-if [ -z "$VIBETUNNEL_BIN" ] || [ ! -f "$VIBETUNNEL_BIN" ]; then
-    echo "Error: vibetunnel binary not found. Please ensure vibetunnel is installed." >&2
-    echo "Install with: npm install -g vibetunnel" >&2
-    exit 1
+# If we get here without a Mac app, use the npm-installed vibetunnel
+if [ -z "$VIBETUNNEL_BIN" ]; then
+    # First, try to find vibetunnel in the same directory as this script
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -f "$SCRIPT_DIR/vibetunnel" ]; then
+        VIBETUNNEL_BIN="$SCRIPT_DIR/vibetunnel"
+    else
+        # Try to find vibetunnel in PATH
+        if command -v vibetunnel >/dev/null 2>&1; then
+            VIBETUNNEL_BIN="$(command -v vibetunnel)"
+        fi
+    fi
+
+    if [ -z "$VIBETUNNEL_BIN" ] || [ ! -f "$VIBETUNNEL_BIN" ]; then
+        echo "Error: vibetunnel binary not found. Please ensure vibetunnel is installed." >&2
+        echo "Install with: npm install -g vibetunnel" >&2
+        exit 1
+    fi
 fi
 
 # Check if we're already inside a VibeTunnel session
@@ -130,7 +175,9 @@ TITLE MODES:
     dynamic    Show directory, command, and live activity status (default for web UI)
 
 NOTE:
-    This script uses the vibetunnel executable installed via npm.
+    This script automatically detects and uses the best available VibeTunnel installation:
+    - Mac app bundle (preferred on macOS)
+    - npm package installation (fallback)
 EOF
     
     # Show path and version info
@@ -138,13 +185,39 @@ EOF
     echo "VIBETUNNEL BINARY:"
     echo "    Path: $VIBETUNNEL_BIN"
     if [ -f "$VIBETUNNEL_BIN" ]; then
-        # Extract version from the package.json if available
-        PACKAGE_JSON="$(dirname "$(dirname "$VIBETUNNEL_BIN")")/package.json"
-        if [ -f "$PACKAGE_JSON" ]; then
-            VERSION=$(grep '"version"' "$PACKAGE_JSON" | head -1 | sed 's/.*"version".*:.*"\(.*\)".*/\1/')
-            echo "    Version: $VERSION"
+        # Try to get version from binary output first (works for both Mac app and npm)
+        VERSION_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^VibeTunnel Server" | head -n 1)
+        BUILD_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Built:" | head -n 1)
+        PLATFORM_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Platform:" | head -n 1)
+        
+        if [ -n "$VERSION_INFO" ]; then
+            echo "    Version: ${VERSION_INFO#VibeTunnel Server }"
+        else
+            # Fallback to package.json for npm installations
+            PACKAGE_JSON="$(dirname "$(dirname "$VIBETUNNEL_BIN")")/package.json"
+            if [ -f "$PACKAGE_JSON" ]; then
+                VERSION=$(grep '"version"' "$PACKAGE_JSON" | head -1 | sed 's/.*"version".*:.*"\(.*\)".*/\1/')
+                echo "    Version: $VERSION"
+            fi
         fi
-        echo "    Status: Installed via npm"
+        
+        if [ -n "$BUILD_INFO" ]; then
+            echo "    ${BUILD_INFO}"
+        fi
+        if [ -n "$PLATFORM_INFO" ]; then
+            echo "    ${PLATFORM_INFO}"
+        fi
+        
+        # Determine installation type
+        if [[ "$VIBETUNNEL_BIN" == */Applications/VibeTunnel.app/* ]]; then
+            echo "    Status: Mac app bundle"
+        elif [[ "$VIBETUNNEL_BIN" == */DerivedData/* ]]; then
+            echo "    Status: Development build"
+        elif [[ "$VIBETUNNEL_BIN" == *npm* ]] || [[ "$VIBETUNNEL_BIN" == */bin/vibetunnel ]]; then
+            echo "    Status: Installed via npm"
+        else
+            echo "    Status: Unknown installation"
+        fi
     else
         echo "    Status: Not found"
     fi
