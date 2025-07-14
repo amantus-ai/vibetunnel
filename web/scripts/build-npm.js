@@ -52,7 +52,7 @@ Full-featured terminal sharing server with web interface for macOS and Linux.
 ## Installation
 
 \`\`\`bash
-npm install -g @vibetunnel/vibetunnel-cli
+npm install -g vibetunnel
 \`\`\`
 
 ## Requirements

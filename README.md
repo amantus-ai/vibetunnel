@@ -25,7 +25,7 @@ The native macOS app provides the best experience with menu bar integration and 
 For Linux servers, Docker containers, or headless macOS systems, install via npm:
 
 ```bash
-npm install -g @vibetunnel/vibetunnel-cli
+npm install -g vibetunnel
 ```
 
 This gives you the full VibeTunnel server with web UI, just without the macOS menu bar app. See the [npm Package section](#npm-package) for detailed usage.
@@ -278,13 +278,13 @@ The VibeTunnel npm package provides the full server functionality for Linux, Doc
 
 ```bash
 # Install globally via npm
-npm install -g @vibetunnel/vibetunnel-cli
+npm install -g vibetunnel
 
 # Or with yarn
-yarn global add @vibetunnel/vibetunnel-cli
+yarn global add vibetunnel
 
 # Or with pnpm
-pnpm add -g @vibetunnel/vibetunnel-cli
+pnpm add -g vibetunnel
 ```
 
 **Requirements**: Node.js 20.0.0 or higher
