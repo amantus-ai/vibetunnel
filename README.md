@@ -16,11 +16,27 @@
 
 Ever wanted to check on your AI agents while you're away? Need to monitor that long-running build from your phone? Want to share a terminal session with a colleague without complex SSH setups? VibeTunnel makes it happen with zero friction.
 
+## Installation Options
+
+### macOS App (Recommended for Mac users)
+The native macOS app provides the best experience with menu bar integration and automatic updates.
+
+### npm Package (Linux & Headless Systems)
+For Linux servers, Docker containers, or headless macOS systems, install via npm:
+
+```bash
+npm install -g @vibetunnel/vibetunnel-cli
+```
+
+This gives you the full VibeTunnel server with web UI, just without the macOS menu bar app.
+
 ## Quick Start
 
 ### Requirements
 
-**VibeTunnel requires an Apple Silicon Mac (M1+).** Intel Macs are not supported.
+**macOS App**: Requires an Apple Silicon Mac (M1+). Intel Macs are not supported for the native app.
+
+**npm Package**: Works on any system with Node.js 20+, including Intel Macs and Linux.
 
 ### 1. Download & Install
 
@@ -70,7 +86,7 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 - **🔒 Secure by Design** - Multiple authentication modes, localhost-only mode, or secure tunneling via Tailscale/ngrok
 - **📱 Mobile Ready** - Native iOS app and responsive web interface for phones and tablets
 - **🎬 Session Recording** - All sessions recorded in asciinema format for later playback
-- **⚡ High Performance** - Powered by Bun runtime for blazing-fast JavaScript execution
+- **⚡ High Performance** - Optimized Node.js server with minimal resource usage
 - **🍎 Apple Silicon Native** - Optimized for M1/M2/M3 Macs with ARM64-only binaries
 - **🐚 Shell Alias Support** - Your custom aliases and shell functions work automatically
 
@@ -81,10 +97,10 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 VibeTunnel consists of three main components:
 
 1. **macOS Menu Bar App** - Native Swift application that manages the server lifecycle
-2. **Node.js/Bun Server** - High-performance TypeScript server handling terminal sessions
+2. **Node.js Server** - High-performance TypeScript server handling terminal sessions
 3. **Web Frontend** - Modern web interface using Lit components and xterm.js
 
-The server runs as a standalone Bun executable with embedded Node.js modules, providing excellent performance and minimal resource usage.
+The server runs as a standalone Node.js executable with embedded modules, providing excellent performance and minimal resource usage.
 
 ## Remote Access Options
 
@@ -285,16 +301,33 @@ When running with `--bind 0.0.0.0`:
 - Consider using a reverse proxy (nginx, Caddy) for HTTPS
 - Or use SSH tunneling for secure remote access
 
-### Coming Soon: npm Package
+### npm Package Installation
 
-We're planning to release VibeTunnel server as an npm package for easier installation:
+VibeTunnel is now available as an npm package for easy installation on Linux and headless macOS systems:
+
 ```bash
-# Future installation (not yet available)
-npm install -g @vibetunnel/server
-VIBETUNNEL_USERNAME=admin VIBETUNNEL_PASSWORD=secure vibetunnel-server --bind 0.0.0.0
+# Install globally
+npm install -g @vibetunnel/vibetunnel-cli
+
+# Start the server
+vibetunnel
+
+# With authentication
+VIBETUNNEL_USERNAME=admin VIBETUNNEL_PASSWORD=secure vibetunnel --bind 0.0.0.0
+
+# Use the vt command wrapper
+vt npm test
+vt python script.py
+vt --shell  # Interactive shell
 ```
 
-We need more testing and feedback from the Linux community before the npm release. Please [report issues](https://github.com/amantus-ai/vibetunnel/issues) or share your experience!
+The npm package includes:
+- Full VibeTunnel server with web UI
+- All CLI tools including the `vt` command wrapper
+- Native PTY support for terminal emulation
+- Complete feature parity with the macOS app (minus the menu bar UI)
+
+**Requirements**: Node.js 20.0.0 or higher
 
 ## Building from Source
 
@@ -302,7 +335,6 @@ We need more testing and feedback from the Linux community before the npm releas
 - macOS 14.0+ (Sonoma) on Apple Silicon (M1/M2/M3)
 - Xcode 16.0+
 - Node.js 20+ (minimum supported version)
-- Bun runtime
 
 ### Build Steps
 
