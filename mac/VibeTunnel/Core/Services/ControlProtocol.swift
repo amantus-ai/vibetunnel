@@ -66,12 +66,10 @@ enum ControlProtocol {
             sessionId = try container.decodeIfPresent(String.self, forKey: .sessionId)
             error = try container.decodeIfPresent(String.self, forKey: .error)
 
-            // Decode payload as generic JSON dictionary
-            if let payloadData = try? container.decode(Data.self, forKey: .payload),
-               let json = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any]
+            // Decode payload as JSON object
+            if let anyCodable = try? container.decode(AnyCodable.self, forKey: .payload),
+               let json = anyCodable.value as? [String: Any]
             {
-                payload = json
-            } else if let json = try? container.decode([String: Any].self, forKey: .payload) {
                 payload = json
             }
         }
@@ -85,10 +83,9 @@ enum ControlProtocol {
             try container.encodeIfPresent(sessionId, forKey: .sessionId)
             try container.encodeIfPresent(error, forKey: .error)
 
-            // Encode payload as JSON data
+            // Encode payload as JSON object (not base64-encoded data)
             if let payload {
-                let data = try JSONSerialization.data(withJSONObject: payload)
-                try container.encode(data, forKey: .payload)
+                try container.encode(AnyCodable(payload), forKey: .payload)
             }
         }
     }
