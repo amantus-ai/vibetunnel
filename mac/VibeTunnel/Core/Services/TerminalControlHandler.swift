@@ -14,8 +14,8 @@ final class TerminalControlHandler {
 
     private init() {
         // Register handler with the shared socket manager
-        SharedUnixSocketManager.shared.registerControlHandler(for: .terminal) { [weak self] message in
-            await self?.handleMessage(message)
+        SharedUnixSocketManager.shared.registerControlHandler(for: .terminal) { [weak self] data in
+            await self?.handleMessage(data)
         }
 
         logger.info("🚀 Terminal control handler initialized")
@@ -23,39 +23,41 @@ final class TerminalControlHandler {
 
     // MARK: - Message Handling
 
-    private func handleMessage(_ message: ControlProtocol.ControlMessage) async -> ControlProtocol.ControlMessage? {
-        logger.info("📥 Terminal message: \(message.action)")
-
-        switch message.action {
-        case "spawn":
-            return await handleSpawnRequest(message)
-
-        default:
-            logger.warning("Unknown terminal action: \(message.action)")
-            return ControlProtocol.createResponse(
-                to: message,
-                error: "Unknown action: \(message.action)"
-            )
+    private func handleMessage(_ data: Data) async -> Data? {
+        do {
+            // Try to decode as terminal spawn request first
+            if let spawnRequest = try? ControlProtocol.decodeTerminalSpawnRequest(data) {
+                logger.info("📥 Terminal spawn request for session: \(spawnRequest.payload?.sessionId ?? "unknown")")
+                let response = await handleSpawnRequest(spawnRequest)
+                return try ControlProtocol.encode(response)
+            }
+            
+            // Could add other terminal message types here
+            
+            logger.warning("Unknown terminal message format")
+            return nil
+            
+        } catch {
+            logger.error("Failed to process terminal message: \(error)")
+            return nil
         }
     }
 
-    private func handleSpawnRequest(_ message: ControlProtocol.ControlMessage) async -> ControlProtocol.ControlMessage {
+    private func handleSpawnRequest(_ message: ControlProtocol.TerminalSpawnRequestMessage) async -> ControlProtocol.TerminalSpawnResponseMessage {
         guard let payload = message.payload else {
-            return ControlProtocol.createResponse(to: message, error: "Missing payload")
+            return ControlProtocol.terminalSpawnResponse(
+                to: message,
+                success: false,
+                error: "Missing payload"
+            )
         }
 
-        // Extract spawn parameters
-        let sessionId = payload["sessionId"] as? String ?? message.sessionId ?? ""
-        let workingDirectory = payload["workingDirectory"] as? String ?? ""
-        let command = payload["command"] as? String ?? ""
-        let terminalPreference = payload["terminalPreference"] as? String
-
-        logger.info("Spawning terminal session \(sessionId)")
+        logger.info("Spawning terminal session \(payload.sessionId)")
 
         do {
             // If a specific terminal is requested, temporarily set it
             var originalTerminal: String?
-            if let requestedTerminal = terminalPreference {
+            if let requestedTerminal = payload.terminalPreference {
                 originalTerminal = UserDefaults.standard.string(forKey: "preferredTerminal")
                 UserDefaults.standard.set(requestedTerminal, forKey: "preferredTerminal")
             }
@@ -69,22 +71,22 @@ final class TerminalControlHandler {
 
             // Launch the terminal
             try TerminalLauncher.shared.launchOptimizedTerminalSession(
-                workingDirectory: workingDirectory,
-                command: command,
-                sessionId: sessionId,
+                workingDirectory: payload.workingDirectory ?? "",
+                command: payload.command ?? "",
+                sessionId: payload.sessionId,
                 vibetunnelPath: nil // Use bundled path
             )
 
-            // Success response
-            return ControlProtocol.createResponse(
+            // Success response with compile-time guarantees
+            return ControlProtocol.terminalSpawnResponse(
                 to: message,
-                payload: ["success": true]
+                success: true
             )
         } catch {
             logger.error("Failed to spawn terminal: \(error)")
-            return ControlProtocol.createResponse(
+            return ControlProtocol.terminalSpawnResponse(
                 to: message,
-                payload: ["success": false],
+                success: false,
                 error: error.localizedDescription
             )
         }

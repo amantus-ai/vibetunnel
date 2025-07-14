@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ControlMessage } from '../../server/websocket/control-protocol.js';
+import type {
+  ControlMessage,
+  TerminalSpawnResponse,
+} from '../../server/websocket/control-protocol.js';
 
 // Mock the control unix handler
 vi.mock('../../server/websocket/control-unix-handler.js', () => ({
@@ -35,7 +38,7 @@ describe('requestTerminalSpawn', () => {
         type: 'response',
         category: 'terminal',
         action: 'spawn',
-        payload: { success: true }, // This should be a plain object, not base64
+        payload: { success: true } as TerminalSpawnResponse, // This should be a plain object, not base64
         sessionId: testParams.sessionId,
       };
 
@@ -73,9 +76,8 @@ describe('requestTerminalSpawn', () => {
         action: 'spawn',
         payload: {
           success: true,
-          message: 'Terminal spawned successfully',
           pid: 12345,
-        },
+        } as TerminalSpawnResponse,
         sessionId: testParams.sessionId,
       };
 
@@ -95,7 +97,7 @@ describe('requestTerminalSpawn', () => {
         type: 'response',
         category: 'terminal',
         action: 'spawn',
-        payload: { success: false },
+        payload: { success: false } as TerminalSpawnResponse,
         sessionId: testParams.sessionId,
       };
 
@@ -166,7 +168,7 @@ describe('requestTerminalSpawn', () => {
         type: 'response',
         category: 'terminal',
         action: 'spawn',
-        payload: { message: 'some other data' }, // No success field
+        payload: { message: 'some other data' } as any, // No success field
         sessionId: testParams.sessionId,
       };
 
@@ -215,7 +217,7 @@ describe('requestTerminalSpawn', () => {
         type: 'response',
         category: 'terminal',
         action: 'spawn',
-        payload: { success: true },
+        payload: { success: true } as TerminalSpawnResponse,
         sessionId: testParams.sessionId,
       };
 
@@ -243,7 +245,7 @@ describe('requestTerminalSpawn', () => {
         type: 'response',
         category: 'terminal',
         action: 'spawn',
-        payload: { success: true },
+        payload: { success: true } as TerminalSpawnResponse,
         sessionId: testParams.sessionId,
       };
 
@@ -273,7 +275,7 @@ describe('requestTerminalSpawn', () => {
         type: 'response',
         category: 'terminal',
         action: 'spawn',
-        payload: { success: true }, // This is a plain object, NOT base64
+        payload: { success: true } as TerminalSpawnResponse, // This is a plain object, NOT base64
         sessionId: testParams.sessionId,
       };
 

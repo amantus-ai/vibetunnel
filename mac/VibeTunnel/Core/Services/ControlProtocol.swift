@@ -17,34 +17,23 @@ enum ControlProtocol {
         case system
     }
 
-    // MARK: - Control Message Structure
+    // MARK: - Control Message Structure (with generic payload support)
 
-    struct ControlMessage: Codable {
+    struct ControlMessage<Payload: Codable>: Codable {
         let id: String
         let type: MessageType
         let category: Category
         let action: String
-        var payload: [String: Any]?
-        var sessionId: String?
-        var error: String?
-
-        /// Custom encoding/decoding for Any type payload
-        enum CodingKeys: String, CodingKey {
-            case id
-            case type
-            case category
-            case action
-            case payload
-            case sessionId
-            case error
-        }
+        let payload: Payload?
+        let sessionId: String?
+        let error: String?
 
         init(
             id: String = UUID().uuidString,
             type: MessageType,
             category: Category,
             action: String,
-            payload: [String: Any]? = nil,
+            payload: Payload? = nil,
             sessionId: String? = nil,
             error: String? = nil
         ) {
@@ -56,159 +45,110 @@ enum ControlProtocol {
             self.sessionId = sessionId
             self.error = error
         }
-
-        init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decode(String.self, forKey: .id)
-            type = try container.decode(MessageType.self, forKey: .type)
-            category = try container.decode(Category.self, forKey: .category)
-            action = try container.decode(String.self, forKey: .action)
-            sessionId = try container.decodeIfPresent(String.self, forKey: .sessionId)
-            error = try container.decodeIfPresent(String.self, forKey: .error)
-
-            // Decode payload as JSON object
-            if let anyCodable = try? container.decode(AnyCodable.self, forKey: .payload),
-               let json = anyCodable.value as? [String: Any]
-            {
-                payload = json
-            }
-        }
-
-        func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(id, forKey: .id)
-            try container.encode(type, forKey: .type)
-            try container.encode(category, forKey: .category)
-            try container.encode(action, forKey: .action)
-            try container.encodeIfPresent(sessionId, forKey: .sessionId)
-            try container.encodeIfPresent(error, forKey: .error)
-
-            // Encode payload as JSON object (not base64-encoded data)
-            if let payload {
-                try container.encode(AnyCodable(payload), forKey: .payload)
-            }
-        }
     }
+    
+    // MARK: - Base message for runtime dispatch
+    
+    protocol AnyControlMessage {
+        var id: String { get }
+        var type: MessageType { get }
+        var category: Category { get }
+        var action: String { get }
+        var sessionId: String? { get }
+        var error: String? { get }
+    }
+    
+    extension ControlMessage: AnyControlMessage {}
+    
+    // MARK: - Type aliases for common message types
+    
+    typealias TerminalSpawnRequestMessage = ControlMessage<TerminalSpawnRequest>
+    typealias TerminalSpawnResponseMessage = ControlMessage<TerminalSpawnResponse>
+    typealias SystemReadyMessage = ControlMessage<SystemReadyEvent>
+    typealias SystemPingRequestMessage = ControlMessage<SystemPingRequest>
+    typealias SystemPingResponseMessage = ControlMessage<SystemPingResponse>
 
-    // MARK: - Helper Functions
-
-    static func createRequest(
-        category: Category,
-        action: String,
-        payload: [String: Any]? = nil,
-        sessionId: String? = nil
-    )
-        -> ControlMessage
-    {
+    // MARK: - Convenience builders for specific message types
+    
+    // Terminal messages
+    static func terminalSpawnRequest(
+        sessionId: String,
+        workingDirectory: String? = nil,
+        command: String? = nil,
+        terminalPreference: String? = nil
+    ) -> TerminalSpawnRequestMessage {
         ControlMessage(
             type: .request,
-            category: category,
-            action: action,
-            payload: payload,
+            category: .terminal,
+            action: "spawn",
+            payload: TerminalSpawnRequest(
+                sessionId: sessionId,
+                workingDirectory: workingDirectory,
+                command: command,
+                terminalPreference: terminalPreference
+            ),
             sessionId: sessionId
         )
     }
-
-    static func createResponse(
-        to request: ControlMessage,
-        payload: [String: Any]? = nil,
-        error: String? = nil,
-        overrideAction: String? = nil
-    )
-        -> ControlMessage
-    {
+    
+    static func terminalSpawnResponse(
+        to request: TerminalSpawnRequestMessage,
+        success: Bool,
+        pid: Int? = nil,
+        error: String? = nil
+    ) -> TerminalSpawnResponseMessage {
         ControlMessage(
             id: request.id,
             type: .response,
-            category: request.category,
-            action: overrideAction ?? request.action,
-            payload: payload,
+            category: .terminal,
+            action: "spawn",
+            payload: TerminalSpawnResponse(success: success, pid: pid, error: error),
             sessionId: request.sessionId,
             error: error
         )
     }
-
-    static func createEvent(
-        category: Category,
-        action: String,
-        payload: [String: Any]? = nil,
-        sessionId: String? = nil
-    )
-        -> ControlMessage
-    {
+    
+    // System messages
+    static func systemReadyEvent() -> SystemReadyMessage {
         ControlMessage(
             type: .event,
-            category: category,
-            action: action,
-            payload: payload,
-            sessionId: sessionId
+            category: .system,
+            action: "ready",
+            payload: SystemReadyEvent()
+        )
+    }
+    
+    static func systemPingResponse(
+        to request: SystemPingRequestMessage
+    ) -> SystemPingResponseMessage {
+        ControlMessage(
+            id: request.id,
+            type: .response,
+            category: .system,
+            action: "ping",
+            payload: SystemPingResponse()
         )
     }
 
+
     // MARK: - Message Serialization
 
-    static func encode(_ message: ControlMessage) throws -> Data {
+    static func encode<T: Codable>(_ message: ControlMessage<T>) throws -> Data {
         let encoder = JSONEncoder()
         return try encoder.encode(message)
     }
 
-    static func decode(_ data: Data) throws -> ControlMessage {
+    static func decode<T: Codable>(_ data: Data, as messageType: ControlMessage<T>.Type) throws -> ControlMessage<T> {
         let decoder = JSONDecoder()
-        return try decoder.decode(ControlMessage.self, from: data)
+        return try decoder.decode(messageType, from: data)
     }
-}
-
-// MARK: - JSON Extensions for Any type
-
-private let maxDecodingDepth = 10
-
-extension KeyedDecodingContainer {
-    func decode(_ type: [String: Any].Type, forKey key: K) throws -> [String: Any] {
-        let container = try nestedContainer(keyedBy: JSONCodingKeys.self, forKey: key)
-        return try container.decodeWithDepth(type, depth: 0)
+    
+    // For handlers that need to decode specific message types based on action
+    static func decodeTerminalSpawnRequest(_ data: Data) throws -> TerminalSpawnRequestMessage {
+        return try decode(data, as: TerminalSpawnRequestMessage.self)
     }
-
-    func decode(_ type: [String: Any].Type) throws -> [String: Any] {
-        try decodeWithDepth(type, depth: 0)
-    }
-
-    private func decodeWithDepth(_ type: [String: Any].Type, depth: Int) throws -> [String: Any] {
-        guard depth < maxDecodingDepth else {
-            // Return empty dictionary if we've hit the depth limit
-            return [:]
-        }
-
-        var dictionary = [String: Any]()
-
-        for key in allKeys {
-            if let value = try? decode(Bool.self, forKey: key) {
-                dictionary[key.stringValue] = value
-            } else if let value = try? decode(String.self, forKey: key) {
-                dictionary[key.stringValue] = value
-            } else if let value = try? decode(Int.self, forKey: key) {
-                dictionary[key.stringValue] = value
-            } else if let value = try? decode(Double.self, forKey: key) {
-                dictionary[key.stringValue] = value
-            } else if depth < maxDecodingDepth - 1,
-                      let container = try? nestedContainer(keyedBy: JSONCodingKeys.self, forKey: key)
-            {
-                dictionary[key.stringValue] = try container.decodeWithDepth(type, depth: depth + 1)
-            }
-        }
-        return dictionary
-    }
-}
-
-struct JSONCodingKeys: CodingKey {
-    var stringValue: String
-    var intValue: Int?
-
-    init?(stringValue: String) {
-        self.stringValue = stringValue
-    }
-
-    init?(intValue: Int) {
-        self.intValue = intValue
-        self.stringValue = "\(intValue)"
+    
+    static func decodeSystemPingRequest(_ data: Data) throws -> SystemPingRequestMessage {
+        return try decode(data, as: SystemPingRequestMessage.self)
     }
 }

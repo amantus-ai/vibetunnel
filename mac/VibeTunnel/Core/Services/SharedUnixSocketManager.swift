@@ -14,9 +14,7 @@ final class SharedUnixSocketManager {
     // MARK: - Properties
 
     private var unixSocket: UnixSocketConnection?
-    private var controlHandlers: [ControlProtocol.Category: (ControlProtocol.ControlMessage) async -> ControlProtocol
-        .ControlMessage?
-    ] = [:]
+    private var controlHandlers: [ControlProtocol.Category: (Data) async -> Data?] = [:]
 
     // MARK: - Initialization
 
@@ -84,17 +82,25 @@ final class SharedUnixSocketManager {
             logger.debug("📨 Raw message: \(str)")
         }
 
-        // Parse as control message
+        // Parse category and action to route to correct handler
         do {
-            let controlMessage = try ControlProtocol.decode(data)
-            logger.info("📨 Control message received: \(controlMessage.category.rawValue):\(controlMessage.action)")
-
-            // Handle control messages
-            Task { @MainActor in
-                await handleControlMessage(controlMessage)
+            // Quick decode to get routing info
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let categoryStr = json["category"] as? String,
+               let action = json["action"] as? String,
+               let category = ControlProtocol.Category(rawValue: categoryStr) {
+                
+                logger.info("📨 Control message received: \(category.rawValue):\(action)")
+                
+                // Handle control messages
+                Task { @MainActor in
+                    await handleControlMessage(category: category, data: data)
+                }
+            } else {
+                logger.error("📨 Invalid control message format")
             }
         } catch {
-            logger.error("📨 Failed to decode control message: \(error)")
+            logger.error("📨 Failed to parse control message: \(error)")
             if let str = String(data: data, encoding: .utf8) {
                 logger.error("📨 Failed message content: \(str)")
             }
@@ -102,54 +108,34 @@ final class SharedUnixSocketManager {
     }
 
     /// Handle control protocol messages
-    private func handleControlMessage(_ message: ControlProtocol.ControlMessage) async {
-        // Special handling for system messages
-        if message.category == .system && message.action == "ready" {
-            logger.info("✅ Received system:ready from server - connection established")
-            return
-        }
-
+    private func handleControlMessage(category: ControlProtocol.Category, data: Data) async {
         // Log handler lookup for debugging
-        logger.info("🔍 Looking for handler for category: \(message.category.rawValue)")
+        logger.info("🔍 Looking for handler for category: \(category.rawValue)")
 
         // Get handler - no locking needed since we're on MainActor
         let availableHandlers = controlHandlers.keys.map(\.rawValue).joined(separator: ", ")
         logger.info("🔍 Available handlers: \(availableHandlers)")
 
-        guard let handler = controlHandlers[message.category] else {
-            logger.warning("No handler for category: \(message.category.rawValue)")
-
-            // Send error response if this was a request
-            if message.type == .request {
-                let response = ControlProtocol.createResponse(
-                    to: message,
-                    error: "No handler for category: \(message.category.rawValue)"
-                )
-                sendControlMessage(response)
-            }
+        guard let handler = controlHandlers[category] else {
+            logger.warning("No handler for category: \(category.rawValue)")
+            // Could send error response here if needed
             return
         }
 
-        logger.info("✅ Found handler for category: \(message.category.rawValue), processing message...")
+        logger.info("✅ Found handler for category: \(category.rawValue), processing message...")
 
         // Process message with handler
-        if let response = await handler(message) {
-            sendControlMessage(response)
-        }
-    }
-
-    /// Send a control message
-    func sendControlMessage(_ message: ControlProtocol.ControlMessage) {
-        guard let socket = unixSocket else {
-            logger.warning("No socket available to send control message")
-            return
-        }
-
-        Task {
+        if let responseData = await handler(data) {
+            // Send response back
+            guard let socket = unixSocket else {
+                logger.warning("No socket available to send response")
+                return
+            }
+            
             do {
-                try await socket.send(message)
+                try await socket.sendRawData(responseData)
             } catch {
-                logger.error("Failed to send control message: \(error)")
+                logger.error("Failed to send response: \(error)")
             }
         }
     }
@@ -157,7 +143,7 @@ final class SharedUnixSocketManager {
     /// Register a control message handler for a specific category
     func registerControlHandler(
         for category: ControlProtocol.Category,
-        handler: @escaping @Sendable (ControlProtocol.ControlMessage) async -> ControlProtocol.ControlMessage?
+        handler: @escaping @Sendable (Data) async -> Data?
     ) {
         controlHandlers[category] = handler
         logger.info("✅ Registered control handler for category: \(category.rawValue)")

@@ -25,6 +25,7 @@ export interface TerminalSpawnRequest {
 
 export interface TerminalSpawnResponse {
   success: boolean;
+  pid?: number;
   error?: string;
 }
 
@@ -38,7 +39,22 @@ export interface ScreenCaptureApiRequest {
 
 export interface ScreenCaptureWebRTCSignal {
   sessionId: string;
-  data: unknown;
+  data: string; // JSON string for WebRTC data
+}
+
+// System control payloads
+export interface SystemReadyEvent {
+  timestamp: number;
+  version?: string;
+}
+
+export interface SystemPingRequest {
+  timestamp: number;
+}
+
+export interface SystemPingResponse {
+  status: string;
+  timestamp: number;
 }
 
 // Helper to create control messages
