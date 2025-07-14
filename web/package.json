@@ -39,7 +39,6 @@
     "build": "node scripts/build.js",
     "build:ci": "node scripts/build-ci.js",
     "build:npm": "node scripts/build-npm.js",
-    "build:npm:multiplatform": "node scripts/build-npm-multiplatform.js",
     "prepublishOnly": "npm run build:npm",
     "install": "prebuild-install || node scripts/postinstall-npm.js",
     "prebuild": "prebuild --all",

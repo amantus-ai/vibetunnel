@@ -379,22 +379,28 @@ The npm package includes:
 
 For maintainers who need to build the npm package:
 
-#### Single Platform Build
-```bash
-# Build for current platform only
-npm run build:npm
-```
-
-#### Multi-Platform Build
+#### Unified Build (Multi-Platform by Default)
 ```bash
 # Build with prebuilt binaries for all platforms
 # Requires Docker for Linux cross-compilation
-npm run build:npm:multiplatform
+npm run build:npm
 ```
 
 This creates prebuilt binaries for:
 - macOS (x64, arm64) - Node.js 20, 22, 23, 24
 - Linux (x64, arm64) - Node.js 20, 22, 23, 24
+
+#### Build Options
+```bash
+# Current platform only (faster for development)
+node scripts/build-npm.js --current-only
+
+# Specific platform/architecture
+node scripts/build-npm.js --platform darwin --arch arm64
+
+# Skip Docker builds
+node scripts/build-npm.js --no-docker
+```
 
 #### Publishing
 ```bash

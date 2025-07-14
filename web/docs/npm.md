@@ -75,23 +75,32 @@ Note: Node version numbers map to internal versions (v115=Node 20, v127=Node 22,
 
 ## Build Process
 
-### Standard Build
+### Unified Build (Multi-Platform by Default)
 ```bash
 npm run build:npm
 ```
 - Compiles TypeScript and bundles client code
-- Creates package structure
-- Removes test files
-- Generates npm README
+- Builds native modules for all supported platforms (macOS x64/arm64, Linux x64/arm64)
+- Creates comprehensive prebuilds for zero-dependency installation
+- Generates npm README optimized for package distribution
 
-### Multi-Platform Build
+### Build Options
+The unified build script supports flexible targeting:
+
 ```bash
-npm run build:npm:multiplatform
+# Default: All platforms
+npm run build:npm
+
+# Current platform only (faster for development)
+node scripts/build-npm.js --current-only
+
+# Specific platform/architecture
+node scripts/build-npm.js --platform darwin --arch arm64
+node scripts/build-npm.js --platform linux
+
+# Skip Docker (Linux builds will be skipped)
+node scripts/build-npm.js --no-docker
 ```
-- Runs standard build
-- **macOS**: Builds native modules locally for x64 and arm64
-- **Linux**: Uses Docker containers for cross-compilation
-- Packages all prebuilds into final distribution
 
 ### Docker Requirements
 For Linux builds, Docker is required:
@@ -216,11 +225,12 @@ lipo -create spawn-helper-x64 spawn-helper-arm64 -output spawn-helper-universal
 ## Package Optimization
 
 ### File Exclusions
-Test files and development artifacts are excluded from the final package:
-- `public/bundle/test.js`
-- `public/bundle/screencap.js`
-- `public/test/` directory
-- `public/test.cast`
+Development artifacts are excluded from the final package:
+- Test files (`public/bundle/test.js`, `public/test/` directory)
+- Recording files (`*.cast` prevented by .gitignore)
+- Build artifacts (`dist/` selectively included via package.json `files` field)
+
+**Note**: `screencap.js` is kept as it provides screen capture functionality for the web interface.
 
 ### Size Optimization
 - **Final size**: ~8.5 MB
@@ -232,11 +242,11 @@ Test files and development artifacts are excluded from the final package:
 
 ### Local Development
 ```bash
-# Standard build for local testing
+# Multi-platform build with prebuilds (default)
 npm run build:npm
 
-# Multi-platform build with prebuilds
-npm run build:npm:multiplatform
+# Single-platform build for local testing
+node scripts/build-npm.js --current-only
 
 # Test package locally
 npm pack
@@ -389,8 +399,7 @@ npm install -g vibetunnel --build-from-source
 
 ## Related Files
 
-- `scripts/build-npm.js` - Standard npm build process
-- `scripts/build-npm-multiplatform.js` - Multi-platform build with Docker
+- `scripts/build-npm.js` - Unified npm build process with multi-platform support
 - `scripts/postinstall-npm.js` - Fallback compilation logic
 - `.prebuildrc` - Prebuild configuration for target platforms
 - `package.json` - Package configuration and file inclusions

@@ -148,3 +148,7 @@ bin-macos/
 *.so
 *.exe
 spawn-helper*
+
+# Test recordings and artifacts
+*.cast
+test.cast
