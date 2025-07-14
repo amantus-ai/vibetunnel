@@ -49,27 +49,31 @@ export class MobileInputOverlay extends LitElement {
   private isComposing = false;
   private compositionBuffer = '';
 
-  private touchStartHandler = (e: TouchEvent) => {
-    const touch = e.touches[0];
-    this.touchStartX = touch.clientX;
-    this.touchStartY = touch.clientY;
+  private pointerStartHandler = (e: PointerEvent) => {
+    // Only handle touch and pen input for swipe gestures
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      this.touchStartX = e.clientX;
+      this.touchStartY = e.clientY;
+    }
   };
 
-  private touchEndHandler = (e: TouchEvent) => {
-    const touch = e.changedTouches[0];
-    const touchEndX = touch.clientX;
-    const touchEndY = touch.clientY;
+  private pointerEndHandler = (e: PointerEvent) => {
+    // Only handle touch and pen input for swipe gestures
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      const pointerEndX = e.clientX;
+      const pointerEndY = e.clientY;
 
-    const deltaX = touchEndX - this.touchStartX;
-    const deltaY = touchEndY - this.touchStartY;
+      const deltaX = pointerEndX - this.touchStartX;
+      const deltaY = pointerEndY - this.touchStartY;
 
-    // Check for horizontal swipe from left edge (back gesture)
-    const isSwipeRight = deltaX > 100;
-    const isVerticallyStable = Math.abs(deltaY) < 100;
-    const startedFromLeftEdge = this.touchStartX < 50;
+      // Check for horizontal swipe from left edge (back gesture)
+      const isSwipeRight = deltaX > 100;
+      const isVerticallyStable = Math.abs(deltaY) < 100;
+      const startedFromLeftEdge = this.touchStartX < 50;
 
-    if (isSwipeRight && isVerticallyStable && startedFromLeftEdge && this.handleBack) {
-      this.handleBack();
+      if (isSwipeRight && isVerticallyStable && startedFromLeftEdge && this.handleBack) {
+        this.handleBack();
+      }
     }
   };
 
@@ -218,7 +222,7 @@ export class MobileInputOverlay extends LitElement {
         .closeOnBackdrop=${true}
         .closeOnEscape=${false}
       >
-        <div @touchstart=${this.touchStartHandler} @touchend=${this.touchEndHandler} class="h-full flex flex-col">
+        <div @pointerdown=${this.pointerStartHandler} @pointerup=${this.pointerEndHandler} class="h-full flex flex-col">
           <!-- Spacer to push content up above keyboard -->
           <div class="flex-1"></div>
 

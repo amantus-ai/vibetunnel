@@ -247,38 +247,42 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     this.callbacks.handleKeyboardInput(e);
   };
 
-  touchStartHandler = (e: TouchEvent): void => {
+  pointerStartHandler = (e: PointerEvent): void => {
     if (!this.callbacks) return;
 
     const isMobile = this.callbacks.getIsMobile();
     if (!isMobile) return;
 
-    const touch = e.touches[0];
-    this.touchStartX = touch.clientX;
-    this.touchStartY = touch.clientY;
+    // Only handle touch and pen input for swipe gestures
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      this.touchStartX = e.clientX;
+      this.touchStartY = e.clientY;
+    }
   };
 
-  touchEndHandler = (e: TouchEvent): void => {
+  pointerEndHandler = (e: PointerEvent): void => {
     if (!this.callbacks) return;
 
     const isMobile = this.callbacks.getIsMobile();
     if (!isMobile) return;
 
-    const touch = e.changedTouches[0];
-    const touchEndX = touch.clientX;
-    const touchEndY = touch.clientY;
+    // Only handle touch and pen input for swipe gestures
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      const pointerEndX = e.clientX;
+      const pointerEndY = e.clientY;
 
-    const deltaX = touchEndX - this.touchStartX;
-    const deltaY = touchEndY - this.touchStartY;
+      const deltaX = pointerEndX - this.touchStartX;
+      const deltaY = pointerEndY - this.touchStartY;
 
-    // Check for horizontal swipe from left edge (back gesture)
-    const isSwipeRight = deltaX > 100;
-    const isVerticallyStable = Math.abs(deltaY) < 100;
-    const startedFromLeftEdge = this.touchStartX < 50;
+      // Check for horizontal swipe from left edge (back gesture)
+      const isSwipeRight = deltaX > 100;
+      const isVerticallyStable = Math.abs(deltaY) < 100;
+      const startedFromLeftEdge = this.touchStartX < 50;
 
-    if (isSwipeRight && isVerticallyStable && startedFromLeftEdge) {
-      // Trigger back navigation
-      this.callbacks.handleBack();
+      if (isSwipeRight && isVerticallyStable && startedFromLeftEdge) {
+        // Trigger back navigation
+        this.callbacks.handleBack();
+      }
     }
   };
 
@@ -425,9 +429,9 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       document.addEventListener('keydown', this.keyboardHandler);
       this.keyboardListenerAdded = true;
     } else if (isMobile && !this.touchListenersAdded) {
-      // Add touch event listeners for mobile swipe gestures
-      document.addEventListener('touchstart', this.touchStartHandler, { passive: true });
-      document.addEventListener('touchend', this.touchEndHandler, { passive: true });
+      // Add pointer event listeners for mobile swipe gestures
+      document.addEventListener('pointerdown', this.pointerStartHandler, { passive: true });
+      document.addEventListener('pointerup', this.pointerEndHandler, { passive: true });
       this.touchListenersAdded = true;
     }
   }
@@ -474,9 +478,9 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       document.removeEventListener('keydown', this.keyboardHandler);
       this.keyboardListenerAdded = false;
     } else if (this.callbacks.getIsMobile() && this.touchListenersAdded) {
-      // Remove touch event listeners
-      document.removeEventListener('touchstart', this.touchStartHandler);
-      document.removeEventListener('touchend', this.touchEndHandler);
+      // Remove pointer event listeners
+      document.removeEventListener('pointerdown', this.pointerStartHandler);
+      document.removeEventListener('pointerup', this.pointerEndHandler);
       this.touchListenersAdded = false;
     }
 
@@ -521,9 +525,9 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       document.removeEventListener('keydown', this.keyboardHandler);
       this.keyboardListenerAdded = false;
     } else if (this.callbacks?.getIsMobile() && this.touchListenersAdded) {
-      // Remove touch event listeners
-      document.removeEventListener('touchstart', this.touchStartHandler);
-      document.removeEventListener('touchend', this.touchEndHandler);
+      // Remove pointer event listeners
+      document.removeEventListener('pointerdown', this.pointerStartHandler);
+      document.removeEventListener('pointerup', this.pointerEndHandler);
       this.touchListenersAdded = false;
     }
 

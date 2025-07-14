@@ -501,21 +501,18 @@ export class TerminalQuickKeys extends LitElement {
                       type="button"
                       tabindex="-1"
                       class="ctrl-shortcut-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
-                      @mousedown=${(e: Event) => {
+                      @pointerdown=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                       }}
-                      @touchstart=${(e: Event) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      @touchend=${(e: Event) => {
+                      @pointerup=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                         this.handleKeyPress(key, false, special, false, e);
                       }}
                       @click=${(e: MouseEvent) => {
-                        if (e.detail !== 0) {
+                        // Fallback for keyboard navigation
+                        if (e.detail === 0) {
                           this.handleKeyPress(key, false, special, false, e);
                         }
                       }}
@@ -536,21 +533,18 @@ export class TerminalQuickKeys extends LitElement {
                       type="button"
                       tabindex="-1"
                       class="func-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap"
-                      @mousedown=${(e: Event) => {
+                      @pointerdown=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                       }}
-                      @touchstart=${(e: Event) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      @touchend=${(e: Event) => {
+                      @pointerup=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                         this.handleKeyPress(key, false, false, false, e);
                       }}
                       @click=${(e: MouseEvent) => {
-                        if (e.detail !== 0) {
+                        // Fallback for keyboard navigation
+                        if (e.detail === 0) {
                           this.handleKeyPress(key, false, false, false, e);
                         }
                       }}
@@ -570,15 +564,11 @@ export class TerminalQuickKeys extends LitElement {
                       type="button"
                       tabindex="-1"
                       class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
-                      @mousedown=${(e: Event) => {
+                      @pointerdown=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                       }}
-                      @touchstart=${(e: Event) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      @touchend=${(e: Event) => {
+                      @pointerup=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                         if (key === 'Paste') {
@@ -588,7 +578,8 @@ export class TerminalQuickKeys extends LitElement {
                         }
                       }}
                       @click=${(e: MouseEvent) => {
-                        if (e.detail !== 0) {
+                        // Fallback for keyboard navigation
+                        if (e.detail === 0) {
                           this.handleKeyPress(key, modifier || combo, special, toggle, e);
                         }
                       }}
@@ -609,21 +600,18 @@ export class TerminalQuickKeys extends LitElement {
                   type="button"
                   tabindex="-1"
                   class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-0.5' : 'py-1'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
-                  @mousedown=${(e: Event) => {
+                  @pointerdown=${(e: PointerEvent) => {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  @touchstart=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  @touchend=${(e: Event) => {
+                  @pointerup=${(e: PointerEvent) => {
                     e.preventDefault();
                     e.stopPropagation();
                     this.handleKeyPress(key, modifier || combo, special, false, e);
                   }}
                   @click=${(e: MouseEvent) => {
-                    if (e.detail !== 0) {
+                    // Fallback for keyboard navigation
+                    if (e.detail === 0) {
                       this.handleKeyPress(key, modifier || combo, special, false, e);
                     }
                   }}

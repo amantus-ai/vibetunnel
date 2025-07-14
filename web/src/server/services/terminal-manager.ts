@@ -10,23 +10,23 @@ const logger = createLogger('terminal-manager');
 // Flow control configuration
 const FLOW_CONTROL_CONFIG = {
   // When buffer exceeds this percentage of max lines, pause reading
-  // 80% gives a good buffer before hitting the scrollback limit
-  highWatermark: 0.8,
+  // Increased to 90% to allow more buffer usage before pausing
+  highWatermark: 0.9,
   // Resume reading when buffer drops below this percentage
-  // 50% ensures enough space is cleared before resuming
-  lowWatermark: 0.5,
+  // Increased to 70% to reduce pause/resume cycling
+  lowWatermark: 0.7,
   // Check interval for resuming paused sessions
-  // 100ms provides responsive resumption without excessive CPU usage
-  checkInterval: 100, // ms
+  // Reduced to 50ms for more responsive resumption during high-throughput
+  checkInterval: 50, // ms
   // Maximum pending lines to accumulate while paused
-  // 10K lines handles bursts without excessive memory (avg ~1MB at 100 chars/line)
-  maxPendingLines: 10000,
+  // Increased to 50K lines to handle high-volume replay scenarios
+  maxPendingLines: 50000,
   // Maximum time a session can be paused before timing out
   // 5 minutes handles temporary client issues without indefinite memory growth
   maxPauseTime: 5 * 60 * 1000, // 5 minutes
   // Lines to process between buffer pressure checks
-  // Checking every 100 lines balances performance with responsiveness
-  bufferCheckInterval: 100,
+  // Increased to 200 lines to reduce overhead during high-volume processing
+  bufferCheckInterval: 200,
 };
 
 interface SessionTerminal {
@@ -266,6 +266,88 @@ export class TerminalManager {
   }
 
   /**
+   * Process pending lines in batches to avoid blocking the event loop
+   */
+  private processPendingLinesBatched(sessionId: string, sessionTerminal: SessionTerminal): void {
+    const lines = sessionTerminal.pendingLines || [];
+    sessionTerminal.pendingLines = [];
+    sessionTerminal.isPaused = false;
+    sessionTerminal.pausedAt = undefined;
+    sessionTerminal.isProcessingPending = false;
+
+    // Process in batches for better performance
+    const BATCH_SIZE = lines.length > 1000 ? 100 : 50;
+    let currentIndex = 0;
+
+    const processBatch = () => {
+      const endIndex = Math.min(currentIndex + BATCH_SIZE, lines.length);
+
+      for (let i = currentIndex; i < endIndex; i++) {
+        this.processStreamLine(sessionId, sessionTerminal, lines[i]);
+      }
+
+      currentIndex = endIndex;
+
+      if (currentIndex < lines.length) {
+        // Process next batch in next tick to avoid blocking
+        setImmediate(processBatch);
+      } else {
+        // All done, resume file watching
+        this.resumeFileWatcher(sessionId).catch((error) => {
+          logger.error(`Failed to resume file watcher for session ${sessionId}:`, error);
+        });
+      }
+    };
+
+    // Start processing
+    setImmediate(processBatch);
+  }
+
+  /**
+   * Smart line dropping during high-volume scenarios
+   * Preserves critical lines (clear, resize, etc.) while dropping redundant output
+   */
+  private shouldDropLineIntelligently(line: string, queueSize: number): boolean {
+    try {
+      const data = JSON.parse(line);
+
+      // Never drop structural commands
+      if (data.version || !Array.isArray(data) || data.length < 3) {
+        return false; // Keep headers and malformed data
+      }
+
+      const [_timestamp, type, eventData] = data;
+
+      // Never drop resize events, exit events, or clear screen commands
+      if (
+        type === 'r' || // resize
+        type === 'e' || // exit
+        (type === 'o' &&
+          eventData &&
+          (eventData.includes('\x1b[2J') || // clear screen
+            eventData.includes('\x1b[H') || // cursor home
+            eventData.includes('\x1b[?1049h') || // alternate screen
+            eventData.includes('\x1b[?1049l'))) // exit alternate screen
+      ) {
+        return false; // Keep critical commands
+      }
+
+      // Only drop output events in extreme queue pressure and only if they're truly redundant
+      if (type === 'o' && queueSize > FLOW_CONTROL_CONFIG.maxPendingLines * 0.95) {
+        // Only drop if this looks like redundant rapid-fire output (very short, no escape sequences)
+        if (eventData && eventData.length < 10 && !eventData.includes('\x1b')) {
+          // Drop only very short non-escape sequences when extremely full (95%+)
+          return Math.random() < 0.3; // Much more conservative - only 30% drop rate
+        }
+      }
+
+      return false; // Keep everything else
+    } catch {
+      return true; // Drop malformed data
+    }
+  }
+
+  /**
    * Check buffer pressure and pause/resume as needed
    */
   private checkBufferPressure(sessionId: string): boolean {
@@ -319,23 +401,8 @@ export class TerminalManager {
           )
         );
 
-        // Process pending lines asynchronously to avoid blocking
-        setImmediate(() => {
-          const lines = sessionTerminal.pendingLines || [];
-          sessionTerminal.pendingLines = [];
-          sessionTerminal.isPaused = false;
-          sessionTerminal.pausedAt = undefined;
-          sessionTerminal.isProcessingPending = false;
-
-          for (const pendingLine of lines) {
-            this.processStreamLine(sessionId, sessionTerminal, pendingLine);
-          }
-
-          // Resume file watching after processing pending lines
-          this.resumeFileWatcher(sessionId).catch((error) => {
-            logger.error(`Failed to resume file watcher for session ${sessionId}:`, error);
-          });
-        });
+        // Process pending lines in batches to avoid blocking
+        this.processPendingLinesBatched(sessionId, sessionTerminal);
       } else if (!sessionTerminal.pendingLines || sessionTerminal.pendingLines.length === 0) {
         // No pending lines, just resume
         sessionTerminal.isPaused = false;
@@ -388,11 +455,26 @@ export class TerminalManager {
       if (sessionTerminal.pendingLines.length < FLOW_CONTROL_CONFIG.maxPendingLines) {
         sessionTerminal.pendingLines.push(line);
       } else {
-        logger.warn(
-          chalk.red(
-            `Pending lines limit reached for session ${sessionId}. Dropping new data to prevent memory overflow.`
-          )
-        );
+        // Instead of dropping all data, implement smart dropping for replay scenarios
+        if (this.shouldDropLineIntelligently(line, sessionTerminal.pendingLines.length)) {
+          // Skip this line
+          return;
+        }
+
+        // For critical lines (clear screen, resize, etc.), force them through
+        sessionTerminal.pendingLines.push(line);
+
+        // Remove the oldest non-critical line to make space
+        sessionTerminal.pendingLines.shift();
+
+        // Log warning less frequently to avoid spam
+        if (sessionTerminal.pendingLines.length % 1000 === 0) {
+          logger.warn(
+            chalk.red(
+              `Pending lines limit reached for session ${sessionId}. Smart dropping enabled. Queue size: ${sessionTerminal.pendingLines.length}`
+            )
+          );
+        }
       }
       return;
     }

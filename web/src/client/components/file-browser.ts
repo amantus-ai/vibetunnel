@@ -125,7 +125,7 @@ export class FileBrowser extends LitElement {
     }
     document.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('resize', this.handleResize);
-    this.setupTouchHandlers();
+    this.setupPointerHandlers();
   }
 
   async updated(changedProperties: Map<string, unknown>) {
@@ -856,7 +856,7 @@ export class FileBrowser extends LitElement {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('resize', this.handleResize);
-    this.removeTouchHandlers();
+    this.removePointerHandlers();
   }
 
   private async checkAuthConfig() {
@@ -907,56 +907,62 @@ export class FileBrowser extends LitElement {
   private touchStartX = 0;
   private touchStartY = 0;
 
-  private setupTouchHandlers() {
+  private setupPointerHandlers() {
     if (!this.isMobile) return;
 
-    const handleTouchStart = (e: TouchEvent) => {
-      this.touchStartX = e.touches[0].clientX;
-      this.touchStartY = e.touches[0].clientY;
+    const handlePointerStart = (e: PointerEvent) => {
+      // Only handle touch and pen input for swipe gestures
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+        this.touchStartX = e.clientX;
+        this.touchStartY = e.clientY;
+      }
     };
 
-    const handleTouchEnd = (e: TouchEvent) => {
+    const handlePointerEnd = (e: PointerEvent) => {
       if (!this.visible || !this.isMobile) return;
 
-      const deltaX = e.changedTouches[0].clientX - this.touchStartX;
-      const deltaY = Math.abs(e.changedTouches[0].clientY - this.touchStartY);
+      // Only handle touch and pen input for swipe gestures
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+        const deltaX = e.clientX - this.touchStartX;
+        const deltaY = Math.abs(e.clientY - this.touchStartY);
 
-      // Only handle horizontal swipes
-      if (Math.abs(deltaX) > 50 && deltaY < 50) {
-        if (deltaX > 0) {
-          // Swipe right
-          if (this.mobileView === 'preview') {
-            this.mobileView = 'list';
-          } else {
-            this.handleCancel();
+        // Only handle horizontal swipes
+        if (Math.abs(deltaX) > 50 && deltaY < 50) {
+          if (deltaX > 0) {
+            // Swipe right
+            if (this.mobileView === 'preview') {
+              this.mobileView = 'list';
+            } else {
+              this.handleCancel();
+            }
           }
         }
       }
     };
 
-    document.addEventListener('touchstart', handleTouchStart);
-    document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener('pointerdown', handlePointerStart);
+    document.addEventListener('pointerup', handlePointerEnd);
 
     // Store handlers for removal
-    interface TouchHandlers {
-      handleTouchStart: (e: TouchEvent) => void;
-      handleTouchEnd: (e: TouchEvent) => void;
+    interface PointerHandlers {
+      handlePointerStart: (e: PointerEvent) => void;
+      handlePointerEnd: (e: PointerEvent) => void;
     }
-    (this as unknown as { _touchHandlers: TouchHandlers })._touchHandlers = {
-      handleTouchStart,
-      handleTouchEnd,
+    (this as unknown as { _pointerHandlers: PointerHandlers })._pointerHandlers = {
+      handlePointerStart,
+      handlePointerEnd,
     };
   }
 
-  private removeTouchHandlers() {
-    interface TouchHandlers {
-      handleTouchStart: (e: TouchEvent) => void;
-      handleTouchEnd: (e: TouchEvent) => void;
+  private removePointerHandlers() {
+    interface PointerHandlers {
+      handlePointerStart: (e: PointerEvent) => void;
+      handlePointerEnd: (e: PointerEvent) => void;
     }
-    const handlers = (this as unknown as { _touchHandlers?: TouchHandlers })._touchHandlers;
+    const handlers = (this as unknown as { _pointerHandlers?: PointerHandlers })._pointerHandlers;
     if (handlers) {
-      document.removeEventListener('touchstart', handlers.handleTouchStart);
-      document.removeEventListener('touchend', handlers.handleTouchEnd);
+      document.removeEventListener('pointerdown', handlers.handlePointerStart);
+      document.removeEventListener('pointerup', handlers.handlePointerEnd);
     }
   }
 

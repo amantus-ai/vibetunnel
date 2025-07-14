@@ -48,7 +48,8 @@ export class Terminal extends LitElement {
 
   @state() private terminal: XtermTerminal | null = null;
   private _viewportY = 0; // Current scroll position in pixels
-  @state() private followCursorEnabled = true; // Whether to follow cursor on writes
+  private followCursorEnabled = true; // Whether to follow cursor on writes
+  @state() private showScrollButton = false; // Whether to show scroll-to-bottom button
   private programmaticScroll = false; // Flag to prevent state updates during programmatic scrolling
 
   // Debug performance tracking
@@ -89,10 +90,6 @@ export class Terminal extends LitElement {
 
   // Operation queue for batching buffer modifications
   private operationQueue: (() => void | Promise<void>)[] = [];
-  private activeTouchCount = 0; // Track active touches
-  private globalActivePointers = 0; // Track ALL active pointers on the page
-  private buttonPointers = 0; // Track pointers specifically on buttons (not terminal)
-  private buttonPointerIds = new Set<number>(); // Track which pointer IDs are on buttons
 
   private queueRenderOperation(operation: () => void | Promise<void>) {
     this.operationQueue.push(operation);
@@ -111,32 +108,39 @@ export class Terminal extends LitElement {
   }
 
   private requestRenderBuffer() {
-    logger.debug('Requesting render buffer update');
-    this.queueRenderOperation(() => {
-      logger.debug('Executing render operation');
-    });
+    // Directly render buffer instead of queuing empty operations
+    this.renderBuffer();
   }
 
   private async processOperationQueue(): Promise<void> {
     const startTime = performance.now();
-    const MAX_FRAME_TIME = 8; // Target ~120fps, yield more frequently for better touch responsiveness
+    // Adaptive frame time: faster processing for larger queues
+    const queueSize = this.operationQueue.length;
+    const MAX_FRAME_TIME = queueSize > 100 ? 8 : queueSize > 50 ? 12 : 16;
+    let operationsProcessed = 0;
 
-    // Process queued operations, but yield periodically
+    // Process queued operations, but yield periodically to prevent blocking
     while (this.operationQueue.length > 0) {
       const operation = this.operationQueue.shift();
       if (operation) {
         await operation();
+        operationsProcessed++;
       }
 
-      // Check if we've been running too long
+      // Check if we've been running too long - yield to prevent blocking
       if (performance.now() - startTime > MAX_FRAME_TIME && this.operationQueue.length > 0) {
-        // Still have more operations, yield control and continue in next frame
-        await new Promise<void>((resolve) => {
-          requestAnimationFrame(() => {
-            this.processOperationQueue().then(resolve);
-          });
+        console.log(
+          `[Terminal] Yielding after ${operationsProcessed} operations, ${this.operationQueue.length} remaining`
+        );
+
+        // Render what we have so far, then continue
+        this.renderBuffer();
+
+        // Schedule continuation in next frame, but don't clear renderPending yet
+        requestAnimationFrame(() => {
+          this.processOperationQueue();
         });
-        return; // Exit early to let browser process events
+        return; // Exit early to let browser process other tasks
       }
     }
 
@@ -144,8 +148,12 @@ export class Terminal extends LitElement {
     this.renderBuffer();
 
     // Clear renderPending flag when truly done
-    if (this.operationQueue.length === 0) {
-      this.renderPending = false;
+    this.renderPending = false;
+
+    if (operationsProcessed > 10) {
+      console.log(
+        `[Terminal] Processed ${operationsProcessed} operations in ${(performance.now() - startTime).toFixed(1)}ms`
+      );
     }
   }
 
@@ -180,23 +188,6 @@ export class Terminal extends LitElement {
     this.themeObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme'],
-    });
-
-    // Add global pointer tracking to prevent terminal updates during button interactions
-    this.handleGlobalPointerDown = this.handleGlobalPointerDown.bind(this);
-    this.handleGlobalPointerUp = this.handleGlobalPointerUp.bind(this);
-
-    document.addEventListener('pointerdown', this.handleGlobalPointerDown, {
-      passive: true,
-      capture: true,
-    });
-    document.addEventListener('pointerup', this.handleGlobalPointerUp, {
-      passive: true,
-      capture: true,
-    });
-    document.addEventListener('pointercancel', this.handleGlobalPointerUp, {
-      passive: true,
-      capture: true,
     });
 
     // Restore user override preference if we have a sessionId
@@ -296,15 +287,6 @@ export class Terminal extends LitElement {
     }
 
     // Remove global pointer listeners
-    document.removeEventListener('pointerdown', this.handleGlobalPointerDown, {
-      capture: true,
-    });
-    document.removeEventListener('pointerup', this.handleGlobalPointerUp, {
-      capture: true,
-    });
-    document.removeEventListener('pointercancel', this.handleGlobalPointerUp, {
-      capture: true,
-    });
 
     super.disconnectedCallback();
   }
@@ -320,9 +302,6 @@ export class Terminal extends LitElement {
 
       if (elapsed > BLOCK_THRESHOLD) {
         console.warn(`[Terminal] Main thread blocked for ${Math.round(elapsed)}ms`, {
-          activeTouches: this.activeTouchCount,
-          globalActivePointers: this.globalActivePointers,
-          buttonPointers: this.buttonPointers,
           renderPending: this.renderPending,
           operationQueueLength: this.operationQueue.length,
         });
@@ -355,86 +334,6 @@ export class Terminal extends LitElement {
   private toggleDebugExpanded = () => {
     this.debugExpanded = !this.debugExpanded;
     this.requestUpdate();
-  };
-
-  private handleGlobalPointerDown = (e: PointerEvent) => {
-    this.globalActivePointers++;
-
-    // Check if pointer is on a button
-    const target = e.target as Element;
-    const isButton =
-      target.closest('button') ||
-      target.closest('.keyboard-button') ||
-      target.closest('session-header') ||
-      target.closest('.quick-start-btn');
-
-    if (isButton) {
-      this.buttonPointerIds.add(e.pointerId);
-      this.addDebugLog(
-        `Button pointer down ${e.pointerId} (${this.buttonPointerIds.size} total)`,
-        'warn'
-      );
-    }
-
-    this.buttonPointers = this.buttonPointerIds.size;
-
-    if (this.debugMode) {
-      logger.debug('Global pointer down', {
-        pointerId: e.pointerId,
-        pointerType: e.pointerType,
-        activePointers: this.globalActivePointers,
-        buttonPointers: this.buttonPointers,
-        buttonPointerIds: Array.from(this.buttonPointerIds),
-        target: target.tagName,
-        isButton,
-      });
-    }
-  };
-
-  private handleGlobalPointerUp = (e: PointerEvent) => {
-    this.globalActivePointers--;
-
-    // Remove this pointer from button tracking if it was on a button
-    if (this.buttonPointerIds.has(e.pointerId)) {
-      this.buttonPointerIds.delete(e.pointerId);
-      this.addDebugLog(
-        `Button pointer up ${e.pointerId} (${this.buttonPointerIds.size} remaining)`,
-        'info'
-      );
-    }
-
-    this.buttonPointers = this.buttonPointerIds.size;
-
-    // Additional safety: if no pointers remain globally, clear all button pointers
-    if (this.globalActivePointers <= 0) {
-      this.globalActivePointers = 0; // Ensure it doesn't go negative
-      if (this.buttonPointerIds.size > 0) {
-        this.addDebugLog(
-          `Force clearing ${this.buttonPointerIds.size} stuck button pointers`,
-          'warn'
-        );
-        this.buttonPointerIds.clear();
-        this.buttonPointers = 0;
-      }
-    }
-
-    if (this.debugMode) {
-      logger.debug('Global pointer up', {
-        pointerId: e.pointerId,
-        pointerType: e.pointerType,
-        activePointers: this.globalActivePointers,
-        buttonPointers: this.buttonPointers,
-        buttonPointerIds: Array.from(this.buttonPointerIds),
-      });
-    }
-
-    // If no more button pointers, schedule a render if one was pending
-    if (this.buttonPointers === 0 && this.renderPending) {
-      this.addDebugLog('Queued render after button pointer end', 'info');
-      requestAnimationFrame(() => {
-        this.renderBuffer();
-      });
-    }
   };
 
   // Method to set user override when width is manually selected
@@ -638,11 +537,8 @@ export class Terminal extends LitElement {
       this.setupResize();
       this.setupScrolling();
 
-      // Ensure terminal starts at the top
-      this.viewportY = 0;
-      if (this.terminal) {
-        this.terminal.scrollToTop();
-      }
+      // Scroll to bottom to show current content (like a normal terminal)
+      this.scrollToBottom();
 
       this.requestUpdate();
     } catch (error: unknown) {
@@ -734,11 +630,15 @@ export class Terminal extends LitElement {
     }
 
     logger.debug(`[Terminal] fitTerminal called from source: ${source || 'unknown'}`);
+
     // Use the class property instead of rechecking
     if (this.isMobile) {
-      logger.debug(
-        `[Terminal] Mobile detected in fitTerminal - source: ${source}, userAgent: ${navigator.userAgent}`
-      );
+      // Force layout recalculation to ensure container has proper dimensions
+      if (this.container) {
+        void this.container.offsetHeight;
+        void this.container.offsetWidth;
+        void this.container.getBoundingClientRect();
+      }
     }
 
     const _oldActualRows = this.actualRows;
@@ -750,8 +650,27 @@ export class Terminal extends LitElement {
 
     if (this.fitHorizontally) {
       // Horizontal fitting: calculate fontSize to fit this.cols characters in container width
-      const containerWidth = this.container.clientWidth;
-      const containerHeight = this.container.clientHeight;
+      let containerWidth = this.container.clientWidth;
+      let containerHeight = this.container.clientHeight;
+
+      // Force layout calculation if container dimensions are suspicious
+      if (containerWidth === 0 || containerHeight === 0) {
+        // Container has zero dimensions, force comprehensive layout calculations
+
+        // Force reflow by accessing offsetHeight
+        void this.container.offsetHeight;
+        void this.container.offsetWidth;
+
+        containerWidth = this.container.clientWidth;
+        containerHeight = this.container.clientHeight;
+
+        if (containerWidth === 0 || containerHeight === 0) {
+          // Container still zero after reflow, force additional layout and defer
+          void this.container.getBoundingClientRect();
+          requestAnimationFrame(() => this.fitTerminal('deferred-zero-dimensions'));
+          return;
+        }
+      }
       const targetCharWidth = containerWidth / this.cols;
 
       // Calculate fontSize needed for target character width
@@ -810,7 +729,15 @@ export class Terminal extends LitElement {
     } else {
       // Normal mode: calculate both cols and rows based on container size
       const containerWidth = this.container.clientWidth || 800; // Default width if container not ready
-      const containerHeight = this.container.clientHeight || 600; // Default height if container not ready
+      const containerHeight = this.container.clientHeight || (this.isMobile ? 800 : 600); // Larger default for mobile
+
+      // Debug container sizing on mobile - log every time
+      if (this.isMobile) {
+        // Force layout recalculation for mobile container sizing
+        void this.container.offsetHeight;
+        void this.container.clientHeight;
+        void this.container.getBoundingClientRect();
+      }
       const lineHeight = this.fontSize * 1.2;
       const charWidth = this.measureCharacterWidth();
 
@@ -841,8 +768,38 @@ export class Terminal extends LitElement {
         // No constraints - use full width (for frontend-created sessions or sessions without initial dimensions)
         this.cols = calculatedCols;
       }
-      this.rows = Math.max(6, Math.floor(containerHeight / lineHeight));
+      const calculatedRows = Math.max(6, Math.floor(containerHeight / lineHeight));
+
+      // Debug container sizing issues on mobile
+      if (containerHeight < 100) {
+        // Container height too small on mobile, force layout before fallback
+        if (this.container) {
+          void this.container.offsetHeight;
+          void this.container.getBoundingClientRect();
+        }
+
+        // If container height is suspiciously small, try to wait for proper sizing
+        setTimeout(() => {
+          // Force layout before retry
+          if (this.container) {
+            void this.container.offsetHeight;
+            void this.container.getBoundingClientRect();
+          }
+          this.fitTerminal('container-resize-retry');
+        }, 100);
+      }
+
+      this.rows = calculatedRows;
       this.actualRows = this.rows;
+
+      // Debug actualRows changes on mobile
+      if (this.isMobile) {
+        // Force layout recalculation when updating actualRows
+        if (this.container) {
+          void this.container.offsetHeight;
+          void this.container.clientHeight;
+        }
+      }
 
       // Resize the terminal to the new dimensions
       if (this.terminal) {
@@ -915,10 +872,26 @@ export class Terminal extends LitElement {
 
     if (this.isMobile) {
       // On mobile: Do initial resize to set width, then allow HEIGHT changes only (for keyboard)
-      logger.debug('[Terminal] Mobile detected - scheduling initial resize in 200ms');
+      logger.debug('[Terminal] Mobile detected - scheduling initial resize in 500ms');
       this.mobileInitialResizeTimeout = setTimeout(() => {
-        logger.debug('[Terminal] Mobile: Executing initial resize');
-        this.fitTerminal('initial-mobile-only');
+        logger.debug('[Terminal] Mobile: Executing delayed initial resize');
+
+        // Check if container is properly sized before proceeding
+        if (this.container && this.container.clientHeight === 0) {
+          // Container still not sized after 500ms, force comprehensive layout
+          void this.container.offsetHeight; // Force layout
+
+          // If still zero, try again later
+          if (this.container.clientHeight === 0) {
+            // Container still zero after layout force, retrying in 200ms
+            this.mobileInitialResizeTimeout = setTimeout(() => {
+              this.fitTerminal('initial-mobile-delayed-retry');
+            }, 200);
+            return;
+          }
+        }
+
+        this.fitTerminal('initial-mobile-delayed');
         // That's it - no observers, no event listeners, nothing
         logger.debug(
           '[Terminal] Mobile: Initial width set, future WIDTH resizes blocked (height allowed for keyboard)'
@@ -1006,7 +979,6 @@ export class Terminal extends LitElement {
       if (e.pointerType !== 'touch' || !e.isPrimary) return;
 
       // Track active touches
-      this.activeTouchCount++;
 
       // Stop any existing momentum
       if (this.momentumAnimation) {
@@ -1031,7 +1003,6 @@ export class Terminal extends LitElement {
       // Log touch events for debugging on mobile
       if (this.debugMode) {
         logger.debug('Touch start', {
-          touches: this.activeTouchCount,
           x: e.clientX,
           y: e.clientY,
           pointerId: e.pointerId,
@@ -1082,12 +1053,9 @@ export class Terminal extends LitElement {
       if (e.pointerType !== 'touch') return;
 
       // Track active touches
-      this.activeTouchCount = Math.max(0, this.activeTouchCount - 1);
-
       // Log touch events for debugging
       if (this.debugMode) {
         logger.debug('Touch end', {
-          touches: this.activeTouchCount,
           wasScrolling: isScrolling,
           pointerId: e.pointerId,
         });
@@ -1125,12 +1093,9 @@ export class Terminal extends LitElement {
       if (e.pointerType !== 'touch') return;
 
       // Track active touches
-      this.activeTouchCount = Math.max(0, this.activeTouchCount - 1);
-
       // Log for debugging
       if (this.debugMode) {
         logger.debug('Touch cancel', {
-          touches: this.activeTouchCount,
           pointerId: e.pointerId,
         });
       }
@@ -1313,33 +1278,6 @@ export class Terminal extends LitElement {
     }
 
     // Set the complete innerHTML at once
-    // On mobile, skip innerHTML update if button touches are active to prevent lost taps
-    // Allow terminal touches to proceed normally for scrolling
-    if (this.isMobile && this.buttonPointers > 0) {
-      this.addDebugLog(`Deferring render due to button pointers (${this.buttonPointers})`, 'warn');
-      // Schedule innerHTML update for after touch ends
-      if (!this.renderPending) {
-        this.renderPending = true;
-        requestAnimationFrame(() => {
-          if (this.buttonPointers === 0) {
-            this.renderPending = false;
-            this.addDebugLog('Executing deferred render', 'info');
-            // Now safe to update innerHTML
-            if (this.container) {
-              this.container.innerHTML = html;
-              // Process links and shortcuts after rendering
-              UrlHighlighter.processLinks(this.container);
-              processKeyboardShortcuts(this.container, this.handleShortcutClick);
-            }
-          } else {
-            // Still touching buttons, try again next frame
-            this.renderPending = false;
-            this.requestRenderBuffer();
-          }
-        });
-      }
-      return; // Skip the rest of the render
-    }
 
     this.container.innerHTML = html;
 
@@ -1779,16 +1717,22 @@ export class Terminal extends LitElement {
       // User scrolled away from bottom - disable follow cursor
       this.followCursorEnabled = false;
     }
+
+    // Only update reactive state if the scroll button visibility needs to change
+    const shouldShowScrollButton = !this.followCursorEnabled && !this.hideScrollButton;
+    if (this.showScrollButton !== shouldShowScrollButton) {
+      this.showScrollButton = shouldShowScrollButton;
+    }
   }
 
   /**
    * Handle click on scroll-to-bottom indicator
    */
   private handleScrollToBottom = () => {
-    // Immediately enable follow cursor to hide the indicator
+    // Immediately enable follow cursor and hide the indicator
     this.followCursorEnabled = true;
+    this.showScrollButton = false;
     this.scrollToBottom();
-    this.requestUpdate();
   };
 
   /**
@@ -1900,11 +1844,23 @@ export class Terminal extends LitElement {
           font-size: ${this.fontSize}px;
           line-height: ${this.fontSize * 1.2}px;
           touch-action: none !important;
+          /* Fixed width constraints to prevent layout shifts */
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          overflow-x: auto;
+          box-sizing: border-box;
+          /* CSS containment to isolate layout calculations - DISABLED for mobile sizing */
+          /* contain: layout style; */
         }
 
         .terminal-line {
           height: ${this.fontSize * 1.2}px;
           line-height: ${this.fontSize * 1.2}px;
+          /* Prevent terminal lines from affecting container width */
+          white-space: pre;
+          overflow: visible;
+          min-width: 0;
         }
       </style>
       <div class="relative w-full h-full p-0 m-0">
@@ -1919,7 +1875,7 @@ export class Terminal extends LitElement {
           data-testid="terminal-container"
         ></div>
         ${
-          !this.followCursorEnabled && !this.hideScrollButton
+          this.showScrollButton
             ? html`
               <div
                 class="scroll-to-bottom"
@@ -1953,10 +1909,6 @@ export class Terminal extends LitElement {
                   <div class="metric">
                     <span class="metric-label">Last:</span>
                     <span class="metric-value">${this.lastRenderTime.toFixed(2)}ms</span>
-                  </div>
-                  <div class="metric">
-                    <span class="metric-label">Pointers:</span>
-                    <span class="metric-value">${this.buttonPointers}</span>
                   </div>
                   <div class="expand-indicator">${this.debugExpanded ? '▼' : '▶'}</div>
                 </div>
