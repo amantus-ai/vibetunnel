@@ -105,7 +105,7 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 - **📱 Mobile Ready** - Native iOS app and responsive web interface for phones and tablets
 - **🎬 Session Recording** - All sessions recorded in asciinema format for later playback
 - **⚡ High Performance** - Optimized Node.js server with minimal resource usage
-- **🍎 Apple Silicon Native** - Optimized for M1/M2/M3 Macs with ARM64-only binaries
+- **🍎 Apple Silicon Native** - Optimized for Apple Silicon (M1+) Macs with ARM64-only binaries
 - **🐚 Shell Alias Support** - Your custom aliases and shell functions work automatically
 
 > **Note**: The iOS app and Tauri-based components are still work in progress and not recommended for production use yet.
@@ -408,7 +408,7 @@ npm publish
 ## Building from Source
 
 ### Prerequisites
-- macOS 14.0+ (Sonoma) on Apple Silicon (M1/M2/M3)
+- macOS 14.0+ (Sonoma) on Apple Silicon (M1+)
 - Xcode 16.0+
 - Node.js 20+ (minimum supported version)
 
