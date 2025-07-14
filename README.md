@@ -67,7 +67,7 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 - **🚀 Zero Configuration** - No SSH keys, no port forwarding, no complexity
 - **🤖 AI Agent Friendly** - Perfect for monitoring Claude Code, ChatGPT, or any terminal-based AI tools
 - **📊 Dynamic Terminal Titles** - Real-time activity tracking shows what's happening in each session
-- **🔒 Secure by Design** - Password protection, localhost-only mode, or secure tunneling via Tailscale/ngrok
+- **🔒 Secure by Design** - Multiple authentication modes, localhost-only mode, or secure tunneling via Tailscale/ngrok
 - **📱 Mobile Ready** - Native iOS app and responsive web interface for phones and tablets
 - **🎬 Session Recording** - All sessions recorded in asciinema format for later playback
 - **⚡ High Performance** - Powered by Bun runtime for blazing-fast JavaScript execution
@@ -132,7 +132,7 @@ The server runs as a standalone Bun executable with embedded Node.js modules, pr
 **Note**: Free ngrok URLs change each time you restart the tunnel. You can claim one free static domain per user, or upgrade to a paid plan for multiple domains.
 
 ### Option 3: Local Network
-1. Set a dashboard password in settings
+1. Configure authentication (see Authentication section)
 2. Switch to "Network" mode
 3. Access via `http://[your-mac-ip]:4020`
 
@@ -165,6 +165,129 @@ Dynamic mode includes real-time activity detection:
 - Shows `•` when there's terminal output within 5 seconds
 - Claude commands show specific status (Crafting, Transitioning, etc.)
 - Extensible system for future app-specific detectors
+
+## Authentication
+
+VibeTunnel provides multiple authentication modes to secure your terminal sessions:
+
+### Authentication Modes
+
+#### 1. System Authentication (Default)
+Uses your operating system's native authentication:
+- **macOS**: Authenticates against local user accounts
+- **Linux**: Uses PAM (Pluggable Authentication Modules)
+- Login with your system username and password
+
+#### 2. Environment Variable Authentication
+Simple authentication for deployments:
+```bash
+export VIBETUNNEL_USERNAME=admin
+export VIBETUNNEL_PASSWORD=your-secure-password
+npm run start
+```
+
+#### 3. SSH Key Authentication
+Use Ed25519 SSH keys from `~/.ssh/authorized_keys`:
+```bash
+# Enable SSH key authentication
+npm run start -- --enable-ssh-keys
+
+# Make SSH keys mandatory (disable password auth)
+npm run start -- --enable-ssh-keys --disallow-user-password
+```
+
+#### 4. No Authentication
+For trusted environments only:
+```bash
+npm run start -- --no-auth
+```
+
+#### 5. Local Bypass
+Allow localhost connections to bypass authentication:
+```bash
+# Basic local bypass
+npm run start -- --allow-local-bypass
+
+# With token for additional security
+npm run start -- --allow-local-bypass --local-auth-token mytoken
+```
+
+### macOS App Authentication
+
+The macOS menu bar app handles authentication differently:
+- In "Localhost Only" mode: No authentication required
+- In "Network" mode: Configure via Settings → Security
+- Supports system authentication and custom credentials
+
+### Security Best Practices
+
+1. **Always use authentication** when binding to network interfaces (`--bind 0.0.0.0`)
+2. **Use HTTPS** in production with a reverse proxy (nginx, Caddy)
+3. **Rotate credentials** regularly
+4. **Consider SSH keys** for stronger security
+5. **Enable local bypass** only on trusted networks
+
+## Running on Linux
+
+VibeTunnel's web server can run on Linux systems, providing terminal access through any web browser. While the macOS menu bar app is platform-specific, the core server functionality works great on Linux.
+
+### Prerequisites
+- Linux system (tested on Ubuntu 22.04+, Debian 12+)
+- Node.js 20+
+- Git
+
+### Running from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/amantus-ai/vibetunnel.git
+cd vibetunnel
+
+# Build and run the server
+cd web
+npm install
+npm run build
+npm run start -- --bind 0.0.0.0 --port 4020
+```
+
+### Common Server Parameters
+
+```bash
+# Bind to all network interfaces (allows external access)
+npm run start -- --bind 0.0.0.0
+
+# Use a custom port
+npm run start -- --port 8080
+
+# Enable debug logging
+VIBETUNNEL_DEBUG=1 npm run start
+
+# Run without authentication (trusted networks only!)
+npm run start -- --no-auth
+
+# Combined example for production use
+VIBETUNNEL_USERNAME=admin VIBETUNNEL_PASSWORD=mysecret npm run start -- --bind 0.0.0.0 --port 4020
+```
+
+### Security Considerations
+
+When running with `--bind 0.0.0.0`:
+- The server will be accessible from any network interface
+- Always configure authentication (see Authentication section above)
+- Consider using a reverse proxy (nginx, Caddy) for HTTPS
+- Or use SSH tunneling for secure remote access
+
+### Coming Soon: npm Package
+
+We're planning to release VibeTunnel server as an npm package for easier installation:
+```bash
+# Future installation (not yet available)
+npm install -g @vibetunnel/server
+VIBETUNNEL_USERNAME=admin VIBETUNNEL_PASSWORD=secure vibetunnel-server --bind 0.0.0.0
+```
+
+We need more testing and feedback from the Linux community before the npm release. Please [report issues](https://github.com/amantus-ai/vibetunnel/issues) or share your experience!
+
 ## Building from Source
 
 ### Prerequisites
