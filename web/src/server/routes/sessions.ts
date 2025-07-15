@@ -48,6 +48,22 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
   const { ptyManager, terminalManager, streamWatcher, remoteRegistry, isHQMode, activityMonitor } =
     config;
 
+  // Server status endpoint
+  router.get('/server/status', async (_req, res) => {
+    logger.debug('[GET /server/status] Getting server status');
+    try {
+      const status = {
+        macAppConnected: controlUnixHandler.isMacAppConnected(),
+        isHQMode,
+        version: process.env.VERSION || 'unknown',
+      };
+      res.json(status);
+    } catch (error) {
+      logger.error('Failed to get server status:', error);
+      res.status(500).json({ error: 'Failed to get server status' });
+    }
+  });
+
   // List all sessions (aggregate local + remote in HQ mode)
   router.get('/sessions', async (_req, res) => {
     logger.debug('[GET /sessions] Listing all sessions');

@@ -63,6 +63,7 @@ export class SessionCreateForm extends LitElement {
     relativePath: string;
   }> = [];
   @state() private isDiscovering = false;
+  @state() private macAppConnected = false;
 
   quickStartCommands = [
     { label: 'claude', command: 'claude' },
@@ -82,6 +83,8 @@ export class SessionCreateForm extends LitElement {
     super.connectedCallback();
     // Load from localStorage when component is first created
     this.loadFromLocalStorage();
+    // Check server status
+    this.checkServerStatus();
   }
 
   disconnectedCallback() {
@@ -185,6 +188,23 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
+  private async checkServerStatus() {
+    try {
+      const response = await fetch('/api/server/status', {
+        headers: this.authClient.getAuthHeader(),
+      });
+      if (response.ok) {
+        const status = await response.json();
+        this.macAppConnected = status.macAppConnected || false;
+        logger.debug('server status:', status);
+      }
+    } catch (error) {
+      logger.warn('failed to check server status:', error);
+      // Default to not connected if we can't check
+      this.macAppConnected = false;
+    }
+  }
+
   updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
 
@@ -200,6 +220,9 @@ export class SessionCreateForm extends LitElement {
 
         // Then load from localStorage which may override the defaults
         this.loadFromLocalStorage();
+
+        // Re-check server status when form becomes visible
+        this.checkServerStatus();
 
         // Add global keyboard listener
         document.addEventListener('keydown', this.handleGlobalKeyDown);
@@ -300,7 +323,7 @@ export class SessionCreateForm extends LitElement {
     const sessionData: SessionCreateData = {
       command: this.parseCommand(this.command?.trim() || ''),
       workingDir: this.workingDir?.trim() || '',
-      spawn_terminal: this.spawnWindow,
+      spawn_terminal: this.spawnWindow && this.macAppConnected,
       titleMode: this.titleMode,
     };
 
@@ -619,29 +642,35 @@ export class SessionCreateForm extends LitElement {
               }
             </div>
 
-            <!-- Spawn Window Toggle -->
-            <div class="mb-2 sm:mb-3 lg:mb-5 flex items-center justify-between bg-elevated border border-base rounded-lg p-2 sm:p-3 lg:p-4">
-              <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
-                <span class="text-primary text-[10px] sm:text-xs lg:text-sm font-medium">Spawn window</span>
-                <p class="text-[9px] sm:text-[10px] lg:text-xs text-muted mt-0.5 hidden sm:block">Opens native terminal window</p>
-              </div>
-              <button
-                role="switch"
-                aria-checked="${this.spawnWindow}"
-                @click=${this.handleSpawnWindowChange}
-                class="relative inline-flex h-4 w-8 sm:h-5 sm:w-10 lg:h-6 lg:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
-                  this.spawnWindow ? 'bg-primary' : 'bg-border'
-                }"
-                ?disabled=${this.disabled || this.isCreating}
-                data-testid="spawn-window-toggle"
-              >
-                <span
-                  class="inline-block h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 transform rounded-full bg-bg-elevated transition-transform ${
-                    this.spawnWindow ? 'translate-x-4 sm:translate-x-5' : 'translate-x-0.5'
-                  }"
-                ></span>
-              </button>
-            </div>
+            <!-- Spawn Window Toggle - Only show when Mac app is connected -->
+            ${
+              this.macAppConnected
+                ? html`
+                  <div class="mb-2 sm:mb-3 lg:mb-5 flex items-center justify-between bg-elevated border border-base rounded-lg p-2 sm:p-3 lg:p-4">
+                    <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
+                      <span class="text-primary text-[10px] sm:text-xs lg:text-sm font-medium">Spawn window</span>
+                      <p class="text-[9px] sm:text-[10px] lg:text-xs text-muted mt-0.5 hidden sm:block">Opens native terminal window</p>
+                    </div>
+                    <button
+                      role="switch"
+                      aria-checked="${this.spawnWindow}"
+                      @click=${this.handleSpawnWindowChange}
+                      class="relative inline-flex h-4 w-8 sm:h-5 sm:w-10 lg:h-6 lg:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
+                        this.spawnWindow ? 'bg-primary' : 'bg-border'
+                      }"
+                      ?disabled=${this.disabled || this.isCreating}
+                      data-testid="spawn-window-toggle"
+                    >
+                      <span
+                        class="inline-block h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 transform rounded-full bg-bg-elevated transition-transform ${
+                          this.spawnWindow ? 'translate-x-4 sm:translate-x-5' : 'translate-x-0.5'
+                        }"
+                      ></span>
+                    </button>
+                  </div>
+                `
+                : ''
+            }
 
             <!-- Terminal Title Mode -->
             <div class="mb-2 sm:mb-4 lg:mb-6 flex items-center justify-between bg-elevated border border-base rounded-lg p-2 sm:p-3 lg:p-4">

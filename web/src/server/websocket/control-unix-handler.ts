@@ -267,6 +267,10 @@ export class ControlUnixHandler {
     }
   }
 
+  isMacAppConnected(): boolean {
+    return this.macSocket !== null && !this.macSocket.destroyed;
+  }
+
   private handleMacConnection(socket: net.Socket) {
     logger.log('🔌 New Mac connection via UNIX socket');
     logger.log(`🔍 Socket info: local=${socket.localAddress}, remote=${socket.remoteAddress}`);
