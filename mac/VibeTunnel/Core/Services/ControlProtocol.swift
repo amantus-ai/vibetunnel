@@ -173,7 +173,11 @@ enum ControlProtocol {
             type: .response,
             category: .system,
             action: "repository-path-update",
-            payload: RepositoryPathUpdateResponse(success: success, path: path, error: error),
+            payload: RepositoryPathUpdateResponse(
+                success: success,
+                path: path,
+                error: error
+            ),
             error: error
         )
     }

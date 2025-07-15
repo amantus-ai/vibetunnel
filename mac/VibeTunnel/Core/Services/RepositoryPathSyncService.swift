@@ -142,9 +142,18 @@ final class RepositoryPathSyncService {
 extension UserDefaults {
     @objc fileprivate dynamic var repositoryBasePath: String {
         get {
-            string(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath) ?? AppConstants.Defaults
-                .repositoryBasePath
+            string(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath) ??
+                AppConstants.Defaults.repositoryBasePath
         }
-        set { set(newValue, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath) }
+        set {
+            set(newValue, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        }
     }
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    static let disablePathSync = Notification.Name("disablePathSync")
+    static let enablePathSync = Notification.Name("enablePathSync")
 }
