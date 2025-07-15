@@ -298,7 +298,7 @@ final class SystemPermissionManager {
             var windows: CFTypeRef?
             // Use unsafeBitCast for CFTypeRef to AXUIElement conversion
             // This is safe because AXUIElementCopyAttributeValue guarantees the result is an AXUIElement
-            let axElement = unsafeBitCast(app, to: AXUIElement.self)
+            let axElement = unsafeDowncast(app, to: AXUIElement.self)
             let windowResult = AXUIElementCopyAttributeValue(
                 axElement,
                 kAXWindowsAttribute as CFString,

@@ -44,7 +44,7 @@ export class KeyboardCaptureIndicator extends LitElement {
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
-    :host(:hover) .tooltip {
+    .tooltip-container:hover .tooltip {
       opacity: 1;
     }
 
@@ -180,6 +180,15 @@ export class KeyboardCaptureIndicator extends LitElement {
   render() {
     if (this.isMobile) return html``;
 
+    // Use the same button styling as other header buttons
+    const buttonClasses = `
+      bg-elevated border border-base rounded-lg p-2 font-mono text-muted 
+      transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary 
+      hover:shadow-sm flex-shrink-0
+      ${this.active ? 'text-primary bg-primary bg-opacity-10 border-primary' : ''}
+      ${this.animating ? 'animating' : ''}
+    `.trim();
+
     const tooltipContent =
       this.showDynamicTooltip && this.lastCapturedShortcut
         ? html`<div class="tooltip dynamic">${this.lastCapturedShortcut}</div>`
@@ -218,24 +227,16 @@ export class KeyboardCaptureIndicator extends LitElement {
           </div>
         `;
 
-    // Use the same button styling as other header buttons
-    const buttonClasses = `
-      bg-elevated border border-base rounded-lg p-2 font-mono text-muted 
-      transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary 
-      hover:shadow-sm flex-shrink-0 relative
-      ${this.active ? 'text-primary bg-primary bg-opacity-10 border-primary' : ''}
-      ${this.animating ? 'animating' : ''}
-    `.trim();
-
     return html`
-      <button 
-        class="${buttonClasses}"
-        @click=${this.handleClick}
-        title="${this.active ? 'Keyboard capture active' : 'Keyboard capture inactive'}"
-      >
-        ${this.renderKeyboardIcon()}
-      </button>
-      ${tooltipContent}
+      <div class="tooltip-container relative">
+        <button 
+          class="${buttonClasses}"
+          @click=${this.handleClick}
+        >
+          ${this.renderKeyboardIcon()}
+        </button>
+        ${tooltipContent}
+      </div>
     `;
   }
 }

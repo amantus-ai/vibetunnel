@@ -253,7 +253,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Initialize system control handler with ready callback
         SharedUnixSocketManager.shared.initializeSystemHandler {
-            logger.info("🎉 System ready event received from server")
+            self.logger.info("🎉 System ready event received from server")
             // Could add any system-ready handling here if needed
         }
 
