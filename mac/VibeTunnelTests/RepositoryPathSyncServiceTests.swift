@@ -3,12 +3,22 @@ import Testing
 import Foundation
 import Combine
 
-@Suite("Repository Path Sync Service Tests")
+@Suite("Repository Path Sync Service Tests", .serialized)
 struct RepositoryPathSyncServiceTests {
+    
+    // Helper to clean UserDefaults state
+    @MainActor
+    private func cleanUserDefaults() {
+        UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        UserDefaults.standard.synchronize()
+    }
     
     @MainActor
     @Test("Loop prevention disables sync when notification posted")
     func testLoopPreventionDisablesSync() async throws {
+        // Clean state first
+        cleanUserDefaults()
+        
         // Given
         let service = RepositoryPathSyncService()
         
@@ -41,6 +51,9 @@ struct RepositoryPathSyncServiceTests {
     @MainActor
     @Test("Loop prevention re-enables sync after enable notification")
     func testLoopPreventionReenablesSync() async throws {
+        // Clean state first
+        cleanUserDefaults()
+        
         // Given
         let service = RepositoryPathSyncService()
         
@@ -66,6 +79,9 @@ struct RepositoryPathSyncServiceTests {
     @MainActor
     @Test("Sync skips when disabled during path change")
     func testSyncSkipsWhenDisabled() async throws {
+        // Clean state first
+        cleanUserDefaults()
+        
         // Given
         let service = RepositoryPathSyncService()
         
@@ -137,6 +153,9 @@ struct RepositoryPathSyncServiceTests {
     @MainActor
     @Test("Service observes repository path changes and sends updates via Unix socket")
     func testRepositoryPathSync() async throws {
+        // Clean state first
+        cleanUserDefaults()
+        
         // Given - Mock Unix socket connection
         let mockConnection = MockUnixSocketConnection()
         
@@ -167,6 +186,9 @@ struct RepositoryPathSyncServiceTests {
     @MainActor
     @Test("Service sends current path on syncCurrentPath call")
     func testSyncCurrentPath() async throws {
+        // Clean state first
+        cleanUserDefaults()
+        
         // Given
         let service = RepositoryPathSyncService()
         
@@ -188,6 +210,9 @@ struct RepositoryPathSyncServiceTests {
     @MainActor
     @Test("Service handles disconnected socket gracefully")
     func testHandleDisconnectedSocket() async throws {
+        // Clean state first
+        cleanUserDefaults()
+        
         // Given - Service with no connection
         let service = RepositoryPathSyncService()
         
@@ -204,6 +229,9 @@ struct RepositoryPathSyncServiceTests {
     @MainActor
     @Test("Service skips duplicate path updates")
     func testSkipDuplicatePaths() async throws {
+        // Clean state first
+        cleanUserDefaults()
+        
         // Given
         let service = RepositoryPathSyncService()
         let testPath = "~/SamePath"

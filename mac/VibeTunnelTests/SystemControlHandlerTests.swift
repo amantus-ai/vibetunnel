@@ -2,13 +2,16 @@ import Testing
 @testable import VibeTunnel
 import Foundation
 
-@Suite("System Control Handler Tests")
+@Suite("System Control Handler Tests", .serialized)
 struct SystemControlHandlerTests {
     
     @MainActor
     @Test("Handles repository path update from web correctly")
     func testRepositoryPathUpdateFromWeb() async throws {
-        // Given
+        // Given - Clean state first
+        UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        UserDefaults.standard.synchronize()
+        
         let initialPath = "~/Projects"
         UserDefaults.standard.set(initialPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
         
@@ -59,7 +62,10 @@ struct SystemControlHandlerTests {
     @MainActor
     @Test("Ignores repository path update from non-web sources")
     func testIgnoresNonWebPathUpdates() async throws {
-        // Given
+        // Given - Clean state first
+        UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        UserDefaults.standard.synchronize()
+        
         let initialPath = "~/Projects"
         UserDefaults.standard.set(initialPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
         
@@ -121,7 +127,10 @@ struct SystemControlHandlerTests {
     @MainActor
     @Test("Posts notifications for loop prevention")
     func testLoopPreventionNotifications() async throws {
-        // Given
+        // Given - Clean state first
+        UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        UserDefaults.standard.synchronize()
+        
         var disableNotificationPosted = false
         var enableNotificationPosted = false
         

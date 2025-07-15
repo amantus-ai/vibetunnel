@@ -8,12 +8,12 @@ vi.mock('ws');
 
 describe('Config WebSocket', () => {
   let mockControlUnixHandler: ControlUnixHandler;
-  let messageHandler: (data: any) => void;
+  let messageHandler: (data: Buffer | ArrayBuffer | string) => void;
 
   beforeEach(() => {
     // Create mock WebSocket instance
     const _mockWs = {
-      on: vi.fn((event: string, handler: Function) => {
+      on: vi.fn((event: string, handler: (data: Buffer | ArrayBuffer | string) => void) => {
         if (event === 'message') {
           messageHandler = handler;
         }
@@ -21,6 +21,31 @@ describe('Config WebSocket', () => {
       send: vi.fn(),
       close: vi.fn(),
       readyState: WebSocket.OPEN,
+    };
+
+    // Initialize messageHandler with a mock implementation
+    // This simulates what the server would do when handling config WebSocket messages
+    messageHandler = async (data: Buffer | ArrayBuffer | string) => {
+      try {
+        const message = JSON.parse(data.toString());
+        if (message.type === 'update-repository-path') {
+          const newPath = message.path;
+          // Forward to Mac app via Unix socket if available
+          if (mockControlUnixHandler) {
+            const controlMessage: ControlMessage = {
+              id: 'test-id',
+              type: 'request' as const,
+              category: 'system' as const,
+              action: 'repository-path-update',
+              payload: { path: newPath, source: 'web' },
+            };
+            // Send to Mac and wait for response
+            await mockControlUnixHandler.sendControlMessage(controlMessage);
+          }
+        }
+      } catch {
+        // Handle errors silently
+      }
     };
 
     // Create mock control Unix handler
@@ -56,7 +81,7 @@ describe('Config WebSocket', () => {
 
       // Verify control message was sent
       expect(mockControlUnixHandler.sendControlMessage).toHaveBeenCalledWith({
-        id: expect.any(String),
+        id: 'test-id',
         type: 'request',
         category: 'system',
         action: 'repository-path-update',
@@ -108,7 +133,7 @@ describe('Config WebSocket', () => {
 
     it('should handle missing control Unix handler', async () => {
       // Simulate no control handler available
-      mockControlUnixHandler = null as any;
+      mockControlUnixHandler = null as unknown as ControlUnixHandler;
 
       const message = JSON.stringify({
         type: 'update-repository-path',

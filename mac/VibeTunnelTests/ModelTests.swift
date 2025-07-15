@@ -240,7 +240,7 @@ struct ModelTests {
         @Test("Welcome version constant")
         func testWelcomeVersion() throws {
             #expect(AppConstants.currentWelcomeVersion > 0)
-            #expect(AppConstants.currentWelcomeVersion == 4)
+            #expect(AppConstants.currentWelcomeVersion == 5)
         }
 
         @Test("UserDefaults keys")
