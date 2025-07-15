@@ -91,7 +91,10 @@ if (!module.parent && (require.main === module || require.main === undefined)) {
       process.exit(1);
     });
   } else {
-    logger.log('Starting VibeTunnel server...');
+    // Show startup message at INFO level or when debug is enabled
+    if (verbosityLevel !== undefined && verbosityLevel >= VerbosityLevel.INFO) {
+      logger.log('Starting VibeTunnel server...');
+    }
     startVibeTunnelServer();
   }
 }
