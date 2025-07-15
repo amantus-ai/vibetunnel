@@ -296,8 +296,9 @@ final class SystemPermissionManager {
         if appResult == .success, let app = focusedApp {
             // Try to get windows from the app - this definitely needs accessibility
             var windows: CFTypeRef?
-            // CFTypeRef is already the correct type for AXUIElement, so we can safely bridge
-            let axElement = app as AXUIElement
+            // Use unsafeBitCast for CFTypeRef to AXUIElement conversion
+            // This is safe because AXUIElementCopyAttributeValue guarantees the result is an AXUIElement
+            let axElement = unsafeBitCast(app, to: AXUIElement.self)
             let windowResult = AXUIElementCopyAttributeValue(
                 axElement,
                 kAXWindowsAttribute as CFString,
