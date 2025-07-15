@@ -389,7 +389,7 @@ export class FileBrowser extends LitElement {
     if (this.mode === 'select' && this.currentPath) {
       this.dispatchEvent(
         new CustomEvent('directory-selected', {
-          detail: this.currentPath,
+          detail: this.currentFullPath || this.currentPath,
         })
       );
     }
