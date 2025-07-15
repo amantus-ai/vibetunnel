@@ -394,6 +394,7 @@ vt [options] <command> [args...]
 **Other Options:**
 - `--shell, -i` - Launch your current shell interactively
 - `--no-shell-wrap, -S` - Execute command directly without shell interpretation
+- `--log-file <path>` - Override default log file location (defaults to `~/.vibetunnel/log.txt`)
 - `--help, -h` - Show help message with all options
 
 #### Verbosity Levels
@@ -423,6 +424,7 @@ vt python script.py         # Execute Python script
 vt -q npm test              # Run tests silently
 vt -v npm install           # See detailed installation progress
 vt -vvv python debug.py     # Full debug output
+vt --log-file debug.log npm run dev  # Write logs to custom file
 
 # Terminal title management
 vt --title-mode static npm run dev    # Fixed title showing command
