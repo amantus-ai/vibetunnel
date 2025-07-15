@@ -296,8 +296,10 @@ final class SystemPermissionManager {
         if appResult == .success, let app = focusedApp {
             // Try to get windows from the app - this definitely needs accessibility
             var windows: CFTypeRef?
+            // CFTypeRef is already the correct type for AXUIElement, so we can safely bridge
+            let axElement = app as AXUIElement
             let windowResult = AXUIElementCopyAttributeValue(
-                app as! AXUIElement, // swiftlint:disable:this force_cast
+                axElement,
                 kAXWindowsAttribute as CFString,
                 &windows
             )
