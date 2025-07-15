@@ -159,8 +159,12 @@ struct DashboardSettingsView: View {
 
     private func restartServerWithNewBindAddress() {
         Task {
-            // Update the bind address in ServerManager and restart
-            serverManager.bindAddress = accessMode.bindAddress
+            // Restart server to pick up the new bind address from UserDefaults
+            // (accessModeString is already persisted via @AppStorage)
+            logger
+                .info(
+                    "Restarting server due to access mode change: \(accessMode.displayName) -> \(accessMode.bindAddress)"
+                )
             await serverManager.restart()
             logger.info("Server restarted with bind address \(accessMode.bindAddress)")
 

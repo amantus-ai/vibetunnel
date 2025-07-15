@@ -30,7 +30,7 @@ const DEFAULT_PREFERENCES: TerminalPreferences = {
   maxCols: 0, // No limit by default - take as much as possible
   fontSize: detectMobile() ? 12 : 14, // 12px on mobile, 14px on desktop
   fitHorizontally: false,
-  theme: 'auto',
+  theme: 'dracula',
 };
 
 const STORAGE_KEY_TERMINAL_PREFS = 'vibetunnel_terminal_preferences';
