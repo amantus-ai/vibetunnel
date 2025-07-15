@@ -265,11 +265,8 @@ export class FileBrowser extends LitElement {
 
   private handleFileClick(file: FileInfo) {
     if (file.type === 'directory') {
-      // For directories, construct the absolute path using currentFullPath
-      const absolutePath = this.currentFullPath 
-        ? `${this.currentFullPath}/${file.name}` 
-        : file.path;
-      this.loadDirectory(absolutePath);
+      // Use the absolute path provided by the server
+      this.loadDirectory(file.path);
     } else {
       // Set the selected file
       this.selectedFile = file;
