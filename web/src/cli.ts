@@ -8,13 +8,43 @@ suppressXtermErrors();
 
 import { startVibeTunnelForward } from './server/fwd.js';
 import { startVibeTunnelServer } from './server/server.js';
-import { closeLogger, createLogger, initLogger } from './server/utils/logger.js';
+import { closeLogger, createLogger, initLogger, VerbosityLevel } from './server/utils/logger.js';
 import { VERSION } from './server/version.js';
 
 // Initialize logger before anything else
-// Check VIBETUNNEL_DEBUG environment variable for debug mode
+// Check environment variables for verbosity
+let verbosityLevel: VerbosityLevel | undefined;
+if (process.env.VIBETUNNEL_LOG_LEVEL) {
+  const envVerbosity = process.env.VIBETUNNEL_LOG_LEVEL.toLowerCase();
+  switch (envVerbosity) {
+    case 'silent':
+      verbosityLevel = VerbosityLevel.SILENT;
+      break;
+    case 'error':
+      verbosityLevel = VerbosityLevel.ERROR;
+      break;
+    case 'warn':
+      verbosityLevel = VerbosityLevel.WARN;
+      break;
+    case 'info':
+      verbosityLevel = VerbosityLevel.INFO;
+      break;
+    case 'verbose':
+      verbosityLevel = VerbosityLevel.VERBOSE;
+      break;
+    case 'debug':
+      verbosityLevel = VerbosityLevel.DEBUG;
+      break;
+  }
+}
+
+// Check VIBETUNNEL_DEBUG environment variable for debug mode (legacy)
 const debugMode = process.env.VIBETUNNEL_DEBUG === '1' || process.env.VIBETUNNEL_DEBUG === 'true';
-initLogger(debugMode);
+if (debugMode) {
+  verbosityLevel = VerbosityLevel.DEBUG;
+}
+
+initLogger(debugMode, verbosityLevel);
 const logger = createLogger('cli');
 
 // Source maps are only included if built with --sourcemap flag

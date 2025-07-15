@@ -7,7 +7,21 @@ import * as path from 'path';
 const LOG_DIR = path.join(os.homedir(), '.vibetunnel');
 const LOG_FILE = path.join(LOG_DIR, 'log.txt');
 
-// Debug mode flag
+// Verbosity levels
+export enum VerbosityLevel {
+  SILENT = 0, // Only critical errors
+  ERROR = 1, // Errors only (default)
+  WARN = 2, // Errors and warnings
+  INFO = 3, // Errors, warnings, and info
+  VERBOSE = 4, // All except debug
+  DEBUG = 5, // Everything
+}
+
+// Current verbosity level
+let verbosityLevel: VerbosityLevel = VerbosityLevel.ERROR;
+
+// Debug mode flag (kept for backward compatibility)
+// biome-ignore lint/correctness/noUnusedVariables: Used for backward compatibility
 let debugMode = false;
 
 // File handle for log file
@@ -20,8 +34,16 @@ const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
 /**
  * Initialize the logger - creates log directory and file
  */
-export function initLogger(debug: boolean = false): void {
+export function initLogger(debug: boolean = false, verbosity?: VerbosityLevel): void {
   debugMode = debug;
+
+  // Set verbosity level
+  if (verbosity !== undefined) {
+    verbosityLevel = verbosity;
+  } else if (debug) {
+    // If debug mode is enabled, set verbosity to DEBUG
+    verbosityLevel = VerbosityLevel.DEBUG;
+  }
 
   // If already initialized, just update debug mode and return
   if (logFileHandle) {
@@ -132,15 +154,57 @@ function writeToFile(message: string): void {
  */
 export function setDebugMode(enabled: boolean): void {
   debugMode = enabled;
+  // If enabling debug mode, also set verbosity to DEBUG
+  if (enabled) {
+    verbosityLevel = VerbosityLevel.DEBUG;
+  }
+}
+
+/**
+ * Set verbosity level
+ */
+export function setVerbosityLevel(level: VerbosityLevel): void {
+  verbosityLevel = level;
+  // Update debug mode flag for backward compatibility
+  debugMode = level >= VerbosityLevel.DEBUG;
+}
+
+/**
+ * Get current verbosity level
+ */
+export function getVerbosityLevel(): VerbosityLevel {
+  return verbosityLevel;
+}
+
+/**
+ * Check if a log level should be output based on current verbosity
+ */
+function shouldLog(level: string): boolean {
+  switch (level) {
+    case 'ERROR':
+      return verbosityLevel >= VerbosityLevel.ERROR;
+    case 'WARN':
+      return verbosityLevel >= VerbosityLevel.WARN;
+    case 'LOG':
+      return verbosityLevel >= VerbosityLevel.INFO;
+    case 'DEBUG':
+      return verbosityLevel >= VerbosityLevel.DEBUG;
+    default:
+      return true;
+  }
 }
 
 /**
  * Log from a specific module (used by client-side API)
  */
 export function logFromModule(level: string, module: string, args: unknown[]): void {
-  if (level === 'DEBUG' && !debugMode) return;
-
   const { console: consoleMsg, file: fileMsg } = formatMessage(level, module, args);
+
+  // Always write to file
+  writeToFile(fileMsg);
+
+  // Check if we should output to console based on verbosity
+  if (!shouldLog(level)) return;
 
   // Log to console
   switch (level) {
@@ -153,9 +217,6 @@ export function logFromModule(level: string, module: string, args: unknown[]): v
     default:
       console.log(consoleMsg);
   }
-
-  // Log to file
-  writeToFile(fileMsg);
 }
 
 /**
@@ -169,8 +230,10 @@ export function createLogger(moduleName: string) {
   return {
     log: (...args: unknown[]) => {
       const { console: consoleMsg, file: fileMsg } = formatMessage('LOG', prefixedModuleName, args);
-      console.log(consoleMsg);
-      writeToFile(fileMsg);
+      writeToFile(fileMsg); // Always write to file
+      if (shouldLog('LOG')) {
+        console.log(consoleMsg);
+      }
     },
     warn: (...args: unknown[]) => {
       const { console: consoleMsg, file: fileMsg } = formatMessage(
@@ -178,8 +241,10 @@ export function createLogger(moduleName: string) {
         prefixedModuleName,
         args
       );
-      console.warn(consoleMsg);
-      writeToFile(fileMsg);
+      writeToFile(fileMsg); // Always write to file
+      if (shouldLog('WARN')) {
+        console.warn(consoleMsg);
+      }
     },
     error: (...args: unknown[]) => {
       const { console: consoleMsg, file: fileMsg } = formatMessage(
@@ -187,20 +252,23 @@ export function createLogger(moduleName: string) {
         prefixedModuleName,
         args
       );
-      console.error(consoleMsg);
-      writeToFile(fileMsg);
+      writeToFile(fileMsg); // Always write to file
+      if (shouldLog('ERROR')) {
+        console.error(consoleMsg);
+      }
     },
     debug: (...args: unknown[]) => {
-      if (debugMode) {
-        const { console: consoleMsg, file: fileMsg } = formatMessage(
-          'DEBUG',
-          prefixedModuleName,
-          args
-        );
+      const { console: consoleMsg, file: fileMsg } = formatMessage(
+        'DEBUG',
+        prefixedModuleName,
+        args
+      );
+      writeToFile(fileMsg); // Always write to file
+      if (shouldLog('DEBUG')) {
         console.log(consoleMsg);
-        writeToFile(fileMsg);
       }
     },
     setDebugMode: (enabled: boolean) => setDebugMode(enabled),
+    setVerbosity: (level: VerbosityLevel) => setVerbosityLevel(level),
   };
 }

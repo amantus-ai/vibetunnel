@@ -84,6 +84,10 @@ vt --title-mode static npm run dev    # Shows path and command
 vt --title-mode dynamic python app.py  # Shows path, command, and activity
 vt --title-mode filter vim            # Blocks vim from changing title
 
+# Control output verbosity
+vt -q npm test         # Quiet mode - only critical errors
+vt -v npm run dev      # Verbose mode - show more information
+
 # Shell aliases work automatically!
 vt claude-danger  # Your custom aliases are resolved
 
@@ -349,11 +353,115 @@ vt --title-mode static npm run dev    # Shows path and command
 vt --title-mode dynamic python app.py  # Shows path, command, and activity
 vt --title-mode filter vim            # Blocks vim from changing title
 
+# Control output verbosity
+vt -q npm test         # Quiet mode - only critical errors
+vt -v npm run dev      # Verbose mode - show more information
+vt -vv cargo build     # Extra verbose - all except debug
+vt -vvv python app.py  # Debug mode - show everything
+
 # Shell aliases work automatically!
 vt claude-danger  # Your custom alias for claude --dangerously-skip-permissions
 
 # Update session title (inside a VibeTunnel session)
 vt title "My Project - Testing"
+```
+
+### The `vt` Forwarding Command
+
+The `vt` command is VibeTunnel's terminal forwarding wrapper that allows you to run any command while making its output visible in the browser. It acts as a transparent proxy between your terminal and the command, forwarding all input and output through VibeTunnel's infrastructure.
+
+#### Command Syntax
+
+```bash
+vt [options] <command> [args...]
+```
+
+#### Options
+
+**Terminal Title Control:**
+- `--title-mode <mode>` - Control how terminal titles are managed:
+  - `none` - No title management, apps control their own titles (default)
+  - `filter` - Block all title changes from applications
+  - `static` - Show working directory and command in title
+  - `dynamic` - Show directory, command, and live activity status (auto-enabled for Claude)
+
+**Verbosity Control:**
+- `-q, --quiet` - Quiet mode, only show critical errors
+- `-v, --verbose` - Verbose mode, show errors, warnings, and info messages
+- `-vv` - Extra verbose, show all messages except debug
+- `-vvv` - Debug mode, show all messages including debug
+
+**Other Options:**
+- `--shell, -i` - Launch your current shell interactively
+- `--no-shell-wrap, -S` - Execute command directly without shell interpretation
+- `--help, -h` - Show help message with all options
+
+#### Verbosity Levels
+
+VibeTunnel uses a hierarchical logging system where each level includes all messages from more severe levels:
+
+| Level | Flag | Environment Variable | Shows |
+|-------|------|---------------------|-------|
+| SILENT | `-q` | `VIBETUNNEL_LOG_LEVEL=silent` | Only critical errors |
+| ERROR | (default) | `VIBETUNNEL_LOG_LEVEL=error` | Errors only |
+| WARN | - | `VIBETUNNEL_LOG_LEVEL=warn` | Errors and warnings |
+| INFO | `-v` | `VIBETUNNEL_LOG_LEVEL=info` | Errors, warnings, and informational messages |
+| VERBOSE | `-vv` | `VIBETUNNEL_LOG_LEVEL=verbose` | All messages except debug |
+| DEBUG | `-vvv` | `VIBETUNNEL_LOG_LEVEL=debug` | Everything including debug traces |
+
+**Note:** All logs are always written to `~/.vibetunnel/log.txt` regardless of verbosity settings. The verbosity only controls terminal output.
+
+#### Examples
+
+```bash
+# Basic command forwarding
+vt ls -la                    # List files with VibeTunnel monitoring
+vt npm run dev              # Run development server
+vt python script.py         # Execute Python script
+
+# With verbosity control
+vt -q npm test              # Run tests silently
+vt -v npm install           # See detailed installation progress
+vt -vvv python debug.py     # Full debug output
+
+# Terminal title management
+vt --title-mode static npm run dev    # Fixed title showing command
+vt --title-mode dynamic claude         # Live activity updates
+vt --title-mode filter vim            # Prevent vim from changing title
+
+# Shell handling
+vt --shell                  # Open interactive shell
+vt -S /usr/bin/python      # Run python directly without shell
+```
+
+#### How It Works
+
+1. **Command Resolution**: The `vt` wrapper first checks if your command is an alias, shell function, or binary
+2. **Session Creation**: It creates a new VibeTunnel session with a unique ID
+3. **PTY Allocation**: A pseudo-terminal is allocated to preserve terminal features (colors, cursor control, etc.)
+4. **I/O Forwarding**: All input/output is forwarded between your terminal and the browser in real-time
+5. **Process Management**: The wrapper monitors the process and handles signals, exit codes, and cleanup
+
+#### Environment Variables
+
+- `VIBETUNNEL_LOG_LEVEL` - Set default verbosity level (silent, error, warn, info, verbose, debug)
+- `VIBETUNNEL_TITLE_MODE` - Set default title mode (none, filter, static, dynamic)
+- `VIBETUNNEL_DEBUG` - Legacy debug flag, equivalent to `VIBETUNNEL_LOG_LEVEL=debug`
+- `VIBETUNNEL_CLAUDE_DYNAMIC_TITLE` - Force dynamic title mode for Claude commands
+
+#### Special Features
+
+**Automatic Claude Detection**: When running Claude AI, `vt` automatically enables dynamic title mode to show real-time activity status (thinking, writing, idle).
+
+**Shell Alias Support**: Your shell aliases and functions work transparently through `vt`:
+```bash
+alias gs='git status'
+vt gs  # Works as expected
+```
+
+**Session Title Updates**: Inside a VibeTunnel session, use `vt title` to update the session name:
+```bash
+vt title "Building Production Release"
 ```
 
 ### Mac App Interoperability
@@ -621,6 +729,31 @@ VIBETUNNEL_DEBUG=1 vt your-command
 ```
 
 Debug logs are written to `~/.vibetunnel/log.txt`.
+
+### Verbosity Control
+
+Control the amount of output from VibeTunnel commands:
+
+```bash
+# Command-line flags
+vt -q npm test                # Quiet mode - only critical errors
+vt npm test                   # Default - errors only
+vt -v npm run dev            # Verbose - errors, warnings, and info
+vt -vv cargo build           # Extra verbose - all except debug
+vt -vvv python script.py     # Debug mode - everything
+
+# Environment variable
+export VIBETUNNEL_LOG_LEVEL=error    # Default
+export VIBETUNNEL_LOG_LEVEL=warn     # Show errors and warnings
+export VIBETUNNEL_LOG_LEVEL=info     # Show errors, warnings, and info
+export VIBETUNNEL_LOG_LEVEL=verbose  # All except debug
+export VIBETUNNEL_LOG_LEVEL=debug    # Everything
+
+# Or use inline
+VIBETUNNEL_LOG_LEVEL=silent vt npm test
+```
+
+**Note**: All logs are always written to `~/.vibetunnel/log.txt` regardless of verbosity level. The verbosity settings only control what's displayed in the terminal.
 
 ## Documentation
 

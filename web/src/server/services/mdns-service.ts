@@ -52,11 +52,11 @@ export class MDNSService {
         });
 
         this.service.on('error', (...args: unknown[]) => {
-          log.error('mDNS service error:', args[0]);
+          log.warn('mDNS service error:', args[0]);
         });
       }
     } catch (error) {
-      log.error('Failed to start mDNS advertisement:', error);
+      log.warn('Failed to start mDNS advertisement:', error);
       throw error;
     }
   }
@@ -92,7 +92,7 @@ export class MDNSService {
       this.isAdvertising = false;
       log.log('Stopped mDNS advertisement');
     } catch (error) {
-      log.error('Error stopping mDNS advertisement:', error);
+      log.warn('Error stopping mDNS advertisement:', error);
     }
   }
 

@@ -1029,7 +1029,7 @@ export async function createApp(): Promise<AppInstance> {
       // Start mDNS advertisement if enabled
       if (config.enableMDNS) {
         mdnsService.startAdvertising(actualPort).catch((err) => {
-          logger.error('Failed to start mDNS advertisement:', err);
+          logger.warn('Failed to start mDNS advertisement:', err);
         });
       } else {
         logger.debug('mDNS advertisement disabled');
