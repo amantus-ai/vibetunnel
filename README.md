@@ -101,6 +101,7 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 - **🚀 Zero Configuration** - No SSH keys, no port forwarding, no complexity
 - **🤖 AI Agent Friendly** - Perfect for monitoring Claude Code, ChatGPT, or any terminal-based AI tools
 - **📊 Dynamic Terminal Titles** - Real-time activity tracking shows what's happening in each session
+- **⌨️ Smart Keyboard Handling** - Intelligent shortcut routing with toggleable capture modes
 - **🔒 Secure by Design** - Multiple authentication modes, localhost-only mode, or secure tunneling via Tailscale/ngrok
 - **📱 Mobile Ready** - Native iOS app and responsive web interface for phones and tablets
 - **🎬 Session Recording** - All sessions recorded in asciinema format for later playback
@@ -613,6 +614,8 @@ Debug logs are written to `~/.vibetunnel/log.txt`.
 
 ## Documentation
 
+- [Keyboard Shortcuts](docs/keyboard-shortcuts.md) - Complete keyboard shortcut reference
+- [Quick Reference Card](docs/keyboard-shortcuts-quick-reference.md) - Printable shortcuts cheat sheet
 - [Technical Specification](docs/spec.md) - Detailed architecture and implementation
 - [Contributing Guide](docs/CONTRIBUTING.md) - Development setup and guidelines
 - [Architecture](docs/architecture.md) - System design overview
