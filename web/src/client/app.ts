@@ -12,6 +12,7 @@ import { keyed } from 'lit/directives/keyed.js';
 
 // Import shared types
 import type { Session } from '../shared/types.js';
+import { isBrowserShortcut } from './utils/browser-shortcuts.js';
 // Import utilities
 import { BREAKPOINTS, SIDEBAR, TIMING, TRANSITIONS, Z_INDEX } from './utils/constants.js';
 // Import logger
@@ -166,33 +167,6 @@ export class VibeTunnelApp extends LitElement {
   private handleKeyDown = (e: KeyboardEvent) => {
     const isMacOS = navigator.platform.toLowerCase().includes('mac');
 
-    // Define really critical browser shortcuts that ALWAYS pass through
-    const isReallyCriticalShortcut = (): boolean => {
-      const key = e.key.toLowerCase();
-
-      if (isMacOS) {
-        // macOS critical shortcuts
-        if (e.metaKey && !e.shiftKey && !e.altKey) {
-          if (['t', 'n', 'q'].includes(key)) return true; // New tab, new window, quit
-          if (['h'].includes(key)) return true; // Hide window
-        }
-        if (e.metaKey && e.shiftKey && !e.altKey) {
-          if (['t', 'n'].includes(key)) return true; // Reopen tab, new incognito
-        }
-      } else {
-        // Windows/Linux critical shortcuts
-        if (e.ctrlKey && !e.shiftKey && !e.altKey) {
-          if (['t', 'n'].includes(key)) return true; // New tab, new window
-        }
-        if (e.ctrlKey && e.shiftKey && !e.altKey) {
-          if (['t', 'n', 'q'].includes(key)) return true; // Reopen tab, new incognito, quit
-        }
-        if (e.altKey && !e.ctrlKey && key === 'f4') return true; // Close window
-      }
-
-      return false;
-    };
-
     // Check if we're capturing and what the shortcut would do
     const checkCapturedShortcut = (): {
       captured: boolean;
@@ -276,8 +250,8 @@ export class VibeTunnelApp extends LitElement {
       return { captured: false };
     };
 
-    // Always allow really critical shortcuts
-    if (isReallyCriticalShortcut()) {
+    // Always allow critical browser shortcuts
+    if (isBrowserShortcut(e)) {
       return;
     }
 
@@ -312,7 +286,7 @@ export class VibeTunnelApp extends LitElement {
         // Tab management shortcuts
         if (hasModifier && !hasShift && !hasAlt) {
           if (['t', 'w', 'r'].includes(key)) return true;
-          if (/^[1-9]$/.test(key)) return true;
+          if (/^[0-9]$/.test(key)) return true; // Include 0 for tab switching
           if (['l', 'p', 's', 'f', 'd', 'h', 'j'].includes(key)) return true;
         }
 

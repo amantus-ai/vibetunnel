@@ -7,6 +7,7 @@
 
 import { authClient } from '../../services/auth-client.js';
 import { websocketInputClient } from '../../services/websocket-input-client.js';
+import { isBrowserShortcut, isCopyPasteShortcut } from '../../utils/browser-shortcuts.js';
 import { consumeEvent } from '../../utils/event-utils.js';
 import { createLogger } from '../../utils/logger.js';
 import type { Session } from '../session-list.js';
@@ -67,15 +68,7 @@ export class InputManager {
     }
 
     // Allow standard browser copy/paste shortcuts
-    const isMacOS = navigator.platform.toLowerCase().includes('mac');
-    const isStandardPaste =
-      (isMacOS && metaKey && key === 'v' && !ctrlKey && !shiftKey) ||
-      (!isMacOS && ctrlKey && key === 'v' && !shiftKey);
-    const isStandardCopy =
-      (isMacOS && metaKey && key === 'c' && !ctrlKey && !shiftKey) ||
-      (!isMacOS && ctrlKey && key === 'c' && !shiftKey);
-
-    if (isStandardPaste || isStandardCopy) {
+    if (isCopyPasteShortcut(e)) {
       // Allow standard browser copy/paste to work
       return;
     }
@@ -313,47 +306,20 @@ export class InputManager {
       return false;
     }
 
-    // Get keyboard capture state
-    const captureActive = this.callbacks?.getKeyboardCaptureActive?.() ?? true;
-
-    const isMacOS = navigator.platform.toLowerCase().includes('mac');
-    const key = e.key.toLowerCase();
-
-    // Always allow critical browser shortcuts (regardless of capture state)
-    if (isMacOS) {
-      // macOS critical shortcuts - these should NEVER be captured
-      if (e.metaKey && !e.shiftKey && !e.altKey) {
-        if (['t', 'n', 'q', 'w'].includes(key)) return true; // New tab, new window, quit, close tab
-        if (['h'].includes(key)) return true; // Hide window
-      }
-      if (e.metaKey && e.shiftKey && !e.altKey) {
-        if (['t', 'n', 'a'].includes(key)) return true; // Reopen tab, new incognito, Chrome tab search
-      }
-    } else {
-      // Windows/Linux critical shortcuts - these should NEVER be captured
-      if (e.ctrlKey && !e.shiftKey && !e.altKey) {
-        if (['t', 'n', 'w'].includes(key)) return true; // New tab, new window, close tab
-      }
-      if (e.ctrlKey && e.shiftKey && !e.altKey) {
-        if (['t', 'n', 'q'].includes(key)) return true; // Reopen tab, new incognito, quit
-      }
-      if (e.altKey && !e.ctrlKey && key === 'f4') return true; // Close window
+    // Check if this is a critical browser shortcut
+    if (isBrowserShortcut(e)) {
+      return true;
     }
 
     // Always allow DevTools shortcuts
     if (
       e.key === 'F12' ||
-      (!isMacOS && e.ctrlKey && e.shiftKey && e.key === 'I') ||
-      (isMacOS && e.metaKey && e.altKey && e.key === 'I')
+      (!navigator.platform.toLowerCase().includes('mac') &&
+        e.ctrlKey &&
+        e.shiftKey &&
+        e.key === 'I') ||
+      (navigator.platform.toLowerCase().includes('mac') && e.metaKey && e.altKey && e.key === 'I')
     ) {
-      return true;
-    }
-
-    // Always allow tab switching
-    if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
-      return true;
-    }
-    if (!isMacOS && e.ctrlKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
       return true;
     }
 
@@ -362,29 +328,23 @@ export class InputManager {
       return true;
     }
 
-    // Always allow copy/paste (regardless of capture state)
-    const isStandardCopy =
-      (isMacOS && e.metaKey && key === 'c' && !e.ctrlKey && !e.shiftKey) ||
-      (!isMacOS && e.ctrlKey && key === 'c' && !e.shiftKey);
-    const isStandardPaste =
-      (isMacOS && e.metaKey && key === 'v' && !e.ctrlKey && !e.shiftKey) ||
-      (!isMacOS && e.ctrlKey && key === 'v' && !e.shiftKey);
-
-    if (isStandardCopy || isStandardPaste) {
-      return true;
-    }
+    // Get keyboard capture state
+    const captureActive = this.callbacks?.getKeyboardCaptureActive?.() ?? true;
 
     // If capture is disabled, allow common browser shortcuts
     if (!captureActive) {
+      const isMacOS = navigator.platform.toLowerCase().includes('mac');
+      const key = e.key.toLowerCase();
+
       // Common browser shortcuts that are normally captured for terminal
       if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey) {
-        if (['a', 'f', 'r', 'l', 'w', 'p', 's', 'd'].includes(key)) {
+        if (['a', 'f', 'r', 'l', 'p', 's', 'd'].includes(key)) {
           return true;
         }
       }
 
       if (!isMacOS && e.ctrlKey && !e.shiftKey && !e.altKey) {
-        if (['a', 'f', 'r', 'l', 'w', 'p', 's', 'd'].includes(key)) {
+        if (['a', 'f', 'r', 'l', 'p', 's', 'd'].includes(key)) {
           return true;
         }
       }
