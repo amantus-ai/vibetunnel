@@ -5,7 +5,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getVtScriptPath, getVibetunnelBinaryPath } from '../helpers/vt-paths.js';
+import { getVibetunnelBinaryPath, getVtScriptPath } from '../helpers/vt-paths.js';
 
 const execAsync = promisify(exec);
 
