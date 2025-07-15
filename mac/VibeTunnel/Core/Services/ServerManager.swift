@@ -242,6 +242,11 @@ class ServerManager {
             }
 
             logger.info("Started server on port \(self.port)")
+            
+            // Initialize control handlers
+            // These handlers register themselves with SharedUnixSocketManager during init
+            _ = TerminalControlHandler.shared
+            _ = SystemControlHandler()  // System handler for system:ready messages
 
             // This allows the screencap API to be available for queries (like listing
             // windows/displays) without triggering the permission dialog. The permission

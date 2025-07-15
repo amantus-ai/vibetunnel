@@ -89,6 +89,12 @@ enum ControlProtocol {
         )
     }
     
+    /// Build a spawn response
+    /// NOTE: Error Duplication Pattern
+    /// Both top-level error and payload error fields are set intentionally:
+    /// - Top-level error: Indicates transport/protocol-level errors (malformed request, handler not found)
+    /// - Payload error: Indicates application-level errors (spawn failed due to permissions)
+    /// This separation allows clients to distinguish between different error types.
     static func terminalSpawnResponse(
         to request: TerminalSpawnRequestMessage,
         success: Bool,

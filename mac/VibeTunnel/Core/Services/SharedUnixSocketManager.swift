@@ -117,6 +117,9 @@ final class SharedUnixSocketManager {
         let availableHandlers = controlHandlers.keys.map(\.rawValue).joined(separator: ", ")
         logger.info("🔍 Available handlers: \(availableHandlers)")
 
+        // IMPORTANT: Error Response Handling
+        // We explicitly send error responses for unhandled categories to prevent
+        // clients from hanging indefinitely waiting for a reply.
         guard let handler = controlHandlers[category] else {
             logger.warning("No handler for category: \(category.rawValue)")
             

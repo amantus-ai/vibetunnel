@@ -14,6 +14,8 @@ final class TerminalControlHandler {
 
     private init() {
         // Register handler with the shared socket manager
+        // NOTE: System handlers (like SystemControlHandler) need to be registered separately
+        // since they may have different lifecycle requirements
         SharedUnixSocketManager.shared.registerControlHandler(for: .terminal) { [weak self] data in
             await self?.handleMessage(data)
         }

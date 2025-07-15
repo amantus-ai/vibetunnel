@@ -2,6 +2,10 @@ import Foundation
 import OSLog
 
 /// Handles system-level control messages
+/// IMPORTANT: System:ready message handling
+/// This handler specifically processes system:ready messages that were previously
+/// handled inline. It ensures connection establishment acknowledgment is properly sent.
+/// The handler must be registered during app initialization to handle these messages.
 @MainActor
 final class SystemControlHandler {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SystemControl")
@@ -12,9 +16,14 @@ final class SystemControlHandler {
     
     // MARK: - Initialization
     
-    init(onSystemReady: @escaping () -> Void) {
+    init(onSystemReady: @escaping () -> Void = {}) {
         self.onSystemReady = onSystemReady
         logger.info("SystemControlHandler initialized")
+        
+        // Register with SharedUnixSocketManager
+        Task {
+            await SharedUnixSocketManager.shared.registerHandler(self, for: .system)
+        }
     }
     
     // MARK: - Message Handling
