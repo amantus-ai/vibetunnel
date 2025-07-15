@@ -355,9 +355,10 @@ async function main() {
   // Store original postinstall
   const originalPostinstall = packageJson.scripts.postinstall;
   
-  // Set install script for npm package
-  packageJson.scripts.install = 'prebuild-install || node scripts/postinstall-npm.js';
+  // Remove all install-related scripts for npm package
   delete packageJson.scripts.postinstall;
+  delete packageJson.scripts.preinstall;
+  delete packageJson.scripts.install;
   
   // Add prebuild dependencies for npm package only
   packageJson.dependencies['prebuild-install'] = '^7.1.3';
@@ -591,8 +592,7 @@ MIT
   console.log('  - Test locally: npm pack');
   console.log('  - Publish: npm publish');
   
-  // Restore original package.json
-  restorePackageJson();
+  // Don't restore package.json here - let the process exit handler do it
 }
 
 main().catch(error => {
