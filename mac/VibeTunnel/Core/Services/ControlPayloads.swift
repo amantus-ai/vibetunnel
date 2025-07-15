@@ -140,6 +140,26 @@ struct SystemPingResponse: Codable {
     }
 }
 
+struct RepositoryPathUpdateRequest: Codable {
+    let path: String
+    
+    init(path: String) {
+        self.path = path
+    }
+}
+
+struct RepositoryPathUpdateResponse: Codable {
+    let success: Bool
+    let path: String?
+    let error: String?
+    
+    init(success: Bool, path: String? = nil, error: String? = nil) {
+        self.success = success
+        self.path = path
+        self.error = error
+    }
+}
+
 // MARK: - Git Control Payloads (placeholder for future use)
 
 struct GitStatusRequest: Codable {

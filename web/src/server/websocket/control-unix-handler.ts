@@ -78,6 +78,54 @@ class TerminalHandler implements MessageHandler {
   }
 }
 
+class SystemHandler implements MessageHandler {
+  constructor(private controlUnixHandler: ControlUnixHandler) {}
+
+  async handleMessage(message: ControlMessage): Promise<ControlMessage | null> {
+    logger.log(`System handler: ${message.action}`);
+
+    switch (message.action) {
+      case 'repository-path-update': {
+        const payload = message.payload as { path: string };
+        if (!payload?.path) {
+          return createControlResponse(message, null, 'Missing path in payload');
+        }
+
+        try {
+          // Update the server configuration
+          const updateSuccess = await this.controlUnixHandler.updateRepositoryPath(payload.path);
+
+          if (updateSuccess) {
+            logger.log(`Updated repository path to: ${payload.path}`);
+            return createControlResponse(message, { success: true, path: payload.path });
+          } else {
+            return createControlResponse(message, null, 'Failed to update repository path');
+          }
+        } catch (error) {
+          logger.error('Failed to update repository path:', error);
+          return createControlResponse(
+            message,
+            null,
+            error instanceof Error ? error.message : 'Failed to update repository path'
+          );
+        }
+      }
+
+      case 'ping':
+        // Already handled in handleMacMessage
+        return null;
+
+      case 'ready':
+        // Event, no response needed
+        return null;
+
+      default:
+        logger.warn(`Unknown system action: ${message.action}`);
+        return createControlResponse(message, null, `Unknown action: ${message.action}`);
+    }
+  }
+}
+
 class ScreenCaptureHandler implements MessageHandler {
   private browserSocket: WebSocket | null = null;
 
@@ -181,6 +229,8 @@ export class ControlUnixHandler {
   private handlers = new Map<ControlCategory, MessageHandler>();
   private screenCaptureHandler: ScreenCaptureHandler;
   private messageBuffer = Buffer.alloc(0);
+  private configUpdateCallback: ((config: { repositoryBasePath: string }) => void) | null = null;
+  private currentRepositoryPath: string | null = null;
 
   constructor() {
     // Use a unique socket path in user's home directory to avoid /tmp issues
@@ -199,6 +249,7 @@ export class ControlUnixHandler {
 
     // Initialize handlers
     this.handlers.set('terminal', new TerminalHandler());
+    this.handlers.set('system', new SystemHandler(this));
     this.screenCaptureHandler = new ScreenCaptureHandler(this);
     this.handlers.set('screencap', this.screenCaptureHandler);
   }
@@ -658,6 +709,41 @@ export class ControlUnixHandler {
       this.macSocket?.destroy();
       this.macSocket = null;
     }
+  }
+
+  /**
+   * Set a callback to be called when configuration is updated
+   */
+  setConfigUpdateCallback(callback: (config: { repositoryBasePath: string }) => void): void {
+    this.configUpdateCallback = callback;
+  }
+
+  /**
+   * Update the repository path and notify all connected clients
+   */
+  async updateRepositoryPath(path: string): Promise<boolean> {
+    try {
+      this.currentRepositoryPath = path;
+
+      // Call the callback to update server configuration and broadcast to web clients
+      if (this.configUpdateCallback) {
+        this.configUpdateCallback({ repositoryBasePath: path });
+        return true;
+      }
+
+      logger.warn('No config update callback set');
+      return false;
+    } catch (error) {
+      logger.error('Failed to update repository path:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get the current repository path
+   */
+  getRepositoryPath(): string | null {
+    return this.currentRepositoryPath;
   }
 }
 

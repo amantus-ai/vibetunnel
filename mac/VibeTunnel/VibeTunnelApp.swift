@@ -134,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
     var app: VibeTunnelApp?
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AppDelegate")
     private(set) var statusBarController: StatusBarController?
+    private var repositoryPathSync: RepositoryPathSyncService?
 
     /// Distributed notification name used to ask an existing instance to show the Settings window.
     private static let showSettingsNotification = Notification.Name("sh.vibetunnel.vibetunnel.showSettings")
@@ -259,6 +260,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Start the shared unix socket manager after all handlers are registered
         SharedUnixSocketManager.shared.connect()
+        
+        // Initialize repository path sync service after Unix socket is connected
+        repositoryPathSync = RepositoryPathSyncService()
+        // Sync current path after initial connection
+        Task { [weak self] in
+            // Give socket time to connect
+            try? await Task.sleep(for: .seconds(1))
+            await self?.repositoryPathSync?.syncCurrentPath()
+        }
 
         // Start Git monitoring early
         app?.gitRepositoryMonitor.startMonitoring()

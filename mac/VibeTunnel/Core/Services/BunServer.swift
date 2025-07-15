@@ -192,6 +192,13 @@ final class BunServer {
             vibetunnelArgs.append(contentsOf: ["--allow-local-bypass", "--local-auth-token", localAuthToken])
             logger.info("Local authentication bypass enabled for Mac app")
         }
+        
+        // Add repository base path
+        let repositoryBasePath = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        if !repositoryBasePath.isEmpty {
+            vibetunnelArgs.append(contentsOf: ["--repository-base-path", repositoryBasePath])
+            logger.info("Repository base path: \(repositoryBasePath)")
+        }
 
         // Create wrapper to run vibetunnel with parent death monitoring AND crash detection
         let parentPid = ProcessInfo.processInfo.processIdentifier
