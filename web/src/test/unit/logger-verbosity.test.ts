@@ -3,6 +3,8 @@ import {
   createLogger,
   getVerbosityLevel,
   initLogger,
+  isDebugEnabled,
+  isVerbose,
   isVerbosityLevel,
   parseVerbosityLevel,
   setVerbosityLevel,
@@ -255,6 +257,48 @@ describe('Logger Verbosity Control', () => {
         expect(parseVerbosityLevel(key)).toBe(value);
         expect(parseVerbosityLevel(key.toUpperCase())).toBe(value);
       });
+    });
+  });
+
+  describe('Helper Functions', () => {
+    it('isDebugEnabled should return true only for DEBUG level', () => {
+      setVerbosityLevel(VerbosityLevel.SILENT);
+      expect(isDebugEnabled()).toBe(false);
+
+      setVerbosityLevel(VerbosityLevel.ERROR);
+      expect(isDebugEnabled()).toBe(false);
+
+      setVerbosityLevel(VerbosityLevel.WARN);
+      expect(isDebugEnabled()).toBe(false);
+
+      setVerbosityLevel(VerbosityLevel.INFO);
+      expect(isDebugEnabled()).toBe(false);
+
+      setVerbosityLevel(VerbosityLevel.VERBOSE);
+      expect(isDebugEnabled()).toBe(false);
+
+      setVerbosityLevel(VerbosityLevel.DEBUG);
+      expect(isDebugEnabled()).toBe(true);
+    });
+
+    it('isVerbose should return true for VERBOSE and DEBUG levels', () => {
+      setVerbosityLevel(VerbosityLevel.SILENT);
+      expect(isVerbose()).toBe(false);
+
+      setVerbosityLevel(VerbosityLevel.ERROR);
+      expect(isVerbose()).toBe(false);
+
+      setVerbosityLevel(VerbosityLevel.WARN);
+      expect(isVerbose()).toBe(false);
+
+      setVerbosityLevel(VerbosityLevel.INFO);
+      expect(isVerbose()).toBe(false);
+
+      setVerbosityLevel(VerbosityLevel.VERBOSE);
+      expect(isVerbose()).toBe(true);
+
+      setVerbosityLevel(VerbosityLevel.DEBUG);
+      expect(isVerbose()).toBe(true);
     });
   });
 });

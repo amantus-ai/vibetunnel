@@ -9,10 +9,12 @@ export function parseVerbosityFromEnv(): VerbosityLevel | undefined {
   // Check VIBETUNNEL_LOG_LEVEL first
   if (process.env.VIBETUNNEL_LOG_LEVEL) {
     const parsed = parseVerbosityLevel(process.env.VIBETUNNEL_LOG_LEVEL);
-    // Only return if valid, otherwise fall through to check VIBETUNNEL_DEBUG
     if (parsed !== undefined) {
       return parsed;
     }
+    // Warn about invalid value
+    console.warn(`Invalid VIBETUNNEL_LOG_LEVEL: ${process.env.VIBETUNNEL_LOG_LEVEL}`);
+    console.warn('Valid levels: silent, error, warn, info, verbose, debug');
   }
 
   // Check legacy VIBETUNNEL_DEBUG for backward compatibility

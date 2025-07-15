@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VerbosityLevel } from '../../server/utils/logger';
 import { parseVerbosityFromEnv } from '../../server/utils/verbosity-parser';
 
@@ -33,8 +33,18 @@ describe('Verbosity Parser', () => {
     });
 
     it('should return undefined for invalid VIBETUNNEL_LOG_LEVEL', () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
       process.env.VIBETUNNEL_LOG_LEVEL = 'invalid';
       expect(parseVerbosityFromEnv()).toBeUndefined();
+
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Invalid VIBETUNNEL_LOG_LEVEL: invalid');
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Valid levels: silent, error, warn, info, verbose, debug'
+      );
+
+      consoleWarnSpy.mockRestore();
     });
 
     it('should handle VIBETUNNEL_DEBUG=1', () => {
@@ -65,9 +75,16 @@ describe('Verbosity Parser', () => {
     });
 
     it('should return DEBUG when VIBETUNNEL_LOG_LEVEL is invalid but VIBETUNNEL_DEBUG is set', () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
       process.env.VIBETUNNEL_LOG_LEVEL = 'invalid';
       process.env.VIBETUNNEL_DEBUG = '1';
       expect(parseVerbosityFromEnv()).toBe(VerbosityLevel.DEBUG);
+
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Invalid VIBETUNNEL_LOG_LEVEL: invalid');
+
+      consoleWarnSpy.mockRestore();
     });
   });
 });

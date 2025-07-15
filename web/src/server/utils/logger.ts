@@ -114,9 +114,9 @@ export function initLogger(debug: boolean = false, verbosity?: VerbosityLevel): 
       if (fs.existsSync(LOG_FILE)) {
         fs.unlinkSync(LOG_FILE);
       }
-    } catch (unlinkError) {
+    } catch {
       // Ignore unlink errors - file might not exist or be locked
-      console.debug('Could not delete old log file:', unlinkError);
+      // Don't log here as logger isn't fully initialized yet
     }
 
     // Create new log file write stream
@@ -227,6 +227,20 @@ export function setVerbosityLevel(level: VerbosityLevel): void {
  */
 export function getVerbosityLevel(): VerbosityLevel {
   return verbosityLevel;
+}
+
+/**
+ * Check if debug logging is enabled
+ */
+export function isDebugEnabled(): boolean {
+  return verbosityLevel >= VerbosityLevel.DEBUG;
+}
+
+/**
+ * Check if verbose logging is enabled
+ */
+export function isVerbose(): boolean {
+  return verbosityLevel >= VerbosityLevel.VERBOSE;
 }
 
 /**
