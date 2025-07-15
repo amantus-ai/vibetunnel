@@ -470,4 +470,165 @@ describe('SessionCreateForm', () => {
       expect(element.isCreating).toBe(true);
     });
   });
+
+  describe('spawn window toggle visibility', () => {
+    it('should hide spawn window toggle when Mac app is not connected', async () => {
+      // Mock server status endpoint to return Mac app not connected
+      fetchMock.mockResponse('/api/server/status', {
+        macAppConnected: false,
+        isHQMode: false,
+        version: '1.0.0',
+      });
+
+      // Create new element to trigger server status check
+      const newElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .authClient=${mockAuthClient} .visible=${true}></session-create-form>
+      `);
+
+      // Wait for async operations to complete
+      await waitForAsync();
+      await newElement.updateComplete;
+
+      // Check that spawn window toggle is not rendered
+      const spawnToggle = newElement.querySelector('[data-testid="spawn-window-toggle"]');
+      expect(spawnToggle).toBeFalsy();
+
+      // Verify server status was checked
+      const statusCall = fetchMock.getCalls().find((call) => call[0] === '/api/server/status');
+      expect(statusCall).toBeTruthy();
+
+      newElement.remove();
+    });
+
+    it('should show spawn window toggle when Mac app is connected', async () => {
+      // Mock server status endpoint to return Mac app connected
+      fetchMock.mockResponse('/api/server/status', {
+        macAppConnected: true,
+        isHQMode: false,
+        version: '1.0.0',
+      });
+
+      // Create new element to trigger server status check
+      const newElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .authClient=${mockAuthClient} .visible=${true}></session-create-form>
+      `);
+
+      // Wait for async operations to complete
+      await waitForAsync();
+      await newElement.updateComplete;
+
+      // Check that spawn window toggle is rendered
+      const spawnToggle = newElement.querySelector('[data-testid="spawn-window-toggle"]');
+      expect(spawnToggle).toBeTruthy();
+
+      newElement.remove();
+    });
+
+    it('should re-check server status when form becomes visible', async () => {
+      // Initial status check on creation
+      fetchMock.mockResponse('/api/server/status', {
+        macAppConnected: false,
+        isHQMode: false,
+        version: '1.0.0',
+      });
+
+      // Make form initially invisible
+      element.visible = false;
+      await element.updateComplete;
+
+      // Clear previous calls
+      fetchMock.clear();
+
+      // Make form visible again
+      element.visible = true;
+      await element.updateComplete;
+      await waitForAsync();
+
+      // Verify server status was checked again
+      const statusCall = fetchMock.getCalls().find((call) => call[0] === '/api/server/status');
+      expect(statusCall).toBeTruthy();
+    });
+
+    it('should not include spawn_terminal in request when Mac app is not connected', async () => {
+      // Mock server status to return Mac app not connected
+      fetchMock.mockResponse('/api/server/status', {
+        macAppConnected: false,
+        isHQMode: false,
+        version: '1.0.0',
+      });
+
+      // Create new element
+      const newElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .authClient=${mockAuthClient} .visible=${true}></session-create-form>
+      `);
+
+      await waitForAsync();
+      await newElement.updateComplete;
+
+      // Mock session creation endpoint
+      fetchMock.mockResponse('/api/sessions', {
+        sessionId: 'test-123',
+      });
+
+      // Set spawn window to true (simulating saved preference)
+      newElement.spawnWindow = true;
+      newElement.command = 'zsh';
+      newElement.workingDir = '~/';
+      await newElement.updateComplete;
+
+      // Create session
+      await newElement.handleCreate();
+      await waitForAsync();
+
+      // Check that spawn_terminal was false in the request
+      const sessionCall = fetchMock.getCalls().find((call) => call[0] === '/api/sessions');
+      expect(sessionCall).toBeTruthy();
+      
+      const requestBody = JSON.parse((sessionCall?.[1]?.body as string) || '{}');
+      expect(requestBody.spawn_terminal).toBe(false);
+
+      newElement.remove();
+    });
+
+    it('should include spawn_terminal in request when Mac app is connected and toggle is on', async () => {
+      // Mock server status to return Mac app connected
+      fetchMock.mockResponse('/api/server/status', {
+        macAppConnected: true,
+        isHQMode: false,
+        version: '1.0.0',
+      });
+
+      // Create new element
+      const newElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .authClient=${mockAuthClient} .visible=${true}></session-create-form>
+      `);
+
+      await waitForAsync();
+      await newElement.updateComplete;
+
+      // Mock session creation endpoint
+      fetchMock.mockResponse('/api/sessions', {
+        sessionId: 'test-123',
+      });
+
+      // Set spawn window to true
+      newElement.spawnWindow = true;
+      newElement.command = 'zsh';
+      newElement.workingDir = '~/';
+      await newElement.updateComplete;
+
+      // Create session
+      await newElement.handleCreate();
+      await waitForAsync();
+
+      // Check that spawn_terminal was true in the request
+      const sessionCall = fetchMock.getCalls().find((call) => call[0] === '/api/sessions');
+      expect(sessionCall).toBeTruthy();
+      
+      const requestBody = JSON.parse((sessionCall?.[1]?.body as string) || '{}');
+      expect(requestBody.spawn_terminal).toBe(true);
+
+      newElement.remove();
+    });
+  });
 });
