@@ -175,7 +175,8 @@ export class FileBrowser extends LitElement {
       if (response.ok) {
         const data: DirectoryListing = await response.json();
         logger.debug(`received ${data.files?.length || 0} files`);
-        this.currentPath = data.path;
+        // Use the absolute path (fullPath) instead of the potentially relative path
+        this.currentPath = data.fullPath || data.path;
         this.currentFullPath = data.fullPath;
         this.files = data.files || [];
         this.gitStatus = data.gitStatus;
@@ -264,7 +265,11 @@ export class FileBrowser extends LitElement {
 
   private handleFileClick(file: FileInfo) {
     if (file.type === 'directory') {
-      this.loadDirectory(file.path);
+      // For directories, construct the absolute path using currentFullPath
+      const absolutePath = this.currentFullPath 
+        ? `${this.currentFullPath}/${file.name}` 
+        : file.path;
+      this.loadDirectory(absolutePath);
     } else {
       // Set the selected file
       this.selectedFile = file;

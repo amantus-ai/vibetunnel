@@ -25,9 +25,18 @@ const HOME_PATTERN = /^(?:\/Users\/[^/]+|\/home\/[^/]+|[A-Za-z]:[/\\]Users[/\\][
 export function formatPathForDisplay(path: string): string {
   if (!path) return '';
 
-  // Use pre-compiled regex for better performance
-  // The regex safely matches home directories without being affected by special characters in usernames
-  return path.replace(HOME_PATTERN, '~');
+  // If the path is already using ~ notation or is absolute, use it as-is
+  if (path.startsWith('~') || path.startsWith('/')) {
+    // Use pre-compiled regex for better performance
+    // The regex safely matches home directories without being affected by special characters in usernames
+    return path.replace(HOME_PATTERN, '~');
+  }
+
+  // For relative paths (like ../../../), we shouldn't display them as-is
+  // Instead, we should ideally have the absolute path from the server
+  // For now, if we get a relative path, we'll just show it but this indicates
+  // the server should be sending absolute paths
+  return path;
 }
 
 /**
