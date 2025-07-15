@@ -1,4 +1,4 @@
-import { css, html, LitElement } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -10,7 +10,6 @@ export class KeyboardCaptureIndicator extends LitElement {
   createRenderRoot() {
     return this;
   }
-
 
   @property({ type: Boolean }) active = true;
   @property({ type: Boolean }) isMobile = false;
