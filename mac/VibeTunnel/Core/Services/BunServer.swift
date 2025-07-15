@@ -228,6 +228,7 @@ final class BunServer {
 
         logger.info("Executing command: /bin/zsh -l -c \"\(vibetunnelCommand)\"")
         logger.info("Binary location: \(resourcesPath)")
+        logger.info("Server configuration: port=\(port), bindAddress=\(bindAddress)")
 
         // Set up a minimal environment for the SEA binary
         // SEA binaries can be sensitive to certain environment variables
@@ -432,6 +433,7 @@ final class BunServer {
 
         logger.info("Executing command: /bin/zsh -l -c \"\(pnpmCommand)\"")
         logger.info("Working directory: \(expandedPath)")
+        logger.info("Dev server configuration: port=\(port), bindAddress=\(bindAddress)")
 
         // Set up environment for dev server
         var environment = ProcessInfo.processInfo.environment
