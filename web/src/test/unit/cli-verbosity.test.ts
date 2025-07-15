@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseVerbosityLevel, VerbosityLevel } from '../../server/utils/logger';
+import { VerbosityLevel } from '../../server/utils/logger';
+import { parseVerbosityFromEnv } from '../../server/utils/verbosity-parser';
 
 describe('CLI Verbosity Environment Variables', () => {
   const originalEnv = process.env;
@@ -17,18 +18,8 @@ describe('CLI Verbosity Environment Variables', () => {
   });
 
   async function getVerbosityFromEnv(): Promise<VerbosityLevel | undefined> {
-    // This simulates the logic from cli.ts
-    let verbosityLevel: VerbosityLevel | undefined;
-    if (process.env.VIBETUNNEL_LOG_LEVEL) {
-      verbosityLevel = parseVerbosityLevel(process.env.VIBETUNNEL_LOG_LEVEL);
-    }
-
-    // Check VIBETUNNEL_DEBUG for backward compatibility
-    if (process.env.VIBETUNNEL_DEBUG === '1' || process.env.VIBETUNNEL_DEBUG === 'true') {
-      verbosityLevel = VerbosityLevel.DEBUG;
-    }
-
-    return verbosityLevel;
+    // Use the shared parser
+    return parseVerbosityFromEnv();
   }
 
   describe('VIBETUNNEL_LOG_LEVEL', () => {
@@ -108,11 +99,11 @@ describe('CLI Verbosity Environment Variables', () => {
       expect(level2).toBeUndefined();
     });
 
-    it('should override VIBETUNNEL_LOG_LEVEL when set', async () => {
+    it('should NOT override valid VIBETUNNEL_LOG_LEVEL when set', async () => {
       process.env.VIBETUNNEL_LOG_LEVEL = 'warn';
       process.env.VIBETUNNEL_DEBUG = '1';
       const level = await getVerbosityFromEnv();
-      expect(level).toBe(VerbosityLevel.DEBUG);
+      expect(level).toBe(VerbosityLevel.WARN); // VIBETUNNEL_LOG_LEVEL takes precedence
     });
   });
 });

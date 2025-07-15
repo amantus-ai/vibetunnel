@@ -8,27 +8,16 @@ suppressXtermErrors();
 
 import { startVibeTunnelForward } from './server/fwd.js';
 import { startVibeTunnelServer } from './server/server.js';
-import {
-  closeLogger,
-  createLogger,
-  initLogger,
-  parseVerbosityLevel,
-  VerbosityLevel,
-} from './server/utils/logger.js';
+import { closeLogger, createLogger, initLogger, VerbosityLevel } from './server/utils/logger.js';
+import { parseVerbosityFromEnv } from './server/utils/verbosity-parser.js';
 import { VERSION } from './server/version.js';
 
 // Initialize logger before anything else
-// Check environment variables for verbosity
-let verbosityLevel: VerbosityLevel | undefined;
-if (process.env.VIBETUNNEL_LOG_LEVEL) {
-  verbosityLevel = parseVerbosityLevel(process.env.VIBETUNNEL_LOG_LEVEL);
-}
+// Parse verbosity from environment variables
+const verbosityLevel = parseVerbosityFromEnv();
 
-// Check VIBETUNNEL_DEBUG environment variable for debug mode (legacy)
+// Check for legacy debug mode (for backward compatibility with initLogger)
 const debugMode = process.env.VIBETUNNEL_DEBUG === '1' || process.env.VIBETUNNEL_DEBUG === 'true';
-if (debugMode) {
-  verbosityLevel = VerbosityLevel.DEBUG;
-}
 
 initLogger(debugMode, verbosityLevel);
 const logger = createLogger('cli');

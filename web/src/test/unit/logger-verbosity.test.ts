@@ -6,6 +6,7 @@ import {
   isVerbosityLevel,
   parseVerbosityLevel,
   setVerbosityLevel,
+  VERBOSITY_MAP,
   VerbosityLevel,
 } from '../../server/utils/logger';
 
@@ -166,6 +167,33 @@ describe('Logger Verbosity Control', () => {
     });
   });
 
+  describe('Logger Methods', () => {
+    const logger = createLogger('test-module');
+
+    it('should have info() method that works the same as log()', () => {
+      setVerbosityLevel(VerbosityLevel.INFO);
+
+      logger.info('info message via info()');
+      logger.log('info message via log()');
+
+      expect(consoleLogSpy).toHaveBeenCalledTimes(2);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('info message via info()')
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('info message via log()'));
+    });
+
+    it('info() method should respect verbosity levels', () => {
+      setVerbosityLevel(VerbosityLevel.ERROR);
+      logger.info('hidden info message');
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+
+      setVerbosityLevel(VerbosityLevel.INFO);
+      logger.info('visible info message');
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('Type Guards and Parsing', () => {
     it('should correctly identify valid verbosity level strings', () => {
       expect(isVerbosityLevel('SILENT')).toBe(true);
@@ -209,6 +237,24 @@ describe('Logger Verbosity Control', () => {
       expect(parseVerbosityLevel('invalid')).toBeUndefined();
       expect(parseVerbosityLevel('trace')).toBeUndefined();
       expect(parseVerbosityLevel('')).toBeUndefined();
+    });
+
+    it('should have correct VERBOSITY_MAP structure', () => {
+      expect(VERBOSITY_MAP).toEqual({
+        silent: VerbosityLevel.SILENT,
+        error: VerbosityLevel.ERROR,
+        warn: VerbosityLevel.WARN,
+        info: VerbosityLevel.INFO,
+        verbose: VerbosityLevel.VERBOSE,
+        debug: VerbosityLevel.DEBUG,
+      });
+    });
+
+    it('should parse using VERBOSITY_MAP', () => {
+      Object.entries(VERBOSITY_MAP).forEach(([key, value]) => {
+        expect(parseVerbosityLevel(key)).toBe(value);
+        expect(parseVerbosityLevel(key.toUpperCase())).toBe(value);
+      });
     });
   });
 });

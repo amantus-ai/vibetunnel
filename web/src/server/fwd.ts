@@ -31,6 +31,7 @@ import {
 } from './utils/logger.js';
 import { generateSessionName } from './utils/session-naming.js';
 import { generateTitleSequence } from './utils/terminal-title.js';
+import { parseVerbosityFromEnv } from './utils/verbosity-parser.js';
 import { BUILD_DATE, GIT_COMMIT, VERSION } from './version.js';
 
 const logger = createLogger('fwd');
@@ -92,15 +93,11 @@ function showUsage() {
 }
 
 export async function startVibeTunnelForward(args: string[]) {
-  // Handle verbosity from environment variable first
-  let verbosityLevel: VerbosityLevel | undefined;
-  if (process.env.VIBETUNNEL_LOG_LEVEL) {
-    verbosityLevel = parseVerbosityLevel(process.env.VIBETUNNEL_LOG_LEVEL);
-  }
+  // Parse verbosity from environment variables
+  let verbosityLevel = parseVerbosityFromEnv();
 
-  // Legacy debug mode support
-  if (process.env.VIBETUNNEL_DEBUG === '1' || process.env.VIBETUNNEL_DEBUG === 'true') {
-    verbosityLevel = VerbosityLevel.DEBUG;
+  // Set debug mode on logger for backward compatibility
+  if (verbosityLevel === VerbosityLevel.DEBUG) {
     logger.setDebugMode(true);
   }
 

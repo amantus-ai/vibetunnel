@@ -43,6 +43,18 @@ export enum VerbosityLevel {
   DEBUG = 5, // Everything
 }
 
+/**
+ * Type-safe mapping of string names to verbosity levels
+ */
+export const VERBOSITY_MAP: Record<string, VerbosityLevel> = {
+  silent: VerbosityLevel.SILENT,
+  error: VerbosityLevel.ERROR,
+  warn: VerbosityLevel.WARN,
+  info: VerbosityLevel.INFO,
+  verbose: VerbosityLevel.VERBOSE,
+  debug: VerbosityLevel.DEBUG,
+} as const;
+
 // Current verbosity level
 let verbosityLevel: VerbosityLevel = VerbosityLevel.ERROR;
 
@@ -53,18 +65,16 @@ let debugMode = false;
 /**
  * Type guard to check if a string is a valid VerbosityLevel key
  */
-export function isVerbosityLevel(value: string): value is keyof typeof VerbosityLevel {
-  return value.toUpperCase() in VerbosityLevel;
+export function isVerbosityLevel(value: string): value is keyof typeof VERBOSITY_MAP {
+  return value.toLowerCase() in VERBOSITY_MAP;
 }
 
 /**
  * Parse a string to VerbosityLevel, returns undefined if invalid
  */
 export function parseVerbosityLevel(value: string): VerbosityLevel | undefined {
-  if (!isVerbosityLevel(value)) {
-    return undefined;
-  }
-  return VerbosityLevel[value.toUpperCase() as keyof typeof VerbosityLevel];
+  const normalized = value.toLowerCase();
+  return VERBOSITY_MAP[normalized];
 }
 
 // File handle for log file
@@ -271,7 +281,17 @@ export function createLogger(moduleName: string) {
   const prefixedModuleName = moduleName.startsWith('[') ? moduleName : `[SRV] ${moduleName}`;
 
   return {
+    /**
+     * @deprecated Use info() instead for clarity
+     */
     log: (...args: unknown[]) => {
+      const { console: consoleMsg, file: fileMsg } = formatMessage('LOG', prefixedModuleName, args);
+      writeToFile(fileMsg); // Always write to file
+      if (shouldLog('LOG')) {
+        console.log(consoleMsg);
+      }
+    },
+    info: (...args: unknown[]) => {
       const { console: consoleMsg, file: fileMsg } = formatMessage('LOG', prefixedModuleName, args);
       writeToFile(fileMsg); // Always write to file
       if (shouldLog('LOG')) {
