@@ -186,7 +186,7 @@ export class StreamWatcher {
         fd = fs.openSync(streamPath, 'r');
         const buf = Buffer.alloc(HEADER_READ_BUFFER_SIZE);
         let data = '';
-        
+
         // Important: Use filePosition (bytes) not data.length (characters) for fs.readSync
         // UTF-8 strings have character count != byte count for multi-byte characters
         let filePosition = 0; // Track actual byte position in file
@@ -194,7 +194,7 @@ export class StreamWatcher {
 
         while (!data.includes('\n') && bytesRead > 0) {
           data += buf.toString('utf8', 0, bytesRead);
-          
+
           // Increment by actual bytes read, not string characters
           // This ensures correct file positioning for subsequent reads
           filePosition += bytesRead;

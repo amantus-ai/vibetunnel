@@ -196,7 +196,7 @@ export class TerminalQuickKeys extends LitElement {
     }
   }
 
-  private handlePasteImmediate(e: Event) {
+  private handlePasteImmediate(_e: Event) {
     console.log('[QuickKeys] Paste button touched - delegating to paste handler');
 
     // Always delegate to the main paste handler in direct-keyboard-manager

@@ -432,8 +432,8 @@ export class DirectKeyboardManager {
     key: string,
     isModifier?: boolean,
     isSpecial?: boolean,
-    isToggle?: boolean,
-    pasteText?: string
+    _isToggle?: boolean,
+    _pasteText?: string
   ): Promise<void> => {
     if (!this.inputManager) {
       logger.error('No input manager found');
@@ -737,7 +737,9 @@ export class DirectKeyboardManager {
       // Restore all original styles
       Object.entries(originalStyles).forEach(([key, value]) => {
         if (value !== undefined) {
-          (this.hiddenInput!.style as any)[key] = value;
+          if (this.hiddenInput?.style) {
+            (this.hiddenInput.style as unknown as Record<string, string>)[key] = value;
+          }
         }
       });
       this.hiddenInput.placeholder = '';
