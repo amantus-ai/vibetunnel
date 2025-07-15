@@ -163,6 +163,8 @@ export async function startTestServer(config: ServerConfig = {}): Promise<Server
     VIBETUNNEL_CONTROL_DIR: controlDir,
     NODE_ENV: 'production',
     FORCE_COLOR: '0',
+    // Ensure INFO verbosity for tests to see server startup messages
+    VIBETUNNEL_LOG_LEVEL: env.VIBETUNNEL_LOG_LEVEL || env.VIBETUNNEL_DEBUG ? undefined : 'info',
     ...env,
   };
 
