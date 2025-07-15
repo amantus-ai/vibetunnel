@@ -1,0 +1,23 @@
+# Test Dockerfile for VibeTunnel npm package
+FROM node:20-slim
+
+# Install required dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    make \
+    g++ \
+    libpam0g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create test directory
+WORKDIR /test
+
+# Copy package files for testing
+COPY vibetunnel-*.tgz ./
+
+# Install the package globally (let postinstall extract prebuilds)
+RUN npm install -g ./vibetunnel-*.tgz
+
+# Test the installation
+CMD ["bash", "-c", "which vibetunnel && which vt && vibetunnel --version"]

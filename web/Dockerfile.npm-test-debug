@@ -1,0 +1,33 @@
+# Debug Dockerfile for VibeTunnel npm package
+FROM node:20-slim
+
+# Install required dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    make \
+    g++ \
+    libpam0g-dev \
+    tar \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create test directory
+WORKDIR /test
+
+# Copy and extract package to inspect structure
+COPY vibetunnel-*.tgz ./
+RUN tar -xzf vibetunnel-*.tgz && ls -la package/
+
+# Install globally and debug
+RUN npm install -g ./vibetunnel-*.tgz || true
+
+# Debug: Check installed structure
+RUN echo "=== Installed files ===" && \
+    ls -la /usr/local/lib/node_modules/vibetunnel/ && \
+    echo "=== Prebuilds ===" && \
+    ls -la /usr/local/lib/node_modules/vibetunnel/prebuilds/ || echo "No prebuilds dir" && \
+    echo "=== Scripts ===" && \
+    ls -la /usr/local/lib/node_modules/vibetunnel/scripts/ || echo "No scripts dir" && \
+    echo "=== Node version info ===" && \
+    node -p "process.versions.modules" && \
+    node -p "process.platform + '-' + require('os').arch()"

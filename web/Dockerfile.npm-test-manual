@@ -1,0 +1,30 @@
+# Test Dockerfile for VibeTunnel npm package with manual prebuild extraction
+FROM node:20-slim
+
+# Install required dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    make \
+    g++ \
+    libpam0g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create test directory
+WORKDIR /test
+
+# Copy package files for testing
+COPY vibetunnel-*.tgz ./
+
+# Install the package globally (skip postinstall since we have prebuilds)
+RUN npm install -g ./vibetunnel-*.tgz --ignore-scripts
+
+# Manually extract prebuilds for node-pty
+RUN cd /usr/local/lib/node_modules/vibetunnel && \
+    mkdir -p node-pty/build/Release && \
+    tar -xzf prebuilds/node-pty-v1.0.0-node-v115-linux-$(uname -m).tar.gz -C node-pty/build/Release && \
+    mkdir -p node_modules/authenticate-pam/build/Release && \
+    tar -xzf prebuilds/authenticate-pam-v1.0.5-node-v115-linux-$(uname -m).tar.gz -C node_modules/authenticate-pam/build/Release
+
+# Test the installation
+CMD ["bash", "-c", "which vibetunnel && which vt && vibetunnel --version"]

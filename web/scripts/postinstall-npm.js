@@ -2,12 +2,13 @@
 
 /**
  * Postinstall script for npm package
- * Fallback build script when prebuild-install fails
+ * Extracts prebuilds for the current platform
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const os = require('os');
 
 console.log('Setting up native modules for VibeTunnel...');
 
@@ -20,45 +21,78 @@ if (isDevelopment) {
   return;
 }
 
-// Try prebuild-install first for each module
-const tryPrebuildInstall = (name, dir) => {
-  console.log(`Trying prebuild-install for ${name}...`);
+// Get Node ABI version
+const nodeABI = process.versions.modules;
+
+// Get platform and architecture
+const platform = process.platform;
+const arch = os.arch();
+
+// Convert architecture names
+const archMap = {
+  'arm64': 'arm64',
+  'aarch64': 'arm64',
+  'x64': 'x64',
+  'x86_64': 'x64'
+};
+const normalizedArch = archMap[arch] || arch;
+
+console.log(`Platform: ${platform}-${normalizedArch}, Node ABI: ${nodeABI}`);
+
+// Function to extract prebuild
+const extractPrebuild = (name, version, targetDir) => {
+  const prebuildFile = path.join(__dirname, '..', 'prebuilds', 
+    `${name}-v${version}-node-v${nodeABI}-${platform}-${normalizedArch}.tar.gz`);
+  
+  if (!fs.existsSync(prebuildFile)) {
+    console.log(`  No prebuild found for ${name} on this platform`);
+    return false;
+  }
+
+  const buildDir = path.join(targetDir, 'build', 'Release');
+  fs.mkdirSync(buildDir, { recursive: true });
+
   try {
-    execSync('prebuild-install', {
-      cwd: dir,
-      stdio: 'inherit',
-      env: { ...process.env, npm_config_cache: path.join(require('os').homedir(), '.npm') }
-    });
-    console.log(`✓ ${name} prebuilt binary installed`);
+    execSync(`tar -xzf "${prebuildFile}" -C "${buildDir}"`, { stdio: 'inherit' });
+    console.log(`✓ ${name} prebuilt binary extracted`);
     return true;
   } catch (error) {
-    console.log(`  No prebuilt binary available for ${name}, will compile from source`);
+    console.error(`  Failed to extract ${name} prebuild:`, error.message);
     return false;
   }
 };
 
-// Handle both native modules with prebuild-install fallback
+// Handle both native modules
 const modules = [
   {
     name: 'node-pty',
+    version: '1.0.0',
     dir: path.join(__dirname, '..', 'node-pty'),
     build: path.join(__dirname, '..', 'node-pty', 'build', 'Release', 'pty.node'),
     essential: true
   },
   {
     name: 'authenticate-pam',
+    version: '1.0.5',
     dir: path.join(__dirname, '..', 'node_modules', 'authenticate-pam'),
     build: path.join(__dirname, '..', 'node_modules', 'authenticate-pam', 'build', 'Release', 'authenticate_pam.node'),
-    essential: false
+    essential: false,
+    platforms: ['linux'] // Only needed on Linux
   }
 ];
 
 let hasErrors = false;
 
 for (const module of modules) {
+  // Skip platform-specific modules if not on that platform
+  if (module.platforms && !module.platforms.includes(platform)) {
+    console.log(`  Skipping ${module.name} (not needed on ${platform})`);
+    continue;
+  }
+
   if (!fs.existsSync(module.build)) {
-    // First try prebuild-install
-    const prebuildSuccess = tryPrebuildInstall(module.name, module.dir);
+    // Try extracting prebuild
+    const prebuildSuccess = extractPrebuild(module.name, module.version, module.dir);
     
     if (!prebuildSuccess) {
       // Fall back to compilation
@@ -75,7 +109,7 @@ for (const module of modules) {
           console.error(`${module.name} is required for VibeTunnel to function.`);
           console.error('You may need to install build tools for your platform:');
           console.error('- macOS: Install Xcode Command Line Tools');
-          console.error('- Linux: Install build-essential package');
+          console.error('- Linux: Install build-essential and libpam0g-dev packages');
           hasErrors = true;
         } else {
           console.warn(`Warning: ${module.name} build failed. Some features may be limited.`);
