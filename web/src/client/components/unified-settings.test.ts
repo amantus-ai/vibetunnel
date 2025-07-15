@@ -1,8 +1,43 @@
-import { elementUpdated, expect, fixture, html } from '@open-wc/testing';
-import { vi } from 'vitest';
+// @vitest-environment happy-dom
+import { fixture, html } from '@open-wc/testing';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppPreferences } from './unified-settings';
 import './unified-settings';
 import type { UnifiedSettings } from './unified-settings';
+
+// Mock modules
+vi.mock('@/client/services/push-notification-service', () => ({
+  pushNotificationService: {
+    isSupported: () => false,
+    requestPermission: vi.fn(),
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+    waitForInitialization: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock('@/client/services/auth-service', () => ({
+  authService: {
+    onPermissionChange: vi.fn(() => () => {}),
+    onSubscriptionChange: vi.fn(() => () => {}),
+  },
+}));
+
+vi.mock('@/client/services/responsive-observer', () => ({
+  responsiveObserver: {
+    getCurrentState: () => ({ isMobile: false, isNarrow: false }),
+    subscribe: vi.fn(() => () => {}),
+  },
+}));
+
+vi.mock('@/client/utils/logger', () => ({
+  logger: {
+    log: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
 
 // Mock fetch for API calls
 global.fetch = vi.fn();
@@ -15,9 +50,11 @@ class MockWebSocket {
   onmessage?: (event: MessageEvent) => void;
   onerror?: (event: Event) => void;
   onclose?: (event: CloseEvent) => void;
+  static instances: MockWebSocket[] = [];
 
   constructor(url: string) {
     this.url = url;
+    MockWebSocket.instances.push(this);
     // Simulate open event
     setTimeout(() => {
       if (this.onopen) {
@@ -42,6 +79,10 @@ class MockWebSocket {
       this.onmessage(new MessageEvent('message', { data: JSON.stringify(data) }));
     }
   }
+
+  static reset() {
+    MockWebSocket.instances = [];
+  }
 }
 
 // Replace global WebSocket
@@ -50,6 +91,7 @@ class MockWebSocket {
 describe('UnifiedSettings - Repository Path Server Configuration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    MockWebSocket.reset();
     localStorage.clear();
 
     // Mock default fetch response
@@ -63,21 +105,31 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    // Clean up any remaining WebSocket instances
+    MockWebSocket.instances.forEach((ws) => {
+      if (ws.onclose) {
+        ws.close();
+      }
+    });
   });
 
   it('should show repository path as editable when not server-configured', async () => {
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
-    await elementUpdated(el);
+
+    // Wait for async initialization
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
 
     // Find the repository base path input
-    const input = el.shadowRoot?.querySelector('input[placeholder="~/"]') as HTMLInputElement;
+    const input = el.shadowRoot?.querySelector(
+      'input[placeholder="~/"]'
+    ) as HTMLInputElement | null;
 
-    expect(input).to.exist;
-    expect(input.disabled).to.be.false;
-    expect(input.readOnly).to.be.false;
-    expect(input.classList.contains('opacity-60')).to.be.false;
-    expect(input.classList.contains('cursor-not-allowed')).to.be.false;
+    expect(input).toBeTruthy();
+    expect(input?.disabled).toBe(false);
+    expect(input?.readOnly).toBe(false);
+    expect(input?.classList.contains('opacity-60')).toBe(false);
+    expect(input?.classList.contains('cursor-not-allowed')).toBe(false);
   });
 
   it('should show repository path as read-only when server-configured', async () => {
@@ -91,17 +143,22 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
     });
 
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
-    await elementUpdated(el);
+
+    // Wait for async initialization
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
 
     // Find the repository base path input
-    const input = el.shadowRoot?.querySelector('input[placeholder="~/"]') as HTMLInputElement;
+    const input = el.shadowRoot?.querySelector(
+      'input[placeholder="~/"]'
+    ) as HTMLInputElement | null;
 
-    expect(input).to.exist;
-    expect(input.disabled).to.be.true;
-    expect(input.readOnly).to.be.true;
-    expect(input.classList.contains('opacity-60')).to.be.true;
-    expect(input.classList.contains('cursor-not-allowed')).to.be.true;
-    expect(input.value).to.equal('/Users/test/Projects');
+    expect(input).toBeTruthy();
+    expect(input?.disabled).toBe(true);
+    expect(input?.readOnly).toBe(true);
+    expect(input?.classList.contains('opacity-60')).toBe(true);
+    expect(input?.classList.contains('cursor-not-allowed')).toBe(true);
+    expect(input?.value).toBe('/Users/test/Projects');
   });
 
   it('should display lock icon and message when server-configured', async () => {
@@ -115,24 +172,33 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
     });
 
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
-    await elementUpdated(el);
+
+    // Wait for async initialization
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
 
     // Check for the lock icon
     const lockIcon = el.shadowRoot?.querySelector('svg');
-    expect(lockIcon).to.exist;
+    expect(lockIcon).toBeTruthy();
 
     // Check for the descriptive text
-    const description = el.shadowRoot?.querySelector('p.text-xs');
-    expect(description?.textContent).to.include('This path is managed by the VibeTunnel Mac app');
+    const descriptions = Array.from(el.shadowRoot?.querySelectorAll('p.text-xs') || []);
+    const repoDescription = descriptions.find((p) =>
+      p.textContent?.includes('This path is managed by the VibeTunnel Mac app')
+    );
+    expect(repoDescription).toBeTruthy();
   });
 
   it('should update repository path via WebSocket when server sends update', async () => {
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
-    await elementUpdated(el);
+
+    // Wait for async initialization
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
 
     // Get the WebSocket instance created by the component
-    const ws = (el as UnifiedSettings & { configWebSocket: MockWebSocket }).configWebSocket;
-    expect(ws).to.exist;
+    const ws = MockWebSocket.instances[0];
+    expect(ws).toBeTruthy();
 
     // Simulate server sending a config update
     ws.simulateMessage({
@@ -143,12 +209,16 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
       },
     });
 
-    await elementUpdated(el);
+    // Wait for the update to process
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await el.updateComplete;
 
     // Check that the input value updated
-    const input = el.shadowRoot?.querySelector('input[placeholder="~/"]') as HTMLInputElement;
-    expect(input.value).to.equal('/Users/new/path');
-    expect(input.disabled).to.be.true;
+    const input = el.shadowRoot?.querySelector(
+      'input[placeholder="~/"]'
+    ) as HTMLInputElement | null;
+    expect(input?.value).toBe('/Users/new/path');
+    expect(input?.disabled).toBe(true);
   });
 
   it('should ignore repository path changes when server-configured', async () => {
@@ -162,7 +232,10 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
     });
 
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
-    await elementUpdated(el);
+
+    // Wait for async initialization
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
 
     // Try to change the repository path
     const originalPath = '/Users/test/Projects';
@@ -170,19 +243,27 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
       el as UnifiedSettings & { handleAppPreferenceChange: (key: string, value: string) => void }
     ).handleAppPreferenceChange('repositoryBasePath', '/Users/different/path');
 
-    await elementUpdated(el);
+    // Wait for any updates
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await el.updateComplete;
 
     // Verify the path didn't change
     const preferences = (el as UnifiedSettings & { appPreferences: AppPreferences }).appPreferences;
-    expect(preferences.repositoryBasePath).to.equal(originalPath);
+    expect(preferences.repositoryBasePath).toBe(originalPath);
   });
 
   it('should reconnect WebSocket after disconnection', async () => {
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
-    await elementUpdated(el);
 
-    const ws = (el as UnifiedSettings & { configWebSocket: MockWebSocket }).configWebSocket;
-    const originalWs = ws;
+    // Wait for async initialization
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    const ws = MockWebSocket.instances[0];
+    expect(ws).toBeTruthy();
+
+    // Clear instances before close to track new connection
+    MockWebSocket.instances = [];
 
     // Simulate WebSocket close
     ws.close();
@@ -191,16 +272,21 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
     await new Promise((resolve) => setTimeout(resolve, 5100));
 
     // Check that a new WebSocket was created
-    const newWs = (el as UnifiedSettings & { configWebSocket?: MockWebSocket }).configWebSocket;
-    expect(newWs).to.exist;
-    expect(newWs).to.not.equal(originalWs);
+    expect(MockWebSocket.instances.length).toBeGreaterThan(0);
+    const newWs = MockWebSocket.instances[0];
+    expect(newWs).toBeTruthy();
+    expect(newWs).not.toBe(ws);
   });
 
   it('should handle WebSocket message parsing errors gracefully', async () => {
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
-    await elementUpdated(el);
 
-    const ws = (el as UnifiedSettings & { configWebSocket: MockWebSocket }).configWebSocket;
+    // Wait for async initialization
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    const ws = MockWebSocket.instances[0];
+    expect(ws).toBeTruthy();
 
     // Send invalid JSON
     if (ws.onmessage) {
@@ -208,19 +294,23 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
     }
 
     // Should not throw and component should still work
-    await elementUpdated(el);
-    expect(el).to.exist;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(el).toBeTruthy();
   });
 
   it('should save preferences when updated from server', async () => {
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
-    await elementUpdated(el);
+
+    // Wait for async initialization
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
 
     // Spy on localStorage
     const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
 
     // Get the WebSocket instance
-    const ws = (el as UnifiedSettings & { configWebSocket: MockWebSocket }).configWebSocket;
+    const ws = MockWebSocket.instances[0];
+    expect(ws).toBeTruthy();
 
     // Simulate server update
     ws.simulateMessage({
@@ -231,10 +321,12 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
       },
     });
 
-    await elementUpdated(el);
+    // Wait for the update to process
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await el.updateComplete;
 
     // Verify localStorage was updated
-    expect(setItemSpy).to.have.been.calledWith(
+    expect(setItemSpy).toHaveBeenCalledWith(
       'app-preferences',
       expect.stringContaining('/Users/updated/path')
     );
