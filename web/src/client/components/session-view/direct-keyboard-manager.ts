@@ -801,8 +801,10 @@ export class DirectKeyboardManager {
       }
     };
 
-    document.addEventListener('paste', this.globalPasteHandler);
-    logger.log('Global paste listener setup for CMD+V support');
+    if (typeof document !== 'undefined') {
+      document.addEventListener('paste', this.globalPasteHandler);
+      logger.log('Global paste listener setup for CMD+V support');
+    }
   }
 
   private dismissKeyboard(): void {

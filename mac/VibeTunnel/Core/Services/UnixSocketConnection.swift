@@ -729,7 +729,7 @@ final class UnixSocketConnection {
             return
         }
 
-        let pingMessage = ControlProtocol.createRequest(category: .system, action: "ping")
+        let pingMessage = ControlProtocol.systemPingRequest()
         Task {
             do {
                 try await send(pingMessage)

@@ -1705,15 +1705,17 @@ public final class ScreencapService: NSObject {
             // Notify WebRTC manager of state changes
             if let webRTCManager = self.webRTCManager {
                 Task {
-                    let message = ControlProtocol.createEvent(
+                    if let messageData = try? ControlProtocol.encodeWithDictionaryPayload(
+                        type: .event,
                         category: .screencap,
                         action: "state-change",
                         payload: [
                             "state": newState.rawValue,
                             "previousState": previousState?.rawValue as Any
                         ]
-                    )
-                    await webRTCManager.sendControlMessage(message)
+                    ) {
+                        await webRTCManager.sendControlMessage(messageData)
+                    }
                 }
             }
         }
@@ -1826,24 +1828,28 @@ public final class ScreencapService: NSObject {
     /// Notify connected clients that display was disconnected
     private func notifyDisplayDisconnected() async {
         if let webRTCManager {
-            let message = ControlProtocol.createEvent(
+            if let messageData = try? ControlProtocol.encodeWithDictionaryPayload(
+                type: .event,
                 category: .screencap,
                 action: "display-disconnected",
                 payload: ["message": "Display disconnected during capture"]
-            )
-            await webRTCManager.sendControlMessage(message)
+            ) {
+                await webRTCManager.sendControlMessage(messageData)
+            }
         }
     }
 
     /// Notify connected clients that window was disconnected
     private func notifyWindowDisconnected() async {
         if let webRTCManager {
-            let message = ControlProtocol.createEvent(
+            if let messageData = try? ControlProtocol.encodeWithDictionaryPayload(
+                type: .event,
                 category: .screencap,
                 action: "window-disconnected",
                 payload: ["message": "Window closed or became unavailable"]
-            )
-            await webRTCManager.sendControlMessage(message)
+            ) {
+                await webRTCManager.sendControlMessage(messageData)
+            }
         }
     }
 

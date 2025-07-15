@@ -52,7 +52,7 @@ describe('Activity Detector', () => {
       expect(result.activity.isActive).toBe(true);
       expect(result.activity.specificStatus).toEqual({
         app: 'claude',
-        status: '✻ Crafting (205s, ↑6.0k)',
+        status: 'Crafting (205s, ↑6.0k)',
       });
     });
 
@@ -63,19 +63,19 @@ describe('Activity Detector', () => {
       const statuses = [
         {
           input: '✻ Crafting… (205s · ↑ 6.0k tokens · esc to interrupt)\n',
-          expected: '✻ Crafting (205s, ↑6.0k)',
+          expected: 'Crafting (205s, ↑6.0k)',
         },
         {
           input: '✢ Transitioning… (381s · ↓ 4.0k tokens · esc to interrupt)\n',
-          expected: '✢ Transitioning (381s, ↓4.0k)',
+          expected: 'Transitioning (381s, ↓4.0k)',
         },
         {
           input: '◐ Processing… (42s · ↑ 1.2k tokens · esc to interrupt)\n',
-          expected: '◐ Processing (42s, ↑1.2k)',
+          expected: 'Processing (42s, ↑1.2k)',
         },
         {
           input: '✻ Compacting conversation… (303s · ↑ 16.3k tokens · esc to interrupt)\n',
-          expected: '✻ Compacting conversation (303s, ↑16.3k)',
+          expected: 'Compacting conversation (303s, ↑16.3k)',
         },
       ];
 
@@ -92,7 +92,7 @@ describe('Activity Detector', () => {
       const result = detector.processOutput(mixedOutput);
 
       expect(result.filteredData).toBe('Regular output\n\nMore output\n');
-      expect(result.activity.specificStatus?.status).toBe('✻ Crafting (10s, ↑1.0k)');
+      expect(result.activity.specificStatus?.status).toBe('Crafting (10s, ↑1.0k)');
     });
 
     it('should remember last Claude status', () => {
@@ -104,7 +104,7 @@ describe('Activity Detector', () => {
       // Process regular output - should retain status
       const result = detector.processOutput('Regular output\n');
       expect(result.filteredData).toBe('Regular output\n');
-      expect(result.activity.specificStatus?.status).toBe('✻ Crafting (10s, ↑1.0k)');
+      expect(result.activity.specificStatus?.status).toBe('Crafting (10s, ↑1.0k)');
     });
 
     it('should clear status on demand', () => {

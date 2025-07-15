@@ -47,6 +47,69 @@ struct ScreenCapturePingResponse: Codable {
     let timestamp: Double
 }
 
+struct ScreenCaptureOfferEvent: Codable {
+    let data: WebRTCOfferData
+}
+
+struct WebRTCOfferData: Codable {
+    let type: String
+    let sdp: String
+}
+
+struct ScreenCaptureIceCandidateEvent: Codable {
+    let data: IceCandidateData
+}
+
+struct IceCandidateData: Codable {
+    let candidate: String
+    let sdpMLineIndex: Int32
+    let sdpMid: String?
+}
+
+struct ScreenCaptureErrorEvent: Codable {
+    let data: String
+}
+
+struct ScreenCaptureAnswerSignal: Codable {
+    let data: WebRTCAnswerData
+}
+
+struct WebRTCAnswerData: Codable {
+    let type: String
+    let sdp: String
+}
+
+// For initial data response, we use the flexible encoder (screencapApiResponse)
+// which handles [String: Any] payloads directly, so we don't need a typed struct
+// struct ScreenCaptureGetInitialDataResponse: Codable {
+//     let displays: [[String: Any]]
+//     let windows: [[String: Any]]
+//     let selectedId: String?
+//     let captureType: String?
+//     
+//     init(displays: [[String: Any]] = [], windows: [[String: Any]] = [], selectedId: String? = nil, captureType: String? = nil) {
+//         self.displays = displays
+//         self.windows = windows
+//         self.selectedId = selectedId
+//         self.captureType = captureType
+//     }
+//     
+//     // Use JSONSerialization for the entire object
+//     func toDictionary() -> [String: Any] {
+//         var dict: [String: Any] = [
+//             "displays": displays,
+//             "windows": windows
+//         ]
+//         if let selectedId = selectedId {
+//             dict["selectedId"] = selectedId
+//         }
+//         if let captureType = captureType {
+//             dict["captureType"] = captureType
+//         }
+//         return dict
+//     }
+// }
+
 // MARK: - System Control Payloads
 
 struct SystemReadyEvent: Codable {

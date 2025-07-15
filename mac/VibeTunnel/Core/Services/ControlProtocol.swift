@@ -58,8 +58,6 @@ enum ControlProtocol {
         var error: String? { get }
     }
     
-    extension ControlMessage: AnyControlMessage {}
-    
     // MARK: - Type aliases for common message types
     
     typealias TerminalSpawnRequestMessage = ControlMessage<TerminalSpawnRequest>
@@ -118,6 +116,15 @@ enum ControlProtocol {
         )
     }
     
+    static func systemPingRequest() -> SystemPingRequestMessage {
+        ControlMessage(
+            type: .request,
+            category: .system,
+            action: "ping",
+            payload: SystemPingRequest()
+        )
+    }
+    
     static func systemPingResponse(
         to request: SystemPingRequestMessage
     ) -> SystemPingResponseMessage {
@@ -143,6 +150,36 @@ enum ControlProtocol {
         return try decoder.decode(messageType, from: data)
     }
     
+    // Special encoder for messages with [String: Any] payloads
+    static func encodeWithDictionaryPayload(
+        id: String = UUID().uuidString,
+        type: MessageType,
+        category: Category,
+        action: String,
+        payload: [String: Any]? = nil,
+        sessionId: String? = nil,
+        error: String? = nil
+    ) throws -> Data {
+        var dict: [String: Any] = [
+            "id": id,
+            "type": type.rawValue,
+            "category": category.rawValue,
+            "action": action
+        ]
+        
+        if let payload = payload {
+            dict["payload"] = payload
+        }
+        if let sessionId = sessionId {
+            dict["sessionId"] = sessionId
+        }
+        if let error = error {
+            dict["error"] = error
+        }
+        
+        return try JSONSerialization.data(withJSONObject: dict)
+    }
+    
     // For handlers that need to decode specific message types based on action
     static func decodeTerminalSpawnRequest(_ data: Data) throws -> TerminalSpawnRequestMessage {
         return try decode(data, as: TerminalSpawnRequestMessage.self)
@@ -151,4 +188,111 @@ enum ControlProtocol {
     static func decodeSystemPingRequest(_ data: Data) throws -> SystemPingRequestMessage {
         return try decode(data, as: SystemPingRequestMessage.self)
     }
+    
+    // MARK: - Screencap Message Type Aliases
+    
+    typealias ScreenCaptureErrorEventMessage = ControlMessage<ScreenCaptureErrorEvent>
+    typealias ScreenCaptureOfferEventMessage = ControlMessage<ScreenCaptureOfferEvent>
+    typealias ScreenCaptureIceCandidateEventMessage = ControlMessage<ScreenCaptureIceCandidateEvent>
+    typealias ScreenCaptureAnswerSignalMessage = ControlMessage<ScreenCaptureAnswerSignal>
+    typealias ScreenCaptureApiRequestMessage = ControlMessage<ScreenCaptureApiRequest>
+    typealias ScreenCaptureWebRTCSignalMessage = ControlMessage<ScreenCaptureWebRTCSignal>
+    // typealias ScreenCaptureInitialDataResponseMessage = ControlMessage<ScreenCaptureGetInitialDataResponse>
+    
+    // Empty payload for messages that don't need data
+    struct EmptyPayload: Codable {}
+    typealias EmptyMessage = ControlMessage<EmptyPayload>
+    
+    // MARK: - Screencap Message Builders
+    
+    static func screencapErrorEvent(error: String, sessionId: String? = nil) -> ScreenCaptureErrorEventMessage {
+        ControlMessage(
+            type: .event,
+            category: .screencap,
+            action: "error",
+            payload: ScreenCaptureErrorEvent(data: error),
+            sessionId: sessionId
+        )
+    }
+    
+    static func screencapOfferEvent(sdp: String, sessionId: String? = nil) -> ScreenCaptureOfferEventMessage {
+        ControlMessage(
+            type: .event,
+            category: .screencap,
+            action: "offer",
+            payload: ScreenCaptureOfferEvent(
+                data: WebRTCOfferData(type: "offer", sdp: sdp)
+            ),
+            sessionId: sessionId
+        )
+    }
+    
+    static func screencapIceCandidateEvent(
+        candidate: String,
+        sdpMLineIndex: Int32,
+        sdpMid: String?,
+        sessionId: String? = nil
+    ) -> ScreenCaptureIceCandidateEventMessage {
+        ControlMessage(
+            type: .event,
+            category: .screencap,
+            action: "ice-candidate",
+            payload: ScreenCaptureIceCandidateEvent(
+                data: IceCandidateData(
+                    candidate: candidate,
+                    sdpMLineIndex: sdpMLineIndex,
+                    sdpMid: sdpMid
+                )
+            ),
+            sessionId: sessionId
+        )
+    }
+    
+    // For messages that need flexible payloads, return raw Data
+    static func screencapInitialDataResponse(
+        requestId: String,
+        displays: [[String: Any]],
+        windows: [[String: Any]],
+        selectedId: String? = nil,
+        captureType: String? = nil
+    ) throws -> Data {
+        var payload: [String: Any] = [
+            "displays": displays,
+            "windows": windows
+        ]
+        if let selectedId = selectedId {
+            payload["selectedId"] = selectedId
+        }
+        if let captureType = captureType {
+            payload["captureType"] = captureType
+        }
+        
+        return try encodeWithDictionaryPayload(
+            id: requestId,
+            type: .response,
+            category: .screencap,
+            action: "initial-data",
+            payload: payload
+        )
+    }
+    
+    static func screencapApiResponse(
+        requestId: String,
+        action: String,
+        payload: [String: Any]? = nil,
+        error: String? = nil
+    ) throws -> Data {
+        return try encodeWithDictionaryPayload(
+            id: requestId,
+            type: .response,
+            category: .screencap,
+            action: action,
+            payload: payload,
+            error: error
+        )
+    }
 }
+
+// MARK: - Protocol Conformance
+
+extension ControlProtocol.ControlMessage: ControlProtocol.AnyControlMessage {}

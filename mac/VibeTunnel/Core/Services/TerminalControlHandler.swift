@@ -25,21 +25,34 @@ final class TerminalControlHandler {
 
     private func handleMessage(_ data: Data) async -> Data? {
         do {
-            // Try to decode as terminal spawn request first
-            if let spawnRequest = try? ControlProtocol.decodeTerminalSpawnRequest(data) {
-                logger.info("📥 Terminal spawn request for session: \(spawnRequest.payload?.sessionId ?? "unknown")")
-                let response = await handleSpawnRequest(spawnRequest)
-                return try ControlProtocol.encode(response)
+            // First check what action this is
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let action = json["action"] as? String {
+                
+                switch action {
+                case "spawn":
+                    // Try to decode as terminal spawn request
+                    if let spawnRequest = try? ControlProtocol.decodeTerminalSpawnRequest(data) {
+                        logger.info("📥 Terminal spawn request for session: \(spawnRequest.payload?.sessionId ?? "unknown")")
+                        let response = await handleSpawnRequest(spawnRequest)
+                        return try ControlProtocol.encode(response)
+                    } else {
+                        logger.error("Failed to decode terminal spawn request")
+                        return createErrorResponse(for: data, error: "Invalid spawn request format")
+                    }
+                    
+                default:
+                    logger.error("Unknown terminal action: \(action)")
+                    return createErrorResponse(for: data, error: "Unknown terminal action: \(action)")
+                }
+            } else {
+                logger.error("Invalid terminal message format")
+                return createErrorResponse(for: data, error: "Invalid message format")
             }
-            
-            // Could add other terminal message types here
-            
-            logger.warning("Unknown terminal message format")
-            return nil
             
         } catch {
             logger.error("Failed to process terminal message: \(error)")
-            return nil
+            return createErrorResponse(for: data, error: "Failed to process message: \(error.localizedDescription)")
         }
     }
 
@@ -104,5 +117,32 @@ final class TerminalControlHandler {
     func stop() {
         SharedUnixSocketManager.shared.unregisterControlHandler(for: .terminal)
         logger.info("🛑 Terminal control handler stopped")
+    }
+    
+    // MARK: - Error Handling
+    
+    private func createErrorResponse(for data: Data, error: String) -> Data? {
+        do {
+            // Try to get request ID for proper error response
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let id = json["id"] as? String,
+               let action = json["action"] as? String {
+                
+                // Create error response matching request
+                let errorResponse: [String: Any] = [
+                    "id": id,
+                    "type": "response",
+                    "category": "terminal",
+                    "action": action,
+                    "error": error
+                ]
+                
+                return try JSONSerialization.data(withJSONObject: errorResponse)
+            }
+        } catch {
+            logger.error("Failed to create error response: \(error)")
+        }
+        
+        return nil
     }
 }

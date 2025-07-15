@@ -15,6 +15,7 @@ final class SharedUnixSocketManager {
 
     private var unixSocket: UnixSocketConnection?
     private var controlHandlers: [ControlProtocol.Category: (Data) async -> Data?] = [:]
+    private var systemControlHandler: SystemControlHandler?
 
     // MARK: - Initialization
 
@@ -118,7 +119,20 @@ final class SharedUnixSocketManager {
 
         guard let handler = controlHandlers[category] else {
             logger.warning("No handler for category: \(category.rawValue)")
-            // Could send error response here if needed
+            
+            // Send error response for unhandled categories
+            if let errorResponse = createErrorResponse(for: data, category: category.rawValue, error: "No handler registered for category: \(category.rawValue)") {
+                guard let socket = unixSocket else {
+                    logger.warning("No socket available to send error response")
+                    return
+                }
+                
+                do {
+                    try await socket.sendRawData(errorResponse)
+                } catch {
+                    logger.error("Failed to send error response: \(error)")
+                }
+            }
             return
         }
 
@@ -153,5 +167,45 @@ final class SharedUnixSocketManager {
     func unregisterControlHandler(for category: ControlProtocol.Category) {
         controlHandlers.removeValue(forKey: category)
         logger.info("❌ Unregistered control handler for category: \(category.rawValue)")
+    }
+    
+    /// Create error response for unhandled messages
+    private func createErrorResponse(for data: Data, category: String, error: String) -> Data? {
+        do {
+            // Try to get request ID and action for proper error response
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let id = json["id"] as? String,
+               let action = json["action"] as? String,
+               let type = json["type"] as? String,
+               type == "request" {  // Only send error responses for requests
+                
+                // Create error response matching request
+                let errorResponse: [String: Any] = [
+                    "id": id,
+                    "type": "response",
+                    "category": category,
+                    "action": action,
+                    "error": error
+                ]
+                
+                return try JSONSerialization.data(withJSONObject: errorResponse)
+            }
+        } catch {
+            logger.error("Failed to create error response: \(error)")
+        }
+        
+        return nil
+    }
+    
+    /// Initialize system control handler
+    func initializeSystemHandler(onSystemReady: @escaping () -> Void) {
+        systemControlHandler = SystemControlHandler(onSystemReady: onSystemReady)
+        
+        // Register the system handler
+        registerControlHandler(for: .system) { [weak self] data in
+            await self?.systemControlHandler?.handleMessage(data)
+        }
+        
+        logger.info("✅ System control handler initialized")
     }
 }

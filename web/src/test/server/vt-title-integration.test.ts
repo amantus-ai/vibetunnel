@@ -4,9 +4,12 @@ import * as os from 'os';
 import * as path from 'path';
 import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const execAsync = promisify(exec);
+
+// These tests require the real node-pty module, not mocked
+vi.unmock('node-pty');
 
 describe('vt title Command Integration', () => {
   let testControlDir: string;
