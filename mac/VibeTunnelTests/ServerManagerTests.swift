@@ -25,10 +25,10 @@ final class ServerManagerTests {
     func serverLifecycle() async throws {
         // Attach system information for debugging
         Attachment.record(TestUtilities.captureSystemInfo(), named: "System Info")
-        
+
         // Attach initial server state
         Attachment.record(TestUtilities.captureServerState(manager), named: "Initial Server State")
-        
+
         // Start the server
         await manager.start()
 
@@ -43,19 +43,19 @@ final class ServerManagerTests {
             // In CI with working binary, server should start successfully or fail gracefully
             #expect(manager.isRunning || manager.lastError != nil)
             Attachment.record("""
-                Binary Available: Server should start or fail gracefully
-                Is Running: \(manager.isRunning)
-                Server Instance: \(manager.bunServer != nil ? "Present" : "Nil")
-                Last Error: \(manager.lastError?.localizedDescription ?? "None")
-                """, named: "Server Status With Binary")
+            Binary Available: Server should start or fail gracefully
+            Is Running: \(manager.isRunning)
+            Server Instance: \(manager.bunServer != nil ? "Present" : "Nil")
+            Last Error: \(manager.lastError?.localizedDescription ?? "None")
+            """, named: "Server Status With Binary")
         } else {
             // In test environment without binary, server should fail to start
             if let error = manager.lastError as? BunServerError {
                 #expect(error == .binaryNotFound)
                 Attachment.record("""
-                    Error Type: \(error)
-                    Error Description: \(error.localizedDescription)
-                    """, named: "Server Error Details")
+                Error Type: \(error)
+                Error Description: \(error.localizedDescription)
+                """, named: "Server Error Details")
             }
             #expect(!manager.isRunning)
             #expect(manager.bunServer == nil)
@@ -66,7 +66,7 @@ final class ServerManagerTests {
 
         // After stop, server should not be running
         #expect(!manager.isRunning)
-        
+
         // Attach final state
         Attachment.record(TestUtilities.captureServerState(manager), named: "Final Server State")
     }
@@ -207,7 +207,7 @@ final class ServerManagerTests {
             // In test environment without binary, both instances should be nil
             #expect(manager.bunServer == nil)
             #expect(serverBeforeRestart == nil)
-            
+
             // Error should be consistent (binary not found)
             if let error = manager.lastError as? BunServerError {
                 #expect(error == .binaryNotFound)
@@ -264,7 +264,7 @@ final class ServerManagerTests {
             // In test environment without binary, server won't actually start
             #expect(!manager.isRunning)
             #expect(manager.bunServer == nil)
-            
+
             // Verify error is set appropriately
             if let error = manager.lastError as? BunServerError {
                 #expect(error == .binaryNotFound)
@@ -278,64 +278,68 @@ final class ServerManagerTests {
         // Cleanup
         await manager.stop()
     }
-    
+
     // MARK: - Enhanced Server Management Tests with Attachments
-    
-    @Test("Server configuration management with diagnostics", .tags(.attachmentTests, .requiresServerBinary), .enabled(if: ServerBinaryAvailableCondition.isAvailable()))
+
+    @Test(
+        "Server configuration management with diagnostics",
+        .tags(.attachmentTests, .requiresServerBinary),
+        .enabled(if: ServerBinaryAvailableCondition.isAvailable())
+    )
     func serverConfigurationDiagnostics() async throws {
         // Attach test environment
         Attachment.record("""
-            Test: Server Configuration Management
-            Binary Available: \(ServerBinaryAvailableCondition.isAvailable())
-            Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
-            """, named: "Test Configuration")
-        
+        Test: Server Configuration Management
+        Binary Available: \(ServerBinaryAvailableCondition.isAvailable())
+        Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
+        """, named: "Test Configuration")
+
         // Record initial state
         Attachment.record(TestUtilities.captureServerState(manager), named: "Initial State")
-        
+
         // Test server configuration without actually starting it
         let originalPort = manager.port
         manager.port = "4567"
-        
+
         // Record configuration change
         Attachment.record("""
-            Port changed from \(originalPort) to \(manager.port)
-            Bind address: \(manager.bindAddress)
-            """, named: "Configuration Change")
-        
+        Port changed from \(originalPort) to \(manager.port)
+        Bind address: \(manager.bindAddress)
+        """, named: "Configuration Change")
+
         #expect(manager.port == "4567")
-        
+
         // Restore original configuration
         manager.port = originalPort
-        
+
         // Record final state
         Attachment.record(TestUtilities.captureServerState(manager), named: "Final State")
     }
-    
+
     @Test("Session model validation with attachments", .tags(.attachmentTests, .sessionManagement))
     func sessionModelValidation() async throws {
         // Attach test info
         Attachment.record("""
-            Test: TunnelSession Model Validation
-            Purpose: Verify session creation and state management
-            """, named: "Test Info")
-        
+        Test: TunnelSession Model Validation
+        Purpose: Verify session creation and state management
+        """, named: "Test Info")
+
         // Create test session
         let session = TunnelSession()
-        
+
         // Record session details
         Attachment.record("""
-            Session ID: \(session.id)
-            Created At: \(session.createdAt)
-            Last Activity: \(session.lastActivity)
-            Is Active: \(session.isActive)
-            Process ID: \(session.processID?.description ?? "none")
-            """, named: "Session Details")
-        
+        Session ID: \(session.id)
+        Created At: \(session.createdAt)
+        Last Activity: \(session.lastActivity)
+        Is Active: \(session.isActive)
+        Process ID: \(session.processID?.description ?? "none")
+        """, named: "Session Details")
+
         // Validate session properties
         #expect(session.isActive)
         #expect(session.lastActivity >= session.createdAt)
-        
+
         // Ensure session ID is valid and stable
         let sessionID = session.id
         #expect(!sessionID.uuidString.isEmpty)

@@ -46,9 +46,9 @@ enum ControlProtocol {
             self.error = error
         }
     }
-    
+
     // MARK: - Base message for runtime dispatch
-    
+
     protocol AnyControlMessage {
         var id: String { get }
         var type: MessageType { get }
@@ -57,9 +57,9 @@ enum ControlProtocol {
         var sessionId: String? { get }
         var error: String? { get }
     }
-    
+
     // MARK: - Type aliases for common message types
-    
+
     typealias TerminalSpawnRequestMessage = ControlMessage<TerminalSpawnRequest>
     typealias TerminalSpawnResponseMessage = ControlMessage<TerminalSpawnResponse>
     typealias SystemReadyMessage = ControlMessage<SystemReadyEvent>
@@ -67,14 +67,16 @@ enum ControlProtocol {
     typealias SystemPingResponseMessage = ControlMessage<SystemPingResponse>
 
     // MARK: - Convenience builders for specific message types
-    
-    // Terminal messages
+
+    /// Terminal messages
     static func terminalSpawnRequest(
         sessionId: String,
         workingDirectory: String? = nil,
         command: String? = nil,
         terminalPreference: String? = nil
-    ) -> TerminalSpawnRequestMessage {
+    )
+        -> TerminalSpawnRequestMessage
+    {
         ControlMessage(
             type: .request,
             category: .terminal,
@@ -88,7 +90,7 @@ enum ControlProtocol {
             sessionId: sessionId
         )
     }
-    
+
     /// Build a spawn response
     /// NOTE: Error Duplication Pattern
     /// Both top-level error and payload error fields are set intentionally:
@@ -100,7 +102,9 @@ enum ControlProtocol {
         success: Bool,
         pid: Int? = nil,
         error: String? = nil
-    ) -> TerminalSpawnResponseMessage {
+    )
+        -> TerminalSpawnResponseMessage
+    {
         ControlMessage(
             id: request.id,
             type: .response,
@@ -111,8 +115,8 @@ enum ControlProtocol {
             error: error
         )
     }
-    
-    // System messages
+
+    /// System messages
     static func systemReadyEvent() -> SystemReadyMessage {
         ControlMessage(
             type: .event,
@@ -121,7 +125,7 @@ enum ControlProtocol {
             payload: SystemReadyEvent()
         )
     }
-    
+
     static func systemPingRequest() -> SystemPingRequestMessage {
         ControlMessage(
             type: .request,
@@ -130,10 +134,12 @@ enum ControlProtocol {
             payload: SystemPingRequest()
         )
     }
-    
+
     static func systemPingResponse(
         to request: SystemPingRequestMessage
-    ) -> SystemPingResponseMessage {
+    )
+        -> SystemPingResponseMessage
+    {
         ControlMessage(
             id: request.id,
             type: .response,
@@ -143,10 +149,9 @@ enum ControlProtocol {
         )
     }
 
-
     // MARK: - Message Serialization
 
-    static func encode<T: Codable>(_ message: ControlMessage<T>) throws -> Data {
+    static func encode(_ message: ControlMessage<some Codable>) throws -> Data {
         let encoder = JSONEncoder()
         return try encoder.encode(message)
     }
@@ -155,8 +160,8 @@ enum ControlProtocol {
         let decoder = JSONDecoder()
         return try decoder.decode(messageType, from: data)
     }
-    
-    // Special encoder for messages with [String: Any] payloads
+
+    /// Special encoder for messages with [String: Any] payloads
     static func encodeWithDictionaryPayload(
         id: String = UUID().uuidString,
         type: MessageType,
@@ -165,38 +170,40 @@ enum ControlProtocol {
         payload: [String: Any]? = nil,
         sessionId: String? = nil,
         error: String? = nil
-    ) throws -> Data {
+    )
+        throws -> Data
+    {
         var dict: [String: Any] = [
             "id": id,
             "type": type.rawValue,
             "category": category.rawValue,
             "action": action
         ]
-        
-        if let payload = payload {
+
+        if let payload {
             dict["payload"] = payload
         }
-        if let sessionId = sessionId {
+        if let sessionId {
             dict["sessionId"] = sessionId
         }
-        if let error = error {
+        if let error {
             dict["error"] = error
         }
-        
+
         return try JSONSerialization.data(withJSONObject: dict)
     }
-    
-    // For handlers that need to decode specific message types based on action
+
+    /// For handlers that need to decode specific message types based on action
     static func decodeTerminalSpawnRequest(_ data: Data) throws -> TerminalSpawnRequestMessage {
-        return try decode(data, as: TerminalSpawnRequestMessage.self)
+        try decode(data, as: TerminalSpawnRequestMessage.self)
     }
-    
+
     static func decodeSystemPingRequest(_ data: Data) throws -> SystemPingRequestMessage {
-        return try decode(data, as: SystemPingRequestMessage.self)
+        try decode(data, as: SystemPingRequestMessage.self)
     }
-    
+
     // MARK: - Screencap Message Type Aliases
-    
+
     typealias ScreenCaptureErrorEventMessage = ControlMessage<ScreenCaptureErrorEvent>
     typealias ScreenCaptureOfferEventMessage = ControlMessage<ScreenCaptureOfferEvent>
     typealias ScreenCaptureIceCandidateEventMessage = ControlMessage<ScreenCaptureIceCandidateEvent>
@@ -204,13 +211,13 @@ enum ControlProtocol {
     typealias ScreenCaptureApiRequestMessage = ControlMessage<ScreenCaptureApiRequest>
     typealias ScreenCaptureWebRTCSignalMessage = ControlMessage<ScreenCaptureWebRTCSignal>
     // typealias ScreenCaptureInitialDataResponseMessage = ControlMessage<ScreenCaptureGetInitialDataResponse>
-    
+
     // Empty payload for messages that don't need data
     struct EmptyPayload: Codable {}
     typealias EmptyMessage = ControlMessage<EmptyPayload>
-    
+
     // MARK: - Screencap Message Builders
-    
+
     static func screencapErrorEvent(error: String, sessionId: String? = nil) -> ScreenCaptureErrorEventMessage {
         ControlMessage(
             type: .event,
@@ -220,7 +227,7 @@ enum ControlProtocol {
             sessionId: sessionId
         )
     }
-    
+
     static func screencapOfferEvent(sdp: String, sessionId: String? = nil) -> ScreenCaptureOfferEventMessage {
         ControlMessage(
             type: .event,
@@ -232,13 +239,15 @@ enum ControlProtocol {
             sessionId: sessionId
         )
     }
-    
+
     static func screencapIceCandidateEvent(
         candidate: String,
         sdpMLineIndex: Int32,
         sdpMid: String?,
         sessionId: String? = nil
-    ) -> ScreenCaptureIceCandidateEventMessage {
+    )
+        -> ScreenCaptureIceCandidateEventMessage
+    {
         ControlMessage(
             type: .event,
             category: .screencap,
@@ -253,26 +262,28 @@ enum ControlProtocol {
             sessionId: sessionId
         )
     }
-    
-    // For messages that need flexible payloads, return raw Data
+
+    /// For messages that need flexible payloads, return raw Data
     static func screencapInitialDataResponse(
         requestId: String,
         displays: [[String: Any]],
         windows: [[String: Any]],
         selectedId: String? = nil,
         captureType: String? = nil
-    ) throws -> Data {
+    )
+        throws -> Data
+    {
         var payload: [String: Any] = [
             "displays": displays,
             "windows": windows
         ]
-        if let selectedId = selectedId {
+        if let selectedId {
             payload["selectedId"] = selectedId
         }
-        if let captureType = captureType {
+        if let captureType {
             payload["captureType"] = captureType
         }
-        
+
         return try encodeWithDictionaryPayload(
             id: requestId,
             type: .response,
@@ -281,14 +292,16 @@ enum ControlProtocol {
             payload: payload
         )
     }
-    
+
     static func screencapApiResponse(
         requestId: String,
         action: String,
         payload: [String: Any]? = nil,
         error: String? = nil
-    ) throws -> Data {
-        return try encodeWithDictionaryPayload(
+    )
+        throws -> Data
+    {
+        try encodeWithDictionaryPayload(
             id: requestId,
             type: .response,
             category: .screencap,

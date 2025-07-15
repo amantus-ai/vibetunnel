@@ -5,47 +5,47 @@ import Testing
 // MARK: - Enhanced Test Conditions for Swift 6.2
 
 /// Condition that checks if the server binary is available for testing
-struct ServerBinaryAvailableCondition {
+enum ServerBinaryAvailableCondition {
     static func isAvailable() -> Bool {
         // Check for the embedded vibetunnel binary (same logic as the actual server)
         if let embeddedBinaryPath = Bundle.main.path(forResource: "vibetunnel", ofType: nil),
-           FileManager.default.fileExists(atPath: embeddedBinaryPath) {
+           FileManager.default.fileExists(atPath: embeddedBinaryPath)
+        {
             return true
         }
-        
+
         // Fallback: Check for Node.js binary paths (we use Node, not Bun!)
         let nodePaths = [
             "/usr/local/bin/node",
-            "/opt/homebrew/bin/node", 
+            "/opt/homebrew/bin/node",
             "/usr/bin/node",
             ProcessInfo.processInfo.environment["NODE_PATH"]
-        ].compactMap { $0 }
-        
+        ].compactMap(\.self)
+
         return nodePaths.contains { FileManager.default.fileExists(atPath: $0) }
     }
 }
 
 /// Simple condition checks for tests
 enum TestConditions {
-    
     static func isInGitRepository() -> Bool {
-        return FileManager.default.fileExists(atPath: ".git")
+        FileManager.default.fileExists(atPath: ".git")
     }
-    
+
     static func hasNetworkInterfaces() -> Bool {
-        return !NetworkUtility.getAllIPAddresses().isEmpty
+        !NetworkUtility.getAllIPAddresses().isEmpty
     }
-    
+
     static func isRunningInCI() -> Bool {
-        return ProcessInfo.processInfo.environment["CI"] != nil ||
-               ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil
+        ProcessInfo.processInfo.environment["CI"] != nil ||
+            ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil
     }
-    
+
     static func canSpawnProcesses() -> Bool {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/echo")
         task.arguments = ["test"]
-        
+
         do {
             try task.run()
             task.waitUntilExit()
@@ -71,21 +71,21 @@ extension Tag {
 enum TestUtilities {
     /// Capture system information for test attachments
     static func captureSystemInfo() -> String {
-        return """
+        """
         System Information:
         - OS: \(ProcessInfo.processInfo.operatingSystemVersionString)
         - Processor: \(ProcessInfo.processInfo.processorCount) cores
-        - Memory: \(ProcessInfo.processInfo.physicalMemory / 1024 / 1024) MB
+        - Memory: \(ProcessInfo.processInfo.physicalMemory / 1_024 / 1_024) MB
         - Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
         - Timestamp: \(Date().ISO8601Format())
         """
     }
-    
+
     /// Capture network configuration for debugging
     static func captureNetworkConfig() -> String {
         let localIP = NetworkUtility.getLocalIPAddress()
         let allIPs = NetworkUtility.getAllIPAddresses()
-        
+
         return """
         Network Configuration:
         - Local IP: \(localIP ?? "none")
@@ -93,11 +93,11 @@ enum TestUtilities {
         - Interface Count: \(allIPs.count)
         """
     }
-    
+
     /// Capture server state for debugging
     @MainActor
     static func captureServerState(_ manager: ServerManager) -> String {
-        return """
+        """
         Server State:
         - Running: \(manager.isRunning)
         - Port: \(manager.port)
@@ -106,34 +106,34 @@ enum TestUtilities {
         - Last Error: \(manager.lastError?.localizedDescription ?? "none")
         """
     }
-    
+
     /// Calculate standard deviation for performance metrics
     static func calculateStandardDeviation(_ values: [TimeInterval]) -> Double {
         guard !values.isEmpty else { return 0 }
-        
+
         let mean = values.reduce(0, +) / Double(values.count)
         let squaredDifferences = values.map { pow($0 - mean, 2) }
         let variance = squaredDifferences.reduce(0, +) / Double(values.count)
-        
+
         return sqrt(variance)
     }
-    
+
     /// Record standardized test configuration with environment info
     static func recordTestConfiguration(name: String, details: String) {
         Attachment.record("""
-            Test: \(name)
-            Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
-            \(details)
-            """, named: "Test Configuration")
+        Test: \(name)
+        Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
+        \(details)
+        """, named: "Test Configuration")
     }
-    
+
     /// Record process execution details
     static func recordProcessExecution(command: String, arguments: [String], exitStatus: Int32, output: String? = nil) {
         Attachment.record("""
-            Command: \(command) \(arguments.joined(separator: " "))
-            Exit Status: \(exitStatus)
-            Output: \(output ?? "(none)")
-            Process Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
-            """, named: "Process Execution Details")
+        Command: \(command) \(arguments.joined(separator: " "))
+        Exit Status: \(exitStatus)
+        Output: \(output ?? "(none)")
+        Process Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
+        """, named: "Process Execution Details")
     }
 }

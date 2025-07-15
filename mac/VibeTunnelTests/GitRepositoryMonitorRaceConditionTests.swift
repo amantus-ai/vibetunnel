@@ -6,16 +6,20 @@ import Testing
 @Suite("Git Repository Monitor Race Condition Tests", .tags(.concurrency, .gitRepository))
 @MainActor
 struct GitRepositoryMonitorRaceConditionTests {
-    @Test("Concurrent GitHub URL fetches don't cause duplicate Git operations", .tags(.attachmentTests), .enabled(if: TestConditions.isInGitRepository()))
+    @Test(
+        "Concurrent GitHub URL fetches don't cause duplicate Git operations",
+        .tags(.attachmentTests),
+        .enabled(if: TestConditions.isInGitRepository())
+    )
     func concurrentGitHubURLFetches() async throws {
         // Attach test environment information
         Attachment.record("""
-            Git Repository: \(FileManager.default.fileExists(atPath: ".git") ? "Valid" : "Invalid")
-            Test Repository Path: /test/repo/path
-            Concurrent Operations: 10
-            Test Type: Race Condition Prevention
-            """, named: "Git Test Environment")
-        
+        Git Repository: \(FileManager.default.fileExists(atPath: ".git") ? "Valid" : "Invalid")
+        Test Repository Path: /test/repo/path
+        Concurrent Operations: 10
+        Test Type: Race Condition Prevention
+        """, named: "Git Test Environment")
+
         // Attach initial monitor state
         Attachment.record("Monitor created: \(type(of: GitRepositoryMonitor()))", named: "Initial Monitor State")
         let monitor = GitRepositoryMonitor()

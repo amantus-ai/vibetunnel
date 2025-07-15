@@ -13,7 +13,7 @@ struct TerminalSpawnResponse: Codable {
     let success: Bool
     let pid: Int?
     let error: String?
-    
+
     init(success: Bool, pid: Int? = nil, error: String? = nil) {
         self.success = success
         self.pid = pid
@@ -86,14 +86,14 @@ struct WebRTCAnswerData: Codable {
 //     let windows: [[String: Any]]
 //     let selectedId: String?
 //     let captureType: String?
-//     
+//
 //     init(displays: [[String: Any]] = [], windows: [[String: Any]] = [], selectedId: String? = nil, captureType: String? = nil) {
 //         self.displays = displays
 //         self.windows = windows
 //         self.selectedId = selectedId
 //         self.captureType = captureType
 //     }
-//     
+//
 //     // Use JSONSerialization for the entire object
 //     func toDictionary() -> [String: Any] {
 //         var dict: [String: Any] = [
@@ -115,7 +115,7 @@ struct WebRTCAnswerData: Codable {
 struct SystemReadyEvent: Codable {
     let timestamp: Double
     let version: String?
-    
+
     init(timestamp: Double = Date().timeIntervalSince1970, version: String? = nil) {
         self.timestamp = timestamp
         self.version = version
@@ -124,7 +124,7 @@ struct SystemReadyEvent: Codable {
 
 struct SystemPingRequest: Codable {
     let timestamp: Double
-    
+
     init(timestamp: Double = Date().timeIntervalSince1970) {
         self.timestamp = timestamp
     }
@@ -133,7 +133,7 @@ struct SystemPingRequest: Codable {
 struct SystemPingResponse: Codable {
     let status: String
     let timestamp: Double
-    
+
     init(status: String = "ok", timestamp: Double = Date().timeIntervalSince1970) {
         self.status = status
         self.timestamp = timestamp

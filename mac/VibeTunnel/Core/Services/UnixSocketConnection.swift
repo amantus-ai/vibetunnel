@@ -306,7 +306,7 @@ final class UnixSocketConnection {
             logger.error("Failed to serialize message: \(error)")
         }
     }
-    
+
     /// Send raw data with error handling
     func sendRawData(_ data: Data) async throws {
         try await sendData(data)

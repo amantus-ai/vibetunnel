@@ -602,11 +602,12 @@ final class WebRTCManager: NSObject {
     private func handleControlMessage(_ data: Data) async -> Data? {
         // First decode the raw JSON to understand what kind of message it is
         guard let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-              let action = json["action"] as? String else {
+              let action = json["action"] as? String
+        else {
             logger.error("Failed to decode control message")
             return nil
         }
-        
+
         logger.info("📥 Received control message with action: \(action)")
 
         // Log detailed info for api-request messages
@@ -627,12 +628,12 @@ final class WebRTCManager: NSObject {
         // Just update the "type" field to be the action
         var signalJson = json
         signalJson["type"] = action
-        
+
         // For api-request messages, merge the payload into the top level
         if action == "api-request", let payload = json["payload"] as? [String: Any] {
             signalJson.merge(payload) { _, new in new }
         }
-        
+
         await handleSignalMessage(signalJson)
 
         // No synchronous response needed for most messages
@@ -829,24 +830,22 @@ final class WebRTCManager: NSObject {
                 "processes": processes
             ]
 
-            let messageData: Data = try {
-                if let requestId {
-                    // If there's a request ID, create a response
-                    return try ControlProtocol.screencapApiResponse(
-                        requestId: requestId,
-                        action: "initial-data",
-                        payload: responseData
-                    )
-                } else {
-                    // Otherwise create an event - use the flexible encoder for events with dictionary payloads
-                    return try ControlProtocol.encodeWithDictionaryPayload(
-                        type: .event,
-                        category: .screencap,
-                        action: "initial-data",
-                        payload: responseData
-                    )
-                }
-            }()
+            let messageData: Data = if let requestId {
+                // If there's a request ID, create a response
+                try ControlProtocol.screencapApiResponse(
+                    requestId: requestId,
+                    action: "initial-data",
+                    payload: responseData
+                )
+            } else {
+                // Otherwise create an event - use the flexible encoder for events with dictionary payloads
+                try ControlProtocol.encodeWithDictionaryPayload(
+                    type: .event,
+                    category: .screencap,
+                    action: "initial-data",
+                    payload: responseData
+                )
+            }
 
             await sendControlMessage(messageData)
             logger.info("📤 Sent initial data response")
@@ -1281,7 +1280,7 @@ final class WebRTCManager: NSObject {
                 logger.error("❌ Cannot send message - UNIX socket is nil")
                 return
             }
-            
+
             try await socket.sendRawData(data)
             logger.info("✅ Control message sent via shared socket")
         } catch {

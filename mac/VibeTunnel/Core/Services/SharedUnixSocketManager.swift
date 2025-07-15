@@ -89,10 +89,10 @@ final class SharedUnixSocketManager {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                let categoryStr = json["category"] as? String,
                let action = json["action"] as? String,
-               let category = ControlProtocol.Category(rawValue: categoryStr) {
-                
+               let category = ControlProtocol.Category(rawValue: categoryStr)
+            {
                 logger.info("📨 Control message received: \(category.rawValue):\(action)")
-                
+
                 // Handle control messages
                 Task { @MainActor in
                     await handleControlMessage(category: category, data: data)
@@ -122,14 +122,18 @@ final class SharedUnixSocketManager {
         // clients from hanging indefinitely waiting for a reply.
         guard let handler = controlHandlers[category] else {
             logger.warning("No handler for category: \(category.rawValue)")
-            
+
             // Send error response for unhandled categories
-            if let errorResponse = createErrorResponse(for: data, category: category.rawValue, error: "No handler registered for category: \(category.rawValue)") {
+            if let errorResponse = createErrorResponse(
+                for: data,
+                category: category.rawValue,
+                error: "No handler registered for category: \(category.rawValue)"
+            ) {
                 guard let socket = unixSocket else {
                     logger.warning("No socket available to send error response")
                     return
                 }
-                
+
                 do {
                     try await socket.sendRawData(errorResponse)
                 } catch {
@@ -148,7 +152,7 @@ final class SharedUnixSocketManager {
                 logger.warning("No socket available to send response")
                 return
             }
-            
+
             do {
                 try await socket.sendRawData(responseData)
             } catch {
@@ -171,7 +175,7 @@ final class SharedUnixSocketManager {
         controlHandlers.removeValue(forKey: category)
         logger.info("❌ Unregistered control handler for category: \(category.rawValue)")
     }
-    
+
     /// Create error response for unhandled messages
     private func createErrorResponse(for data: Data, category: String, error: String) -> Data? {
         do {
@@ -180,8 +184,8 @@ final class SharedUnixSocketManager {
                let id = json["id"] as? String,
                let action = json["action"] as? String,
                let type = json["type"] as? String,
-               type == "request" {  // Only send error responses for requests
-                
+               type == "request"
+            { // Only send error responses for requests
                 // Create error response matching request
                 let errorResponse: [String: Any] = [
                     "id": id,
@@ -190,25 +194,25 @@ final class SharedUnixSocketManager {
                     "action": action,
                     "error": error
                 ]
-                
+
                 return try JSONSerialization.data(withJSONObject: errorResponse)
             }
         } catch {
             logger.error("Failed to create error response: \(error)")
         }
-        
+
         return nil
     }
-    
+
     /// Initialize system control handler
     func initializeSystemHandler(onSystemReady: @escaping () -> Void) {
         systemControlHandler = SystemControlHandler(onSystemReady: onSystemReady)
-        
+
         // Register the system handler
         registerControlHandler(for: .system) { [weak self] data in
             await self?.systemControlHandler?.handleMessage(data)
         }
-        
+
         logger.info("✅ System control handler initialized")
     }
 }

@@ -195,16 +195,16 @@ struct NetworkUtilityTests {
         // Enhanced performance testing with detailed metrics
         var timings: [TimeInterval] = []
         let iterations = 50
-        
+
         // Attach system configuration
         Attachment.record("""
-            Test: IP Address Retrieval Performance
-            Iterations: \(iterations)
-            Test Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
-            System: \(TestUtilities.captureSystemInfo())
-            Network: \(TestUtilities.captureNetworkConfig())
-            """, named: "Performance Test Configuration")
-        
+        Test: IP Address Retrieval Performance
+        Iterations: \(iterations)
+        Test Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
+        System: \(TestUtilities.captureSystemInfo())
+        Network: \(TestUtilities.captureNetworkConfig())
+        """, named: "Performance Test Configuration")
+
         // Measure individual timings
         for i in 0..<iterations {
             let start = CFAbsoluteTimeGetCurrent()
@@ -212,32 +212,35 @@ struct NetworkUtilityTests {
             let end = CFAbsoluteTimeGetCurrent()
             timings.append(end - start)
         }
-        
+
         // Calculate statistics
         let average = timings.reduce(0, +) / Double(timings.count)
         let max = timings.max() ?? 0
         let min = timings.min() ?? 0
         let stdDev = TestUtilities.calculateStandardDeviation(timings)
-        
+
         // Attach detailed performance metrics
         Attachment.record("""
-            Iterations: \(iterations)
-            Average: \(String(format: "%.4f", average * 1000))ms
-            Min: \(String(format: "%.4f", min * 1000))ms  
-            Max: \(String(format: "%.4f", max * 1000))ms
-            Standard Deviation: \(String(format: "%.4f", stdDev * 1000))ms
-            95th Percentile: \(String(format: "%.4f", calculatePercentile95(timings) * 1000))ms
-            """, named: "Performance Metrics")
-        
+        Iterations: \(iterations)
+        Average: \(String(format: "%.4f", average * 1_000))ms
+        Min: \(String(format: "%.4f", min * 1_000))ms  
+        Max: \(String(format: "%.4f", max * 1_000))ms
+        Standard Deviation: \(String(format: "%.4f", stdDev * 1_000))ms
+        95th Percentile: \(String(format: "%.4f", calculatePercentile95(timings) * 1_000))ms
+        """, named: "Performance Metrics")
+
         // Attach timing distribution for analysis
         let timingData = timings.enumerated().map { i, timing in
-            "Iteration \(i + 1): \(String(format: "%.4f", timing * 1000))ms"
+            "Iteration \(i + 1): \(String(format: "%.4f", timing * 1_000))ms"
         }.joined(separator: "\n")
         Attachment.record(timingData, named: "Individual Timings")
-        
+
         // Performance assertions
-        #expect(average < 0.01, "Average response time should be under 10ms, got \(String(format: "%.2f", average * 1000))ms")
-        #expect(max < 0.05, "Maximum response time should be under 50ms, got \(String(format: "%.2f", max * 1000))ms")
+        #expect(
+            average < 0.01,
+            "Average response time should be under 10ms, got \(String(format: "%.2f", average * 1_000))ms"
+        )
+        #expect(max < 0.05, "Maximum response time should be under 50ms, got \(String(format: "%.2f", max * 1_000))ms")
     }
 
     // MARK: - Concurrent Access Tests
@@ -314,9 +317,9 @@ struct NetworkUtilityTests {
 
         MockNetworkUtility.reset()
     }
-    
+
     // MARK: - Helper Functions
-    
+
     /// Safely calculate 95th percentile, guarding against empty arrays and out-of-bounds access
     private func calculatePercentile95(_ timings: [TimeInterval]) -> TimeInterval {
         guard !timings.isEmpty else { return 0 }

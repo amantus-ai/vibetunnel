@@ -250,7 +250,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Start the terminal control handler (registers its handler)
         TerminalControlHandler.shared.start()
-        
+
         // Initialize system control handler with ready callback
         SharedUnixSocketManager.shared.initializeSystemHandler {
             logger.info("🎉 System ready event received from server")
