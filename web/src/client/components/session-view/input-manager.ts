@@ -323,7 +323,7 @@ export class InputManager {
     if (isMacOS) {
       // macOS critical shortcuts - these should NEVER be captured
       if (e.metaKey && !e.shiftKey && !e.altKey) {
-        if (['t', 'n', 'q'].includes(key)) return true; // New tab, new window, quit
+        if (['t', 'n', 'q', 'w'].includes(key)) return true; // New tab, new window, quit, close tab
         if (['h'].includes(key)) return true; // Hide window
       }
       if (e.metaKey && e.shiftKey && !e.altKey) {
@@ -332,7 +332,7 @@ export class InputManager {
     } else {
       // Windows/Linux critical shortcuts - these should NEVER be captured
       if (e.ctrlKey && !e.shiftKey && !e.altKey) {
-        if (['t', 'n'].includes(key)) return true; // New tab, new window
+        if (['t', 'n', 'w'].includes(key)) return true; // New tab, new window, close tab
       }
       if (e.ctrlKey && e.shiftKey && !e.altKey) {
         if (['t', 'n', 'q'].includes(key)) return true; // Reopen tab, new incognito, quit
@@ -384,10 +384,6 @@ export class InputManager {
       // Common browser shortcuts that are normally captured for terminal
       if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey) {
         if (['a', 'f', 'r', 'l', 'w', 'p', 's', 'd'].includes(key)) {
-          // Debug logging for Cmd+R
-          if (key === 'r') {
-            logger.log(`🔍 Cmd+R: capture OFF, allowing browser shortcut`);
-          }
           return true;
         }
       }
@@ -405,14 +401,7 @@ export class InputManager {
     }
 
     // When capture is active, everything else goes to terminal
-    const result = false;
-
-    // Debug logging for Cmd+R
-    if (e.metaKey && e.key.toLowerCase() === 'r') {
-      logger.log(`🔍 Cmd+R result: returning ${result} (${result ? 'BROWSER' : 'TERMINAL'})`);
-    }
-
-    return result;
+    return false;
   }
 
   cleanup(): void {
