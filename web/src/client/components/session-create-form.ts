@@ -189,6 +189,13 @@ export class SessionCreateForm extends LitElement {
   }
 
   private async checkServerStatus() {
+    // Defensive check - authClient should always be provided
+    if (!this.authClient) {
+      logger.warn('checkServerStatus called without authClient');
+      this.macAppConnected = false;
+      return;
+    }
+
     try {
       const response = await fetch('/api/server/status', {
         headers: this.authClient.getAuthHeader(),
@@ -320,15 +327,18 @@ export class SessionCreateForm extends LitElement {
 
     this.isCreating = true;
 
+    // Determine if we're actually spawning a terminal window
+    const effectiveSpawnTerminal = this.spawnWindow && this.macAppConnected;
+
     const sessionData: SessionCreateData = {
       command: this.parseCommand(this.command?.trim() || ''),
       workingDir: this.workingDir?.trim() || '',
-      spawn_terminal: this.spawnWindow && this.macAppConnected,
+      spawn_terminal: effectiveSpawnTerminal,
       titleMode: this.titleMode,
     };
 
     // Only add dimensions for web sessions (not external terminal spawns)
-    if (!this.spawnWindow) {
+    if (!effectiveSpawnTerminal) {
       // Use conservative defaults that work well across devices
       // The terminal will auto-resize to fit the actual container after creation
       sessionData.cols = 120;

@@ -583,9 +583,12 @@ describe('SessionCreateForm', () => {
       // Check that spawn_terminal was false in the request
       const sessionCall = fetchMock.getCalls().find((call) => call[0] === '/api/sessions');
       expect(sessionCall).toBeTruthy();
-      
+
       const requestBody = JSON.parse((sessionCall?.[1]?.body as string) || '{}');
       expect(requestBody.spawn_terminal).toBe(false);
+      // Also verify that terminal dimensions were included for web session
+      expect(requestBody.cols).toBe(120);
+      expect(requestBody.rows).toBe(30);
 
       newElement.remove();
     });
@@ -624,9 +627,28 @@ describe('SessionCreateForm', () => {
       // Check that spawn_terminal was true in the request
       const sessionCall = fetchMock.getCalls().find((call) => call[0] === '/api/sessions');
       expect(sessionCall).toBeTruthy();
-      
+
       const requestBody = JSON.parse((sessionCall?.[1]?.body as string) || '{}');
       expect(requestBody.spawn_terminal).toBe(true);
+
+      newElement.remove();
+    });
+
+    it('should handle missing authClient gracefully', async () => {
+      // Create element without authClient
+      const newElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .visible=${true}></session-create-form>
+      `);
+
+      // Wait for async operations
+      await waitForAsync();
+      await newElement.updateComplete;
+
+      // Verify that macAppConnected defaults to false
+      expect(newElement.macAppConnected).toBe(false);
+
+      // The component should log a warning but not crash
+      // No need to check fetch calls since defensive check prevents them
 
       newElement.remove();
     });
