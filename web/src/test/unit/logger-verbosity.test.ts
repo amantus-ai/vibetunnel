@@ -4,6 +4,8 @@ import {
   createLogger,
   getVerbosityLevel,
   initLogger,
+  isVerbosityLevel,
+  parseVerbosityLevel,
   setVerbosityLevel,
 } from '../../server/utils/logger';
 
@@ -165,6 +167,52 @@ describe('Logger Verbosity Control', () => {
 
       expect(consoleLogSpy).not.toHaveBeenCalled();
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Type Guards and Parsing', () => {
+    it('should correctly identify valid verbosity level strings', () => {
+      expect(isVerbosityLevel('SILENT')).toBe(true);
+      expect(isVerbosityLevel('silent')).toBe(true);
+      expect(isVerbosityLevel('ERROR')).toBe(true);
+      expect(isVerbosityLevel('error')).toBe(true);
+      expect(isVerbosityLevel('WARN')).toBe(true);
+      expect(isVerbosityLevel('warn')).toBe(true);
+      expect(isVerbosityLevel('INFO')).toBe(true);
+      expect(isVerbosityLevel('info')).toBe(true);
+      expect(isVerbosityLevel('VERBOSE')).toBe(true);
+      expect(isVerbosityLevel('verbose')).toBe(true);
+      expect(isVerbosityLevel('DEBUG')).toBe(true);
+      expect(isVerbosityLevel('debug')).toBe(true);
+    });
+
+    it('should reject invalid verbosity level strings', () => {
+      expect(isVerbosityLevel('invalid')).toBe(false);
+      expect(isVerbosityLevel('trace')).toBe(false);
+      expect(isVerbosityLevel('log')).toBe(false);
+      expect(isVerbosityLevel('')).toBe(false);
+      expect(isVerbosityLevel('123')).toBe(false);
+    });
+
+    it('should parse valid verbosity levels correctly', () => {
+      expect(parseVerbosityLevel('silent')).toBe(VerbosityLevel.SILENT);
+      expect(parseVerbosityLevel('SILENT')).toBe(VerbosityLevel.SILENT);
+      expect(parseVerbosityLevel('error')).toBe(VerbosityLevel.ERROR);
+      expect(parseVerbosityLevel('ERROR')).toBe(VerbosityLevel.ERROR);
+      expect(parseVerbosityLevel('warn')).toBe(VerbosityLevel.WARN);
+      expect(parseVerbosityLevel('WARN')).toBe(VerbosityLevel.WARN);
+      expect(parseVerbosityLevel('info')).toBe(VerbosityLevel.INFO);
+      expect(parseVerbosityLevel('INFO')).toBe(VerbosityLevel.INFO);
+      expect(parseVerbosityLevel('verbose')).toBe(VerbosityLevel.VERBOSE);
+      expect(parseVerbosityLevel('VERBOSE')).toBe(VerbosityLevel.VERBOSE);
+      expect(parseVerbosityLevel('debug')).toBe(VerbosityLevel.DEBUG);
+      expect(parseVerbosityLevel('DEBUG')).toBe(VerbosityLevel.DEBUG);
+    });
+
+    it('should return undefined for invalid verbosity levels', () => {
+      expect(parseVerbosityLevel('invalid')).toBeUndefined();
+      expect(parseVerbosityLevel('trace')).toBeUndefined();
+      expect(parseVerbosityLevel('')).toBeUndefined();
     });
   });
 });

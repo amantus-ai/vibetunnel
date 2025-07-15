@@ -21,7 +21,7 @@ import { SessionManager } from './pty/session-manager.js';
 import { VibeTunnelSocketClient } from './pty/socket-client.js';
 import { ActivityDetector } from './utils/activity-detector.js';
 import { checkAndPatchClaude } from './utils/claude-patcher.js';
-import { closeLogger, createLogger, setVerbosityLevel, VerbosityLevel } from './utils/logger.js';
+import { closeLogger, createLogger, parseVerbosityLevel, setLogFilePath, setVerbosityLevel, VerbosityLevel } from './utils/logger.js';
 import { generateSessionName } from './utils/session-naming.js';
 import { generateTitleSequence } from './utils/terminal-title.js';
 import { BUILD_DATE, GIT_COMMIT, VERSION } from './version.js';
@@ -45,6 +45,8 @@ function showUsage() {
     '  --verbosity <level>   Set logging verbosity: silent, error, warn, info, verbose, debug'
   );
   console.log('                        (defaults to error)');
+  console.log('  --log-file <path>     Override default log file location');
+  console.log('                        (defaults to ~/.vibetunnel/log.txt)');
   console.log('');
   console.log('Title Modes:');
   console.log('  none     - No title management (default)');
@@ -53,12 +55,14 @@ function showUsage() {
   console.log('  dynamic  - Show directory, command, and activity (auto-selected for claude)');
   console.log('');
   console.log('Verbosity Levels:');
-  console.log('  silent   - No output except critical errors');
-  console.log('  error    - Only errors (default)');
-  console.log('  warn     - Errors and warnings');
-  console.log('  info     - Errors, warnings, and informational messages');
-  console.log('  verbose  - All messages except debug');
-  console.log('  debug    - All messages including debug');
+  console.log(`  ${chalk.gray('silent')}   - No output except critical errors`);
+  console.log(`  ${chalk.red('error')}    - Only errors ${chalk.gray('(default)')}`);
+  console.log(`  ${chalk.yellow('warn')}     - Errors and warnings`);
+  console.log(`  ${chalk.green('info')}     - Errors, warnings, and informational messages`);
+  console.log(`  ${chalk.blue('verbose')}  - All messages except debug`);
+  console.log(`  ${chalk.magenta('debug')}    - All messages including debug`);
+  console.log('');
+  console.log('Quick verbosity: ' + chalk.cyan('-q (quiet), -v (verbose), -vv (extra), -vvv (debug)'));
   console.log('');
   console.log('Environment Variables:');
   console.log('  VIBETUNNEL_TITLE_MODE=<mode>         Set default title mode');
@@ -82,27 +86,7 @@ export async function startVibeTunnelForward(args: string[]) {
   // Handle verbosity from environment variable first
   let verbosityLevel: VerbosityLevel | undefined;
   if (process.env.VIBETUNNEL_LOG_LEVEL) {
-    const envVerbosity = process.env.VIBETUNNEL_LOG_LEVEL.toLowerCase();
-    switch (envVerbosity) {
-      case 'silent':
-        verbosityLevel = VerbosityLevel.SILENT;
-        break;
-      case 'error':
-        verbosityLevel = VerbosityLevel.ERROR;
-        break;
-      case 'warn':
-        verbosityLevel = VerbosityLevel.WARN;
-        break;
-      case 'info':
-        verbosityLevel = VerbosityLevel.INFO;
-        break;
-      case 'verbose':
-        verbosityLevel = VerbosityLevel.VERBOSE;
-        break;
-      case 'debug':
-        verbosityLevel = VerbosityLevel.DEBUG;
-        break;
-    }
+    verbosityLevel = parseVerbosityLevel(process.env.VIBETUNNEL_LOG_LEVEL);
   }
 
   // Legacy debug mode support
@@ -125,6 +109,7 @@ export async function startVibeTunnelForward(args: string[]) {
   let sessionId: string | undefined;
   let titleMode: TitleMode = TitleMode.NONE;
   let updateTitle: string | undefined;
+  let logFilePath: string | undefined;
   let remainingArgs = args;
 
   // Check environment variables for title mode
@@ -165,32 +150,18 @@ export async function startVibeTunnelForward(args: string[]) {
       }
       remainingArgs = remainingArgs.slice(2);
     } else if (remainingArgs[0] === '--verbosity' && remainingArgs.length > 1) {
-      const level = remainingArgs[1].toLowerCase();
-      switch (level) {
-        case 'silent':
-          verbosityLevel = VerbosityLevel.SILENT;
-          break;
-        case 'error':
-          verbosityLevel = VerbosityLevel.ERROR;
-          break;
-        case 'warn':
-          verbosityLevel = VerbosityLevel.WARN;
-          break;
-        case 'info':
-          verbosityLevel = VerbosityLevel.INFO;
-          break;
-        case 'verbose':
-          verbosityLevel = VerbosityLevel.VERBOSE;
-          break;
-        case 'debug':
-          verbosityLevel = VerbosityLevel.DEBUG;
-          break;
-        default:
-          logger.error(`Invalid verbosity level: ${remainingArgs[1]}`);
-          logger.error('Valid levels: silent, error, warn, info, verbose, debug');
-          closeLogger();
-          process.exit(1);
+      const parsedLevel = parseVerbosityLevel(remainingArgs[1]);
+      if (parsedLevel !== undefined) {
+        verbosityLevel = parsedLevel;
+      } else {
+        logger.error(`Invalid verbosity level: ${remainingArgs[1]}`);
+        logger.error('Valid levels: silent, error, warn, info, verbose, debug');
+        closeLogger();
+        process.exit(1);
       }
+      remainingArgs = remainingArgs.slice(2);
+    } else if (remainingArgs[0] === '--log-file' && remainingArgs.length > 1) {
+      logFilePath = remainingArgs[1];
       remainingArgs = remainingArgs.slice(2);
     } else {
       // Not a flag, must be the start of the command
@@ -202,6 +173,12 @@ export async function startVibeTunnelForward(args: string[]) {
   // This allows commands like: fwd -- command-with-dashes
   if (remainingArgs[0] === '--' && remainingArgs.length > 1) {
     remainingArgs = remainingArgs.slice(1);
+  }
+
+  // Apply log file path if set
+  if (logFilePath !== undefined) {
+    setLogFilePath(logFilePath);
+    logger.debug(`Log file path set to: ${logFilePath}`);
   }
 
   // Apply verbosity level if set

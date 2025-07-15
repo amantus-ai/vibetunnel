@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { VerbosityLevel } from '../../server/utils/logger';
+import { parseVerbosityLevel, VerbosityLevel } from '../../server/utils/logger';
 
 describe('CLI Verbosity Environment Variables', () => {
   const originalEnv = process.env;
@@ -17,33 +17,10 @@ describe('CLI Verbosity Environment Variables', () => {
   });
 
   async function getVerbosityFromEnv(): Promise<VerbosityLevel | undefined> {
-    // Dynamically import to get fresh module state
-    const { getVerbosityLevel } = await import('../../server/utils/logger');
-    
     // This simulates the logic from cli.ts
     let verbosityLevel: VerbosityLevel | undefined;
     if (process.env.VIBETUNNEL_LOG_LEVEL) {
-      const envVerbosity = process.env.VIBETUNNEL_LOG_LEVEL.toLowerCase();
-      switch (envVerbosity) {
-        case 'silent':
-          verbosityLevel = VerbosityLevel.SILENT;
-          break;
-        case 'error':
-          verbosityLevel = VerbosityLevel.ERROR;
-          break;
-        case 'warn':
-          verbosityLevel = VerbosityLevel.WARN;
-          break;
-        case 'info':
-          verbosityLevel = VerbosityLevel.INFO;
-          break;
-        case 'verbose':
-          verbosityLevel = VerbosityLevel.VERBOSE;
-          break;
-        case 'debug':
-          verbosityLevel = VerbosityLevel.DEBUG;
-          break;
-      }
+      verbosityLevel = parseVerbosityLevel(process.env.VIBETUNNEL_LOG_LEVEL);
     }
 
     // Check VIBETUNNEL_DEBUG for backward compatibility

@@ -141,6 +141,9 @@ USAGE:
     vt title <new title>    # Inside a VibeTunnel session only
     vt --help
 
+QUICK VERBOSITY:
+    -q (quiet), -v (verbose), -vv (extra), -vvv (debug)
+
 DESCRIPTION:
     This wrapper script allows VibeTunnel to see the output of commands by
     forwarding TTY data through the vibetunnel utility. When you run commands

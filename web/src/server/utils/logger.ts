@@ -5,7 +5,33 @@ import * as path from 'path';
 
 // Log file path
 const LOG_DIR = path.join(os.homedir(), '.vibetunnel');
-const LOG_FILE = path.join(LOG_DIR, 'log.txt');
+let LOG_FILE = path.join(LOG_DIR, 'log.txt');
+
+/**
+ * Set custom log file path
+ */
+export function setLogFilePath(filePath: string): void {
+  // Close existing file handle if open
+  if (logFileHandle) {
+    logFileHandle.end();
+    logFileHandle = null;
+  }
+  
+  LOG_FILE = filePath;
+  
+  // Ensure directory exists
+  const dir = path.dirname(LOG_FILE);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  
+  // Re-open log file at new location
+  try {
+    logFileHandle = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+  } catch (error) {
+    console.error('Failed to open log file at new location:', error);
+  }
+}
 
 // Verbosity levels
 export enum VerbosityLevel {
@@ -23,6 +49,23 @@ let verbosityLevel: VerbosityLevel = VerbosityLevel.ERROR;
 // Debug mode flag (kept for backward compatibility)
 // biome-ignore lint/correctness/noUnusedVariables: Used for backward compatibility
 let debugMode = false;
+
+/**
+ * Type guard to check if a string is a valid VerbosityLevel key
+ */
+export function isVerbosityLevel(value: string): value is keyof typeof VerbosityLevel {
+  return value.toUpperCase() in VerbosityLevel;
+}
+
+/**
+ * Parse a string to VerbosityLevel, returns undefined if invalid
+ */
+export function parseVerbosityLevel(value: string): VerbosityLevel | undefined {
+  if (!isVerbosityLevel(value)) {
+    return undefined;
+  }
+  return VerbosityLevel[value.toUpperCase() as keyof typeof VerbosityLevel];
+}
 
 // File handle for log file
 let logFileHandle: fs.WriteStream | null = null;
