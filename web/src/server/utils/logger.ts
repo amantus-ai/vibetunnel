@@ -35,7 +35,7 @@ export function setLogFilePath(filePath: string): void {
 
 // Verbosity levels
 export enum VerbosityLevel {
-  SILENT = 0, // Only critical errors
+  SILENT = 0, // No console output (logs to file only)
   ERROR = 1, // Errors only (default)
   WARN = 2, // Errors and warnings
   INFO = 3, // Errors, warnings, and info

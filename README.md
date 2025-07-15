@@ -75,24 +75,21 @@ When you run `vt` from the npm package, it:
 ```bash
 # Run any command in the browser
 vt pnpm run dev
+vt npm test
+vt python script.py
 
-# Monitor AI agents (with automatic activity tracking)
+# Monitor AI agents with automatic activity tracking
 vt claude --dangerously-skip-permissions
+vt --title-mode dynamic claude    # See real-time Claude status
 
-# Control terminal titles
-vt --title-mode static npm run dev    # Shows path and command
-vt --title-mode dynamic python app.py  # Shows path, command, and activity
-vt --title-mode filter vim            # Blocks vim from changing title
-
-# Control output verbosity
-vt -q npm test         # Quiet mode - only critical errors
-vt -v npm run dev      # Verbose mode - show more information
-
-# Shell aliases work automatically!
-vt claude-danger  # Your custom aliases are resolved
+# Use your shell aliases
+vt gs              # Your 'git status' alias works!
+vt claude-danger   # Custom aliases are resolved
 
 # Open an interactive shell
-vt --shell
+vt --shell         # or vt -i
+
+# For more examples and options, see "The vt Forwarding Command" section below
 ```
 
 ### Git Repository Scanning on First Session
@@ -354,7 +351,7 @@ vt --title-mode dynamic python app.py  # Shows path, command, and activity
 vt --title-mode filter vim            # Blocks vim from changing title
 
 # Control output verbosity
-vt -q npm test         # Quiet mode - only critical errors
+vt -q npm test         # Quiet mode - no console output
 vt -v npm run dev      # Verbose mode - show more information
 vt -vv cargo build     # Extra verbose - all except debug
 vt -vvv python app.py  # Debug mode - show everything
@@ -368,7 +365,7 @@ vt title "My Project - Testing"
 
 ### The `vt` Forwarding Command
 
-The `vt` command is VibeTunnel's terminal forwarding wrapper that allows you to run any command while making its output visible in the browser. It acts as a transparent proxy between your terminal and the command, forwarding all input and output through VibeTunnel's infrastructure.
+The `vt` command is VibeTunnel's terminal forwarding wrapper that allows you to run any command while making its output visible in the browser. Under the hood, `vt` is a convenient shortcut for `vibetunnel fwd` - it's a bash script that calls the full command with proper path resolution and additional features like shell alias support. The `vt` wrapper acts as a transparent proxy between your terminal and the command, forwarding all input and output through VibeTunnel's infrastructure.
 
 #### Command Syntax
 
@@ -386,7 +383,7 @@ vt [options] <command> [args...]
   - `dynamic` - Show directory, command, and live activity status (auto-enabled for Claude)
 
 **Verbosity Control:**
-- `-q, --quiet` - Quiet mode, only show critical errors
+- `-q, --quiet` - Quiet mode, no console output (logs to file only)
 - `-v, --verbose` - Verbose mode, show errors, warnings, and info messages
 - `-vv` - Extra verbose, show all messages except debug
 - `-vvv` - Debug mode, show all messages including debug
@@ -403,7 +400,7 @@ VibeTunnel uses a hierarchical logging system where each level includes all mess
 
 | Level | Flag | Environment Variable | Shows |
 |-------|------|---------------------|-------|
-| SILENT | `-q` | `VIBETUNNEL_LOG_LEVEL=silent` | Only critical errors |
+| SILENT | `-q` | `VIBETUNNEL_LOG_LEVEL=silent` | No console output (file logging only) |
 | ERROR | (default) | `VIBETUNNEL_LOG_LEVEL=error` | Errors only |
 | WARN | - | `VIBETUNNEL_LOG_LEVEL=warn` | Errors and warnings |
 | INFO | `-v` | `VIBETUNNEL_LOG_LEVEL=info` | Errors, warnings, and informational messages |
@@ -738,7 +735,7 @@ Control the amount of output from VibeTunnel commands:
 
 ```bash
 # Command-line flags
-vt -q npm test                # Quiet mode - only critical errors
+vt -q npm test                # Quiet mode - no console output
 vt npm test                   # Default - errors only
 vt -v npm run dev            # Verbose - errors, warnings, and info
 vt -vv cargo build           # Extra verbose - all except debug
