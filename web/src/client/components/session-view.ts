@@ -521,6 +521,13 @@ export class SessionView extends LitElement {
     if (changedProperties.has('connected') && this.connected && this.session) {
       this.ensureTerminalInitialized();
     }
+
+    // Update input manager callbacks when keyboard capture state changes
+    if (changedProperties.has('keyboardCaptureActive') && this.inputManager) {
+      // The callback already returns this.keyboardCaptureActive which gets the updated value
+      // We don't need to update callbacks, but we can add logging for debugging
+      logger.log('Keyboard capture state updated:', this.keyboardCaptureActive);
+    }
   }
 
   /**

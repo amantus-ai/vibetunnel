@@ -2,97 +2,120 @@
 
 ## Overview
 
-VibeTunnel respects browser keyboard shortcuts while providing a seamless terminal experience. This document outlines which keyboard shortcuts are handled by the browser, which are captured by VibeTunnel, and the platform-specific considerations.
+VibeTunnel provides a dynamic keyboard capture system that allows users to toggle between browser-priority and terminal-priority modes. This document outlines the keyboard capture behavior, which shortcuts are affected, and how to control the capture mode.
 
-## Browser Shortcuts (Never Captured)
+## Keyboard Capture Modes
 
-These shortcuts always pass through to the browser to maintain standard web navigation and functionality:
+VibeTunnel has two modes controlled by the keyboard capture indicator button:
 
-### Universal Shortcuts (All Platforms)
+### Capture Mode ON (Default)
+Terminal receives priority for most shortcuts. Browser gets only critical shortcuts.
 
-#### Tab Management
+### Capture Mode OFF  
+Browser shortcuts work normally, terminal gets only basic input.
+
+## Keyboard Capture Toggle
+
+**Double-tap Escape** - Toggle between capture modes
+- Shows visual feedback when mode changes
+- Works from anywhere in the terminal session
+
+## Critical Browser Shortcuts (Always Available)
+
+These shortcuts always pass through to the browser regardless of capture mode:
+
+### Tab and Window Management
 - `Ctrl/Cmd + T` - New tab
-- `Ctrl/Cmd + W` - Close tab  
+- `Ctrl/Cmd + N` - New window  
 - `Ctrl/Cmd + Shift + T` - Reopen closed tab
-- `Ctrl/Cmd + Tab` - Next tab
-- `Ctrl/Cmd + Shift + Tab` - Previous tab
 - `Ctrl/Cmd + 1-9` - Switch to tab by number
+- `Alt/Cmd + Tab` - Switch between windows/applications
 
-#### Browser Navigation
-- `Ctrl/Cmd + R` - Reload page
-- `Ctrl/Cmd + Shift + R` or `F5` - Hard reload
-- `Ctrl/Cmd + L` - Focus address bar
-- `F6` - Focus address bar
-- `Alt + D` - Focus address bar
+### System Functions
+- `Ctrl/Cmd + Q` (macOS) / `Ctrl + Shift + Q` (Linux) / `Alt + F4` (Windows) - Quit/close
+- `F12` - Developer tools
+- `Ctrl/Cmd + Shift + I` - Developer tools
+- `Ctrl/Cmd + H` (macOS) - Hide window
 
-#### Essential Functions
-- `Ctrl/Cmd + P` - Print
-- `Ctrl/Cmd + S` - Save page
-- `Ctrl/Cmd + F` - Find on page
-- `Ctrl/Cmd + D` - Bookmark
-- `Ctrl/Cmd + H` - History
-- `Ctrl/Cmd + J` - Downloads
-- `Ctrl/Cmd + Shift + Delete` - Clear browsing data
-- `F11` - Fullscreen
+### DevTools and Debugging
+- `Ctrl/Cmd + Shift + N` - New incognito window
 
-### Windows/Linux Specific
-- `Alt + F4` - Close window
-- `Ctrl + Shift + Q` - Quit browser
-- `Ctrl + Shift + N` - New incognito window
-- `Ctrl + Page Up/Down` - Tab navigation
+## Captured Shortcuts (When Capture Mode ON)
 
-### macOS Specific
-- `Cmd + Q` - Quit application
-- `Cmd + Shift + A` - Chrome tab search
-- `Cmd + Option + Left/Right` - Word navigation
-- `Cmd + Shift + N` - New incognito window
+When keyboard capture is enabled, these shortcuts are sent to the terminal instead of the browser:
 
-## VibeTunnel Shortcuts
+### macOS Captured Shortcuts
+- `Cmd + A` - Line start (instead of select all)
+- `Cmd + E` - Line end  
+- `Cmd + W` - Delete word (instead of close tab)
+- `Cmd + R` - History search (instead of reload)
+- `Cmd + L` - Clear screen (instead of address bar)
+- `Cmd + D` - EOF/Exit (instead of bookmark)
+- `Cmd + F` - Forward character (instead of find)
+- `Cmd + P` - Previous command (instead of print)
+- `Cmd + U` - Delete to start (instead of view source)
+- `Cmd + K` - Delete to end (instead of search bar)
+- `Option + D` - Delete word forward
 
-These shortcuts are captured and handled by VibeTunnel:
+### Windows/Linux Captured Shortcuts
+- `Ctrl + A` - Line start (instead of select all)
+- `Ctrl + E` - Line end
+- `Ctrl + W` - Delete word (instead of close tab)
+- `Ctrl + R` - History search (instead of reload)
+- `Ctrl + L` - Clear screen (instead of address bar)
+- `Ctrl + D` - EOF/Exit (instead of bookmark)
+- `Ctrl + F` - Forward character (instead of find)
+- `Ctrl + P` - Previous command (instead of print)
+- `Ctrl + U` - Delete to start (instead of view source)
+- `Ctrl + K` - Delete to end (instead of search bar)
+- `Alt + D` - Delete word forward
 
-### Application Navigation
-- `Ctrl/Cmd + O` - Open file browser (only in list view)
-- `Ctrl/Cmd + B` - Toggle sidebar
-- `Escape` - Close session and return to list view (when not in modal)
-
-### Terminal Shortcuts
-When focused in a terminal session, most keyboard input is sent to the terminal, including:
+### Universal Terminal Input
 - All regular typing (a-z, 0-9, symbols)
 - Arrow keys for terminal navigation
-- Terminal-specific shortcuts like `Ctrl+C`, `Ctrl+D`, etc.
 - **Alt+Left/Right Arrow** - Word navigation (move cursor by word)
 - **Alt+Backspace** - Delete previous word
+- `Ctrl+C`, `Ctrl+D`, etc. - Terminal control sequences
 
-**Note**: Browser back/forward navigation (Alt+Left/Right) is disabled in the terminal view to prioritize terminal word navigation, which is essential for efficient command-line editing.
+### Copy/Paste (Always Available)
+- `Ctrl/Cmd + C` - Copy selected text
+- `Ctrl/Cmd + V` - Paste text
+
+**Note**: When capture is ON, browser shortcuts like Cmd+W/Ctrl+W are sent to the terminal for word deletion instead of closing the tab.
 
 ## Implementation Details
 
 ### Key Files
-- `web/src/client/app.ts:160-264` - Main keyboard event handler
-- `web/src/client/components/session-view/input-manager.ts` - Terminal input processing
-- `web/src/client/components/session-view/lifecycle-event-manager.ts` - Global event routing
+- `web/src/client/components/session-view/input-manager.ts:299-405` - Keyboard capture logic and shortcut detection
+- `web/src/client/components/keyboard-capture-indicator.ts` - Capture indicator UI component
+- `web/src/client/components/session-view/session-header.ts:225-238` - Header integration
+- `web/src/client/app.ts:100-102` - Global capture toggle event handling
 
-### Platform Detection
-VibeTunnel detects the user's platform using `navigator.platform` and applies platform-specific shortcut handling to ensure native browser behavior is preserved.
+### How It Works
+1. **Capture Detection**: `isKeyboardShortcut()` determines if a key event should go to browser or terminal
+2. **Dynamic Toggle**: Double-tap Escape toggles the capture state via `capture-toggled` events
+3. **Visual Feedback**: Keyboard capture indicator shows current state and captured shortcuts
+4. **Platform Specific**: Uses `navigator.platform` to apply correct key modifiers (Cmd vs Ctrl)
 
 ### Design Philosophy
-1. **Browser First**: Standard browser shortcuts take precedence over application shortcuts
-2. **Terminal Context**: When in a terminal session, keyboard input is primarily routed to the terminal
-3. **Escape Hatch**: Users can always use standard browser shortcuts to navigate away or close tabs
-4. **Cross-Platform**: Shortcuts work consistently across Windows, Linux, and macOS
+1. **User Control**: Users can toggle between modes based on their current needs
+2. **Critical Safety**: Essential browser shortcuts (new tab, quit, DevTools) always work
+3. **Terminal Power**: When enabled, capture provides full terminal editing capabilities
+4. **Visual Clarity**: Clear indication of current mode and affected shortcuts
 
-## Testing Shortcuts
+## Testing Capture Behavior
 
-To test keyboard shortcut behavior:
+### When Capture Mode ON (Default)
+1. **Test captured shortcuts**: Try `Cmd/Ctrl+W` (should delete word, not close tab)
+2. **Test critical shortcuts**: Try `Cmd/Ctrl+T` (should open new tab)
+3. **Test toggle**: Double-tap Escape to switch modes
 
-1. **Browser shortcuts**: Try tab navigation (`Ctrl/Cmd+T`, `Ctrl/Cmd+W`), page reload (`Ctrl/Cmd+R`), and browser navigation (`Alt+Left/Right`)
-2. **VibeTunnel shortcuts**: Test sidebar toggle (`Ctrl/Cmd+B`), file browser (`Ctrl/Cmd+O` in list view), and escape navigation
-3. **Terminal input**: Verify that regular typing and terminal shortcuts work as expected when focused in a session
+### When Capture Mode OFF
+1. **Test browser shortcuts**: Try `Cmd/Ctrl+W` (should close tab)
+2. **Test terminal input**: Regular typing should still work
+3. **Test toggle**: Double-tap Escape to re-enable capture
 
-## Future Considerations
-
-- User-configurable shortcut preferences
-- Additional application-specific shortcuts for common actions
-- Accessibility shortcut support
-- Visual indicators for available shortcuts
+### Troubleshooting
+- If shortcuts don't work as expected, check the keyboard capture indicator state
+- Critical shortcuts like `Cmd/Ctrl+T` should always work regardless of capture mode
+- Double-tap Escape should toggle between modes with visual confirmation
