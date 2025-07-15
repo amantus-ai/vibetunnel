@@ -21,8 +21,9 @@ final class SystemControlHandler {
         logger.info("SystemControlHandler initialized")
 
         // Register with SharedUnixSocketManager
-        Task {
-            await SharedUnixSocketManager.shared.registerHandler(self, for: .system)
+        SharedUnixSocketManager.shared.registerControlHandler(for: .system) { [weak self] data in
+            guard let self else { return nil }
+            return await self.handleMessage(data)
         }
     }
 
@@ -58,7 +59,7 @@ final class SystemControlHandler {
 
     private func handleReadyEvent(_ data: Data) async -> Data? {
         do {
-            let message = try ControlProtocol.decode(data, as: ControlProtocol.SystemReadyMessage.self)
+            _ = try ControlProtocol.decode(data, as: ControlProtocol.SystemReadyMessage.self)
             logger.info("System ready event received")
 
             // Call the ready handler
