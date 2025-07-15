@@ -270,6 +270,17 @@ export class UnifiedSettings extends LitElement {
     }
     this.appPreferences = { ...this.appPreferences, [key]: value };
     this.saveAppPreferences();
+
+    // Send repository path updates to server/Mac app
+    if (key === 'repositoryBasePath' && this.configWebSocket?.readyState === WebSocket.OPEN) {
+      logger.log('Sending repository path update to server:', value);
+      this.configWebSocket.send(
+        JSON.stringify({
+          type: 'update-repository-path',
+          path: value as string,
+        })
+      );
+    }
   }
 
   private connectConfigWebSocket() {
@@ -612,7 +623,7 @@ export class UnifiedSettings extends LitElement {
             <p class="text-dark-text-muted text-xs mt-1">
               ${
                 this.isServerConfigured
-                  ? 'This path is managed by the VibeTunnel Mac app'
+                  ? 'This path is synced with the VibeTunnel Mac app'
                   : 'Default directory for new sessions and repository discovery'
               }
             </p>
@@ -635,7 +646,7 @@ export class UnifiedSettings extends LitElement {
             ${
               this.isServerConfigured
                 ? html`
-                  <div class="flex items-center text-dark-text-muted" title="Managed by Mac app">
+                  <div class="flex items-center text-dark-text-muted" title="Synced with Mac app">
                     <svg
                       class="w-5 h-5"
                       fill="none"

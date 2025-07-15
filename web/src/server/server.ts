@@ -933,6 +933,46 @@ export async function createApp(): Promise<AppInstance> {
         })
       );
 
+      // Handle incoming messages from web client
+      ws.on('message', async (data) => {
+        try {
+          const message = JSON.parse(data.toString());
+          if (message.type === 'update-repository-path') {
+            const newPath = message.path;
+            logger.log(`Received repository path update from web: ${newPath}`);
+
+            // Forward to Mac app via Unix socket if available
+            if (controlUnixHandler) {
+              const controlMessage = {
+                id: crypto.randomUUID(),
+                type: 'request' as const,
+                category: 'system' as const,
+                action: 'repository-path-update',
+                payload: { path: newPath, source: 'web' },
+              };
+
+              // Send to Mac and wait for response
+              const response = await controlUnixHandler.sendControlMessage(controlMessage);
+              if (response && response.type === 'response') {
+                const payload = response.payload as { success?: boolean };
+                if (payload?.success) {
+                  logger.log(`Mac app confirmed repository path update: ${newPath}`);
+                  // The update will be broadcast back via the config update callback
+                } else {
+                  logger.error('Mac app failed to update repository path');
+                }
+              } else {
+                logger.error('No response from Mac app for repository path update');
+              }
+            } else {
+              logger.warn('No control Unix handler available, cannot forward path update to Mac');
+            }
+          }
+        } catch (error) {
+          logger.error('Failed to handle config WebSocket message:', error);
+        }
+      });
+
       // Handle client disconnection
       ws.on('close', () => {
         configWebSocketClients.delete(ws);

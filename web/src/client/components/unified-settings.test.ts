@@ -110,6 +110,204 @@ class MockWebSocket {
 // Replace global WebSocket
 (global as unknown as { WebSocket: typeof MockWebSocket }).WebSocket = MockWebSocket;
 
+describe('UnifiedSettings - Repository Path Bidirectional Sync', () => {
+  let mockWebSocketSend: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    MockWebSocket.reset();
+    localStorage.clear();
+    mockWebSocketSend = vi.fn();
+
+    // Mock default fetch response
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        repositoryBasePath: '~/',
+        serverConfigured: false,
+      }),
+    });
+  });
+
+  describe('Web to Mac sync', () => {
+    it('should send repository path updates through WebSocket when not server-configured', async () => {
+      const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+
+      // Make component visible
+      el.visible = true;
+
+      // Wait for WebSocket connection
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await el.updateComplete;
+
+      // Get the WebSocket instance and override send method
+      const ws = MockWebSocket.instances[0];
+      expect(ws).toBeTruthy();
+      ws.send = mockWebSocketSend;
+
+      // Find the repository path input
+      const input = el.querySelector('input[placeholder="~/"]') as HTMLInputElement;
+      expect(input).toBeTruthy();
+
+      // Simulate user changing the path
+      input.value = '/new/repository/path';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      // Wait for debounce
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Verify WebSocket message was sent
+      expect(mockWebSocketSend).toHaveBeenCalledWith(
+        JSON.stringify({
+          type: 'update-repository-path',
+          path: '/new/repository/path',
+        })
+      );
+    });
+
+    it('should NOT send updates when server-configured', async () => {
+      // Mock server response with serverConfigured = true
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          repositoryBasePath: '/Users/test/Projects',
+          serverConfigured: true,
+        }),
+      });
+
+      const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+
+      // Make component visible
+      el.visible = true;
+
+      // Wait for WebSocket connection
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await el.updateComplete;
+
+      // Get the WebSocket instance and override send method
+      const ws = MockWebSocket.instances[0];
+      expect(ws).toBeTruthy();
+      ws.send = mockWebSocketSend;
+
+      // Try to change the path (should be blocked)
+      (
+        el as UnifiedSettings & { handleAppPreferenceChange: (key: string, value: string) => void }
+      ).handleAppPreferenceChange('repositoryBasePath', '/different/path');
+
+      // Wait for any potential send
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Verify NO WebSocket message was sent
+      expect(mockWebSocketSend).not.toHaveBeenCalled();
+    });
+
+    it('should handle WebSocket not connected gracefully', async () => {
+      const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+
+      // Make component visible
+      el.visible = true;
+
+      // Wait for initialization
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await el.updateComplete;
+
+      // Get the WebSocket instance and simulate closed state
+      const ws = MockWebSocket.instances[0];
+      expect(ws).toBeTruthy();
+      ws.readyState = MockWebSocket.CLOSED;
+      ws.send = mockWebSocketSend;
+
+      // Find and change the input
+      const input = el.querySelector('input[placeholder="~/"]') as HTMLInputElement;
+      input.value = '/new/path';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      // Wait for debounce
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Verify no send was attempted on closed WebSocket
+      expect(mockWebSocketSend).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Mac to Web sync', () => {
+    it('should update UI when receiving path update from Mac', async () => {
+      const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+
+      // Make component visible
+      el.visible = true;
+
+      // Wait for initialization
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await el.updateComplete;
+
+      // Get the WebSocket instance
+      const ws = MockWebSocket.instances[0];
+      expect(ws).toBeTruthy();
+
+      // Simulate Mac sending a config update
+      ws.simulateMessage({
+        type: 'config',
+        data: {
+          repositoryBasePath: '/mac/updated/path',
+          serverConfigured: false,
+        },
+      });
+
+      // Wait for the update to process
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await el.updateComplete;
+
+      // Check that the input value updated
+      const input = el.querySelector('input[placeholder="~/"]') as HTMLInputElement;
+      expect(input?.value).toBe('/mac/updated/path');
+      expect(input?.disabled).toBe(false); // Still editable since not server-configured
+    });
+
+    it('should update sync status text when serverConfigured changes', async () => {
+      const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+
+      // Make component visible
+      el.visible = true;
+
+      // Wait for initialization
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await el.updateComplete;
+
+      // Initially not server-configured
+      let description = el.querySelector('p.text-xs')?.textContent;
+      expect(description).toContain('Default directory for new sessions');
+
+      // Get the WebSocket instance
+      const ws = MockWebSocket.instances[0];
+
+      // Simulate Mac enabling server configuration
+      ws.simulateMessage({
+        type: 'config',
+        data: {
+          repositoryBasePath: '/mac/controlled/path',
+          serverConfigured: true,
+        },
+      });
+
+      // Wait for update
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await el.updateComplete;
+
+      // Check updated text
+      const descriptions = Array.from(el.querySelectorAll('p.text-xs') || []);
+      const repoDescription = descriptions.find((p) =>
+        p.textContent?.includes('This path is synced with the VibeTunnel Mac app')
+      );
+      expect(repoDescription).toBeTruthy();
+
+      // Check lock icon appeared
+      const lockIconContainer = el.querySelector('[title="Synced with Mac app"]');
+      expect(lockIconContainer).toBeTruthy();
+    });
+  });
+});
+
 describe('UnifiedSettings - Repository Path Server Configuration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
